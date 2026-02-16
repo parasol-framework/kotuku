@@ -14,7 +14,7 @@
    global glPath = glSelf.workingPath
    global glIDLTimestamp = 20241015
 
-   math.randomSeed(mSys.preciseTime())
+   math?.randomSeed(mSys.preciseTime())
 
    global glFunctions      = { }
    global glFunctionLookup = { }

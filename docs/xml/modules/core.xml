@@ -298,20 +298,22 @@ if (AllocMemory(1000, MEM::DATA, &amp;address, nullptr) == ERR::Okay) {
   <function>
     <name>AsyncAction</name>
     <category>Objects</category>
-    <comment>Execute an action in parallel, via a separate thread.</comment>
+    <comment>Submit an action for asynchronous execution against an object.</comment>
     <prototype>ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback)</prototype>
     <input>
       <param type="AC" name="Action" lookup="AC">An action or method ID must be specified here.</param>
-      <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
+      <param type="OBJECTPTR" name="Object">The target object to execute the action against.</param>
       <param type="APTR" name="Args">If the action or method is documented as taking parameters, provide the correct parameter structure here.</param>
-      <param type="FUNCTION *" name="Callback">This function will be called after the thread has finished executing the action.</param>
+      <param type="FUNCTION *" name="Callback">Optional function called on the main thread after the action completes.</param>
     </input>
     <description>
-<p>This function follows the same principles of execution as the Action() function, with the difference of executing the action in parallel via a dynamically allocated thread.  Please refer to the <function>Action</function> function for general information on action execution.</p>
+<p>This function submits an action or method for asynchronous execution against <code>Object</code>.  The runtime allocates a worker thread to execute the action; the caller does not manage threads directly.  Please refer to the <function>Action</function> function for general information on action execution.</p>
 <p>To receive feedback of the action's completion, use the <code>Callback</code> parameter and supply a function.  The prototype for the callback routine is <code>callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, APTR Meta)</code></p>
-<p>It is crucial that the target object is not destroyed while the thread is executing.  Use the <code>Callback</code> routine to receive notification of the thread's completion and then free the object if desired.  The callback will be processed when the main thread makes a call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.</p>
-<p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if AsyncAction() fails, the callback will never be executed because the thread attempt will have been aborted.</p>
-<p>Please note that there is some overhead involved when safely initialising and executing a new thread.  This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
+<p>Actions targeting the same object are serialised through a per-object FIFO queue.  If an async action is already in-flight for the given object, subsequent calls to AsyncAction() will queue the request rather than spawning a competing thread.  The next queued action is dispatched after the current action's callback has been processed on the main thread (or immediately after the action completes if no callback was provided).  Actions targeting different objects execute in parallel as independent workers.  Any actions submitted during callback execution — including actions targeting the same object — are appended to the tail of the queue and do not preempt previously queued work.</p>
+<p>Execution proceeds in two phases per action.  During the 'worker phase', the worker thread holds an exclusive lock on the object and executes the action.  On completion, ownership transfers directly to the main thread for the 'callback phase'.  At no point between worker completion and callback return is the object available to another worker. Only after the callback returns does the next queued action begin.</p>
+<p>Callbacks are processed when the main thread makes a call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.  It is crucial that the target object is not destroyed while actions are executing or queued.  Use the <code>Callback</code> routine to receive notification of each action's completion.  If an object is freed while actions are still queued, the remaining callbacks will be invoked with an <code>ERR::DoesNotExist</code> error and a <code>NULL</code> object pointer.</p>
+<p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if AsyncAction() fails, the callback will never be executed because the attempt will have been aborted.</p>
+<p>This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1051,7 +1053,7 @@ kotuku:pictures/    kotuku:documents    kotuku:documents (Existing documents fol
 <p>In the following example the <class name="Surface">Surface</class> class uses NotifySubscribers() to convert a Move event to a Redimension event.  The parameter values are customised to support this, and the function returns <code>ERR::Notified</code> to prevent the core from sending out a Move notification.</p>
 <pre>ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 {
-   if (!Args) return ERR::NullArgs|ERR::Notified;
+   if (not Args) return ERR::NullArgs|ERR::Notified;
 
    ...
 
@@ -2215,7 +2217,7 @@ static ResourceManager glNodeManager = {
       <const name="DEVICE_TILT_XY">Controller tilted on the X/Y axis.  Value indicates angle, -ve = left, +ve = right</const>
       <const name="DEVICE_TILT_Z">Controller is rising or falling.  Value expressed as 'speed',</const>
       <const name="DISPLAY_EDGE">Recently supplied input occurred at the edge of the display.</const>
-      <const name="PEN_TILT_XY">For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</const>
+      <const name="PEN_TILT_XY">Pen tilt angle.  0 is pointing down directly with nib at bottom, 0.5 is 90 degrees, 1.0 is inversed (eraser at bottom)</const>
       <const name="PRESSURE">Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough</const>
       <const name="WHEEL">Mouse wheel rotation - the value generally reflects the number of 'clicks' rotated on the wheel.</const>
       <const name="WHEEL_TILT">Some mouse wheels can be tilted to the left or right.  Ranges from -1.0 to +1.0</const>

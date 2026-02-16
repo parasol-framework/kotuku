@@ -225,7 +225,7 @@ enum("JET", { type="int", start=1, comment="JET constants are documented in GetI
     "BUTTON_10: Non-specific button assignment.",
     "WHEEL: Mouse wheel rotation - the value generally reflects the number of 'clicks' rotated on the wheel.",
     "WHEEL_TILT: Some mouse wheels can be tilted to the left or right.  Ranges from -1.0 to +1.0",
-    "PEN_TILT_XY: For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.",
+    "PEN_TILT_XY: Pen tilt angle.  0 is pointing down directly with nib at bottom, 0.5 is 90 degrees, 1.0 is inversed (eraser at bottom)",
     "ABS_XY: The X, Y values are defined as absolute coordinates, relative to the top-left of the display.",
     "CROSSED_IN: This message is sent by the input system when the mouse pointer enters an area for the first time.  The message value refers to the object ID of the container being monitored for movement.",
     "CROSSED_OUT: This message is sent by the input system when the mouse pointer leaves an area.  The message value refers to the object ID of the container being monitored for movement.",

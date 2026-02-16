@@ -31,19 +31,12 @@ io.search = function(Path:str, Options:table)
          while (err is ERR_Okay) and (totalRead >= lOptions.contentFilter:len()) do
             if buf:find(lOptions.contentFilter) then return true end
             if fl.position is fl.size then return false end
-            fl.acSeek(-lOptions.contentFilter:len(), SEEK_CURRENT)
+            fl.acSeek(-lOptions.contentFilter:len(), SEEK_CURRENT) -- Sliding window
             err, totalRead = fl.acRead(buf)
          end
       end
 
       return false
-   end
-
-   function fileMatched(Path:str, FileName:str, File:obj)
-      if lOptions.matchFeedback then
-         result = lOptions.matchFeedback(Path, FileName, File)
-         if result is ERR_Terminate then lStop = true end
-      end
    end
 
    function dateLessThan(A, B) -- struct DateTime
@@ -195,12 +188,8 @@ io.search = function(Path:str, Options:table)
             end
          end
 
-         if name_matches then
-            if contentMatch(Path) then
-               if lOptions.matchFeedback then
-                  lOptions.matchFeedback(path, file_name, obj.new('file', { path=Path }))
-               end
-            end
+         if name_matches and contentMatch(Path) then
+            lOptions?.matchFeedback(path, file_name, <{ obj.new('file', { path=Path }) }>)
          end
       end
    end

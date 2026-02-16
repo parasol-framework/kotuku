@@ -5,6 +5,7 @@
 #endif
 
 #include <set>
+#include <deque>
 #include <functional>
 #include <mutex>
 #include <sstream>
@@ -164,11 +165,23 @@ struct ThreadMessage {
 };
 
 struct ThreadActionMessage {
-   OBJECTPTR Object;    // Direct pointer to a target object.
+   OBJECTPTR Object;    // Direct pointer to a target object (may be null if freed).
    AC        ActionID;  // The action to execute.
+   OBJECTID  ObjectUID; // UID of the target object (for queue dispatch).
    int       Key;       // Internal
    ERR       Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
+};
+
+// Queued async action, waiting for the same-object action to complete.
+
+struct QueuedAction {
+   OBJECTPTR Object;
+   OBJECTID  ObjectUID;
+   AC        ActionID;
+   int       ArgsSize;
+   std::vector<int8_t> Parameters;
+   FUNCTION  Callback;
 };
 
 //********************************************************************************************************************
@@ -187,6 +200,10 @@ extern std::recursive_timed_mutex glmObjectLookup; // For glObjectLookup
 extern std::recursive_mutex glmMemory;
 extern std::recursive_mutex glmMsgHandler;
 extern std::recursive_mutex glmAsyncActions;
+
+extern std::mutex glmActionQueue;
+extern ankerl::unordered_dense::map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
+extern ankerl::unordered_dense::set<OBJECTID> glActiveAsyncObjects;
 
 extern std::condition_variable_any cvResources;
 extern std::condition_variable_any cvObjects;
@@ -1060,6 +1077,8 @@ APTR   build_jump_table(const Function *);
 void   stop_async_actions(void);
 ERR    copy_args(const FunctionField *, int, int8_t *, std::vector<int8_t> &);
 ERR    create_archive_volume(void);
+void   dispatch_queued_action(OBJECTID);
+void   drain_action_queue(OBJECTID);
 ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 ERR    find_private_object_entry(OBJECTID, int *);

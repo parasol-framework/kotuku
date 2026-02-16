@@ -7,7 +7,7 @@
 
    proc = processing.new(5.0)
    glPicsProcessed = 0
-   glPictures = { }
+   glPictures = array<table>
 
 @BeforeAll function init()
    mGfx ?? return
@@ -19,7 +19,7 @@
       nameFilter = regex.new('.+\\.svg'),
       matchFeedback = function(Path:str, FileName:str, File:obj)
          list ..= FileName .. ' '
-         table.insert(glPictures, { path=Path .. FileName })
+         glPictures:push({ path=Path .. FileName })
       end
    })
 
@@ -64,7 +64,7 @@ end
    glPicsProcessed = 0
    count = 0
 
-   for k, v in ipairs(glPictures) do
+   for k, v in glPictures do
       if v.pic then
          thread.action(v.pic, 'Activate', picProcessed, k)
          count++
@@ -114,8 +114,9 @@ end
       do
          script = obj.new('script', { statement=[[ msg('Thread is now in session.') ]] })
          thread.script(script, callback)
-         processing.collect()
       end
+
+      processing.collect()
 
       try
          proc = processing.new({ timeout=1.0, signals = array<object> { signal_a, signal_b } })
@@ -145,9 +146,35 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Verify that the thread.script() callback receives an error code and message when the script fails.
+
+@Test(priority=4) function ScriptCallbackError()
+   script = obj.new('script', { statement=[[ error('Deliberate test failure') ]] })
+
+   glCallbackError = nil
+   glCallbackMsg = nil
+   glCallbackFired = false
+
+   thread.script(script, function()
+      glCallbackError = script.error
+      glCallbackMsg   = script.errorMessage
+      glCallbackFired = true
+      processing.signal()
+   end)
+
+   err = processing.sleep(3.0)
+
+   assert(err is ERR_Okay, f'Processing sleep returned: {err}')
+   assert(glCallbackFired, 'Callback was not invoked.')
+   assert(glCallbackError != ERR_Okay, f'Expected a non-zero error code, got ERR_Okay')
+   assert(glCallbackMsg and #glCallbackMsg > 0, 'Expected a non-empty error message')
+   print(f'Script error reported: {glCallbackError}, message: {glCallbackMsg}')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- In this test the signals are sent from the threaded script rather than being managed by the main thread's callback.
 
-@Test(priority=4); @Disabled function MultipleClientSignals()
+@Test(priority=5); @Disabled function MultipleClientSignals()
    signal_a = obj.new('time', { }) -- This would normally be something more practical, like a file
 
    thread_statement = [[
@@ -163,8 +190,9 @@ end
          script.setKey('A', signal_a.id) -- Make the signal object available via arg()
 
          thread.script(script)
-         processing.collect()
       end
+
+      processing.collect()
 
       try
          proc = processing.new({ timeout=1.0, signals = array<object> { signal_a } })
@@ -175,4 +203,57 @@ end
       end
    end
 
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify that multiple thread.action() calls on the same object execute in FIFO order.
+-- Each callback records its Key parameter; the final order should match submission order.
+
+@Test(priority=6); @Requires(display=true) function FifoOrdering()
+   pic = obj.new('picture', { path=glPictures[0].path, flags=PCF_QUERY })
+
+   order_log = { }
+   completed = 0
+   expected = 8
+
+   for i = 0, expected - 1 do
+      thread.action(pic, 'Activate', function(ActionID, Object, Error, Key)
+         table.insert(order_log, Key)
+         completed++
+         if completed >= expected then
+            processing.signal()
+         end
+      end, i)
+   end
+
+   err = processing.sleep(15)
+   assert(err is ERR_Okay, f'Processing sleep returned error: {err}')
+   assert(completed is expected, f'Expected {expected} completions, got {completed}')
+
+   -- Verify FIFO ordering: keys should arrive in submission order (0, 1, 2, ..., 7)
+   for i = 0, #order_log - 1 do
+      assert(order_log[i] is i, f'Expected key {i} at position {i}, got {order_log[i]}')
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify that queued actions without callbacks still allow subsequent queued actions to dispatch.
+
+@Test(priority=7); @Requires(display=true) function CallbacklessQueueing()
+   pic = obj.new('picture', { path=glPictures[0].path, flags=PCF_QUERY })
+
+   completed = 0
+
+   -- Queue 3 actions on the same object without callbacks, followed by 1 with a callback
+   thread.action(pic, 'Activate')
+   thread.action(pic, 'Activate')
+   thread.action(pic, 'Activate')
+   thread.action(pic, 'Activate', function(ActionID, Object, Error, Key)
+      completed++
+      processing.signal()
+   end, 0)
+
+   err = processing.sleep(15)
+   assert(err is ERR_Okay, f'Processing sleep returned error: {err}')
+   assert(completed is 1, 'Final callback was not invoked after callback-less queued actions.')
 end

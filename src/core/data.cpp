@@ -69,6 +69,10 @@ std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
 
 std::set<std::shared_ptr<std::jthread>> glAsyncThreads;
 
+std::mutex glmActionQueue;
+ankerl::unordered_dense::map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
+ankerl::unordered_dense::set<OBJECTID> glActiveAsyncObjects;
+
 std::condition_variable_any cvObjects;
 std::condition_variable_any cvResources;
 
