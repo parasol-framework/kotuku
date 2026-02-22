@@ -452,9 +452,9 @@ static ERR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char Cu
       CursorIndex.set(CellIndex + 1);
    }
 
-   auto &stream = cell.stream;
+   auto &stream = *cell.stream;
 
-   if (stream->data[CursorIndex.index].code != SCODE::TEXT) {
+   if (stream.data[CursorIndex.index].code != SCODE::TEXT) {
       // Skip ahead to the first relevant control code - it's always best to place the cursor ahead of things like
       // font styles, paragraph formatting etc.
 
@@ -463,7 +463,7 @@ static ERR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char Cu
          std::array<SCODE, 5> content = {
             SCODE::TABLE_START, SCODE::LINK_END, SCODE::IMAGE, SCODE::PARAGRAPH_END, SCODE::TEXT
          };
-         if (std::find(std::begin(content), std::end(content), stream->data[CursorIndex.index].code) != std::end(content)) break;
+         if (std::find(std::begin(content), std::end(content), stream.data[CursorIndex.index].code) != std::end(content)) break;
          CursorIndex.next_code();
       }
    }
@@ -561,7 +561,7 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
                   //ScriptArg("End", i)
                };
 
-               for (auto &cell_arg : cell.args) args.emplace_back("", cell_arg.second);
+               for (const auto& [key, value] : cell.args) args.emplace_back("", value);
 
                script->exec(function_name.c_str(), args.data(), args.size());
             }

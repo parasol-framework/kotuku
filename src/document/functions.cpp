@@ -872,11 +872,11 @@ void ui_link::exec(extDocument *Self)
          params.emplace("href", origin.ref);
       }
 
-      for (size_t i=0; i < origin.args.size(); i++) {
-         if ((origin.args[i].first[0] IS '@') or (origin.args[i].first[0] IS '$')) {
-            params.emplace(origin.args[i].first.c_str()+1, origin.args[i].second);
+      for (const auto& [key, value] : origin.args) {
+         if ((key[0] IS '@') or (key[0] IS '$')) {
+            params.emplace(key.c_str()+1, value);
          }
-         else params.emplace(origin.args[i].first, origin.args[i].second);
+         else params.emplace(key, value);
       }
 
       ERR result = report_event(Self, DEF::LINK_ACTIVATED, &origin, &params);
@@ -889,11 +889,11 @@ void ui_link::exec(extDocument *Self)
          std::vector<ScriptArg> sa;
 
          if (!origin.args.empty()) {
-            for (auto &arg : origin.args) {
-               if (arg.first.starts_with('_')) { // Global variable setting
-                  acSetKey(script, arg.first.c_str()+1, arg.second.c_str());
+            for (const auto& [key, value] : origin.args) {
+               if (key.starts_with('_')) { // Global variable setting
+                  acSetKey(script, key.c_str()+1, value.c_str());
                }
-               else sa.emplace_back("", arg.second.data());
+               else sa.emplace_back("", value.data());
             }
          }
 
@@ -1033,9 +1033,10 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
 // Set padding values in clockwise order.  For percentages, the final value is calculated from the diagonal of the
 // parent.
 
-void padding::parse(const std::string &Value)
+void padding::parse(std::string_view Value)
 {
-   auto str = Value.c_str();
+   std::string value_str(Value);
+   auto str = value_str.c_str();
    str = read_unit(str, left, left_scl);
 
    if (*str) str = read_unit(str, top, top_scl);

@@ -1758,7 +1758,7 @@ void parser::tag_button(XTag &Tag)
    if (!Tag.Children.empty()) {
       Self->NoWhitespace = true; // Reset whitespace flag: false allows whitespace at the start of the cell, true prevents whitespace
 
-      parser parse(Self, widget.stream);
+      parser parse(Self, widget.stream.get());
 
       auto new_style = m_style;
       new_style.options = FSO::ALIGN_CENTER;
@@ -3845,7 +3845,7 @@ void parser::tag_cell(XTag &Tag)
 
       // Cell content is managed in an internal stream
 
-      parser parse(Self, cell.stream);
+      parser parse(Self, cell.stream.get());
 
       parse.m_in_template = m_in_template;
       parse.m_inject_tag  = m_inject_tag;

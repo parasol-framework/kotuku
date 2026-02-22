@@ -53,7 +53,7 @@ private:
       INDEX index;
       ALIGN align;
 
-      link_marker(double pX, INDEX pIndex, ALIGN pAlign) : x(pX), word_width(0), index(pIndex), align(pAlign) { }
+      constexpr link_marker(double pX, INDEX pIndex, ALIGN pAlign) : x(pX), word_width(0), index(pIndex), align(pAlign) { }
    };
 
    std::stack<bc_list *>      m_stack_list;
@@ -309,7 +309,7 @@ CELL layout::lay_cell(bc_table *Table)
    if (!cell.stream->data.empty()) {
       m_edit_mode = (!cell.edit_def.empty()) ? true : false;
 
-      layout sl(Self, cell.stream, *cell.viewport, Table->cell_padding);
+      layout sl(Self, cell.stream.get(), *cell.viewport, Table->cell_padding);
       sl.m_depth = m_depth + 1;
       sl.do_layout(&m_font, cell.width, cell.height, vertical_repass);
 
@@ -556,7 +556,7 @@ WRAP layout::lay_button(bc_button &Button)
          Button.inner_padding.bottom_scl ? (Button.inner_padding.bottom * scale) : Button.inner_padding.bottom
       };
 
-      layout sl(Self, Button.stream, *Button.viewport, inner_pad);
+      layout sl(Self, Button.stream.get(), *Button.viewport, inner_pad);
       sl.m_depth = m_depth + 1;
 
       bool vertical_repass = false;

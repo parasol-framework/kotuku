@@ -194,7 +194,7 @@ struct padding {
    padding(double pLeft, double pTop, double pRight, double pBottom) :
       left(pLeft), top(pTop), right(pRight), bottom(pBottom), configured(true) { }
 
-   void parse(const std::string &Value);
+   void parse(std::string_view Value);
 
    void scale_all() { left_scl = right_scl = top_scl = bottom_scl = true; }
 };
@@ -250,7 +250,7 @@ struct tab {
    TT    type;
    bool  active;     // true if the tabbable entity is active/visible
 
-   tab(TT pType, BYTECODE pReference, bool pActive) : ref(pReference), type(pType), active(pActive) { }
+   constexpr tab(TT pType, BYTECODE pReference, bool pActive) : ref(pReference), type(pType), active(pActive) { }
 };
 
 //********************************************************************************************************************
@@ -372,7 +372,7 @@ struct font_entry {
       vec::GetFontMetrics(pHandle, &metrics);
    }
 
-   ~font_entry() { }
+   ~font_entry() noexcept = default;
 
    font_entry(font_entry &&other) noexcept { // Move constructor
       handle    = other.handle;
@@ -563,13 +563,13 @@ struct doc_segment {
    bool    edit;            // true if this segment represents content that can be edited
    bool    allow_merge;     // true if this segment can be merged with siblings that have allow_merge set to true
 
-   inline double x(double Advance, FSO StyleOptions) {
+   constexpr double x(double Advance, FSO StyleOptions) const {
       if ((StyleOptions & FSO::ALIGN_CENTER) != FSO::NIL) return Advance + ((align_width - area.Width) * 0.5);
       else if ((StyleOptions & FSO::ALIGN_RIGHT) != FSO::NIL) return Advance + (align_width - area.Width);
       else return Advance;
    }
 
-   inline double y(ALIGN VAlign, font_entry *Font) {
+   constexpr double y(ALIGN VAlign, font_entry *Font) const {
       if ((VAlign & ALIGN::TOP) != ALIGN::NIL) return area.Y + Font->metrics.Ascent;
       else if ((VAlign & ALIGN::VERTICAL) != ALIGN::NIL) {
          const double avail_space = area.Height - descent;
@@ -587,7 +587,7 @@ struct doc_clip {
 
    doc_clip() = default;
 
-   doc_clip(double pLeft, double pTop, double pRight, double pBottom, int pIndex, bool pTransparent, const std::string &pName) :
+   doc_clip(double pLeft, double pTop, double pRight, double pBottom, int pIndex, bool pTransparent, std::string_view pName) :
       left(pLeft), top(pTop), right(pRight), bottom(pBottom), index(pIndex), transparent(pTransparent), name(pName) {
 
       if ((right - left > 20000) or (bottom - top > 20000)) {
@@ -813,7 +813,7 @@ struct bc_cell : public entity {
    GuardedObject<objVectorPath> border_path; // Only used when the border stroke is customised
    KEYVALUE args;                 // Cell attributes, intended for event hooks
    std::vector<doc_segment> segments;
-   RSTREAM *stream;               // Internally managed byte code content for the cell
+   std::unique_ptr<RSTREAM> stream; // Internally managed byte code content for the cell
    CELL_ID cell_id = 0;           // UID for the cell
    int  column = 0;               // Column number that the cell starts in
    int  col_span = 1;             // Number of columns spanned by this cell (normally set to 1)
@@ -832,8 +832,11 @@ struct bc_cell : public entity {
    void set_fill(const std::string);
 
    bc_cell(int pCellID, int pColumn);
-   ~bc_cell();
+   ~bc_cell() noexcept;
    bc_cell(const bc_cell &Other);
+   bc_cell(bc_cell &&Other) noexcept = default;
+   bc_cell& operator=(const bc_cell &Other);
+   bc_cell& operator=(bc_cell &&Other) noexcept = default;
 };
 
 struct bc_text : public entity {
@@ -947,11 +950,15 @@ struct doc_menu {
 
 struct bc_button : public entity, widget_mgr {
    padding inner_padding;  // Defines padding around the button's content.  Not to be confused with the widget_mgr outer padding
-   RSTREAM *stream;
+   std::unique_ptr<RSTREAM> stream;
    std::vector<doc_segment> segments;
 
    bc_button();
-   ~bc_button();
+   ~bc_button() noexcept;
+   bc_button(const bc_button &Other);
+   bc_button(bc_button &&Other) noexcept = default;
+   bc_button& operator=(const bc_button &Other);
+   bc_button& operator=(bc_button &&Other) noexcept = default;
 };
 
 struct bc_checkbox : public entity, widget_mgr {
@@ -1142,28 +1149,46 @@ class extDocument : public objDocument {
 
 bc_button::bc_button() {
    code = SCODE::BUTTON;
-   stream = new RSTREAM();
+   stream = std::make_unique<RSTREAM>();
    align_to_text = true;
 }
 
-bc_button::~bc_button() {
-   delete stream;
+bc_button::~bc_button() noexcept = default;
+
+bc_button::bc_button(const bc_button &Other) {
+   entity::operator=(Other);
+   widget_mgr::operator=(Other);
+   inner_padding = Other.inner_padding;
+   if (Other.stream) stream = std::make_unique<RSTREAM>(*Other.stream);
+   segments = Other.segments;
 }
 
-bc_cell::~bc_cell() {
-   delete stream;
+bc_button& bc_button::operator=(const bc_button &Other) {
+   if (this IS &Other) return *this;
+
+   entity::operator=(Other);
+   widget_mgr::operator=(Other);
+   inner_padding = Other.inner_padding;
+   if (Other.stream) stream = std::make_unique<RSTREAM>(*Other.stream);
+   else stream.reset();
+   segments = Other.segments;
+
+   return *this;
 }
+
+bc_cell::~bc_cell() noexcept = default;
 
 bc_cell::bc_cell(int pCellID, int pColumn)
 {
    code    = SCODE::CELL;
    cell_id = pCellID;
    column  = pColumn;
-   stream  = new RSTREAM();
+   stream  = std::make_unique<RSTREAM>();
 }
 
 bc_cell::bc_cell(const bc_cell &Other) {
-   if (Other.stream) stream = new RSTREAM(Other.stream[0]);
+   entity::operator=(Other);
+   if (Other.stream) stream = std::make_unique<RSTREAM>(*Other.stream);
    cell_id = Other.cell_id;
    column = Other.column;
    col_span = Other.col_span;
@@ -1179,4 +1204,30 @@ bc_cell::bc_cell(const bc_cell &Other) {
    stroke = Other.stroke;
    fill = Other.fill;
    modified = Other.modified;
+}
+
+bc_cell& bc_cell::operator=(const bc_cell &Other) {
+   if (this IS &Other) return *this;
+
+   entity::operator=(Other);
+   if (Other.stream) stream = std::make_unique<RSTREAM>(*Other.stream);
+   else stream.reset();
+
+   cell_id = Other.cell_id;
+   column = Other.column;
+   col_span = Other.col_span;
+   row_span = Other.row_span;
+   border = Other.border;
+   x = Other.x, y = Other.y;
+   width = Other.width, height = Other.height;
+   stroke_width = Other.stroke_width;
+   hooks = Other.hooks;
+   edit_def = Other.edit_def;
+   args = Other.args;
+   segments = Other.segments;
+   stroke = Other.stroke;
+   fill = Other.fill;
+   modified = Other.modified;
+
+   return *this;
 }
