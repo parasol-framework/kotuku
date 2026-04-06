@@ -60,7 +60,7 @@ gui.combobox = function(Options)
       self.viewport.acDisable()
       self.text.opacity = 0.5
       self.bkgd.fill = self.theme.page.bkgd
-      if self.events.disable then self.events.disable(self) end
+      self.events?.disable(self)
       self.viewport.acDraw()
    end
 
@@ -69,7 +69,7 @@ gui.combobox = function(Options)
       self.viewport.acDisable()
       self.text.opacity = 1.0
       self.bkgd.fill = self.theme.page.bkgd
-      if self.events.enable then self.events.enable(self) end
+      self.events?.enable(self)
       self.viewport.acDraw()
    end
 

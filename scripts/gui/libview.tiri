@@ -5,8 +5,7 @@
 
    namespace 'gui'
 
-   mGfx ?= mod.load('display')
-   mVec ?= mod.load('vector')
+   global mGfx ?= mod.load('display')
 
    glItemCounter = 1
 
@@ -45,7 +44,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function deselectAll(View)
-   for _, i in ipairs(View.items) do
+   for i in values(View.items) do
       if i._selected then
          i._selected = false
          i?._selectEvent(View, i)
@@ -117,7 +116,7 @@ end
 
 function selectNext(View, Filter)
    if not View.sItem then
-      for _, item in ipairs(View.items) do
+      for item in values(View.items) do
          if (not item.hidden) and Filter(item) then
             simpleSelect(View, item)
             return item
@@ -125,7 +124,7 @@ function selectNext(View, Filter)
       end
    else
       found = false
-      for _, item in ipairs(View.items) do
+      for item in values(View.items) do
          if item is View.sItem then
             found = true
          elseif found and (not item.hidden) and Filter(item) then
@@ -207,7 +206,7 @@ gui.initView = function(Options, BuildUI, NewItems)
                vp = Item._vectors.viewport
                Item._vectors.viewport = nil
 
-               for k, v in pairs(Item._vectors) do
+               for v in values(Item._vectors) do
                   v.free()
                end
 
@@ -250,7 +249,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    function cursorActivity()
       if not vw.activeZone and vw.cursorX then
-         for _, zone in pairs(vw.zones) do
+         for zone in values(vw.zones) do
             if (vw.cursorY >= zone.y) and (vw.cursorY < zone.y + zone.height) then
                if ((not zone.width) or ((vw.cursorX >= zone.x) and (vw.cursorX < zone.x + zone.width))) then
                   cursor = zone.hoverCallback(zone, vw.cursorX, vw.cursorY)
@@ -321,7 +320,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
       highlightItem(vw, nil)
 
-      for _, item in ipairs(vw.items) do
+      for item in values(vw.items) do
          if item._selected then
             deselectItem(vw, item)
          else
@@ -373,7 +372,7 @@ gui.initView = function(Options, BuildUI, NewItems)
    -- Selects all items in the view for the user.
 
    vw.selectAll = function()
-      for _, item in ipairs(vw.items) do
+      for item in values(vw.items) do
          selectItem(vw, item)
       end
 
@@ -390,7 +389,7 @@ gui.initView = function(Options, BuildUI, NewItems)
    -- a reference to each known item.  It must return 'true' for any item that needs to be selected.
 
    vw.selectItems = function(Conditional)
-      for _, item in ipairs(vw.items) do
+      for item in values(vw.items) do
          if Conditional(item) is true then
             selectItem(vw, item)
             vw.activeItem = item
@@ -405,7 +404,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    vw.selectedItems = function():array
       list = array<table> { }
-      for _, item in ipairs(vw.items) do
+      for item in values(vw.items) do
          if item._selected then
             list:push(item)
          end
@@ -545,12 +544,12 @@ gui.initView = function(Options, BuildUI, NewItems)
          y       = 0.5,
          xOffset = -0.5,
          yOffset = -0.5,
-         stroke  = vw.theme.border,
-         strokeWidth = 1
+         stroke  = vw.theme.page.stroke,
+         strokeWidth = gui.sizing.page.strokeWidth
       })
    end
 
-   for k, v in pairs({ 'x', 'y', 'xOffset', 'yOffset', 'width', 'height'}) do
+   for v in values(array<string> { 'x', 'y', 'xOffset', 'yOffset', 'width', 'height'}) do
       if Options[v] then vw.viewport[v] = Options[v] end
    end
 
@@ -582,11 +581,9 @@ gui.initView = function(Options, BuildUI, NewItems)
    vw.viewport.mtSubscribeFeedback((FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS), function(Viewport, Event)
       if Event is FM_LOST_FOCUS then
          vw.hasFocus = false
-         if vw.border then vw.border.stroke = vw.theme.border end
          vw.events?.lostFocus(vw)
       else
          vw.hasFocus = true
-         if vw.border then vw.border.stroke = vw.theme.borderFocus end
          vw.events?.focus(vw)
       end
       vw.viewport.acDraw()

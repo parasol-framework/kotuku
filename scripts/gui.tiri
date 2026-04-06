@@ -702,7 +702,7 @@ end
          palette = gui.palette.dark,
          page = {
             bkgd              = gui.palette.dark.bkgd,     -- Background for hosting text & paper-based layouts
-            stroke            = gui.palette.dark.inverse,  -- Border stroke for any area surrounding 'bkgd'
+            stroke            = gui.palette.dark.mid,      -- Border stroke for any area surrounding 'bkgd'
             strokeFocus       = gui.palette.dark.contrast, -- Stroke to use when 'border' has the user's focus
             text              = gui.palette.dark.text,     -- Default colour for text drawn over 'bkgd'
             icon              = 'pearl',                   -- Default icon theme for icons drawn over 'bkgd'
@@ -778,7 +778,7 @@ end
          palette = gui.palette.light,
          page = {
             bkgd              = gui.palette.light.bkgd,
-            stroke            = gui.palette.light.inverse,
+            stroke            = gui.palette.light.mid,
             strokeFocus       = gui.palette.light.contrast
             icon              = 'carbon',
             iconHighlight     = 'pearl',

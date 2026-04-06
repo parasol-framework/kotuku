@@ -19,7 +19,7 @@ function rearrangeItems(View)
    View.zones = { }
    View._last_y = 0
    y = 0
-   for _, item in pairs(View.items) do
+   for item in values(View.items) do
       item._y = y
       if item._vectors.viewport then
          item._vectors.viewport.visibility = item.hidden ? VIS_HIDDEN :> VIS_VISIBLE

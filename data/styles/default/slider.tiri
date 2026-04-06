@@ -30,7 +30,7 @@ return {
       Slider.button = Viewport.new('VectorRectangle', {
          x = gap, y = gap, roundX = 4, roundY = 4,
          width = Viewport.width-(gap*2), height = Viewport.height-(gap*2),
-         fill = button_face, stroke = stroke, opacity = 0.75
+         fill = button_face, stroke = stroke, strokeWidth = gui.sizing.widget.strokeWidth, opacity = 0.75
       })
 
       Viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)

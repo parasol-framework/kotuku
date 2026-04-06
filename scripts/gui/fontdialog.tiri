@@ -41,7 +41,6 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    lShortText = 'The Quick Brown Fox Jumped Over The Lazy Dog'
    lOptions   = Options
    lSizes     = array<int> { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
-   WIDGET_GAP = 6
 
    function exampleMargin()
       return math.round(self.examplePage.width * 0.05)
@@ -81,7 +80,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    function refreshExample()
       if not self.guidelines then
-         self.guidelines = self.examplePage.new('VectorPath', { strokeWidth = 0.5, stroke = 'rgba(0,0,180,.25)' })
+         line_col = (gui.strToRGB(lWindow.theme.page.bkgd):luminance() > 0.5) ? 'rgb(0 0 0 / .25)' :> 'rgb(255 255 255 / .15)'
+         self.guidelines = self.examplePage.new('VectorPath', { strokeWidth = 0.5, stroke = line_col })
       end
 
       pageWidth = self.examplePage.width
@@ -187,10 +187,10 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    if lOptions.face then
       s = string.split(face, ':') -- FaceName, Size, Style, Colour
-      if s[0] then lOptions.face = s[0] end
+      if s[0] then lOptions.face      = s[0] end
       if s[1] then lOptions.pointSize = s[1] end
-      if s[2] then lOptions.style = s[2] end
-      if s[3] then lOptions.colour = s[3] end
+      if s[2] then lOptions.style     = s[2] end
+      if s[3] then lOptions.colour    = s[3] end
    end
 
    lWindow = gui.window({
@@ -216,7 +216,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    })
 
    self.viewport = lWindow:clientViewport({
-      resizeEvent = function(Window)
+      resizeEvent = function(Window:table)
          refreshGuidelines()
       end
    })
@@ -228,7 +228,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    lCancelButton = gui.button({
       target  = self.viewport,
       text    = 'Cancel',
-      xOffset = WIDGET_GAP,
+      xOffset = gui.sizing.widget.gap,
       yOffset = footer,
       icon    = 'items/cancel',
       events = {
@@ -241,7 +241,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    lOkayButton = gui.button({
       target  = self.viewport,
       text    = 'OK',
-      xOffset = lCancelButton.viewport.width + (WIDGET_GAP * 2),
+      xOffset = lCancelButton.viewport.width + (gui.sizing.widget.gap * 2),
       yOffset = footer,
       icon    = 'items/checkmark',
       events = {
@@ -251,7 +251,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       }
    })
 
-   footer += lOkayButton.viewport.height + WIDGET_GAP
+   footer += lOkayButton.viewport.height + gui.sizing.widget.gap
 
    -- Font example area
 
@@ -263,7 +263,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    })
 
    self.exampleBkgd = self.exampleVP.new('VectorRectangle', {
-      fill = lWindow.theme.page.bkgd, stroke = 'rgba(0,0,0,.25)', strokeWidth = 2,
+      fill = lWindow.theme.page.bkgd, stroke = lWindow.theme.page.stroke,
+      strokeWidth = gui.sizing.page.strokeWidth,
       x = 0, y = 0, width = '100%', height = '100%'
    })
 
@@ -280,7 +281,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    -- Font size selection
 
    vwSize = gui.listView({
-      x          = self.exampleVP.x - WIDGET_GAP - 60,
+      x          = self.exampleVP.x - gui.sizing.widget.gap - 60,
       yOffset    = footer,
       height     = 140,
       width      = 60,
@@ -310,7 +311,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       x            = lWindow.margins.left,
       yOffset      = footer,
       height       = 140,
-      width        = vwSize.viewport.x - WIDGET_GAP - lWindow.margins.left,
+      width        = vwSize.viewport.x - gui.sizing.widget.gap - lWindow.margins.left,
       target       = self.viewport,
       sensitive    = true,
       noIcons      = true,
@@ -322,20 +323,20 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       end
    })
 
-   footer += vwStyle.viewport.height + WIDGET_GAP
+   footer += vwStyle.viewport.height + gui.sizing.widget.gap
 
    -- Available font faces
 
    vwFace = gui.listView({
       x            = lWindow.margins.left,
       y            = lWindow.margins.top,
-      width        = self.exampleVP.x - WIDGET_GAP - lWindow.margins.left,
+      width        = self.exampleVP.x - gui.sizing.widget.gap - lWindow.margins.left,
       yOffset      = footer,
       target       = self.viewport,
       sensitive    = true,
       textAttrib   = 'name',
       itemSelected = function(View, Reason, Item)
-         assert(lFonts[Item.name], 'Font "' .. tostring(Item.name) .. '" not recognised.')
+         assert(lFonts[Item.name], f'Font "{Item.name}" not recognised.')
 
          self.face = Item.name
 
@@ -364,7 +365,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          refreshExample()
 
          sizes = lFonts[Item.name].sizes
-         if (lFonts[Item.name].scalable) or (sizes is nil) or (#sizes is 0) then
+         if (lFonts[Item.name].scalable) or (not sizes??) then
             sizes = lSizes
          end
 

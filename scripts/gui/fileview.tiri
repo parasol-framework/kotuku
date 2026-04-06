@@ -1611,12 +1611,13 @@ gui.fileview = function(Options)
    -- View initialisation
 
    vo = {
-      target    = Options.target,
-      fontFace  = gui.fonts.filesys.face,
-      fontSize  = gui.fonts.filesys.size,
-      fontStyle = gui.fonts.filesys.style,
+      target      = Options.target,
+      fontFace    = gui.fonts.filesys.face,
+      fontSize    = gui.fonts.filesys.size,
+      fontStyle   = gui.fonts.filesys.style,
       dragDrop    = true,
-      multiSelect = Options.multiSelect
+      multiSelect = Options.multiSelect,
+      borderless  = true
    }
 
    for k,v in pairs(Options.viewOptions) do vo[k] = v end
