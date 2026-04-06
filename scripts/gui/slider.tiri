@@ -48,19 +48,19 @@ gui.slider = function(Options:table)
    assert(target, 'A target viewport is required.')
    assert(self.max > self.min, 'The min/max values are invalid.')
 
-   self.theme = gui.getTheme(target)
+   self._theme = gui.getTheme(target)
    self.orientation = (Options.orientation is 'vertical') ? 'V' :> 'H'
    self._labelSize = 0
 
    if self.orientation is 'V' then
-      self.viewport = target.new('VectorViewport', { x = Options.x, y = Options.y, height = (Options.size ?? 100), width = BOX_SIZE, overflow = VOF_HIDDEN })
+      self.viewport = target.new('VectorViewport', { x = Options.x, y = Options.y, height = (Options.size ?? 100), width = BOX_SIZE })
 
-      self._sliderHostVP = self.viewport.new('VectorViewport', { y = 0, width = '100%', yOffset = 0, overflow = VOF_HIDDEN })
-      lStyle.background(self, self._sliderHostVP)
+      self._sliderHostVP = self.viewport.new('VectorViewport', { y = 0, width = '100%', yOffset = 0 })
+      lStyle.background(self, self._sliderHostVP, self._theme)
 
-      self._sliderVP = self._sliderHostVP.new('VectorViewport', { width = BOX_SIZE, height = BOX_SIZE, overflow = VOF_HIDDEN })
+      self._sliderVP = self._sliderHostVP.new('VectorViewport', { width = BOX_SIZE, height = BOX_SIZE })
 
-      self._sliderVP.dragCallback = function(Viewport, X, Y)
+      self._sliderVP.dragCallback = function(Viewport:obj, X:num, Y:num)
          max_size = self._sliderHostVP.height - BOX_SIZE
          if Y < 0 then Y = 0 end
          if Y > max_size then Y = max_size end
@@ -83,7 +83,7 @@ gui.slider = function(Options:table)
             face      = gui.fonts.label.face,
             fontSize  = string.format('%.2fpt', gui.fonts.label.size),
             fontStyle = gui.fonts.label.style,
-            fill      = self.theme.window.text,
+            fill      = self._theme.window.text,
             string    = self.label,
             lineLimit = 1
          })
@@ -92,12 +92,12 @@ gui.slider = function(Options:table)
          self.viewport.width = self.viewport.width + self._labelSize
       end
 
-      self._sliderHostVP = self.viewport.new('VectorViewport', { x = self._labelSize, height = '100%', xOffset = 0, overflow = VOF_HIDDEN })
-      lStyle.background(self, self._sliderHostVP)
+      self._sliderHostVP = self.viewport.new('VectorViewport', { x = self._labelSize, height = '100%', xOffset = 0 })
+      lStyle.background(self, self._sliderHostVP, self._theme)
 
-      self._sliderVP = self._sliderHostVP.new('VectorViewport', { width = BOX_SIZE, height = BOX_SIZE, overflow = VOF_HIDDEN })
+      self._sliderVP = self._sliderHostVP.new('VectorViewport', { width = BOX_SIZE, height = BOX_SIZE })
 
-      self._sliderVP.dragCallback = function(Viewport, X, Y)
+      self._sliderVP.dragCallback = function(Viewport:obj, X:num, Y:num)
          max_size  = self._sliderHostVP.width - BOX_SIZE
          if X < 0 then X = 0 end
          if X > max_size then X = max_size end
@@ -110,10 +110,10 @@ gui.slider = function(Options:table)
       self._sliderVP.x = (self.value - self.min) / ((self.max - self.min) / (self._sliderHostVP.width - BOX_SIZE))
    end
 
-   lStyle.slider(self, self._sliderVP)
+   lStyle.slider(self, self._sliderVP, self._theme)
 
-   self._sliderHostVP.mtSubscribeInput(bit.bor(JTYPE_BUTTON),
-      function(Viewport, Msg)
+   self._sliderHostVP.mtSubscribeInput(JTYPE_BUTTON,
+      function(Viewport:obj, Msg)
          repeat
             if (Msg.type is JET_LMB) and (Msg.value > 0) then
                if self.orientation is 'V' then

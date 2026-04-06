@@ -233,7 +233,7 @@ function buildLayout(self, Options)
          end
 
          vec = self.viewport.new('VectorRectangle', {
-            fill   = rgb:toSVG(),
+            fill   = tostring(rgb),
             stroke = COL_BORDER,
             strokeWidth = 1,
             x      = x,

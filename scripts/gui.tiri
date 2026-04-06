@@ -25,6 +25,71 @@ local glPainter = struct.new('VectorPainter')
 
 ----------------------------------------------------------------------------------------------------------------------
 
+gui.mtHSV = { -- HSV metatable
+   __newindex = function(Self, Key, Value)
+      error(f'Table structure is immutable: Cannot set {Key}')
+   end,
+   __eq = function(A:table, B:table):bool
+      return A.h is B.h and A.s is B.s and A.v is B.v and A.a is B.a
+   end,
+   __tostring = function(Self):str -- Returns an SVG compliant colour string
+      if Self.a is 255 or Self.a is nil then
+         return string.format('hsv(%d %d %d)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1)
+      else
+         return string.format('hsv(%d %d %d / %g)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1, Self.a / 255)
+      end
+   end
+}
+
+gui.mtHSV.__index = gui.mtHSV
+
+gui.hsv = function(H:num, S:num, V:num, A:num):table -- HSV values
+   H ?= 0
+   S ?= 0
+   V ?= 0
+   A ?= 255
+   return setmetatable({ h = H, s = S, v = V, a = A }, gui.mtHSV)
+end
+
+function gui.mtHSV:interpolate(New:table, Ratio:num):table
+   Ratio ?= 0.5
+   return setmetatable({
+      a = self.a + ((New.a - self.a) * Ratio),
+      h = self.h + ((New.h - self.h) * Ratio),
+      s = self.s + ((New.s - self.s) * Ratio),
+      v = self.v + ((New.v - self.v) * Ratio)
+   }, gui.mtHSV)
+end
+
+function gui.mtHSV:toRGB():table
+   h = self.h / 60
+   s = self.s
+   v = self.v
+   i = math.floor(h)
+   f = h - i
+   if (i & 1) is 0 then f = 1 - f end
+   m = v * (1 - s)
+   n = v * (1 - s * f)
+
+   if i is 6 or i is 0 then
+      return setmetatable({ r = v, g = n, b = m, a = self.a }, gui.mtRGB)
+   elseif i is 1 then
+      return setmetatable({ r = n, g = v, b = m, a = self.a }, gui.mtRGB)
+   elseif i is 2 then
+      return setmetatable({ r = m, g = v, b = n, a = self.a }, gui.mtRGB)
+   elseif i is 3 then
+      return setmetatable({ r = m, g = n, b = v, a = self.a }, gui.mtRGB)
+   elseif i is 4 then
+      return setmetatable({ r = n, g = m, b = v, a = self.a }, gui.mtRGB)
+   elseif i is 5 then
+      return setmetatable({ r = v, g = m, b = n, a = self.a }, gui.mtRGB)
+   else
+      return setmetatable({ r = 0, g = 0, b = 0, a = self.a }, gui.mtRGB)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 gui.mtRGB = { -- RGB8 metatable
    __newindex = function(Self, Key, Value)
       error(f'Table structure is immutable: Cannot set {Key}')
@@ -36,7 +101,7 @@ gui.mtRGB = { -- RGB8 metatable
       if Self.a is 255 or Self.a is nil then
          return string.format('rgb(%d %d %d)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1)
       else
-         return string.format('rgba(%d %d %d / %g)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1, Self.a / 255)
+         return string.format('rgb(%d %d %d / %g)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1, Self.a / 255)
       end
    end
 }
@@ -63,10 +128,6 @@ function gui.mtRGB:interpolate(New:table, Ratio:num):table
       g = self.g + ((New.g - self.g) * Ratio),
       b = self.b + ((New.b - self.b) * Ratio)
    }, gui.mtRGB)
-end
-
-function gui.mtRGB:toSVG():str
-   return tostring(self)
 end
 
 function gui.mtRGB:toHSV():table
@@ -96,7 +157,7 @@ function gui.mtRGB:toHSV():table
       hsv.s = 0
       hsv.h = 0
    end
-   return hsv
+   return setmetatable(hsv, gui.mtHSV)
 end
 
 -- Return the light value of an RGB colour (i.e. the V in HSV)
@@ -110,6 +171,15 @@ end
 
 function gui.mtRGB:withAlpha(Alpha:num):table
    return setmetatable({ r = self.r, g = self.g, b = self.b, a = self.a * Alpha }, gui.mtRGB)
+end
+
+function gui.mtRGB:linearise():table
+   function lineariseRGB(u)
+      u = u / 255
+      return (u <= 0.04045) ? (u / 12.92) :> (((u + 0.055) / 1.055) ** 2.4)
+   end
+
+   return { r = lineariseRGB(self.r), g = lineariseRGB(self.g), b = lineariseRGB(self.b), a = self.a }
 end
 
 -- Convert RGB table { r, g, b, a } (0-255) to HSL table { h, s, l }
@@ -154,30 +224,20 @@ end
 -- Result is in [0,1] where 0 is black and 1 is white.
 
 function gui.mtRGB:luminance():num
-   linearise = function(u)
-      u = u / 255
-      return (u <= 0.04045) ? (u / 12.92) :> (((u + 0.055) / 1.055) ** 2.4)
-   end
-   return 0.2126 * linearise(self.r) + 0.7152 * linearise(self.g) + 0.0722 * linearise(self.b)
+   local linear = self:linearise()
+   return (0.2126 * linear.r) + (0.7152 * linear.g) + (0.0722 * linear.b)
 end
 
 -- Convert RGB table { r, g, b, a } (0-255) to Display P3 table { r, g, b }
 -- Values are in [0,1].  Out-of-gamut sRGB colours may produce values outside [0,1].
 
 function gui.mtRGB:toDisplayP3():table
-   -- Linearise sRGB
-   linearise = function(u)
-      u = u / 255
-      return (u <= 0.04045) ? (u / 12.92) :> (((u + 0.055) / 1.055) ** 2.4)
-   end
-   local lr = linearise(self.r)
-   local lg = linearise(self.g)
-   local lb = linearise(self.b)
+   local linear = self:linearise()
 
    -- sRGB linear → XYZ D65
-   local x =  0.4124564 * lr + 0.3575761 * lg + 0.1804375 * lb
-   local y =  0.2126729 * lr + 0.7151522 * lg + 0.0721750 * lb
-   local z =  0.0193339 * lr + 0.1191920 * lg + 0.9503041 * lb
+   local x =  0.4124564 * linear.r + 0.3575761 * linear.g + 0.1804375 * linear.b
+   local y =  0.2126729 * linear.r + 0.7151522 * linear.g + 0.0721750 * linear.b
+   local z =  0.0193339 * linear.r + 0.1191920 * linear.g + 0.9503041 * linear.b
 
    -- XYZ D65 → Display P3 linear
    local pr =  2.4934969 * x - 0.9313836 * y - 0.4027108 * z
@@ -194,20 +254,12 @@ end
 -- okl is lightness in [0,1], oka is green-red axis, okb is blue-yellow axis (both typically -0.5 to 0.5).
 
 function gui.mtRGB:toOKLab():table
-   -- Normalise sRGB to [0,1] and apply inverse gamma (linearise)
-   linearise = function(u)
-      u = u / 255
-      return (u <= 0.04045) ? (u / 12.92) :> ((u + 0.055) / 1.055) ** 2.4
-   end
-
-   r = linearise(self.r)
-   g = linearise(self.g)
-   b = linearise(self.b)
+   local linear = self:linearise()
 
    -- Linear sRGB → LMS (OKLab M1 matrix)
-   lms_l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b
-   lms_m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b
-   lms_s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b
+   lms_l = 0.4122214708 * linear.r + 0.5363325363 * linear.g + 0.0514459929 * linear.b
+   lms_m = 0.2119034982 * linear.r + 0.6806995451 * linear.g + 0.1073969566 * linear.b
+   lms_s = 0.0883024619 * linear.r + 0.2817188376 * linear.g + 0.6299787005 * linear.b
 
    -- Cube-root compression
    lms_l = lms_l ** (1/3)
@@ -239,38 +291,6 @@ function gui.mtRGB:toOKLCH():table
    )
 end
 
--- Convert RGB table to HSV
-
-function gui.mtRGB:toHSV():table
-   local max = self:brightness()
-   local hsv = { v = max }
-   if max > 0 then
-      local min = self.b
-      if self.g < min then min = self.g end
-      if self.r < min then min = self.r end
-
-      local delta = max - min
-      hsv.s = delta / max
-      if hsv.s is 0 then
-         hsv.h = 0
-      else
-         if self.r >= max then
-            hsv.h = (self.g - self.b) / delta
-         elseif self.g >= max then
-            hsv.h = 2.0 + (self.b - self.r) / delta
-         else
-            hsv.h = 4.0 + (self.r - self.g) / delta
-         end
-         hsv.h = hsv.h * 60
-         if hsv.h < 0 then hsv.h = hsv.h + 360 end
-      end
-   else
-      hsv.s = 0
-      hsv.h = 0
-   end
-   return hsv
-end
-
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.getFontHeight = function(Font:table):<num,num>
@@ -295,7 +315,7 @@ gui.pixel = function(val:str):num
    val ?? return 0
    num, alpha = rxPixel.extract(val)
    num = tonumber(num)
-   assert(num, 'Invalid graphics unit \'' .. val .. '\'')
+   assert(num, f'Invalid graphics unit \'{val}\'')
    return choose alpha from
       'px' -> num
       'in' -> gui.dpi * num
@@ -315,54 +335,15 @@ gui.strToRGB = function(Value:str):table
    try<trace>
       lVec.ReadPainter(nil, Value, glPainter)
       nrgb = glPainter.Colour
+      if nrgb.Red < 0 then nrgb.Red = 0 end
+      if nrgb.Red > 1 then nrgb.Red = 1 end
+      if nrgb.Green < 0 then nrgb.Green = 0 end
+      if nrgb.Green > 1 then nrgb.Green = 1 end
+      if nrgb.Blue < 0 then nrgb.Blue = 0 end
+      if nrgb.Blue > 1 then nrgb.Blue = 1 end
       return setmetatable({ r=nrgb.red*255, g=nrgb.green*255, b=nrgb.blue*255, a=nrgb.alpha*255 }, gui.mtRGB)
    except ex
       error(f'Parsing "{Value}" failed: {ex.message}\n{ex.stackTrace}')
-   end
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Interpolate two HSV colours
-
-gui.interpolateHSV = function(Base:table, New:table, Ratio:num):table
-   Ratio ?= 0.5
-   return {
-      a = Base.a + ((New.a - Base.a) * Ratio),
-      h = Base.h + ((New.h - Base.h) * Ratio),
-      s = Base.s + ((New.s - Base.s) * Ratio),
-      v = Base.v + ((New.v - Base.v) * Ratio)
-   }
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Convert HSV table to RGB
-
-gui.hsvToRGB = function(Value:table):table
-   assert(Value, 'Empty value passed to hsvToRGB()')
-
-   h = Value.h / 60
-   s = Value.s
-   v = Value.v
-   i = math.floor(h)
-   f = h - i
-   if (i & 1) is 0 then f = 1 - f end
-   m = v * (1 - s)
-   n = v * (1 - s * f)
-
-   if i is 6 or i is 0 then
-      return setmetatable({ r = v, g = n, b = m, a = Value.a }, gui.mtRGB)
-   elseif i is 1 then
-      return setmetatable({ r = n, g = v, b = m, a = Value.a }, gui.mtRGB)
-   elseif i is 2 then
-      return setmetatable({ r = m, g = v, b = n, a = Value.a }, gui.mtRGB)
-   elseif i is 3 then
-      return setmetatable({ r = m, g = n, b = v, a = Value.a }, gui.mtRGB)
-   elseif i is 4 then
-      return setmetatable({ r = n, g = m, b = v, a = Value.a }, gui.mtRGB)
-   elseif i is 5 then
-      return setmetatable({ r = v, g = m, b = n, a = Value.a }, gui.mtRGB)
-   else
-      return setmetatable({ r = 0, g = 0, b = 0, a = Value.a }, gui.mtRGB)
    end
 end
 
@@ -475,7 +456,7 @@ gui.createIcon = function(Scene:obj, Path:str, Size:num, Theme:any, Name:str):ta
    Name ??= Path
 
    if Scene.mtFindDef(Name) is ERR_Okay then -- Return if the icon pattern is already registered
-      return { name = Name, theme = Theme, size = Size, path = Path, fill = 'url(#' .. Name .. ')' }
+      return { name = Name, theme = Theme, size = Size, path = Path, fill = f'url(#{Name})' }
    end
 
    icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size, spreadMethod=VSPREAD_PAD })
@@ -493,7 +474,7 @@ gui.createIcon = function(Scene:obj, Path:str, Size:num, Theme:any, Name:str):ta
       if Vector.stroke?? then
          Vector.stroke = f'url(#{gname})'
       elseif lGradient.stroke then
-         Vector.stroke = lGradient.stroke:toSVG()
+         Vector.stroke = tostring(lGradient.stroke)
          Vector.strokeWidth = '1.5%'
       end
    end)
@@ -580,7 +561,7 @@ local function modifyAlpha(Colour:str, Alpha:num):str
    lVec.ReadPainter(nil, Colour, glPainter)
    nrgb = glPainter.Colour
    rgb = gui.nrgb(nrgb.red, nrgb.green, nrgb.blue, nrgb.alpha)
-   return rgb:withAlpha(Alpha):toSVG()
+   return tostring(rgb:withAlpha(Alpha))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -603,55 +584,77 @@ end
    }
 
    gui.iconThemes = {
-     default = { first=gui.strToRGB('rgb(90,90,90)'), last=gui.strToRGB('rgb(70,70,110)') },
-     carbon  = { first=gui.strToRGB('rgb(90,90,90)'), last=gui.strToRGB('rgb(70,70,110)') },
-     yellow  = { first=gui.strToRGB('#cfd530'), last=gui.strToRGB('#d68710'), stroke=gui.srgb(60, 30, 30, 90) },
-     orange  = { first=gui.strToRGB('#FDC830'), last=gui.strToRGB('#F37335') },
-     blue    = { first=gui.strToRGB('#4b6cb7'), last=gui.strToRGB('#182848') },
-     ocean   = { first=gui.strToRGB('#A8C0FF'), last=gui.strToRGB('#3F2B96') },
-     green   = { first=gui.strToRGB('#7e9d13'), last=gui.strToRGB('#006532') },
-     red     = { first=gui.strToRGB('#f5af19'), last=gui.strToRGB('#f12711') },
-     indigo  = { first=gui.strToRGB('#ad5389'), last=gui.strToRGB('#3c1053') },
-     rose    = { first=gui.strToRGB('#ffc3a0'), last=gui.strToRGB('#FFAFBD') },
-     pink    = { first=gui.strToRGB('#ffdde1'), last=gui.strToRGB('#ee9ca7') },
-     grey    = { first=gui.strToRGB('rgb(100,100,100)'), last=gui.srgb(70,70,70) },
-     pearl   = { first=gui.strToRGB('rgb(250,249,248)'), last=gui.srgb(190,191,192) }
+     default = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'), last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
+     carbon  = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'), last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
+     yellow  = { first=gui.strToRGB('oklch(0.841 0.173 111.771)'), last=gui.strToRGB('oklch(0.690 0.148 68.131)'), stroke=gui.strToRGB('oklch(0.276 0.047 20.527)') },
+     orange  = { first=gui.strToRGB('oklch(0.857 0.164 87.613)'), last=gui.strToRGB('oklch(0.698 0.174 43.865)') },
+     blue    = { first=gui.strToRGB('oklch(0.543 0.124 264.706)'), last=gui.strToRGB('oklch(0.281 0.063 262.910)') },
+     ocean   = { first=gui.strToRGB('oklch(0.813 0.093 268.180)'), last=gui.strToRGB('oklch(0.385 0.165 284.067)') },
+     green   = { first=gui.strToRGB('oklch(0.649 0.154 122.868)'), last=gui.strToRGB('oklch(0.444 0.116 152.499)') },
+     red     = { first=gui.strToRGB('oklch(0.800 0.162 78.770)'), last=gui.strToRGB('oklch(0.615 0.235 30.433)') },
+     indigo  = { first=gui.strToRGB('oklch(0.570 0.134 345.216)'), last=gui.strToRGB('oklch(0.284 0.117 311.021)') },
+     rose    = { first=gui.strToRGB('oklch(0.863 0.083 51.527)'), last=gui.strToRGB('oklch(0.834 0.095 7.824)') },
+     pink    = { first=gui.strToRGB('oklch(0.927 0.038 9.810)'), last=gui.strToRGB('oklch(0.777 0.099 10.847)') },
+     grey    = { first=gui.strToRGB('oklch(0.503 0.000 89.876)'), last=gui.strToRGB('oklch(0.394 0.000 89.876)') },
+     pearl   = { first=gui.strToRGB('oklch(0.983 0.002 67.803)'), last=gui.strToRGB('oklch(0.804 0.002 247.844)') }
    }
 
    gui.palettes = {
-     -- bkgd is the standard background colour for text.  In a light theme it should be near-white.
-     -- inverse is the inverse light value of bkgd (or must contrast significantly) and should share a similar hue to the prime colour.
-     -- prime (primary) and second (secondary prime) are colour pairs, normally of the same hue.
+     -- bkgd is the standard background colour for large amounts of text (documents & code).  In a light theme it should be near-white.
+     -- inverse is the inverse light value of bkgd (or must contrast significantly). Useful for heavy contrast against bkgd, e.g. stroking menu borders.
+     -- prime (primary) should have a strong chroma and is used for drawing attention, like for highlighting and selection.
      -- contrast is a suitable complement to prime and should be of a strongly contrasting hue
      -- neutral is a default background colour for undefined areas (e.g. window background), usually a light grey tone
+     -- mid is used for separating an area from bkgd without drawing attention.  E.g. scrollbar and slider tracks
+     -- face is a midtone colour for widgets, normally drawn over 'mid'.  Chroma must be weaker than 'prime'
      -- text is the default colour for text drawn over 'bkgd'
      -- altText is the default colour for text drawn over 'prime' when highlighted or selected.  Can be same as 'text'
-     ocean        = { light = { bkgd = 'oklch(0.952 0.004 214.329)', inverse = 'oklch(0.356 0.039 248.975)', prime = 'oklch(0.653 0.135 242.687)', second = 'oklch(0.576 0.119 242.282)', type = 'light',
-                                contrast = 'oklch(0.631 0.194 29.442)', neutral = 'oklch(0.894 0 89.876)', text='black', altText='white', invText='white' },
-                      dark =  { bkgd = 'oklch(0.406 0.026 246.349)', inverse = 'oklch(0.9135 0.0087 247.92)', prime = 'oklch(0.653 0.135 242.687)', second = 'oklch(0.576 0.119 242.282)', type = 'dark',
-                                contrast = 'oklch(0.631 0.194 29.442)', neutral = 'oklch(0.356 0.039 248.975)', text='white', altText='white', invText='black' },
+     ocean        = { light = { type = 'light', bkgd = 'oklch(0.952 0.004 214.329)', inverse = 'oklch(0.356 0.039 248.975)',
+                                prime = 'oklch(0.653 0.135 242.687)', contrast = 'oklch(0.631 0.194 29.442)',
+                                neutral = 'oklch(0.894 0 89.876)', mid='oklch(0.804 0 89.876)', face='oklch(0.6214 0.0994 288.29)',
+                                text='black', altText='white', invText='white' },
+                      dark =  { type = 'dark', bkgd = 'oklch(0.406 0.026 246.349)', inverse = 'oklch(0.9135 0.0087 247.92)',
+                                prime = 'oklch(0.653 0.135 242.687)', contrast = 'oklch(0.631 0.194 29.442)',
+                                neutral = 'oklch(0.356 0.039 248.975)', mid='oklch(0.506 0.026 276.349)', face='oklch(0.6033 0.0764 327.27)',
+                                text='white', altText='white', invText='black' },
                     },
-     orangeApples = { light = { bkgd = 'white', inverse = 'oklch(0.289 0.030 185.119)', prime = 'oklch(0.652 0.166 127.067)', second = 'oklch(0.317 0.043 262.142)', type = 'light',
-                                contrast = 'oklch(0.732 0.157 67.580)', neutral = 'oklch(0.894 0 89.876)', text='black', altText='white' },
-                      dark =  { bkgd = 'oklch(0.289 0.030 185.119)', inverse = 'white', prime = 'oklch(0.652 0.166 127.067)', second = 'oklch(0.317 0.043 262.142)', type = 'dark',
-                                contrast = 'oklch(0.732 0.157 67.580)', neutral = 'oklch(0.277 0 89.876)', text='white', altText='white' }
+     orangeApples = { light = { type = 'light', bkgd = 'white', inverse = 'oklch(0.289 0.030 185.119)',
+                                prime = 'oklch(0.652 0.166 127.067)', contrast = 'oklch(0.732 0.157 67.580)',
+                                neutral = 'oklch(0.894 0 89.876)', mid='none', face='none',
+                                text='black', altText='white', invText='none' },
+                      dark =  { type = 'dark', bkgd = 'oklch(0.289 0.030 185.119)', inverse = 'white',
+                                prime = 'oklch(0.652 0.166 127.067)', contrast = 'oklch(0.732 0.157 67.580)',
+                                neutral = 'oklch(0.277 0 89.876)', mid='none', face='none',
+                                text='white', altText='white', invText='none' }
                     },
-     greenland    = { light = { bkgd = 'oklch(0.994 0.008 157.097)', inverse = 'oklch(0.309 0.093 136.720)', prime = 'oklch(0.584 0.162 46.883)', second = 'oklch(0.729 0.223 137.562)', type = 'light',
-                                contrast = 'oklch(0.532 0.138 127.325)', neutral = 'oklch(0.932 0.012 106.630)', text='black', altText='white' },
-                      dark  = { bkgd = 'oklch(0.309 0.093 136.720)', inverse = 'white', prime = 'oklch(0.584 0.162 46.883)', second = 'oklch(0.729 0.223 137.562)', type = 'dark',
-                                contrast = 'oklch(0.532 0.138 127.325)', neutral = 'oklch(0.402 0.015 107.041)', text='white', altText='white' }
+     greenland    = { light = { type = 'light', bkgd = 'oklch(0.994 0.008 157.097)', inverse = 'oklch(0.309 0.093 136.720)',
+                                prime = 'oklch(0.584 0.162 46.883)', contrast = 'oklch(0.532 0.138 127.325)',
+                                neutral = 'oklch(0.932 0.012 106.630)', mid='none', face='none',
+                                text='black', altText='white', invText='none' },
+                      dark  = { type = 'dark', bkgd = 'oklch(0.309 0.093 136.720)', inverse = 'white',
+                                prime = 'oklch(0.584 0.162 46.883)', contrast = 'oklch(0.532 0.138 127.325)',
+                                neutral = 'oklch(0.402 0.015 107.041)', mid='none', face='none',
+                                text='white', altText='white', invText='none' }
                     },
-     sunrise      = { light = { bkgd = 'oklch(0.995 0.007 164.946)', inverse = 'oklch(0.560 0.019 196.622)', prime = 'oklch(0.634 0.185 40.533)', second = 'oklch(0.532 0.176 25.513)', type = 'light',
-                                contrast = 'oklch(0.740 0.161 69.169)', neutral = 'oklch(0.894 0 89.876)', text='black', altText='white' },
-                      dark=   { bkgd = 'black', inverse = 'oklch(0.560 0.019 196.622)', prime = 'oklch(0.634 0.185 40.533)', second = 'oklch(0.532 0.176 25.513)', type = 'dark',
-                                contrast = 'oklch(0.740 0.161 69.169)', neutral = 'oklch(0.277 0 89.876)', text='white', altText='white' }
+     sunrise      = { light = { type = 'light', bkgd = 'oklch(0.995 0.007 164.946)', inverse = 'oklch(0.560 0.019 196.622)',
+                                prime = 'oklch(0.634 0.185 40.533)', contrast = 'oklch(0.740 0.161 69.169)',
+                                neutral = 'oklch(0.894 0 89.876)', mid='none', face='none',
+                                text='black', altText='white', invText='none' },
+                      dark=   { type = 'dark', bkgd = 'black', inverse = 'oklch(0.560 0.019 196.622)',
+                                prime = 'oklch(0.634 0.185 40.533)', contrast = 'oklch(0.740 0.161 69.169)',
+                                neutral = 'oklch(0.277 0 89.876)', mid='none', face='none',
+                                text='white', altText='white', invText='none' }
                     },
-     candyfloss   = { light = { bkgd = 'oklch(0.988 0.007 53.450)', inverse = 'oklch(0.443 0.041 204.992)', prime = 'oklch(0.768 0.105 167.447)', second = 'oklch(0.765 0.140 16.033)', type = 'light',
-                                contrast = 'oklch(0.690 0.130 15.681)', neutral = 'oklch(0.894 0 89.876)', text='black', altText='white' },
-                      dark  = { bkgd = 'oklch(0.443 0.041 204.992)', inverse = 'white', prime = 'oklch(0.768 0.105 167.447)', second = 'oklch(0.765 0.140 16.033)', type = 'dark',
-                                contrast = 'oklch(0.690 0.130 15.681)', neutral = 'oklch(0.277 0 89.876)', text='white', altText='white' }
+     candyfloss   = { light = { type = 'light', bkgd = 'oklch(0.988 0.007 53.450)', inverse = 'oklch(0.443 0.041 204.992)',
+                                prime = 'oklch(0.768 0.105 167.447)', contrast = 'oklch(0.690 0.130 15.681)',
+                                neutral = 'oklch(0.894 0 89.876)',  mid='none', face='none',
+                                text='black', altText='white', invText='none' },
+                      dark  = { type = 'dark', bkgd = 'oklch(0.443 0.041 204.992)', inverse = 'white',
+                                prime = 'oklch(0.768 0.105 167.447)', contrast = 'oklch(0.690 0.130 15.681)',
+                                neutral = 'oklch(0.277 0 89.876)', mid='none', face='none',
+                                text='white', altText='white', invText='none' }
                     },
-     template     = { light = { type = '', bkgd = '', inverse = '', prime = '', second = '', contrast = '', neutral = '', text='', altText='' } }
+     template     = { light = { type = '', bkgd = '', inverse = '', prime = '', contrast = '', neutral = '', mid = '', text = '', altText = '', invText = '' } }
    }
 
    if not gui.theme then
@@ -699,7 +702,7 @@ end
          palette = gui.palette.dark,
          page = {
             bkgd              = gui.palette.dark.bkgd,     -- Background for hosting text & paper-based layouts
-            stroke            = gui.palette.dark.inverse,     -- Border stroke for any area surrounding 'bkgd'
+            stroke            = gui.palette.dark.inverse,  -- Border stroke for any area surrounding 'bkgd'
             strokeFocus       = gui.palette.dark.contrast, -- Stroke to use when 'border' has the user's focus
             text              = gui.palette.dark.text,     -- Default colour for text drawn over 'bkgd'
             icon              = 'pearl',                   -- Default icon theme for icons drawn over 'bkgd'
@@ -750,6 +753,16 @@ end
             iconHighlight = 'pearl',
             text          = gui.palette.dark.text,
             textHighlight = gui.palette.dark.altText
+         },
+         slider = {
+            bkgd            = gui.palette.dark.mid,
+            fore            = gui.palette.dark.inverse,
+            foreStroke      = 'none',
+            foreHighlight   = gui.palette.dark.contrast,
+            foreStrokeFocus = gui.palette.dark.contrast,
+            highlight       = 'none',
+            stroke          = 'none',
+            strokeFocus     = gui.palette.dark.contrast
          },
          toolbar = {
             bkgd          = gui.palette.dark.bkgd,
@@ -805,7 +818,7 @@ end
          menu = {
             bkgd      = gui.palette.light.inverse,
             stroke    = gui.palette.light.neutral,
-            highlight = gui.palette.dark.contrast,
+            highlight = gui.palette.light.contrast,
             text      = gui.palette.light.altText,
             icon      = 'pearl'
          },
@@ -816,6 +829,16 @@ end
             iconHighlight = 'pearl',
             text          = gui.palette.light.text,
             textHighlight = gui.palette.light.altText
+         },
+         slider = {
+            bkgd            = gui.palette.light.mid,
+            fore            = gui.palette.light.inverse,
+            foreStroke      = 'none',
+            foreHighlight   = gui.palette.dark.contrast,
+            foreStrokeFocus = gui.palette.light.contrast,
+            highlight       = gui.palette.dark.face,
+            stroke          = 'none',
+            strokeFocus     = gui.palette.light.contrast
          },
          toolbar = {
             bkgd          = gui.palette.light.bkgd,

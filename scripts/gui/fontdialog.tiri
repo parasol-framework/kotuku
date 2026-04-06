@@ -48,8 +48,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    end
 
    function sendFeedback(Accepted)
-      colour = self.colour.r .. ',' .. self.colour.g .. ',' .. self.colour.b .. ',' .. self.colour.a
-      self.compactFace = self.face .. ':' .. self.pointSize .. ':' .. self.style .. ':' .. colour
+      colour = f'{self.colour.r},{self.colour.g},{self.colour.b},{self.colour.a}'
+      self.compactFace = f'{self.face}:{self.pointSize}:{self.style}:{colour}'
 
       lOptions?.feedback(self, Accepted)
 
@@ -95,7 +95,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       try
          self.exampleText = self.examplePage.new('VectorText', {
             x          = gap,
-            fill       = 'rgb(0,0,0)',
+            fill       = lWindow.theme.page.text,
             inlineSize = pageWidth - (gap * 2),
             face       = self.face,
             fontSize   = self.pointSize .. 'pt',
@@ -104,7 +104,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
             textFlags  = VTXF_RASTER
          })
       except ex
-         msg('Failed to create example text for ' .. self.face .. ' ' .. (self.style ?? 'NIL'))
+         msg(f'Failed to create example text for {self.face} {self.style}')
       end
 
       if self.exampleText then
@@ -147,9 +147,9 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    end
 
    function showFontSizes(List)
-      sizes = { }
+      sizes = array<table> { }
       for i=0,#List-1 do
-         table.insert(sizes, { id=List[i], name=List[i] })
+         sizes:push({ id=List[i], name=List[i] })
       end
       vwSize.loadItems(sizes)
    end
@@ -157,10 +157,10 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    -- Refresh the style list for the selected face
 
    function showStyles(Face)
-      styles = { }
+      styles = array<table> { }
       if lFonts[Face].alias?? then Face = lFonts[Face].alias end
       for v in values(lFonts[Face].styles ?? { 'Regular' }) do
-         table.insert(styles, { id=v, name=v })
+         styles:push({ id=v, name=v })
       end
       vwStyle.loadItems(styles)
    end
@@ -263,7 +263,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    })
 
    self.exampleBkgd = self.exampleVP.new('VectorRectangle', {
-      fill = 'rgb(253,255,246)', stroke = 'rgba(0,0,0,.25)', strokeWidth = 2,
+      fill = lWindow.theme.page.bkgd, stroke = 'rgba(0,0,0,.25)', strokeWidth = 2,
       x = 0, y = 0, width = '100%', height = '100%'
    })
 
@@ -322,7 +322,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       end
    })
 
-   footer = footer + vwStyle.viewport.height + WIDGET_GAP
+   footer += vwStyle.viewport.height + WIDGET_GAP
 
    -- Available font faces
 
@@ -345,7 +345,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
          if self.style and lFonts[self.face] then
             supported = false
-            for _, v in ipairs(lFonts[self.face].styles) do
+            for v in values(lFonts[self.face].styles) do
                if v is self.style then
                   supported = true
                   break
