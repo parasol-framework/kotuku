@@ -130,7 +130,8 @@ end
    end)
 
    text = viewport.new('vectortext', {
-      x=win.margins.left, y=y, string='Kōtuku interfaces are drawn using real-time vector graphics', face='Noto Sans', fontSize=20, fill=gui.palette.text, textFlags='!editable'
+      x=win.margins.left, y=y, string='Kōtuku interfaces are drawn using real-time vector graphics',
+      face='Noto Sans', fontSize=20, fill=win.theme.window.text, textFlags='!editable'
    })
    text.y += text.fontSize
    y += text.fontSize + 14
@@ -184,14 +185,14 @@ end
             gui.dialog.colour({
                modal   = true,
                popOver = win.surface,
-               colour  = '255,0,0',
-               feedback = function(Colour)
+               colour  = 'rgb(255,0,0)',
+               feedback = function(Colour:table)
                   if not Colour then
                      print('Dialog was cancelled.')
                      return
                   end
 
-                  print('The user selected colour is ' .. Colour)
+                  print(f'The user selected colour is {Colour}')
                end
             })
          end,

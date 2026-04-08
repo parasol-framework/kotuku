@@ -5,10 +5,9 @@
 
    namespace 'gui'
 
-   mGfx ?= mod.load('display')
-   mVec ?= mod.load('vector')
+   global mGfx ?= mod.load('display')
 
-   glItemCounter   = 1
+   glItemCounter = 1
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -45,7 +44,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function deselectAll(View)
-   for _, i in ipairs(View.items) do
+   for i in values(View.items) do
       if i._selected then
          i._selected = false
          i?._selectEvent(View, i)
@@ -117,7 +116,7 @@ end
 
 function selectNext(View, Filter)
    if not View.sItem then
-      for _, item in ipairs(View.items) do
+      for item in values(View.items) do
          if (not item.hidden) and Filter(item) then
             simpleSelect(View, item)
             return item
@@ -125,7 +124,7 @@ function selectNext(View, Filter)
       end
    else
       found = false
-      for _, item in ipairs(View.items) do
+      for item in values(View.items) do
          if item is View.sItem then
             found = true
          elseif found and (not item.hidden) and Filter(item) then
@@ -176,6 +175,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       viewport   = nil,
       page       = nil,
       window     = nil, -- Host of the page
+      theme      = nil,
       fontFace   = Options.fontFace ?? gui.fonts.page.face,
       fontSize   = Options.fontSize ?? gui.fonts.page.size,
       fontStyle  = Options.fontStyle ?? gui.fonts.page.style,
@@ -183,7 +183,6 @@ gui.initView = function(Options, BuildUI, NewItems)
       itemSelected    = Options.itemSelected,
       itemDeselected  = Options.itemDeselected,
       itemActivated   = Options.itemActivated,
-      invertedPalette = Options.invertPalette,
       activeChange    = Options.activeChange,
       events          = Options.events ?? {},
       top             = { },
@@ -207,7 +206,7 @@ gui.initView = function(Options, BuildUI, NewItems)
                vp = Item._vectors.viewport
                Item._vectors.viewport = nil
 
-               for k, v in pairs(Item._vectors) do
+               for v in values(Item._vectors) do
                   v.free()
                end
 
@@ -240,7 +239,7 @@ gui.initView = function(Options, BuildUI, NewItems)
             if Input.value is 0 then
                if vw.sensitive and (not Zone.item.insensitive) then
                   reportItemActivated(vw, 'user', Zone.item)
-               elseif (Input.flags & JTYPE_DBL_CLICK)?? then
+               elseif Input.flags has JTYPE_DBL_CLICK then
                   reportItemActivated(vw, 'user', Zone.item)
                end
             end
@@ -250,7 +249,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    function cursorActivity()
       if not vw.activeZone and vw.cursorX then
-         for _, zone in pairs(vw.zones) do
+         for zone in values(vw.zones) do
             if (vw.cursorY >= zone.y) and (vw.cursorY < zone.y + zone.height) then
                if ((not zone.width) or ((vw.cursorX >= zone.x) and (vw.cursorX < zone.x + zone.width))) then
                   cursor = zone.hoverCallback(zone, vw.cursorX, vw.cursorY)
@@ -321,7 +320,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
       highlightItem(vw, nil)
 
-      for _, item in ipairs(vw.items) do
+      for item in values(vw.items) do
          if item._selected then
             deselectItem(vw, item)
          else
@@ -373,7 +372,7 @@ gui.initView = function(Options, BuildUI, NewItems)
    -- Selects all items in the view for the user.
 
    vw.selectAll = function()
-      for _, item in ipairs(vw.items) do
+      for item in values(vw.items) do
          selectItem(vw, item)
       end
 
@@ -390,7 +389,7 @@ gui.initView = function(Options, BuildUI, NewItems)
    -- a reference to each known item.  It must return 'true' for any item that needs to be selected.
 
    vw.selectItems = function(Conditional)
-      for _, item in ipairs(vw.items) do
+      for item in values(vw.items) do
          if Conditional(item) is true then
             selectItem(vw, item)
             vw.activeItem = item
@@ -403,11 +402,11 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    -- Return a table of all selected items
 
-   vw.selectedItems = function()
-      list = { }
-      for _, item in ipairs(vw.items) do
+   vw.selectedItems = function():array
+      list = array<table> { }
+      for item in values(vw.items) do
          if item._selected then
-            table.insert(list, item)
+            list:push(item)
          end
       end
       return list
@@ -527,10 +526,11 @@ gui.initView = function(Options, BuildUI, NewItems)
    vw.scene    = vw.parentViewport.scene
    vw.viewport = vw.parentViewport.new('VectorViewport', { name='view_main', overflow='hidden' }) -- Main viewport for vector graphics.
    vw.frame    = vw.viewport.new('VectorViewport', { name='view_frame', x=0, xOffset=0, y=0, yOffset=0, overflow=VOF_HIDDEN })
+   vw.theme    = gui.getTheme(vw.scene)
 
    vw.bkgd = vw.frame.new('VectorRectangle', {
       name   = 'view_bkgd',
-      fill   = gui.style.page.bkgd,
+      fill   = vw.theme.page.bkgd,
       width  = '100%',
       height = '100%'
    })
@@ -544,12 +544,12 @@ gui.initView = function(Options, BuildUI, NewItems)
          y       = 0.5,
          xOffset = -0.5,
          yOffset = -0.5,
-         stroke  = gui.style.border,
-         strokeWidth = 1
+         stroke  = vw.theme.page.stroke,
+         strokeWidth = gui.sizing.page.strokeWidth
       })
    end
 
-   for k, v in pairs({ 'x', 'y', 'xOffset', 'yOffset', 'width', 'height'}) do
+   for v in values(array<string> { 'x', 'y', 'xOffset', 'yOffset', 'width', 'height'}) do
       if Options[v] then vw.viewport[v] = Options[v] end
    end
 
@@ -581,18 +581,16 @@ gui.initView = function(Options, BuildUI, NewItems)
    vw.viewport.mtSubscribeFeedback((FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS), function(Viewport, Event)
       if Event is FM_LOST_FOCUS then
          vw.hasFocus = false
-         if vw.border then vw.border.stroke = gui.style.border end
-         if vw.events.lostFocus then vw.events.lostFocus(vw) end
+         vw.events?.lostFocus(vw)
       else
          vw.hasFocus = true
-         if vw.border then vw.border.stroke = gui.style.borderFocus end
-         if vw.events.focus then vw.events.focus(vw) end
+         vw.events?.focus(vw)
       end
       vw.viewport.acDraw()
    end)
 
    vw.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
-      if (Qualifiers & KQ_PRESSED)?? then
+      if Qualifiers has KQ_PRESSED then
          if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) or (Code is KEY_SPACE) then
             -- TODO: item activation
          elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
@@ -636,7 +634,7 @@ gui.initView = function(Options, BuildUI, NewItems)
                highlightItem(vw, nil)
             end
          elseif ev.type is JET_BUTTON_1 then
-            if (ev.flags & JTYPE_REPEATED)?? then return end
+            if ev.flags has JTYPE_REPEATED then return end
 
             if ev.value is 1 then
                vw.clickAbsX = ev.absX

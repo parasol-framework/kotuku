@@ -3,7 +3,6 @@ The FileSearch interface simplifies the process of searching for files and folde
 Refer to the Tiri I/O Wiki page for documentation.
 --]]
 
-
 io.search = function(Path:str, Options:table)
    lOptions      = Options
    ADJUST_LOG    = 0
@@ -18,7 +17,7 @@ io.search = function(Path:str, Options:table)
 
          -- By default, symbolic links are not scanned for content unless the scanLinks option is set.
 
-         if (fl.flags & FL_LINK)?? and (lOptions.scanLinks != true) then
+         if (fl.flags has FL_LINK) and (lOptions.scanLinks != true) then
             fl.free()
             return false
          end
@@ -112,11 +111,11 @@ io.search = function(Path:str, Options:table)
          if lOptions.minDateSet and dateLessThan(fl.date, lOptions.minDate) then match = false end
          if lOptions.maxDateSet and dateLessThan(lOptions.maxDate, fl.date) then match = false end
 
-         if match and (fl.flags & FL_FILE) != 0 then
+         if match and (fl.flags has FL_FILE) then
             match = contentMatch(fl.path)
          end
 
-         msg(string.format('Found: %s (count: %d); Match: ' .. tostring(match), fl.path, count))
+         msg(f'Found: {fl.path} (count: {count}); Match: {match}')
 
          if match then
             if lOptions.matchFeedback then
@@ -146,7 +145,7 @@ io.search = function(Path:str, Options:table)
             err, fl = folder.mtNext()
             while (err is ERR_Okay) and (not lStop) do
                count++
-               if (fl.flags & FL_LINK)?? then
+               if fl.flags has FL_LINK then
                   -- Do not scan symbolicly linked directories (possible recursion)
                else
                   processing.sleep(0)

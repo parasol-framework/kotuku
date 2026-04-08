@@ -7,14 +7,13 @@
    proc = processing.new()
 
    gui.dialog.colour({
-      colour  = '255,0,0',
+      colour  = 'rgb(255,0,0)',
       feedback = function(Colour)
          if not Colour then
             print('Dialog was cancelled.')
-            return
+         else
+            print(f'The user selected colour is {Colour}')
          end
-
-         print('The user selected colour is ' .. Colour)
          proc.signal()
       end
    })

@@ -184,7 +184,7 @@ end
 
 function logMessage(self:table, message:str)
    if self.logMessage then
-      self.logMessage('[' .. timestamp() .. '] ' .. message)
+      self.logMessage(f'[{timestamp()}] {message}')
    end
 end
 
@@ -213,11 +213,11 @@ function processChunkedBody(state, server)
 
          state.chunk_size = tonumber(hex_size, 16)
          if not state.chunk_size then
-            logMessage(server, 'Could not parse chunk size: ' .. hex_size)
+            logMessage(server, f'Could not parse chunk size: {hex_size}')
             return false -- Invalid hex
          end
 
-         logMessage(server, 'Chunk size: ' .. state.chunk_size .. ' bytes')
+         logMessage(server, f'Chunk size: {state.chunk_size} bytes')
 
          if state.chunk_size is 0 then -- End of chunks
             state.chunk_state = 'TRAILER'
@@ -948,7 +948,7 @@ a:hover { text-decoration: underline; }
 
          -- Skip hidden files and system files for security
          if name:startsWith('.') then
-            isFolder = (info.flags & RDF_FOLDER) != 0
+            isFolder = info.flags has RDF_FOLDER
             size     = isFolder ? '-' :> formatFileSize(info.size)
             modTime  = printableTime(info.modified)
             href     = URIPath .. name

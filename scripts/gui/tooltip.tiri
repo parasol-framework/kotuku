@@ -9,6 +9,8 @@ Documentation is available in the Kotuku Wiki.
 gui.tooltip = function(Options)
    local self = { } -- Public variables
 
+   theme = gui.getTheme()
+
    self.free = function()
       self.surface.free()
       table.clear(self)
@@ -23,6 +25,8 @@ gui.tooltip = function(Options)
       flags = RNF_STICK_TO_FRONT | RNF_COMPOSITE
    })
 
+   self.surface.detach()
+
    self.scene = self.surface.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
 
    self.viewport = self.scene.new('VectorViewport', { })
@@ -30,7 +34,8 @@ gui.tooltip = function(Options)
    self.box = self.viewport.new('VectorRectangle', {
       x = 1, y = 1,
       height = '100%', width = '100%',
-      stroke = gui.style.page.stroke, fill = gui.style.page.bkgd,
+      stroke = theme.page.stroke,
+      fill = theme.page.bkgd,
       strokeWidth = 2,
       roundX = 4, roundY = 4,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
@@ -42,7 +47,7 @@ gui.tooltip = function(Options)
    self.text = self.viewport.new('VectorText', {
       x         = gui.fonts.button.size,
       string    = Options.text,
-      fill      = gui.style.page.text,
+      fill      = theme.page.text,
       face      = gui.fonts.button.face,
       fontStyle = gui.fonts.button.style,
       fontSize  = string.format('%.2fpt', gui.fonts.button.size),
@@ -90,7 +95,6 @@ gui.tooltip = function(Options)
    end
 
    self.surface.acShow()
-   self.surface.detach()
 
    return self
 end
