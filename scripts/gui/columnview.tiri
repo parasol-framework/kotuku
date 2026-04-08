@@ -187,24 +187,24 @@ function arrangeColumns(View:table)
 
          if (col.align ?? 'left') is 'right' then
             col.vecGradient = gui.simpleGradient(View.scene, defName,
-               { { r=0,g=0,b=0,a=0,offset=0.1 }, { r=0,g=0,b=0,a=255,offset=0.2 }, { r=0,g=0,b=0,a=255,offset=1.0 } },
+               { gui.srgb(0, 0, 0, 0, { offset=0.1 }), gui.srgb(0, 0, 0, 255, { offset=0.2 }), gui.srgb(0, 0, 0, 255, { offset=1.0 }) },
                0, 0, col.px_width, 0, 'userspace')
 
             col.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-               { { r=255,g=255,b=255,a=0,offset=0.1 }, { r=255,g=255,b=255,a=255,offset=0.2}, { r=255,g=255,b=255,a=255,offset=1.0 } },
+               { gui.srgb(255, 255, 255, 0, { offset=0.1 }), gui.srgb(255, 255, 255, 255, { offset=0.2 }), gui.srgb(255, 255, 255, 255, {offset=1.0 }) },
                0, 0, col.px_width, 0, 'userspace')
          else
             col.vecGradient = gui.simpleGradient(View.scene, defName,
-               { { r=0,g=0,b=0,a=255,offset=0 }, { r=0,g=0,b=0,a=255,offset=0.9 }, { r=0,g=0,b=0,a=0,offset=0.98 } },
+               { gui.srgb(0, 0, 0, 255, { offset=0 }), gui.srgb(0, 0, 0, 255, { offset=0.9 }), gui.srgb(0, 0, 0, 0, { offset=0.98 }) },
                0, 0, col.px_width, 0, 'userspace')
 
             col.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-               { { r=255,g=255,b=255,a=255,offset=0 }, { r=255,g=255,b=255,a=255,offset=0.9 }, { r=255,g=255,b=255,a=0,offset=0.98 } },
+               { gui.srgb(255, 255, 255, 255, { offset=0 }), gui.srgb(255, 255, 255, 255, { offset=0.9 }), gui.srgb(255, 255, 255, 0,{ offset=0.98 }) },
                0, 0, col.px_width, 0, 'userspace')
          end
 
-         col.fillItem = 'url(#' .. defName .. ')'
-         col.fillItemSelect = 'url(#' .. selName .. ')'
+         col.fillItem = f'url(#{defName})'
+         col.fillItemSelect = f'url(#{selName})'
       else
          col.vecGradient.x2 = col.px_width
          col.vecGradientSelect.x2 = col.px_width

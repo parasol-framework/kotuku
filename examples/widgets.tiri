@@ -186,13 +186,13 @@ end
                modal   = true,
                popOver = win.surface,
                colour  = 'rgb(255,0,0)',
-               feedback = function(Colour)
+               feedback = function(Colour:table)
                   if not Colour then
                      print('Dialog was cancelled.')
                      return
                   end
 
-                  print('The user selected colour is ' .. Colour)
+                  print(f'The user selected colour is {Colour}')
                end
             })
          end,

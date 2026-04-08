@@ -37,7 +37,12 @@ local glRainbowBitmap
 function saveColours(self)
    self._paletteChanged ?? return
 
-   output = json.encode(self._userColours)
+   svgColours = array<string> {}
+   for col in values(self._userColours) do
+      svgColours:push(tostring(col))
+   end
+
+   output = json.encode(svgColours)
    if output?? then
       try
          save_file = obj.new('file', { path='user:config/colours.json', flags=FL_NEW|FL_WRITE })
@@ -53,10 +58,8 @@ end
 function updateRGBInput(self, RGB:table)
    RGB ?? return
    self._rgb = RGB
-   if self.vecChosenColour then
-      self.vecChosenColour.fill = tostring(self._rgb)
-   end
-   self.inputRGB:setText('rgb(' .. (self._rgb.r ?? 0) .. ',' .. (self._rgb.g ?? 0) .. ',' .. (self._rgb.b ?? 0) .. ')')
+   self.vecChosenColour?.fill = tostring(self._rgb)
+   self.inputRGB:setText(tostring(self._rgb))
    self.viewport.acDraw()
 end
 
@@ -64,12 +67,12 @@ end
 
 function refreshColourNodes(self)
    for idx, node in ipairs(self._colourNodes) do
-      rgb = self._userColours?[idx] ?? gui.srgb(255,255,255,255)
+      rgb = self._userColours?[idx] ?? gui.nrgb(1,1,1,1)
 
-      rgb.r ?= 255
-      rgb.g ?= 255
-      rgb.b ?= 255
-      rgb.a ?= 255
+      rgb.r ?= 1
+      rgb.g ?= 1
+      rgb.b ?= 1
+      rgb.a ?= 1
 
       node.fill = tostring(rgb)
    end
@@ -223,10 +226,10 @@ function buildLayout(self, Options)
       x = dx
       for column=1, 7 do
          rgb = self._userColours?[ci] ?? gui.srgb(255, 255, 255, 255)
-         rgb.r ?= 255
-         rgb.g ?= 255
-         rgb.b ?= 255
-         rgb.a ?= 255
+         rgb.r ?= 1
+         rgb.g ?= 1
+         rgb.b ?= 1
+         rgb.a ?= 1
 
          if not getmetatable(rgb) then
             setmetatable(rgb, gui.mtRGB)
@@ -367,7 +370,7 @@ function buildLayout(self, Options)
       y      = dy,
       width  = rainbow.width,
       shadowLabel = 'Colour',
-      inputMask = '^%d+,%d+,%d+$',
+      inputMask = [[^rgb\(%d+,%d+,%d+\)$]],
       events = {
          activate = function(Widget, Event)
             updateRGBInput(self, gui.strToRGB(Event.text))
@@ -402,7 +405,7 @@ function buildLayout(self, Options)
       events = {
          activate = function(Widget)
             saveColours(self)
-            self?.feedback(f'{self._rgb.r},{self._rgb.g},{self._rgb.b}')
+            self?.feedback(self._rgb)
             table.clear(self)
          end
       }
@@ -499,14 +502,20 @@ function loadColours(self)
       if js?? then
          self._userColours = json.decode(js)
          if type(self._userColours) != 'array' then
-            msg('Invalid colours.json file detected.')
+            print('Invalid user:config/colours.json file detected.')
             self._userColours = array<table>
          end
 
-         for i, col in self._usercolours do
-            self._usercolours[i] = gui.srgb(col.r, col.g, col.b)
+         for i, col in self._userColours do
+            if type(col) is 'table' then -- Legacy format; remove in 2027
+               self._userColours[i] = gui.srgb(col.r, col.g, col.b)
+            elseif type(col) is 'string' then
+               self._userColours[i] = gui.strToRGB(col)
+            end
          end
       end
+   except ex
+      msg(ex.message)
    end
 end
 
@@ -515,7 +524,7 @@ end
 gui.dialog.colour = function(Options)
    self = { -- Public variables and global resources that need to be retained
       windowID   = nil,
-      colour     = { r=0, g=0, b=0, a=255 },
+      colour     = gui.nrgb(0,0,0,1),
       feedback   = Options.feedback,
       _absX      = -1,
       _absY      = -1,

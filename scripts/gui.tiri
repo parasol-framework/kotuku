@@ -33,10 +33,10 @@ gui.mtHSV = { -- HSV metatable
       return A.h is B.h and A.s is B.s and A.v is B.v and A.a is B.a
    end,
    __tostring = function(Self):str -- Returns an SVG compliant colour string
-      if Self.a is 255 or Self.a is nil then
+      if Self.a is 1 or Self.a is nil then
          return string.format('hsv(%d %d %d)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1)
       else
-         return string.format('hsv(%d %d %d / %g)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1, Self.a / 255)
+         return string.format('hsv(%d %d %d / %g)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1, Self.a)
       end
    end
 }
@@ -47,7 +47,7 @@ gui.hsv = function(H:num, S:num, V:num, A:num):table -- HSV values
    H ?= 0
    S ?= 0
    V ?= 0
-   A ?= 255
+   A ?= 1
    return setmetatable({ h = H, s = S, v = V, a = A }, gui.mtHSV)
 end
 
@@ -98,26 +98,38 @@ gui.mtRGB = { -- RGB8 metatable
       return A.r is B.r and A.g is B.g and A.b is B.b and A.a is B.a
    end,
    __tostring = function(Self):str -- Returns an SVG compliant colour string
-      if Self.a is 255 or Self.a is nil then
-         return string.format('rgb(%d %d %d)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1)
+      if Self.a >= 1 or Self.a is nil then
+         return string.format('rgb(%d %d %d)', Self.r ? Self.r * 255 :> 0, Self.g ? Self.g * 255 :> 0, Self.b ? Self.b * 255 :> 0)
       else
-         return string.format('rgb(%d %d %d / %g)', Self.r ?? -1, Self.g ?? -1, Self.b ?? -1, Self.a / 255)
+         return string.format('rgb(%d %d %d / %g)', Self.r ? Self.r * 255 :> 0, Self.g ? Self.g * 255 :> 0, Self.b ? Self.b * 255 :> 0, Self.a)
       end
    end
 }
 
 gui.mtRGB.__index = gui.mtRGB
 
-gui.srgb = function(R:num, G:num, B:num, A:num):table -- sRGB values
+gui.srgb = function(R:num, G:num, B:num, A:num, KV:table):table -- sRGB values
    R ?= 0
    G ?= 0
    B ?= 0
    A ?= 255
-   return setmetatable({ r = R, g = G, b = B, a = A }, gui.mtRGB)
+   result = { r = R/255, g = G/255, b = B/255, a = A/255 }
+   if KV then
+      for k, v in pairs(KV) do
+         result[k] = v
+      end
+   end
+   return setmetatable(result, gui.mtRGB)
 end
 
-gui.nrgb = function(R:num, G:num, B:num, A:num):table -- Normalised RGB values
-   return setmetatable({ r = R * 255, g = G * 255, b = B * 255, a = A ? A * 255 :> 255}, gui.mtRGB)
+gui.nrgb = function(R:num, G:num, B:num, A:num, KV:table):table -- Normalised RGB values
+   result = { r = R, g = G, b = B, a = A ? A :> 1 }
+   if KV then
+      for k, v in pairs(KV) do
+         result[k] = v
+      end
+   end
+   return setmetatable(result, gui.mtRGB)
 end
 
 function gui.mtRGB:interpolate(New:table, Ratio:num):table
@@ -130,7 +142,7 @@ function gui.mtRGB:interpolate(New:table, Ratio:num):table
    }, gui.mtRGB)
 end
 
-function gui.mtRGB:toHSV():table
+function gui.mtRGB:toHSV():table -- Normalised HSV
    max = self:brightness()
    hsv = { v = max }
    if max > 0 then
@@ -175,20 +187,19 @@ end
 
 function gui.mtRGB:linearise():table
    function lineariseRGB(u)
-      u = u / 255
       return (u <= 0.04045) ? (u / 12.92) :> (((u + 0.055) / 1.055) ** 2.4)
    end
 
    return { r = lineariseRGB(self.r), g = lineariseRGB(self.g), b = lineariseRGB(self.b), a = self.a }
 end
 
--- Convert RGB table { r, g, b, a } (0-255) to HSL table { h, s, l }
+-- Convert RGB table { r, g, b, a } (0-1) to HSL table { h, s, l }
 -- h is hue in degrees [0,360), s and l are in [0,1].
 
 function gui.mtRGB:toHSL():table
-   local r = self.r / 255
-   local g = self.g / 255
-   local b = self.b / 255
+   local r = self.r
+   local g = self.g
+   local b = self.b
 
    local max = r
    if g > max then max = g end
@@ -271,7 +282,7 @@ function gui.mtRGB:toOKLab():table
       okl = 0.2104542553 * lms_l + 0.7936177850 * lms_m - 0.0040720468 * lms_s,
       oka = 1.9779984951 * lms_l - 2.4285922050 * lms_m + 0.4505937099 * lms_s,
       okb = 0.0259040371 * lms_l + 0.7827717662 * lms_m - 0.8086757660 * lms_s,
-      a   = self.a / 255
+      a   = self.a
    }
 end
 
@@ -283,7 +294,7 @@ function gui.mtRGB:toOKLCH():table
    local c = math.sqrt(lab.oka * lab.oka + lab.okb * lab.okb)
    local h = math.deg(math.atan2(lab.okb, lab.oka))
    if h < 0 then h = h + 360 end
-   return setmetatable({ okl = lab.okl, okc = c, okh = h, a = self.a / 255 },
+   return setmetatable({ okl = lab.okl, okc = c, okh = h, a = self.a },
       { __tostring = (Self) => Self.a is 1 ?
          string.format('oklch(%.3f %.3f %.3f)', Self.okl, Self.okc, Self.okh) :>
          string.format('oklch(%.3f %.3f %.3f / %.3f)', Self.okl, Self.okc, Self.okh, Self.a)
@@ -341,7 +352,7 @@ gui.strToRGB = function(Value:str):table
       if nrgb.Green > 1 then nrgb.Green = 1 end
       if nrgb.Blue < 0 then nrgb.Blue = 0 end
       if nrgb.Blue > 1 then nrgb.Blue = 1 end
-      return setmetatable({ r=nrgb.red*255, g=nrgb.green*255, b=nrgb.blue*255, a=nrgb.alpha*255 }, gui.mtRGB)
+      return setmetatable({ r=nrgb.red, g=nrgb.green, b=nrgb.blue, a=nrgb.alpha }, gui.mtRGB)
    except ex
       error(f'Parsing "{Value}" failed: {ex.message}\n{ex.stackTrace}')
    end
@@ -354,7 +365,7 @@ gui.rgbToIconTheme = function(Value:any):str
       Value = gui.strToRGB(Value)
    end
 
-   return (Value:brightness() > 127) ? 'pearl' :> 'carbon'
+   return (Value:brightness() > 0.5) ? 'pearl' :> 'carbon'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -393,11 +404,11 @@ gui.simpleGradient = function(Scene:obj, Name:str, Colours, X1:num, Y1:num, X2:n
    i = 0
    for col in values(Colours) do
       vc = struct.new('GradientStop')
-      vc.offset    = col.offset ?? (i / (#Colours - 1))
-      vc.rgb.red   = col.r / 255
-      vc.rgb.green = col.g / 255
-      vc.rgb.blue  = col.b / 255
-      vc.rgb.alpha = col.a ? col.a / 255 :> 1.0
+      vc.offset    = col.offset ? col.offset :> (i / (#Colours - 1))
+      vc.rgb.red   = col.r
+      vc.rgb.green = col.g
+      vc.rgb.blue  = col.b
+      vc.rgb.alpha = col.a ? col.a :> 1.0
       table.insert(stops, vc)
       i++
    end
@@ -491,7 +502,8 @@ end
 
 gui.separator = function(Viewport:obj, Orientation:str, Pos:any, MarginA:any, MarginB:any):num
    local o = Orientation:substr(0, 1)
-   local options = { fill=gui.getTheme(Viewport).window.stroke }
+   local options = { fill=tostring(gui.getTheme(Viewport).window.stroke) }
+
    if o is 'h' or o is 'H' then
       options.x       = MarginA ?? 0
       options.xOffset = MarginB ?? 0
@@ -621,19 +633,19 @@ end
    }
 
    gui.iconThemes = {
-     default = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'), last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
-     carbon  = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'), last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
+     default = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'),  last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
+     carbon  = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'),  last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
      yellow  = { first=gui.strToRGB('oklch(0.841 0.173 111.771)'), last=gui.strToRGB('oklch(0.690 0.148 68.131)'), stroke=gui.strToRGB('oklch(0.276 0.047 20.527)') },
-     orange  = { first=gui.strToRGB('oklch(0.857 0.164 87.613)'), last=gui.strToRGB('oklch(0.698 0.174 43.865)') },
+     orange  = { first=gui.strToRGB('oklch(0.857 0.164 87.613)'),  last=gui.strToRGB('oklch(0.698 0.174 43.865)') },
      blue    = { first=gui.strToRGB('oklch(0.543 0.124 264.706)'), last=gui.strToRGB('oklch(0.281 0.063 262.910)') },
      ocean   = { first=gui.strToRGB('oklch(0.813 0.093 268.180)'), last=gui.strToRGB('oklch(0.385 0.165 284.067)') },
      green   = { first=gui.strToRGB('oklch(0.649 0.154 122.868)'), last=gui.strToRGB('oklch(0.444 0.116 152.499)') },
-     red     = { first=gui.strToRGB('oklch(0.800 0.162 78.770)'), last=gui.strToRGB('oklch(0.615 0.235 30.433)') },
+     red     = { first=gui.strToRGB('oklch(0.800 0.162 78.770)'),  last=gui.strToRGB('oklch(0.615 0.235 30.433)') },
      indigo  = { first=gui.strToRGB('oklch(0.570 0.134 345.216)'), last=gui.strToRGB('oklch(0.284 0.117 311.021)') },
-     rose    = { first=gui.strToRGB('oklch(0.863 0.083 51.527)'), last=gui.strToRGB('oklch(0.834 0.095 7.824)') },
-     pink    = { first=gui.strToRGB('oklch(0.927 0.038 9.810)'), last=gui.strToRGB('oklch(0.777 0.099 10.847)') },
-     grey    = { first=gui.strToRGB('oklch(0.503 0.000 89.876)'), last=gui.strToRGB('oklch(0.394 0.000 89.876)') },
-     pearl   = { first=gui.strToRGB('oklch(0.983 0.002 67.803)'), last=gui.strToRGB('oklch(0.804 0.002 247.844)') }
+     rose    = { first=gui.strToRGB('oklch(0.863 0.083 51.527)'),  last=gui.strToRGB('oklch(0.834 0.095 7.824)') },
+     pink    = { first=gui.strToRGB('oklch(0.927 0.038 9.810)'),   last=gui.strToRGB('oklch(0.777 0.099 10.847)') },
+     grey    = { first=gui.strToRGB('oklch(0.503 0.000 89.876)'),  last=gui.strToRGB('oklch(0.394 0.000 89.876)') },
+     pearl   = { first=gui.strToRGB('oklch(0.983 0.002 67.803)'),  last=gui.strToRGB('oklch(0.804 0.002 247.844)') }
    }
 
    gui.palettes = {

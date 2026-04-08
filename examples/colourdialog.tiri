@@ -12,7 +12,7 @@
          if not Colour then
             print('Dialog was cancelled.')
          else
-            print('The user selected colour is ' .. Colour)
+            print(f'The user selected colour is {Colour}')
          end
          proc.signal()
       end
