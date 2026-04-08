@@ -757,3 +757,61 @@ end
    clock?.year += 3
    assert(clock.year is 2023, "Compound safe-nav assignment should preserve object field stores")
 end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testSafeNavAssignFunctionValue()
+   obj = { }
+   obj?.method = function()
+      return 123
+   end
+
+   assert(type(obj.method) is 'function', "Safe-nav function assignment should store a function value")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testSafeNavAssignFunctionValueSkip()
+   created = 0
+   function makeMethod()
+      created++
+      return function()
+         return 'skipped'
+      end
+   end
+
+   obj = nil
+   obj?.method = makeMethod()
+   assert(created is 0, "Function-valued RHS should not be evaluated when safe-nav assignment skips")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testSafeNavAssignFunctionValueCall()
+   obj = { }
+   obj?.method = function()
+      return 'callable'
+   end
+
+   result = obj.method()
+   assert(result is 'callable', "Stored function from safe-nav assignment should be callable")
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testSafeNavFunctionStmtUnsupported()
+   try
+      exec([[
+         obj = { }
+         function obj?.method()
+            return 1
+         end
+      ]])
+   except ex
+      assert(ex.message:find('Parsing failed') != nil or ex.message:find('Unsupported') != nil or ex.message:find('Unexpected') != nil or ex.message:find('Expected Token') != nil,
+         'Expected function-statement safe-nav form to remain unsupported, got: ' .. ex.message)
+      return
+   end
+
+   error('function obj?.method() ... end should remain unsupported')
+end
