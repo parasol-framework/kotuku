@@ -61,7 +61,7 @@ extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, double X, double Y
 
 static void send_input_events(extVector *Vector, InputEvent *Event, bool Propagate = false)
 {
-   if (!Vector->InputSubscriptions) {
+   if (not Vector->InputSubscriptions) {
       if ((Propagate) and (Vector->Parent) and (Vector->Parent->Class->BaseClassID IS CLASSID::VECTOR)) {
          send_input_events((extVector *)Vector->Parent, Event, true);
       }
@@ -100,7 +100,7 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
 
    // Some events can bubble-up if they are not intercepted by the target vector.
 
-   if ((!consumed) and (Event->Type IS JET::WHEEL)) {
+   if ((not consumed) and (Event->Type IS JET::WHEEL)) {
       if ((Vector->Parent) and (Vector->Parent->Class->BaseClassID IS CLASSID::VECTOR)) {
          send_input_events((extVector *)Vector->Parent, Event, true);
       }
@@ -182,7 +182,7 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
    pf::Log log(__FUNCTION__);
 
    auto Self = (extVectorScene *)CurrentContext();
-   if (!Self->SurfaceID) return ERR::Okay; // Sanity check
+   if (not Self->SurfaceID) return ERR::Okay; // Sanity check
 
    auto cursor = PTC::NIL;
 
@@ -244,7 +244,7 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
                }
             }
 
-            if (!Self->ButtonLock) {
+            if (not Self->ButtonLock) {
                // If the button has been released then we need to compute the correct cursor and check if
                // an enter event is required.  This code has been pulled from the JTYPE::MOVEMENT handler
                // and reduced appropriately.
@@ -256,15 +256,15 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
 
                   if ((processed) and (bounds.cursor IS PTC::NIL)) continue;
 
-                  if (!bounds.bounds.hit_test(input->X, input->Y)) continue;
+                  if (not bounds.bounds.hit_test(input->X, input->Y)) continue;
 
                   pf::ScopedObjectLock<extVector> lock(bounds.vector_id);
-                  if (!lock.granted()) continue;
+                  if (not lock.granted()) continue;
                   auto vector = lock.obj;
 
                   if (vector->pointInPath(input->X, input->Y) != ERR::Okay) continue;
 
-                  if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
+                  if ((not Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
 
                   if (bounds.pass_through) {
                      // For pass-through subscriptions input events are ignored, but cursor changes still apply.
@@ -275,7 +275,7 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
                      send_enter_event(vector, input, bounds.x, bounds.y);
                   }
 
-                  if (!processed) {
+                  if (not processed) {
                      double tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
                      auto invert = ~vector->Transform; // Presume that prior path generation has configured the transform.
                      invert.transform(&tx, &ty);
@@ -299,7 +299,7 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
                // If no vectors received a hit for a movement message, we may need to inform the last active vector that the
                // cursor left its area.
 
-               if ((Self->ActiveVector) and (!processed)) {
+               if ((Self->ActiveVector) and (not processed)) {
                   pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
                   Self->ActiveVector = 0;
                   if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
@@ -323,11 +323,11 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
             else if ((Self->ButtonLock) and (Self->ButtonLock != bounds.vector_id)) continue;
             else { // No button lock, perform a simple bounds check
                in_bounds = bounds.bounds.hit_test(input->X, input->Y);
-               if (!in_bounds) continue;
+               if (not in_bounds) continue;
             }
 
             pf::ScopedObjectLock<extVector> lock(bounds.vector_id);
-            if (!lock.granted()) continue;
+            if (not lock.granted()) continue;
             auto vector = lock.obj;
 
             // Additional bounds check to cater for transforms, clip masks etc.
@@ -340,14 +340,14 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
                send_enter_event(vector, input, bounds.x, bounds.y);
             }
 
-            if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
+            if ((not Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
 
             if (bounds.pass_through) {
                // For pass-through subscriptions, input events are ignored, but cursor changes still apply.
                continue;
             }
 
-            if (!processed) {
+            if (not processed) {
                double tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
                auto invert = ~vector->Transform; // Presume that prior path generation has configured the transform.
                invert.transform(&tx, &ty);
@@ -385,7 +385,7 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
          // If no vectors received a hit for a movement message, we may need to inform the last active vector that the
          // cursor left its area.
 
-         if ((Self->ActiveVector) and (!processed)) {
+         if ((Self->ActiveVector) and (not processed)) {
             pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             Self->ActiveVector = 0;
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
@@ -394,7 +394,7 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
       else log.warning("Unrecognised movement type %d", int(input->Type));
    }
 
-   if (!Self->ButtonLock) {
+   if (not Self->ButtonLock) {
       if (cursor IS PTC::NIL) cursor = PTC::DEFAULT; // Revert the cursor to the default if nothing is defined
 
       if (Self->Cursor != cursor) {
