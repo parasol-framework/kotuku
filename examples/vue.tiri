@@ -49,9 +49,9 @@ A file viewer for recognised documents like SVG and RIPL
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function displayInlineDoc(Content, Parameters)
+function displayInlineDoc(Content:str, Parameters:table)
    doc = glViewArea.new('document', { })
-   if type(Parameters) is 'table' then
+   if Parameters then
       for k, v in pairs(Parameters) do
          doc.acSetKey(k, v)
       end
@@ -161,7 +161,7 @@ function displayFile(Path:str)
    elseif lpath:endsWith('.ripl') or lpath:endsWith('.rpl') then
       displayDoc(Path)
    else -- File is unsupported
-      displayError([[<p>Unrecognised file "]] .. Path .. [["</p>]])
+      displayError(f'<p>Unrecognised file "{Path}"</p>')
    end
 
    glViewArea.scene.surface.mtScheduleRedraw()
@@ -172,12 +172,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
    glWindow = gui.window({
-      width  = arg('width', 1024),
-      height = arg('height', 800),
-      title  = 'Vue',
-      icon   = 'icons:programs/pictureviewer',
-      minHeight = 400,
-      minWidth  = 600,
+      width      = arg('width', 1024),
+      height     = arg('height', 800),
+      title      = 'Vue',
+      icon       = 'icons:programs/pictureviewer',
+      minHeight  = 400,
+      minWidth   = 600,
       borderless = true
    })
 
@@ -194,17 +194,17 @@ end
       glFileView = gui.fileview({
          viewOptions = {
             x          = glWindow.margins.left,
-            y          = glWindow.margins.top,
+            y          = 0,
             width      = 200,
             yOffset    = glWindow.margins.top,
             sensitive  = true,
             borderless = true
          },
-         target        = glViewport,
-         style         = 'list',
-         toolBar       = { navigation=true, views=true },
-         displayPath   = true,
-         path          = arg('path', ':'),
+         target      = glViewport,
+         style       = 'list',
+         toolBar     = { navigation=true, views=true },
+         displayPath = true,
+         path        = arg('path', ':'),
          filterList = {
             { name='SVG Images', ext='.svg' },
             { name='RIPL Documents', ext={ '.ripl', '.rpl' } },
@@ -224,18 +224,17 @@ end
       -- Document viewer on the right
 
       glViewManager = glViewport.new('VectorViewport', {
-        x=glFileView.view.viewport.x + glFileView.view.viewport.width + 6, y=glWindow.margins.top,
+        x=glFileView.view.viewport.x + glFileView.view.viewport.width + 6, y=0,
         xOffset=glWindow.margins.right, yOffset=glWindow.margins.top
       })
 
       -- Copy, Save As, Info, Zoom, Rotate Left / Right
 
       bkgd = glViewManager.new('VectorRectangle', {
-         x=0, y=0, xOffset=0, height=1, fill=gui.palette.base
+         x=0, y=0, xOffset=0, height=1, fill=gui.palette.inverse
       })
 
       glAppBar = gui.toolbar({
-         iconTheme = 'pearl',
          target  = glViewManager,
          x       = 0,
          y       = 0,
@@ -251,7 +250,7 @@ end
                   popOver     = glWindow.surface,
                   warnExists  = true,
                   allowNew    = true,
-                  feedback = function(Dialog, Path, Files)
+                  feedback = function(Dialog, Path:str, Files)
                      Files ?? return
 
                      target_file = Path .. Files[0].filename
@@ -274,8 +273,10 @@ end
 
       bkgd.height = glAppBar.viewport.height
 
+      advance = gui.separator(glViewManager, 'h', glAppBar.viewport.height)
+
       glViewArea = glViewManager.new('VectorViewport', {
-         x = 0, xOffset = 0, y = glAppBar.viewport.height, yOffset = 0,
+         x = 0, xOffset = 0, y = glAppBar.viewport.height + advance, yOffset = 0,
          buffered = true
       })
 
@@ -301,7 +302,5 @@ end
    processing.collect()
 
    glWindow:show(true)
-
-----------------------------------------------------------------------------------------------------------------------
 
    processing.sleep()

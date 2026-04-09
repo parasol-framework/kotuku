@@ -9,9 +9,9 @@ Documentation is available in the Kotuku Wiki.
 
    namespace 'gui'
 
-ICON_SIZE = 16
-VSPACING  = 1
-EDGE      = 4
+ICON_SIZE <const> = 16
+VSPACING  <const> = 1
+EDGE      <const> = 4
 
 local LINE_HEIGHT, FONT_HEIGHT, LINE_OFFSET
 
@@ -19,7 +19,7 @@ function rearrangeItems(View)
    View.zones = { }
    View._last_y = 0
    y = 0
-   for _, item in pairs(View.items) do
+   for item in values(View.items) do
       item._y = y
       if item._vectors.viewport then
          item._vectors.viewport.visibility = item.hidden ? VIS_HIDDEN :> VIS_VISIBLE
@@ -58,24 +58,24 @@ gui.listView = function(Options:table)
       end
 
       if Item._selected then
-         setListTextFill(Item, gui.style.page.textSelect)
-         Item._vectors.highlight.fill = gui.style.page.textSelectBkgd
+         setListTextFill(Item, View.theme.page.textSelect)
+         Item._vectors.highlight.fill = View.theme.page.textSelectBkgd
          Item._vectors.highlight.visibility = VIS_VISIBLE
-         if gui.style.page.iconHighlight and View.hIcons[Item.icon] then
-            Item._vectors.iconImage.fill = 'url(#' .. View.hIcons[Item.icon] .. ')'
+         if View.theme.page.iconHighlight and View.hIcons[Item.icon] then
+            Item._vectors.iconImage.fill = f'url(#{View.hIcons[Item.icon]})'
          end
       elseif Highlighted then
-         Item._vectors.highlight.fill = gui.style.page.textHighlightBkgd
-         setListTextFill(Item, gui.style.page.textHighlight)
+         Item._vectors.highlight.fill = View.theme.page.textHighlightBkgd
+         setListTextFill(Item, View.theme.page.textHighlight)
          Item._vectors.highlight.visibility = VIS_VISIBLE
-         if gui.style.page.iconHighlight and View.hIcons[Item.icon] then
-            Item._vectors.iconImage.fill = 'url(#' .. View.hIcons[Item.icon] .. ')'
+         if View.theme.page.iconHighlight and View.hIcons[Item.icon] then
+            Item._vectors.iconImage.fill = f'url(#{View.hIcons[Item.icon]})'
          end
       else
-         setListTextFill(Item, gui.style.page.text)
+         setListTextFill(Item, View.theme.page.text)
          Item._vectors.highlight.visibility = VIS_HIDDEN
          if View.icons[Item.icon] then
-            Item._vectors.iconImage.fill = 'url(#' .. Item.icon .. ')'
+            Item._vectors.iconImage.fill = f'url(#{Item.icon})'
          end
       end
    end
@@ -90,7 +90,7 @@ gui.listView = function(Options:table)
       widest_item = 0
 
       for item in values(Items) do
-         if not item._vectors then item._vectors = { } end
+         item._vectors ?= { }
 
          item._x = x
          item._y = y
@@ -138,22 +138,22 @@ gui.listView = function(Options:table)
          if item.icon then
             try
                if not View.icons[item.icon] then
-                  gui.createIcon(View.scene, item.icon, ICON_SIZE, gui.style.page.icon, item.icon)
+                  gui.createIcon(View.scene, item.icon, ICON_SIZE, View.theme.page.icon, item.icon)
                   View.icons[item.icon] = true
                end
 
-               if gui.style.page.iconHighlight then
-                  if gui.style.page.iconHighlight is gui.style.page.icon then
+               if View.theme.page.iconHighlight then
+                  if View.theme.page.iconHighlight is View.theme.page.icon then
                      View.hIcons[item.icon] = item.icon
                   else
-                     gui.createIcon(View.scene, item.icon, ICON_SIZE, gui.style.page.iconHighlight, '_h_' .. item.icon)
-                     View.hIcons[item.icon] = '_h_' .. item.icon
+                     gui.createIcon(View.scene, item.icon, ICON_SIZE, View.theme.page.iconHighlight, f'_h_{item.icon}')
+                     View.hIcons[item.icon] = f'_h_{item.icon}'
                   end
                end
 
                if not item._vectors.iconImage then
                   item._vectors.iconImage = vp.new('VectorRectangle', {
-                     fill   = 'url(#' .. item.icon .. ')',
+                     fill   = f'url(#{item.icon})',
                      x      = math.round(LINE_HEIGHT * 0.2),
                      y      = math.round((LINE_HEIGHT - ICON_SIZE) * 0.5),
                      width  = ICON_SIZE,
@@ -189,11 +189,11 @@ gui.listView = function(Options:table)
             width = MARGIN + ICON_MARGIN + bw + MARGIN
 
             if item._selected then
-               item._vectors.text.fill = gui.style.page.textSelect
+               item._vectors.text.fill = View.theme.page.textSelect
             elseif item.index and (item.index is lHighlightedItem) then
-               item._vectors.text.fill = gui.style.page.textHighlight
+               item._vectors.text.fill = View.theme.page.textHighlight
             else
-               item._vectors.text.fill = item.colour ?? gui.style.page.text
+               item._vectors.text.fill = item.colour ?? View.theme.page.text
             end
          end
 
@@ -211,7 +211,7 @@ gui.listView = function(Options:table)
 
       -- Item click and hover management
 
-      for _, item in pairs(View.items) do
+      for item in values(View.items) do
          if not item.hidden then
             if Options.compact is 1 then
                View.addZone(item._x, item._y, widest_item, item._height, item, itemHoverCallback)

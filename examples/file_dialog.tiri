@@ -3,11 +3,13 @@
    import 'gui/filedialog'
 
    gui.dialog.file({
-      filterList = { { name='All Files', ext='' }, { name='MP3 Audio Files', ext='.mp3' }, { name='Text Files', ext='.txt' } },
-      okText     = 'Select File',
-      cancelText = 'Exit',
-      warnExists = true,
+      filterList  = { { name='All Files', ext='' }, { name='MP3 Audio Files', ext='.mp3' }, { name='Text Files', ext='.txt' } },
+      okText      = 'Select File',
+      cancelText  = 'Exit',
+      warnExists  = true,
       multiSelect = true,
+      allowNew    = arg('save'),
+      path        = arg('path'),
       feedback = function(Dialog, Path, Files)
          mSys.SendMessage(MSGID_QUIT)
 
@@ -17,7 +19,7 @@
          end
 
          for k, v in ipairs(Files) do
-             print(k, ' = ', Path .. v.filename)
+             print(f'{k} = {Path}{v.filename}')
          end
       end
    })

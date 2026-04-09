@@ -8,10 +8,10 @@ Documentation is available in the Kotuku Wiki.
 
    namespace 'gui'
 
-   global mGfx <const> ?= mod.load('display')
+   mGfx <const> ?= mod.load('display')
 
-DEFAULT_WIDTH  = 600
-DEFAULT_HEIGHT = 400
+DEFAULT_WIDTH  <const> = 600
+DEFAULT_HEIGHT <const> = 400
 
 lStyle = (function()
    if mSys.AnalysePath('style:window.tiri') is ERR_Okay then
@@ -26,23 +26,14 @@ function hosted(self:table):bool
    return self.hosted
 end
 
-iconTheme = thunk():str
-   if gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127 then
-      return 'pearl'
-   else
-      return 'default' -- The default theme is dark
-   end
-end
-
-gui.window = function(Options)
+gui.window = function(Options:table)
    self = { -- Public variables
       events       = Options.events ?? { },
       aspectRatio  = Options.aspectRatio??,
       minimiseEnabled   = Options.minimise??,
       maximiseEnabled   = Options.maximise??,
       moveToBackEnabled = Options.moveToBack??,
-      invertedPalette   = Options.invertPalette,
-      closeEnabled = Options.close??,
+      theme        = nil,
       focus        = Options.focus??,
       quit         = Options.quit is false ? nil :> true, -- Quit defaults to true, user can explicitly set false to disable
       title        = Options.title ?? 'Window',
@@ -53,11 +44,10 @@ gui.window = function(Options)
       menubar      = Options.menubar, -- Menubar configuration
       margins      = { left, right, top, bottom },
       surface      = nil, -- Client access to the surface is permitted
-      textFill     = gui.style.window.text, -- Recommended fill for overlayed text
       viewport     = nil -- The window's top-level viewport
    }
 
-   self.clientViewport = function(self, Options)
+   self.clientViewport = function(self:table, Options:table)
       if self._clientViewport then return self._clientViewport end
       Options ?= { }
 
@@ -80,7 +70,7 @@ gui.window = function(Options)
       return self._clientViewport
    end
 
-   self.getSize = function(self)
+   self.getSize = function(self:table)
       if hosted(self) then
          return {
             x      = self.surface.x - self.client.left,
@@ -95,12 +85,12 @@ gui.window = function(Options)
       end
    end
 
-   self.getClientSize = function(self)
+   self.getClientSize = function(self:table)
       if hosted(self) then
          return {
             x = self.surface.x, y = self.surface.y, width = self.surface.width, height = self.surface.height
          }
-      else 
+      else
          return {
             x = self.surface.x + self.client.left, y = self.surface.y + self.client.top,
             width = self.surface.width - self.client.left - self.client.right,
@@ -111,15 +101,15 @@ gui.window = function(Options)
 
    -- Resize the window via the client area
 
-   self.resizeClientArea = function(self, ClientWidth, ClientHeight)
+   self.resizeClientArea = function(self:table, ClientWidth:num, ClientHeight:num)
       if not ClientWidth then
          ClientWidth = self.surface.width
-         if not hosted(self) then ClientWidth = ClientWidth - self.client.left - self.client.right end
+         if not hosted(self) then ClientWidth -= self.client.left + self.client.right end
       end
 
       if not ClientHeight then
          ClientHeight = self.surface.height
-         if not hosted(self) then ClientHeight = ClientHeight - self.client.top - self.client.bottom end
+         if not hosted(self) then ClientHeight -= self.client.top + self.client.bottom end
       end
 
       if hosted(self) then
@@ -132,7 +122,7 @@ gui.window = function(Options)
    -- Changes the size of the position of the window in relation to its parent.  All dimensions refer to the
    -- border of the window.
 
-   self.resize = function(self, X, Y, Width, Height)
+   self.resize = function(self:table, X:num, Y:num, Width:num, Height:num)
       Width ?= self.surface.width
       Height ?= self.surface.height
 
@@ -155,7 +145,7 @@ gui.window = function(Options)
 
    -- Define window sizing limits.
 
-   self.sizeHints = function(self, MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect)
+   self.sizeHints = function(self:table, MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect)
       if self.surface.display.mtSizeHints(MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect) != ERR_Okay then
          self.surface.maxWidth  = MaxWidth
          self.surface.minWidth  = MinWidth
@@ -166,7 +156,7 @@ gui.window = function(Options)
 
    -- Smart limits are used to prevent the window from moving completely outside of the visible display area.
 
-   self.applySmartLimits = function(self)
+   self.applySmartLimits = function(self:table)
       self.smartLimitsEnabled = true
       if not hosted(self) then
          err, info = mGfx.GetSurfaceInfo(self.surface.parent)
@@ -181,7 +171,7 @@ gui.window = function(Options)
 
    -- Run the minimise procedure for the window (environment dependent).
 
-   self.minimise = function(self)
+   self.minimise = function(self:table)
       if self.MinimiseEnabled then
          self?.events?.minimise(self)
       end
@@ -193,7 +183,7 @@ gui.window = function(Options)
    --
    -- If Toggle is true, the window is restored to its original position if the window is already maximised.
 
-   self.maximise = function(self, Toggle)
+   self.maximise = function(self:table, Toggle)
       if not self.maximiseEnabled then
          msg('Maximisation for this window is turned off.')
          return
@@ -254,15 +244,15 @@ gui.window = function(Options)
 --]]
    end
 
-   self.moveToBack = function(self)
+   self.moveToBack = function(self:table)
       self.surface.acMoveToBack()
    end
 
-   self.moveToFront = function(self)
+   self.moveToFront = function(self:table)
       self.surface.acMoveToFront()
    end
 
-   self.parentSize = function(self)
+   self.parentSize = function(self:table)
       if hosted(self) then
          err, info = mGfx.getDisplayInfo(0)
          return info.width, info.height
@@ -272,7 +262,7 @@ gui.window = function(Options)
       end
    end
 
-   self.show = function(self, Center)
+   self.show = function(self:table, Center)
       if Options.center or Center then -- Options.center is obsolete
          x, y = (function()
             if self.surface.popOver then
@@ -308,20 +298,20 @@ gui.window = function(Options)
 
       self.visible = true
       self.surface.acShow()
-      if (self.surface.flags & RNF_HAS_FOCUS)?? then
+      if self.surface.flags has RNF_HAS_FOCUS then
          self.surface.acFocus()
       end
 
-      if self.events and self.events.show then self.events.show(self) end
+      self.events?.show(self)
    end
 
-   self.hide = function(self)
+   self.hide = function(self:table)
       self.visible = false
       self.surface.acHide()
-      if self.events and self.events.hide then self.events.hide(self) end
+      self.events?.hide(self)
    end
 
-   self.setTitle = function(self, Title)
+   self.setTitle = function(self:table, Title:str)
       if hosted(self) then
          self.surface.display.title = Title
       end
@@ -397,40 +387,24 @@ gui.window = function(Options)
 
    self.scene = self.surface.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
 
+   self.theme = gui.setTheme(self.scene, Options.theme ?? gui.theme)
+
    gui.configureScene(self, self.scene) -- Support GUI customisation
 
    self.viewport = self.scene.new('VectorViewport', {
-      x       = 0,
-      y       = 0,
-      width   = '100%',
-      height  = '100%',
-      aspectRatio = 'XMin|YMin|Meet'
+      x = 0, y = 0, width = '100%', height = '100%', aspectRatio = 'XMin|YMin|Meet'
    })
 
    if hosted(self) then
-      local fill
-      if Options.invertPalette then
-         fill = gui.palette.base
-         self.textFill = gui.palette.altText
-      else
-         fill = gui.style.window.bkgd
-      end
-
       self.bkgd = self.viewport.new('VectorRectangle', {
-         fill   = fill,
-         x      = 0,
-         y      = 0,
-         width  = '100%',
-         height = '100%'
+         fill = self.theme.window.bkgd, x = 0, y = 0, width = '100%', height = '100%'
       })
+   elseif mGfx.GetDisplayType() is DT_NATIVE then
+      -- Full-screen mode (for video playback or gaming), do nothing.
    else
-      if mGfx.GetDisplayType() is DT_NATIVE then
-         -- Full-screen mode (for video playback or gaming), do nothing.
-      else
-         lStyle.initialise(self)
-         lStyle.frame(self)
-         lStyle.titlebar(self)
-      end
+      lStyle.initialise(self)
+      lStyle.frame(self)
+      lStyle.titlebar(self)
    end
 
    self:setTitle(self.title)
@@ -448,7 +422,7 @@ gui.window = function(Options)
 
       info = struct.new('SurfaceInfo')
       if mGfx.GetSurfaceInfo(self.surface.popOver, info) is ERR_Okay then
-         if (info.flags & RNF_STICK_TO_FRONT)?? then
+         if info.flags has RNF_STICK_TO_FRONT then
             self.surface.flags = self.surface.flags | RNF_STICK_TO_FRONT
          end
       end
@@ -467,28 +441,24 @@ gui.window = function(Options)
    end)
 
    mGfx.windowHook(self.surface.id, WH_CLOSE, function()
-      self.closeEnabled ?? return
-
-      if self.events and self.events.close then
-         result = self.events.close(self)
-         if result != nil then -- If client returns something, the window stays open
-            msg('Client requested that the window stay open.')
-            raise ERR_Cancelled
-         end
+      result = self.events?.close(self)
+      if result != nil then -- If client returns something, the window stays open
+         msg('Client requested that the window stay open.')
+         raise ERR_Cancelled
       end
    end)
 
    self.surface.subscribe('focus', function(Surface, Args, self)
       Surface.acMoveToFront()
-      if self.visible and (Surface.flags & RNF_VISIBLE) is 0 then
+      if self.visible and not (Surface.flags has RNF_VISIBLE) then
          Surface.acShow()
       end
 
-      if self.events and self.events.focus then self.events.focus(self) end
+      self.events?.focus(self)
    end, self)
 
    self.surface.subscribe('lostfocus', function(Surface, Args, self)
-      if self.events and self.events.lostFocus then self.events.lostFocus(self) end
+      self.events?.lostFocus(self)
    end, self)
 
    self.surface.subscribe('free', function(Surface, Args, self)

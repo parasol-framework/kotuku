@@ -8,17 +8,19 @@ To be used in conjunction with the gui.menubar or as an independent pop-up only.
 
    namespace 'gui'
 
-   global mGfx <const> ?= mod.load('display')
+   mGfx <const> ?= mod.load('display')
 
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
-ITEM_HEIGHT  = math.floor(FONT_MAX_HEIGHT * 1.5)
-VMARGIN      = math.floor(ITEM_HEIGHT * 0.33)
-HMARGIN      = 6
-ICON_SIZE    = math.floor(ITEM_HEIGHT * 0.8)
-KB_HIGHLIGHT = 'rgba(0,0,0,.5)'
-ICON_STRIP   = 'rgba(255,255,255,.15)'
+ITEM_HEIGHT  <const> = math.floor(FONT_MAX_HEIGHT * 1.5)
+VMARGIN      <const> = math.floor(ITEM_HEIGHT * 0.33)
+HMARGIN      <const> = 6
+ICON_SIZE    <const> = math.floor(ITEM_HEIGHT * 0.8)
+KB_HIGHLIGHT <const> = 'rgba(0,0,0,.5)'
+ICON_STRIP   <const> = 'rgba(255,255,255,.15)'
 
 gui.menu = function(Options)
+   local theme = Options.theme ? Options.theme :> gui.getTheme()
+
    self = { -- Public variables
       surface  = nil,
       rootMenu = true,
@@ -43,7 +45,7 @@ gui.menu = function(Options)
 
       if showIcons then
          iconsPresent = false
-         for _, item in ipairs(Options.config) do
+         for item in values(Options.config) do
             if item['icon'] then
                iconsPresent = true
                TEXT_X = HMARGIN + ICON_SIZE + HMARGIN + HMARGIN
@@ -52,7 +54,7 @@ gui.menu = function(Options)
       end
 
       self.viewport.new('VectorRectangle', {
-         fill = gui.style.menu.bkgd, x = 0, y = 0, xOffset = 0, yOffset = 0,
+         fill = theme.menu.bkgd, x = 0, y = 0, xOffset = 0, yOffset = 0,
          resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
             Vector.width  = Width - (Vector.x * 2)
             Vector.height = Height - (Vector.y * 2)
@@ -66,11 +68,11 @@ gui.menu = function(Options)
       end
 
       self.highlight = self.viewport.new('VectorRectangle', {
-         x = 2, y = 0, xOffset = 2, height = ITEM_HEIGHT, fill = gui.palette.contrast, visibility = 'hidden'
+         x = 2, y = 0, xOffset = 2, height = ITEM_HEIGHT, fill = theme.menu.highlight, visibility = 'hidden'
       })
 
       self.viewport.new('VectorRectangle', { -- Border
-         stroke = gui.style.menu.stroke, strokeWidth = 1.5, opacity=0.5,
+         stroke = theme.menu.stroke, strokeWidth = 1.5, opacity=0.5,
          x = 1, y = 1, xOffset = 1, yOffset = 1,
          resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
             Vector.width  = Width - (Vector.x * 2)
@@ -82,14 +84,14 @@ gui.menu = function(Options)
       widestItem = 0
       widestKey = 0
       y = VMARGIN
-      for _, item in ipairs(Options.config) do
+      for item in values(Options.config) do
          if item['item'] then
             mi = { y=y, config=item }
             vText = self.viewport.new('VectorText', {
                x        = TEXT_X,
                face     = gui.fonts.menu.face,
                fontSize = string.format('%.2fpt', gui.fonts.menu.size),
-               fill     = gui.style.menu.text,
+               fill     = theme.menu.text,
                align    = 'left',
                string   = item['item']
             })
@@ -103,7 +105,7 @@ gui.menu = function(Options)
 
             if showIcons and item['icon'] then
                try
-                  info = gui.createIcon(self.viewport.scene, item.icon, ICON_SIZE, gui.style.menu.icon)
+                  info = gui.createIcon(self.viewport.scene, item.icon, ICON_SIZE, theme.menu.icon)
                   item.iconView = self.viewport.new('VectorRectangle', {
                      x = HMARGIN, y = y + math.floor((ITEM_HEIGHT - ICON_SIZE) * 0.5), width = ICON_SIZE, height = ICON_SIZE, fill = info.fill
                   })
@@ -125,7 +127,7 @@ gui.menu = function(Options)
                   x        = self.surface.width,
                   face     = gui.fonts.menu.face,
                   fontSize = string.format('%.2fpt', gui.fonts.menu.size),
-                  fill     = gui.style.menu.text,
+                  fill     = theme.menu.text,
                   align    = 'right',
                   string   = key
                })
@@ -194,7 +196,7 @@ gui.menu = function(Options)
 
    self.show = function()
       surface = self.surface
-      if (surface.flags & RNF_VISIBLE) != 0 then return end
+      if surface.flags has RNF_VISIBLE then return end
 
       self.reverseX = Options.reverseX ?? false
 
@@ -235,7 +237,7 @@ gui.menu = function(Options)
 
                local x
                if self.reverseX then
-                  x = cursor_x - parent.absX - 1 - surface.width + gui.style.widget.margin
+                  x = cursor_x - parent.absX - 1 - surface.width + gui.sizing.widget.margin
                   if x < 0 then
                      x = 0
                      self.reverseX = false
@@ -243,7 +245,7 @@ gui.menu = function(Options)
                else
                   x = cursor_x - parent.absX - 1
                   if x + surface.width > parent.width - 2 then
-                     x -= surface.width + gui.style.widget.margin
+                     x -= surface.width + gui.sizing.widget.margin
                      self.reverseX = true
                   end
                end
@@ -270,9 +272,9 @@ gui.menu = function(Options)
          end
          parent.currentMenu = self
 
-         x = parent.x + parent.width - gui.style.widget.margin
+         x = parent.x + parent.width - gui.sizing.widget.margin
          if self.reverseX then
-            x = parent.x - surface.width + gui.style.widget.margin
+            x = parent.x - surface.width + gui.sizing.widget.margin
             if x < 2 then
                x = 2
                self.reverseX = false
@@ -283,7 +285,7 @@ gui.menu = function(Options)
                -- A specific target surface is hosting the menu layer adjust the coordinate if necessary to keep
                -- it from being partially hidden.
                if x + surface.width >= target.width then
-                  x = target.x - surface.width + gui.style.widget.margin
+                  x = target.x - surface.width + gui.sizing.widget.margin
                   self.reverseX = true
                end
             end
@@ -392,23 +394,23 @@ gui.menu = function(Options)
    self.scene = obj.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
    self.viewport = self.scene.new('VectorViewport', { })
 
-   self.surface.subscribe('free', function(Surface, Args)
+   self.surface.subscribe('free', function(Surface:obj, Args:table)
       if self.tipTimer then mSys.UpdateTimer(self.tipTimer, 0) end
       self.surface = nil
    end)
 
    if self.popup then
-      self.surface.subscribe('lostfocus', function(Surface, Args)
+      self.surface.subscribe('lostfocus', function(Surface:obj, Args:table)
          self.surface.acHide()
       end)
    end
 
-   self.surface.subscribe('hide', function(Surface, Args)
+   self.surface.subscribe('hide', function(Surface:obj, Args:table)
       self.visible = false
       self.timeHide = mSys.preciseTime()
    end)
 
-   self.surface.subscribe('show', function(Surface, Args)
+   self.surface.subscribe('show', function(Surface:obj, Args:table)
       if self.popup then
          self.surface.acFocus()
       end
@@ -418,14 +420,16 @@ gui.menu = function(Options)
       -- Keyboard support requires a client reference to grab input from.
 
       if self.client and (not self._subscribedKb) then
-         if self.client.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
+         if self.client.mtSubscribeKeyboard(function(Viewport:obj, Qualifiers:num, Value:num, Unicode:num)
             if not self.visible then
                self._subscribedKb = false
                check ERR_Terminate
             end
 
-            if (Qualifiers & KQ_PRESSED) is 0 then return end
+            if not (Qualifiers has KQ_PRESSED) then return end
+
             if Value is KEY_UP then
+
             elseif Value is KEY_DOWN then
 
             elseif Value is KEY_RETURN then
@@ -437,18 +441,14 @@ gui.menu = function(Options)
       end
    end)
 
-   self.viewport.mtSubscribeInput(JTYPE_MOVEMENT | JTYPE_BUTTON | JTYPE_CROSSING, function(Viewport, Events)
+   self.viewport.mtSubscribeInput(JTYPE_MOVEMENT | JTYPE_BUTTON | JTYPE_CROSSING, function(Viewport:obj, Events)
       ev = Events
       while ev do
          if ev.type is JET_BUTTON_1 then
             if ev.value is 1 then
                if self.hItem then -- Menu item activated
-                  if self.hItem.config.feedback then
-                     self.hItem.config.feedback(self, self.hItem.config)
-                  end
-                  if self.feedback then
-                     self.feedback(self, self.hItem.config)
-                  end
+                  self.hItem.config?.feedback(self, self.hItem.config)
+                  self?.feedback(self, self.hItem.config)
                   self.surface.acHide()
                end
             end

@@ -83,7 +83,7 @@ io.ui.paste = function(Dest:str)
    end
 
    local move
-   if (flags & CEF_DELETE) != 0 then move = true end
+   if flags has CEF_DELETE then move = true end
    local err = io.ui.copy(files, Dest, move)
 end
 
