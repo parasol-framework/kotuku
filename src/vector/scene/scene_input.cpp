@@ -1,59 +1,61 @@
 // Input event handling for VectorScene
 
 //********************************************************************************************************************
-// Build a list of all child viewports that have a bounding box intersecting with (X,Y).  Transforms
-// are taken into account through use of BX1,BY1,BX2,BY2.  The list is sorted starting from the background to the
-// foreground.
+// Return the front-most viewport at (X,Y) by recursively scanning the scene graph from front to back.
+// Clipping paths are taken into account for non-rectangular viewports.
 
 extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, double X, double Y)
 {
    //pf::Log log(__FUNCTION__);
    //log.branch("Scene: %d", Scene->UID);
 
-   std::vector<std::vector<extVectorViewport *>> viewports;
-
-   auto inspect_xy = [](auto &Self, extVector *Vector, std::vector<std::vector<extVectorViewport *>> &Collection, double X, double Y, int Branch) -> void {
+   auto inspect_xy = [](auto &Self, extVector *Vector, double X, double Y) -> extVectorViewport * {
       //pf::Log log("get_viewport_node");
-      //log.branch("Vector: %d", Vector->UID);
+      //log.branch("Vector: %d %s", Vector->UID, Vector->Name);
 
-      if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
+      // Always scan backwards since the last vector in the branch is top-most in its stack.
+      extVector *last = Vector;
+      while (last->Next) last = (extVector *)last->Next;
+      extVectorViewport *hit_vp = nullptr;
 
-      for (auto node=Vector; node; node=(extVector *)node->Next) {
-         if (not (node->Visibility IS VIS::HIDDEN)) { // Checking for HIDDEN ensures that INHERIT is handled correctly
-            if (node->classID() IS CLASSID::VECTORVIEWPORT) {
-               auto vp = (extVectorViewport *)node;
+      for (auto node=last; node; node=(extVector *)node->Prev) {
+         if (node->Visibility IS VIS::HIDDEN) continue; // Checking for HIDDEN ensures that INHERIT is handled correctly
 
-               if (vp->dirty()) gen_vector_path(vp);
+         if (node->classID() IS CLASSID::VECTORVIEWPORT) {
+            auto vp = (extVectorViewport *)node;
 
-               if (vp->vpBounds.hit_test(X, Y)) {
-                  Collection[Branch].emplace_back(vp);
-               }
-               else continue; // No point in checking children of a non-hitting viewport
+            if (vp->dirty()) gen_vector_path(vp);
+
+            bool hit = vp->vpBounds.hit_test(X, Y);
+            if ((hit) and (vp->vpClip)) {
+               // Hit-test could drop through due to a non-rectangular clipping path
+               agg::rasterizer_scanline_aa<> raster;
+               raster.add_path(vp->BasePath); // NB: Path is already transformed
+               hit = raster.hit_test(X, Y);
             }
 
-            if (node->Child) Self(Self, (extVector *)node->Child, Collection, X, Y, Branch + 1);
+            if (hit) {
+               hit_vp = vp;
+               if (node->Child) {
+                  auto child_hit = Self(Self, (extVector *)node->Child, X, Y);
+                  return child_hit ? child_hit : hit_vp;
+               }
+            }
+         }
+         else if (node->Child) { // For VectorGroup and similar class types
+            auto child_hit = Self(Self, (extVector *)node->Child, X, Y);
+            if (child_hit) return child_hit;
          }
       }
+
+      return hit_vp;
    };
 
-   inspect_xy(inspect_xy, (extVector *)Scene->Viewport, viewports, X, Y, 0);
+   // Recursively inspect the scene graph
 
-   // From front to back, determine the first path that the (X,Y) point resides in.
+   auto hit_vp = inspect_xy(inspect_xy, (extVector *)Scene->Viewport, X, Y);
 
-   for (auto branch = viewports.rbegin(); branch != viewports.rend(); branch++) {
-      for (auto const vp : *branch) {
-         if (vp->vpClip) { // A non-rectangular clipping path applies.
-            agg::rasterizer_scanline_aa<> raster;
-            raster.add_path(vp->BasePath); // NB: Path is already transformed
-            if (raster.hit_test(X, Y)) return vp;
-         }
-         else return vp; // If no complex transforms are present, the hit-test is passed
-      }
-   }
-
-   // No child viewports were hit, revert to main
-
-   return (extVectorViewport *)Scene->Viewport;
+   return hit_vp ? hit_vp : (extVectorViewport *)Scene->Viewport;
 }
 
 //********************************************************************************************************************
@@ -327,7 +329,10 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
             }
 
             pf::ScopedObjectLock<extVector> lock(bounds.vector_id);
-            if (not lock.granted()) continue;
+            if (not lock.granted()) {
+               log.warning("Unable to lock vector #%d", bounds.vector_id);
+               continue;
+            }
             auto vector = lock.obj;
 
             // Additional bounds check to cater for transforms, clip masks etc.

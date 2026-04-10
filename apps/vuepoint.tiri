@@ -161,9 +161,9 @@ function displayText(Path:str)
 end
 
 function displayFile(Path:str)
-   msg('Load file ' .. (Path ?? 'NIL'))
-
    Path ?? return
+
+   msg(f'Load file {Path}')
 
    if glTerminateView then
       glTerminateView()

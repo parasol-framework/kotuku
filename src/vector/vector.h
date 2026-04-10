@@ -196,7 +196,7 @@ public:
    PTC cursor; // This value buffers the Vector.Cursor field for optimisation purposes.
    TClipRectangle<double> bounds; // Collision boundary
    double x, y; // Absolute X,Y without collision
-   bool pass_through; // True if input events should be passed through (the cursor will still apply)
+   bool pass_through; // True if input events should drop through (the cursor will still apply, if defined)
 
    InputBoundary(OBJECTID pV, PTC pC, TClipRectangle<double> &pBounds, double p5, double p6, bool pPass = false) :
       vector_id(pV), cursor(pC), bounds(pBounds), x(p5), y(p6), pass_through(pPass) {};
@@ -505,6 +505,7 @@ class extVectorViewport : public extVector {
    objBitmap *vpBuffer;
    uint8_t *vpBufferData;
    int vpBufferSize; // Size of the vpBufferData in bytes
+   std::unique_ptr<std::vector<class InputBoundary>> vpInputBounds; // Cached boundaries for buffered viewports; allocated on first use only.
    bool  vpClip; // Viewport requires non-rectangular clipping, e.g. because it is rotated or sheared.
    DMF   vpDimensions;
    ARF   vpAspectRatio;
