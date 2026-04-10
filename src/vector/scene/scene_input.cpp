@@ -94,7 +94,11 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
             }), result);
          }
 
-         if (result IS ERR::Terminate) it = Vector->InputSubscriptions->erase(it);
+         if (result IS ERR::Terminate) {
+            it = Vector->InputSubscriptions->erase(it);
+            update_input_subscription_state(Vector);
+            mark_input_boundary_dirty(Vector);
+         }
          else it++;
       }
       else it++;

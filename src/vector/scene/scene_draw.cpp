@@ -748,7 +748,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       }
 
       if (shape->classID() IS CLASSID::VECTORVIEWPORT) {
-         if ((shape->Child) or (shape->InputSubscriptions) or (shape->Fill[0].Pattern)) {
+         if ((shape->Child) or (has_input_boundary(shape)) or (shape->Fill[0].Pattern)) {
             auto view = (extVectorViewport *)shape;
 
             if (view->vpOverflowX != VOF::INHERIT) state.mOverflowX = view->vpOverflowX;
@@ -798,7 +798,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
                // For viewports that read user input, we record the collision box for the cursor.
 
-               if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
+               if (has_input_boundary(shape)) {
                   clip.shrinking(view);
                   mInputBounds.emplace_back(shape->UID, view->Cursor, clip, view->vpBounds.left, view->vpBounds.top);
                }
@@ -1030,7 +1030,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                render_stroke(state, *shape);
             }
 
-            if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
+            if (has_input_boundary(shape)) {
                // If the vector receives user input events then we record the collision box for the mouse cursor.
 
                TClipRectangle b;
@@ -1061,7 +1061,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                TClipRectangle<double> rb_bounds = { double(mRenderBase.xmin()), double(mRenderBase.ymin()), double(mRenderBase.xmax()), double(mRenderBase.ymax()) };
                b.shrinking(rb_bounds);
 
-               mInputBounds.emplace_back(shape->UID, shape->Cursor, b, abs_x, abs_y, shape->InputSubscriptions ? false : true);
+               mInputBounds.emplace_back(shape->UID, shape->Cursor, b, abs_x, abs_y, has_input_subscriptions(shape) ? false : true);
             }
          } // if: shape->GeneratePath
 

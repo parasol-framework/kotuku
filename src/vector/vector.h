@@ -708,6 +708,42 @@ static void mark_buffers_for_refresh(extVector *Vector)
 }
 
 //********************************************************************************************************************
+// Input boundaries are generated during scene drawing.  If their source state changes without a visual path change,
+// buffered parent viewports still need to redraw once so that their cached input-boundary list stays current.
+
+inline static bool has_input_subscriptions(const extVector *Vector)
+{
+   return (Vector->InputSubscriptions) and (not Vector->InputSubscriptions->empty());
+}
+
+inline static bool has_input_boundary(const extVector *Vector)
+{
+   return has_input_subscriptions(Vector) or ((Vector->Cursor != PTC::NIL) and (Vector->Cursor != PTC::DEFAULT));
+}
+
+inline static void update_input_subscription_state(extVector *Vector)
+{
+   JTYPE mask = JTYPE::NIL;
+   if (Vector->InputSubscriptions) {
+      for (auto &sub : *Vector->InputSubscriptions) mask |= sub.Mask;
+   }
+
+   Vector->InputMask = mask;
+
+   if ((Vector->Scene) and (!Vector->Scene->collecting())) {
+      auto scene = (extVectorScene *)Vector->Scene;
+      if (mask != JTYPE::NIL) scene->InputSubscriptions[Vector] = mask;
+      else scene->InputSubscriptions.erase(Vector);
+   }
+}
+
+inline static void mark_input_boundary_dirty(extVector *Vector)
+{
+   mark_buffers_for_refresh(Vector);
+   if (Vector->Scene) ((extVectorScene *)Vector->Scene)->RefreshCursor = true;
+}
+
+//********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
 inline static void mark_children(extVector *Vector, const RC Flags)
