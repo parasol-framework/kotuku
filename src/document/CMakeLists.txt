@@ -29,4 +29,6 @@ target_precompile_headers(${MOD} PRIVATE
    <mutex>
    <charconv>)
 
-flute_test (doc_output "tests/test_doc.tiri")
+flute_test (doc_layout "tests/test_layout.tiri")
+flute_test (doc_stream "tests/test_stream.tiri")
+

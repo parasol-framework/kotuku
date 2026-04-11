@@ -1084,7 +1084,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, double
    pf::Log log(__FUNCTION__);
 
    if (Width > AlignWidth) {
-      log.traceWarning("Content width exceeds align width: %g > %g", Width, AlignWidth);
+      log.trace("Content width of %g exceeds align width of %g", Width, AlignWidth);
    }
 
    // Process trailing whitespace at the end of the line.  This helps to prevent situations such as underlining
