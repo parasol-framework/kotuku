@@ -180,7 +180,7 @@ private:
    inline void check_line_height() {
       if (m_font->metrics.LineSpacing >= m_line.height) {
          m_line.height  = m_font->metrics.LineSpacing;
-         m_line.descent = m_font->metrics.Descent;
+         m_line.descent = m_font->descent();
       }
    }
 
@@ -586,7 +586,7 @@ void layout::lay_font()
 {
    auto &style = m_stream->lookup<bc_font>(idx);
 
-   if ((m_font = style.layout_font(*this))) {
+   if (m_font = style.layout_font(*this)) {
       apply_style(style);
 
       // Setting m_word_index ensures that the font code appears in the current segment.
@@ -602,7 +602,7 @@ void layout::lay_font_end()
    if ((m_word_width > 0) and (m_line.height < m_font->metrics.LineSpacing)) {
       // We need to record the line-height for the active word now, in case we revert to a smaller font.
       m_line.height  = m_font->metrics.LineSpacing;
-      m_line.descent = m_font->metrics.Descent;
+      m_line.descent = m_font->descent();
    }
 
    m_stack_font.pop();
@@ -1129,11 +1129,11 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, double
       if (line_height <= 0) {
          // Use the most recent font to determine the line height
          line_height = m_font->metrics.LineSpacing;
-         descent     = m_font->metrics.Descent;
+         descent     = m_font->descent();
       }
 
       if (!descent) { // Sanity check: In case descent is missing for some reason
-         descent = m_font->metrics.Descent;
+         descent = m_font->descent();
       }
    }
 
@@ -1185,7 +1185,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, double
          .stop        = Stop,
          .trim_stop   = trim_stop,
          .area        = { m_line.x, Y, Width, line_height },
-         .descent      = descent,
+         .descent     = descent,
          .align_width = AlignWidth,
          .stream      = m_stream,
          .edit        = m_edit_mode,
@@ -1820,8 +1820,8 @@ void layout::end_line(NL NewLine, stream_char Next)
 
    if ((!m_line.height) and (m_word_width)) {
       // If this is a one-word line, the line height will not have been defined yet
-      m_line.height = m_font->metrics.LineSpacing;
-      m_line.descent = m_font->metrics.Descent;
+      m_line.height  = m_font->metrics.LineSpacing;
+      m_line.descent = m_font->descent();
    }
 
    m_line.apply_word_height();

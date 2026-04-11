@@ -146,10 +146,26 @@ ERR layout::gen_scene_init(objVectorViewport *Viewport)
       for (unsigned i=0; i < m_clips.size(); i++) {
          auto rect = objVectorRectangle::create::global({
                fl::Owner(Viewport->UID),
-               fl::X(m_clips[i].Clip.left), fl::Y(m_clips[i].Clip.top),
-               fl::Width(m_clips[i].Clip.right - m_clips[i].Clip.left),
-               fl::Height(m_clips[i].Clip.bottom - m_clips[i].Clip.top),
-               fl::Fill("rgb(255,200,200,64)") });
+               fl::X(m_clips[i].left), fl::Y(m_clips[i].top),
+               fl::Width(m_clips[i].right - m_clips[i].left),
+               fl::Height(m_clips[i].bottom - m_clips[i].top),
+               fl::Stroke("rgb(255 200 200 / 0.25)") });
+         Self->UIObjects.push_back(rect->UID);
+      }
+
+      for (unsigned si=0; si < Self->Segments.size(); si++) {
+         if (Self->Segments[si].area.Width <= 0) continue;
+         if (Self->Segments[si].area.Height <= 0) continue;
+
+         auto rect = objVectorRectangle::create::global({
+               fl::Owner(Self->Page->UID),
+               fl::Name(std::string("segment_") + std::to_string(si)),
+               fl::X(Self->Segments[si].area.X), 
+               fl::Y(Self->Segments[si].area.Y),
+               fl::Width(Self->Segments[si].area.Width),
+               fl::Height(Self->Segments[si].area.Height),
+               fl::Stroke("rgb(200 255 0 / 0.25)") });
+         Self->UIObjects.push_back(rect->UID);
       }
    #endif
 
@@ -263,7 +279,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                };
 
                auto vp = objVectorPath::create::global({
-                  fl::Owner(Viewport->UID), fl::Stroke("rgb(255,0,0,255)"), fl::StrokeWidth(2)
+                  fl::Owner(Viewport->UID), fl::Stroke("rgb(255 0 0 / 1)"), fl::StrokeWidth(2)
                });
 
                vp->setCommand(seq.size(), seq.data(), seq.size() * sizeof(PathCommand));

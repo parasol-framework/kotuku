@@ -858,13 +858,13 @@ static bool check_tag_conditions(extDocument *Self, XTag &Tag)
       else if (iequals("notnull", Tag.Attribs[i].Name)) {
          log.trace("NotNull: %s", Tag.Attribs[i].Value);
          if (Tag.Attribs[i].Value.empty()) satisfied = false;
-         else if (Tag.Attribs[i].Value == "0") satisfied = false;
+         else if (Tag.Attribs[i].Value IS "0") satisfied = false;
          else satisfied = true;
       }
       else if ((iequals("isnull", Tag.Attribs[i].Name)) or (iequals("null", Tag.Attribs[i].Name))) {
          log.trace("IsNull: %s", Tag.Attribs[i].Value);
             if (Tag.Attribs[i].Value.empty()) satisfied = true;
-            else if (Tag.Attribs[i].Value == "0") satisfied = true;
+            else if (Tag.Attribs[i].Value IS "0") satisfied = true;
             else satisfied = false;
       }
       else if (iequals("not", Tag.Attribs[i].Name)) {
@@ -941,7 +941,7 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
       }
 
       if (Self->TemplateIndex.contains(tag_hash)) {
-         // Process the template by jumping into it.  Arguments in the tag are added to a sequential
+         // Process the template by jumping into it.  Key-values in the tag are added to a sequential
          // list that will be processed in reverse by translate_attrib_args().
 
          auto xml  = m_inject_xml;
@@ -1243,6 +1243,17 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
    }
    else if ((Style.fill != m_style.fill)) {
       font_change = true;
+   }
+
+   // Prevent em-based size inheritance from compounding on each nested style change.  When the
+   // caller has not overridden req_size, any FONT_SIZE (em) value held in m_style has already
+   // been resolved to pixels during the parent's layout pass.  If we allow the inherited em to
+   // pass through to a new bc_font entry, layout_font() would re-multiply it by the parent's
+   // current metrics.Height and compound the size.  Substituting 1em makes the nested entry
+   // resolve to the parent's already-computed pixel size rather than doubling (or worse).
+   if ((font_change) and (Style.req_size IS m_style.req_size) and
+       (Style.req_size.type IS DU::FONT_SIZE)) {
+      Style.req_size = DUNIT(1.0, DU::FONT_SIZE);
    }
 
    auto result = TRF::NIL;
@@ -1794,7 +1805,7 @@ void parser::tag_checkbox(XTag &Tag)
          else if (iequals("right", value)) widget.label_pos = 1;
       }
       else if (hash IS HASH_value) {
-         widget.alt_state = (value == "1") or (value == "true");
+         widget.alt_state = (value IS "1") or (value IS "true");
       }
       else log.warning("<checkbox> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
@@ -2152,7 +2163,10 @@ void parser::tag_editdef(XTag &Tag)
 
          case HASH_select_fill: break;
 
-         case HASH_line_breaks: edit.line_breaks = std::stoi(Tag.Attribs[i].Value); break;
+         case HASH_line_breaks:
+            if (Tag.Attribs[i].Value IS "true") edit.line_breaks = true;
+            else if (Tag.Attribs[i].Value IS "1") edit.line_breaks = true;
+            break;
 
          case HASH_edit_fonts:
          case HASH_edit_images:
@@ -2880,8 +2894,8 @@ ERR parser::tag_xml_content_eval(std::string &Buffer)
             // Check for [lb] and [rb] escape codes
 
             char code = 0;
-            if (name == "rb") code = ']';
-            else if (name == "lb") code = '[';
+            if (name IS "rb") code = ']';
+            else if (name IS "lb") code = '[';
 
             if (code) {
                Buffer[pos] = code;
@@ -3446,8 +3460,8 @@ void parser::tag_li(XTag &Tag)
          para.value = Tag.Attribs[i].Value;
       }
       else if (iequals("aggregate", tagname)) {
-         if (Tag.Attribs[i].Value == "true") para.aggregate = true;
-         else if (Tag.Attribs[i].Value == "1") para.aggregate = true;
+         if (Tag.Attribs[i].Value IS "true") para.aggregate = true;
+         else if (Tag.Attribs[i].Value IS "1") para.aggregate = true;
       }
       else check_para_attrib(Tag.Attribs[i], &para, para.font);
    }

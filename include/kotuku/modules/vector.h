@@ -581,7 +581,7 @@ struct FontMetrics {
    int Height;         // Capitalised font height
    int LineSpacing;    // Vertical advance from one line to the next
    int Ascent;         // Height from the baseline to the top of the font, including accents.
-   int Descent;        // Height from the baseline to the bottom of the font
+   int Descent;        // Height from the baseline to the bottom of the font (gutter)
 };
 
 // VectorColour class definition
