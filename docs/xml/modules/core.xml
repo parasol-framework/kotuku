@@ -455,7 +455,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
       <param type="OBJECTID" name="Object">The object identity to verify.</param>
     </input>
     <description>
-<p>The CheckObjectExists() function verifies the presence of any object created by <function>NewObject</function>.</p>
+<p>The CheckObjectExists() function verifies the presence of any object created by <function>NewObject</function>. Objects that are marked for termination are considered to no longer exist for the purposes of this function, and will return <code>ERR::False</code>.</p>
     </description>
     <result type="ERR">
       <error code="True">The object exists.</error>

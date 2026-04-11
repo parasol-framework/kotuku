@@ -31,7 +31,7 @@ function xpathNum(Xml, Expr:str)
    return value
 end
 
-@Test function ReadContentXML_Paragraphs()
+@Test function Paragraphs()
    err, xml_str = loadXML('paragraphs.rpl')
    print(xml_str)
 
@@ -61,7 +61,7 @@ end
    assert(missing_para_units is 0, 'Every paragraph must preserve leading-unit and line-height-unit')
 end
 
-@Test function ReadContentXML_WellFormed()
+@Test function WellFormed()
    -- For several .rpl files the output must parse cleanly as an XML document, proving it is well formed
    -- and the escape helper is correct.
    files = array<string> { 'paragraphs.rpl', 'tables.rpl', 'lists.rpl', 'fonts.rpl', 'links.rpl' }
@@ -73,7 +73,7 @@ end
    end
 end
 
-@Test function ReadContentXML_Escaping()
+@Test function Escaping()
    -- Construct a document whose text payload contains XML meta-characters and confirm they round-trip as
    -- escaped entities rather than literal characters in the XML serialisation.
    scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
@@ -94,7 +94,7 @@ end
    assert(xpath(xml, 'string((//link/@hint)[1])') is 'A < B & "quoted"', 'Escaped attribute content must round-trip after XML parse')
 end
 
-@Test function ReadContentXML_Tables()
+@Test function Tables()
    err, xml_str = loadXML('tables.rpl')
    print(xml_str)
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for tables.rpl, err=' .. err)
@@ -128,7 +128,7 @@ end
    assert(bordered_cells >= 1, 'tables.rpl must expose cell border debug attributes')
 end
 
-@Test function ReadContentXML_FontAttrs()
+@Test function FontAttrs()
    err, xml_str = loadXML('fonts.rpl')
    print(xml_str)
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for fonts.rpl, err=' .. err)
@@ -149,7 +149,7 @@ end
    assert(large_fonts > 0, 'fonts.rpl must preserve the expected 20px font request')
 end
 
-@Test function ReadContentXML_NonTextContent()
+@Test function NonTextContent()
    -- XML serialisation must remain available even when the selected stream contains no text byte-codes.
    -- Discover the first table byte-code dynamically, then extract that table-only range.
    scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
@@ -177,7 +177,70 @@ end
    assert(text_count is 0, 'Non-text XML output must not contain text byte-codes')
 end
 
-@Test function ReadContentXML_OutOfRange()
+@Test function NestedRangeIsolation()
+   scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document', { viewport=vp, path=glDocFolder .. 'tables.rpl' })
+
+   err_all, xml_all = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   assert(err_all is ERR_Okay, 'Full XML read failed while preparing nested range test, err=' .. err_all)
+   parsed_all = parseXML(xml_all)
+   cell_start = xpath(parsed_all, 'string((//cell/@stream-index)[1])')
+   assert(cell_start != nil and cell_start != '', 'Could not locate a cell stream-index in tables.rpl')
+
+   start_index = tonumber(cell_start)
+   assert(start_index != nil, 'Cell stream-index must be numeric, got ' .. tostring(cell_start))
+
+   err, xml_str = doc.mtReadContent(DATA_XML, start_index, start_index + 1)
+   print(xml_str)
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for isolated cell range, err=' .. err)
+
+   xml = parseXML(xml_str)
+   cell_count = xpathNum(xml, 'count(/stream/cell)')
+   assert(cell_count is 1, 'Isolated cell range must contain exactly one top-level cell element')
+
+   nested_count = xpathNum(xml, 'count(/stream/cell/*)')
+   assert(nested_count is 0, 'Isolated cell range must not serialise nested stream content outside the requested range')
+end
+
+@Test function NestedIdentity()
+   err, xml_str = loadXML('tables.rpl')
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for nested identity test, err=' .. err)
+
+   xml = parseXML(xml_str)
+
+   nested_missing = xpathNum(xml,
+      'count(//cell//*[not(@parent-stream-index) or not(@nested-stream-index)]) + count(//button//*[not(@parent-stream-index) or not(@nested-stream-index)])')
+   assert(nested_missing is 0, 'Nested XML nodes must expose parent-stream-index and nested-stream-index')
+
+   nested_conflicts = xpathNum(xml,
+      'count(//cell//*[@stream-index]) + count(//button//*[@stream-index])')
+   assert(nested_conflicts is 0, 'Nested XML nodes must not expose misleading document stream-index attributes')
+end
+
+@Test function ZeroDunitPreserved()
+   scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document', { viewport=vp })
+   check doc.acDataFeed(nil, DATA_XML,
+      '<body/><page><p line-height="0px" leading="0%"><table width="0%" height="0px"><row><cell>Zero</cell></row></table></p></page>')
+
+   err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   print(xml_str)
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for zero DUNIT test, err=' .. err)
+
+   xml = parseXML(xml_str)
+   assert(xpath(xml, 'string((//p/@line-height)[1])') is '0', 'Explicit zero line-height must be preserved')
+   assert(xpath(xml, 'string((//p/@line-height-unit)[1])') is 'px', 'Explicit zero line-height unit must be preserved')
+   assert(xpath(xml, 'string((//p/@leading)[1])') is '0', 'Explicit zero leading must be preserved')
+   assert(xpath(xml, 'string((//p/@leading-unit)[1])') is '%', 'Explicit zero leading unit must be preserved')
+   assert(xpath(xml, 'string((//table/@min-width)[1])') is '0', 'Explicit zero table min-width must be preserved')
+   assert(xpath(xml, 'string((//table/@min-width-unit)[1])') is '%', 'Explicit zero table min-width unit must be preserved')
+   assert(xpath(xml, 'string((//table/@min-height)[1])') is '0', 'Explicit zero table min-height must be preserved')
+   assert(xpath(xml, 'string((//table/@min-height-unit)[1])') is 'px', 'Explicit zero table min-height unit must be preserved')
+end
+
+@Test function OutOfRange()
    scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
    vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
    doc = vp.new('document', { viewport=vp, path=glDocFolder .. 'paragraphs.rpl' })

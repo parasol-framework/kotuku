@@ -1131,10 +1131,13 @@ static std::string border_to_string(CB Border)
 
 static void emit_dunit_attrs(std::ostringstream &Out, std::string_view Name, const DUNIT &Value)
 {
-   if ((Value.type IS DU::NIL) or (Value.value IS 0.0)) return;
+   if (Value.type IS DU::NIL) return;
+
+   double value = Value.value;
+   if ((value > 0) and (value <= std::numeric_limits<double>::min())) value = 0;
 
    std::string unit_name(Name);
-   emit_attr(Out, unit_name, Value.value);
+   emit_attr(Out, unit_name, value);
    unit_name += "-unit";
    emit_attr(Out, unit_name, du_to_sv(Value.type));
 }
@@ -1157,6 +1160,12 @@ static void emit_padding_attrs(std::ostringstream &Out, std::string_view Prefix,
 static void emit_stream_identity(std::ostringstream &Out, INDEX Index)
 {
    emit_attr(Out, "stream-index", int(Index));
+}
+
+static void emit_nested_stream_identity(std::ostringstream &Out, INDEX ParentIndex, INDEX Index)
+{
+   emit_attr(Out, "parent-stream-index", int(ParentIndex));
+   emit_attr(Out, "nested-stream-index", int(Index));
 }
 
 //********************************************************************************************************************
@@ -1187,7 +1196,14 @@ static void emit_widget_attrs(std::ostringstream &Out, const widget_mgr &Widget)
 // self-closing elements with selected attributes from the backing bc_* struct.  HasText is set to true if at
 // least one SCODE::TEXT code was encountered, so the caller can decide whether to return ERR::NoData.
 
-static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostringstream &Out, bool &HasContent)
+static void write_stream_xml(
+   RSTREAM &Stream,
+   INDEX Start,
+   INDEX End,
+   std::ostringstream &Out,
+   bool &HasContent,
+   bool ExpandNested,
+   INDEX ParentIndex = -1)
 {
    for (INDEX i = Start; i < End; i++) {
       auto code = Stream[i].code;
@@ -1195,11 +1211,16 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
       std::string_view name = ((idx >= 0) and (idx < int(SCODE::END))) ? xmlCodes[idx] : std::string_view("unknown");
       HasContent = true;
 
+      auto emit_identity = [&Out, ParentIndex, i]() {
+         if (ParentIndex >= 0) emit_nested_stream_identity(Out, ParentIndex, i);
+         else emit_stream_identity(Out, i);
+      };
+
       switch (code) {
          case SCODE::TEXT: {
             auto &text = Stream.lookup<bc_text>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_attr(Out, "length", int(text.text.size()));
             if (text.formatted) emit_attr(Out, "formatted", true);
             if (text.segment >= 0) emit_attr(Out, "segment", int(text.segment));
@@ -1212,7 +1233,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::FONT: {
             auto &font = Stream.lookup<bc_font>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             if (font.index() >= 0) emit_attr(Out, "index", int(font.index()));
             if (!font.face.empty())  emit_attr(Out, "face", font.face);
             if (!font.style.empty()) emit_attr(Out, "style", font.style);
@@ -1228,7 +1249,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::LINK: {
             auto &link = Stream.lookup<bc_link>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_attr(Out, "type", link_type_to_sv(link.type));
             if (!link.ref.empty())  emit_attr(Out, "ref", link.ref);
             if (!link.hint.empty()) emit_attr(Out, "hint", link.hint);
@@ -1243,7 +1264,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::PARAGRAPH_START: {
             auto &para = Stream.lookup<bc_paragraph>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             if (para.list_item)            emit_attr(Out, "list-item", true);
             emit_dunit_attrs(Out, "block-indent", para.block_indent);
             emit_dunit_attrs(Out, "item-indent", para.item_indent);
@@ -1259,7 +1280,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::ADVANCE: {
             auto &adv = Stream.lookup<bc_advance>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_dunit_attrs(Out, "x", adv.x);
             emit_dunit_attrs(Out, "y", adv.y);
             Out << "/>";
@@ -1269,7 +1290,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::LIST_START: {
             auto &list = Stream.lookup<bc_list>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_attr(Out, "type", list_type_to_sv(list.type));
             if (list.start != 1)     emit_attr(Out, "start", list.start);
             if (!list.fill.empty())  emit_attr(Out, "fill", list.fill);
@@ -1283,7 +1304,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::TABLE_START: {
             auto &table = Stream.lookup<bc_table>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_attr(Out, "columns", int(table.columns.size()));
             if (table.rows > 0)        emit_attr(Out, "rows", table.rows);
             if (!table.fill.empty())   emit_attr(Out, "fill", table.fill);
@@ -1304,7 +1325,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::ROW: {
             auto &row = Stream.lookup<bc_row>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             if (!row.fill.empty())   emit_attr(Out, "fill", row.fill);
             if (!row.stroke.empty()) emit_attr(Out, "stroke", row.stroke);
             if (row.min_height != 0) emit_attr(Out, "min-height", row.min_height);
@@ -1316,7 +1337,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::CELL: {
             auto &cell = Stream.lookup<bc_cell>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_attr(Out, "cell-id", int(cell.cell_id));
             emit_attr(Out, "column", cell.column);
             if (cell.col_span != 1) emit_attr(Out, "col-span", cell.col_span);
@@ -1332,9 +1353,9 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
             if (!cell.hooks.on_motion.empty()) emit_attr(Out, "on-motion", cell.hooks.on_motion);
             if (!cell.hooks.on_crossing.empty()) emit_attr(Out, "on-crossing", cell.hooks.on_crossing);
 
-            if ((cell.stream) and (!cell.stream->data.empty())) {
+            if (ExpandNested and (cell.stream) and (!cell.stream->data.empty())) {
                Out << '>';
-               write_stream_xml(*cell.stream, 0, INDEX(cell.stream->size()), Out, HasContent);
+               write_stream_xml(*cell.stream, 0, INDEX(cell.stream->size()), Out, HasContent, false, i);
                Out << "</" << name << '>';
             }
             else Out << "/>";
@@ -1344,7 +1365,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::INDEX_START: {
             auto &index = Stream.lookup<bc_index>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_attr(Out, "name-hash", int(index.name_hash));
             emit_attr(Out, "id", index.id);
             emit_attr(Out, "visible", index.visible);
@@ -1356,7 +1377,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::INDEX_END: {
             auto &index_end = Stream.lookup<bc_index_end>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_attr(Out, "id", index_end.id);
             Out << "/>";
             break;
@@ -1365,7 +1386,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::XML: {
             auto &xml = Stream.lookup<bc_xml>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_attr(Out, "object-id", int(xml.object_id));
             if (xml.owned) emit_attr(Out, "owned", true);
             Out << "/>";
@@ -1375,7 +1396,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::IMAGE: {
             auto &image = Stream.lookup<bc_image>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_widget_attrs(Out, image);
             Out << "/>";
             break;
@@ -1384,7 +1405,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::USE: {
             auto &use = Stream.lookup<bc_use>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             if (!use.id.empty()) emit_attr(Out, "id", use.id);
             if (use.processed) emit_attr(Out, "processed", true);
             Out << "/>";
@@ -1394,12 +1415,12 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::BUTTON: {
             auto &button = Stream.lookup<bc_button>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_widget_attrs(Out, button);
             emit_padding_attrs(Out, "inner-padding", button.inner_padding);
-            if ((button.stream) and (!button.stream->data.empty())) {
+            if (ExpandNested and (button.stream) and (!button.stream->data.empty())) {
                Out << '>';
-               write_stream_xml(*button.stream, 0, INDEX(button.stream->size()), Out, HasContent);
+               write_stream_xml(*button.stream, 0, INDEX(button.stream->size()), Out, HasContent, false, i);
                Out << "</" << name << '>';
             }
             else Out << "/>";
@@ -1409,7 +1430,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::CHECKBOX: {
             auto &checkbox = Stream.lookup<bc_checkbox>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_widget_attrs(Out, checkbox);
             if (checkbox.processed) emit_attr(Out, "processed", true);
             Out << "/>";
@@ -1419,7 +1440,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::COMBOBOX: {
             auto &combobox = Stream.lookup<bc_combobox>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_widget_attrs(Out, combobox);
             if (!combobox.style.empty()) emit_attr(Out, "style", combobox.style);
             if (!combobox.value.empty()) emit_attr(Out, "value", combobox.value);
@@ -1430,7 +1451,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
          case SCODE::INPUT: {
             auto &input = Stream.lookup<bc_input>(i);
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             emit_widget_attrs(Out, input);
             if (!input.value.empty()) emit_attr(Out, "value", input.value);
             if (input.secret) emit_attr(Out, "secret", true);
@@ -1440,7 +1461,7 @@ static void write_stream_xml(RSTREAM &Stream, INDEX Start, INDEX End, std::ostri
 
          default:
             Out << '<' << name;
-            emit_stream_identity(Out, i);
+            emit_identity();
             Out << "/>";
             break;
       }
@@ -1523,9 +1544,10 @@ static ERR DOCUMENT_ReadContent(extDocument *Self, doc::ReadContent *Args)
    else if (Args->Format IS DATA::XML) {
       std::ostringstream buffer;
       bool has_content = false;
+      bool expand_nested = (Args->Start IS 0) and (end IS INDEX(std::ssize(Self->Stream)));
 
       buffer << "<stream>";
-      write_stream_xml(Self->Stream, Args->Start, end, buffer, has_content);
+      write_stream_xml(Self->Stream, Args->Start, end, buffer, has_content, expand_nested);
       buffer << "</stream>";
 
       if (!has_content) return ERR::NoData;
