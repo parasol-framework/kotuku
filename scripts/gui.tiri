@@ -90,7 +90,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-gui.mtRGB = { -- RGB8 metatable
+gui.mtRGB = { -- sRGB metatable
    __newindex = function(Self, Key, Value)
       error(f'Table structure is immutable: Cannot set {Key}')
    end,
