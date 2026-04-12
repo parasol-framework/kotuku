@@ -1005,7 +1005,7 @@ TE layout::lay_table_end(bc_table &Table, double TopMargin, double BottomMargin,
       // If the table height is expressed as a percentage, it is calculated against the line width
       // so that it remains proportional.
 
-      min_height = (wrap_edge() - m_margins.left) * Table.min_width.value;
+      min_height = (wrap_edge() - m_margins.left) * Table.min_height.value;
       if (min_height < 0) min_height = 0;
    }
    else min_height = Table.min_height.px(*this);

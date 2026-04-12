@@ -1080,10 +1080,18 @@ static constexpr std::string_view align_to_sv(ALIGN Value)
 {
    if ((Value & ALIGN::LEFT) != ALIGN::NIL) return "left";
    if ((Value & ALIGN::RIGHT) != ALIGN::NIL) return "right";
-   if ((Value & ALIGN::HORIZONTAL) != ALIGN::NIL) return "horizontal";
+   if ((Value & ALIGN::HORIZONTAL) != ALIGN::NIL) return "center";
    if ((Value & ALIGN::TOP) != ALIGN::NIL) return "top";
    if ((Value & ALIGN::BOTTOM) != ALIGN::NIL) return "bottom";
-   if ((Value & ALIGN::VERTICAL) != ALIGN::NIL) return "vertical";
+   if ((Value & ALIGN::VERTICAL) != ALIGN::NIL) return "middle";
+   return {};
+}
+
+static constexpr std::string_view valign_to_sv(ALIGN Value)
+{
+   if ((Value & ALIGN::TOP) != ALIGN::NIL) return "top";
+   if ((Value & ALIGN::BOTTOM) != ALIGN::NIL) return "bottom";
+   if ((Value & ALIGN::VERTICAL) != ALIGN::NIL) return "middle";
    return {};
 }
 
@@ -1282,7 +1290,8 @@ static void emit_widget_attrs(std::ostringstream &Out, const widget_mgr &Widget)
    emit_dunit_attrs(Out, "default-size", Widget.def_size);
    emit_dunit_attrs(Out, "label-pad", Widget.label_pad);
    emit_padding_attrs(Out, "padding", Widget.pad);
-   if (Widget.align != ALIGN::NIL) emit_attr(Out, "align", align_to_sv(Widget.align));
+   if (auto align = align_to_sv(Widget.align); not align.empty()) emit_attr(Out, "align", align);
+   if (auto valign = valign_to_sv(Widget.align); not valign.empty()) emit_attr(Out, "v-align", valign);
    if (Widget.align_to_text) emit_attr(Out, "align-to-text", true);
    if (Widget.alt_state) emit_attr(Out, "alt-state", true);
    if (Widget.internal_page) emit_attr(Out, "internal-page", true);
@@ -1365,6 +1374,12 @@ static void write_stream_xml(
             Out << '<' << name;
             emit_identity();
             if (para.list_item)            emit_attr(Out, "list-item", true);
+            if (not para.font.face.empty())  emit_attr(Out, "face", para.font.face);
+            if (not para.font.style.empty()) emit_attr(Out, "style", para.font.style);
+            if (not para.font.fill.empty())  emit_attr(Out, "fill", para.font.fill);
+            emit_dunit_attrs(Out, "size", para.font.req_size);
+            if (auto align = fso_align_to_sv(para.font.options); not align.empty()) emit_attr(Out, "align", align);
+            if (auto valign = valign_to_sv(para.font.valign); not valign.empty()) emit_attr(Out, "v-align", valign);
             emit_dunit_attrs(Out, "block-indent", para.block_indent);
             emit_dunit_attrs(Out, "item-indent", para.item_indent);
             emit_dunit_attrs(Out, "indent", para.indent);

@@ -123,8 +123,8 @@ end
    assert(missing_cell_attrs is 0, 'Every cell must expose cell-id and stream-index')
 
    -- The fixture contains a floating inline table and border customisation; pin both to catch regressions.
-   horizontal_tables = xpathNum(xml, 'count(/extract/stream//table[@align="horizontal"])')
-   assert(horizontal_tables >= 1, 'tables.rpl must expose at least one horizontally aligned table')
+   centered_tables = xpathNum(xml, 'count(/extract/stream//table[@align="center"])')
+   assert(centered_tables >= 1, 'tables.rpl must expose at least one centred table')
    bordered_cells = xpathNum(xml, 'count(/extract/stream//cell[@border])')
    assert(bordered_cells >= 1, 'tables.rpl must expose cell border debug attributes')
 end
@@ -257,6 +257,67 @@ end
    assert(xpath(xml, 'string((/extract/stream//table/@min-width-unit)[1])') is '%', 'Explicit zero table min-width unit must be preserved')
    assert(xpath(xml, 'string((/extract/stream//table/@min-height)[1])') is '0', 'Explicit zero table min-height must be preserved')
    assert(xpath(xml, 'string((/extract/stream//table/@min-height-unit)[1])') is 'px', 'Explicit zero table min-height unit must be preserved')
+end
+
+@Test function ParagraphStyleAttrs()
+   scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document', { viewport=vp })
+   check doc.acDataFeed(nil, DATA_XML,
+      '<body font-style="Italic"/><page><p align="right" v-align="middle">Styled paragraph</p></page>')
+
+   err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for paragraph style attrs, err=' .. err)
+
+   xml = parseXML(xml_str)
+   assert(xpath(xml, 'string((/extract/stream//p/@style)[1])') is 'Italic', 'Paragraph XML must expose inherited body font-style')
+   assert(xpath(xml, 'string((/extract/stream//p/@align)[1])') is 'right', 'Paragraph XML must expose paragraph alignment')
+   assert(xpath(xml, 'string((/extract/stream//p/@v-align)[1])') is 'middle', 'Paragraph XML must expose paragraph vertical alignment')
+end
+
+@Test function DivStyleAttrs()
+   scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document', { viewport=vp })
+   check doc.acDataFeed(nil, DATA_XML,
+      '<body/><page><div fill="rgb(255,0,0)" font-size="18" style="Bold" align="center">Styled div</div></page>')
+
+   err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for div style attrs, err=' .. err)
+
+   xml = parseXML(xml_str)
+   styled_fonts = xpathNum(xml, 'count(/extract/stream//font[@fill="rgb(255,0,0)" and @style="Bold" and @size="18" and @align="center"])')
+   assert(styled_fonts > 0, 'Div font attributes must be emitted through a font byte-code')
+end
+
+@Test function AlignmentOverride()
+   scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document', { viewport=vp })
+   check doc.acDataFeed(nil, DATA_XML,
+      '<body/><page><p align="right" v-align="top">Outer<p align="center" v-align="bottom">Inner</p></p></page>')
+
+   err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for alignment override, err=' .. err)
+
+   xml = parseXML(xml_str)
+   assert(xpath(xml, 'string((/extract/stream//p[@align="right"]/@v-align)[1])') is 'top', 'Outer paragraph alignment must be preserved')
+   assert(xpath(xml, 'string((/extract/stream//p[@align="center"]/@v-align)[1])') is 'bottom', 'Inner paragraph alignment must override the outer paragraph')
+end
+
+@Test function ImageAxisAlignment()
+   scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document', { viewport=vp })
+   check doc.acDataFeed(nil, DATA_XML,
+      '<body/><page><p><image src="url(#demo)" align="center" v-align="top"/></p></page>')
+
+   err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for image axis alignment, err=' .. err)
+
+   xml = parseXML(xml_str)
+   assert(xpath(xml, 'string((/extract/stream//image/@align)[1])') is 'center', 'Image horizontal alignment must survive parsing')
+   assert(xpath(xml, 'string((/extract/stream//image/@v-align)[1])') is 'top', 'Image vertical alignment must survive parsing')
 end
 
 @Test function Segments()

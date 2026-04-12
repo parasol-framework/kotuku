@@ -1324,7 +1324,8 @@ bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_f
          else if (iequals("bottom", Attrib.Value)) align = ALIGN::BOTTOM;
 
          if (align != ALIGN::NIL) {
-            Style.valign = (Style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) | align;
+            Style.valign &= ~(ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM);
+            Style.valign |= align;
          }
          return true;
       }
@@ -1522,6 +1523,12 @@ void parser::tag_body(XTag &Tag)
             Self->FontFace = Tag.Attribs[i].Value;
             break;
 
+         case HASH_font_style:
+            [[fallthrough]];
+         case HASH_style:
+            Self->FontStyle = Tag.Attribs[i].Value;
+            break;
+
          case HASH_font_size: {
             // Default font point size, which must be fixed.  Relative sizes like 'em' are not permitted.
             auto val = DUNIT(Tag.Attribs[i].Value);
@@ -1565,6 +1572,7 @@ void parser::tag_body(XTag &Tag)
    m_style.options  = FSO::NIL;
    m_style.fill     = Self->FontFill;
    m_style.face     = Self->FontFace;
+   m_style.style    = Self->FontStyle;
    m_style.req_size = DUNIT(Self->FontSize, DU::PIXEL);
 
    if (!Tag.Children.empty()) m_body_tag = &Tag.Children;
@@ -2126,16 +2134,27 @@ void parser::tag_div(XTag &Tag)
    auto new_style = m_style;
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("align", Tag.Attribs[i].Name)) {
+         auto align = FSO::NIL;
+         auto valid = true;
          if ((iequals(Tag.Attribs[i].Value, "center")) or
              (iequals(Tag.Attribs[i].Value, "middle"))) {
-            new_style.options |= FSO::ALIGN_CENTER;
+            align = FSO::ALIGN_CENTER;
          }
          else if (iequals(Tag.Attribs[i].Value, "right")) {
-            new_style.options |= FSO::ALIGN_RIGHT;
+            align = FSO::ALIGN_RIGHT;
          }
-         else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
+         else if (!iequals(Tag.Attribs[i].Value, "left")) {
+            log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
+            valid = false;
+         }
+
+         if (valid) {
+            new_style.options &= ~(FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT);
+            new_style.options |= align;
+         }
       }
-      else check_para_attrib(Tag.Attribs[i], 0, new_style);
+      else if (check_para_attrib(Tag.Attribs[i], 0, new_style));
+      else check_font_attrib(Tag.Attribs[i], new_style);
    }
 
    parse_tags_with_style(Tag.Children, new_style);
@@ -2321,27 +2340,45 @@ void parser::tag_image(XTag &Tag)
          case HASH_align:
             // Setting the horizontal alignment of an image will cause it to float above the text.
             // If the image is declared inside a paragraph, it will be completely de-anchored as a result.
+            {
+               auto align = ALIGN::NIL;
+               auto valid = true;
             switch (strihash(value)) {
-               case HASH_left:   img.align = ALIGN::LEFT; break;
-               case HASH_right:  img.align = ALIGN::RIGHT; break;
-               case HASH_center: img.align = ALIGN::CENTER; break;
-               case HASH_middle: img.align = ALIGN::CENTER; break; // synonym
+               case HASH_left:   align = ALIGN::LEFT; break;
+               case HASH_right:  align = ALIGN::RIGHT; break;
+               case HASH_center: align = ALIGN::HORIZONTAL; break;
+               case HASH_middle: align = ALIGN::HORIZONTAL; break; // synonym
                default:
                   log.warning("Invalid alignment value '%s'", value.c_str());
+                  valid = false;
                   break;
+            }
+               if (valid) {
+                  img.align &= ~(ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL);
+                  img.align |= align;
+               }
             }
             break;
 
          case HASH_v_align:
             // If the image is anchored and the line is taller than the image, the image can be vertically aligned.
+            {
+               auto align = ALIGN::NIL;
+               auto valid = true;
             switch(strihash(value)) {
-               case HASH_top:    img.align = ALIGN::TOP; break;
-               case HASH_center: img.align = ALIGN::VERTICAL; break;
-               case HASH_middle: img.align = ALIGN::VERTICAL; break; // synonym
-               case HASH_bottom: img.align = ALIGN::BOTTOM; break;
+               case HASH_top:    align = ALIGN::TOP; break;
+               case HASH_center: align = ALIGN::VERTICAL; break;
+               case HASH_middle: align = ALIGN::VERTICAL; break; // synonym
+               case HASH_bottom: align = ALIGN::BOTTOM; break;
                default:
                   log.warning("Invalid valign value '%s'", value.c_str());
+                  valid = false;
                   break;
+            }
+               if (valid) {
+                  img.align &= ~(ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM);
+                  img.align |= align;
+               }
             }
             break;
 
@@ -2574,14 +2611,24 @@ void parser::tag_paragraph(XTag &Tag)
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("align", Tag.Attribs[i].Name)) {
+         auto align = FSO::NIL;
+         auto valid = true;
          if ((iequals(Tag.Attribs[i].Value, "center")) or
              (iequals(Tag.Attribs[i].Value, "middle"))) {
-            para.font.options |= FSO::ALIGN_CENTER;
+            align = FSO::ALIGN_CENTER;
          }
          else if (iequals(Tag.Attribs[i].Value, "right")) {
-            para.font.options |= FSO::ALIGN_RIGHT;
+            align = FSO::ALIGN_RIGHT;
          }
-         else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
+         else if (!iequals(Tag.Attribs[i].Value, "left")) {
+            log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
+            valid = false;
+         }
+
+         if (valid) {
+            para.font.options &= ~(FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT);
+            para.font.options |= align;
+         }
       }
       else if (iequals("leading", Tag.Attribs[i].Name)) {
          // The leading is a line height multiplier that applies to the first line in the paragraph only.
@@ -3649,8 +3696,8 @@ void parser::tag_table(XTag &Tag)
             switch(strihash(value)) {
                case HASH_left:   table.align = ALIGN::LEFT; break;
                case HASH_right:  table.align = ALIGN::RIGHT; break;
-               case HASH_center: table.align = ALIGN::CENTER; break;
-               case HASH_middle: table.align = ALIGN::CENTER; break; // synonym
+               case HASH_center: table.align = ALIGN::HORIZONTAL; break;
+               case HASH_middle: table.align = ALIGN::HORIZONTAL; break; // synonym
                default: log.warning("Invalid alignment value '%s'", value.c_str()); break;
             }
             break;
