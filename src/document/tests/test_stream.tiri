@@ -40,24 +40,25 @@ end
 
    xml = parseXML(xml_str)
 
-   -- Root element must be <stream>
-   root_name = xpath(xml, 'name(/*[1])')
-   assert(root_name is 'stream', 'Root element must be <stream>, got ' .. tostring(root_name))
+   -- The first fragment element must be <stream>
+   root_name = xpath(xml, 'name(/extract/*[1])')
+   assert(root_name is 'stream', 'First XML fragment element must be <stream>, got ' .. tostring(root_name))
 
    -- Must contain at least one <p> element
-   p_count = xpathNum(xml, 'count(//p)')
+   p_count = xpathNum(xml, 'count(/extract/stream//p)')
    assert(p_count > 0, 'paragraphs.rpl XML must contain at least one <p> element')
 
    -- Must contain at least one <text> element
-   text_count = xpathNum(xml, 'count(//text)')
+   text_count = xpathNum(xml, 'count(/extract/stream//text)')
    assert(text_count > 0, 'paragraphs.rpl XML must contain at least one <text> element')
 
    -- Every emitted element except the root must carry a stream-index for byte-code correlation.
-   missing_idx = xpathNum(xml, 'count(//*[not(self::stream) and not(self::segments) and not(self::segment) and not(@stream-index)])')
+   missing_idx = xpathNum(xml,
+      'count(/extract/stream//*[not(self::segments) and not(self::segment) and not(@stream-index)])')
    assert(missing_idx is 0, 'Every emitted element except <stream> must expose stream-index')
 
    -- Every paragraph must preserve DUNIT type information for leading and line-height.
-   missing_para_units = xpathNum(xml, 'count(//p[not(@leading-unit) or not(@line-height-unit)])')
+   missing_para_units = xpathNum(xml, 'count(/extract/stream//p[not(@leading-unit) or not(@line-height-unit)])')
    assert(missing_para_units is 0, 'Every paragraph must preserve leading-unit and line-height-unit')
 end
 
@@ -69,7 +70,7 @@ end
       err, xml_str = loadXML(path)
       assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for ' .. path .. ', err=' .. err)
       parsed = parseXML(xml_str)
-      assert(xpath(parsed, 'name(/*[1])') is 'stream', 'Generated XML root must be <stream> for ' .. path)
+      assert(xpath(parsed, 'name(/extract/*[1])') is 'stream', 'Generated XML must start with <stream> for ' .. path)
    end
 end
 
@@ -90,8 +91,8 @@ end
    assert(xml_str:find('&quot;'), 'XML output must contain &quot; for escaped attribute values, got: ' .. xml_str)
 
    xml = parseXML(xml_str)
-   assert(xpath(xml, 'string((//text)[1])') is '5 < 10 & 3 > 2 ', 'Escaped text content must round-trip after XML parse')
-   assert(xpath(xml, 'string((//link/@hint)[1])') is 'A < B & "quoted"', 'Escaped attribute content must round-trip after XML parse')
+   assert(xpath(xml, 'string((/extract/stream//text)[1])') is '5 < 10 & 3 > 2 ', 'Escaped text content must round-trip after XML parse')
+   assert(xpath(xml, 'string((/extract/stream//link/@hint)[1])') is 'A < B & "quoted"', 'Escaped attribute content must round-trip after XML parse')
 end
 
 @Test function Tables()
@@ -101,30 +102,30 @@ end
 
    xml = parseXML(xml_str)
 
-   tbl_count = xpathNum(xml, 'count(//table)')
+   tbl_count = xpathNum(xml, 'count(/extract/stream//table)')
    assert(tbl_count > 0, 'tables.rpl XML must contain at least one <table> element')
 
-   row_count = xpathNum(xml, 'count(//row)')
+   row_count = xpathNum(xml, 'count(/extract/stream//row)')
    assert(row_count > 0, 'tables.rpl XML must contain at least one <row> element')
 
-   cell_count = xpathNum(xml, 'count(//cell)')
+   cell_count = xpathNum(xml, 'count(/extract/stream//cell)')
    assert(cell_count > 0, 'tables.rpl XML must contain at least one <cell> element')
 
    -- Every table must expose structural debug attributes.
    missing_table_attrs = xpathNum(xml,
-      'count(//table[not(@columns) or not(@stream-index) or not(@min-width-unit) or not(@min-height-unit)])')
+      'count(/extract/stream//table[not(@columns) or not(@stream-index) or not(@min-width-unit) or not(@min-height-unit)])')
    assert(missing_table_attrs is 0, 'Every table must expose core structural debug attributes')
 
    -- Every row and cell must expose stream identity, and every cell must expose a cell-id.
-   missing_row_idx = xpathNum(xml, 'count(//row[not(@stream-index)])')
+   missing_row_idx = xpathNum(xml, 'count(/extract/stream//row[not(@stream-index)])')
    assert(missing_row_idx is 0, 'Every row must expose stream-index')
-   missing_cell_attrs = xpathNum(xml, 'count(//cell[not(@cell-id) or not(@stream-index)])')
+   missing_cell_attrs = xpathNum(xml, 'count(/extract/stream//cell[not(@cell-id) or not(@stream-index)])')
    assert(missing_cell_attrs is 0, 'Every cell must expose cell-id and stream-index')
 
    -- The fixture contains a floating inline table and border customisation; pin both to catch regressions.
-   horizontal_tables = xpathNum(xml, 'count(//table[@align="horizontal"])')
+   horizontal_tables = xpathNum(xml, 'count(/extract/stream//table[@align="horizontal"])')
    assert(horizontal_tables >= 1, 'tables.rpl must expose at least one horizontally aligned table')
-   bordered_cells = xpathNum(xml, 'count(//cell[@border])')
+   bordered_cells = xpathNum(xml, 'count(/extract/stream//cell[@border])')
    assert(bordered_cells >= 1, 'tables.rpl must expose cell border debug attributes')
 end
 
@@ -135,18 +136,29 @@ end
 
    xml = parseXML(xml_str)
 
-   -- Must contain <font> elements that carry attributes
-   font_count = xpathNum(xml, 'count(//font)')
+   -- Must contain stream <font> elements that carry attributes
+   font_count = xpathNum(xml, 'count(/extract/stream//font)')
    assert(font_count > 0, 'fonts.rpl XML must contain <font> elements')
 
-   missing_font_attrs = xpathNum(xml, 'count(//font[not(@face) or not(@pixel-size) or not(@size) or not(@size-unit)])')
+   missing_font_attrs = xpathNum(xml,
+      'count(/extract/stream//font[not(@face) or not(@pixel-size) or not(@size) or not(@size-unit)])')
    assert(missing_font_attrs is 0, 'Every font must expose face, pixel-size, size, and size-unit')
 
-   varied_faces = xpathNum(xml, 'count(//font[@face="Courier Prime"])')
+   varied_faces = xpathNum(xml, 'count(/extract/stream//font[@face="Courier Prime"])')
    assert(varied_faces > 0, 'fonts.rpl must preserve the expected font face')
 
-   large_fonts = xpathNum(xml, 'count(//font[@size="20" and @size-unit="px"])')
+   large_fonts = xpathNum(xml, 'count(/extract/stream//font[@size="20" and @size-unit="px"])')
    assert(large_fonts > 0, 'fonts.rpl must preserve the expected 20px font request')
+
+   fragment_order = xpath(xml, 'name(/extract/*[2])')
+   assert(fragment_order is 'fonts', 'The fragment after </stream> must be <fonts>')
+
+   cached_fonts = xpathNum(xml, 'count(/extract/fonts/font)')
+   assert(cached_fonts > 0, 'The trailing <fonts> section must contain cached font entries')
+
+   missing_cache_attrs = xpathNum(xml,
+      'count(/extract/fonts/font[not(@cache-index) or not(@face) or not(@pixel-size) or not(@height) or not(@line-spacing) or not(@ascent) or not(@descent) or not(@baseline-descent)])')
+   assert(missing_cache_attrs is 0, 'Every cached font must expose core metrics and cache identity')
 end
 
 @Test function NonTextContent()
@@ -158,7 +170,7 @@ end
    err_all, xml_all = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
    assert(err_all is ERR_Okay, 'Full XML read failed while preparing non-text test, err=' .. err_all)
    parsed_all = parseXML(xml_all)
-   table_start = xpath(parsed_all, 'string((//table/@stream-index)[1])')
+   table_start = xpath(parsed_all, 'string((/extract/stream//table/@stream-index)[1])')
    assert(table_start != nil and table_start != '', 'Could not locate a table stream-index in tables.rpl')
 
    start_index = tonumber(table_start)
@@ -170,10 +182,10 @@ end
 
    xml = parseXML(xml_str)
 
-   tbl_count = xpathNum(xml, 'count(//table)')
+   tbl_count = xpathNum(xml, 'count(/extract/stream//table)')
    assert(tbl_count is 1, 'Non-text XML output must contain exactly one table byte-code')
 
-   text_count = xpathNum(xml, 'count(//text)')
+   text_count = xpathNum(xml, 'count(/extract/stream//text)')
    assert(text_count is 0, 'Non-text XML output must not contain text byte-codes')
 end
 
@@ -185,7 +197,7 @@ end
    err_all, xml_all = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
    assert(err_all is ERR_Okay, 'Full XML read failed while preparing nested range test, err=' .. err_all)
    parsed_all = parseXML(xml_all)
-   cell_start = xpath(parsed_all, 'string((//cell/@stream-index)[1])')
+   cell_start = xpath(parsed_all, 'string((/extract/stream//cell/@stream-index)[1])')
    assert(cell_start != nil and cell_start != '', 'Could not locate a cell stream-index in tables.rpl')
 
    start_index = tonumber(cell_start)
@@ -196,10 +208,10 @@ end
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for isolated cell range, err=' .. err)
 
    xml = parseXML(xml_str)
-   cell_count = xpathNum(xml, 'count(/stream/cell)')
+   cell_count = xpathNum(xml, 'count(/extract/stream/cell)')
    assert(cell_count is 1, 'Isolated cell range must contain exactly one top-level cell element')
 
-   nested_count = xpathNum(xml, 'count(/stream/cell/*)')
+   nested_count = xpathNum(xml, 'count(/extract/stream/cell/*)')
    assert(nested_count is 0, 'Isolated cell range must not serialise nested stream content outside the requested range')
 end
 
@@ -210,18 +222,18 @@ end
    xml = parseXML(xml_str)
 
    nested_missing = xpathNum(xml,
-      'count(//cell//*[not(self::segments) and not(self::segment) and (not(@parent-stream-index) or not(@nested-stream-index))]) + count(//button//*[not(self::segments) and not(self::segment) and (not(@parent-stream-index) or not(@nested-stream-index))])')
+      'count(/extract/stream//cell//*[not(self::segments) and not(self::segment) and (not(@parent-stream-index) or not(@nested-stream-index))]) + count(/extract/stream//button//*[not(self::segments) and not(self::segment) and (not(@parent-stream-index) or not(@nested-stream-index))])')
    assert(nested_missing is 0, 'Nested XML nodes must expose parent-stream-index and nested-stream-index')
 
    nested_conflicts = xpathNum(xml,
-      'count(//cell//*[@stream-index]) + count(//button//*[@stream-index])')
+      'count(/extract/stream//cell//*[@stream-index]) + count(/extract/stream//button//*[@stream-index])')
    assert(nested_conflicts is 0, 'Nested XML nodes must not expose misleading document stream-index attributes')
 
-   nested_segment_count = xpathNum(xml, 'count(//cell/segments/segment) + count(//button/segments/segment)')
+   nested_segment_count = xpathNum(xml, 'count(/extract/stream//cell/segments/segment) + count(/extract/stream//button/segments/segment)')
    assert(nested_segment_count > 0, 'Nested cell/button XML must include nested segments when substreams are expanded')
 
    nested_segment_missing = xpathNum(xml,
-      'count(//cell/segments/segment[not(@parent-stream-index) or not(@index) or not(@start-index) or not(@stop-index) or not(@codes)]) + count(//button/segments/segment[not(@parent-stream-index) or not(@index) or not(@start-index) or not(@stop-index) or not(@codes)])')
+      'count(/extract/stream//cell/segments/segment[not(@parent-stream-index) or not(@index) or not(@start-index) or not(@stop-index) or not(@codes)]) + count(/extract/stream//button/segments/segment[not(@parent-stream-index) or not(@index) or not(@start-index) or not(@stop-index) or not(@codes)])')
    assert(nested_segment_missing is 0, 'Nested segments must expose parent linkage and core debug attributes')
 end
 
@@ -237,14 +249,14 @@ end
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for zero DUNIT test, err=' .. err)
 
    xml = parseXML(xml_str)
-   assert(xpath(xml, 'string((//p/@line-height)[1])') is '0', 'Explicit zero line-height must be preserved')
-   assert(xpath(xml, 'string((//p/@line-height-unit)[1])') is 'px', 'Explicit zero line-height unit must be preserved')
-   assert(xpath(xml, 'string((//p/@leading)[1])') is '0', 'Explicit zero leading must be preserved')
-   assert(xpath(xml, 'string((//p/@leading-unit)[1])') is '%', 'Explicit zero leading unit must be preserved')
-   assert(xpath(xml, 'string((//table/@min-width)[1])') is '0', 'Explicit zero table min-width must be preserved')
-   assert(xpath(xml, 'string((//table/@min-width-unit)[1])') is '%', 'Explicit zero table min-width unit must be preserved')
-   assert(xpath(xml, 'string((//table/@min-height)[1])') is '0', 'Explicit zero table min-height must be preserved')
-   assert(xpath(xml, 'string((//table/@min-height-unit)[1])') is 'px', 'Explicit zero table min-height unit must be preserved')
+   assert(xpath(xml, 'string((/extract/stream//p/@line-height)[1])') is '0', 'Explicit zero line-height must be preserved')
+   assert(xpath(xml, 'string((/extract/stream//p/@line-height-unit)[1])') is 'px', 'Explicit zero line-height unit must be preserved')
+   assert(xpath(xml, 'string((/extract/stream//p/@leading)[1])') is '0', 'Explicit zero leading must be preserved')
+   assert(xpath(xml, 'string((/extract/stream//p/@leading-unit)[1])') is '%', 'Explicit zero leading unit must be preserved')
+   assert(xpath(xml, 'string((/extract/stream//table/@min-width)[1])') is '0', 'Explicit zero table min-width must be preserved')
+   assert(xpath(xml, 'string((/extract/stream//table/@min-width-unit)[1])') is '%', 'Explicit zero table min-width unit must be preserved')
+   assert(xpath(xml, 'string((/extract/stream//table/@min-height)[1])') is '0', 'Explicit zero table min-height must be preserved')
+   assert(xpath(xml, 'string((/extract/stream//table/@min-height-unit)[1])') is 'px', 'Explicit zero table min-height unit must be preserved')
 end
 
 @Test function Segments()
@@ -252,11 +264,11 @@ end
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for segment test, err=' .. err)
 
    xml = parseXML(xml_str)
-   segment_count = xpathNum(xml, 'count(/stream/segments/segment)')
+   segment_count = xpathNum(xml, 'count(/extract/stream/segments/segment)')
    assert(segment_count > 0, 'XML output must include a segments block with at least one segment')
 
    missing_segment_attrs = xpathNum(xml,
-      'count(/stream/segments/segment[not(@index) or not(@start-index) or not(@start-offset) or not(@stop-index) or not(@stop-offset) or not(@trim-stop-index) or not(@trim-stop-offset) or not(@x) or not(@y) or not(@width) or not(@height) or not(@descent) or not(@align-width) or not(@edit) or not(@allow-merge) or not(@codes)])')
+      'count(/extract/stream/segments/segment[not(@index) or not(@start-index) or not(@start-offset) or not(@stop-index) or not(@stop-offset) or not(@trim-stop-index) or not(@trim-stop-offset) or not(@x) or not(@y) or not(@width) or not(@height) or not(@descent) or not(@align-width) or not(@edit) or not(@allow-merge) or not(@codes)])')
    assert(missing_segment_attrs is 0, 'Every segment must expose span, geometry, and debug code attributes')
 end
 
@@ -279,6 +291,6 @@ end
 
    xml = parseXML(xml_str)
 
-   root_name = xpath(xml, 'name(/*[1])')
-   assert(root_name is 'stream', 'Clamped XML output root element must be <stream>, got ' .. tostring(root_name))
+   root_name = xpath(xml, 'name(/extract/*[1])')
+   assert(root_name is 'stream', 'Clamped XML output must start with <stream>, got ' .. tostring(root_name))
 end

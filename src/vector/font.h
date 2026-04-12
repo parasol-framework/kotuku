@@ -65,10 +65,10 @@ class freetype_font {
             // It is widely acknowledged that the metrics declared by font creators or their tools may not be
             // the precise glyph metrics in reality...
 
-            double height;  // Full height from the baseline - including accents
-            double ascent;  // Ascent from the baseline - not including accents.  Typically matches the font-size in pixels
-            double descent; // Number of pixels allocated below the baseline, not including vertical whitespace
-            double line_spacing;
+            double height;  // Full height equivalent to ascent + descent, does not include accents
+            double ascent;  // Ascent from the baseline (cap height), does not include accents.  Typically matches the font-size in pixels
+            double descent; // Number of pixels allocated below the baseline for glyphs, not including vertical whitespace
+            double line_spacing; // The vertical advance for a newline, if not predefined then is set to height * 1.15
             METRIC_GROUP axis;
 
             glyph & get_glyph(uint32_t);

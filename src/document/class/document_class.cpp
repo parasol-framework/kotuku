@@ -1235,6 +1235,39 @@ static void write_segments_xml(const std::vector<doc_segment> &Segments, INDEX S
 }
 
 //********************************************************************************************************************
+// Emit the shared font cache after the stream fragment so inspection tools can correlate requested font runs with the
+// resolved cached fonts and metrics actually used by layout.
+
+static void write_fonts_xml(std::ostringstream &Out)
+{
+   std::deque<font_entry> fonts;
+
+   {
+      std::lock_guard lk(glFontsMutex);
+      fonts = glFonts;
+   }
+
+   Out << "<fonts>\n";
+   for (size_t i = 0; i < fonts.size(); i++) {
+      auto &font = fonts[i];
+
+      Out << "<font";
+      emit_attr(Out, "cache-index", int(i));
+      if (!font.face.empty())  emit_attr(Out, "face", font.face);
+      if (!font.style.empty()) emit_attr(Out, "style", font.style);
+      if (font.font_size > 0)  emit_attr(Out, "pixel-size", font.font_size);
+      if (font.align != ALIGN::NIL) emit_attr(Out, "align", align_to_sv(font.align));
+      emit_attr(Out, "height", font.metrics.Height);
+      emit_attr(Out, "line-spacing", font.metrics.LineSpacing);
+      emit_attr(Out, "ascent", font.metrics.Ascent);
+      emit_attr(Out, "descent", font.metrics.Descent);
+      emit_attr(Out, "baseline-descent", font.descent());
+      Out << "/>\n";
+   }
+   Out << "</fonts>\n";
+}
+
+//********************************************************************************************************************
 // Emit attributes for widget_mgr-derived bytecodes (bc_image, bc_button, bc_checkbox, bc_combobox, bc_input).
 
 static void emit_widget_attrs(std::ostringstream &Out, const widget_mgr &Widget)
@@ -1546,13 +1579,14 @@ as a RIPL binary stream, translated into plain-text (control codes are removed),
 describing the byte stream.
 
 The XML format is a linear, non-nested serialisation of the byte stream intended for inspection, diffing and tooling.
-Each byte code becomes one XML element wrapped in a `<stream>` root; text content appears inside `<text>` elements
-with the usual XML escaping applied.  Start/end markers such as paragraphs and font runs are emitted as sibling
-self-closing elements rather than nested, reflecting the underlying linear storage model.
+Each byte code becomes one XML element wrapped in a `<extract>` root, followed by the requested content in a `<stream>`
+element, and text content appears inside `<text>` elements with the usual XML escaping applied.  Start/end markers
+such as paragraphs and font runs are emitted as sibling self-closing elements rather than nested, reflecting the
+underlying linear storage model.  A trailing `<fonts>` section lists information for the shared cached fonts.
 
-If data is extracted in its original format, no post-processing is performed to fix validity errors that may arise from
-an invalid data range.  For instance, if an opening paragraph code is not closed with a matching paragraph end point,
-this will remain the case in the resulting data.
+No post-processing is performed to fix validity errors that may arise from an invalid data range.  For instance, if
+an opening paragraph code is not closed with a matching paragraph end point, this will remain the case in the
+resulting data.
 
 -INPUT-
 int(DATA) Format: Set to `TEXT` to receive plain-text, `RAW` to receive the original byte-code, or `XML` to receive a textual XML serialisation of the stream.
@@ -1614,10 +1648,12 @@ static ERR DOCUMENT_ReadContent(extDocument *Self, doc::ReadContent *Args)
       bool has_content = false;
       bool expand_nested = (Args->Start IS 0) and (end IS INDEX(std::ssize(Self->Stream)));
 
-      buffer << "<stream>\n";
+      buffer << "<extract>\n<stream>\n";
       write_stream_xml(Self->Stream, Args->Start, end, buffer, has_content, expand_nested);
       write_segments_xml(Self->Segments, Args->Start, end, buffer);
       buffer << "</stream>\n";
+      write_fonts_xml(buffer);
+      buffer << "</extract>\n";
 
       if (!has_content) return ERR::NoData;
 

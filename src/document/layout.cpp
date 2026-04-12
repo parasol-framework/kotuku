@@ -85,11 +85,11 @@ private:
    bool m_edit_mode    = false;   // Set to true when inside an area that allows user editing of the content.
 
    struct {
-      stream_char index;   // Stream position for the line's content.
-      double descent;      // Vertical spacing accommodated for glyph tails.  Inclusive within the height value, not additive
-      double height;       // The complete height of the line, including inline vectors/images/tables.  Text is drawn so that the text descent is aligned to the base line
-      double x;            // Starting horizontal position
-      double word_height;  // Height of the current word (including inline graphics), utilised for word wrapping
+      stream_char index;       // Stream position for the line's content.
+      double descent = 0;      // Vertical spacing accommodated for glyph tails.  Inclusive within the height value, not additive
+      double height = 0;       // The complete height of the line, including inline vectors/images/tables.  Text is drawn so that the text descent is aligned to the base line
+      double x = 0;            // Starting horizontal position
+      double word_height = 0;  // Height of the current word (including inline graphics), utilised for word wrapping
 
       void reset(double LeftMargin) {
          x       = LeftMargin;

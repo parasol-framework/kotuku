@@ -578,9 +578,9 @@ struct VectorMatrix {
 #define MTAG_SVG_TRANSFORM 0x3479679e
 
 struct FontMetrics {
-   int Height;         // Capitalised font height
+   int Height;         // Full font height equivalent to Ascent (cap-height) + Descent (gutter).  Does NOT include accents.
    int LineSpacing;    // Vertical advance from one line to the next
-   int Ascent;         // Height from the baseline to the top of the font, including accents.
+   int Ascent;         // Height from the baseline to the top (cap-height) of the font.  Does NOT include accents.
    int Descent;        // Height from the baseline to the bottom of the font (gutter)
 };
 
