@@ -582,7 +582,7 @@ struct doc_segment {
       if ((VAlign & ALIGN::TOP) != ALIGN::NIL) return area.Y + Font->metrics.Ascent;
       else if ((VAlign & ALIGN::VERTICAL) != ALIGN::NIL) {
          const double avail_space = area.Height - descent;
-         return area.Y + avail_space - ((avail_space - Font->metrics.Height) * 0.5);
+         return area.Y + avail_space - ((avail_space - Font->metrics.Ascent) * 0.5);
       }
       else return area.Y + area.Height - descent;
    }
