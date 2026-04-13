@@ -272,13 +272,13 @@ private:
 
    // Line Management
    // * The LineSpacing of the font determines how tall the segment needs to be.
-   // * LineSpacing covers the max height of the font's glyphs, including accents, gutter space and additional 
+   // * LineSpacing covers the max height of the font's glyphs, including accents, gutter space and additional
    //   whitespace for clearance.
-   // * descent() is used to determine the baseline of the text from the bottom of the segment. It includes both the 
+   // * descent() is used to determine the baseline of the text from the bottom of the segment. It includes both the
    //   gutter and additional whitespace for clearance.
 
-   // When a single line is segmented multiple times, the last segment will store the final height of the line whilst 
-   // the earlier segments will have the wrong height.  This function ensures that all segments for a line have the 
+   // When a single line is segmented multiple times, the last segment will store the final height of the line whilst
+   // the earlier segments will have the wrong height.  This function ensures that all segments for a line have the
    // same height and descent values.
 
    inline void sanitise_line_height() {
@@ -1471,7 +1471,7 @@ static void layout_doc(extDocument *Self)
 
    padding margins { Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin };
 
-   Self->GlyphAdvanceCache.clear();
+   //Self->GlyphAdvanceCache.clear(); // Retain the glyph advance cache between passes since fonts survive the object's lifetime.
    Self->LayoutMetrics.reset();
 
    layout l(Self, &Self->Stream, Self->Page, margins);
