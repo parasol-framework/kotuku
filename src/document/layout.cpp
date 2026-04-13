@@ -313,6 +313,11 @@ private:
       return m_page_width - m_margins.right;
    }
 
+   inline size_t clip_limit_count(size_t ClipLimit) const {
+      if (ClipLimit < m_clips.size()) return ClipLimit;
+      return m_clips.size();
+   }
+
    void size_widget(widget_mgr &, bool);
    WRAP place_widget(widget_mgr &);
    ERR position_widget(widget_mgr &, doc_segment &, objVectorViewport *, bc_font *, double &, double, bool,
@@ -332,11 +337,11 @@ private:
 
    void apply_style(bc_font &);
    double calc_page_height();
-   WRAP check_wordwrap(stream_char, double &, double &, double, double, bool = false);
-   void end_line(NL, stream_char);
+   WRAP check_wordwrap(stream_char, double &, double &, double, double, bool = false, size_t = size_t(-1));
+   void end_line(NL, stream_char, size_t = size_t(-1));
    void new_code_segment();
    void new_segment(const stream_char, const stream_char, double, double, double);
-   WTC wrap_through_clips(double, double, double, double, double &);
+   WTC wrap_through_clips(double, double, double, double, double &, size_t = size_t(-1));
 
 public:
    layout(extDocument *pSelf, RSTREAM *pStream, objVectorViewport *pViewport, padding &pMargins) :
@@ -381,6 +386,33 @@ static inline table_layout_values resolve_table_layout(layout &Layout, bc_table 
    values.min_height = Table.min_height.px(Layout);
    values.cell_padding_width = Table.cell_padding.left + Table.cell_padding.right;
    return values;
+}
+
+static inline bool segment_merge_barrier(SCODE Code)
+{
+   switch (Code) {
+      case SCODE::BUTTON:
+      case SCODE::CHECKBOX:
+      case SCODE::COMBOBOX:
+      case SCODE::IMAGE:
+      case SCODE::INPUT:
+      case SCODE::TABLE_START:
+      case SCODE::TABLE_END:
+      case SCODE::TEXT:
+         return true;
+
+      default:
+         return false;
+   }
+}
+
+static inline bool range_has_segment_merge_barrier(RSTREAM *Stream, stream_char Start, stream_char Stop)
+{
+   for (auto i=Start; i < Stop; i.next_code()) {
+      if (segment_merge_barrier(Stream[0][i.index].code)) return true;
+   }
+
+   return false;
 }
 
 //********************************************************************************************************************
@@ -1232,14 +1264,7 @@ TE layout::lay_table_end(bc_table &Table, double TopMargin, double BottomMargin,
 
    DLAYOUT("Checking table collisions (%gx%g, %gx%g).", Table.x, Table.y, Table.width, Table.height);
 
-   WRAP ww;
-   if (Table.total_clips > m_clips.size()) {
-      std::vector<doc_clip> saved_clips(m_clips.begin() + Table.total_clips, m_clips.end() + m_clips.size());
-      m_clips.resize(Table.total_clips);
-      ww = check_wordwrap(idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x());
-      m_clips.insert(m_clips.end(), make_move_iterator(saved_clips.begin()), make_move_iterator(saved_clips.end()));
-   }
-   else ww = check_wordwrap(idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x());
+   auto ww = check_wordwrap(idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x(), Table.total_clips);
 
    if (ww IS WRAP::EXTEND_PAGE) {
       DLAYOUT("Table wrapped - expanding page width due to table size/position.");
@@ -1297,23 +1322,14 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, double
    // If allow_merge is true, this segment can be merged with prior segment(s) on the line to create one continuous
    // segment.  The basic rule is that any code that produces a graphics element is not safe to merge.
 
-   bool allow_merge = true;
-   for (auto i=Start; i < Stop; i.next_code()) {
-      switch (m_stream[0][i.index].code) {
-         case SCODE::BUTTON:
-         case SCODE::CHECKBOX:
-         case SCODE::COMBOBOX:
-         case SCODE::IMAGE:
-         case SCODE::INPUT:
-         case SCODE::TABLE_START:
-         case SCODE::TABLE_END:
-         case SCODE::TEXT:
-            allow_merge = false;
-            break;
-
-         default: break;
-      }
+   bool allow_merge;
+   if (Width > 0) {
+      allow_merge = false;
    }
+   else if ((Start.offset IS 0) and (Stop.offset IS 0) and (Start.index + 1 IS Stop.index)) {
+      allow_merge = !segment_merge_barrier(m_stream[0][Start.index].code);
+   }
+   else allow_merge = !range_has_segment_merge_barrier(m_stream, Start, Stop);
 
    auto line_height = m_line.height;
    auto descent     = m_line.descent;
@@ -2056,7 +2072,7 @@ exit:
 //********************************************************************************************************************
 // This function is called only when a paragraph or explicit line-break (\n) is encountered.
 
-void layout::end_line(NL NewLine, stream_char Next)
+void layout::end_line(NL NewLine, stream_char Next, size_t ClipLimit)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2074,7 +2090,9 @@ void layout::end_line(NL NewLine, stream_char Next)
       m_line.index.index, int(m_line.index.offset), Next.index, int(Next.offset));
 #endif
 
-   for (auto &clip : m_clips) {
+   auto clip_count = clip_limit_count(ClipLimit);
+   for (size_t i=0; i < clip_count; i++) {
+      auto &clip = m_clips[i];
       if (clip.transparent) continue;
       if ((m_cursor_y + m_line.height >= clip.top) and (m_cursor_y < clip.bottom)) {
          if (m_cursor_x + m_word_width < clip.left) {
@@ -2130,7 +2148,8 @@ void layout::end_line(NL NewLine, stream_char Next)
 // Wrapping can be checked even if there is no 'active word' because we need to be able to wrap empty lines (e.g.
 // solo <br/> tags).
 
-WRAP layout::check_wordwrap(stream_char Cursor, double &X, double &Y, double Width, double Height, bool Floating)
+WRAP layout::check_wordwrap(stream_char Cursor, double &X, double &Y, double Width, double Height, bool Floating,
+   size_t ClipLimit)
 {
    pf::Log log(__FUNCTION__);
    Self->LayoutMetrics.check_wordwrap_calls++;
@@ -2154,13 +2173,14 @@ WRAP layout::check_wordwrap(stream_char Cursor, double &X, double &Y, double Wid
    for (breakloop = MAXLOOP; breakloop > 0; breakloop--) {
       m_align_edge = wrap_edge();
 
-      if (!m_clips.empty()) {
+      auto clip_count = clip_limit_count(ClipLimit);
+      if (clip_count > 0) {
          // If clips are registered then we need to check them for collisions.  Updates m_align_edge if necessary
 
          auto wrap_clip = WTC::DO_NOTHING;
          do {
             double adv_x = 0;
-            wrap_clip = wrap_through_clips(X, Y, Width, Height, adv_x);
+            wrap_clip = wrap_through_clips(X, Y, Width, Height, adv_x, ClipLimit);
 
             if (wrap_clip IS WTC::WRAP_OVER) {
                // Set the line segment up to the encountered boundary and continue checking the vector position against the
@@ -2249,11 +2269,13 @@ WRAP layout::check_wordwrap(stream_char Cursor, double &X, double &Y, double Wid
 // 2. A collision occurs and the word can be advanced to white space that is available past the obstacle.
 // 3. A collision occurs and there is no further room available on this line (not handled by this routine).
 
-WTC layout::wrap_through_clips(double X, double Y, double Width, double Height, double &AdvanceTo)
+WTC layout::wrap_through_clips(double X, double Y, double Width, double Height, double &AdvanceTo, size_t ClipLimit)
 {
    Self->LayoutMetrics.wrap_through_clips_calls++;
 
-   for (auto &clip : m_clips) {
+   auto clip_count = clip_limit_count(ClipLimit);
+   for (size_t i=0; i < clip_count; i++) {
+      auto &clip = m_clips[i];
       if (clip.transparent) continue;
       if ((Y + Height < clip.top) or (Y >= clip.bottom)) continue; // Ignore clips above or below the line.
       if ((X >= clip.right) or (X + Width < clip.left)) continue; // Ignore clips to the left or right

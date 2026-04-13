@@ -341,6 +341,17 @@ end
    assert(missing_segment_attrs is 0, 'Every segment must expose span, geometry, and debug code attributes')
 end
 
+@Test function SegmentMergeFlags()
+   err, xml_str = loadXML('paragraphs.rpl')
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for merge flag test, err=' .. err)
+
+   xml = parseXML(xml_str)
+   assert(xpathNum(xml, 'count(/extract/stream/segments/segment[@allow-merge="true"])') >= 1,
+      'Paragraph fixture must retain at least one mergeable content-free segment')
+   assert(xpathNum(xml, 'count(/extract/stream/segments/segment[contains(@codes, "[E:Text]") and @allow-merge="false"])') >= 1,
+      'Text-bearing segments must remain non-mergeable')
+end
+
 @Test function LayoutMetrics()
    err, xml_str = loadXML('tables.rpl')
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for layout metrics test, err=' .. err)
