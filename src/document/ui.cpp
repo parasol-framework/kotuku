@@ -106,6 +106,7 @@ static bool delete_selected(extDocument *Self)
             auto &text = Self->Stream.lookup<bc_text>(start);
             if (start.index IS end.index) text.text.erase(start.offset, end.offset - start.offset);
             else text.text.erase(start.offset, text.text.size() - start.offset);
+            text.invalidate_tokens();
          }
          start.index++;
          start.offset = 0;
@@ -118,6 +119,7 @@ static bool delete_selected(extDocument *Self)
          if ((end.offset > 0) and (Self->Stream[end.index].code IS SCODE::TEXT)) {
             auto &text = Self->Stream.lookup<bc_text>(end);
             text.text.erase(0, end.offset);
+            text.invalidate_tokens();
          }
       }
 

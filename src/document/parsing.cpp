@@ -1422,9 +1422,13 @@ void parser::trim_preformat(extDocument *Self)
          auto found = text.text.find_last_not_of(ws);
          if (found != std::string::npos) {
             text.text.erase(found + 1);
+            text.invalidate_tokens();
             break;
          }
-         else text.text.clear();
+         else {
+            text.text.clear();
+            text.invalidate_tokens();
+         }
       }
       else break;
    }

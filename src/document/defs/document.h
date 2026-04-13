@@ -883,15 +883,65 @@ struct bc_cell : public entity {
    bc_cell(const bc_cell &Other);
 };
 
+enum class text_token_kind : uint8_t {
+   WORD,
+   WHITESPACE,
+   NEWLINE
+};
+
+struct word_token {
+   uint16_t start = 0;          // Inclusive byte offset into bc_text.text
+   uint16_t stop = 0;           // Exclusive byte offset into bc_text.text
+   int16_t width = -1;          // Cached pixel width for WORD tokens, -1 if unknown
+   uint16_t last_char = 0;      // Last unicode codepoint in the token, used to restore kerning state on cache hits
+   text_token_kind kind = text_token_kind::WORD;
+
+   inline uint16_t length() const {
+      return stop - start;
+   }
+
+   inline bool is_word() const {
+      return kind IS text_token_kind::WORD;
+   }
+
+   inline bool is_whitespace() const {
+      return kind IS text_token_kind::WHITESPACE;
+   }
+
+   inline bool is_newline() const {
+      return kind IS text_token_kind::NEWLINE;
+   }
+
+   inline void invalidate_width() {
+      width = -1;
+      last_char = 0;
+   }
+};
+
 struct bc_text : public entity {
    std::string text;
    std::vector<objVectorText *> vector_text;
+   std::vector<word_token> tokens;
    bool formatted = false;
+   bool tokens_dirty = true;    // Set when text content changes, requiring retokenisation
+   bool widths_dirty = true;    // Set when font context changes, requiring width recalculation
    SEGINDEX segment = -1; // Reference to the first segment that manages this text string.
 
    bc_text() { code = SCODE::TEXT; }
-   bc_text(std::string_view pText) : text(pText) { code = SCODE::TEXT; }
-   bc_text(std::string_view pText, bool pFormatted) : text(pText), formatted(pFormatted) { code = SCODE::TEXT; }
+   bc_text(std::string_view pText) : text(pText) { code = SCODE::TEXT; tokens.reserve(pText.length()/4); }
+   bc_text(std::string_view pText, bool pFormatted) : text(pText), formatted(pFormatted) { code = SCODE::TEXT; tokens.reserve(pText.length()/4); }
+
+   void invalidate_tokens() {
+      tokens_dirty = true;
+      widths_dirty = true;
+   }
+
+   void invalidate_widths() {
+      widths_dirty = true;
+      for (auto &t : tokens) t.invalidate_width();
+   }
+
+   void tokenise();
 };
 
 struct bc_use : public entity {
@@ -1027,8 +1077,8 @@ struct bc_input : public entity, widget_mgr {
    GuardedObject<objVectorViewport> clip_vp;
    bool secret = false;
 
-   bc_input() { 
-      code = SCODE::INPUT; 
+   bc_input() {
+      code = SCODE::INPUT;
       align_to_text = true;
    }
 };
@@ -1036,10 +1086,10 @@ struct bc_input : public entity, widget_mgr {
 struct bc_image : public entity, widget_mgr {
    // Images inherit from widget graphics management since the rules are identical
    // Images are inline by default and aligned to the text baseline (matches HTML)
-   bc_image() { 
-      code = SCODE::IMAGE; 
-      align_to_text = true; 
-      align = ALIGN::BOTTOM; 
+   bc_image() {
+      code = SCODE::IMAGE;
+      align_to_text = true;
+      align = ALIGN::BOTTOM;
    }
 };
 

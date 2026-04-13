@@ -348,6 +348,7 @@ private:
    void lay_row_end(bc_table *);
    TE   lay_table_end(bc_table &, double, double, double &, double &);
    WRAP lay_text();
+   int compute_word_width(const std::string &, const word_token &, int, int &);
 
    void apply_style(bc_font &);
    double calc_page_height();
@@ -825,12 +826,37 @@ void layout::lay_font_end()
 }
 
 //********************************************************************************************************************
+// Compute the pixel width of a word token by summing glyph advances with kerning.  Width is accumulated using the
+// same integer truncation semantics as the original per-glyph `m_word_width += glyph_advance(...)` path so cached
+// words preserve existing wrap points.  The InitKern parameter supports cross-text word continuation where the
+// previous character affects the first glyph's kerning.  LastChar receives the last unicode codepoint in the token for
+// subsequent kerning.
+// 
+// NOTE: Bear in mind that the first word in a TEXT string could be a direct continuation of a previous TEXT word.
+// This can occur if the font colour is changed mid-word for example.
+
+int layout::compute_word_width(const std::string &Str, const word_token &Token, int InitKern, int &LastChar)
+{
+   int width = 0;
+   auto handle = m_font->handle;
+   int kern = InitKern;
+   for (unsigned i = Token.start; i < Token.stop; ) {
+      int unicode;
+      i += getutf8(Str.c_str() + i, &unicode);
+      width += glyph_advance(handle, unicode, kern);
+      kern = unicode;
+   }
+   LastChar = kern;
+   return width;
+}
+
+//********************************************************************************************************************
 // NOTE: Bear in mind that the first word in a TEXT string could be a direct continuation of a previous TEXT word.
 // This can occur if the font colour is changed mid-word for example.
 
 WRAP layout::lay_text()
 {
-   auto wrap_result = WRAP::DO_NOTHING; // Needs to to change to WRAP::EXTEND_PAGE if a word is > width
+   auto wrap_result = WRAP::DO_NOTHING; // Needs to change to WRAP::EXTEND_PAGE if a word is > width
 
    m_align_edge = wrap_edge(); // TODO: Not sure about this following the switch to embedded TEXT structures
 
@@ -838,17 +864,21 @@ WRAP layout::lay_text()
    auto &text = m_stream->lookup<bc_text>(idx);
    auto &str = text.text;
    text.vector_text.clear();
-   for (unsigned i=0; i < str.size(); ) {
-      if (str[i] IS '\n') { // The use of '\n' in a string forces a line break
+
+   // Ensure the token cache is up to date
+
+   if (text.tokens_dirty) text.tokenise();
+
+   for (auto &tok : text.tokens) {
+      if (tok.is_newline()) {
          check_line_height();
          wrap_result = check_wordwrap(m_word_index, m_cursor_x, m_cursor_y, m_word_width,
             (m_line.height < 1) ? 1 : m_line.height);
          if (wrap_result IS WRAP::EXTEND_PAGE) break;
 
-         end_line(NL::PARAGRAPH, stream_char(idx, i));
-         i++;
+         end_line(NL::PARAGRAPH, stream_char(idx, tok.start));
       }
-      else if (unsigned(str[i]) <= 0x20) { // Whitespace encountered
+      else if (tok.is_whitespace()) {
          check_line_height();
 
          if ((m_word_width) and (!m_no_wrap)) { // Existing word finished, check if it will wordwrap
@@ -864,22 +894,42 @@ WRAP layout::lay_text()
          // Current word state must be reset.
          m_kernchar   = 0;
          m_word_width = 0;
-         i++;
       }
-      else {
+      else { // WORD token
+         int last_char = 0;
+
          if (!m_word_width) {
-            m_word_index.set(idx, i);   // Save the index of the new word
+            m_word_index.set(idx, tok.start);   // Save the index of the new word
             check_line_height();
+
+            // Use cached width when available, otherwise compute and cache it
+
+            if ((tok.width >= 0) and (!text.widths_dirty)) {
+               m_word_width += tok.width;
+               last_char = tok.last_char;
+            }
+            else {
+               auto w = compute_word_width(str, tok, 0, last_char);
+               tok.width = int16_t(w);
+               tok.last_char = last_char;
+               m_word_width += w;
+            }
+         }
+         else {
+            // Continuation of a previous word (cross-text or consecutive word tokens).
+            // Kerning depends on m_kernchar, so we compute character-by-character.
+
+            auto w = compute_word_width(str, tok, m_kernchar, last_char);
+            m_word_width += w;
          }
 
-         int unicode;
-         i += getutf8(str.c_str()+i, &unicode);
-         m_word_width += glyph_advance(m_font->handle, unicode, m_kernchar);
-         m_kernchar    = unicode;
+         m_kernchar = last_char;
 
          if (ascent > m_line.word_height) m_line.word_height = ascent;
       }
    }
+
+   text.widths_dirty = false;
 
    // Entire text string has been processed, perform one final wrapping check.
 
