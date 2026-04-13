@@ -262,7 +262,7 @@ ERR GetRelativeCursorPos(OBJECTID SurfaceID, double *X, double *Y)
 
    if (get_surface_abs(SurfaceID, &absx, &absy, 0, 0) != ERR::Okay) {
       log.warning("Failed to get info for surface #%d.", SurfaceID);
-      return ERR::Failed;
+      return ERR::Search;
    }
 
    if (auto pointer = gfx::AccessPointer()) {
@@ -709,7 +709,7 @@ ERR StartCursorDrag(OBJECTID Source, int Item, CSTRING Datatypes, OBJECTID Surfa
    if (auto pointer = (extPointer *)gfx::AccessPointer()) {
       if (!pointer->Buttons[0].LastClicked) {
          ReleaseObject(pointer);
-         return log.warning(ERR::Failed);
+         return log.warning(ERR::InvalidState);
       }
 
       if (pointer->DragSourceID) {

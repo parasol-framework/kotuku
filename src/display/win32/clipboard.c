@@ -37,11 +37,8 @@ enum {
 #define AND &&
 #define IS  ==
 
-#ifdef _DEBUG
-#define MSG(...) fprintf(stderr, __VA_ARGS__)
-#else
+//#define MSG(...) fprintf(stderr, __VA_ARGS__)
 #define MSG(...)
-#endif
 
 #define CLIP_DATA    (1<<CT_DATA)   // 1
 #define CLIP_AUDIO   (1<<CT_AUDIO)  // 2

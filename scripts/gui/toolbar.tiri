@@ -11,11 +11,11 @@ Documentation is available in the Kotuku Wiki.
 
 local lClickX, lClickY
 lCounter = 0
-lTipDelay = 0.75
+lTipDelay <const> = 0.75
 
-TI_ICON  = 1
-TI_BREAK = 2
-TI_GROUP = 3
+TI_ICON  <const> = 1
+TI_BREAK <const> = 2
+TI_GROUP <const> = 3
 
 function counter()
    lCounter++
@@ -23,22 +23,18 @@ function counter()
 end
 
 gui.toolbar = function(Options)
+   local theme
+
    self = { -- Public variables
       host           = nil,
       viewport       = nil,  -- The main viewport for the toolbar
-      _groupMargin   = 4,
+      _groupMargin   = 6,
       _groupCount    = 0,
       _round         = 4,
-      _cellMargin    = Options.cellMargin ?? 6,
       _disabled      = false,
       _lookup        = { },
-      _iconSize      = Options.iconSize ?? gui.interface.iconSize,
       _hasFocus      = false,
-      _iconTheme     = Options.iconTheme ?? gui.style.page.icon,
-      _iconHighlight = Options.iconHighlight ?? gui.style.page.iconHighlight,
-      _hoverFill     = Options.hoverFill ?? gui.style.button.highlight,
-      _selectFill    = Options.selectFill ?? gui.palette.prime,
-      _groupBorder   = Options.groupBorder ?? gui.style.widget.stroke
+      _cellMargin    = Options.cellMargin ?? 6
    }
 
    function sendFeedback()
@@ -210,14 +206,15 @@ gui.toolbar = function(Options)
                   item.width = self._iconSize + (self._cellMargin * 2)
                end
 
-               item.bkgd = self.vg.new('VectorRectangle', { fill = gui.style.page.bkgd,
+               item.bkgd = self.vg.new('VectorRectangle', {
+                  fill = theme.toolbar.bkgd,
                   name = 'groupbkgd', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
                })
 
                item.bkgd.acMoveToBack()
 
                item.border = self.vg.new('VectorRectangle', {
-                  name = 'grouprect', stroke = gui.style.button.bkgd, strokeWidth = gui.style.widget.strokeWidth,
+                  name = 'grouprect', stroke = theme.toolbar.groupStroke, strokeWidth = gui.sizing.widget.strokeWidth,
                   x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
                })
 
@@ -241,14 +238,14 @@ gui.toolbar = function(Options)
                end
                item.icon.acMoveToFront()
             elseif item.displayName?? then
-               fill_name = 'tbar_' .. self._iconTheme
+               fill_name = f'tbar_{self._iconTheme}'
                gui.simpleGradient(self.viewport.scene, fill_name, gui.iconThemes[self._iconTheme], 0, 0, 0, 1, 'boundingbox', true)
-               item.textFill = 'url(#' .. fill_name .. ')'
+               item.textFill = f'url(#{fill_name})'
 
                if self._iconHighlight and (self._iconTheme != self._iconHighlight) then
-                  alt_name = 'tbar_' .. self._iconHighlight
+                  alt_name = f'tbar_{self._iconHighlight}'
                   gui.simpleGradient(self.viewport.scene, alt_name, gui.iconThemes[self._iconHighlight], 0, 0, 0, 1, 'boundingbox', true)
-                  item.textAltFill = 'url(#' .. alt_name .. ')'
+                  item.textAltFill = f'url(#{alt_name})'
                end
 
                item.vectorText = self.vg.new('VectorText', {
@@ -418,11 +415,11 @@ gui.toolbar = function(Options)
 
    self.applySticker = function(ID, Content)
       item = self._lookup[ID]
-      if not item then return end
+      item ?? return
 
       sticker_size = math.floor(self._iconSize * 0.5)
 
-      if not item.sticker then item.sticker = { } end
+      item.sticker ?= { }
 
       if not item.sticker.viewport then
          item.sticker.viewport = self.viewport.new('VectorViewport', {
@@ -430,7 +427,7 @@ gui.toolbar = function(Options)
          })
 
          item.sticker.bkgd = item.sticker.viewport.new('VectorEllipse', {
-            cx='50%', cy='50%', radius=self._iconSize * 0.25, fill=gui.palette.prime
+            cx='50%', cy='50%', radius=self._iconSize * 0.25, fill=theme.palette.prime
          })
       end
 
@@ -454,7 +451,7 @@ gui.toolbar = function(Options)
          end
 
          if type(Content) is 'string' then
-            if Content:len() > 1 then Content = Content:sub(0,1) end
+            if #Content > 1 then Content = Content:sub(0,1) end
          end
 
          font_size = sticker_size * 0.75
@@ -560,7 +557,7 @@ gui.toolbar = function(Options)
             if self._current then
                hoverUpdate(nil)
             end
-         elseif (ev.flags & JTYPE_MOVEMENT)?? then
+         elseif ev.flags has JTYPE_MOVEMENT then
             if self._clicked then return end
 
             item = getCursorItem(ev.x, ev.y)
@@ -571,7 +568,7 @@ gui.toolbar = function(Options)
             else
                cancelTipTimer()
             end
-         elseif (ev.flags & JTYPE_BUTTON)?? then
+         elseif ev.flags has JTYPE_BUTTON then
             if ev.value > 0 then
                if self._disabled then return end
 
@@ -613,6 +610,15 @@ gui.toolbar = function(Options)
 
    assert(Options.target, 'A target viewport is required.')
 
+   theme = gui.getTheme(Options.target)
+
+   self._iconSize      = Options.iconSize      ?? gui.interface.iconSize
+   self._iconTheme     = Options.iconTheme     ?? theme.toolbar.icon
+   self._iconHighlight = Options.iconHighlight ?? theme.toolbar.iconHighlight
+   self._hoverFill     = Options.hoverFill     ?? theme.button.highlight
+   self._selectFill    = Options.selectFill    ?? theme.palette.prime
+   self._groupBorder   = Options.groupBorder   ?? theme.window.stroke
+
    if Options.groupMargin then
       self._groupMargin = Options.groupMargin
       if self._groupMargin < 1 then self._groupMargin = 1 end
@@ -647,14 +653,14 @@ gui.toolbar = function(Options)
       self._groupMargin = 0
    end
 
-   if self.viewport.init() != ERR_Okay then error('Failed to initialise viewport.') end
+   check self.viewport.init()
 
    self.viewport.subscribe('free', function(Viewport, Args)
       if self._tipTimer then mSys.UpdateTimer(self._tipTimer, 0) end
       self = { }
    end)
 
-   self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+   self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, function(Viewport, Event)
       if Event is FM_LOST_FOCUS then
          self._hasFocus = false
          if self._current then
@@ -669,7 +675,7 @@ gui.toolbar = function(Options)
    end)
 
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
-      if (Qualifiers & KQ_PRESSED) != 0 then
+      if Qualifiers has KQ_PRESSED then
          if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) or (Code is KEY_SPACE) then
             sendFeedback()
          elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
@@ -678,7 +684,7 @@ gui.toolbar = function(Options)
                while scan and (scan.type != TI_ICON) do
                   scan = scan.prev
                end
-               if not scan then scan = lastIcon() end
+               scan ?= lastIcon()
                highlightItem(scan)
             else
                highlightItem(firstIcon())
@@ -689,7 +695,7 @@ gui.toolbar = function(Options)
                while scan and (scan.type != TI_ICON) do
                   scan = scan.next
                end
-               if not scan then scan = firstIcon() end
+               scan ?= firstIcon()
                highlightItem(scan)
             else
                highlightItem(firstIcon())

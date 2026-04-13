@@ -898,7 +898,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          XSetErrorHandler((XErrorHandler)CatchXError);
          XSetIOErrorHandler(CatchXIOError);
       }
-      else return ERR::Failed;
+      else return ERR::SystemCall;
 
       // Get the X11 file descriptor (for incoming events) and tell the Core to listen to it when the task is sleeping.
       // The FD is currently marked as a dummy because processes aren't being woken from select() if the X11 FD already

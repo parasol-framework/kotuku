@@ -818,7 +818,7 @@ Okay: The File was moved successfully.
 NullArgs
 Args
 FieldNotSet: The #Path field has not been set in the file object.
-Failed
+InvalidPath: Attempted to move a volume.
 
 *********************************************************************************************************************/
 
@@ -839,10 +839,7 @@ static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
 
       while ((src.ends_with('/')) or (src.ends_with('\\'))) src.remove_suffix(1);
 
-      if (src.ends_with(':')) {
-         log.warning("Moving volumes is illegal.");
-         return ERR::Failed;
-      }
+      if (src.ends_with(':')) return log.warning(ERR::InvalidPath);
 
       auto i = src.find_last_of(":/\\");
       auto folder = src.substr(0, i);
@@ -2729,4 +2726,3 @@ extern ERR add_file_class(void)
 
    return glFileClass ? ERR::Okay : ERR::AddClass;
 }
-

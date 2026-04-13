@@ -7,7 +7,7 @@
 
    proc = processing.new(5.0)
    glPicsProcessed = 0
-   glPictures = { }
+   glPictures = array<table>
 
 @BeforeAll function init()
    mGfx ?? return
@@ -17,9 +17,9 @@
    print(f'Scanning "{folder}" for SVGs')
    io.search(folder, {
       nameFilter = regex.new('.+\\.svg'),
-      matchFeedback = function(Path:str, FileName:str, File)
+      matchFeedback = function(Path:str, FileName:str, File:obj)
          list ..= FileName .. ' '
-         table.insert(glPictures, { path=Path .. FileName })
+         glPictures:push({ path=Path .. FileName })
       end
    })
 
@@ -64,9 +64,9 @@ end
    glPicsProcessed = 0
    count = 0
 
-   for k, v in ipairs(glPictures) do
+   for k, v in glPictures do
       if v.pic then
-         thread.action(v.pic, 'Activate', picProcessed, k)
+         async.action(v.pic, 'Activate', picProcessed, k)
          count++
       end
    end
@@ -94,31 +94,56 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
+-- Verify that multiple async.action() calls on the same object execute in FIFO order.
+-- Each callback records its Key parameter; the final order should match submission order.
 
-@Test(priority=3) function MultipleSignals()
-   signal_a = obj.new('xml', { flags=XMF_NEW })
-   signal_b = obj.new('xml', { flags=XMF_NEW })
+@Test(priority=3); @Requires(display=true) function FifoOrdering()
+   pic = obj.new('picture', { path=glPictures[0].path, flags=PCF_QUERY })
 
-   for i=1,2 do -- Run enough times to sufficiently test thread locking
-      msg('Iteration ' .. i)
-      -- Because the thread code is parsed as a string it won't see variables outside of its scope
-      thread.script([[
-         msg('Thread is now in session.')
-      ]],
-      function()
-         msg('Thread has been executed.')
-         signal_a.acSignal()
-         signal_b.acSignal()
-      end)
+   order_log = { }
+   completed = 0
+   expected = 8
 
-      try
-         proc = processing.new({ timeout=1.0, signals = { signal_a, signal_b } })
-         msg('Sleeping....')
-         err = proc.sleep()
-         assert(err is ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
-      except e
-         error('Error during MultipleSignals test: ' .. e.message)
-      end
+   for i = 0, expected - 1 do
+      async.action(pic, 'Activate', function(ActionID, Object, Error, Key)
+         table.insert(order_log, Key)
+         completed++
+         if completed >= expected then
+            processing.signal()
+         end
+      end, i)
    end
+
+   check processing.sleep(3)
+   assert(completed is expected, f'Expected {expected} completions, got {completed}')
+
+   -- Verify FIFO ordering: keys should arrive in submission order (0, 1, 2, ..., 7)
+   for i = 0, #order_log - 1 do
+      assert(order_log[i] is i, f'Expected key {i} at position {i}, got {order_log[i]}')
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify that queued actions without callbacks still allow subsequent queued actions to dispatch.
+
+@Test(priority=4); @Requires(display=true) function CallbacklessQueueing()
+   pic = obj.new('picture', { path=glPictures[0].path, flags=PCF_QUERY })
+
+   completed = 0
+
+   -- Queue some actions on the same object without callbacks, followed by 1 with a callback
+
+   async.action(pic, 'Activate')
+
+   async.action(pic, 'Activate')
+
+   async.action(pic, 'Activate')
+
+   async.action(pic, 'Activate', function(ActionID, Object, Error, Key)
+      completed++
+      processing.signal()
+   end, 0)
+
+   check processing.sleep(3)
+   assert(completed is 1, 'Final callback was not invoked after callback-less queued actions.')
 end

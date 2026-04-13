@@ -37,7 +37,7 @@ function declareErrors()
     "NoAction",
     "NoSupport",                -- Operation not supported
     "Memory",
-    "TimeOut",
+    "Timeout|TimeOut",
     "NoStats",
     "LowCapacity",
     "Init",
@@ -64,7 +64,7 @@ function declareErrors()
     "IllegalMethodID",
     "IllegalActionID",
     "ModuleOpenFailed",
-    "IllegalActionAttempt",
+    "IllegalActionAttempt",  -- DEPRECATED
     "EntryMissingHeader",
     "ModuleMissingInit",
     "ModuleInitFailed",

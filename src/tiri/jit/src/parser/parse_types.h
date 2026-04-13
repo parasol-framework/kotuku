@@ -356,6 +356,7 @@ enum class BinOpr : int8_t {
    LessThan, GreaterEqual, LessEqual, GreaterThan,
    BitAnd, BitOr, BitXor, ShiftLeft, ShiftRight,
    LogicalAnd, LogicalOr, IfEmpty,
+   HasFlag,
    Ternary,
    None
 };

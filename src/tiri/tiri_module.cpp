@@ -1115,7 +1115,6 @@ void register_module_class(lua_State *Lua)
    pf::Log log;
 
    static const struct luaL_Reg modlib_functions[] = {
-      { "new",  module_load },
       { "load", module_load },
       { "test", module_test },
       { nullptr, nullptr}
@@ -1141,7 +1140,6 @@ void register_module_class(lua_State *Lua)
    luaL_openlib(Lua, "mod", modlib_functions, 0);
 
    // Register mod interface prototypes for compile-time type inference
-   reg_iface_prototype("mod", "new", { TiriType::Any }, { TiriType::Str });
    reg_iface_prototype("mod", "load", { TiriType::Any }, { TiriType::Str });
    reg_iface_prototype("mod", "test", { TiriType::Num, TiriType::Num }, { TiriType::Any, TiriType::Str });
 }

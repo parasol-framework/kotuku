@@ -8,6 +8,128 @@
 // - Range literal optimisation for JIT compilation
 
 //********************************************************************************************************************
+// Attempts to parse a range expression enclosed in braces: {expr..expr} or {expr...expr}
+// Used by for-in loops to always interpret {Y..Z} as a range, even when Y and Z are complex expressions.
+//
+// Uses a lookahead scan to confirm that '..' or '...' exists at brace/paren/bracket depth 0 inside the braces.
+// If confirmed, parses start and stop as full expressions and returns a RangeExpr node.
+// If the scan does not find a range operator, returns failure so the caller can fall through to normal parsing.
+//
+// The start expression is parsed with precedence 5 so that it stops before consuming '..' (Cat token,
+// left precedence 5).  The stop expression uses default precedence and naturally stops at '}'.
+
+ParserResult<ExprNodePtr> AstBuilder::parse_range_in_braces()
+{
+   // Lookahead scan: starting from the token after '{', verify a strict
+   // {start_expr .. stop_expr} or {start_expr ... stop_expr} shape at depth 0.
+   // This avoids misclassifying table literals that merely contain '..'/'...'.
+
+   bool found_range_operator = false;
+   bool is_inclusive = false;
+   bool has_start_expr_tokens = false;
+   bool has_stop_expr_tokens = false;
+   bool ended_on_right_brace = false;
+   bool invalid_top_level_shape = false;
+   int depth = 0;
+
+   for (size_t i = 1; ; i++) {
+      Token tok = this->ctx.tokens().peek(i);
+      auto kind = tok.kind();
+
+      if (kind IS TokenKind::EndOfFile) {
+         break;
+      }
+
+      if (depth IS 0 and kind IS TokenKind::RightBrace) {
+         ended_on_right_brace = true;
+         break;
+      }
+
+      if (kind IS TokenKind::LeftParen or kind IS TokenKind::LeftBracket or kind IS TokenKind::LeftBrace) {
+         if (depth IS 0) {
+            if (found_range_operator) has_stop_expr_tokens = true;
+            else has_start_expr_tokens = true;
+         }
+         depth++;
+      }
+      else if (kind IS TokenKind::RightParen or kind IS TokenKind::RightBracket) {
+         depth--;
+         if (depth < 0) {
+            invalid_top_level_shape = true;
+            break;
+         }
+      }
+      else if (kind IS TokenKind::RightBrace) {
+         depth--;
+         if (depth < 0) {
+            invalid_top_level_shape = true;
+            break;
+         }
+      }
+      else if (depth IS 0) {
+         if (kind IS TokenKind::Comma) {
+            invalid_top_level_shape = true;
+            break;
+         }
+
+         if (kind IS TokenKind::Cat or kind IS TokenKind::Dots) {
+            // Exactly one top-level range operator is allowed, and it must
+            // appear after at least one token belonging to the start expression.
+            if (found_range_operator or not has_start_expr_tokens) {
+               invalid_top_level_shape = true;
+               break;
+            }
+
+            found_range_operator = true;
+            is_inclusive = (kind IS TokenKind::Dots);
+         }
+         else {
+            if (found_range_operator) has_stop_expr_tokens = true;
+            else has_start_expr_tokens = true;
+         }
+      }
+   }
+
+   if (invalid_top_level_shape or not ended_on_right_brace or not found_range_operator
+      or not has_start_expr_tokens or not has_stop_expr_tokens) {
+      return ParserResult<ExprNodePtr>::failure(
+         ParserError(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(), "not a range expression"));
+   }
+
+   // Confirmed range pattern.  Consume '{' and parse the range.
+
+   Token brace_token = this->ctx.tokens().current();
+   this->ctx.tokens().advance();  // Consume '{'
+
+   // Parse start expression with precedence 5, which stops before '..' (Cat, left precedence 5)
+   auto start_expr = this->parse_expression(5);
+   if (not start_expr.ok()) return ParserResult<ExprNodePtr>::failure(start_expr.error_ref());
+
+   // Consume the range operator
+   Token range_tok = this->ctx.tokens().current();
+   if (range_tok.kind() IS TokenKind::Cat) {
+      is_inclusive = false;
+   }
+   else if (range_tok.kind() IS TokenKind::Dots) {
+      is_inclusive = true;
+   }
+   else {
+      return this->fail<ExprNodePtr>(ParserErrorCode::ExpectedToken, range_tok, "expected '..' or '...' range operator");
+   }
+   this->ctx.tokens().advance();  // Consume '..' or '...'
+
+   // Parse stop expression (stops naturally at '}')
+   auto stop_expr = this->parse_expression();
+   if (not stop_expr.ok()) return ParserResult<ExprNodePtr>::failure(stop_expr.error_ref());
+
+   this->ctx.consume(TokenKind::RightBrace, ParserErrorCode::ExpectedToken);
+
+   ExprNodePtr node = make_range_expr(brace_token.span(), std::move(start_expr.value_ref()),
+      std::move(stop_expr.value_ref()), is_inclusive);
+   return ParserResult<ExprNodePtr>::success(std::move(node));
+}
+
+//********************************************************************************************************************
 // Parses for loops, handling both numeric (for i=start,stop,step) and generic (for k,v in iterator) forms.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_for()
@@ -57,10 +179,28 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
    }
 
    this->ctx.consume(TokenKind::InToken, ParserErrorCode::ExpectedToken);
-   auto iterators = this->parse_expression_list();
-   if (not iterators.ok()) return ParserResult<StmtNodePtr>::failure(iterators.error_ref());
 
-   ExprNodeList iterator_nodes = std::move(iterators.value_ref());
+   // In for-in loops, always interpret {expr..expr} as a range expression, even when the operands
+   // are complex expressions like {0..total-1}.  This bypasses the restrictive lookahead in
+   // parse_table_literal() which only handles simple operands.
+
+   ExprNodeList iterator_nodes;
+   if (this->ctx.check(TokenKind::LeftBrace)) {
+      auto range_result = this->parse_range_in_braces();
+      if (range_result.ok()) {
+         iterator_nodes.push_back(std::move(range_result.value_ref()));
+      }
+      else {
+         auto iterators = this->parse_expression_list();
+         if (not iterators.ok()) return ParserResult<StmtNodePtr>::failure(iterators.error_ref());
+         iterator_nodes = std::move(iterators.value_ref());
+      }
+   }
+   else {
+      auto iterators = this->parse_expression_list();
+      if (not iterators.ok()) return ParserResult<StmtNodePtr>::failure(iterators.error_ref());
+      iterator_nodes = std::move(iterators.value_ref());
+   }
 
    // JIT Optimisation: Convert range literals with a single loop variable to numeric for loops.
    // This allows the JIT to compile `for i in {1..10} do` into optimised BC_FORI/BC_FORL bytecode
@@ -169,11 +309,26 @@ ParserResult<StmtNodePtr> AstBuilder::parse_for()
 
 ParserResult<StmtNodePtr> AstBuilder::parse_anonymous_for(const Token& ForToken)
 {
-   // Parse the iterator expression (expected to be a range like {0..10})
-   auto iterator = this->parse_expression();
-   if (not iterator.ok()) return ParserResult<StmtNodePtr>::failure(iterator.error_ref());
+   // Parse the iterator expression (expected to be a range like {0..10}).
+   // Try parse_range_in_braces() first to support complex expressions like {0..total-1}.
 
-   ExprNodePtr iter_expr = std::move(iterator.value_ref());
+   ExprNodePtr iter_expr;
+   if (this->ctx.check(TokenKind::LeftBrace)) {
+      auto range_result = this->parse_range_in_braces();
+      if (range_result.ok()) {
+         iter_expr = std::move(range_result.value_ref());
+      }
+      else {
+         auto iterator = this->parse_expression();
+         if (not iterator.ok()) return ParserResult<StmtNodePtr>::failure(iterator.error_ref());
+         iter_expr = std::move(iterator.value_ref());
+      }
+   }
+   else {
+      auto iterator = this->parse_expression();
+      if (not iterator.ok()) return ParserResult<StmtNodePtr>::failure(iterator.error_ref());
+      iter_expr = std::move(iterator.value_ref());
+   }
 
    // Create a blank identifier for the anonymous loop variable
    Identifier blank_id;

@@ -193,7 +193,7 @@ LJLIB_CF(math_random)      LJLIB_REC(.)
 
 // PRNG seed function.
 LJLIB_PUSH(top-2)  //  Upvalue holds userdata with PRNGState.
-LJLIB_CF(math_randomseed)
+LJLIB_CF(math_randomSeed)
 {
    PRNGState* rs = (PRNGState*)(uddata(udataV(lj_lib_upvalue(L, 1))));
    random_seed(rs, lj_lib_checknum(L, 1));
@@ -240,8 +240,7 @@ extern int luaopen_math(lua_State* L)
    reg_iface_prototype("math", "max", { TiriType::Num }, { TiriType::Num }, FProtoFlags::Variadic);
    reg_iface_prototype("math", "round", { TiriType::Num }, { TiriType::Num, TiriType::Num });
    reg_iface_prototype("math", "random", { TiriType::Num }, { TiriType::Num, TiriType::Num });
-   reg_iface_prototype("math", "randomseed", {}, { TiriType::Num });
+   reg_iface_prototype("math", "randomSeed", {}, { TiriType::Num });
 
    return 1;
 }
-

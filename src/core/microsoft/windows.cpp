@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <algorithm>
-#ifdef _DEBUG
+#ifndef NDEBUG
 #include <crtdbg.h>
 #endif
 #ifdef _MSC_VER
@@ -56,11 +56,8 @@ constexpr int MAX_ERROR_MSG = 400;
 constexpr int MAX_USERNAME = 256;
 constexpr int MAX_ENV_VALUE = 512;
 
-#ifdef _DEBUG
-#define MSG(...) printf(__VA_ARGS__)
-#else
+//#define MSG(...) printf(__VA_ARGS__)
 #define MSG(...)
-#endif
 
 #include <string>
 #include <array>
@@ -370,7 +367,7 @@ static inline unsigned int LCASEHASH(const char* String) noexcept
 
 //********************************************************************************************************************
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 static char glSymbolsLoaded = false;
 static void windows_print_stacktrace(CONTEXT* context)
 {
@@ -442,7 +439,7 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
    char path[255];
    int len;
 
-   #ifdef _DEBUG
+   #ifndef NDEBUG
       // This is only needed if the application crashes and a stack trace is printed.
       SymSetOptions(SymGetOptions() | SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS);
       if (SymInitialize(GetCurrentProcess(), 0, true)) glSymbolsLoaded = true;
@@ -1333,7 +1330,7 @@ int ExceptionFilter(LPEXCEPTION_POINTERS Args)
 {
    int continuable, code, err;
 
-   #ifdef _DEBUG
+   #ifndef NDEBUG
    if (Args->ExceptionRecord->ExceptionCode != EXCEPTION_STACK_OVERFLOW) {
       windows_print_stacktrace(Args->ContextRecord);
    }

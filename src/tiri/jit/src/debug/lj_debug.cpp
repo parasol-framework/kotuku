@@ -59,10 +59,10 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
    GCproto* pt;
    BCPOS pos;
 
-   if (not isluafunc(fn)) {  //  Cannot derive a PC for non-Lua functions.
+   if (not isluafunc(fn)) {  //  Cannot derive a PC for non-Tiri functions.
       return NO_BCPOS;
    }
-   else if (nextframe IS nullptr) {  //  Lua function on top.
+   else if (nextframe IS nullptr) {  //  Tiri function on top.
       void *cf = cframe_raw(L->cframe);
       if (cf IS nullptr or (char*)cframe_pc(cf) IS (char*)cframe_L(cf)) return NO_BCPOS;
       ins = cframe_pc(cf);  //  Only happens during error/hook handling.
@@ -70,7 +70,7 @@ static BCPOS debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
    else {
       if (frame_islua(nextframe)) ins = frame_pc(nextframe);
       else if (frame_iscont(nextframe)) ins = frame_contpc(nextframe);
-      else { // Lua function below errfunc/gc/hook: find cframe to get the PC.
+      else { // Tiri function below errfunc/gc/hook: find cframe to get the PC.
          void *cf = cframe_raw(L->cframe);
          TValue *f = L->base - 1;
          while (true) {
@@ -410,7 +410,7 @@ void lj_debug_addloc(lua_State *L, CSTRING msg, cTValue *frame, cTValue *nextfra
 }
 
 //********************************************************************************************************************
-// Push location string for a bytecode position to Lua stack.
+// Push location string for a bytecode position to Tiri stack.
 // Uses FileSource tracking to display accurate file:line for imported code.
 // The BCLine returned by lj_debug_line includes the file index from fileinfo (if available).
 
@@ -522,7 +522,7 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
                   ar->short_src[LUA_IDSIZE - 1] = '\0';
                   ar->linedefined = firstline.lineNumber();
                   ar->lastlinedefined = firstline.lineNumber() + pt->numline;
-                  ar->what = (firstline or !pt->numline) ? "Lua" : "main";
+                  ar->what = (firstline or !pt->numline) ? "Tiri" : "main";
                }
                else {
                   // Fallback to prototype chunk_name
@@ -531,7 +531,7 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
                   lj_debug_shortname(ar->short_src, name, pt->firstline);
                   ar->linedefined = firstline.lineNumber();
                   ar->lastlinedefined = firstline.lineNumber() + pt->numline;
-                  ar->what = (firstline or !pt->numline) ? "Lua" : "main";
+                  ar->what = (firstline or !pt->numline) ? "Tiri" : "main";
                }
             }
             else {
@@ -541,7 +541,7 @@ int lj_debug_getinfo(lua_State *L, CSTRING what, lj_Debug *ar, int ext)
                lj_debug_shortname(ar->short_src, name, pt->firstline);
                ar->linedefined = firstline.lineNumber();
                ar->lastlinedefined = firstline.lineNumber() + pt->numline;
-               ar->what = (firstline or !pt->numline) ? "Lua" : "main";
+               ar->what = (firstline or !pt->numline) ? "Tiri" : "main";
             }
          }
          else {

@@ -1164,8 +1164,8 @@ struct lua_State {
    GCRef   env;         //  Thread environment (table of globals).
    void    *cframe;     //  End of C stack frame chain.
    MSize   stacksize;   //  True stack size (incl. LJ_STACK_EXTRA).
-   class objScript *script;
-   bool    sent_traceback;    // True if traceback has been sent for the current error
+   class objScript *script;  // Back-reference to the script that owns this lua_State
+   bool    sent_traceback;   // True if traceback has been sent for the current error
    uint8_t resolving_thunk;  // Flag to prevent recursive thunk resolution
    ParserDiagnostics *parser_diagnostics; // Stores ParserDiagnostics* during parsing errors
    TipEmitter *parser_tips;               // Stores TipEmitter* during parsing for code hints
@@ -1174,7 +1174,7 @@ struct lua_State {
    TryFrameStack try_stack;      // Exception frame stack (nullptr until first BC_TRYENTER)
    const BCIns   *try_handler_pc; // Handler PC for error re-entry (set during unwind)
    CapturedStackTrace *pending_trace; // Trace captured during exception handling (for try<trace>)
-   ERR      CaughtError = ERR::Okay; // Catches ERR results from module functions.
+   ERR    CaughtError = ERR::Okay; // Catches ERR results from module functions.
 
    // FileSource tracking for accurate error reporting in imported files
    std::vector<FileSource> file_sources;  // Index 0 = main file, 255 = overflow
@@ -1410,13 +1410,23 @@ inline void setrawlightudV(TValue* o, void* p) { o->u64 = (uint64_t)p | (((uint6
 #define contptr(f)     ((void *)(f))
 #define setcont(o, f)  ((o)->u64 = (uint64_t)(uintptr_t)contptr(f))
 
+LJ_DATA const char* const lj_obj_itypename[];
+
 inline void checklivetv(lua_State* L, TValue* o, const char* msg) noexcept
 {
 #if LUA_USE_ASSERT
    if (tvisgcv(o)) {
-      lj_assertL(~itype(o) IS gcval(o)->gch.gct, "mismatch of TValue type %d vs GC type %d", ~itype(o), gcval(o)->gch.gct);
+      auto tv_type = (uint32_t)~itype(o);
+      auto gc_type = (uint32_t)gcval(o)->gch.gct;
+      CSTRING tv_name = (tv_type <= (uint32_t)~LJ_TNUMX) ? lj_obj_itypename[tv_type] : "invalid";
+      CSTRING gc_name = (gc_type <= (uint32_t)~LJ_TNUMX) ? lj_obj_itypename[gc_type] : "invalid";
+      lj_assertL(tv_type IS gc_type,
+         "%s: TValue type %d (%s) vs GC type %d (%s), GCobj %p, TValue %p, marked 0x%02x",
+         msg, tv_type, tv_name, gc_type, gc_name, (void*)gcval(o), (void*)o, gcval(o)->gch.marked);
       // Copy of isdead check from lj_gc.h to avoid circular include.
-      lj_assertL(!(gcval(o)->gch.marked & (G(L)->gc.currentwhite ^ 3) & 3), msg);
+      lj_assertL(!(gcval(o)->gch.marked & (G(L)->gc.currentwhite ^ 3) & 3),
+         "%s: dead GC object %p, type %d (%s), marked 0x%02x, currentwhite %d",
+         msg, (void*)gcval(o), gc_type, gc_name, gcval(o)->gch.marked, G(L)->gc.currentwhite);
    }
 #endif
 }
@@ -1481,6 +1491,30 @@ inline void setintptrV(TValue* o, intptr_t i) noexcept { setint64V(o, i); }
 inline void copyTV(lua_State* L, TValue* o1, const TValue* o2)
 {
    *o1 = *o2;
+#if LUA_USE_ASSERT
+   if (tvisgcv(o1)) {
+      auto gc_type = (uint32_t)gcval(o1)->gch.gct;
+      if (~itype(o1) != gc_type or gc_type > (uint32_t)~LJ_TNUMX) {
+         const char* location = "unknown";
+         ptrdiff_t stack_offset = -1;
+         TValue* stack_base = tvref(L->stack);
+         TValue* stack_end = mref<TValue>(L->maxstack) + 1;
+         if ((char*)o2 >= (char*)stack_base and (char*)o2 < (char*)stack_end) {
+            location = "stack";
+            stack_offset = o2 - stack_base;
+         }
+         else if ((char*)o1 >= (char*)stack_base and (char*)o1 < (char*)stack_end) {
+            location = "stack(dst)";
+            stack_offset = o1 - stack_base;
+         }
+         ptrdiff_t base_offset = (L->base) ? (o2 - L->base) : -1;
+         fprintf(stderr, "[checklivetv] copyTV stale ref: src %p (%s, stack_off=%td, base_off=%td) -> dst %p, "
+            "L->base=%p, L->top=%p, nframes_approx=%td\n",
+            (const void*)o2, location, stack_offset, base_offset,
+            (void*)o1, (void*)L->base, (void*)L->top, L->top - L->base);
+      }
+   }
+#endif
    checklivetv(L, o1, "copy of dead GC object");
 }
 

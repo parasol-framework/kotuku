@@ -1,3 +1,4 @@
+#!/usr/bin/env origo
 --[[
 A file viewer for recognised documents like SVG and RIPL
 --]]
@@ -9,19 +10,26 @@ A file viewer for recognised documents like SVG and RIPL
    import 'gui/listview'
    import 'gui/scrollbar'
    import 'gui/filedialog'
+   include 'svg'
 
-   glBody = [[<body fill="rgb(20,20,40)" font-fill="rgb(255,255,255)" font-size="12pt" margins="2em"/>]]
+glBody = [[<body fill="rgb(68 68 90)" font-fill="white" font-face="Noto Sans" font-size="12pt" margins="2em"/>]]
 
-   glIntroduction = [[
+glIntroduction = [[
 <template name="th">
-  <cell stroke="rgb(255,255,255)" stroke-width="1" border="bottom"><p><b><inject/></b></p></cell>
+  <cell stroke="white" stroke-width="1" border="bottom"><p><b><inject/></b></p></cell>
 </template>
+
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <image id="logo" xlink:href="vuepoint:data/vuepoint.svg" width="50" height="50"/>
+  </defs>
+</svg>
 
 <page name="Index">
 
-<h1><i>Vue</i></h1>
+<p><font face="Noto Serif" size="3em"><image src="url(#logo)" width="50" height="50"/> <i>VuePoint</i></font></p>
 
-<p>Vue is a simple file browser that supports the following file types:</p>
+<p>VuePoint is a simple file browser that supports the following file types:</p>
 
 <p indent="1em">SVG, RIPL, JPEG, PNG</p>
 
@@ -29,8 +37,7 @@ A file viewer for recognised documents like SVG and RIPL
 
 <p>The following command-line parameters are supported:</p>
 
-<p indent="1em" font-face="courier">
-<table collapsed="true" thin="true" cell-padding="0.2em" h-spacing="2em" columns="10%,90%" width="90%">
+<p indent="1em"><table collapsed="true" cell-padding="0.2em" columns="12%,88%" width="90%">
 <row><th>Parameter</th><th>Description</th></row>
 <row><cell><p>width</p></cell><cell>Width of the application window</cell></row>
 <row><cell><p>height</p></cell><cell>Height of the application window.</cell></row>
@@ -45,33 +52,11 @@ A file viewer for recognised documents like SVG and RIPL
    local glWindow, glFileView, glTerminateView, glScrollbar, glViewArea, glStats, glAppBar
 
    glScript = obj.find('self')
+   mSys.SetVolume('vuepoint', glScript.workingPath)
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function displayInlineDoc(Content, Parameters)
-   doc = glViewArea.new('document', { })
-   if type(Parameters) is 'table' then
-      for k, v in pairs(Parameters) do
-         doc.acSetKey(k, v)
-      end
-   end
-   doc.acDataFeed(nil, DATA_XML, Content)
-   configureScrollbar(doc.view, doc.page)
-   glTerminateView = function()
-      doc.free()
-   end
-end
-
-----------------------------------------------------------------------------------------------------------------------
-
-function displayError(Message)
-   page = glBody .. [[<page name="Index">]] .. Message .. [[</page>]]
-   displayInlineDoc(page, { })
-end
-
-----------------------------------------------------------------------------------------------------------------------
-
-function configureScrollbar(View, Page)
+function configureScrollbar(View:obj, Page:obj)
    if glScrollbar then
       glScrollbar.changeViewport(View, Page)
    else
@@ -86,8 +71,32 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function displaySVG(Path)
+function displayInlineDoc(Content:str, Parameters:table)
+   doc = glViewArea.new('document', { })
+   if Parameters then
+      for k, v in pairs(Parameters) do
+         doc.acSetKey(k, v)
+      end
+   end
+   doc.acDataFeed(nil, DATA_XML, Content)
+   configureScrollbar(doc.view, doc.page)
+   glTerminateView = function()
+      doc.free()
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function displayError(Message:str)
+   page = glBody .. [[<page name="Index">]] .. Message .. [[</page>]]
+   displayInlineDoc(page, { })
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function displaySVG(Path:str)
    vp = glViewArea.new('VectorViewport', { x=0, y=0, xOffset=0, yOffset=0, overflow='hidden' })
+   -- The ENFORCE_TRACKING flag ensures that registered defs are deallocated with the svg object.
    svg = vp.new('svg', { target=vp, path=Path, flags=SVF_ENFORCE_TRACKING })
 
    if svg.frameRate < 60 then svg.frameRate = 60 end
@@ -98,7 +107,7 @@ function displaySVG(Path)
    end
 end
 
-function displayDoc(Path)
+function displayDoc(Path:str)
    doc = glViewArea.new('document', { path = Path .. '#Index' })
 
    configureScrollbar(doc.view, doc.page)
@@ -108,7 +117,7 @@ function displayDoc(Path)
    end
 end
 
-function displayImage(Path)
+function displayImage(Path:str)
    try
       pic = glWindow.scene.new('picture', { src=Path, flags='ForceAlpha32' })
       img = glWindow.scene.new('VectorImage', { picture = pic })
@@ -134,14 +143,14 @@ function displayImage(Path)
    end
 end
 
-function displayText(Path)
+function displayText(Path:str)
 
 end
 
-function displayFile(Path)
-   msg('Load file ' .. (Path ?? 'NIL'))
+function displayFile(Path:str)
+   Path ?? return
 
-   if not Path then return end
+   msg(f'Load file {Path}')
 
    if glTerminateView then
       glTerminateView()
@@ -160,7 +169,7 @@ function displayFile(Path)
    elseif lpath:endsWith('.ripl') or lpath:endsWith('.rpl') then
       displayDoc(Path)
    else -- File is unsupported
-      displayError([[<p>Unrecognised file "]] .. Path .. [["</p>]])
+      displayError(f'<p>Unrecognised file "{Path}"</p>')
    end
 
    glViewArea.scene.surface.mtScheduleRedraw()
@@ -171,12 +180,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
    glWindow = gui.window({
-      width  = arg('width', 1024),
-      height = arg('height', 800),
-      title  = 'Vue',
-      icon   = 'icons:programs/pictureviewer',
-      minHeight = 400,
-      minWidth  = 600,
+      width      = arg('width', 1024),
+      height     = arg('height', 800),
+      title      = 'VuePoint',
+      icon       = 'icons:programs/pictureviewer',
+      minHeight  = 400,
+      minWidth   = 600,
       borderless = true
    })
 
@@ -193,18 +202,18 @@ end
       glFileView = gui.fileview({
          viewOptions = {
             x          = glWindow.margins.left,
-            y          = glWindow.margins.top,
+            y          = 0,
             width      = 200,
             yOffset    = glWindow.margins.top,
             sensitive  = true,
             borderless = true
          },
-         target        = glViewport,
-         style         = 'list',
-         toolBar       = { navigation=true, views=true },
-         displayPath   = true,
-         path          = arg('path', ':'),
-         filterList = {
+         target      = glViewport,
+         style       = 'list',
+         toolBar     = { navigation=true, views=true },
+         displayPath = true,
+         path        = arg('path', ':'),
+         filterList = array<table> {
             { name='SVG Images', ext='.svg' },
             { name='RIPL Documents', ext={ '.ripl', '.rpl' } },
             { name='JPEG Images', ext={ '.jpeg', '.jpg' } },
@@ -214,7 +223,7 @@ end
             displayFile(FileView.selectionPath())
             title = FileView.selectionFile()
             if glStats.width and glStats.height then
-               title ..= ' [ ' .. glStats.width .. ' x ' .. glStats.height .. ' ]'
+               title ..= f' [ {glStats.width} x {glStats.height} ]'
             end
             glWindow:setTitle(title)
          end
@@ -223,18 +232,17 @@ end
       -- Document viewer on the right
 
       glViewManager = glViewport.new('VectorViewport', {
-        x=glFileView.view.viewport.x + glFileView.view.viewport.width + 6, y=glWindow.margins.top,
+        x=glFileView.view.viewport.x + glFileView.view.viewport.width + 6, y=0,
         xOffset=glWindow.margins.right, yOffset=glWindow.margins.top
       })
 
       -- Copy, Save As, Info, Zoom, Rotate Left / Right
 
       bkgd = glViewManager.new('VectorRectangle', {
-         x=0, y=0, xOffset=0, height=1, fill=gui.palette.base
+         x=0, y=0, xOffset=0, height=1, fill=gui.palette.inverse
       })
 
       glAppBar = gui.toolbar({
-         iconTheme = 'pearl',
          target  = glViewManager,
          x       = 0,
          y       = 0,
@@ -249,8 +257,9 @@ end
                   modal       = true,
                   popOver     = glWindow.surface,
                   warnExists  = true,
-                  feedback = function(Dialog, Path, Files)
-                     if not Files then return end
+                  allowNew    = true,
+                  feedback = function(Dialog, Path:str, Files)
+                     Files ?? return
 
                      target_file = Path .. Files[0].filename
 
@@ -258,7 +267,7 @@ end
                      if bmp then
                         pic = obj.new('picture', {
                            width = bmp.width, height = bmp.height, bitsPerPixel = bmp.bitsPerPixel,
-                           flags = 'New|FORCE_ALPHA_32'
+                           flags = PCF_NEW|PCF_FORCE_ALPHA_32
                         })
                         bmp.acCopyData(pic.bitmap)
                         file = obj.new('file', { flags=FL_NEW|FL_WRITE, path=target_file })
@@ -272,8 +281,10 @@ end
 
       bkgd.height = glAppBar.viewport.height
 
+      advance = gui.separator(glViewManager, 'h', glAppBar.viewport.height)
+
       glViewArea = glViewManager.new('VectorViewport', {
-         x = 0, xOffset = 0, y = glAppBar.viewport.height, yOffset = 0,
+         x = 0, xOffset = 0, y = glAppBar.viewport.height + advance, yOffset = 0,
          buffered = true
       })
 
@@ -299,7 +310,5 @@ end
    processing.collect()
 
    glWindow:show(true)
-
-----------------------------------------------------------------------------------------------------------------------
 
    processing.sleep()

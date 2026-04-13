@@ -46,6 +46,7 @@ enum class TokenKind : uint16_t {
    AndToken = TK_and,
    OrToken = TK_or,
    NotToken = TK_not,
+   HasToken = TK_has,
    IsToken = TK_is,
    TernarySep = TK_ternary_sep,
    Dots = TK_dots,
@@ -150,6 +151,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::AndToken: return "and";
       case TokenKind::OrToken: return "or";
       case TokenKind::NotToken: return "not";
+      case TokenKind::HasToken: return "has";
       case TokenKind::IsToken: return "is";
       case TokenKind::TernarySep: return ":>";
       case TokenKind::Dots: return "...";

@@ -555,8 +555,8 @@ the surface area first).</li>
 <p>This method does not work on anything other than top-level surface objects.  The current top-level surface object is usually named "SystemSurface" by default and can be searched for by that name.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
 <tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">InvalidState</th><td>The surface is not a top-level surface object.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-SetOpacity" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">SetOpacity</th><td id="tm-SetOpacity">Alters the opacity of a surface object.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-SetOpacity" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR drw::SetOpacity(OBJECTPTR Object, DOUBLE Value, DOUBLE Adjustment)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Value</td><td>The new opacity value between 0 and 100% (ignored if you have set the Adjustment parameter).</td></tr>
 <tr><td>Adjustment</td><td>Adjustment value to add or subtract from the existing opacity (set to zero if you want to set a fixed Value instead).</td></tr>
@@ -662,7 +662,7 @@ the surface area first).</li>
 <tr><th>JET::DEVICE_TILT_XY</th><td>Controller tilted on the X/Y axis.  Value indicates angle, -ve = left, +ve = right</td></tr>
 <tr><th>JET::DEVICE_TILT_Z</th><td>Controller is rising or falling.  Value expressed as 'speed',</td></tr>
 <tr><th>JET::DISPLAY_EDGE</th><td>Recently supplied input occurred at the edge of the display.</td></tr>
-<tr><th>JET::PEN_TILT_XY</th><td>For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</td></tr>
+<tr><th>JET::PEN_TILT_XY</th><td>Pen tilt angle.  0 is pointing down directly with nib at bottom, 0.5 is 90 degrees, 1.0 is inversed (eraser at bottom)</td></tr>
 <tr><th>JET::PRESSURE</th><td>Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough</td></tr>
 <tr><th>JET::WHEEL</th><td>Mouse wheel rotation - the value generally reflects the number of 'clicks' rotated on the wheel.</td></tr>
 <tr><th>JET::WHEEL_TILT</th><td>Some mouse wheels can be tilted to the left or right.  Ranges from -1.0 to +1.0</td></tr>

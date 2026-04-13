@@ -47,6 +47,7 @@ enum class ERR : int32_t {
    NoAction = 27,
    NoSupport = 28,
    Memory = 29,
+   Timeout = 30,
    TimeOut = 30,
    NoStats = 31,
    LowCapacity = 32,

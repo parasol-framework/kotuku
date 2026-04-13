@@ -97,6 +97,7 @@ extern void  (lua_settop) (lua_State *L, int idx);
 extern void  (lua_pushvalue) (lua_State *L, int idx);
 extern void  (lua_remove) (lua_State *L, int idx);
 extern void  (lua_insert) (lua_State *L, int idx);
+extern void  (lua_rotate) (lua_State *L, int idx, int n);
 extern void  (lua_replace) (lua_State *L, int idx);
 extern int   (lua_checkstack) (lua_State *L, int sz);
 extern void  (lua_xmove) (lua_State *from, lua_State *to, int n);
@@ -192,7 +193,7 @@ constexpr int LUA_GCSETPAUSE = 6;
 constexpr int LUA_GCSETSTEPMUL = 7;
 constexpr int LUA_GCISRUNNING = 9;
 
-extern int (lua_gc) (lua_State *L, int what, int data);
+extern int (lua_gc) (lua_State *L, int what, int data = 0);
 
 extern int   (lua_error) (lua_State *L);
 extern int   (lua_next) (lua_State *L, int idx);

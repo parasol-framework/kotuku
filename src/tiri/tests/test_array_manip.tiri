@@ -1,4 +1,4 @@
--- Flute tests for array Tier 5 functionality (insert, remove, clone)
+-- Tests for array mutation
 
 @BeforeEach(hotpath=true)
 function enforce_hotpath() end
@@ -1030,4 +1030,349 @@ end
    assert(arr1[0] is 100 and arr1[1] is 2 and arr1[2] is 3, "arr1 should have correct values")
    assert(arr2[0] is 1 and arr2[1] is 200 and arr2[2] is 3, "arr2 should have correct values")
    assert(arr3[0] is 1 and arr3[1] is 2 and arr3[2] is 300, "arr3 should have correct values")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test array.sort() functionality
+
+@Test function ArraySortAscending()
+   arr = array<int, 5>
+   arr[0] = 30
+   arr[1] = 10
+   arr[2] = 50
+   arr[3] = 20
+   arr[4] = 40
+
+   arr:sort()
+
+   assert(arr[0] is 10, "sorted arr[0] should be 10")
+   assert(arr[1] is 20, "sorted arr[1] should be 20")
+   assert(arr[2] is 30, "sorted arr[2] should be 30")
+   assert(arr[3] is 40, "sorted arr[3] should be 40")
+   assert(arr[4] is 50, "sorted arr[4] should be 50")
+end
+
+@Test function ArraySortDescending()
+   arr = array<int, 5>
+   arr[0] = 30
+   arr[1] = 10
+   arr[2] = 50
+   arr[3] = 20
+   arr[4] = 40
+
+   arr:sort(true)
+
+   assert(arr[0] is 50, "desc sorted arr[0] should be 50")
+   assert(arr[1] is 40, "desc sorted arr[1] should be 40")
+   assert(arr[2] is 30, "desc sorted arr[2] should be 30")
+   assert(arr[3] is 20, "desc sorted arr[3] should be 20")
+   assert(arr[4] is 10, "desc sorted arr[4] should be 10")
+end
+
+@Test function ArraySortFloat()
+   arr = array<float, 5>
+   arr[0] = 3.14
+   arr[1] = 1.41
+   arr[2] = 2.71
+   arr[3] = 0.57
+   arr[4] = 1.73
+
+   arr:sort()
+
+   assert(arr[0] < arr[1], "sorted floats should be in order: arr[0] < arr[1]")
+   assert(arr[1] < arr[2], "sorted floats should be in order: arr[1] < arr[2]")
+   assert(arr[2] < arr[3], "sorted floats should be in order: arr[2] < arr[3]")
+   assert(arr[3] < arr[4], "sorted floats should be in order: arr[3] < arr[4]")
+end
+
+@Test function ArraySortAlreadySorted()
+   arr = array<int, 5>
+   for i = 0, 4 do
+      arr[i] = i
+   end
+
+   arr:sort()
+
+   for i = 0, 4 do
+      assert(arr[i] is i, "already sorted array should remain unchanged")
+   end
+end
+
+@Test function ArraySortDuplicates()
+   arr = array<int, 5>
+   arr[0] = 20
+   arr[1] = 10
+   arr[2] = 20
+   arr[3] = 10
+   arr[4] = 30
+
+   arr:sort()
+
+   assert(arr[0] is 10, "sorted with dups arr[0] should be 10")
+   assert(arr[1] is 10, "sorted with dups arr[1] should be 10")
+   assert(arr[2] is 20, "sorted with dups arr[2] should be 20")
+   assert(arr[3] is 20, "sorted with dups arr[3] should be 20")
+   assert(arr[4] is 30, "sorted with dups arr[4] should be 30")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test array.sort() with user-provided comparator function
+
+@Test function ArraySortComparatorAscending()
+   arr = array<int> { 30, 10, 50, 20, 40 }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] is 10, "comparator asc arr[0] should be 10")
+   assert(arr[1] is 20, "comparator asc arr[1] should be 20")
+   assert(arr[2] is 30, "comparator asc arr[2] should be 30")
+   assert(arr[3] is 40, "comparator asc arr[3] should be 40")
+   assert(arr[4] is 50, "comparator asc arr[4] should be 50")
+end
+
+@Test function ArraySortComparatorDescending()
+   arr = array<int> { 30, 10, 50, 20, 40 }
+   arr:sort((a, b) => a > b)
+
+   assert(arr[0] is 50, "comparator desc arr[0] should be 50")
+   assert(arr[1] is 40, "comparator desc arr[1] should be 40")
+   assert(arr[2] is 30, "comparator desc arr[2] should be 30")
+   assert(arr[3] is 20, "comparator desc arr[3] should be 20")
+   assert(arr[4] is 10, "comparator desc arr[4] should be 10")
+end
+
+@Test function ArraySortComparatorFloat()
+   arr = array<float> { 3.14, 1.41, 2.71, 0.57, 1.73 }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] < arr[1], "comparator float: arr[0] < arr[1]")
+   assert(arr[1] < arr[2], "comparator float: arr[1] < arr[2]")
+   assert(arr[2] < arr[3], "comparator float: arr[2] < arr[3]")
+   assert(arr[3] < arr[4], "comparator float: arr[3] < arr[4]")
+end
+
+@Test function ArraySortComparatorString()
+   arr = array<string> { 'cherry', 'apple', 'banana' }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] is 'apple', "comparator string arr[0] should be 'apple'")
+   assert(arr[1] is 'banana', "comparator string arr[1] should be 'banana'")
+   assert(arr[2] is 'cherry', "comparator string arr[2] should be 'cherry'")
+end
+
+@Test function ArraySortComparatorStringDescending()
+   arr = array<string> { 'cherry', 'apple', 'banana' }
+   arr:sort((a, b) => a > b)
+
+   assert(arr[0] is 'cherry', "comparator string desc arr[0] should be 'cherry'")
+   assert(arr[1] is 'banana', "comparator string desc arr[1] should be 'banana'")
+   assert(arr[2] is 'apple', "comparator string desc arr[2] should be 'apple'")
+end
+
+@Test function ArraySortComparatorDuplicates()
+   arr = array<int> { 20, 10, 20, 10, 30 }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] is 10, "comparator dups arr[0] should be 10")
+   assert(arr[1] is 10, "comparator dups arr[1] should be 10")
+   assert(arr[2] is 20, "comparator dups arr[2] should be 20")
+   assert(arr[3] is 20, "comparator dups arr[3] should be 20")
+   assert(arr[4] is 30, "comparator dups arr[4] should be 30")
+end
+
+@Test function ArraySortComparatorAlreadySorted()
+   arr = array<int> { 1, 2, 3, 4, 5 }
+   arr:sort((a, b) => a < b)
+
+   for i = 0, 4 do
+      assert(arr[i] is i + 1, "comparator already sorted: arr[" .. i .. "] should be " .. (i + 1))
+   end
+end
+
+@Test function ArraySortComparatorSingleElement()
+   arr = array<int> { 42 }
+   arr:sort((a, b) => a < b)
+   assert(arr[0] is 42, "comparator single element should remain 42")
+end
+
+@Test function ArraySortComparatorTwoElements()
+   arr = array<int> { 20, 10 }
+   arr:sort((a, b) => a < b)
+   assert(arr[0] is 10, "comparator two elements arr[0] should be 10")
+   assert(arr[1] is 20, "comparator two elements arr[1] should be 20")
+end
+
+@Test function ArraySortComparatorAbsoluteValue()
+   -- Sort by absolute value to demonstrate custom ordering logic
+   arr = array<int> { -5, 3, -1, 4, -2 }
+   arr:sort((a, b) => math.abs(a) < math.abs(b))
+
+   assert(math.abs(arr[0]) is 1, "abs sort arr[0] should have abs value 1")
+   assert(math.abs(arr[1]) is 2, "abs sort arr[1] should have abs value 2")
+   assert(math.abs(arr[2]) is 3, "abs sort arr[2] should have abs value 3")
+   assert(math.abs(arr[3]) is 4, "abs sort arr[3] should have abs value 4")
+   assert(math.abs(arr[4]) is 5, "abs sort arr[4] should have abs value 5")
+end
+
+@Test function ArraySortComparatorNamedFunction()
+   -- Test with a named function rather than an anonymous lambda
+   function compare(A, B)
+      return A > B
+   end
+
+   arr = array<int> { 3, 1, 4, 1, 5, 9, 2, 6 }
+   arr:sort(compare)
+
+   assert(arr[0] is 9, "named fn sort arr[0] should be 9")
+   assert(arr[1] is 6, "named fn sort arr[1] should be 6")
+   assert(arr[2] is 5, "named fn sort arr[2] should be 5")
+   assert(arr[#arr - 1] is 1, "named fn sort last should be 1")
+end
+
+@Test function ArraySortComparatorLarge()
+   arr = array<int, 100>
+   for i = 0, 99 do
+      arr[i] = 99 - i
+   end
+
+   arr:sort((a, b) => a < b)
+
+   for i = 0, 99 do
+      assert(arr[i] is i, "comparator large sort: arr[" .. i .. "] should be " .. i)
+   end
+end
+
+@Test function ArraySortComparatorByte()
+   arr = array<byte> { 67, 65, 68, 66 }  -- C, A, D, B
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] is 65, "comparator byte arr[0] should be 65 (A)")
+   assert(arr[1] is 66, "comparator byte arr[1] should be 66 (B)")
+   assert(arr[2] is 67, "comparator byte arr[2] should be 67 (C)")
+   assert(arr[3] is 68, "comparator byte arr[3] should be 68 (D)")
+end
+
+@Test function ArraySortComparatorInt64()
+   arr = array<int64> { 3000000000000, 1000000000000, 5000000000000, 2000000000000 }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] is 1000000000000, "comparator int64 arr[0] should be smallest")
+   assert(arr[3] is 5000000000000, "comparator int64 arr[3] should be largest")
+end
+
+@Test function ArraySortComparatorDouble()
+   arr = array<double> { 2.718281828, 3.141592653, 1.414213562 }
+   arr:sort((a, b) => a < b)
+
+   assert(arr[0] < arr[1], "comparator double: arr[0] < arr[1]")
+   assert(arr[1] < arr[2], "comparator double: arr[1] < arr[2]")
+end
+
+@Test function ArraySortComparatorStringLength()
+   -- Sort strings by length rather than lexicographic order
+   arr = array<string> { 'hi', 'hello', 'hey', 'h' }
+   arr:sort((a, b) => #a < #b)
+
+   assert(arr[0] is 'h', "length sort arr[0] should be 'h'")
+   assert(arr[1] is 'hi', "length sort arr[1] should be 'hi'")
+   assert(arr[2] is 'hey', "length sort arr[2] should be 'hey'")
+   assert(arr[3] is 'hello', "length sort arr[3] should be 'hello'")
+end
+
+@Test function ArraySortComparatorTableByField()
+   -- Sort a table array by a numeric field
+   arr = array<table> {
+      { name = 'Charlie', age = 35 },
+      { name = 'Alice',   age = 28 },
+      { name = 'Dave',    age = 22 },
+      { name = 'Bob',     age = 31 }
+   }
+
+   arr:sort((a, b) => a.age < b.age)
+
+   assert(arr[0].name is 'Dave',    "age sort arr[0] should be Dave (22)")
+   assert(arr[1].name is 'Alice',   "age sort arr[1] should be Alice (28)")
+   assert(arr[2].name is 'Bob',     "age sort arr[2] should be Bob (31)")
+   assert(arr[3].name is 'Charlie', "age sort arr[3] should be Charlie (35)")
+
+   -- Sort by name (string field) descending
+   arr:sort((a, b) => a.name > b.name)
+
+   assert(arr[0].name is 'Dave',    "name desc arr[0] should be Dave")
+   assert(arr[1].name is 'Charlie', "name desc arr[1] should be Charlie")
+   assert(arr[2].name is 'Bob',     "name desc arr[2] should be Bob")
+   assert(arr[3].name is 'Alice',   "name desc arr[3] should be Alice")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test array.fill() with range support
+
+@Test function ArrayFillWithRange()
+   arr = array<int, 10>
+   arr:fill(0)  -- Zero-initialize first
+
+   -- Fill with range (exclusive)
+   arr:fill(99, {2..5})
+   assert(arr[0] is 0, "fill range: arr[0] should be 0")
+   assert(arr[1] is 0, "fill range: arr[1] should be 0")
+   assert(arr[2] is 99, "fill range: arr[2] should be 99")
+   assert(arr[3] is 99, "fill range: arr[3] should be 99")
+   assert(arr[4] is 99, "fill range: arr[4] should be 99")
+   assert(arr[5] is 0, "fill range: arr[5] should be 0")
+end
+
+@Test function ArrayFillWithInclusiveRange()
+   arr = array<int, 10>
+   arr:fill(0)  -- Zero-initialize first
+
+   -- Fill with inclusive range
+   arr:fill(77, {2...5})
+   assert(arr[1] is 0, "fill inclusive: arr[1] should be 0")
+   assert(arr[2] is 77, "fill inclusive: arr[2] should be 77")
+   assert(arr[3] is 77, "fill inclusive: arr[3] should be 77")
+   assert(arr[4] is 77, "fill inclusive: arr[4] should be 77")
+   assert(arr[5] is 77, "fill inclusive: arr[5] should be 77")
+   assert(arr[6] is 0, "fill inclusive: arr[6] should be 0")
+end
+
+@Test function ArrayFillWithNegativeRange()
+   arr = array<int, 5>
+   arr:fill(0)  -- Zero-initialize first
+
+   -- Fill last 2 elements using negative indices
+   arr:fill(55, {-2..-1})
+   assert(arr[0] is 0, "fill negative: arr[0] should be 0")
+   assert(arr[1] is 0, "fill negative: arr[1] should be 0")
+   assert(arr[2] is 0, "fill negative: arr[2] should be 0")
+   assert(arr[3] is 55, "fill negative: arr[3] should be 55")
+   assert(arr[4] is 55, "fill negative: arr[4] should be 55")
+end
+
+@Test function ArrayFillWithSteppedRange()
+   arr = array<int, 10>
+   arr:fill(0)  -- Zero-initialize first
+
+   -- Fill every other element using range.new(start, stop, inclusive, step)
+   arr:fill(33, range.new(0, 10, false, 2))
+   assert(arr[0] is 33, "fill stepped: arr[0] should be 33")
+   assert(arr[1] is 0, "fill stepped: arr[1] should be 0")
+   assert(arr[2] is 33, "fill stepped: arr[2] should be 33")
+   assert(arr[3] is 0, "fill stepped: arr[3] should be 0")
+   assert(arr[4] is 33, "fill stepped: arr[4] should be 33")
+   assert(arr[8] is 33, "fill stepped: arr[8] should be 33")
+   assert(arr[9] is 0, "fill stepped: arr[9] should be 0")
+end
+
+@Test function ArrayFillOriginalSyntax()
+   -- Verify original syntax still works
+   arr = array<int, 10>
+   arr:fill(0)  -- Zero-initialize first
+
+   -- Fill starting at index 3, 4 elements
+   arr:fill(42, 3, 4)
+   assert(arr[2] is 0, "fill original: arr[2] should be 0")
+   assert(arr[3] is 42, "fill original: arr[3] should be 42")
+   assert(arr[4] is 42, "fill original: arr[4] should be 42")
+   assert(arr[5] is 42, "fill original: arr[5] should be 42")
+   assert(arr[6] is 42, "fill original: arr[6] should be 42")
+   assert(arr[7] is 0, "fill original: arr[7] should be 0")
 end

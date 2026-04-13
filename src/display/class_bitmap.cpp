@@ -245,7 +245,7 @@ ERR lock_surface(extBitmap *Bitmap, int16_t Access)
          }
          return ERR::Okay;
       }
-      else return ERR::Failed;
+      else return ERR::CreateResource;
    }
    return ERR::Okay;
 }
@@ -434,8 +434,8 @@ static uint32_t RGBToValue(RGB8 *RGB, RGBPalette *Palette)
 inline static uint8_t conv_l2r(double X) {
    int ix;
 
-   if (X < 0.0031308) ix = F2T(((X * 12.92) * 255.0) + 0.5);
-   else ix = F2T(((std::pow(X, 1.0 / 2.4) * 1.055 - 0.055) * 255.0) + 0.5);
+   if (X < 0.0031308) ix = int(((X * 12.92) * 255.0) + 0.5);
+   else ix = int(((std::pow(X, 1.0 / 2.4) * 1.055 - 0.055) * 255.0) + 0.5);
 
    if (ix < 0) return 0;
    else if (ix > 255) return 255;
@@ -513,7 +513,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 
    if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
       log.warning("Cannot compress video bitmaps.");
-      return ERR::Failed;
+      return ERR::NoSupport;
    }
 
    if (Self->Size < 8192) return ERR::Okay;
@@ -549,7 +549,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
          }
          else error = ERR::ReallocMemory;
       }
-      else error = ERR::Failed;
+      else error = ERR::Compression;
    }
    else error = ERR::AllocMemory;
 
@@ -1381,7 +1381,7 @@ static ERR BITMAP_Lock(extBitmap *Self)
             Self->Clip.Bottom - Self->Clip.Top, 0xffffffff, ZPixmap, Self->x11.readable,
             Self->Clip.Left, Self->Clip.Top);
       }
-      else return ERR::Failed;
+      else return ERR::CreateResource;
    }
 
    return ERR::Okay;
@@ -2699,7 +2699,7 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
 
    if (Self->Type != BMP::CHUNKY) {
       log.warning("Unsupported Bitmap->Type %d.", int(Self->Type));
-      return ERR::Failed;
+      return ERR::NoSupport;
    }
 
 #ifdef _WIN32
@@ -2756,7 +2756,7 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
 
          default:
             log.warning("Unsupported Bitmap->BytesPerPixel %d.", Self->BytesPerPixel);
-            return ERR::Failed;
+            return ERR::NoSupport;
       }
       return ERR::Okay;
    }
@@ -2811,7 +2811,7 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
 
       default:
         log.warning("Unsupported Bitmap->BytesPerPixel %d.", Self->BytesPerPixel);
-        return ERR::Failed;
+        return ERR::NoSupport;
    }
 
    return ERR::Okay;

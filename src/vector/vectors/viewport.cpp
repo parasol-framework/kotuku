@@ -404,7 +404,7 @@ static ERR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
       }
 
       if (Self->subscribeInput(JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(drag_callback)) != ERR::Okay) {
-         return ERR::Failed;
+         return ERR::Function;
       }
 
       Self->vpDragCallback = *Value;

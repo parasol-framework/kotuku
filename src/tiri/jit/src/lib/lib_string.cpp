@@ -540,47 +540,6 @@ LJLIB_CF(string_contains)
 
 //********************************************************************************************************************
 
-LJLIB_CF(string_join)
-{
-   GCtab *t = lj_lib_checktab(L, 1);
-   GCstr *sep = lj_lib_optstr(L, 2);
-   CSTRING sepstr = "";
-   MSize seplen = 0;
-   SBuf *sb = lj_buf_tmp_(L);
-   int32_t len = (int32_t)lj_tab_len(t);
-   int32_t last = len - 1;  // 0-based: last index = len-1
-
-   if (sep) {
-      sepstr = strdata(sep);
-      seplen = sep->len;
-   }
-
-   lj_buf_reset(sb);
-
-   for (int32_t i=0; i <= last; i++) {
-      cTValue *tv = lj_tab_getint(t, i);
-      if (tv and (not tvisnil(tv))) {
-         int isValidType = 0;
-
-         // Check if we have a valid type to process
-         if (tvisstr(tv) or tvisnum(tv)) isValidType = 1;
-
-         if (isValidType) { // Add separator before non-first elements
-            if (sb->w > sb->b and seplen > 0) lj_buf_putmem(sb, sepstr, seplen);
-
-            if (tvisstr(tv)) lj_buf_putstr(sb, strV(tv)); // Add string content
-            else if (tvisnum(tv)) sb = lj_strfmt_putnum(sb, tv); // Convert number to string directly into buffer
-         }
-      }
-   }
-
-   setstrV(L, L->top - 1, lj_buf_str(L, sb));
-   lj_gc_check(L);
-   return 1;
-}
-
-//********************************************************************************************************************
-
 LJLIB_CF(string_cap)
 {
    GCstr *s = lj_lib_checkstr(L, 1);
@@ -997,7 +956,6 @@ extern int luaopen_string(lua_State *L)
    reg_iface_prototype("string", "find", { TiriType::Num, TiriType::Num }, { TiriType::Str, TiriType::Str }, FProtoFlags::Variadic);
    reg_iface_prototype("string", "format", { TiriType::Str }, { TiriType::Str }, FProtoFlags::Variadic);
    reg_iface_prototype("string", "hash", { TiriType::Num }, { TiriType::Str, TiriType::Bool });
-   reg_iface_prototype("string", "join", { TiriType::Str }, { TiriType::Table, TiriType::Str });
    reg_iface_prototype("string", "len", { TiriType::Num }, { TiriType::Str });
    reg_iface_prototype("string", "lower", { TiriType::Str }, { TiriType::Str });
    reg_iface_prototype("string", "pop", { TiriType::Str }, { TiriType::Str, TiriType::Num });

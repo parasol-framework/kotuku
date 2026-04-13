@@ -284,7 +284,7 @@ static ERR ASSET_Read(objFile *Self, struct acRead *Args)
       if (Args->Result IS -1) {
          log.msg("Failed to read %d bytes from the file.", Args->Length);
          Args->Result = 0;
-         return ERR::Failed;
+         return ERR::Read;
       }
 
       // Return ERR::Okay even though not all data was read, because this was not due to a failure.

@@ -50,6 +50,7 @@ private:
    ParserResult<StmtNodePtr> parse_repeat();
    ParserResult<StmtNodePtr> parse_for();
    ParserResult<StmtNodePtr> parse_anonymous_for(const Token &);
+   ParserResult<ExprNodePtr> parse_range_in_braces();
    ParserResult<StmtNodePtr> parse_do();
    ParserResult<StmtNodePtr> parse_with();
    ParserResult<StmtNodePtr> parse_defer();

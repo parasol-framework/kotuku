@@ -4,7 +4,7 @@ set (MOD vector)
 set (INC_MOD_VECTOR TRUE PARENT_SCOPE)
 
 idl_gen ("${MOD}.tdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/vector.h"
-   FILES "vector_functions.cpp"
+   FILES "vector_functions.cpp" "vector_readpainter.cpp"
    ARGS "output-defs=module_def.c")
 
 idl_compile ("${MOD}.tdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
@@ -73,3 +73,5 @@ target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
 if (NOT DISABLE_FONT)
    target_link_libraries (${MOD} PRIVATE freetype)
 endif()
+
+flute_test(vector_readpainter "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_readpainter.tiri")

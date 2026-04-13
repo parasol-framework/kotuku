@@ -534,12 +534,12 @@ struct VectorPainter {
    objVectorPattern * Pattern;    // A VectorPattern object, suitable for pattern based fills.
    objVectorImage * Image;        // A VectorImage object, suitable for image fills.
    objVectorGradient * Gradient;  // A VectorGradient object, suitable for gradient fills.
-   struct FRGB Colour;            // A single RGB colour definition, suitable for block colour fills.
+   struct FRGB Colour;            // A single RGB colour definition, suitable for block colour fills.  Colour values are unclamped to support all possible colour spaces.
    void reset() {
       Colour.Alpha = 0;
-      Gradient = NULL;
-      Image    = NULL;
-      Pattern  = NULL;
+      Gradient = nullptr;
+      Image    = nullptr;
+      Pattern  = nullptr;
    }
 };
 
@@ -578,10 +578,10 @@ struct VectorMatrix {
 #define MTAG_SVG_TRANSFORM 0x3479679e
 
 struct FontMetrics {
-   int Height;         // Capitalised font height
-   int LineSpacing;    // Vertical advance from one line to the next
-   int Ascent;         // Height from the baseline to the top of the font, including accents.
-   int Descent;        // Height from the baseline to the bottom of the font
+   int Height;         // Full font height equivalent to Ascent (cap-height) + Descent (gutter).  Does NOT include accents.
+   int LineSpacing;    // Vertical advance from one line to the next.  Includes coverage for accents and additional whitespace.
+   int Ascent;         // Height from the baseline to the top (cap-height) of the font.  Does NOT include accents.
+   int Descent;        // Height from the baseline to the bottom of the font (gutter)
 };
 
 // VectorColour class definition
@@ -1236,7 +1236,7 @@ class objFilterEffect : public Object {
 struct MergeSource {
    VSF SourceType;              // The type of the required source.
    objFilterEffect * Effect;    // Effect pointer if the SourceType is REFERENCE.
-  MergeSource(VSF pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
+  MergeSource(VSF pType, objFilterEffect *pEffect = nullptr) : SourceType(pType), Effect(pEffect) { };
 };
 
 // ImageFX class definition

@@ -3,7 +3,6 @@ The FileSearch interface simplifies the process of searching for files and folde
 Refer to the Tiri I/O Wiki page for documentation.
 --]]
 
-
 io.search = function(Path:str, Options:table)
    lOptions      = Options
    ADJUST_LOG    = 0
@@ -18,7 +17,7 @@ io.search = function(Path:str, Options:table)
 
          -- By default, symbolic links are not scanned for content unless the scanLinks option is set.
 
-         if (fl.flags & FL_LINK)?? and (lOptions.scanLinks != true) then
+         if (fl.flags has FL_LINK) and (lOptions.scanLinks != true) then
             fl.free()
             return false
          end
@@ -31,7 +30,7 @@ io.search = function(Path:str, Options:table)
          while (err is ERR_Okay) and (totalRead >= lOptions.contentFilter:len()) do
             if buf:find(lOptions.contentFilter) then return true end
             if fl.position is fl.size then return false end
-            fl.acSeek(-lOptions.contentFilter:len(), SEEK_CURRENT)
+            fl.acSeek(-lOptions.contentFilter:len(), SEEK_CURRENT) -- Sliding window
             err, totalRead = fl.acRead(buf)
          end
       end
@@ -39,32 +38,25 @@ io.search = function(Path:str, Options:table)
       return false
    end
 
-   function fileMatched(Path:str, FileName:str, File:obj)
-      if lOptions.matchFeedback then
-         result = lOptions.matchFeedback(Path, FileName, File)
-         if result is ERR_Terminate then lStop = true end
-      end
-   end
-
    function dateLessThan(A, B) -- struct DateTime
-      if A.Year < B.Year then return true
-      elseif A.Year > B.Year then return false end
+      if A.year < B.year then return true
+      elseif A.year > B.year then return false end
 
       -- else years are equal, so test months
-      if A.Month < B.Month then return true
-      elseif A.Month > B.Month then return false end
+      if A.month < B.month then return true
+      elseif A.month > B.month then return false end
 
-      if A.Day < B.Day then return true
-      elseif A.Day > B.Day then return false end
+      if A.day < B.day then return true
+      elseif A.day > B.day then return false end
 
-      if A.Hour < B.Hour then return true
-      elseif A.Hour > B.Hour then return false end
+      if A.hour < B.hour then return true
+      elseif A.hour > B.hour then return false end
 
-      if A.Minute < B.Minute then return true
-      elseif A.Minute > B.Minute then return false end
+      if A.minute < B.minute then return true
+      elseif A.minute > B.minute then return false end
 
-      if A.Second < B.Second then return true
-      elseif A.Second > B.Second then return false end
+      if A.second < B.second then return true
+      elseif A.second > B.second then return false end
 
       return false -- Dates are exactly equal
    end
@@ -116,14 +108,14 @@ io.search = function(Path:str, Options:table)
 
          if lOptions.minSize?? and (lOptions.minSize > 0) and (fl.size < lOptions.minSize) then match = false end
          if lOptions.maxSize and (lOptions.maxSize >= 0) and (fl.size > lOptions.maxSize) then match = false end
-         if lOptions.minDateSet and dateLessThan(fl.modified, lOptions.minDate) then match = false end
-         if lOptions.maxDateSet and dateLessThan(lOptions.maxDate, fl.modified) then match = false end
+         if lOptions.minDateSet and dateLessThan(fl.date, lOptions.minDate) then match = false end
+         if lOptions.maxDateSet and dateLessThan(lOptions.maxDate, fl.date) then match = false end
 
-         if match and (fl.flags & FL_FILE) != 0 then
+         if match and (fl.flags has FL_FILE) then
             match = contentMatch(fl.path)
          end
 
-         msg(string.format('Found: %s (count: %d); Match: ' .. tostring(match), fl.path, count))
+         msg(f'Found: {fl.path} (count: {count}); Match: {match}')
 
          if match then
             if lOptions.matchFeedback then
@@ -153,7 +145,7 @@ io.search = function(Path:str, Options:table)
             err, fl = folder.mtNext()
             while (err is ERR_Okay) and (not lStop) do
                count++
-               if (fl.flags & FL_LINK)?? then
+               if fl.flags has FL_LINK then
                   -- Do not scan symbolicly linked directories (possible recursion)
                else
                   processing.sleep(0)
@@ -195,12 +187,8 @@ io.search = function(Path:str, Options:table)
             end
          end
 
-         if name_matches then
-            if contentMatch(Path) then
-               if lOptions.matchFeedback then
-                  lOptions.matchFeedback(path, file_name, obj.new('file', { path=Path }))
-               end
-            end
+         if name_matches and contentMatch(Path) then
+            lOptions?.matchFeedback(path, file_name, <{ obj.new('file', { path=Path }) }>)
          end
       end
    end
@@ -215,15 +203,11 @@ io.search = function(Path:str, Options:table)
    end
 
    if lOptions.maxDate then
-      err, max_date = mSys.StrReadDate(lOptions.maxDate)
-      assert(err is ERR_Okay, 'Invalid maxDate value.')
-      lOptions.maxDate = max_date
+      lOptions.maxDateSet = true
    end
 
    if lOptions.minDate then
-      err, min_date = mSys.StrReadDate(lOptions.minDate)
-      assert(err is ERR_Okay, 'Invalid minDate value.')
-      lOptions.minDate = min_date
+      lOptions.minDateSet = true
    end
 
    if type(Path) is 'table' or type(Path) is 'array' then

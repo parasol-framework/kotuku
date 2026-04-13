@@ -89,8 +89,10 @@ static void key_event(evKey *, int, struct finput *);
 
    SetResource(RES::LOG_DEPTH, branch);
 
-   log.traceBranch("Collecting garbage.");
-   lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
+   if (lua_gc(prv->Lua, LUA_GCISRUNNING, 0)) {
+      log.traceBranch("Collecting garbage.");
+      lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
+   }
    return ERR::Okay;
 }
 
@@ -441,8 +443,10 @@ static void key_event(evKey *Event, int Size, struct finput *Input)
    lua_settop(prv->Lua, top);
    SetResource(RES::LOG_DEPTH, depth);
 
-   log.traceBranch("Collecting garbage.");
-   lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
+   if (lua_gc(prv->Lua, LUA_GCISRUNNING, 0)) {
+      log.traceBranch("Collecting garbage.");
+      lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
+   }
 }
 
 //********************************************************************************************************************

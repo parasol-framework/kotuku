@@ -1,6 +1,5 @@
---[[
-Dialog test
---]]
+#!/usr/bin/env origo
+-- Dialog test
 
    import 'gui/dialog'
 

@@ -166,3 +166,91 @@ end
    {1..6} |> (i => do sum += i end)
    assert(sum is 15, "arrow function should sum to 15, got " .. sum)
 end
+
+-- Array pipe iteration tests
+
+@Test function ArrayPipeIterationBasic()
+   -- Basic array pipe iteration
+   sum = 0
+   array<int> { 10, 20, 30 } |> (v => do sum += v end)
+   assert(sum is 60, "array pipe iteration should sum to 60, got " .. sum)
+end
+
+@Test function ArrayPipeIterationWithIndex()
+   -- Array :each() passes (value, index) to the callback
+   captured = {}
+   array<int> { 100, 200, 300 } |> function(v, i)
+      captured[i] = v
+   end
+   assert(captured[0] is 100, "index 0 should be 100, got " .. tostring(captured[0]))
+   assert(captured[1] is 200, "index 1 should be 200, got " .. tostring(captured[1]))
+   assert(captured[2] is 300, "index 2 should be 300, got " .. tostring(captured[2]))
+end
+
+@Test function ArrayPipeIterationChaining()
+   -- Chaining: array |> func1 |> func2
+   log1 = {}
+   log2 = {}
+   array<int> { 5, 10, 15 } |> function(v) log1[#log1] = v end
+                              |> function(v) log2[#log2] = v * 2 end
+   assert(#log1 is 3, "log1 should have 3 elements, got " .. #log1)
+   assert(#log2 is 3, "log2 should have 3 elements, got " .. #log2)
+   assert(log1[0] is 5 and log1[2] is 15, "log1 values incorrect")
+   assert(log2[0] is 10 and log2[2] is 30, "log2 values incorrect")
+end
+
+@Test function ArrayPipeIterationNamedFunction()
+   -- Pipe iteration with a named function
+   total = 0
+   function accumulate_value(Value) total += Value end
+   array<int> { 3, 6, 9 } |> accumulate_value
+   assert(total is 18, "named function should sum to 18, got " .. total)
+end
+
+@Test function ArrayPipeIterationEmpty()
+   -- Empty array should iterate zero times
+   count = 0
+   array<int> {} |> function(v) count++ end
+   assert(count is 0, "empty array should iterate zero times, got " .. count)
+end
+
+-- Variable-based array pipe iteration (deferred iteration via type fixing)
+
+@Test function ArrayVarPipeIteration()
+   -- Array stored in a variable should work with pipe iteration via type fixing
+   arr = array<int> { 10, 20, 30 }
+   sum = 0
+   arr |> (v => do sum += v end)
+   assert(sum is 60, "variable array pipe should sum to 60, got " .. sum)
+end
+
+@Test function ArrayVarPipeIterationWithIndex()
+   -- Variable array pipe should pass (value, index) to callback
+   arr = array<string> { 'a', 'b', 'c' }
+   captured = {}
+   arr |> function(v, i) captured[i] = v end
+   assert(captured[0] is 'a', "index 0 should be 'a'")
+   assert(captured[1] is 'b', "index 1 should be 'b'")
+   assert(captured[2] is 'c', "index 2 should be 'c'")
+end
+
+@Test function ArrayVarPipeChaining()
+   -- Variable array chaining should work
+   arr = array<int> { 1, 2, 3 }
+   log1 = {}
+   log2 = {}
+   arr |> function(v) log1[#log1] = v end
+       |> function(v) log2[#log2] = v * 10 end
+   assert(#log1 is 3, "log1 should have 3 elements, got " .. #log1)
+   assert(#log2 is 3, "log2 should have 3 elements, got " .. #log2)
+   assert(log2[0] is 10 and log2[2] is 30, "log2 values incorrect")
+end
+
+@Test function ArrayVarPipeNamedFunction()
+   -- Variable array with named function reference
+   arr = array<int> { 5, 10, 15 }
+   total = 0
+   function add_to_total(Value) total += Value end
+   arr |> add_to_total
+   assert(total is 30, "variable array pipe to named function should sum to 30, got " .. total)
+end

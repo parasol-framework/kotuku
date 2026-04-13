@@ -17,19 +17,19 @@
 #include "lj_dispatch.h"
 
 // Some local macros to save typing. Undef'd at the end.
-#define IR(ref)      (&J->cur.ir[(ref)])
+#define IR(ref)   (&J->cur.ir[(ref)])
 #define fins      (&J->fold.ins)
-#define fleft      (J->fold.left)
-#define fright      (J->fold.right)
+#define fleft     (J->fold.left)
+#define fright    (J->fold.right)
 
 // Caveat #1: return value is not always a TRef -- only use with tref_ref().
 // Caveat #2: FWD relies on active CSE for xREF operands -- see lj_opt_fold().
 
 // Return values from alias analysis.
 typedef enum {
-   ALIAS_NO,   //  The two refs CANNOT alias (exact).
-   ALIAS_MAY,   //  The two refs MAY alias (inexact).
-   ALIAS_MUST   //  The two refs MUST alias (exact).
+   ALIAS_NO,    // The two refs CANNOT alias (exact).
+   ALIAS_MAY,   // The two refs MAY alias (inexact).
+   ALIAS_MUST   // The two refs MUST alias (exact).
 } AliasRet;
 
 // ALOAD/HLOAD forwarding and ASTORE/HSTORE elimination

@@ -190,10 +190,12 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
 
    const auto saved_base = L->base;
    const auto saved_top = L->top;
+
    if (not Ins) {
       auto jb = tvref(G(L)->jit_base);
       if (jb) L->base = jb;
    }
+
    if (curr_funcisL(L)) L->top = curr_topL(L);
 
    if (not Obj->uid) luaL_error(L, ERR::DoesNotExist, "Object dereferenced, unable to read field.");
@@ -202,7 +204,8 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
    // luaL_error() uses longjmp which skips C++ destructors, leaking debug iterator
    // registrations and corrupting the vector's proxy list on destruction.
 
-   auto read_table = get_read_table(Obj->classptr);
+   auto cl = Obj->classptr;
+   auto read_table = get_read_table(cl);
    auto rt_data = read_table->data();
    auto rt_size = read_table->size();
    const obj_read *func;
@@ -216,8 +219,7 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
       else { // Cache miss - binary search and cache
          auto found = std::lower_bound(rt_data, rt_data + rt_size, obj_read(Key->hash), read_hash);
          if ((found IS rt_data + rt_size) or (found->Hash != Key->hash)) {
-            luaL_error(L, ERR::NoFieldAccess, "Field does not exist or is init-only: %s.%s",
-               Obj->classptr ? Obj->classptr->ClassName : "?", strdata(Key));
+            luaL_error(L, ERR::NoFieldAccess, "Field does not exist or is init-only: %s.%s", cl->ClassName, strdata(Key));
          }
          setbc_p32(Ins, uint32_t(found - rt_data));
          func = found;
@@ -226,15 +228,20 @@ extern "C" void bc_object_getfield(lua_State *L, GCobject *Obj, GCstr *Key, TVal
    else { // JIT path - no caching
       auto found = std::lower_bound(rt_data, rt_data + rt_size, obj_read(Key->hash), read_hash);
       if ((found IS rt_data + rt_size) or (found->Hash != Key->hash)) {
-         luaL_error(L, ERR::NoFieldAccess, "Field does not exist or is init-only: %s.%s",
-            Obj->classptr ? Obj->classptr->ClassName : "?", strdata(Key));
+         luaL_error(L, ERR::NoFieldAccess, "Field does not exist or is init-only: %s.%s", cl->ClassName, strdata(Key));
       }
       func = found;
    }
 
    // Call the field handler - it pushes result onto the Lua stack
    if (func->Call(L, *func, Obj) > 0) copyTV(L, Dest, L->top - 1);
-   else setnilV(Dest);
+   else { // An error occurred and is stored in L->CaughtError
+      if (L->CaughtError > ERR::ExceptionThreshold) {
+         luaL_error(L, L->CaughtError, "Read failure: %s.%s: %s", cl->ClassName, luaL_checkstring(L, 2), GetErrorMsg(L->CaughtError));
+      }
+
+      setnilV(Dest);
+   }
    L->base = saved_base;
    L->top = saved_top;
 }

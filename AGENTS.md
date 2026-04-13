@@ -21,6 +21,7 @@ This file provides guidance to Agentic programs when working with code in this r
 - When running the Origo executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.  Log output is directed to stderr.
 - Statements can be tested on the commandline with `--statement`, e.g. `origo --statement "print('Hello')"`
 - If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/project/scripts` to ensure your modified files are being loaded over the installed versions.
+- If debugging issues involving threads, add `--log-threads` for improved log output.
 
 **Verify:**
 - You can inspect the version, git commit hash and build type of the build by running `origo` with `--version`.

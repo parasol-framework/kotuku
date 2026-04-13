@@ -41,7 +41,7 @@ end
    server = obj.new('netsocket', {
       name = 'ConcurrentServer',
       feedback = function(Socket, Client, State)
-         if (State is NTC_CONNECTED) then
+         if State is NTC_CONNECTED then
             glActiveClients++
             print('[Server] Client connected. Active clients: ' .. glActiveClients)
 
@@ -50,7 +50,7 @@ end
             err, len = Client.acWrite(welcome)
             assert(err is ERR_Okay, '[Server] Failed to send welcome to client: ' .. mSys.GetErrorMsg(err))
 
-         elseif (State is NTC_DISCONNECTED) then
+         elseif State is NTC_DISCONNECTED then
             glActiveClients = glActiveClients - 1
             print('[Server] Client disconnected. Active clients: ' .. glActiveClients)
 
@@ -63,7 +63,7 @@ end
       incoming = function(Socket, Client)
          buffer = string.alloc(1024)
          err, read_len = Client.acRead(buffer)
-         if (err is ERR_Disconnected) then return end
+         if err is ERR_Disconnected then return end
          assert(err is ERR_Okay, '[Server] Failed to read from client: ' .. mSys.GetErrorMsg(err))
 
          msg = buffer:sub(0, read_len)
@@ -109,16 +109,16 @@ end
             -- Store response for verification
             glClientResponses:push(msg)
 
-            if (msg:startsWith('WELCOME:')) then
+            if msg:startsWith('WELCOME:') then
                -- Send first test message
                test_msg = 'CLIENT_' .. data.id .. '_MSG_1'
                err, len = Socket.acWrite(test_msg)
                assert(err is ERR_Okay, '[Client ' .. data.id .. '] Failed to send: ' .. mSys.GetErrorMsg(err))
                data.messagesSent++
 
-            elseif (msg:startsWith('SERVER_ECHO:')) then
+            elseif msg:startsWith('SERVER_ECHO:') then
                -- Send next message or disconnect
-               if (data.messagesSent < glMessagesPerClient) then
+               if data.messagesSent < glMessagesPerClient then
                   data.messagesSent++
                   test_msg = 'CLIENT_' .. data.id .. '_MSG_' .. data.messagesSent
                   err, len = Socket.acWrite(test_msg)
@@ -186,9 +186,9 @@ end
       clients[i] = obj.new('netsocket', {
          name = 'LimitTestClient' .. i,
          feedback = function(Socket, Client, State)
-            if (State is NTC_CONNECTED) then
+            if State is NTC_CONNECTED then
                print('[Client ' .. i .. '] Connection successful')
-            elseif (State is NTC_DISCONNECTED) then
+            elseif State is NTC_DISCONNECTED then
                print('[Client ' .. i .. '] Connection failed or disconnected')
             end
          end
@@ -198,7 +198,7 @@ end
    -- Attempt connections rapidly
    for i = 0, connectAttempts-1 do
       err = clients[i].mtConnect('127.0.0.1', glPort)
-      if (err != ERR_Okay) then
+      if err != ERR_Okay then
          rejectedConnections++
          print('[Client ' .. i .. '] Connection rejected: ' .. mSys.GetErrorMsg(err))
       end

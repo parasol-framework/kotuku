@@ -1,8 +1,9 @@
+#!/usr/bin/env origo
 
 glHelp = [[
 This straight-forward implementation of an HTTP server supports the serving of static files from a folder.
 
-Usage: origo.exe http_server.tiri folder=path/to/files port=8080 [options...]
+Usage: origo apps/httpserver.tiri folder=path/to/files port=8080 [options...]
 
 If a config file is stored at user:config/http_server_cfg.tiri then it will be loaded automatically.  Options
 can be overridden via the command-line, or you can refer to a different file via the config parameter.
@@ -25,7 +26,7 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
 
    glConfigFile = arg('config', 'user:config/http_server_cfg.tiri')
 
-   global glOptions = { }
+   glOptions = { }
 
    if mSys.AnalysePath(glConfigFile) is ERR_Okay then
       loadFile(glConfigFile, glOptions)
@@ -77,3 +78,4 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
    glServer = hslib.start(glOptions)
 
    processing.sleep()
+

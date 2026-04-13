@@ -211,7 +211,7 @@
 <tr><th class="col-md-1">FileNotFound</th><td>File not found.</td></tr>
 <tr><th class="col-md-1">NoPermission</th><td>Permission was denied when accessing or creating the file.</td></tr>
 <tr><th class="col-md-1">SetField</th><td>An error occurred while updating the <a data-bs-toggle="tooltip" title="Specifies the location of a file or folder." href="#tf-Path">Path</a> field.</td></tr>
-<tr><th class="col-md-1">MissingPath</th><td>The object is missing a setting in the Path or Location field.</td></tr>
+<tr><th class="col-md-1">MissingPath</th><td>The object is missing a path reference.</td></tr>
 <tr><th class="col-md-1">ResolvePath</th><td>A volume could not be resolved.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tac-Query" style="scroll-margin:3em;" id="ta-Query"><td style="width:1%; border-top-style: none; border-bottom-style: none;"></td><th class="col-md-1 text-primary">Query</th><td>Read a file's meta information from source.</td></tr>
@@ -227,7 +227,7 @@
 <tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
 <tr><th class="col-md-1">OutOfRange</th><td>Invalid <code>Length</code> parameter.</td></tr>
 <tr><th class="col-md-1">FileReadFlag</th><td>The <code>FL::READ</code> flag was not specified on initialisation.</td></tr>
-<tr><th class="col-md-1">NotInitialised</th><td>The object has not been initialised.</td></tr>
+<tr><th class="col-md-1">NotInitialised</th><td>The resource has not been initialised.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 <tr><th class="col-md-1">ExpectedFolder</th><td>The file object refers to a folder.</td></tr>
 </tbody></table></div></div></td></tr>
@@ -285,7 +285,7 @@
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>File deleted successfully.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>The deletion attempt failed (specific condition not available).</td></tr>
 <tr><th class="col-md-1">NoPermission</th><td>The user does not have the necessary permissions to delete the file.</td></tr>
-<tr><th class="col-md-1">MissingPath</th><td>The object is missing a setting in the Path or Location field.</td></tr>
+<tr><th class="col-md-1">MissingPath</th><td>The object is missing a path reference.</td></tr>
 <tr><th class="col-md-1">BufferOverflow</th><td>The file path string is too long.</td></tr>
 <tr><th class="col-md-1">ResolvePath</th><td>A volume could not be resolved.</td></tr>
 <tr><th class="col-md-1">ReadOnly</th><td>The file is on a read-only filesystem.</td></tr>
@@ -298,8 +298,8 @@
 <p>The <a data-bs-toggle="tooltip" title="The current read/write byte position in a file." href="#tf-Position">Position</a> field will be reset as a result of calling this method.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The File was moved successfully.</td></tr>
-<tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
 <tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">InvalidPath</th><td>Attempted to move a volume.</td></tr>
 <tr><th class="col-md-1">FieldNotSet</th><td>The <a data-bs-toggle="tooltip" title="Specifies the location of a file or folder." href="#tf-Path">Path</a> field has not been set in the file object.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>

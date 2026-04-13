@@ -79,9 +79,9 @@ end
    end
 
    do
-      local a <close> = setmetatable({}, makeMt(1))
-      local b <close> = setmetatable({}, makeMt(2))
-      local c <close> = setmetatable({}, makeMt(3))
+      a <close> = setmetatable({}, makeMt(1))
+      b <close> = setmetatable({}, makeMt(2))
+      c <close> = setmetatable({}, makeMt(3))
    end
 
    assert(#order is 3, 'All three close handlers should be called')
@@ -95,11 +95,11 @@ end
 @Test function NestedScopes()
    order = {}
    do
-      local outer <close> = setmetatable({}, {
+      outer <close> = setmetatable({}, {
          __close = function() table.insert(order, 'outer') end
       })
       do
-         local inner <close> = setmetatable({}, {
+         inner <close> = setmetatable({}, {
             __close = function() table.insert(order, 'inner') end
          })
       end
@@ -197,7 +197,7 @@ end
 
 @Test function CloseNoMetatable()
    do
-      local t <close> = {}
+      t <close> = {}
    end
 end
 
@@ -215,11 +215,11 @@ end
 @Test function MixedCloseValues()
    order = {}
    do
-      local a <close> = setmetatable({}, {
+      a <close> = setmetatable({}, {
          __close = function() table.insert(order, 'a') end
       })
-      local b <close> = nil
-      local c <close> = setmetatable({}, {
+      b <close> = nil
+      c <close> = setmetatable({}, {
          __close = function() table.insert(order, 'c') end
       })
    end
@@ -264,7 +264,7 @@ end
 
 @Test function CloseWithString()
    do
-      local s <close> = 'hello'
+      s <close> = 'hello'
    end
 end
 
@@ -272,7 +272,7 @@ end
 
 @Test function CloseWithNumber()
    do
-      local n <close> = 42
+      n <close> = 42
    end
 end
 
@@ -291,9 +291,9 @@ end
    end
 
    function inner()
-      local a <close> = setmetatable({}, makeMt(0))
-      local b <close> = setmetatable({}, makeMt(1))
-      local c <close> = setmetatable({}, makeMt(2))
+      a <close> = setmetatable({}, makeMt(0))
+      b <close> = setmetatable({}, makeMt(1))
+      c <close> = setmetatable({}, makeMt(2))
       error('multi close error')
    end
 

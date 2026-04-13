@@ -193,30 +193,23 @@ template <class T = Object> requires std::is_base_of_v<Object, T>
 template <KotukuObject T = Object>
 class ScopedObjectLock {
    private:
-      bool quicklock;
+      bool quicklock = false;
 
    public:
-      ERR error;
-      T *obj;
+      ERR error = ERR::ResourceNotLocked;
+      T *obj = nullptr;
 
       inline ScopedObjectLock(OBJECTID ObjectID, int Milliseconds = 3000) {
          error = AccessObject(ObjectID, Milliseconds, (OBJECTPTR *)&obj);
-         quicklock = false;
       }
 
       inline ScopedObjectLock(T *Object, int Milliseconds = 3000) {
-         if (!Object) {
-            obj = nullptr;
-            error = ERR::ResourceNotLocked;
-            quicklock = false;
+         if (Object) {
+            if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
+               obj = (T *)Object;
+               quicklock = true;
+            }
          }
-         else if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
-            obj = (T *)Object;
-            quicklock = true;
-         }
-         #ifdef __GNUC__ // Suppress GCC false-positive warning
-         else obj = nullptr;
-         #endif
       }
 
       inline ~ScopedObjectLock() {
@@ -226,8 +219,8 @@ class ScopedObjectLock {
          }
       }
 
-      inline ScopedObjectLock() { obj = nullptr; error = ERR::ResourceNotLocked; }
-      [[nodiscard]] inline bool granted() { return error == ERR::Okay; }
+      inline ScopedObjectLock() = default;
+      [[nodiscard]] inline bool granted() { return error IS ERR::Okay; }
 
       inline T * operator->() { return obj; }; // Promotes underlying methods and fields
       inline T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
@@ -450,7 +443,9 @@ class GuardedResource {
 };
 
 //********************************************************************************************************************
-// Resource guard for temporarily switching context and back when out of scope.
+// Resource guard for temporarily switching context and back when out of scope.  NOTE: It also acquires a lock on the
+// target object, on the basis that we need to retain R/W access and prevent early termination while operating in the
+// object's space.  In cases where this is undesirable, use direct calls to SetObjectContext().
 //
 // Usage: pf::SwitchContext context(YourObject)
 

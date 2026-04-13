@@ -58,7 +58,7 @@ gui.icon = function(Options)
             if (math.abs(Msg.absX - lClick.x) > 2) or (math.abs(Msg.absY - lClick.y) > 2) then
                -- Do nothing - mouse moved/dragged when icon was clicked
             elseif self.events.activate then
-               if (Msg.flags & JTYPE_DBL_CLICK)?? then
+               if Msg.flags has JTYPE_DBL_CLICK then
                   self.events.activate(self, { name='dblclick' })
                else
                   self.events.activate(self, { name='click' })
@@ -172,11 +172,8 @@ gui.icon = function(Options)
    assert(Options.target, 'A target viewport is required.')
    assert(Options.image??, 'The image option is required.')
 
-   if Options.theme is 'light' then
-      lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
-   else
-      lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
-   end
+   theme = gui.getTheme(Options.target)
+   lThemeColour = gui.iconThemes[theme.page.icon ?? 'carbon']
 
    calcWords()
 
@@ -203,8 +200,8 @@ gui.icon = function(Options)
 
    gname = 'iconFill' .. self.iconVP.id
    self.svgGradient = gui.simpleGradient(self.iconVP.scene, gname, { lThemeColour.first, lThemeColour.last },
-      0, self.iconVP.y, 0, self.iconVP.height, 'boundingbox')
-   gui.applyFill(self.iconVP, 'url(#' .. gname .. ')')
+      0, self.iconVP.y, 0, 1, 'boundingbox')
+   gui.applyFill(self.iconVP, f'url(#{gname})')
 
    check self.viewport.mtSubscribeInput(JTYPE_BUTTON, inputFeedback)
 

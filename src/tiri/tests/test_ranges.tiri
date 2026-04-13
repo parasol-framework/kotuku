@@ -19,6 +19,35 @@ function enforce_hotpath() end
    assert(err is ERR_Okay, "Script parsing failed, error: " .. script.errorMessage)
 end
 
+@Test function ForInNonRangeBraceWithConcatParses()
+   -- Verify for-in does not misclassify {a, b .. c} as a range literal.
+   -- Guard execution so this validates parser behaviour only.
+
+   script = obj.new('script', { statement=[[
+   if false then
+      for i in {'a', 'b' .. 'c'} do
+      end
+   end
+   ]] })
+
+   err = script.acActivate()
+   assert(err is ERR_Okay, "for-in with non-range brace expression should parse: " .. script.errorMessage)
+end
+
+@Test function ForInNonRangeBraceWithNestedConcatParses()
+   -- Verify lookahead ignores nested '..' and only recognises true {start..stop} forms.
+
+   script = obj.new('script', { statement=[[
+   if false then
+      for i in {{1, 2}, ('x' .. 'y')} do
+      end
+   end
+   ]] })
+
+   err = script.acActivate()
+   assert(err is ERR_Okay, "for-in with nested non-range brace expression should parse: " .. script.errorMessage)
+end
+
 @Test function RangeConstructorBasic()
    -- Test basic exclusive range (default)
    a = 0

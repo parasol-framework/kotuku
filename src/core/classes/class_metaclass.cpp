@@ -158,7 +158,7 @@ extMetaClass glMetaClass;
 
 static ERR DEFAULT_Signal(OBJECTPTR Object, APTR Void)
 {
-   Object->Flags |= NF::SIGNALLED;
+   Object->setFlag(NF::SIGNALLED);
    return ERR::Okay;
 }
 
@@ -168,7 +168,7 @@ void init_metaclass(void)
 {
    glMetaClass.Object::Class   = &glMetaClass;
    glMetaClass.Object::UID     = 123;
-   glMetaClass.Object::Flags   = NF::INITIALISED;
+   glMetaClass.setFlag(NF::INITIALISED);
 
    glMetaClass.ClassVersion       = 1;
    glMetaClass.Fields             = glMetaFields;
@@ -435,7 +435,7 @@ Note: Never refer to method ID's in an action list - the #Methods field is provi
 
 static ERR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
 {
-   if (!Actions) return ERR::Failed;
+   if (!Actions) return ERR::NullArgs;
 
    Self->ActionTable[int(AC::Signal)].PerformAction = &DEFAULT_Signal;
 
@@ -551,7 +551,7 @@ static ERR GET_Fields(extMetaClass *Self, const FieldArray **Fields, int *Elemen
 
 static ERR SET_Fields(extMetaClass *Self, const FieldArray *Fields, int Elements)
 {
-   if (!Fields) return ERR::Failed;
+   if (!Fields) return ERR::NullArgs;
 
    Self->Fields = Fields;
    if (Elements > 0) {
@@ -638,7 +638,7 @@ static ERR GET_Location(extMetaClass *Self, CSTRING *Value)
    }
 
    if ((*Value = Self->Location)) return ERR::Okay;
-   else return ERR::Failed;
+   else return ERR::MissingPath;
 }
 
 /*********************************************************************************************************************

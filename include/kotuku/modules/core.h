@@ -28,7 +28,7 @@
 #include "ankerl/unordered_dense.h"
 #endif
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
  #ifndef _MSC_VER
   #include <signal.h>
  #endif
@@ -665,7 +665,8 @@ DEFINE_ENUM_FLAG_OPERATORS(MSF)
 
 enum class PMF : uint32_t {
    NIL = 0,
-   SYSTEM_NO_BREAK = 0x00000001,
+   EVENT_LOOP = 0x00000001,
+   SYSTEM_NO_BREAK = 0x00000002,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(PMF)
@@ -1043,6 +1044,7 @@ enum class NF : uint32_t {
    MESSAGE = 0x00000200,
    SIGNALLED = 0x00000400,
    PERMIT_TERMINATE = 0x00000800,
+   ASYNC_ACTIVE = 0x00001000,
    UNIQUE = 0x40000000,
    NAME = 0x80000000,
 };
@@ -1101,20 +1103,22 @@ enum class RES : int {
    PRIVILEGED = 7,
    CORE_IDL = 8,
    STATIC_BUILD = 9,
-   LOG_LEVEL = 10,
-   TOTAL_SHARED_MEMORY = 11,
-   LOG_DEPTH = 12,
-   JNI_ENV = 13,
-   THREAD_ID = 14,
-   OPEN_INFO = 15,
-   EXCEPTION_HANDLER = 16,
-   NET_PROCESSING = 17,
-   PROCESS_STATE = 18,
-   TOTAL_MEMORY = 19,
-   TOTAL_SWAP = 20,
-   CPU_SPEED = 21,
-   FREE_MEMORY = 22,
-   MEMORY_USAGE = 23,
+   RELEASE_BUILD = 10,
+   LOG_LEVEL = 11,
+   TOTAL_SHARED_MEMORY = 12,
+   LOG_DEPTH = 13,
+   JNI_ENV = 14,
+   THREAD_ID = 15,
+   OPEN_INFO = 16,
+   EXCEPTION_HANDLER = 17,
+   NET_PROCESSING = 18,
+   PROCESS_STATE = 19,
+   TOTAL_MEMORY = 20,
+   TOTAL_SWAP = 21,
+   CPU_SPEED = 22,
+   FREE_MEMORY = 23,
+   MEMORY_USAGE = 24,
+   MAIN_THREAD = 25,
 };
 
 // Path types for SetResourcePath()
@@ -1362,16 +1366,25 @@ struct HSV {
    double Hue;           // Between 0 and 359.999
    double Saturation;    // Between 0 and 1.0
    double Value;         // Between 0 and 1.0.  Corresponds to Value, Lightness or Brightness
-   double Alpha;         // Alpha blending value from 0 to 1.0.
+   double Alpha;         // Alpha blending value from 0 to 1.0
 };
+
+// Forward declarations
+struct RGB8;
 
 struct FRGB {
    float Red;    // Red component value
    float Green;  // Green component value
    float Blue;   // Blue component value
    float Alpha;  // Alpha component value
+   // Note that the colour components are unclamped so that any given FRGB value can support other colour spaces.
+   // If targeting a colour space like Display P3 for instance, the expectation is that colour values will exceed
+   // 1.0 and negative values are permitted.
+
    constexpr FRGB() noexcept = default;
    constexpr FRGB(float R, float G, float B, float A = 1.0) noexcept : Red(R), Green(G), Blue(B), Alpha(A) { };
+
+   constexpr RGB8 toRGB8() const noexcept;
 };
 
 typedef struct RGB8 {
@@ -1382,7 +1395,84 @@ typedef struct RGB8 {
    constexpr RGB8() noexcept = default;
    constexpr RGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) noexcept
       : Red(r), Green(g), Blue(b), Alpha(a) { }
+   constexpr RGB8(FRGB frgb) noexcept;
+
+   inline FRGB toFRGB() const noexcept {
+      return FRGB(Red / 255.0, Green / 255.0, Blue / 255.0, Alpha / 255.0);
+   }
 } RGB8;
+
+constexpr RGB8 FRGB::toRGB8() const noexcept {
+   return RGB8 {
+      uint8_t((Red   >= 1.0f) ? 255 : (Red   < 0.0f ? 0 : Red   * 255.0)),
+      uint8_t((Green >= 1.0f) ? 255 : (Green < 0.0f ? 0 : Green * 255.0)),
+      uint8_t((Blue  >= 1.0f) ? 255 : (Blue  < 0.0f ? 0 : Blue  * 255.0)),
+      uint8_t((Alpha >= 1.0f) ? 255 : (Alpha < 0.0f ? 0 : Alpha * 255.0))
+   };
+}
+
+constexpr RGB8::RGB8(FRGB frgb) noexcept {
+   Red   = uint8_t((frgb.Red   >= 1.0f) ? 255 : (frgb.Red   < 0.0f) ? 0 : frgb.Red   * 255.0);
+   Green = uint8_t((frgb.Green >= 1.0f) ? 255 : (frgb.Green < 0.0f) ? 0 : frgb.Green * 255.0);
+   Blue  = uint8_t((frgb.Blue  >= 1.0f) ? 255 : (frgb.Blue  < 0.0f) ? 0 : frgb.Blue  * 255.0);
+   Alpha = uint8_t((frgb.Alpha >= 1.0f) ? 255 : (frgb.Alpha < 0.0f) ? 0 : frgb.Alpha * 255.0);
+}
+
+struct CIEXYZ {
+   float X;        // X is a mix of the three CIE RGB curves chosen to be non-negative
+   float Y;        // Luminance value from 0 to 1.0
+   float Z;        // Z is quasi-equal to blue
+   float Alpha;    // Alpha blending value from 0 to 1.0
+   constexpr CIEXYZ() noexcept = default;
+   constexpr CIEXYZ(float x, float y, float z, float a = 1.0) noexcept
+     : X(x), Y(y), Z(z), Alpha(a) { }
+
+   // Convert sRGB (gamma-encoded, 0-1) to CIE XYZ via linear sRGB.
+
+   inline CIEXYZ(const FRGB &RGB) {
+      auto to_linear = [](const double V) -> double {
+          return (V <= 0.04045) ? V / 12.92 : pow((V + 0.055) / 1.055, 2.4);
+      };
+      const double lr = to_linear(RGB.Red);
+      const double lg = to_linear(RGB.Green);
+      const double lb = to_linear(RGB.Blue);
+      X = (0.4124564 * lr) + (0.3575761 * lg) + (0.1804375 * lb);
+      Y = (0.2126729 * lr) + (0.7151522 * lg) + (0.0721750 * lb);
+      Z = (0.0193339 * lr) + (0.1191920 * lg) + (0.9505041 * lb);
+      Alpha = RGB.Alpha;
+   }
+
+   inline CIEXYZ(const RGB8 &RGB) {
+      auto to_linear = [](const double V) -> double {
+          return (V <= 0.04045) ? V / 12.92 : pow((V + 0.055) / 1.055, 2.4);
+      };
+      const double lr = to_linear(RGB.Red / 255.0);
+      const double lg = to_linear(RGB.Green / 255.0);
+      const double lb = to_linear(RGB.Blue / 255.0);
+      X = (0.4124564 * lr) + (0.3575761 * lg) + (0.1804375 * lb);
+      Y = (0.2126729 * lr) + (0.7151522 * lg) + (0.0721750 * lb);
+      Z = (0.0193339 * lr) + (0.1191920 * lg) + (0.9505041 * lb);
+      Alpha = RGB.Alpha / 255.0;
+   }
+
+   // Convert CIE XYZ to sRGB via the inverse sRGB matrix and gamma encoding
+
+   inline FRGB toFRGB() const {
+      auto linear_to_srgb = [](double V) -> float {
+         if (V >= 0.0) return float((V <= 0.0031308) ? 12.92 * V : 1.055 * pow(V, 1.0 / 2.4) - 0.055);
+         return float(-1.055 * pow(-V, 1.0 / 2.4) + 0.055);
+      };
+      double lr =  (3.2404542 * X) - (1.5371385 * Y) - (0.4985314 * Z);
+      double lg = (-0.9692660 * X) + (1.8760108 * Y) + (0.0415560 * Z);
+      double lb =  (0.0556434 * X) - (0.2040259 * Y) + (1.0572252 * Z);
+      return FRGB(linear_to_srgb(lr), linear_to_srgb(lg), linear_to_srgb(lb), float(Alpha));
+   }
+
+   inline RGB8 toRGB() const {
+      auto frgb = toFRGB();
+      return RGB8(frgb.Red * 255, frgb.Green * 255, frgb.Blue * 255, frgb.Alpha * 255);
+   }
+};
 
 struct RGB16 {
    uint16_t Red;    // Red component value
@@ -1548,7 +1638,7 @@ template <class T> T roundup(T Num, int Alignment) {
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
 // in to debug builds.
 
-#ifdef _DEBUG
+#ifndef NDEBUG
  #ifdef _MSC_VER
   #define DEBUG_BREAK __debugbreak();
  #elif __linux__
@@ -1560,7 +1650,7 @@ template <class T> T roundup(T Num, int Alignment) {
  #define DEBUG_BREAK
 #endif
 
-// Fast float-2-int conversion, with rounding to the nearest integer (F2I) and truncation (F2T)
+// Fast float-2-int conversion, with rounding to the nearest integer (F2I)
 
 #if defined(__GNUC__) && defined(__x86__)
 
@@ -1580,10 +1670,6 @@ inline int F2I(double val) {
 }
 
 #endif
-
-constexpr int F2T(double val) noexcept {
-   return int(val); // Expected to compile to a cvttsd2si instruction or equivalent
-}
 
 } // namespace
 
@@ -1975,7 +2061,7 @@ struct CoreBase {
    ERR (*_UnsubscribeAction)(OBJECTPTR Object, AC Action);
    void (*_UnsubscribeEvent)(APTR Handle);
    ERR (*_BroadcastEvent)(APTR Event, int EventSize);
-   void (*_WaitTime)(double Seconds);
+   ERR (*_WaitTime)(double Seconds);
    int64_t (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
    uint32_t (*_GenCRC32)(uint32_t CRC, APTR Data, uint32_t Length);
    int64_t (*_GetResource)(RES Resource);
@@ -2012,6 +2098,10 @@ struct CoreBase {
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
    OBJECTPTR (*_ParentContext)(void);
    void (*_SetResourceMgr)(APTR Address, struct ResourceManager *Manager);
+   ERR (*_WakeThread)(int Thread, int Stop);
+   ERR (*_AsyncCancel)(OBJECTID *Objects, int Size);
+   int (*_AsyncPending)(OBJECTID Object);
+   ERR (*_AsyncWait)(OBJECTID *Objects, int Size, int TimeOut);
 #endif // KOTUKU_STATIC
 };
 
@@ -2069,7 +2159,7 @@ inline ERR UpdateTimer(APTR Subscription, double Interval) { return CoreBase->_U
 inline ERR UnsubscribeAction(OBJECTPTR Object, AC Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
 inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
 inline ERR BroadcastEvent(APTR Event, int EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
-inline void WaitTime(double Seconds) { return CoreBase->_WaitTime(Seconds); }
+inline ERR WaitTime(double Seconds) { return CoreBase->_WaitTime(Seconds); }
 inline int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
 inline uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
 inline int64_t GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
@@ -2106,6 +2196,10 @@ inline CSTRING ResolveUserID(int User) { return CoreBase->_ResolveUserID(User); 
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
 inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
 inline void SetResourceMgr(APTR Address, struct ResourceManager *Manager) { return CoreBase->_SetResourceMgr(Address,Manager); }
+inline ERR WakeThread(int Thread, int Stop) { return CoreBase->_WakeThread(Thread,Stop); }
+inline ERR AsyncCancel(OBJECTID *Objects, int Size) { return CoreBase->_AsyncCancel(Objects,Size); }
+inline int AsyncPending(OBJECTID Object) { return CoreBase->_AsyncPending(Object); }
+inline ERR AsyncWait(OBJECTID *Objects, int Size, int TimeOut) { return CoreBase->_AsyncWait(Objects,Size,TimeOut); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
@@ -2158,7 +2252,7 @@ extern "C" ERR UpdateTimer(APTR Subscription, double Interval);
 extern "C" ERR UnsubscribeAction(OBJECTPTR Object, AC Action);
 extern "C" void UnsubscribeEvent(APTR Handle);
 extern "C" ERR BroadcastEvent(APTR Event, int EventSize);
-extern "C" void WaitTime(double Seconds);
+extern "C" ERR WaitTime(double Seconds);
 extern "C" int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
 extern "C" uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length);
 extern "C" int64_t GetResource(RES Resource);
@@ -2195,6 +2289,10 @@ extern "C" CSTRING ResolveUserID(int User);
 extern "C" ERR CreateLink(CSTRING From, CSTRING To);
 extern "C" OBJECTPTR ParentContext(void);
 extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
+extern "C" ERR WakeThread(int Thread, int Stop);
+extern "C" ERR AsyncCancel(OBJECTID *Objects, int Size);
+extern "C" int AsyncPending(OBJECTID Object);
+extern "C" ERR AsyncWait(OBJECTID *Objects, int Size, int TimeOut);
 #endif // KOTUKU_STATIC
 
 
@@ -3822,8 +3920,8 @@ typedef struct { EVENTID EventID; int16_t TotalWithFocus; int16_t TotalLostFocus
 
 struct evHotplug {
    EVENTID EventID;
-   int16_t Type;            // HT ID
-   int16_t Action;          // HTA_INSERTED, HTA_REMOVED
+   int16_t Type;        // HT ID
+   int16_t Action;      // HTA_INSERTED, HTA_REMOVED
    int VendorID;        // USB vendor ID
    union {
       int ProductID;    // USB product or device ID

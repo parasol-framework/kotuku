@@ -32,7 +32,7 @@ class Log { // C++ wrapper for Kotuku's log functionality
 
       void resetBranch() { branches = 0; }
 
-      #ifdef _DEBUG
+      #ifndef NDEBUG
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
@@ -117,7 +117,7 @@ class Log { // C++ wrapper for Kotuku's log functionality
       }
 
       void trace(CSTRING Message, ...) {
-         #ifdef _DEBUG
+         #ifndef NDEBUG
             va_list arg;
             va_start(arg, Message);
             VLogF(VLF::TRACE, header, Message, arg);
@@ -126,7 +126,7 @@ class Log { // C++ wrapper for Kotuku's log functionality
       }
 
       void traceWarning(CSTRING Message, ...) {
-         #ifdef _DEBUG
+         #ifndef NDEBUG
             va_list arg;
             va_start(arg, Message);
             VLogF(VLF::WARNING, header, Message, arg);
@@ -135,7 +135,7 @@ class Log { // C++ wrapper for Kotuku's log functionality
       }
 
       inline ERR traceWarning(ERR Code) {
-         #ifdef _DEBUG
+         #ifndef NDEBUG
             FuncError(header, Code);
          #endif
          return Code;

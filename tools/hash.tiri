@@ -1,4 +1,4 @@
---$TIRI:Batch
+#!/usr/bin/env origo
 
    import "common"
 

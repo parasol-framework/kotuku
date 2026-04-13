@@ -69,7 +69,7 @@ end
    })
 
    err = client2.mtConnect('127.0.0.1', 65432) -- Unlikely to be in use
-   if (err != ERR_Okay) then
+   if err != ERR_Okay then
       print('[Client2] Connection to closed port correctly failed: ' .. mSys.GetErrorMsg(err))
       table.insert(glTestResults, 'closed_port_rejected')
    end
@@ -107,7 +107,7 @@ end
    expected_results = { 'invalid_ip_rejected', 'closed_port_rejected', 'port_conflict_detected' }
    for i, expected in ipairs(expected_results) do
       found = false
-      for j, result in ipairs(glTestResults) do
+      for result in values(glTestResults) do
          if (result is expected or result:find(expected)) then
             found = true
             break
@@ -135,13 +135,13 @@ end
    server = obj.new('netsocket', {
       name = 'OverflowTestServer',
       feedback = function(Socket, Client, State)
-         if (State is NTC_CONNECTED) then
+         if State is NTC_CONNECTED then
             print('[Server] Client connected, sending large data burst...')
 
             -- Send multiple large messages rapidly to test buffer limits
             for i = 1, 10 do
                local err, len = Client.acWrite(large_msg)
-               if (err != ERR_Okay) then
+               if err != ERR_Okay then
                   print('[Server] Write failed at message ' .. i .. ': ' .. mSys.GetErrorMsg(err))
                   if (err is ERR_BufferOverflow or err is ERR_ResourceUnavailable) then
                      print('[Server] Buffer overflow correctly detected and handled')
@@ -179,9 +179,9 @@ end
          processing.sleep(0.1, false)
          buffer = string.alloc(1024)
          err, read_len = Socket.acRead(buffer)
-         if (err != ERR_Okay) then
+         if err != ERR_Okay then
             print('[Client] Read error: ' .. mSys.GetErrorMsg(err))
-            if (err is ERR_BufferOverflow) then
+            if err is ERR_BufferOverflow then
                overflow_handled = true
                proc.signal()
             end
@@ -218,7 +218,7 @@ end
       name = 'TimeoutTestClient',
       feedback = function(Socket, State)
          print('[Client] State: ' .. State)
-         if (State is NTC_DISCONNECTED) then
+         if State is NTC_DISCONNECTED then
             print('[Client] Disconnection detected')
             timeout_handled = true
             proc.signal()
@@ -231,14 +231,14 @@ end
    print('[Client] Attempting connection to timeout address...')
    err = client.mtConnect('10.255.255.1', 80) -- Reserved test IP
 
-   if (err != ERR_Okay) then
+   if err != ERR_Okay then
       print('[Client] Connection immediately failed: ' .. mSys.GetErrorMsg(err))
       timeout_handled = true
    else
       print('[Client] Connection attempt started, waiting for timeout...')
       -- Wait for timeout or disconnect
       err = proc.sleep(1.0) -- Allow time for timeout
-      if (err is ERR_TimeOut) then
+      if err is ERR_TimeOut then
          print('[Client] Test timeout reached - checking connection state')
          timeout_handled = true
       end
@@ -260,7 +260,7 @@ end
    server = obj.new('netsocket', {
       name = 'CloseTestServer',
       feedback = function(Socket, Client, State)
-         if (State is NTC_CONNECTED) then
+         if State is NTC_CONNECTED then
             print('[Server] Client connected')
             -- Send a message then immediately close
             err, len = Client.acWrite('CLOSE_TEST_MESSAGE')
@@ -270,7 +270,7 @@ end
             print('[Server] Forcibly closing client connection...')
             Socket.mtDisconnectSocket(Client)
 
-         elseif (State is NTC_DISCONNECTED) then
+         elseif State is NTC_DISCONNECTED then
             print('[Server] Client disconnect confirmed')
             close_handled = true
             proc.signal()
@@ -279,7 +279,7 @@ end
       incoming = function(Socket, Client)
          buffer = string.alloc(1024)
          err, read_len = Client.acRead(buffer)
-         if (err is ERR_Okay) then
+         if err is ERR_Okay then
             print('[Server] Received: ' .. buffer:sub(0, read_len))
          else
             print('[Server] Read error during close: ' .. mSys.GetErrorMsg(err))
@@ -302,11 +302,11 @@ end
       incoming = function(Socket)
          buffer = string.alloc(1024)
          err, read_len = Socket.acRead(buffer)
-         if (err is ERR_Okay) then
+         if err is ERR_Okay then
             print('[Client] Received: ' .. buffer:sub(0, read_len))
          else
             print('[Client] Read error (expected during close): ' .. mSys.GetErrorMsg(err))
-            if (err is ERR_Disconnected or err is ERR_Failed) then
+            if err is ERR_Disconnected or err is ERR_Failed then
                close_handled = true
                proc.signal()
             end
@@ -343,14 +343,14 @@ end
 
    -- Test invalid connection parameters
    client = obj.new('netsocket', { name = 'InvalidParamClient' })
-   if (client) then
+   if client then
       err = client.mtConnect('', 0) -- Empty address, invalid port
       if (err != ERR_Okay) then
          print('[Test] Invalid connection parameters correctly rejected: ' .. mSys.GetErrorMsg(err))
       end
 
       err = client.mtConnect(nil, 80) -- Nil address
-      if (err != ERR_Okay) then
+      if err != ERR_Okay then
          print('[Test] Nil address correctly rejected: ' .. mSys.GetErrorMsg(err))
       end
    end

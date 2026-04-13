@@ -131,7 +131,7 @@ function HighLoadRequests()
       })
 --      assert(results[i].http.acActivate() is ERR_Okay, "High load request " .. i .. " failed to activate")
       -- Use threads to simulate multiple clients
-      thread.action(results[i].http, 'Activate')
+      async.action(results[i].http, 'Activate')
 
       -- Small delay to stagger requests slightly
       if (i % 3 is 0) then mSys.WaitTime(0.1) end

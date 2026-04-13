@@ -52,19 +52,22 @@ static int processing_new(lua_State *Lua)
                      break;
 
                   case HASH_SIGNALS: {
-                     if (lua_istable(Lua, -1)) { // { obj1, obj2, ... }
-                        lua_pushnil(Lua);
-                        while (lua_next(Lua, -2)) {
-                           if (auto obj = lua_optobject(Lua, -1)) {
-                              ObjectSignal sig = { .Object = obj->ptr };
-                              fp->Signals->push_back(sig);
+                     if (lua_type(Lua, -1) IS LUA_TARRAY) { // { obj1, obj2, ... }
+                        GCarray *arr = lua_toarray(Lua, -1);
+                        if (arr->elemtype IS AET::OBJECT) {
+                           auto refs = arr->get<GCRef>();
+                           for (MSize i = 0; i < arr->len; i++) {
+                              if (gcref(refs[i])) {
+                                 auto obj = gco_to_object(gcref(refs[i]));
+                                 ObjectSignal sig = { .Object = obj->ptr };
+                                 fp->Signals->push_back(sig);
+                              }
+                              else luaL_error(Lua, ERR::InvalidType, "Nil entry at index %d in signal array.", i);
                            }
-                           else luaL_error(Lua, ERR::InvalidType, "Expected object in signal list, got %s.", lua_typename(Lua, lua_type(Lua, -1)));
-
-                           lua_pop(Lua, 1); // Remove value, keep the key
                         }
+                        else luaL_error(Lua, ERR::InvalidType, "The signals option requires an array of objects.");
                      }
-                     else luaL_error(Lua, "The signals option requires a table of object references.");
+                     else luaL_error(Lua, "The signals option requires an array<object> reference.");
                      break;
                   }
 
@@ -102,15 +105,10 @@ static int processing_new(lua_State *Lua)
 // Setting seconds to zero will process outstanding messages and return immediately.
 //
 // NOTE: Can be called directly as an interface function or as a member of a processing object.
+//       Errors are promoted to exceptions if used in a try statement.
 
 static int processing_sleep(lua_State *Lua)
 {
-   { // Always collect your garbage before going to sleep
-      pf::Log log;
-      log.traceBranch("Collecting garbage.");
-      lua_gc(Lua, LUA_GCCOLLECT, 0);
-   }
-
    pf::Log log;
    static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
@@ -118,10 +116,10 @@ static int processing_sleep(lua_State *Lua)
    int timeout;
 
    auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Tiri.processing");
-   if (fp) timeout = F2T(fp->Timeout * 1000.0);
+   if (fp) timeout = int(fp->Timeout * 1000.0);
    else timeout = -1;
 
-   if (lua_type(Lua, 1) IS LUA_TNUMBER) timeout = F2T(lua_tonumber(Lua, 1) * 1000.0);
+   if (lua_type(Lua, 1) IS LUA_TNUMBER) timeout = int(lua_tonumber(Lua, 1) * 1000.0);
    if (timeout < 0) timeout = -1; // Wait indefinitely
 
    bool wake_on_signal;
@@ -134,6 +132,16 @@ static int processing_sleep(lua_State *Lua)
 
    log.branch("Timeout: %d, WakeOnSignal: %c", timeout, wake_on_signal ? 'Y' : 'N');
 
+   if (!timeout) {
+      // Always collect your garbage before going to sleep.  Can be prevented with processing.stopCollector() if
+      // absolutely necessary.
+      if (lua_gc(Lua, LUA_GCISRUNNING, 0)) {
+         pf::Log log;
+         log.traceBranch("Collecting garbage.");
+         lua_gc(Lua, LUA_GCCOLLECT, 0);
+      }
+   }
+
    if (wake_on_signal) {
       if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {
          // Use custom signals provided by the client (or Tiri if no objects were specified).
@@ -143,21 +151,18 @@ static int processing_sleep(lua_State *Lua)
          signal_list_c[i].Object = nullptr;
 
          std::scoped_lock lock(recursion);
-         error = WaitForObjects(PMF::NIL, timeout, signal_list_c.get());
+         error = WaitForObjects(timeout IS -1 ? PMF::EVENT_LOOP : PMF::NIL, timeout, signal_list_c.get());
       }
       else { // Default behaviour: Sleeping can be broken with a signal to the Tiri object.
-         if ((Lua->script->Object::Flags & NF::SIGNALLED) != NF::NIL) {
+         if (Lua->script->defined(NF::SIGNALLED)) {
             log.detail("Lua script already in signalled state.");
-            Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
+            Lua->script->clearFlag(NF::SIGNALLED);
             error = ERR::Okay;
          }
          else {
-            ObjectSignal signal_list_c[2];
-            signal_list_c[0].Object   = Lua->script;
-            signal_list_c[1].Object   = nullptr;
-
+            ObjectSignal signal_list_c[2] = { { .Object = Lua->script }, { .Object = nullptr } };
             std::scoped_lock lock(recursion);
-            error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
+            error = WaitForObjects(timeout IS -1 ? PMF::EVENT_LOOP : PMF::NIL, timeout, signal_list_c);
          }
       }
    }
@@ -166,6 +171,9 @@ static int processing_sleep(lua_State *Lua)
       WaitTime(timeout / 1000.0); // Convert milliseconds to seconds
       error = ERR::Okay;
    }
+
+   // Promote errors to exceptions
+   if ((error != ERR::Okay) and (in_try_immediate_scope(Lua))) luaL_error(Lua, error);
 
    lua_pushinteger(Lua, int(error));
    return 1;
@@ -189,7 +197,7 @@ static int processing_signal(lua_State *Lua)
 
 static int processing_flush(lua_State *Lua)
 {
-   Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
+   Lua->script->clearFlag(NF::SIGNALLED);
    return 0;
 }
 
@@ -327,10 +335,10 @@ static int processing_get(lua_State *Lua)
          return 1;
       }
       else if (std::string_view("flush") IS fieldname) {
-         Lua->script->Object::Flags = Lua->script->Object::Flags & (~NF::SIGNALLED);
+         Lua->script->clearFlag(NF::SIGNALLED);
          if (auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Tiri.processing")) {
             for (auto &entry : *fp->Signals) {
-               entry.Object->Flags &= (~NF::SIGNALLED);
+               entry.Object->clearFlag(NF::SIGNALLED);
             }
          }
          return 0;

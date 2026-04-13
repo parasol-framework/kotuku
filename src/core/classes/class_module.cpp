@@ -713,7 +713,7 @@ static RootModule * check_resident(extModule *Self, const std::string_view Modul
          // NB: The Object constructor clears all values initially.
          glCoreRoot.Class         = glRootModuleClass;
          glCoreRoot.UID           = 1;
-         glCoreRoot.Object::Flags = NF::INITIALISED|NF::NAME|NF::UNIQUE;
+         glCoreRoot.setFlag(NF::INITIALISED|NF::NAME|NF::UNIQUE);
          glCoreRoot.Name          = "Core";
          glCoreRoot.OpenCount     = 1;
          glCoreRoot.Table         = &glCoreHeader;

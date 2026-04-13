@@ -12,8 +12,8 @@ Documentation is available in the Kotuku Wiki.
    namespace 'gui'
 
 LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.window)
-MIN_WIDTH = 300
-MAX_WIDTH = 600
+MIN_WIDTH <const> = 300
+MAX_WIDTH <const> = 600
 
 rx_sanitise_icon = <{ regex.new([[^(%w+)\/(%w+)]]) }>
 rx_word = <{ regex.new([[\S+]]) }>
@@ -81,7 +81,7 @@ gui.dialog.message = function(Options)
    end
 
    function docEvent(Document, EventFlag, Parameters)
-      if (EventFlag & DEF_LINK_ACTIVATED)?? then
+      if EventFlag has DEF_LINK_ACTIVATED then
          if self.feedback then
             responseIndex = tonumber(Parameters.response)
             response = self.options[responseIndex]
@@ -119,7 +119,7 @@ gui.dialog.message = function(Options)
       for i, option in ipairs(self.options) do
          if option['icon'] then
             if option_icons?? then option_icons ..= '\n' end
-            option_icons ..= '    <image id="' .. option.icon .. '" xlink:href="icons:' .. option.icon .. '" width="48" height="48"/>\n'
+            option_icons ..= f'    <image id="{option.icon}" xlink:href="icons:{option.icon}" width="48" height="48"/>\n'
          end
       end
 
@@ -186,10 +186,10 @@ gui.dialog.message = function(Options)
       doc ..= '<p no-wrap>'
       for i, option in ipairs(self.options) do
          if option['icon'] then
-            doc ..= '<image src="url(#' .. option.icon .. ')" width="16" height="16" padding="0 0 4 0"/>\n'
+            doc ..= f'<image src="url(#{option.icon})" width="16" height="16" padding="0 0 4 0"/>\n'
          end
 
-         doc ..= '<a @response="' .. i .. '">' .. option.text .. '</a>\n'
+         doc ..= f'<a @response="{i}">{option.text}</a>\n'
 
          if i < #self.options then
             doc ..= '<advance x="30"/>'
@@ -233,7 +233,7 @@ gui.dialog.message = function(Options)
       end
       dlg_width = 120 + (longest * FONT_HEIGHT)
    elseif self.fmtMessage?? then
-      xml = obj.new('xml', { statement='<xml>' .. self.fmtMessage .. '</xml>' })
+      xml = obj.new('xml', { statement=f'<xml>{self.fmtMessage}</xml>' })
       err, content = xml.mtSerialise(0, XMF_OMIT_TAGS|XMF_READABLE)
       longest = 10
       for start, stop in rx_word.findAll(content) do

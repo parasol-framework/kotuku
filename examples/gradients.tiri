@@ -1,3 +1,4 @@
+#!/usr/bin/env origo
 --[[
 Gradient Demonstration
 --]]
@@ -191,20 +192,21 @@ function buildScene()
                modal       = true,
                popOver     = win.surface,
                warnExists  = true,
+               allowNew    = true,
                filterList  = { { name='PNG Images', ext='.png' } },
                feedback    = function(Dialog, Path, Files)
                   Files ?? return
 
-                  target_file = Path .. Files[1].filename
+                  target_file = Path .. Files[0].filename
 
                   bmp = gradientVP.buffer
                   if bmp then
                      pic = obj.new('picture', {
                         width = bmp.width, height = bmp.height, bitsPerPixel = bmp.bitsPerPixel,
-                        flags = 'NEW'
+                        flags = PCF_NEW
                      })
                      bmp.acCopyData(pic.bitmap)
-                     file = obj.new('file', { flags='NEW|WRITE', path=target_file })
+                     file = obj.new('file', { flags=FL_NEW|FL_WRITE, path=target_file })
                      pic.acSaveImage(file)
                   end
                end

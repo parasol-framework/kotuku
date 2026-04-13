@@ -76,8 +76,10 @@ static void receive_event(pf::Event *Info, int InfoSize, APTR CallbackMeta)
       process_error(Script, "Event Subscription");
    }
 
-   log.traceBranch("Collecting garbage.");
-   lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+   if (lua_gc(prv->Lua, LUA_GCISRUNNING, 0)) {
+      log.traceBranch("Collecting garbage.");
+      lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+   }
 }
 
 //********************************************************************************************************************

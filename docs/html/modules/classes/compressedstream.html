@@ -173,7 +173,8 @@
 <tr><th>MSGID::VALIDATE_PROCESS</th><td></td></tr>
 <tr><th>MSGID::WAIT_FOR_OBJECTS</th><td></td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2026</div></div>
-<div class="docs-content" style="display:none;" id="NF"><h1>NF Type</h1><p class="lead">Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NF::COLLECT</th><td>Marked for garbage collection.</td></tr>
+<div class="docs-content" style="display:none;" id="NF"><h1>NF Type</h1><p class="lead">Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NF::ASYNC_ACTIVE</th><td>Read-only indicator that asynchronous actions are queued or executing against this object.</td></tr>
+<tr><th>NF::COLLECT</th><td>Marked for garbage collection.</td></tr>
 <tr><th>NF::FREE</th><td>Read-only indicator for when the object is being freed.</td></tr>
 <tr><th>NF::FREE_ON_UNLOCK</th><td>Read-only indicator for when the object is marked for deletion.</td></tr>
 <tr><th>NF::INITIALISED</th><td>Read-only indicator if the object has been initialised.</td></tr>
@@ -224,7 +225,8 @@
 <tr><th>PERMIT::USER_WRITE</th><td>Synonym for <code>WRITE</code></td></tr>
 <tr><th>PERMIT::WRITE</th><td>User/Owner can write.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2026</div></div>
-<div class="docs-content" style="display:none;" id="PMF"><h1>PMF Type</h1><p class="lead">Flags for ProcessMessages</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody></tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2026</div></div>
+<div class="docs-content" style="display:none;" id="PMF"><h1>PMF Type</h1><p class="lead">Flags for ProcessMessages</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>PMF::EVENT_LOOP</th><td>Set if this is the program's main event loop.  Should be accompanied with an infinite timeout.</td></tr>
+</tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="RDF"><h1>RDF Type</h1><p class="lead">Flags for the OpenDir() function.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>RDF::ARCHIVE</th><td>Feedback only - archive bit is set.</td></tr>
 <tr><th>RDF::DATE</th><td>Retrieve the date stamp of each file.</td></tr>
 <tr><th>RDF::FILE</th><td>Read all files in the folder.</td></tr>
@@ -253,6 +255,7 @@
 <tr><th>RES::KEY_STATE</th><td>Maintains the state of key qualifiers such as caps-lock and the shift keys.</td></tr>
 <tr><th>RES::LOG_DEPTH</th><td>The current depth of log messages.</td></tr>
 <tr><th>RES::LOG_LEVEL</th><td>The current level of log detail (larger numbers indicate more detail).</td></tr>
+<tr><th>RES::MAIN_THREAD</th><td>Read-only, returns <code>true</code> if called from the main thread.</td></tr>
 <tr><th>RES::MEMORY_USAGE</th><td>The total amount of memory used by the current process, in bytes.</td></tr>
 <tr><th>RES::OPEN_INFO</th><td>Pointer to the OpenInfo structure originally used to initialise the system.</td></tr>
 <tr><th>RES::PRIVILEGED</th><td>This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</td></tr>

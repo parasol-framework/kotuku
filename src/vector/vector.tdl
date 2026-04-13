@@ -321,14 +321,14 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
     obj(VectorPattern)  Pattern   # A @VectorPattern object, suitable for pattern based fills.
     obj(VectorImage)    Image     # A @VectorImage object, suitable for image fills.
     obj(VectorGradient) Gradient  # A @VectorGradient object, suitable for gradient fills.
-    struct(FRGB) Colour           # A single RGB colour definition, suitable for block colour fills.
+    struct(FRGB) Colour           # A single RGB colour definition, suitable for block colour fills.  Colour values are unclamped to support all possible colour spaces.
   ]],
   [[
    void reset() {
       Colour.Alpha = 0;
-      Gradient = NULL;
-      Image    = NULL;
-      Pattern  = NULL;
+      Gradient = nullptr;
+      Image    = nullptr;
+      Pattern  = nullptr;
    }
   ]])
 
@@ -370,10 +370,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
      "SVG-TRANSFORM")
 
   struct("FontMetrics", { comment="Font metrics, measured in pixels relative to the display" }, [[
-    int Height       # Capitalised font height
-    int LineSpacing  # Vertical advance from one line to the next
-    int Ascent       # Height from the baseline to the top of the font, including accents.
-    int Descent      # Height from the baseline to the bottom of the font
+    int Height       # Full font height equivalent to `Ascent (cap-height) + Descent (gutter)`.  Does NOT include accents.
+    int LineSpacing  # Vertical advance from one line to the next.  Includes coverage for accents and additional whitespace.
+    int Ascent       # Height from the baseline to the top (cap-height) of the font.  Does NOT include accents.
+    int Descent      # Height from the baseline to the bottom of the font (gutter)
   ]])
 
   // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
@@ -479,7 +479,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
    obj(FilterEffect) Effect   # Effect pointer if the `SourceType` is `REFERENCE`.
   ]],
   [[
-  MergeSource(VSF pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
+  MergeSource(VSF pType, objFilterEffect *pEffect = nullptr) : SourceType(pType), Effect(pEffect) { };
   ]])
 
   methods("RemapFX", "RF", {

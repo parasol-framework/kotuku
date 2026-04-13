@@ -86,7 +86,7 @@ static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERR Result, A
 
       UnsubscribeAction(ref.Object, AC::Free);
       UnsubscribeAction(ref.Object, AC::Signal);
-      ref.Object->Flags = ref.Object->Flags & (~NF::SIGNALLED);
+      ref.Object->clearFlag(NF::SIGNALLED);
 
       glWFOList.erase(lref);
 
@@ -210,7 +210,9 @@ ERR ProcessMessages(PMF Flags, int TimeOut)
    if (!tlMainThread) return log.warning(ERR::OutsideMainThread);
 
    // Ensure that all resources allocated by sub-routines are assigned to the Task object by default.
-   pf::SwitchContext ctx(glCurrentTask);
+   // Note: Don't use SwitchContext here as it retains a permanent lock on the task (client threads need access to it).
+
+   SetObjectContext(glCurrentTask, nullptr, AC::NIL);
 
    // This recursion blocker prevents ProcessMessages() from being called to breaking point.  Excessive nesting can
    // occur on occasions where ProcessMessages() sends an action to an object that performs some activity before it
@@ -224,6 +226,7 @@ ERR ProcessMessages(PMF Flags, int TimeOut)
       //log.msg("Do not call this function when inside a notification routine.");
    }
    else if (tlMsgRecursion > 8) {
+      tlContext.pop_back();
       return ERR::Recursion;
    }
 
@@ -240,7 +243,10 @@ ERR ProcessMessages(PMF Flags, int TimeOut)
    ERR error;
 
    auto granted = std::unique_lock{glmMsgHandler}; // A persistent lock on message handlers is optimal
-   if (!granted) return log.warning(ERR::SystemLocked);
+   if (!granted) {
+      tlContext.pop_back();
+      return log.warning(ERR::SystemLocked);
+   }
 
    do { // Standard message handler for the core process.
       // Call all objects on the timer list (managed by SubscribeTimer()).  To manage timer locking cleanly, the loop
@@ -319,56 +325,62 @@ timer_cycle:
       }
       else log.detail("glmTimer lock failed.");
 
-      // Consume queued messages
+      // Consume queued messages.  Drain a batch from the shared queue under the lock, then process
+      // outside the lock to reduce contention with threads calling SendMessage().
+
+      std::vector<TaskMessage> local_batch;
 
       {
          const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
-
-         unsigned i;
-         for (i=0; (i < glQueue.size()) and (i < 30); i++) {
-            if (glQueue[i].Type IS MSGID::BREAK) {
-               // MSGID::BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
-               // call made by the client application.
-               if ((tlMsgRecursion > 1) or (TimeOut != -1)) breaking = true;
-               else log.trace("Unable to break from recursive position %d layers deep.", tlMsgRecursion);
+         auto count = std::min(glQueue.size(), size_t(30));
+         if (count > 0) {
+            local_batch.reserve(count);
+            for (size_t n = 0; n < count; n++) {
+               local_batch.emplace_back(std::move(glQueue[n]));
             }
+            glQueue.erase(glQueue.begin(), glQueue.begin() + count);
+         }
+      }
 
-            tlCurrentMsg = &glQueue[i];
-
-            // NOTE: This loop relies on the assumption that glQueue messages cannot be erased by clients.
-
-            for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
-               if ((hdl->MsgType IS MSGID::NIL) or (hdl->MsgType IS glQueue[i].Type)) {
-                  auto result = ERR::NoSupport;
-                  if (hdl->Function.isC()) {
-                     auto msghandler = (ERR (*)(APTR, int, MSGID, APTR, int))hdl->Function.Routine;
-                     if (glQueue[i].Size) result = msghandler(hdl->Function.Meta, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size);
-                     else result = msghandler(hdl->Function.Meta, glQueue[i].UID, glQueue[i].Type, nullptr, 0);
-                  }
-                  else if (hdl->Function.isScript()) {
-                     if (sc::Call(hdl->Function, std::to_array<ScriptArg>({
-                        { "UID",  glQueue[i].UID },
-                        { "Type", int(glQueue[i].Type) },
-                        { "Data", glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
-                        { "Size", glQueue[i].Size, FD_INT|FD_BUFSIZE }
-                     }), result) != ERR::Okay) result = ERR::Terminate;
-                  }
-
-                  if (result IS ERR::Okay) { // If the message was handled, do not pass it to anyone else
-                     break;
-                  }
-                  else if (result IS ERR::Terminate) { // Terminate the ProcessMessages() loop, but don't quit the program
-                     log.trace("Terminate request received from message handler.");
-                     timeout_end = 0; // Set to zero to indicate loop terminated
-                     break;
-                  }
-               }
-            }
-
-            tlCurrentMsg = nullptr;
+      for (auto &msg : local_batch) {
+         if (msg.Type IS MSGID::BREAK) {
+            // MSGID::BREAK is intended for breaking out of recursive calls to ProcessMessages(), but
+            // not the top-level UI event loop which is broken by MSGID::QUIT.
+            if ((Flags & PMF::EVENT_LOOP) IS PMF::NIL) breaking = true;
+            else log.trace("Unable to break from core event loop.");
          }
 
-         if (i > 0) glQueue.erase(glQueue.begin(), glQueue.begin() + i);
+         tlCurrentMsg = &msg;
+
+         for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
+            if ((hdl->MsgType IS MSGID::NIL) or (hdl->MsgType IS msg.Type)) {
+               auto result = ERR::NoSupport;
+               if (hdl->Function.isC()) {
+                  auto msghandler = (ERR (*)(APTR, int, MSGID, APTR, int))hdl->Function.Routine;
+                  if (msg.Size) result = msghandler(hdl->Function.Meta, msg.UID, msg.Type, msg.getBuffer(), msg.Size);
+                  else result = msghandler(hdl->Function.Meta, msg.UID, msg.Type, nullptr, 0);
+               }
+               else if (hdl->Function.isScript()) {
+                  if (sc::Call(hdl->Function, std::to_array<ScriptArg>({
+                     { "UID",  msg.UID },
+                     { "Type", int(msg.Type) },
+                     { "Data", msg.getBuffer(), FD_PTR|FD_BUFFER },
+                     { "Size", msg.Size, FD_INT|FD_BUFSIZE }
+                  }), result) != ERR::Okay) result = ERR::Terminate;
+               }
+
+               if (result IS ERR::Okay) { // If the message was handled, do not pass it to anyone else
+                  break;
+               }
+               else if (result IS ERR::Terminate) { // Terminate the ProcessMessages() loop, but don't quit the program
+                  log.trace("Terminate request received from message handler.");
+                  timeout_end = 0; // Set to zero to indicate loop terminated
+                  break;
+               }
+            }
+         }
+
+         tlCurrentMsg = nullptr;
       }
 
       // Check for possibly broken child processes
@@ -441,6 +453,7 @@ timer_cycle:
    if ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)) returncode = ERR::Terminate;
 
    tlMsgRecursion--;
+   tlContext.pop_back();
    return returncode;
 }
 
@@ -587,7 +600,8 @@ WaitForObjects: Process incoming messages while waiting on objects to complete t
 
 WaitForObjects() acts as a front-end to ~ProcessMessages(), with an ability to wait for a list of objects that are
 expected to signal an end to their activities.  An object can be signalled via the Signal() action, or via termination.
-This function will only return once ALL of the objects are signalled or a time-out occurs.
+This function will only return once ALL of the objects are signalled or a time-out occurs.  It is guaranteed that
+the message queue will be processed at least once before returning.
 
 Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the
 object will not be monitored.
@@ -623,7 +637,10 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
 
    log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", int(Flags), TimeOut, ObjectSignals);
 
-   pf::SwitchContext ctx(glCurrentTask);
+   // Set the current task as the context to ensure predictable behaviour.  Note: Don't use SwitchContext here as
+   // it retains a lock on the task when we definitely don't actually want to.
+
+   SetObjectContext(glCurrentTask, nullptr, AC::NIL);
 
    auto error = ERR::Okay;
 
@@ -638,7 +655,7 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
             if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
                // Objects that have already been signalled do not require monitoring and we switch off the
                // signal flag.
-               ObjectSignals[i].Object->Flags = ObjectSignals[i].Object->Flags & (~NF::SIGNALLED);
+               ObjectSignals[i].Object->clearFlag(NF::SIGNALLED);
             }
             else {
                // NB: An object being freed is treated as equivalent to it receiving a signal.
@@ -654,13 +671,10 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
       }
    }
 
-   if (error IS ERR::Okay) {
+   if ((error IS ERR::Okay) and (not glWFOList.empty())) {
       if (TimeOut < 0) { // No time-out will apply
-         if (glWFOList.empty()) error = ProcessMessages(Flags, 0);
-         else {
-            while ((not glWFOList.empty()) and (error IS ERR::Okay)) {
-               error = ProcessMessages(Flags, -1);
-            }
+         while ((not glWFOList.empty()) and (error IS ERR::Okay)) {
+            error = ProcessMessages(Flags, -1);
          }
       }
       else {
@@ -674,6 +688,11 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
       }
 
       if ((error IS ERR::Okay) and (not glWFOList.empty())) error = ERR::TimeOut;
+   }
+   else {
+      // At least one call to ProcessMessages() is needed (the caller's message loop may
+      // be designed on this basis).
+      error = ProcessMessages(Flags, 0);
    }
 
    if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions
@@ -690,6 +709,8 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
    if (!saved_list.empty()) std::swap(glWFOList, saved_list);
 
    if ((error > ERR::ExceptionThreshold) and (error != ERR::TimeOut)) log.warning(error);
+
+   tlContext.pop_back();
    return error;
 }
 
@@ -750,9 +771,9 @@ ERR write_nonblock(int Handle, APTR Data, int Size, int64_t EndTime)
    ERR error = ERR::Okay;
 
    while ((offset < Size) and (error IS ERR::Okay)) {
-      int write_size = Size;
+      int write_size = Size - offset;
       if (write_size > 1024) write_size = 1024;  // Limiting the size will make the chance of an EWOULDBLOCK error less likely.
-      int len = write(Handle, (char *)Data+offset, write_size - offset);
+      int len = write(Handle, (char *)Data+offset, write_size);
       if (len >= 0) offset += len;
       if (offset IS Size) break;
 
@@ -856,6 +877,8 @@ ERR sleep_task(int Timeout)
 
       if (pos > 0) log.warning("WARNING - Sleeping with %d private locks held (%s)", tlPrivateLockCount, buffer);
    }
+
+   register_sleep(Timeout);
 
    struct timeval tv;
    struct timespec time;
@@ -993,6 +1016,7 @@ ERR sleep_task(int Timeout)
       else log.warning("select() error %d: %s", errno, strerror(errno));
    }
 
+   deregister_sleep();
    return ERR::Okay;
 }
 #endif
@@ -1028,6 +1052,8 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
 
    //log.traceBranch("Time-out: %d, TotalFDs: %d", Timeout, glTotalFDs);
 
+   register_sleep(Timeout);
+
    int64_t time_end;
    if (Timeout < 0) {
       Timeout = -1; // A value of -1 means to wait indefinitely
@@ -1041,7 +1067,10 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       //   The thread-lock is released by another task (see wake_task).
       //   A window message is received (if tlMessageBreak is true)
 
-      auto handles = std::make_unique<WINHANDLE[]>(glFDTable.size()+1); // +1 for thread-lock
+      WINHANDLE stack_handles[32];
+      auto heap_storage = (glFDTable.size() + 1 > 32)
+         ? std::make_unique<WINHANDLE[]>(glFDTable.size() + 1) : nullptr;
+      auto handles = heap_storage ? heap_storage.get() : stack_handles;
       handles[0] = get_threadlock();
       int total = 1;
 
@@ -1072,7 +1101,7 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       int sleeptime = time_end - (PreciseTime() / 1000LL);
       if (sleeptime < 0) sleeptime = 0;
 
-      int i = winWaitForObjects(total, handles.get(), sleeptime, tlMessageBreak);
+      int i = winWaitForObjects(total, handles, sleeptime, tlMessageBreak);
 
       // Return Codes/Reasons for breaking:
       //
@@ -1126,6 +1155,7 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       else break;
    }
 
+   deregister_sleep();
    return ERR::Okay;
 }
 

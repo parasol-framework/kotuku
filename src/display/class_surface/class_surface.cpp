@@ -614,7 +614,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
 
    if (context->UID < 0) {
       log.warning("Public objects may not draw directly to surfaces.");
-      return ERR::Failed;
+      return ERR::NoPermission;
    }
 
    log.msg("Context: %d, Callback Context: %d, Routine: %p (Count: %d)", context->UID, call_context ? call_context->UID : 0, Args->Callback->Routine, Self->CallbackCount);

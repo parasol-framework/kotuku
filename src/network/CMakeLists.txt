@@ -82,23 +82,20 @@ else()
       message(STATUS "mkcert not found - SSL certificates will not be auto-generated")
       message(STATUS "Install mkcert from: https://github.com/FiloSottile/mkcert")
    endif()
+
    if(NOT OPENSSL_EXECUTABLE)
       message(STATUS "openssl not found - SSL certificates will not be auto-generated")
    endif()
 endif()
 
-flute_test (network_bind "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_bind_address.tiri")
-flute_test (network_dns "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dns_parallel.tiri")
-flute_test (network_server_io "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_server_io.tiri")
-flute_test (network_client_server "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_client_server.tiri")
-flute_test (network_error_handling "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_error_handling.tiri")
-flute_test (network_ipv6 "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_ipv6.tiri")
-flute_test (network_concurrency "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_concurrency.tiri")
-flute_test (network_ssl "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_ssl.tiri")
-# UDP Tests
-flute_test (network_udp_basic "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_udp_basic.tiri")
-flute_test (network_udp_ipv6 "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_udp_ipv6.tiri")
-flute_test (network_udp_broadcast_multicast "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_udp_broadcast_multicast.tiri")
-flute_test (network_udp_tcp_coexistence "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_udp_tcp_coexistence.tiri")
-# Performance test (may take a while)
-#flute_test (network_udp_performance "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_udp_performance.tiri")
+set (NETWORK_TESTS
+   bind_address dns_parallel server_io client_server error_handling ipv6 concurrency ssl
+   # UDP Tests
+   udp_basic udp_ipv6 udp_broadcast_multicast udp_tcp_coexistence
+   # Performance test (may take a while)
+   # udp_performance
+)
+
+foreach (TEST_NAME ${NETWORK_TESTS})
+   flute_test(network_${TEST_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_${TEST_NAME}.tiri")
+endforeach ()

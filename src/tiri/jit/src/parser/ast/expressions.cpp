@@ -140,17 +140,21 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          rhs = this->parse_suffixed(std::move(rhs.value_ref()));
          if (not rhs.ok()) return rhs;
 
-         // Check for pipe iteration pattern: range |> function
-         // When LHS is a range and RHS is a function (not a call), rewrite to range:each(func)
+         // Check for pipe iteration pattern: range/array |> function
+         // When LHS is a range or array literal and RHS is a function (not a call), rewrite to LHS:each(func)
          // Also support chaining: range:each(f1) |> f2 → range:each(f1):each(f2)
 
          bool lhs_is_range = left.value_ref()->kind IS AstNodeKind::RangeExpr;
 
-         // Check if LHS is a method call to :each() (for chaining support)
+         // Check if LHS is an array literal or a method call to :each() (for chaining support)
+         bool lhs_is_array = false;
          bool lhs_is_each_call = false;
          if (left.value_ref()->kind IS AstNodeKind::CallExpr) {
             const CallExprPayload& call_data = std::get<CallExprPayload>(left.value_ref()->data);
-            if (const auto* method = std::get_if<MethodCallTarget>(&call_data.target)) {
+            if (call_data.result_type IS TiriType::Array) {
+               lhs_is_array = true;
+            }
+            else if (const auto* method = std::get_if<MethodCallTarget>(&call_data.target)) {
                if (method->method.symbol and strcmp(strdata(method->method.symbol), "each") IS 0) {
                   lhs_is_each_call = true;
                }
@@ -164,9 +168,9 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          bool rhs_is_call = rhs.value_ref()->kind IS AstNodeKind::CallExpr or
                             rhs.value_ref()->kind IS AstNodeKind::SafeCallExpr;
 
-         if ((lhs_is_range or lhs_is_each_call) and rhs_is_function) {
-            // Pipe iteration: transform range |> func into range:each(func)
-            // For chaining: range:each(f1) |> f2 → range:each(f1):each(f2)
+         if ((lhs_is_range or lhs_is_each_call or lhs_is_array) and rhs_is_function) {
+            // Pipe iteration: transform range/array |> func into LHS:each(func)
+            // For chaining: LHS:each(f1) |> f2 → LHS:each(f1):each(f2)
             SourceSpan span = combine_spans(left.value_ref()->span, rhs.value_ref()->span);
 
             Identifier method(&this->ctx.lua(), "each", next.span());
@@ -176,6 +180,18 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
 
             ExprNodePtr call = make_method_call_expr(span, std::move(left.value_ref()), method, std::move(args), false);
             left = ParserResult<ExprNodePtr>::success(std::move(call));
+            continue;
+         }
+
+         // When RHS is a function reference (not a call) and LHS type is unknown at parse time,
+         // create a deferred pipe iteration node.  The IR emitter will resolve the LHS type and
+         // either emit :each() for arrays or raise an error.
+
+         if (rhs_is_function) {
+            SourceSpan span = combine_spans(left.value_ref()->span, rhs.value_ref()->span);
+            auto pipe = make_pipe_expr(span, std::move(left.value_ref()), std::move(rhs.value_ref()), limit);
+            std::get<PipeExprPayload>(pipe->data).deferred_iteration = true;
+            left = ParserResult<ExprNodePtr>::success(std::move(pipe));
             continue;
          }
 
@@ -239,6 +255,27 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          SourceSpan span = combine_spans(left_span, right_span);
          ExprNodePtr call = make_method_call_expr(span, std::move(rhs_expr), method, std::move(args), false);
          left = ParserResult<ExprNodePtr>::success(std::move(call));
+         continue;
+      }
+
+      // 'is not' compound operator: treat as inequality (equivalent to !=)
+      // Handled here rather than in match_binary_operator() to avoid lookahead
+      // side-effects that corrupt the token stream for f-strings with expressions.
+
+      if (next.kind() IS TokenKind::IsToken) {
+         constexpr uint8_t is_left = 3;
+         constexpr uint8_t is_right = 3;
+         if (is_left <= precedence) break;
+         this->ctx.tokens().advance(); // Consume 'is'
+         AstBinaryOperator is_op = AstBinaryOperator::Equal;
+         if (this->ctx.tokens().current().kind() IS TokenKind::NotToken) {
+            this->ctx.tokens().advance(); // Consume 'not'
+            is_op = AstBinaryOperator::NotEqual;
+         }
+         auto right = this->parse_expression(is_right);
+         if (not right.ok()) return right;
+         SourceSpan span = combine_spans(left.value_ref()->span, right.value_ref()->span);
+         left = ParserResult<ExprNodePtr>::success(make_binary_expr(span, is_op, std::move(left.value_ref()), std::move(right.value_ref())));
          continue;
       }
 
@@ -954,8 +991,8 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
    switch (token.kind()) {
       case TokenKind::Plus:
          info.op = AstBinaryOperator::Add;
-         info.left = 6;
-         info.right = 6;
+         info.left = 7;
+         info.right = 7;
          return info;
       case TokenKind::Minus:
          // Check if this is actually the start of a choose case negative literal pattern
@@ -965,23 +1002,23 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
             if (this->is_choose_relational_pattern(1)) return std::nullopt;
          }
          info.op = AstBinaryOperator::Subtract;
-         info.left = 6;
-         info.right = 6;
+         info.left = 7;
+         info.right = 7;
          return info;
       case TokenKind::Multiply:
          info.op = AstBinaryOperator::Multiply;
-         info.left = 7;
-         info.right = 7;
+         info.left = 8;
+         info.right = 8;
          return info;
       case TokenKind::Divide:
          info.op = AstBinaryOperator::Divide;
-         info.left = 7;
-         info.right = 7;
+         info.left = 8;
+         info.right = 8;
          return info;
       case TokenKind::Modulo:
          info.op = AstBinaryOperator::Modulo;
-         info.left = 7;
-         info.right = 7;
+         info.left = 8;
+         info.right = 8;
          return info;
       case TokenKind::Cat:
          info.op = AstBinaryOperator::Concat;
@@ -989,7 +1026,6 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          info.right = 4;
          return info;
       case TokenKind::Equal:
-      case TokenKind::IsToken:
          info.op = AstBinaryOperator::Equal;
          info.left = 3;
          info.right = 3;
@@ -1031,6 +1067,11 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          info.left = 1;
          info.right = 1;
          return info;
+      case TokenKind::HasToken:
+         info.op = AstBinaryOperator::HasFlag;
+         info.left = 3;
+         info.right = 2;  // Allow bitwise ops (|, ^, &) to be parsed as RHS without parentheses
+         return info;
       case TokenKind::Presence:
          // Only treat ?? as binary if-empty when lookahead indicates binary usage
          if (not this->ctx.lex().should_emit_presence()) {
@@ -1042,18 +1083,18 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          break;  // Not a binary operator, will be handled as postfix
       case TokenKind::ShiftLeft:
          info.op = AstBinaryOperator::ShiftLeft;
-         info.left = 5;   // C precedence: shifts bind looser than +/- (6)
-         info.right = 5;  // Left-associative: 1 << 2 << 3 = (1 << 2) << 3
+         info.left = 6;   // C precedence: shifts bind tighter than AND (5)
+         info.right = 6;  // Left-associative: 1 << 2 << 3 = (1 << 2) << 3
          return info;
       case TokenKind::ShiftRight:
          info.op = AstBinaryOperator::ShiftRight;
-         info.left = 5;   // C precedence: shifts bind looser than +/- (6)
-         info.right = 5;  // Left-associative
+         info.left = 6;   // C precedence: shifts bind tighter than AND (5)
+         info.right = 6;  // Left-associative
          return info;
       case TokenKind::Power:
          info.op = AstBinaryOperator::Power;
-         info.left = 10;
-         info.right = 9;  // Right-associative
+         info.left = 11;
+         info.right = 10;  // Right-associative
          return info;
       default:
          break;
@@ -1105,22 +1146,22 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
 
    if (token.raw() IS '&') {
       info.op = AstBinaryOperator::BitAnd;
-      info.left = 4;  // Lower than shifts (5) per C precedence
-      info.right = 4;  // Left-associative: a & b & c = (a & b) & c
+      info.left = 5;  // AND > XOR > OR per C precedence; above shifts (6)
+      info.right = 5;  // Left-associative: a & b & c = (a & b) & c
       return info;
    }
 
    if (token.raw() IS '|') {
       info.op = AstBinaryOperator::BitOr;
-      info.left = 2;  // Lower than XOR (3) per C precedence: AND > XOR > OR
-      info.right = 2;  // Left-associative: a | b | c = (a | b) | c
+      info.left = 3;  // Above logical-and (2); allows `x has A|B` to parse as `x has (A|B)`
+      info.right = 3;  // Left-associative: a | b | c = (a | b) | c
       return info;
    }
 
    if (token.raw() IS '^') {
       info.op = AstBinaryOperator::BitXor;
-      info.left = 3;  // Lower than AND (4) per C precedence: AND > XOR > OR
-      info.right = 3;  // Left-associative: a ^ b ^ c = (a ^ b) ^ c
+      info.left = 4;  // XOR binds tighter than OR (3), looser than AND (5)
+      info.right = 4;  // Left-associative: a ^ b ^ c = (a ^ b) ^ c
       return info;
    }
    return std::nullopt;

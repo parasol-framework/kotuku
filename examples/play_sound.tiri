@@ -1,15 +1,22 @@
+#!/usr/bin/env origo
 -- This script will play WAV and MP3 files for the user.
 
 ----------------------------------------------------------------------------------------------------------------------
 -- This function identifies the type of file being loaded and uses the correct class to open it.
 
 function id_file(Path)
-   err, class = mSys.IdentifyFile(Path, 'Open', IDF_IGNORE_HOST)
+   try
+      err, class = mSys.IdentifyFile(Path, 'Open', IDF_IGNORE_HOST)
 
-   if (class is mSys.StrHash('sound')) then
-      return obj.new('sound', { path=Path })
-   elseif (class is mSys.StrHash('music')) then
-      return obj.new('music', { path=Path })
+      if (class is string.hash('Sound')) then
+         return obj.new('sound', { path=Path })
+      elseif (class is string.hash('Music')) then
+         return obj.new('music', { path=Path })
+      else
+         error('Unrecognised file type')
+      end
+   except ex
+      msg(f'Error identifying {Path}: {ex.message}')
    end
 end
 

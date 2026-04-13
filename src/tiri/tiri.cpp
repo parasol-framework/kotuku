@@ -8,11 +8,10 @@ This source code is placed in the public domain under no warranty from its autho
 Tiri: Tiri is a customised scripting language for the Script class.
 
 Tiri is a custom scripting language for Kotuku developers.  It is implemented on the backbone of LuaJIT, a
-high performance version of the Lua scripting language.  It supports garbage collection, dynamic typing and a byte-code
-interpreter for compiled code.  We chose to support Lua due to its extensive popularity amongst game developers, a
-testament to its low overhead, speed and lightweight processing when compared to common scripting languages.
+high performance version of the Lua scripting language.  It supports garbage collection, dynamic typing and a 64-bit
+byte-code interpreter for compiled code.
 
-Tiri files use the file extensions `.lua` and `.tiri`.  Ideally, scripts should start with the comment '-- $TIRI' near
+Tiri files use the `.tiri` file extension.  Ideally, scripts should start with the comment '-- $TIRI' near
 the start of the document so that it can be correctly identified by the Tiri class.
 
 For more information on the Tiri syntax, please refer to the official Tiri Reference Manual.
@@ -21,7 +20,7 @@ For more information on the Tiri syntax, please refer to the official Tiri Refer
 
 *********************************************************************************************************************/
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 #undef DEBUG
 #endif
 
@@ -122,7 +121,7 @@ OBJECTPTR access_object(GCobject *Object)
       return Object->ptr;
    }
    else if (not Object->uid) return nullptr; // Object reference is dead
-   else if ((!Object->ptr) or Object->is_detached()) {
+   else if ((not Object->ptr) or Object->is_detached()) {
       // Detached objects are always accessed via UID, even if we have a pointer reference.
       OBJECTPTR obj_ptr;
       if (auto error = AccessObject(Object->uid, 5000, &obj_ptr); error IS ERR::Okay) {
@@ -136,9 +135,20 @@ OBJECTPTR access_object(GCobject *Object)
          Object->uid = 0;
       }
    }
-   else Object->ptr->lock(); // 'soft' lock in case of threading involving private objects
+   else if (auto error = Object->ptr->lock(); error != ERR::Okay) {
+      pf::Log("access_object").warning("#%d lock() failed: %s, Queue: %d", Object->uid, GetErrorMsg(error), Object->ptr->Queue.load());
+      return nullptr;
+   }
 
-   if (Object->ptr) Object->accesscount++;
+   if (Object->ptr) {
+      #if LUA_USE_ASSERT
+         // This error indicates that the object was forcibly terminated (e.g. because the parent was terminated).
+         // The client should have marked the object as detached in order to prevent this issue.
+         lj_assertX(Object->ptr->Class, "Object terminated while still attached.");
+      #endif
+      Object->accesscount++;
+   }
+
    return Object->ptr;
 }
 
@@ -151,7 +161,16 @@ void release_object(GCobject *Object)
             Object->set_locked(false);
             Object->ptr = nullptr;
          }
-         else Object->ptr->unlock();
+         else {
+            #ifndef NDEBUG
+            if (Object->ptr->Queue.load() <= 0) {
+               pf::Log("release_object").warning("#%d Queue underflow before unlock: Queue: %d, ThreadID: %d, OurThread: %d",
+                  Object->uid, Object->ptr->Queue.load(), Object->ptr->ThreadID.load(), pf::_get_thread_id());
+               DEBUG_BREAK
+            }
+            #endif
+            Object->ptr->unlock();
+         }
       }
    }
 }
@@ -197,10 +216,6 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
    for (int action_id=1; glActions[action_id].Name; action_id++) {
       glActionLookup[glActions[action_id].Name] = AC(action_id);
    }
-
-   FUNCTION call(CALL::STD_C);
-   call.Routine = (APTR)msg_thread_script_callback;
-   AddMsgHandler(MSGID::TIRI_THREAD_CALLBACK, &call, &glMsgThread);
 
    pf::vector<std::string> *pargs;
    auto task = CurrentTask();
@@ -270,7 +285,7 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
 static ERR MODExpunge(void)
 {
    if (glMsgThread) { FreeResource(glMsgThread); glMsgThread = nullptr; }
-   if (clTiri)     { FreeResource(clTiri); clTiri = nullptr; }
+   if (clTiri)      { FreeResource(clTiri); clTiri = nullptr; }
    if (modDisplay)  { FreeResource(modDisplay); modDisplay = nullptr; }
    if (modRegex)    { FreeResource(modRegex); modRegex = nullptr; }
    return ERR::Okay;
@@ -365,11 +380,12 @@ ERR SetVariable(objScript *Script, CSTRING Name, int Type, ...)
    prvTiri *prv;
    va_list list;
 
-   if ((!Script) or (Script->classID() != CLASSID::TIRI) or (!Name) or (!*Name)) return log.warning(ERR::Args);
+   if ((not Script) or (Script->classID() != CLASSID::TIRI) or (not Name) or (not *Name)) return log.warning(ERR::Args);
 
    log.branch("Script: %d, Name: %s, Type: $%.8x", Script->UID, Name, Type);
 
    if (not (prv = (prvTiri *)Script->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
+   if (not prv->Lua) return log.warning(ERR::InvalidState);
 
    va_start(list, Type);
 
@@ -594,7 +610,7 @@ void get_line(objScript *Self, int Line, STRING Buffer, int Size)
       while ((*str IS ' ') or (*str IS '\t')) str++;
 
       for (i=0; i < Size-1; i++) {
-         if ((*str IS '\n') or (*str IS '\r') or (!*str)) break;
+         if ((*str IS '\n') or (*str IS '\r') or (not *str)) break;
          Buffer[i] = *str++;
       }
       Buffer[i] = 0;
@@ -655,7 +671,7 @@ CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
 
 //********************************************************************************************************************
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 
 static void stack_dump(lua_State *L) __attribute__ ((unused));
 

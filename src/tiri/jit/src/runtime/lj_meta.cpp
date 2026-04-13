@@ -141,6 +141,14 @@ TValue * mmcall(lua_State *L, ASMFunction cont, cTValue *mo, cTValue *a, cTValue
 
 cTValue *lj_meta_tget(lua_State *L, cTValue *o, cTValue *k)
 {
+   // Resolve thunk keys before table lookup.
+   if (lj_is_thunk(k)) {
+      VMHelperGuard guard(L);
+      ptrdiff_t o_ofs = savestack(L, o);
+      k = lj_thunk_resolve(L, udataV(k));
+      o = restorestack(L, o_ofs);
+   }
+
    int loop;
    for (loop = 0; loop < LJ_MAX_IDXCHAIN; loop++) {
       cTValue *mo;
@@ -176,6 +184,14 @@ cTValue *lj_meta_tget(lua_State *L, cTValue *o, cTValue *k)
 
 TValue * lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
 {
+   // Resolve thunk keys before table lookup.
+   if (lj_is_thunk(k)) {
+      VMHelperGuard guard(L);
+      ptrdiff_t o_ofs = savestack(L, o);
+      k = lj_thunk_resolve(L, udataV(k));
+      o = restorestack(L, o_ofs);
+   }
+
    TValue tmp;
    int loop;
    for (loop = 0; loop < LJ_MAX_IDXCHAIN; loop++) {

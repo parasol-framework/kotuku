@@ -33,6 +33,13 @@
 
 cmake_minimum_required(VERSION 3.15)
 
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+   message (STATUS "CMAKE_BUILD_TYPE not set, defaulting to Release")
+   set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif ()
+
+add_compile_definitions($<$<CONFIG:Release>:KOTUKU_RELEASE_BUILD>)
+
 include (CheckIncludeFiles)
 include (CheckTypeSize)
 include (CheckFunctionExists)
@@ -47,7 +54,10 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
    include(CTest)
 endif()
 
-project (Kotuku VERSION 2024.2.27 LANGUAGES C CXX)
+file(READ "${CMAKE_SOURCE_DIR}/pkg/version.txt" KOTUKU_VERSION_STRING)
+string(STRIP "${KOTUKU_VERSION_STRING}" KOTUKU_VERSION_STRING)
+
+project (Kotuku VERSION ${KOTUKU_VERSION_STRING} LANGUAGES C CXX)
 
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 if(POLICY CMP0177)

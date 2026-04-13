@@ -84,12 +84,19 @@ end
    assert(enabled_off is false, "jit.off() should disable the compiler")
 
    jit.on()
-   enabled_again, first_flag = jit.status()
+   enabled_again, flags = jit.status()
    assert(enabled_again is true, "jit.on() should restore the compiler state")
+   assert(type(flags) is "table", "jit.status() should return a flags table as the second result")
 
-   if first_flag != nil and type(first_flag) != 'string' then
-      error("jit.status secondary results should be flag strings when present")
+   -- Verify all values in the flags table are booleans
+   for name, value in pairs(flags) do
+      assert(type(name) is "string", "Flag keys should be strings")
+      assert(type(value) is "boolean", f"Flag '{name}' should be a boolean, got {type(value)}")
    end
+
+   -- Verify known optimisation flags are present
+   assert(flags.fold != nil, "Expected 'fold' optimisation flag in status table")
+   assert(flags.cse != nil, "Expected 'cse' optimisation flag in status table")
 end
 
 @Test function FuncInfoForLuaFunction()

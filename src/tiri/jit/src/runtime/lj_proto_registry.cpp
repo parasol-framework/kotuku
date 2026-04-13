@@ -9,6 +9,8 @@
 #include <ankerl/unordered_dense.h>
 #include <vector>
 #include <cstring>
+#include <shared_mutex>
+#include <mutex>
 
 //********************************************************************************************************************
 // Arena allocator for fprototype records
@@ -51,13 +53,17 @@ private:
 
 static ProtoArena glArena;
 static ankerl::unordered_dense::map<ProtoKey, fprototype*, ProtoKeyHash> glRegistry;
+static std::shared_mutex glRegistryMutex;
 
 //********************************************************************************************************************
 
 void init_proto_registry()
 {
-   glArena.clear();
-   glRegistry.clear();
+   static std::once_flag flag;
+   std::call_once(flag, []() {
+      glArena.clear();
+      glRegistry.clear();
+   });
 }
 
 //********************************************************************************************************************
@@ -104,7 +110,13 @@ ERR reg_func_prototype(std::string_view Name, std::initializer_list<TiriType> Re
 {
    ProtoKey key{ 0, pf::strhash(Name) };
 
-   if (glRegistry.contains(key)) return ERR::Exists;
+   { // Fast path: check under shared lock first (common case after first script init)
+      std::shared_lock read_lock(glRegistryMutex);
+      if (glRegistry.contains(key)) return ERR::Exists;
+   }
+
+   std::unique_lock lock(glRegistryMutex);
+   if (glRegistry.contains(key)) return ERR::Exists; // Re-check after acquiring exclusive lock
 
    auto *proto = alloc_prototype(ResultTypes, ParamTypes, Flags);
    glRegistry[key] = proto;
@@ -117,7 +129,15 @@ ERR reg_iface_prototype(std::string_view Interface, std::string_view Method, std
    std::initializer_list<TiriType> ParamTypes, FProtoFlags Flags)
 {
    ProtoKey key{ pf::strhash(Interface), pf::strhash(Method) };
+
+   {
+      std::shared_lock read_lock(glRegistryMutex);
+      if (glRegistry.contains(key)) return ERR::Exists;
+   }
+
+   std::unique_lock lock(glRegistryMutex);
    if (glRegistry.contains(key)) return ERR::Exists;
+
    auto *proto = alloc_prototype(ResultTypes, ParamTypes, Flags);
    glRegistry[key] = proto;
    return ERR::Okay;
@@ -139,6 +159,7 @@ const fprototype * get_func_prototype(std::string_view Name)
 
 const fprototype * get_prototype_by_hash(uint32_t IfaceHash, uint32_t FuncHash)
 {
+   std::shared_lock lock(glRegistryMutex);
    ProtoKey key{ IfaceHash, FuncHash };
    auto it = glRegistry.find(key);
    return (it != glRegistry.end()) ? it->second : nullptr;

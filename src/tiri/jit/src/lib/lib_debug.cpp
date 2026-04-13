@@ -5,11 +5,11 @@
 // Major portions taken verbatim or adapted from the Lua interpreter.
 // Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
 //
-// The debug library provides introspection functions for examining and manipulating the Lua runtime
-// environment.  It includes standard Lua debug functions as well as Kotuku-specific extensions for
+// The debug library provides introspection functions for examining and manipulating the Tiri runtime
+// environment.  It includes standard Tiri debug functions as well as Kotuku-specific extensions for
 // code validation and annotation management.
 //
-//   debug.getRegistry()         - Returns the Lua registry table
+//   debug.getRegistry()         - Returns the Tiri registry table
 //   debug.getMetatable(obj)     - Returns the metatable of any object
 //   debug.setMetatable(obj, mt) - Sets the metatable of any object
 //   debug.getEnv(obj)           - Returns the environment of a function/thread/userdata
@@ -88,25 +88,10 @@ static void settabsb(lua_State *L, CSTRING i, int v)
    lua_setfield(L, -2, i);
 }
 
-static lua_State * getthread(lua_State *L, int* arg)
+static void treatstackoption(lua_State *L, CSTRING fname)
 {
-   if (L->base < L->top and tvisthread(L->base)) {
-      *arg = 1;
-      return threadV(L->base);
-   }
-   else {
-      *arg = 0;
-      return L;
-   }
-}
-
-static void treatstackoption(lua_State *L, lua_State *L1, CSTRING fname)
-{
-   if (L == L1) {
-      lua_pushvalue(L, -2);
-      lua_remove(L, -3);
-   }
-   else lua_xmove(L1, L, 1);
+   lua_pushvalue(L, -2);
+   lua_remove(L, -3);
    lua_setfield(L, -2, fname);
 }
 
@@ -189,7 +174,7 @@ static char* unmakemask(int mask, char* smask)
 //   - Number literals: integer or floating-point
 //   - Array literals: [item, item, ...] or {item, item, ...}
 //
-// Returns true and pushes the value to the Lua stack on success.
+// Returns true and pushes the value to the Tiri stack on success.
 // Returns false on parse error (nothing pushed to stack).
 
 static bool parse_annotation_value(lua_State *L, std::string_view& sv)
@@ -278,7 +263,7 @@ static bool parse_annotation_value(lua_State *L, std::string_view& sv)
 }
 
 //********************************************************************************************************************
-// Internal helper: Parses an annotation string into a Lua table.
+// Internal helper: Parses an annotation string into a Tiri table.
 //
 // Annotation Syntax:
 //   @Name                 - Simple annotation with no arguments
@@ -292,7 +277,7 @@ static bool parse_annotation_value(lua_State *L, std::string_view& sv)
 // Produces an array of annotation entries, each containing:
 //   { name = "AnnotationName", args = { key = value, ... } }
 //
-// Returns true and pushes the annotations array to the Lua stack on success.
+// Returns true and pushes the annotations array to the Tiri stack on success.
 // Returns false on parse error (nothing pushed to stack).
 
 static bool lj_parse_annotation_string(lua_State *L, std::string_view sv)
@@ -410,14 +395,29 @@ static bool lj_parse_annotation_string(lua_State *L, std::string_view sv)
       lua_rawseti(L, -2, anno_idx++);
    }
 
+   // Convert the temp table to a proper array<table>
+
+   lj_gc_check(L);
+   GCarray *arr = lj_array_new(L, anno_idx, AET::TABLE);
+   GCRef *refs = (GCRef *)arr->arraydata();
+   for (int i = 0; i < anno_idx; i++) {
+      lua_rawgeti(L, -1, i);  // Push temp_table[i] onto stack
+      GCtab *entry = tabV(L->top - 1);
+      setgcref(refs[i], obj2gco(entry));
+      lj_gc_anybarriert(L, entry);
+      lua_pop(L, 1);
+   }
+   setarrayV(L, L->top, arr);
+   incr_top(L);
+   lua_remove(L, -2);  // Remove the temp table, leaving the array on top
    return true;
 }
 
 //********************************************************************************************************************
 // debug.getRegistry():table
 //
-// Returns the Lua registry table, a pre-defined table used by C code to store Lua values.  The registry is a global
-// table accessible only from C code, used to store references that should not be accessible from Lua code.
+// Returns the Tiri registry table, a pre-defined table used by C code to store Tiri values.  The registry is a global
+// table accessible only from C code, used to store references that should not be accessible from Tiri code.
 
 LJLIB_CF(debug_getRegistry)
 {
@@ -544,7 +544,7 @@ LJLIB_CF(debug_setMetatable)
 //********************************************************************************************************************
 // debug.getEnv(object:any):table
 //
-// Returns the environment of the given object.  The object can be a Lua function, a thread, or a userdata.
+// Returns the environment of the given object.  The object can be a Tiri function, a thread, or a userdata.
 // For functions, this is the table that is used for global variable access within the function.
 //
 // Example:
@@ -561,7 +561,7 @@ LJLIB_CF(debug_getEnv)
 //********************************************************************************************************************
 // debug.setEnv(object:any, table):any
 //
-// Sets the environment of the given object to the given table.  The object can be a Lua function, a thread,
+// Sets the environment of the given object to the given table.  The object can be a Tiri function, a thread,
 // or a userdata.  For functions, this changes the table used for global variable access.  Throws an error if the
 // environment cannot be set (e.g., for C functions)
 //
@@ -581,12 +581,11 @@ LJLIB_CF(debug_setEnv)
 }
 
 //********************************************************************************************************************
-// debug.getInfo([thread,] function [, what]): table
+// debug.getInfo(function [, what]): table
 //
 // Returns a table with information about a function or stack level.  The function can be specified as a function
 // value or as a number representing a stack level (0 = getInfo itself, 1 = function that called getInfo, etc.).
 //
-//   thread   - (optional) A thread whose stack to examine
 //   function - A function value or stack level number
 //   what     - (optional) String specifying which fields to fill (default: "flnSu"):
 //              'n' - name, nameWhat
@@ -602,7 +601,7 @@ LJLIB_CF(debug_setEnv)
 //     shortSource    - Short version of source (for error messages)
 //     lineDefined    - Line where the function definition starts
 //     lastLineDefined - Line where the function definition ends
-//     what           - "Lua", "C", "main", or "tail"
+//     what           - "Tiri", "C", "main", or "tail"
 //     currentLine    - Current line being executed
 //     name           - Name of the function (if available)
 //     nameWhat       - How the name was obtained ("global", "local", "method", "field", "")
@@ -617,37 +616,36 @@ LJLIB_CF(debug_setEnv)
 LJLIB_CF(debug_getInfo)
 {
    lj_Debug ar;
-   int arg, opt_f = 0, opt_L = 0;
+   int opt_f = 0, opt_L = 0;
    bool from_func_arg = false;  // Track if function was passed directly
-   lua_State *L1 = getthread(L, &arg);
-   CSTRING options = luaL_optstring(L, arg + 2, "flnSu");
-   if (lua_isnumber(L, arg + 1)) {
-      if (not lua_getstack(L1, (int)lua_tointeger(L, arg + 1), (lua_Debug*)&ar)) {
+   CSTRING options = luaL_optstring(L, 2, "flnSu");
+   if (lua_isnumber(L, 1)) {
+      if (not lua_getstack(L, (int)lua_tointeger(L, 1), (lua_Debug*)&ar)) {
          setnilV(L->top - 1);
          return 1;
       }
    }
-   else if (L->base + arg < L->top and tvisfunc(L->base + arg)) {
+   else if (L->base < L->top and tvisfunc(L->base)) {
       from_func_arg = true;
       options = lua_pushfstring(L, ">%s", options);
-      setfuncV(L1, L1->top++, funcV(L->base + arg));
+      setfuncV(L, L->top++, funcV(L->base));
    }
-   else lj_err_arg(L, arg + 1, ErrMsg::NOFUNCL);
+   else lj_err_arg(L, 1, ErrMsg::NOFUNCL);
 
-   if (not lj_debug_getinfo(L1, options, &ar, 1)) lj_err_arg(L, arg + 2, ErrMsg::INVOPT);
+   if (not lj_debug_getinfo(L, options, &ar, 1)) lj_err_arg(L, 2, ErrMsg::INVOPT);
 
    // Get function for fileIndex using the frame info
    GCfunc* fn = nullptr;
    if (from_func_arg) {
       // Function was passed as argument, get it from where lj_debug_getinfo left it
       // The '>' case pops it from top, so we need to get it differently
-      fn = funcV(L->base + arg);
+      fn = funcV(L->base);
    }
    else {
       // Stack level case: extract function from frame info
       uint32_t offset = uint32_t(ar.i_ci) & 0xffff;
       if (offset) {
-         TValue* frame = tvref(L1->stack) + offset;
+         TValue* frame = tvref(L->stack) + offset;
          fn = frame_func(frame);
       }
    }
@@ -684,19 +682,18 @@ LJLIB_CF(debug_getInfo)
          default: break;
       }
    }
-   if (opt_L) treatstackoption(L, L1, "activeLines");
-   if (opt_f) treatstackoption(L, L1, "func");
+   if (opt_L) treatstackoption(L, "activeLines");
+   if (opt_f) treatstackoption(L, "func");
    return 1;  //  Return result table.
 }
 
 //********************************************************************************************************************
-// debug.getLocal([thread,] level, index):<str, any>
+// debug.getLocal(level, index):<str, any>
 // debug.getLocal(func, index):str
 //
 // Returns the name and value of a local variable at the given stack level and index.  If given a function instead
 // of a level, returns only the name of the parameter at the given index (useful for introspecting parameter names).
 //
-//   thread - (optional) A thread whose stack to examine
 //   level  - Stack level (1 = function that called getLocal, etc.)
 //   func   - Alternative: a function to query parameter names
 //   index  - 0-based local variable index (negative indices access vararg values)
@@ -711,21 +708,18 @@ LJLIB_CF(debug_getInfo)
 
 LJLIB_CF(debug_getLocal)
 {
-   int arg;
-   lua_State *L1 = getthread(L, &arg);
    lua_Debug ar;
 
-   int slot = debug_idx(lj_lib_checkint(L, arg + 2));
-   if (tvisfunc(L->base + arg)) {
-      L->top = L->base + arg + 1;
+   int slot = debug_idx(lj_lib_checkint(L, 2));
+   if (tvisfunc(L->base)) {
+      L->top = L->base + 1;
       lua_pushstring(L, lua_getlocal(L, nullptr, slot));
       return 1;
    }
 
-   if (not lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
+   if (not lua_getstack(L, lj_lib_checkint(L, 1), &ar)) lj_err_arg(L, 1, ErrMsg::LVLRNG);
 
-   if (auto name = lua_getlocal(L1, &ar, slot)) {
-      lua_xmove(L1, L, 1);
+   if (auto name = lua_getlocal(L, &ar, slot)) {
       lua_pushstring(L, name);
       lua_pushvalue(L, -2);
       return 2;
@@ -737,12 +731,11 @@ LJLIB_CF(debug_getLocal)
 }
 
 //********************************************************************************************************************
-// debug.setLocal([thread,] level, index, value): str
+// debug.setLocal(level, index, value): str
 //
 // Sets the value of a local variable at the given stack level and index.  Returns the name of the variable,
 // or nil if the index is out of range.
 //
-//   thread - (optional) A thread whose stack to modify
 //   level  - Stack level (1 = function that called setLocal, etc.)
 //   index  - 0-based local variable index (negative indices access vararg values)
 //   value  - The new value to assign
@@ -754,14 +747,11 @@ LJLIB_CF(debug_getLocal)
 
 LJLIB_CF(debug_setLocal)
 {
-   int arg;
-   lua_State *L1 = getthread(L, &arg);
    lua_Debug ar;
-   TValue *tv;
-   if (not lua_getstack(L1, lj_lib_checkint(L, arg + 1), &ar)) lj_err_arg(L, arg + 1, ErrMsg::LVLRNG);
-   tv = lj_lib_checkany(L, arg + 3);
-   copyTV(L1, L1->top++, tv);
-   lua_pushstring(L, lua_setlocal(L1, &ar, debug_idx(lj_lib_checkint(L, arg + 2))));
+   if (not lua_getstack(L, lj_lib_checkint(L, 1), &ar)) lj_err_arg(L, 1, ErrMsg::LVLRNG);
+   TValue *tv = lj_lib_checkany(L, 3);
+   copyTV(L, L->top++, tv);
+   lua_pushstring(L, lua_setlocal(L, &ar, debug_idx(lj_lib_checkint(L, 2))));
    return 1;
 }
 
@@ -771,7 +761,7 @@ LJLIB_CF(debug_setLocal)
 // Returns the name and value of an upvalue from a function.  Upvalues are external local variables that the
 // function uses and that are captured in the function's closure.  For C functions, upvalue names are always ""
 //
-//   func  - A Lua function
+//   func  - A Tiri function
 //   index - 0-based upvalue index
 
 LJLIB_CF(debug_getUpvalue)
@@ -785,7 +775,7 @@ LJLIB_CF(debug_getUpvalue)
 // Sets the value of an upvalue in a function.  Returns the name of the upvalue, or nil if the index is out of range.
 // Note: This modifies the upvalue for all closures sharing it.
 //
-//   func  - A Lua function
+//   func  - A Tiri function
 //   index - 0-based upvalue index
 //   value - The new value to assign
 //
@@ -832,13 +822,13 @@ LJLIB_CF(debug_upvalueID)
 // * Share breakpoint state across multiple function instances
 // * Connect instrumentation code to production closures
 //
-//   func1 - First Lua function (must be a Lua function, not C)
+//   func1 - First Tiri function (must be a Tiri function, not C)
 //   n1    - 0-based upvalue index in func1
-//   func2 - Second Lua function (must be a Lua function, not C)
+//   func2 - Second Tiri function (must be a Tiri function, not C)
 //   n2    - 0-based upvalue index in func2
 //
 // Notes:
-//   - Both functions must be Lua functions (not C functions)
+//   - Both functions must be Tiri functions (not C functions)
 //   - After joining, both upvalues share the same value
 //
 // Example:
@@ -865,7 +855,7 @@ LJLIB_CF(debug_upvalueJoin)
 //********************************************************************************************************************
 // debug.getUserValue(userdata):table
 //
-// Returns the Lua value (typically a table) associated with the given userdata, or nil if the userdata has no
+// Returns the Tiri value (typically a table) associated with the given userdata, or nil if the userdata has no
 // associated value or if the argument is not a userdata.
 //
 //   userdata - A userdata value
@@ -882,7 +872,7 @@ LJLIB_CF(debug_getUserValue)
 //********************************************************************************************************************
 // debug.setUserValue(userdata, value):any
 //
-// Sets the Lua value (typically a table) associated with the given userdata.  Returns the userdata.
+// Sets the Tiri value (typically a table) associated with the given userdata.  Returns the userdata.
 //
 //   userdata - A userdata value
 //   value    - A table to associate with the userdata
@@ -900,17 +890,16 @@ LJLIB_CF(debug_setUserValue)
 }
 
 //********************************************************************************************************************
-// debug.setHook([thread,] hook, mask [, count])
+// debug.setHook(hook, mask [, count])
 //
 // Sets the given function as a debug hook.  The hook function is called for the events specified in the mask
 // string.  When called without arguments, turns off the hook.
 //
-//   thread - (optional) Thread to set the hook for
 //   hook   - A function to be called on hook events, or nil to turn off hooks
 //   mask   - A string specifying when the hook is called:
-//            'c' - Call: hook is called whenever Lua calls a function
-//            'r' - Return: hook is called whenever Lua returns from a function
-//            'l' - Line: hook is called whenever Lua executes a new line of code
+//            'c' - Call: hook is called whenever Tiri calls a function
+//            'r' - Return: hook is called whenever Tiri returns from a function
+//            'l' - Line: hook is called whenever Tiri executes a new line of code
 //   count  - (optional) If > 0, hook is also called after every 'count' instructions
 //
 // Hook Function Signature:
@@ -920,23 +909,22 @@ LJLIB_CF(debug_setUserValue)
 
 LJLIB_CF(debug_setHook)
 {
-   int arg, mask, count;
+   int mask, count;
    lua_Hook func;
 
-   (void)getthread(L, &arg);
-   if (lua_isnoneornil(L, arg + 1)) {
-      lua_settop(L, arg + 1);
+   if (lua_isnoneornil(L, 1)) {
+      lua_settop(L, 1);
       func = nullptr; mask = 0; count = 0;  //  turn off hooks
    }
    else {
-      CSTRING smask = luaL_checkstring(L, arg + 2);
-      luaL_checktype(L, arg + 1, LUA_TFUNCTION);
-      count = luaL_optint(L, arg + 3, 0);
+      CSTRING smask = luaL_checkstring(L, 2);
+      luaL_checktype(L, 1, LUA_TFUNCTION);
+      count = luaL_optint(L, 3, 0);
       func = hookf; mask = makemask(smask, count);
    }
 
    (L->top++)->u64 = KEY_HOOK;
-   lua_pushvalue(L, arg + 1);
+   lua_pushvalue(L, 1);
    lua_rawset(L, LUA_REGISTRYINDEX);
    lua_sethook(L, func, mask, count);
    return 0;
@@ -970,23 +958,20 @@ LJLIB_CF(debug_getHook)
 }
 
 //********************************************************************************************************************
-// debug.traceback([thread,] [message [, level]]):str
+// debug.traceback([message [, level]]):str
 //
 // Returns a string with a traceback of the call stack.  The optional message string is prepended to the traceback.
 // The optional level number specifies at which level to start the traceback (default is 1, the function calling
 // traceback).
 //
-//   thread  - (optional) Thread to get the traceback for
 //   message - (optional) A message to prepend to the traceback
 //   level   - (optional) The stack level to start from (default: 1)
 
 LJLIB_CF(debug_traceback)
 {
-   int arg;
-   lua_State *L1 = getthread(L, &arg);
-   CSTRING msg = lua_tostring(L, arg + 1);
-   if (msg == nullptr and L->top > L->base + arg) L->top = L->base + arg + 1;
-   else luaL_traceback(L, L1, msg, lj_lib_optint(L, arg + 2, (L == L1)));
+   CSTRING msg = lua_tostring(L, 1);
+   if (msg == nullptr and L->top > L->base) L->top = L->base + 1;
+   else luaL_traceback(L, L, msg, lj_lib_optint(L, 2, 1));
    return 1;
 }
 
@@ -1081,7 +1066,7 @@ LJLIB_CF(debug_validate)
          lua_newtable(L);  // diagnostic entry
 
          SourceSpan span = entry.token.span();
-         // LSP uses 0-based line/column, Lua parser uses 1-based
+         // LSP uses 0-based line/column, Tiri parser uses 1-based
          settabsi(L, "line", span.line > 0 ? span.line - 1 : 0);
          settabsi(L, "column", span.column > 0 ? span.column - 1 : 0);
          settabsi(L, "endColumn", span.column);  // Already correct after -1 adjustment
@@ -1109,7 +1094,7 @@ LJLIB_CF(debug_validate)
          lua_newtable(L);  // tip entry
 
          SourceSpan span = entry.token.span();
-         // LSP uses 0-based line/column, Lua parser uses 1-based
+         // LSP uses 0-based line/column, Tiri parser uses 1-based
          settabsi(L, "line", span.line > 0 ? span.line - 1 : 0);
          settabsi(L, "column", span.column > 0 ? span.column - 1 : 0);
          settabsi(L, "endColumn", span.column);  // Already correct after -1 adjustment
@@ -1135,12 +1120,11 @@ LJLIB_CF(debug_validate)
 }
 
 //********************************************************************************************************************
-// debug.locality([thread,] name [, level]):str
+// debug.locality(name [, level]):str
 //
 // Returns the locality of a variable, indicating where it is defined in the current scope.  This is useful for
 // debugging and introspection to understand variable resolution.
 //
-//   thread - (optional) Thread whose stack to examine
 //   name   - The variable name as a string
 //   level  - (optional) Stack level to examine (default: 1 = caller's frame)
 //
@@ -1152,29 +1136,26 @@ LJLIB_CF(debug_validate)
 
 LJLIB_CF(debug_locality)
 {
-   int arg;
-   lua_State *L1 = getthread(L, &arg);
-
    // Check for nil or missing argument
-   if (L->base + arg >= L->top or tvisnil(L->base + arg)) {
+   if (L->base >= L->top or tvisnil(L->base)) {
       lua_pushliteral(L, "nil");
       return 1;
    }
 
-   CSTRING varname = luaL_checkstring(L, arg + 1);
-   int level = luaL_optint(L, arg + 2, 1);
+   CSTRING varname = luaL_checkstring(L, 1);
+   int level = luaL_optint(L, 2, 1);
 
    // Get the stack frame at the specified level
    lua_Debug ar;
-   if (not lua_getstack(L1, level, &ar)) {
+   if (not lua_getstack(L, level, &ar)) {
       // Invalid level - check global table only
-      lua_getglobal(L1, varname);
-      if (lua_isnil(L1, -1)) {
-         lua_pop(L1, 1);
+      lua_getglobal(L, varname);
+      if (lua_isnil(L, -1)) {
+         lua_pop(L, 1);
          lua_pushliteral(L, "nil");
       }
       else {
-         lua_pop(L1, 1);
+         lua_pop(L, 1);
          lua_pushliteral(L, "global");
       }
       return 1;
@@ -1183,8 +1164,8 @@ LJLIB_CF(debug_locality)
    // Search local variables in the frame
    int slot = 1;
    CSTRING name;
-   while ((name = lua_getlocal(L1, &ar, slot)) != nullptr) {
-      lua_pop(L1, 1);  // Pop the value
+   while ((name = lua_getlocal(L, &ar, slot)) != nullptr) {
+      lua_pop(L, 1);  // Pop the value
       if (strcmp(name, varname) == 0) {
          lua_pushliteral(L, "local");
          return 1;
@@ -1193,28 +1174,28 @@ LJLIB_CF(debug_locality)
    }
 
    // Get the function at this level to check upvalues
-   if (lua_getinfo(L1, "f", &ar)) {
+   if (lua_getinfo(L, "f", &ar)) {
       int uv = 1;
-      while ((name = lua_getupvalue(L1, -1, uv)) != nullptr) {
-         lua_pop(L1, 1);  // Pop the value
+      while ((name = lua_getupvalue(L, -1, uv)) != nullptr) {
+         lua_pop(L, 1);  // Pop the value
          if (strcmp(name, varname) == 0) {
-            lua_pop(L1, 1);  // Pop the function
+            lua_pop(L, 1);  // Pop the function
             lua_pushliteral(L, "upvalue");
             return 1;
          }
          uv++;
       }
-      lua_pop(L1, 1);  // Pop the function
+      lua_pop(L, 1);  // Pop the function
    }
 
    // Check global table
-   lua_getglobal(L1, varname);
-   if (lua_isnil(L1, -1)) {
-      lua_pop(L1, 1);
+   lua_getglobal(L, varname);
+   if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
       lua_pushliteral(L, "nil");
    }
    else {
-      lua_pop(L1, 1);
+      lua_pop(L, 1);
       lua_pushliteral(L, "global");
    }
    return 1;
@@ -1254,13 +1235,13 @@ LJLIB_CF(debug_anno_get)
 //********************************************************************************************************************
 // debug.anno.set(func, annotations [, source [, name]]): table
 //
-// Sets annotations for a function.  Annotations can be provided as a table (for programmatic use) or as a string
-// in annotation syntax (for parsing).  The annotations are stored in the global _ANNO table, indexed by function.
-// Returns the annotation entry that was created/updated.
+// Sets annotations for a function.  Annotations can be provided as an array<table> (for programmatic use) or as a
+// string in annotation syntax (for parsing).  The annotations are stored in the global _ANNO table, indexed by
+// function.  Returns the annotation entry that was created/updated.
 //
 //   func        - The function to annotate
 //   annotations - Either:
-//                 - A table/array of annotation objects
+//                 - An array<table> of annotation objects, where each element is a table with at least a name field
 //                 - A string in annotation syntax: "@Name(key=value, ...)"
 //   source      - (optional) Source identifier, defaults to "<runtime>"
 //   name        - (optional) Function name, falls back to debug info or "<anonymous>"
@@ -1300,12 +1281,12 @@ LJLIB_CF(debug_anno_set)
       }
       // Parsed annotations array is now on stack
    }
-   else if (lua_istable(L, 2)) {
-      lua_pushvalue(L, 2);  // Push annotations table/array
+   else if (lua_isarray(L, 2)) {
+      lua_pushvalue(L, 2);  // Push annotations array
    }
    else {
       lua_pop(L, 1);  // Pop _ANNO
-      lj_err_argt(L, 2, LUA_TTABLE);
+      lj_err_argt(L, 2, LUA_TARRAY);
    }
 
    // Create entry table with name, source, and annotations

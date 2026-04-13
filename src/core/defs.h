@@ -5,6 +5,7 @@
 #endif
 
 #include <set>
+#include <deque>
 #include <functional>
 #include <mutex>
 #include <sstream>
@@ -15,6 +16,7 @@
 #include <thread>
 #include <algorithm>
 #include <ankerl/unordered_dense.h>
+#include <unordered_set>
 
 using namespace std::chrono_literals;
 
@@ -164,11 +166,20 @@ struct ThreadMessage {
 };
 
 struct ThreadActionMessage {
-   OBJECTPTR Object;    // Direct pointer to a target object.
    AC        ActionID;  // The action to execute.
-   int       Key;       // Internal
+   OBJECTID  ObjectID;  // ID of the target object (for queue dispatch).
    ERR       Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
+};
+
+// Queued async action, waiting for the same-object action to complete.
+
+struct QueuedAction {
+   OBJECTID  ObjectID;
+   AC        ActionID;
+   int       ArgsSize;
+   std::vector<int8_t> Parameters;
+   FUNCTION  Callback;
 };
 
 //********************************************************************************************************************
@@ -188,8 +199,27 @@ extern std::recursive_mutex glmMemory;
 extern std::recursive_mutex glmMsgHandler;
 extern std::recursive_mutex glmAsyncActions;
 
+extern std::mutex glmActionQueue;
+extern std::unordered_map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
+extern std::unordered_set<OBJECTID> glActiveAsyncObjects;
+extern std::unordered_map<OBJECTID, int> glAsyncObjectThreads;
+
 extern std::condition_variable_any cvResources;
 extern std::condition_variable_any cvObjects;
+
+// Per-thread record for the global thread registry.  Threads are registered on first use of get_thread_id() and
+// deregistered on thread destruction.  The condition variable allows other threads to interrupt a sleeping thread
+// via WakeThread().
+
+struct ThreadRecord {
+   std::mutex mutex;                            // Guards cv.wait() and compound updates from WakeThread()
+   std::condition_variable cv;
+   std::atomic<TSTATE> state = TSTATE::RUNNING; // Readable without locking; writes from other threads require mutex
+   std::atomic<bool> interrupted = false;        // Readable without locking; set by WakeThread() under mutex
+};
+
+extern std::mutex glmThreadRegistry;
+extern std::unordered_map<int, std::shared_ptr<ThreadRecord>> glThreadRegistry;
 
 //********************************************************************************************************************
 
@@ -320,7 +350,8 @@ extern ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 #endif
 
 enum {
-   RT_OBJECT
+   RT_OBJECT,
+   RT_SLEEP // Thread is sleeping in ProcessMessages / sleep_task
 };
 
 //********************************************************************************************************************
@@ -719,7 +750,6 @@ extern Object glDummyObject;
 extern TIMER glProcessJanitor;
 extern int glEventMask;
 extern struct ModHeader glCoreHeader;
-
 #ifndef KOTUKU_STATIC
 extern CSTRING glClassBinPath;
 #endif
@@ -1013,6 +1043,9 @@ class RootModule : public Object {
 };
 
 THREADID get_thread_id(void);
+void deregister_thread(void);
+[[nodiscard]] std::shared_ptr<ThreadRecord> get_thread_record(void);
+ERR WakeThread(int Thread, int Stop = false);
 
 //********************************************************************************************************************
 
@@ -1060,6 +1093,7 @@ APTR   build_jump_table(const Function *);
 void   stop_async_actions(void);
 ERR    copy_args(const FunctionField *, int, int8_t *, std::vector<int8_t> &);
 ERR    create_archive_volume(void);
+void   dispatch_queued_action(OBJECTID);
 ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 ERR    find_private_object_entry(OBJECTID, int *);
@@ -1076,6 +1110,8 @@ ERR    msg_free(APTR, int, int, APTR, int);
 void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERR    process_janitor(OBJECTID, int, int);
+void   register_sleep(int);
+void   deregister_sleep(void);
 void   remove_process_waitlocks(void);
 CLASSID lookup_class_by_ext(CLASSID, std::string_view);
 

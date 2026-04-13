@@ -45,6 +45,12 @@ thread_local extThread *tlThreadRef;
 
 static void thread_entry_cleanup(void *);
 
+struct ThreadEntryCleanupGuard {
+   ~ThreadEntryCleanupGuard() {
+      thread_entry_cleanup(nullptr);
+   }
+};
+
 //********************************************************************************************************************
 // Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
 
@@ -53,8 +59,24 @@ static std::atomic_int glThreadIDCount = 1;
 
 THREADID get_thread_id(void)
 {
-   if (tlUniqueThreadID.defined()) return tlUniqueThreadID;
+   if (tlUniqueThreadID.defined()) {
+      // Preserve the invariant that a defined thread ID always has a registry record.
+      std::lock_guard lock(glmThreadRegistry);
+      if (auto it = glThreadRegistry.find(int(tlUniqueThreadID)); it IS glThreadRegistry.end()) {
+         glThreadRegistry[int(tlUniqueThreadID)] = std::make_shared<ThreadRecord>();
+      }
+      return tlUniqueThreadID;
+   }
+
    tlUniqueThreadID = THREADID(glThreadIDCount++);
+
+   // Register the new thread in the global thread registry
+   auto record = std::make_shared<ThreadRecord>();
+   {
+      std::lock_guard lock(glmThreadRegistry);
+      glThreadRegistry[int(tlUniqueThreadID)] = std::move(record);
+   }
+
    return tlUniqueThreadID;
 }
 
@@ -107,6 +129,8 @@ static void thread_entry_cleanup(void *Arg)
       if (tlThreadRef) tlThreadRef->Active = false;
    }
 
+   deregister_thread();
+
    #ifdef _WIN32
       free_threadlock();
    #endif
@@ -143,9 +167,7 @@ static ERR THREAD_Activate(extThread *Self)
 
       tlThreadCrashed = true;
       tlThreadRef     = Self;
-      #ifdef __GNUC__
-         pthread_cleanup_push(&thread_entry_cleanup, Self);
-      #endif
+      ThreadEntryCleanupGuard cleanup_guard;
 
       ThreadMessage msg = { .ThreadID = uid, .Callback = Self->Callback };
 
@@ -174,10 +196,6 @@ static ERR THREAD_Activate(extThread *Self)
       // Reset the crash indicators and invoke the cleanup code.
       tlThreadRef     = nullptr;
       tlThreadCrashed = false;
-
-      #ifdef __GNUC__
-         pthread_cleanup_pop(true);
-      #endif
    });
 
    if (Self->CPPThread) {

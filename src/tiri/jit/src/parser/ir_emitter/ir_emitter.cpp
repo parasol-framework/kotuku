@@ -136,6 +136,11 @@ private:
 };
 
 //********************************************************************************************************************
+// Assignment helpers implemented in emit_assignment.cpp, which is included later in this translation unit.
+
+static bool contains_safe_nav_target(const ExprNode& Expr);
+
+//********************************************************************************************************************
 // Check if any active local variables have the <close> attribute.
 // Close handlers use temporary registers that could clobber return values.
 
@@ -362,6 +367,7 @@ static UnsupportedNodeRecorder glUnsupportedNodes;
       case AstBinaryOperator::LogicalAnd:   return BinOpr::LogicalAnd;
       case AstBinaryOperator::LogicalOr:    return BinOpr::LogicalOr;
       case AstBinaryOperator::IfEmpty:      return BinOpr::IfEmpty;
+      case AstBinaryOperator::HasFlag:     return BinOpr::HasFlag;
       default: return std::nullopt;
    }
 }
@@ -1566,6 +1572,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
 {
    if (Payload.targets.empty()) return this->unsupported_stmt(AstNodeKind::AssignmentStmt, SourceSpan{});
 
+   bool has_safe_nav_target = false;
+   for (const ExprNodePtr& node : Payload.targets) {
+      if (node and contains_safe_nav_target(*node)) {
+         has_safe_nav_target = true;
+         break;
+      }
+   }
+
    // For compound assignments (+=, -=, etc.), do NOT create new locals for unscoped variables.
    // The variable must already exist - we should modify the existing storage.
    // For plain (=) and if-empty/if-nil (?=/??=) assignments, allow new local creation.
@@ -1573,7 +1587,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
 
    bool AllocNewLocal = (Payload.op IS AssignmentOperator::Plain or Payload.op IS AssignmentOperator::IfEmpty or Payload.op IS AssignmentOperator::IfNil);
 
-   auto targets_result = this->prepare_assignment_targets(Payload.targets, AllocNewLocal);
+   if (Payload.op IS AssignmentOperator::Plain and has_safe_nav_target and Payload.targets.size() > 1) {
+      return this->emit_plain_assignment_safe_multi(Payload.targets, Payload.values);
+   }
+
+   auto targets_result = this->prepare_assignment_targets(Payload.targets, AllocNewLocal, has_safe_nav_target);
    if (not targets_result.ok()) return ParserResult<IrEmitUnit>::failure(targets_result.error_ref());
 
    std::vector<PreparedAssignment> targets = std::move(targets_result.value_ref());
@@ -1813,6 +1831,9 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload &Paylo
    // Cannot use the standard prepare/emit RHS/complete pattern
 
    if (opr IS BinOpr::IfEmpty) return this->emit_if_empty_expr(lhs, *Payload.right);
+
+   // HasFlag operator: bit.band(lhs, rhs) != 0, producing a boolean result
+   if (opr IS BinOpr::HasFlag) return this->emit_has_flag_expr(lhs, *Payload.right);
 
    // Bitwise operators need special handling to control bytecode order for JIT compatibility.
    // The JIT expects callee to be loaded BEFORE arguments, matching explicit bit.band() pattern.
@@ -2060,6 +2081,155 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    ExpressionValue result_val(fs, lhs);
    result_val.discharge();
    lhs = result_val.legacy();
+
+   return ParserResult<ExpDesc>::success(lhs);
+}
+
+//********************************************************************************************************************
+// Emit bytecode for the `has` operator (bitwise flag test): `a has b` => `bit.band(a, b) != 0`
+// Produces a boolean (jump-based) result, like comparison operators.
+// Evaluation order is intentional:
+// 1) Materialise/capture LHS first.
+// 2) Resolve callee/call frame.
+// 3) Evaluate RHS last.
+// This preserves `has` left-to-right operand semantics when RHS evaluation has side effects
+// (for example, mutating the source referenced by LHS).
+
+ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode& rhs_ast)
+{
+   FuncState* fs = &this->func_state;
+
+   // Constant folding: if both operands are numeric constants, compute at compile time.
+   // Read RHS directly from AST so we do not emit/evaluate RHS before resolving bit.band.
+   if (lhs.is_num_constant_nojump() and rhs_ast.kind IS AstNodeKind::LiteralExpr) {
+      auto *rhs_literal = std::get_if<LiteralValue>(&rhs_ast.data);
+      if (rhs_literal and rhs_literal->kind IS LiteralKind::Number) {
+         auto k1 = lj_num2bit(lhs.number_value());
+         auto k2 = lj_num2bit(rhs_literal->number_value);
+         bool result = (k1 & k2) != 0;
+         lhs.k = result ? ExpKind::True : ExpKind::False;
+         lhs.result_type = TiriType::Bool;
+         return ParserResult<ExpDesc>::success(lhs);
+      }
+   }
+
+   // Runtime path: emit bit.band(lhs, rhs) call, then compare result against 0.
+   // Keep LHS stable before RHS emission so RHS side effects cannot alter which LHS value we test.
+
+   RegisterAllocator allocator(fs);
+
+   // Discharge Call expressions to NonReloc first
+   if (lhs.k IS ExpKind::Call) {
+      ExpressionValue lhs_discharge(fs, lhs);
+      lhs_discharge.discharge();
+      lhs = lhs_discharge.legacy();
+   }
+
+   // Discharge LHS to register if needed
+   if (not lhs.is_num_constant_nojump()) {
+      ExpressionValue lhs_val(fs, lhs);
+      lhs_val.discharge_to_any_reg(allocator);
+      lhs = lhs_val.legacy();
+   }
+
+   // Calculate base register for the bit.band call frame
+   BCREG call_base;
+   if (lhs.k IS ExpKind::NonReloc and lhs.u.s.info >= fs->varmap.size() and lhs.u.s.info + 1 IS fs->freereg) {
+      call_base = lhs.u.s.info;
+   }
+   else call_base = fs->freereg;
+
+   BCREG arg1 = call_base + 1 + LJ_FR2;
+   BCREG arg2 = arg1 + 1;
+
+   // Convert LHS to value form
+   ExpressionValue lhs_toval(fs, lhs);
+   lhs_toval.to_val();
+   lhs = lhs_toval.legacy();
+
+   // Move LHS out of call_base if it's there (callee goes at call_base)
+   bool lhs_was_base = (lhs.k IS ExpKind::NonReloc and lhs.u.s.info IS call_base);
+   if (lhs_was_base) {
+      ExpressionValue lhs_to_arg1(fs, lhs);
+      lhs_to_arg1.to_reg(allocator, BCReg(arg1));
+      lhs = lhs_to_arg1.legacy();
+   }
+
+   // Ensure freereg is past the call frame
+   if (fs->freereg <= arg2) fs->freereg = arg2 + 1;
+
+   // Load bit.band callee to call_base before RHS emission.
+   // LHS is already captured above; delaying RHS avoids violating left-to-right operand semantics.
+   ExpDesc callee, key;
+   callee.init(ExpKind::Global, 0);
+   callee.u.sval = this->lex_state.keepstr("bit");
+
+   ExpressionValue callee_val(fs, callee);
+   callee_val.to_reg(allocator, BCReg(call_base));
+   callee = callee_val.legacy();
+
+   key.init(ExpKind::Str, 0);
+   key.u.sval = this->lex_state.keepstr("band");
+   expr_index(fs, &callee, &key);
+
+   ExpressionValue callee_indexed(fs, callee);
+   callee_indexed.to_reg(allocator, BCReg(call_base));
+   callee = callee_indexed.legacy();
+
+   // Move LHS to arg1 if it wasn't at call_base
+   if (not lhs_was_base) {
+      ExpressionValue lhs_to_arg1(fs, lhs);
+      lhs_to_arg1.to_reg(allocator, BCReg(arg1));
+      lhs = lhs_to_arg1.legacy();
+   }
+
+   // Evaluate RHS only after LHS is fixed and call frame is prepared.
+   // This ordering prevents `x has f()` from reading a mutated `x` when `f()` has side effects.
+   auto rhs_result = this->emit_expression(rhs_ast);
+   if (not rhs_result.ok()) return rhs_result;
+   ExpDesc rhs = rhs_result.value_ref();
+
+   if (rhs.k IS ExpKind::Call) {
+      ExpressionValue rhs_discharge(fs, rhs);
+      rhs_discharge.discharge();
+      rhs = rhs_discharge.legacy();
+   }
+
+   // Move RHS to arg2
+   ExpressionValue rhs_toval(fs, rhs);
+   rhs_toval.to_val();
+   rhs = rhs_toval.legacy();
+
+   ExpressionValue rhs_to_arg2(fs, rhs);
+   rhs_to_arg2.to_reg(allocator, BCReg(arg2));
+   rhs = rhs_to_arg2.legacy();
+
+   // Emit CALL instruction for bit.band(lhs, rhs)
+   fs->freereg = arg2 + 1;
+   ExpDesc band_result;
+   band_result.k = ExpKind::Call;
+   band_result.u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, call_base, 2, fs->freereg - call_base - LJ_FR2));
+   band_result.u.s.aux = call_base;
+   fs->freereg = call_base + 1;
+
+   // Discharge call result to a register
+   ExpressionValue band_val(fs, band_result);
+   band_val.discharge();
+   band_result = band_val.legacy();
+
+   BCREG result_reg = band_result.u.s.info;
+
+   // Compare result against 0: BC_ISNEN skips the JMP when result != 0 (truthy/has flag)
+   ExpDesc zerov(0.0);
+   bcemit_INS(fs, BCINS_AD(BC_ISNEN, result_reg, const_num(fs, &zerov)));
+
+   // Release the result register
+   allocator.release_register(BCReg(result_reg));
+
+   // Produce a Jmp expression (same pattern as bcemit_comp)
+   lhs.u.s.info = bcemit_jmp(fs);
+   lhs.k = ExpKind::Jmp;
+   lhs.result_type = TiriType::Bool;
 
    return ParserResult<ExpDesc>::success(lhs);
 }

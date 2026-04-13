@@ -276,10 +276,10 @@ static int object_get(lua_State *Lua)
          }
 
          release_object(def);
-         if (!result) lua_pushvalue(Lua, 2); // Push the client's default value
+         if (!result) lua_pushvalue(Lua, 2); // An error occurred if no result.  Push the client's default value
          return 1;
       }
-      else { // Assume this is a custom key since FindField() failed
+      else { // Revert to getKey() if the class supports it failed
          char buffer[8192];
 
          if ((acGetKey(obj, fieldname, buffer, sizeof(buffer)) IS ERR::Okay) and (buffer[0])) {
@@ -335,7 +335,7 @@ static int object_set(lua_State *Lua)
 
    if (auto obj = access_object(def)) {
       int type = lua_type(Lua, 2);
-      auto fh = fieldhash(fieldname);
+      auto fh = fieldhash(fieldname); // NB: Using fieldhash() because camel-case is a valid input
 
       ERR error;
       if (type IS LUA_TNUMBER) error = obj->set(fh, luaL_checknumber(Lua, 2));
@@ -370,17 +370,16 @@ static int object_setkey(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Used by obj.new() exclusively.
 
-static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int ValueIndex)
+static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, uint32_t FieldHash, int ValueIndex)
 {
    pf::Log log("obj.setfield");
 
    int type = lua_type(Lua, ValueIndex);
 
-   if (FName[0] IS '_') return acSetKey(obj, FName+1, lua_tostring(Lua, ValueIndex));
-
    OBJECTPTR target;
-   if (auto field = FindField(obj, fieldhash(FName), &target)) {
+   if (auto field = FindField(obj, FieldHash, &target)) {
       if (field->Flags & FD_ARRAY) {
          if (type IS LUA_TSTRING) { // Treat the source as a CSV field
             return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));

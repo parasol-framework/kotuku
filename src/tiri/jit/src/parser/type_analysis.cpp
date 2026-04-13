@@ -1057,6 +1057,27 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
             #endif
             if (payload->left) this->analyse_expression(*payload->left);
             if (payload->right) this->analyse_expression(*payload->right);
+
+            // Warn if `has` operator operands are not numeric
+            if (payload->op IS AstBinaryOperator::HasFlag) {
+               auto check_operand = [&](const std::unique_ptr<ExprNode> &operand, const char *Side) {
+                  if (not operand) return;
+                  auto inferred = this->infer_expression_type(*operand);
+                  if (inferred.primary != TiriType::Any and inferred.primary != TiriType::Unknown
+                      and inferred.primary != TiriType::Num and inferred.primary != TiriType::Nil) {
+                     TypeDiagnostic diag;
+                     diag.location = operand->span;
+                     diag.expected = TiriType::Num;
+                     diag.actual = inferred.primary;
+                     diag.code = ParserErrorCode::TypeMismatchArgument;
+                     diag.message = std::format("'has' operator expects numeric {}, got {}", Side,
+                        type_name(inferred.primary));
+                     this->diagnostics_.push_back(std::move(diag));
+                  }
+               };
+               check_operand(payload->left, "operand");
+               check_operand(payload->right, "operand");
+            }
          }
          break;
       }
@@ -1299,6 +1320,7 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
                case AstBinaryOperator::LessEqual:
                case AstBinaryOperator::GreaterThan:
                case AstBinaryOperator::GreaterEqual:
+               case AstBinaryOperator::HasFlag:
                   result.primary = TiriType::Bool;
                   return result;
                // Logical operators in Lua/Tiri return one of their operands.

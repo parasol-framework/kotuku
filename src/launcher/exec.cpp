@@ -127,7 +127,7 @@ ERR exec_source(std::string TargetFile, int ShowTime, const std::string Procedur
 
          for (unsigned i=glArgsIndex; i < args.size(); i++) {
             auto eq = args[i].find('=');
-            if (eq IS std::string::npos) acSetKey(glScript, args[i].c_str(), "1");
+            if (eq IS std::string::npos) acSetKey(glScript, args[i].c_str(), "true");
             else {
                auto argname = std::string(args[i], 0, eq);
                eq++;

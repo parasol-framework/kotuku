@@ -1,3 +1,4 @@
+#!/usr/bin/env origo
 -- This script will generate HTML documentation by running pandoc against every markdown document file found in the
 -- wiki folder.  It will fail if pandoc is not installed on the system.
 --

@@ -11,7 +11,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, int &Level)
    pf::Log log(Header);
 
    auto spacing = std::string(Level + 1, ' ');
-   Level = Level + 1;
+   Level++;
 
    while (Vector) {
       if (Vector->classID() IS CLASSID::VECTORSCENE) {
@@ -27,7 +27,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, int &Level)
       else break;
    }
 
-   Level = Level - 1;
+   Level--;
 }
 
 static void debug_tree(CSTRING Header, OBJECTPTR Vector)
@@ -80,7 +80,7 @@ static FRGB hsl_to_rgb(HSV Colour)
       return p;
    };
 
-   if (Colour.Saturation == 0) {
+   if (Colour.Saturation IS 0) {
       return { float(Colour.Value), float(Colour.Value), float(Colour.Value), float(Colour.Alpha) };
    }
    else {

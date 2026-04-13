@@ -1,20 +1,20 @@
 {
-	"version": "https://github.com/sumneko/fluid.tmbundle/commit/1483add845ebfb3e1e631fe372603e5fed2cdd42",
-	"name": "Fluid",
-	"scopeName": "source.fluid",
+	"version": "https://github.com/sumneko/tiri.tmbundle/commit/1483add845ebfb3e1e631fe372603e5fed2cdd42",
+	"name": "Tiri",
+	"scopeName": "source.tiri",
 	"patterns": [
 		{
 			"begin": "\\b(?:(local)\\s+)?(function)\\b(?![,:])",
 			"beginCaptures": {
 				"1": {
-					"name": "keyword.local.fluid"
+					"name": "keyword.local.tiri"
 				},
 				"2": {
-					"name": "keyword.control.fluid"
+					"name": "keyword.control.tiri"
 				}
 			},
 			"end": "(?<=[\\)\\-{}\\[\\]\"'])",
-			"name": "meta.function.fluid",
+			"name": "meta.function.tiri",
 			"patterns": [
 				{
 					"include": "#comment"
@@ -23,33 +23,33 @@
 					"begin": "(\\()",
 					"beginCaptures": {
 						"1": {
-							"name": "punctuation.definition.parameters.begin.fluid"
+							"name": "punctuation.definition.parameters.begin.tiri"
 						}
 					},
 					"end": "(\\))|(?=[\\-\\.{}\\[\\]\"'])",
 					"endCaptures": {
 						"1": {
-							"name": "punctuation.definition.parameters.finish.fluid"
+							"name": "punctuation.definition.parameters.finish.tiri"
 						}
 					},
-					"name": "meta.parameter.fluid",
+					"name": "meta.parameter.tiri",
 					"patterns": [
 						{
 							"include": "#comment"
 						},
 						{
 							"match": "[a-zA-Z_][a-zA-Z0-9_]*",
-							"name": "variable.parameter.function.fluid"
+							"name": "variable.parameter.function.tiri"
 						},
 						{
 							"match": ",",
-							"name": "punctuation.separator.arguments.fluid"
+							"name": "punctuation.separator.arguments.tiri"
 						},
 						{
 							"begin": ":",
 							"beginCaptures": {
 								"0": {
-									"name": "punctuation.separator.arguments.fluid"
+									"name": "punctuation.separator.arguments.tiri"
 								}
 							},
 							"end": "(?=[\\),])",
@@ -63,37 +63,37 @@
 				},
 				{
 					"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b\\s*(?=:)",
-					"name": "entity.name.class.fluid"
+					"name": "entity.name.class.tiri"
 				},
 				{
 					"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b",
-					"name": "entity.name.function.fluid"
+					"name": "entity.name.function.tiri"
 				}
 			]
 		},
 		{
 			"match": "(?<![\\w\\d.])0[xX][0-9A-Fa-f]+(\\.[0-9A-Fa-f]*)?([eE]-?\\d*)?([pP][-+]\\d+)?",
-			"name": "constant.numeric.float.hexadecimal.fluid"
+			"name": "constant.numeric.float.hexadecimal.tiri"
 		},
 		{
 			"match": "(?<![\\w\\d.])0[xX]\\.[0-9A-Fa-f]+([eE]-?\\d*)?([pP][-+]\\d+)?",
-			"name": "constant.numeric.float.hexadecimal.fluid"
+			"name": "constant.numeric.float.hexadecimal.tiri"
 		},
 		{
 			"match": "(?<![\\w\\d.])0[xX][0-9A-Fa-f]+(?![pPeE.0-9])",
-			"name": "constant.numeric.integer.hexadecimal.fluid"
+			"name": "constant.numeric.integer.hexadecimal.tiri"
 		},
 		{
 			"match": "(?<![\\w\\d.])\\d+(\\.\\d*)?([eE]-?\\d*)?",
-			"name": "constant.numeric.float.fluid"
+			"name": "constant.numeric.float.tiri"
 		},
 		{
 			"match": "(?<![\\w\\d.])\\.\\d+([eE]-?\\d*)?",
-			"name": "constant.numeric.float.fluid"
+			"name": "constant.numeric.float.tiri"
 		},
 		{
 			"match": "(?<![\\w\\d.])\\d+(?![pPeE.0-9])",
-			"name": "constant.numeric.integer.fluid"
+			"name": "constant.numeric.integer.tiri"
 		},
 		{
 			"include": "#string"
@@ -101,11 +101,11 @@
 		{
 			"captures": {
 				"1": {
-					"name": "punctuation.definition.comment.fluid"
+					"name": "punctuation.definition.comment.tiri"
 				}
 			},
 			"match": "\\A(#!).*$\\n?",
-			"name": "comment.line.shebang.fluid"
+			"name": "comment.line.shebang.tiri"
 		},
 		{
 			"include": "#comment"
@@ -113,10 +113,10 @@
 		{
 			"captures": {
 				"1": {
-					"name": "keyword.control.goto.fluid"
+					"name": "keyword.control.goto.tiri"
 				},
 				"2": {
-					"name": "string.tag.fluid"
+					"name": "string.tag.tiri"
 				}
 			},
 			"match": "\\b(goto)\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
@@ -124,86 +124,86 @@
 		{
 			"captures": {
 				"1": {
-					"name": "punctuation.section.embedded.begin.fluid"
+					"name": "punctuation.section.embedded.begin.tiri"
 				},
 				"2": {
-					"name": "punctuation.section.embedded.end.fluid"
+					"name": "punctuation.section.embedded.end.tiri"
 				}
 			},
 			"match": "(::)\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*(::)",
-			"name": "string.tag.fluid"
+			"name": "string.tag.tiri"
 		},
 		{
 			"match": "<\\s*(const|close)\\s*>",
 			"captures": {
 				"0": {
-					"name": "storage.type.attribute.fluid"
+					"name": "storage.type.attribute.tiri"
 				}
 			}
 		},
 		{
 			"match": "\\<[a-zA-Z_\\*][a-zA-Z0-9_\\.\\*\\-]*\\>",
-			"name": "storage.type.generic.fluid"
+			"name": "storage.type.generic.tiri"
 		},
 		{
 			"match": "\\b(break|do|else|for|if|elseif|goto|return|then|repeat|while|until|end|in)\\b",
-			"name": "keyword.control.fluid"
+			"name": "keyword.control.tiri"
 		},
 		{
 			"match": "\\b(local)\\b",
-			"name": "keyword.local.fluid"
+			"name": "keyword.local.tiri"
 		},
 		{
 			"match": "\\b(function)\\b(?![,:])",
-			"name": "keyword.control.fluid"
+			"name": "keyword.control.tiri"
 		},
 		{
 			"match": "(?<![^.]\\.|:)\\b(false|nil(?!:)|true|_ENV|_G|_VERSION|math\\.(pi|huge|maxinteger|mininteger)|utf8\\.charpattern|io\\.(stdin|stdout|stderr)|package\\.(config|cpath|loaded|loaders|path|preload|searchers)|gui\\.(fonts|style|palette|interface))\\b|(?<![.])\\.{3}(?!\\.)",
-			"name": "constant.language.fluid"
+			"name": "constant.language.tiri"
 		},
 		{
 			"match": "(?<![^.]\\.|:)\\b(self)\\b",
-			"name": "variable.language.self.fluid"
+			"name": "variable.language.self.tiri"
 		},
 		{
 			"match": "(?<![^.]\\.|:)\\b(assert|collectgarbage|dofile|error|getfenv|getmetatable|ipairs|load|loadfile|loadstring|module|next|pairs|pcall|print|rawequal|rawget|rawlen|rawset|require|select|setfenv|setmetatable|tonumber|tostring|type|unpack|xpcall|arg|nz|include|catch|check|raise|exec|getExecutionState|msg|subscribeEvent|unsubscribeEvent|MAKESTRUCT)\\b(?!\\s*=(?!=))",
-			"name": "support.function.fluid"
+			"name": "support.function.tiri"
 		},
 		{
 			"match": "(?<![^.]\\.|:)\\b(async)\\b(?!\\s*=(?!=))",
-			"name": "entity.name.tag.fluid"
+			"name": "entity.name.tag.tiri"
 		},
 		{
 			"match": "(?<![^.]\\.|:)\\b(coroutine\\.(create|isyieldable|close|resume|running|status|wrap|yield)|string\\.(byte|char|dump|find|format|gmatch|gsub|len|lower|match|pack|packsize|rep|reverse|sub|unpack|upper|alloc|trim|rtrim|split)|table\\.(concat|insert|maxn|move|pack|remove|sort|unpack|sortByKeys|toXML)|file\\.(readAll|isFolder|splitPath|sanitisePath)|math\\.(abs|acos|asin|atan2?|ceil|cosh?|deg|exp|floor|fmod|frexp|ldexp|log|log10|max|min|modf|pow|rad|random|randomseed|sinh?|sqrt|tanh?|tointeger|type)|io\\.(close|flush|input|lines|open|output|popen|read|tmpfile|type|write)|os\\.(clock|date|difftime|execute|exit|getenv|remove|rename|setlocale|time|tmpname)|package\\.(loadlib|seeall|searchpath)|debug\\.(debug|[gs]etfenv|[gs]ethook|getinfo|[gs]etlocal|[gs]etmetatable|getregistry|[gs]etupvalue|[gs]etuservalue|set[Cc]stacklimit|traceback|upvalueid|upvaluejoin)|bit32\\.(arshift|band|bnot|bor|btest|bxor|extract|replace|lrotate|lshift|rrotate|rshift)|bit\\.(arshift|band|bnot|bor|bswap|bxor|lshift|rol|ror|rshift|tobit|tohex)|ffi\\.(abi|alignof|cast|cdef|copy|errno|fill|gc|istype|load|metatype|new|offsetof|sizeof|string|typeof)|jit\\.(attach|flush|off|on|opt|profile|status|util|version)|utf8\\.(char|codes|codepoint|len|offset)|obj\\.(new|find|class)|struct\\.(new|size)|mod\\.(new|load)|num\\.(int|long|large|double|float|byte|word|short)|input\\.(subscribe|keyboard|requestItem)|processing\\.(new|sleep|signal|task|delayedCall)|thread\\.(action|method|script)|regex\\.(new)|array\\.(new))\\b(?!\\s*=(?!=))",
-			"name": "support.function.library.fluid"
+			"name": "support.function.library.tiri"
 		},
 		{
 			"match": "\\b(and|or|not|\\|\\||\\&\\&|\\!)\\b",
-			"name": "keyword.operator.fluid"
+			"name": "keyword.operator.tiri"
 		},
 		{
 			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b(?=\\s*(?:[({\"']|\\[\\[))",
-			"name": "support.function.any-method.fluid"
+			"name": "support.function.any-method.tiri"
 		},
 		{
 			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b(?=\\s*\\??:)",
-			"name": "entity.name.class.fluid"
+			"name": "entity.name.class.tiri"
 		},
 		{
 			"match": "(?<=[^.]\\.|:)\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b(?!\\s*=\\s*\\b(function)\\b)",
-			"name": "entity.other.attribute.fluid"
+			"name": "entity.other.attribute.tiri"
 		},
 		{
 			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b(?!\\s*=\\s*\\b(function)\\b)",
-			"name": "variable.other.fluid"
+			"name": "variable.other.tiri"
 		},
 		{
 			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b(?=\\s*=\\s*\\b(function)\\b)",
-			"name": "entity.name.function.fluid"
+			"name": "entity.name.function.tiri"
 		},
 		{
 			"match": "\\+|-|%|#|\\*|\\/|\\^|==?|~=|!=|<=?|>=?|(?<!\\.)\\.{2}(?!\\.)",
-			"name": "keyword.operator.fluid"
+			"name": "keyword.operator.tiri"
 		}
 	],
 	"repository": {
@@ -211,27 +211,27 @@
 			"patterns": [
 				{
 					"match": "\\\\[abfnrtv\\\\\"'\\n]",
-					"name": "constant.character.escape.fluid"
+					"name": "constant.character.escape.tiri"
 				},
 				{
 					"match": "\\\\z[\\n\\t ]*",
-					"name": "constant.character.escape.fluid"
+					"name": "constant.character.escape.tiri"
 				},
 				{
 					"match": "\\\\\\d{1,3}",
-					"name": "constant.character.escape.byte.fluid"
+					"name": "constant.character.escape.byte.tiri"
 				},
 				{
 					"match": "\\\\x[0-9A-Fa-f][0-9A-Fa-f]",
-					"name": "constant.character.escape.byte.fluid"
+					"name": "constant.character.escape.byte.tiri"
 				},
 				{
 					"match": "\\\\u\\{[0-9A-Fa-f]+\\}",
-					"name": "constant.character.escape.unicode.fluid"
+					"name": "constant.character.escape.unicode.tiri"
 				},
 				{
 					"match": "\\\\.",
-					"name": "invalid.illegal.character.escape.fluid"
+					"name": "invalid.illegal.character.escape.tiri"
 				}
 			]
 		},
@@ -241,16 +241,16 @@
 					"begin": "'",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.fluid"
+							"name": "punctuation.definition.string.begin.tiri"
 						}
 					},
 					"end": "'[ \\t]*|(?=\\n)",
 					"endCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.end.fluid"
+							"name": "punctuation.definition.string.end.tiri"
 						}
 					},
-					"name": "string.quoted.single.fluid",
+					"name": "string.quoted.single.tiri",
 					"patterns": [
 						{
 							"include": "#escaped_char"
@@ -261,16 +261,16 @@
 					"begin": "\"",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.fluid"
+							"name": "punctuation.definition.string.begin.tiri"
 						}
 					},
 					"end": "\"[ \\t]*|(?=\\n)",
 					"endCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.end.fluid"
+							"name": "punctuation.definition.string.end.tiri"
 						}
 					},
-					"name": "string.quoted.double.fluid",
+					"name": "string.quoted.double.tiri",
 					"patterns": [
 						{
 							"include": "#escaped_char"
@@ -281,35 +281,35 @@
 					"begin": "`",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.fluid"
+							"name": "punctuation.definition.string.begin.tiri"
 						}
 					},
 					"end": "`[ \\t]*|(?=\\n)",
 					"endCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.end.fluid"
+							"name": "punctuation.definition.string.end.tiri"
 						}
 					},
-					"name": "string.quoted.double.fluid"
+					"name": "string.quoted.double.tiri"
 				},
 				{
 					"begin": "(?<=\\.cdef)\\s*(\\[(=*)\\[)",
 					"beginCaptures": {
 						"0": {
-							"name": "string.quoted.other.multiline.fluid"
+							"name": "string.quoted.other.multiline.tiri"
 						},
 						"1": {
-							"name": "punctuation.definition.string.begin.fluid"
+							"name": "punctuation.definition.string.begin.tiri"
 						}
 					},
-					"contentName": "meta.embedded.fluid",
+					"contentName": "meta.embedded.tiri",
 					"end": "(\\]\\2\\])[ \\t]*",
 					"endCaptures": {
 						"0": {
-							"name": "string.quoted.other.multiline.fluid"
+							"name": "string.quoted.other.multiline.tiri"
 						},
 						"1": {
-							"name": "punctuation.definition.string.end.fluid"
+							"name": "punctuation.definition.string.end.tiri"
 						}
 					},
 					"patterns": [
@@ -322,16 +322,16 @@
 					"begin": "(?<!--)\\[(=*)\\[",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.fluid"
+							"name": "punctuation.definition.string.begin.tiri"
 						}
 					},
 					"end": "\\]\\1\\][ \\t]*",
 					"endCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.end.fluid"
+							"name": "punctuation.definition.string.end.tiri"
 						}
 					},
-					"name": "string.quoted.other.multiline.fluid"
+					"name": "string.quoted.other.multiline.tiri"
 				}
 			]
 		},
@@ -341,13 +341,13 @@
 					"begin": "(^[ \\t]+)?(?=--)",
 					"beginCaptures": {
 						"1": {
-							"name": "punctuation.whitespace.comment.leading.fluid"
+							"name": "punctuation.whitespace.comment.leading.tiri"
 						}
 					},
 					"end": "(?!\\G)((?!^)[ \\t]+\\n)?",
 					"endCaptures": {
 						"1": {
-							"name": "punctuation.whitespace.comment.trailing.fluid"
+							"name": "punctuation.whitespace.comment.trailing.tiri"
 						}
 					},
 					"patterns": [
@@ -355,29 +355,29 @@
 							"begin": "//",
 							"beginCaptures": {
 								"0": {
-									"name": "punctuation.definition.comment.fluid"
+									"name": "punctuation.definition.comment.tiri"
 								}
 							},
 							"end": "\\n",
-							"name": "comment.line.double-slash.fluid"
+							"name": "comment.line.double-slash.tiri"
 						},
 						{
 							"begin": "--\\[(=*)\\[@@@",
 							"beginCaptures": {
 								"0": {
-									"name": "punctuation.definition.comment.begin.fluid"
+									"name": "punctuation.definition.comment.begin.tiri"
 								}
 							},
 							"end": "(--)?\\]\\1\\]",
 							"endCaptures": {
 								"0": {
-									"name": "punctuation.definition.comment.end.fluid"
+									"name": "punctuation.definition.comment.end.tiri"
 								}
 							},
 							"name": "",
 							"patterns": [
 								{
-									"include": "source.fluid"
+									"include": "source.tiri"
 								}
 							]
 						},
@@ -385,16 +385,16 @@
 							"begin": "--\\[(=*)\\[",
 							"beginCaptures": {
 								"0": {
-									"name": "punctuation.definition.comment.begin.fluid"
+									"name": "punctuation.definition.comment.begin.tiri"
 								}
 							},
 							"end": "(--)?\\]\\1\\]",
 							"endCaptures": {
 								"0": {
-									"name": "punctuation.definition.comment.end.fluid"
+									"name": "punctuation.definition.comment.end.tiri"
 								}
 							},
-							"name": "comment.block.fluid",
+							"name": "comment.block.tiri",
 							"patterns": [
 								{
 									"include": "#emmydoc"
@@ -408,21 +408,21 @@
 							"begin": "----",
 							"beginCaptures": {
 								"0": {
-									"name": "punctuation.definition.comment.fluid"
+									"name": "punctuation.definition.comment.tiri"
 								}
 							},
 							"end": "\\n",
-							"name": "comment.line.double-dash.fluid"
+							"name": "comment.line.double-dash.tiri"
 						},
 						{
 							"begin": "---",
 							"beginCaptures": {
 								"0": {
-									"name": "punctuation.definition.comment.fluid"
+									"name": "punctuation.definition.comment.tiri"
 								}
 							},
 							"end": "\\n",
-							"name": "comment.line.double-dash.documentation.fluid",
+							"name": "comment.line.double-dash.documentation.tiri",
 							"patterns": [
 								{
 									"include": "#emmydoc"
@@ -436,11 +436,11 @@
 							"begin": "--",
 							"beginCaptures": {
 								"0": {
-									"name": "punctuation.definition.comment.fluid"
+									"name": "punctuation.definition.comment.tiri"
 								}
 							},
 							"end": "\\n",
-							"name": "comment.line.double-dash.fluid",
+							"name": "comment.line.double-dash.tiri",
 							"patterns": [
 								{
 									"include": "#ldoc_tag"
@@ -453,16 +453,16 @@
 					"begin": "\\/\\*",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.comment.begin.fluid"
+							"name": "punctuation.definition.comment.begin.tiri"
 						}
 					},
 					"end": "\\*\\/",
 					"endCaptures": {
 						"0": {
-							"name": "punctuation.definition.comment.end.fluid"
+							"name": "punctuation.definition.comment.end.tiri"
 						}
 					},
-					"name": "comment.block.fluid",
+					"name": "comment.block.tiri",
 					"patterns": [
 						{
 							"include": "#emmydoc"
@@ -480,18 +480,18 @@
 					"begin": "(?<=---)[ \\t]*@class",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
 					"patterns": [
 						{
 							"match": "\\b([a-zA-Z_\\*][a-zA-Z0-9_\\.\\*\\-]*)",
-							"name": "support.class.fluid"
+							"name": "support.class.tiri"
 						},
 						{
 							"match": ":|,",
-							"name": "keyword.operator.fluid"
+							"name": "keyword.operator.tiri"
 						}
 					]
 				},
@@ -499,7 +499,7 @@
 					"begin": "(?<=---)[ \\t]*@enum",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -508,7 +508,7 @@
 							"begin": "\\b([a-zA-Z_\\*][a-zA-Z0-9_\\.\\*\\-]*)",
 							"beginCaptures": {
 								"0": {
-									"name": "variable.fluid"
+									"name": "variable.tiri"
 								}
 							},
 							"end": "(?=\\n)"
@@ -519,7 +519,7 @@
 					"begin": "(?<=---)[ \\t]*@type",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -533,7 +533,7 @@
 					"begin": "(?<=---)[ \\t]*@alias",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -542,7 +542,7 @@
 							"begin": "\\b([a-zA-Z_\\*][a-zA-Z0-9_\\.\\*\\-]*)",
 							"beginCaptures": {
 								"0": {
-									"name": "variable.fluid"
+									"name": "variable.tiri"
 								}
 							},
 							"end": "(?=[\\n#])",
@@ -558,10 +558,10 @@
 					"begin": "(?<=---)[ \\t]*(@operator)\\s*(\\b[a-z]+)?",
 					"beginCaptures": {
 						"1": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						},
 						"2": {
-							"name": "support.function.library.fluid"
+							"name": "support.function.library.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -575,7 +575,7 @@
 					"begin": "(?<=---)[ \\t]*@cast",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -584,7 +584,7 @@
 							"begin": "\\b([a-zA-Z_\\*][a-zA-Z0-9_\\.\\*\\-]*)",
 							"beginCaptures": {
 								"0": {
-									"name": "variable.other.fluid"
+									"name": "variable.other.tiri"
 								}
 							},
 							"end": "(?=\\n)",
@@ -594,7 +594,7 @@
 								},
 								{
 									"match": "([+-|])",
-									"name": "keyword.operator.fluid"
+									"name": "keyword.operator.tiri"
 								}
 							]
 						}
@@ -604,7 +604,7 @@
 					"begin": "(?<=---)[ \\t]*@param",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -613,10 +613,10 @@
 							"begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b(\\??)",
 							"beginCaptures": {
 								"1": {
-									"name": "entity.name.variable.fluid"
+									"name": "entity.name.variable.tiri"
 								},
 								"2": {
-									"name": "keyword.operator.fluid"
+									"name": "keyword.operator.tiri"
 								}
 							},
 							"end": "(?=[\\n#])",
@@ -632,14 +632,14 @@
 					"begin": "(?<=---)[ \\t]*@return",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
 					"patterns": [
 						{
 							"match": "\\?",
-							"name": "keyword.operator.fluid"
+							"name": "keyword.operator.tiri"
 						},
 						{
 							"include": "#emmydoc.type"
@@ -650,7 +650,7 @@
 					"begin": "(?<=---)[ \\t]*@field",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -659,10 +659,10 @@
 							"begin": "(\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b|(\\[))(\\??)",
 							"beginCaptures": {
 								"2": {
-									"name": "entity.name.variable.fluid"
+									"name": "entity.name.variable.tiri"
 								},
 								"3": {
-									"name": "keyword.operator.fluid"
+									"name": "keyword.operator.tiri"
 								}
 							},
 							"end": "(?=[\\n#])",
@@ -675,7 +675,7 @@
 								},
 								{
 									"match": "\\]",
-									"name": "keyword.operator.fluid"
+									"name": "keyword.operator.tiri"
 								}
 							]
 						}
@@ -685,7 +685,7 @@
 					"begin": "(?<=---)[ \\t]*@generic",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -694,19 +694,19 @@
 							"begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b",
 							"beginCaptures": {
 								"0": {
-									"name": "storage.type.generic.fluid"
+									"name": "storage.type.generic.tiri"
 								}
 							},
 							"end": "(?=\\n)|(,)",
 							"endCaptures": {
 								"0": {
-									"name": "keyword.operator.fluid"
+									"name": "keyword.operator.tiri"
 								}
 							},
 							"patterns": [
 								{
 									"match": ":",
-									"name": "keyword.operator.fluid"
+									"name": "keyword.operator.tiri"
 								},
 								{
 									"include": "#emmydoc.type"
@@ -719,7 +719,7 @@
 					"begin": "(?<=---)[ \\t]*@vararg",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -733,7 +733,7 @@
 					"begin": "(?<=---)[ \\t]*@overload",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -747,7 +747,7 @@
 					"begin": "(?<=---)[ \\t]*@deprecated",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])"
@@ -756,7 +756,7 @@
 					"begin": "(?<=---)[ \\t]*@meta",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])"
@@ -765,7 +765,7 @@
 					"begin": "(?<=---)[ \\t]*@private",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])"
@@ -774,7 +774,7 @@
 					"begin": "(?<=---)[ \\t]*@protected",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])"
@@ -783,7 +783,7 @@
 					"begin": "(?<=---)[ \\t]*@package",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])"
@@ -792,18 +792,18 @@
 					"begin": "(?<=---)[ \\t]*@version",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
 					"patterns": [
 						{
 							"match": "\\b(5\\.1|5\\.2|5\\.3|5\\.4|JIT)\\b",
-							"name": "support.class.fluid"
+							"name": "support.class.tiri"
 						},
 						{
 							"match": ",|\\>|\\<",
-							"name": "keyword.operator.fluid"
+							"name": "keyword.operator.tiri"
 						}
 					]
 				},
@@ -811,18 +811,18 @@
 					"begin": "(?<=---)[ \\t]*@see",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
 					"patterns": [
 						{
 							"match": "\\b([a-zA-Z_\\*][a-zA-Z0-9_\\.\\*\\-]*)",
-							"name": "support.class.fluid"
+							"name": "support.class.tiri"
 						},
 						{
 							"match": "#",
-							"name": "keyword.operator.fluid"
+							"name": "keyword.operator.tiri"
 						}
 					]
 				},
@@ -830,7 +830,7 @@
 					"begin": "(?<=---)[ \\t]*@diagnostic",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -849,11 +849,11 @@
 							"patterns": [
 								{
 									"match": "\\b([a-zA-Z_\\*][a-zA-Z0-9_\\-]*)",
-									"name": "support.class.fluid"
+									"name": "support.class.tiri"
 								},
 								{
 									"match": ",",
-									"name": "keyword.operator.fluid"
+									"name": "keyword.operator.tiri"
 								}
 							]
 						}
@@ -863,7 +863,7 @@
 					"begin": "(?<=---)[ \\t]*@module",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -875,13 +875,13 @@
 				},
 				{
 					"match": "(?<=---)[ \\t]*@(async|nodiscard)",
-					"name": "storage.type.annotation.fluid"
+					"name": "storage.type.annotation.tiri"
 				},
 				{
 					"begin": "(?<=---)\\|\\s*[\\>\\+]?",
 					"beginCaptures": {
 						"0": {
-							"name": "storage.type.annotation.fluid"
+							"name": "storage.type.annotation.tiri"
 						}
 					},
 					"end": "(?=[\\n@#])",
@@ -899,18 +899,18 @@
 					"begin": "\\bfun\\b",
 					"beginCaptures": {
 						"0": {
-							"name": "keyword.control.fluid"
+							"name": "keyword.control.tiri"
 						}
 					},
 					"end": "(?=[\\s#])",
 					"patterns": [
 						{
 							"match": "[\\(\\),:\\?][ \\t]*",
-							"name": "keyword.operator.fluid"
+							"name": "keyword.operator.tiri"
 						},
 						{
 							"match": "([a-zA-Z_][a-zA-Z0-9_\\.\\*\\[\\]\\<\\>\\,\\-]*)(?<!,)[ \\t]*(?=\\??:)",
-							"name": "entity.name.variable.fluid"
+							"name": "entity.name.variable.tiri"
 						},
 						{
 							"include": "#emmydoc.type"
@@ -922,15 +922,15 @@
 				},
 				{
 					"match": "\\<[a-zA-Z_\\*][a-zA-Z0-9_\\.\\*\\-]*\\>",
-					"name": "storage.type.generic.fluid"
+					"name": "storage.type.generic.tiri"
 				},
 				{
 					"match": "\\basync\\b",
-					"name": "entity.name.tag.fluid"
+					"name": "entity.name.tag.tiri"
 				},
 				{
 					"match": "[\\{\\}\\:\\,\\?\\|\\`][ \\t]*",
-					"name": "keyword.operator.fluid"
+					"name": "keyword.operator.tiri"
 				},
 				{
 					"begin": "(?=[a-zA-Z_\\.\\*\"'\\[])",
@@ -938,11 +938,11 @@
 					"patterns": [
 						{
 							"match": "([a-zA-Z0-9_\\.\\*\\[\\]\\<\\>\\,\\-]+)(?<!,)[ \\t]*",
-							"name": "support.type.fluid"
+							"name": "support.type.tiri"
 						},
 						{
 							"match": "(\\.\\.\\.)[ \\t]*",
-							"name": "constant.language.fluid"
+							"name": "constant.language.tiri"
 						},
 						{
 							"include": "#string"

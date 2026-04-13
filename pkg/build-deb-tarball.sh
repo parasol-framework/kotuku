@@ -118,7 +118,7 @@ fi
 shift
 
 # Validate tarball path doesn't contain dangerous characters
-if [[ "$TARBALL" =~ [\\;\\&\\|\\`] ]]; then
+if [[ "$TARBALL" =~ [\;\&\|\`] ]]; then
     echo "Error: Tarball path contains invalid characters"
     exit 1
 fi
@@ -206,13 +206,7 @@ validate_tarball_dependencies() {
         missing_packages+=("tar")
     fi
 
-    # Check for debhelper (recommended for proper Debian packaging)
-    if ! command -v dh &> /dev/null; then
-        missing_deps+=("debhelper (recommended)")
-        missing_packages+=("debhelper")
-    fi
-
-    # Report missing dependencies
+    # Report missing dependencies (only fail on essential tools, not debhelper)
     if [ ${#missing_deps[@]} -gt 0 ]; then
         echo "Error: Missing required packaging dependencies:"
         printf "  - %s\\n" "${missing_deps[@]}"
@@ -224,7 +218,12 @@ validate_tarball_dependencies() {
         return 1
     fi
 
-    echo "✓ All packaging dependencies satisfied"
+    # Warn if debhelper is missing (optional for tarball builds)
+    if ! command -v dh &> /dev/null; then
+        echo "⚠ debhelper not found (optional for tarball builds)"
+    fi
+
+    echo "✓ All essential packaging dependencies satisfied"
     return 0
 }
 
@@ -281,12 +280,19 @@ if ! tar -xzf "$TARBALL" -C "$BUILD_DIR/extracted" --strip-components=1; then
 fi
 
 # Verify essential files exist in extracted tarball
-if [[ ! -f "$BUILD_DIR/extracted/kotuku" ]]; then
-    echo "Error: Kotuku executable not found in tarball"
+EXECUTABLE_NAME=""
+if [[ -f "$BUILD_DIR/extracted/kotuku" ]]; then
+    EXECUTABLE_NAME="kotuku"
+elif [[ -f "$BUILD_DIR/extracted/origo" ]]; then
+    EXECUTABLE_NAME="origo"
+elif [[ -f "$BUILD_DIR/extracted/tiri" ]]; then
+    EXECUTABLE_NAME="tiri"
+else
+    echo "Error: No executable found in tarball (looked for kotuku, origo, or tiri)"
     exit 1
 fi
 
-echo "Tarball extracted to $BUILD_DIR/extracted"
+echo "Tarball extracted to $BUILD_DIR/extracted (executable: $EXECUTABLE_NAME)"
 
 # Create staging directories for packages
 RUNTIME_STAGING="$BUILD_DIR/debian/kotuku"
@@ -308,14 +314,20 @@ mkdir -p "$RUNTIME_STAGING/usr/bin"
 mkdir -p "$RUNTIME_STAGING/usr/share/kotuku"
 mkdir -p "$RUNTIME_STAGING/usr/share/doc/kotuku"
 
-# Copy the main origo binary with validation
-if [[ ! -f "$BUILD_DIR/extracted/origo" ]]; then
-    echo "Error: Origo executable not found in extracted files"
+# Copy the main executable binary with validation
+if [[ ! -f "$BUILD_DIR/extracted/$EXECUTABLE_NAME" ]]; then
+    echo "Error: Executable not found in extracted files: $EXECUTABLE_NAME"
     exit 1
 fi
 
-cp "$BUILD_DIR/extracted/origo" "$RUNTIME_STAGING/usr/bin/" || { echo "Error: Failed to copy origo executable"; exit 1; }
+# Copy the executable as 'origo' for consistency
+cp "$BUILD_DIR/extracted/$EXECUTABLE_NAME" "$RUNTIME_STAGING/usr/bin/origo" || { echo "Error: Failed to copy executable"; exit 1; }
 chmod 755 "$RUNTIME_STAGING/usr/bin/origo" || { echo "Error: Failed to set executable permissions"; exit 1; }
+
+# Create a symlink with the original name if different
+if [[ "$EXECUTABLE_NAME" != "origo" ]]; then
+    ln -s origo "$RUNTIME_STAGING/usr/bin/$EXECUTABLE_NAME" || { echo "Warning: Failed to create symlink for $EXECUTABLE_NAME"; }
+fi
 
 # Copy configuration and scripts with validation
 if [[ -d "$BUILD_DIR/extracted/config" ]]; then

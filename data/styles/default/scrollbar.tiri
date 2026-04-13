@@ -2,59 +2,41 @@
 
    import 'gui'
 
-   mVec ?= mod.load('vector')
-
-   glCounter = 0
-
-ARROW_FILL = 'rgba(0,0,0,.8)'
-ARROW_FILL_ACTIVE = 'rgba(0,0,0,.95)'
-
 return {
    arrange = function(State:table)
-      State.slider.sequence = 'M1,' .. State.slider.viewport.height-1 .. ' L1,1 M' .. State.slider.viewport.width-2 .. ',1'
+      State.slider.sequence = f'M1,{State.slider.viewport.height-1} L1,1 M{State.slider.viewport.width-2},1'
    end,
-   background = function(State:table, Viewport)
-      gradient = 'scrollbar' .. glCounter
-      glCounter++
-
-      gui.simpleGradient(Viewport.scene, gradient, { { r=176,g=178,b=183,a=255 }, { r=212,g=211,b=215,a=255 } }, 0, 0, 0, '100%', nil, true)
-
+   background = function(State:table, Viewport:obj, Theme:table)
       State.barBkgd = Viewport.new('VectorRectangle', {
-         width = '100%', height = '100%', fill = 'url(#' .. gradient .. ')'
+         width = '100%', height = '100%', fill = Theme.slider.bkgd
       })
    end,
-   slider = function(State:table, Viewport)
-      gradient = 'slider' .. glCounter
-      glCounter = glCounter + 1
+   slider = function(State:table, Viewport:obj, Theme:table)
+      button_face      = Theme.slider.fore
+      button_highlight = Theme.slider.foreHighlight
+
       State.slider = { viewport = Viewport }
 
-      if State.direction is 'V' then
-         gui.simpleGradient(Viewport.scene, gradient, { { r=252,g=251,b=255,a=255 }, { r=205,g=206,b=220,a=255 } }, 0, 0, '100%', 0, 'boundingbox', true)
-      else
-         gui.simpleGradient(Viewport.scene, gradient, { { r=252,g=251,b=255,a=255 }, { r=205,g=206,b=220,a=255 } }, 0, 0, 0, '100%', 'boundingbox', true)
-      end
-
       State.slider.bkRect = Viewport.new('VectorRectangle', {
-         width = '100%', height = '100%', stroke = 'rgba(148,149,160,1)', strokeWidth = 1, fill = 'url(#' .. gradient .. ')'
+         name='SliderRect', width = '100%', height = '100%', fill = button_face, opacity = 0.5
       })
 
-      State.slider.border = Viewport.new('VectorPath', {
-         name = 'slider_highlight',
-         sequence = 'M1,' .. Viewport.height-1 .. ' L1,1 M' .. Viewport.width-2 .. ',1',
-         stroke = 'rgba(255,255,255,.8)'
-      })
+      -- Decoration
 
       State.slider.decoration = Viewport.new('VectorViewport', {
-         aspectRatio = 'XMid|YMid|Meet', x = 0, y = 0, viewX = 0, viewY = 0,
+         name='SliderDec', aspectRatio = 'XMid|YMid|Meet', x = 0, y = 0, viewX = 0, viewY = 0,
       })
+
       dec = State.slider.decoration
+      local stroke
+      if gui.strToRGB(Theme.slider.fore):luminance() > 0.5 then
+         stroke = 'rgb(0 0 0 / .5)'
+      else
+         stroke = 'rgb(255 255 255 / .5)'
+      end
 
       decA = dec.new('VectorPolygon', {
-         strokeWidth = 1, stroke = 'rgba(0,0,0,.6)', dashArray = '3,6'
-      })
-
-      decB = dec.new('VectorPolygon', {
-         strokeWidth = 1, stroke = 'rgba(255,255,255,.6)', dashArray = '3,6'
+         strokeWidth = 3, stroke = stroke, dashArray = '3,3'
       })
 
       if State.direction is 'V' then
@@ -67,11 +49,6 @@ return {
          decA.x2 = dec.width * 0.5
          decA.y1 = 0
          decA.y2 = dec.viewHeight
-
-         decB.x1 = (dec.width * 0.5) + 1
-         decB.x2 = (dec.width * 0.5) + 1
-         decB.y1 = 0
-         decB.y2 = dec.viewHeight
       else
          dec.width      = '100%'
          dec.height     = Viewport.height
@@ -82,83 +59,21 @@ return {
          decA.y2 = dec.height * 0.5
          decA.x1 = 0
          decA.x2 = dec.viewWidth
-
-         decB.y1 = (dec.height * 0.5) + 1
-         decB.y2 = (dec.height * 0.5) + 1
-         decB.x1 = 0
-         decB.x2 = dec.viewWidth
       end
-   end,
-   negButton = function(State:table, Viewport)
-      gradient = 'neg' .. glCounter
-      glCounter++
-      State.negButton = { viewport = Viewport }
 
-      Viewport.viewX       = 23.6016 - 12
-      Viewport.viewY       = 24.9375 - 12
-      Viewport.viewWidth   = 28.5 + 24
-      Viewport.viewHeight  = 25.3333 + 24
-      Viewport.aspectRatio = bit.bor(ARF_X_MID, ARF_Y_MID, ARF_MEET)
+      Viewport.mtSubscribeInput(JTYPE_CROSSING, function(Viewport, Msg)
+         repeat
+            if Msg.type is JET_CROSSED_IN then
+               State.slider.bkRect.fill = button_highlight
+               State.slider.bkRect.opacity = 1
+            elseif Msg.type is JET_CROSSED_OUT then
+               State.slider.bkRect.fill = button_face
+               State.slider.bkRect.opacity = 0.5
+            end
+            Msg = Msg.next
+         until not Msg
 
-      gui.simpleGradient(Viewport.scene, gradient, { { r=255,g=255,b=255,a=255 }, { r=202,g=203,b=217,a=255 } }, 0, 0, 0, '100%', 'boundingbox', true)
-
-      Viewport.new('VectorRectangle', { -- Bkgd & border
-         x      = Viewport.viewX-1,
-         y      = Viewport.viewY-1,
-         width  = Viewport.viewWidth+2,
-         height = Viewport.viewHeight+2,
-         fill   = 'url(#' .. gradient .. ')'
-      })
-
-      State.negButton.arrow = Viewport.new('VectorPath', { -- Arrow
-         fill = ARROW_FILL,
-         sequence = 'M 37.8516,35.625L 34.6849,38.7917L 23.6016,50.2708L 23.6016,39.9792L 37.8516,24.9375L 52.1016,39.9792L 52.1016,50.2708L 41.0182,38.7917L 37.8516,35.625 Z'
-      })
-
-      if State.direction is 'H' then -- Point left
-         local err, matrix = State.negButton.arrow.mtNewMatrix()
-         mVec.rotate(matrix, 270, Viewport.viewX + (Viewport.viewWidth*0.5), Viewport.viewY + (Viewport.viewHeight*0.5))
-      end
-   end,
-   posButton = function(State:table, Viewport)
-      gradient = 'pos' .. glCounter
-      glCounter++
-      State.posButton = { viewport = Viewport }
-
-      Viewport.viewX       = 23.6016 - 12
-      Viewport.viewY       = 24.9375 - 12
-      Viewport.viewWidth   = 28.5 + 24
-      Viewport.viewHeight  = 25.3333 + 24
-      Viewport.aspectRatio = bit.bor(ARF_X_MID, ARF_Y_MID, ARF_MEET)
-
-      gui.simpleGradient(Viewport.scene, gradient, { { r=255,g=255,b=255,a=255 }, { r=202,g=203,b=217,a=255 } }, 0, 0, 0, '100%', 'boundingbox', true)
-
-      Viewport.new('VectorRectangle', { -- Bkgd & border
-         x      = Viewport.viewX-1,
-         y      = Viewport.viewY-1,
-         width  = Viewport.viewWidth+2,
-         height = Viewport.viewHeight+2,
-         fill   = 'url(#' .. gradient .. ')'
-      })
-
-      State.posButton.arrow = Viewport.new('VectorPath', {
-         fill = ARROW_FILL,
-         sequence = 'M 37.8516,35.625L 34.6849,38.7917L 23.6016,50.2708L 23.6016,39.9792L 37.8516,24.9375L 52.1016,39.9792L 52.1016,50.2708L 41.0182,38.7917L 37.8516,35.625 Z'
-      })
-
-      local err, matrix = State.posButton.arrow.mtNewMatrix()
-      if State.direction is 'V' then -- Point down
-         mVec.rotate(matrix, 180, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
-      else -- Point right
-         mVec.rotate(matrix, 90, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
-      end
-   end,
-   negButtonPress = function(State:table, Value:num)
-      State.negButton.arrow.fill = (Value is 1) ? ARROW_FILL_ACTIVE :> ARROW_FILL
-      State.negButton.viewport.acDraw()
-   end,
-   posButtonPress = function(State:table, Value:num)
-      State.posButton.arrow.fill = (Value is 1) ? ARROW_FILL_ACTIVE :> ARROW_FILL
-      State.posButton.viewport.acDraw()
+         Viewport.acDraw()
+      end)
    end
 }

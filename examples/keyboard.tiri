@@ -1,6 +1,5 @@
---[[
-A basic demonstration of receiving keyboard input from a viewport.
---]]
+#!/usr/bin/env origo
+-- A basic demonstration of receiving keyboard input from a viewport.
 
    import 'gui/window'
 
@@ -28,4 +27,3 @@ A basic demonstration of receiving keyboard input from a viewport.
 
    win:show()
    processing.sleep()
-

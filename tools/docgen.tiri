@@ -1,3 +1,5 @@
+#!/usr/bin/env origo
+-- $TIRI
 -- This script will generate HTML documentation by running xsltproc against every XML document file found in the xml/
 -- folder.  It will fail if xsltproc is not installed on the system.
 --

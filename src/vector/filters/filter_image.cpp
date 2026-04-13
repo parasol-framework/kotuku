@@ -150,7 +150,7 @@ static ERR IMAGEFX_GET_Path(extImageFX *Self, CSTRING *Value)
 
 static ERR IMAGEFX_SET_Path(extImageFX *Self, CSTRING Value)
 {
-   if ((Self->Bitmap) or (Self->Picture)) return ERR::Failed;
+   if ((Self->Bitmap) or (Self->Picture)) return ERR::Immutable;
 
    if ((Self->Picture = objPicture::create::local(fl::Path(Value), fl::BitsPerPixel(32), fl::Flags(PCF::FORCE_ALPHA_32)))) {
       Self->Bitmap = Self->Picture->Bitmap;

@@ -7,7 +7,7 @@
       return "test"
    end
 
-   entry = debug.anno.set(sampleFunc, {
+   entry = debug.anno.set(sampleFunc, array<table> {
       { name = "Test", args = { name = "Sample Test", labels = { "unit", "smoke" } } },
       { name = "Requires", args = { network = false } }
    }, "test_file.tiri", "sampleFunc")
@@ -26,7 +26,7 @@ end
    end
 
    -- Set annotations first
-   debug.anno.set(myFunction, {
+   debug.anno.set(myFunction, array<table> {
       { name = "Test", args = { name = "My Test" } }
    }, "<runtime>", "myFunction")
 
@@ -57,9 +57,9 @@ end
    function func3() end
 
    -- Set annotations on multiple functions
-   debug.anno.set(func1, { { name = "Test", args = { name = "Test 1" } } }, "<runtime>", "func1")
-   debug.anno.set(func2, { { name = "Test", args = { name = "Test 2" } } }, "<runtime>", "func2")
-   debug.anno.set(func3, { { name = "BeforeEach", args = {} } }, "<runtime>", "func3")
+   debug.anno.set(func1, array<table> { { name = "Test", args = { name = "Test 1" } } }, "<runtime>", "func1")
+   debug.anno.set(func2, array<table> { { name = "Test", args = { name = "Test 2" } } }, "<runtime>", "func2")
+   debug.anno.set(func3, array<table> { { name = "BeforeEach", args = {} } }, "<runtime>", "func3")
 
    all = debug.anno.list()
    assert(all != nil, "debug.anno.list should return a table")
@@ -185,7 +185,7 @@ end
    function defaultSourceFunc() end
 
    -- Don't provide source parameter
-   entry = debug.anno.set(defaultSourceFunc, { { name = "Test", args = {} } })
+   entry = debug.anno.set(defaultSourceFunc, array<table> { { name = "Test", args = {} } })
    assert(entry.source is "<runtime>", "Expected default source '<runtime>', got '" .. tostring(entry.source) .. "'")
 end
 
@@ -195,10 +195,10 @@ end
    function overwriteFunc() end
 
    -- Set initial annotations
-   debug.anno.set(overwriteFunc, { { name = "Test", args = { name = "First" } } })
+   debug.anno.set(overwriteFunc, array<table> { { name = "Test", args = { name = "First" } } })
 
    -- Overwrite with new annotations
-   entry = debug.anno.set(overwriteFunc, { { name = "Test", args = { name = "Second" } } })
+   entry = debug.anno.set(overwriteFunc, array<table> { { name = "Test", args = { name = "Second" } } })
 
    -- Verify overwrite
    assert(#entry.annotations is 1, "Expected 1 annotation after overwrite")
@@ -210,7 +210,7 @@ end
 @Test function AnnoAnonymousFunction()
    anonymousFunc = function() return "anon" end
 
-   entry = debug.anno.set(anonymousFunc, { { name = "Test", args = {} } })
+   entry = debug.anno.set(anonymousFunc, array<table> { { name = "Test", args = {} } })
    assert(entry != nil, "Anonymous function annotation should succeed")
    assert(entry.name is "<anonymous>", "Expected name '<anonymous>' for anonymous function, got '" .. tostring(entry.name) .. "'")
 end
@@ -222,7 +222,7 @@ end
       return "local"
    end
 
-   entry = debug.anno.set(localFunc, { { name = "Test", args = {} } }, "<runtime>", "localFunc")
+   entry = debug.anno.set(localFunc, array<table> { { name = "Test", args = {} } }, "<runtime>", "localFunc")
    assert(entry != nil, "Local function annotation should succeed")
    assert(entry.name is "localFunc", "Expected name 'localFunc', got '" .. tostring(entry.name) .. "'")
 end
@@ -231,7 +231,7 @@ end
 
 @Test function AnnoListReturnsShallowCopy()
    function copyTestFunc() end
-   debug.anno.set(copyTestFunc, { { name = "Test", args = {} } }, "<runtime>", "copyTestFunc")
+   debug.anno.set(copyTestFunc, array<table> { { name = "Test", args = {} } }, "<runtime>", "copyTestFunc")
 
    list1 = debug.anno.list()
    list2 = debug.anno.list()

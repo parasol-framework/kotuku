@@ -111,8 +111,6 @@ static GCtab * getcurrenv(lua_State *L)
 //
 // For use in resolve stack indexes that may contain a thunk. This ensures that when C code calls lua_tostring,
 // lua_tonumber, etc., it receives the resolved value rather than the thunk userdata.
-//
-// The resolving_thunk flag is stored in lua_State to prevent recursive resolution within the same thread/coroutine.
 
 extern TValue * resolve_index(lua_State *L, int idx)
 {
@@ -235,7 +233,7 @@ extern void lua_settop(lua_State *L, int idx)
 
 extern void lua_remove(lua_State *L, int idx)
 {
-   TValue * p = index2adr_stack(L, idx);
+   TValue *p = index2adr_stack(L, idx);
    while (++p < L->top) copyTV(L, p - 1, p);
    L->top--;
 }
@@ -245,9 +243,42 @@ extern void lua_remove(lua_State *L, int idx)
 
 extern void lua_insert(lua_State *L, int idx)
 {
-   TValue * q, * p = index2adr_stack(L, idx);
+   TValue *q, *p = index2adr_stack(L, idx);
    for (q = L->top; q > p; q--) copyTV(L, q, q - 1);
    copyTV(L, p, L->top);
+}
+
+//********************************************************************************************************************
+// Rotate stack elements between idx and the top by n positions.
+// A positive n rotates towards the top (rightward); a negative n rotates towards the bottom (leftward).
+// For example, lua_rotate(L, 1, -4) moves elements at indices 1..4 to the top and shifts the rest down.
+
+extern void lua_rotate(lua_State *L, int idx, int n)
+{
+   TValue *p = index2adr_stack(L, idx);
+   TValue *t = L->top - 1;
+   int count = int(t - p) + 1;
+   lj_checkapi(count > 0, "empty stack segment for rotate");
+
+   // Normalise n into 0..count-1
+
+   n = ((n % count) + count) % count;
+   if (n IS 0) return;
+
+   // Three-reverse algorithm: reverse [p..t], reverse [p..p+n-1], reverse [p+n..t]
+
+   TValue tmp;
+   auto reverse = [&](TValue *lo, TValue *hi) {
+      for (; lo < hi; lo++, hi--) {
+         copyTV(L, &tmp, lo);
+         copyTV(L, lo, hi);
+         copyTV(L, hi, &tmp);
+      }
+   };
+
+   reverse(p, t);
+   reverse(p, p + n - 1);
+   reverse(p + n, t);
 }
 
 //********************************************************************************************************************
@@ -1387,7 +1418,20 @@ extern int luaL_callmeta(lua_State *L, int idx, const char *field)
 }
 
 //********************************************************************************************************************
-// Control garbage collection
+// Control garbage collection.  The `what` parameter selects the operation:
+//
+//   LUA_GCSTOP        Stop the garbage collector.
+//   LUA_GCRESTART     Restart the collector; `data` is currently unused.
+//   LUA_GCCOLLECT     Perform a full collection cycle.
+//   LUA_GCCOUNT       Return total managed memory in kibibytes (value >> 10).
+//   LUA_GCCOUNTB      Return the remainder bytes of total memory (value & 0x3ff).
+//   LUA_GCSTEP        Perform an incremental step.  `data` is the step size in kibibytes.
+//                     Returns 1 if a full cycle was completed during the step.
+//   LUA_GCSETPAUSE    Set the pause parameter (controls interval between cycles).  Returns the previous value.
+//   LUA_GCSETSTEPMUL  Set the step multiplier (controls collector aggressiveness).  Returns the previous value.
+//   LUA_GCISRUNNING   Returns 1 if the collector is running, otherwise 0.
+//
+// Returns -1 if `what` is not a recognised option.
 
 extern int lua_gc(lua_State *L, int what, int data)
 {

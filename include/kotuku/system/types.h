@@ -34,7 +34,7 @@ struct SCALE : strong_typedef<SCALE, double> {
 
 //********************************************************************************************************************
 // Function structure, typically used for defining callbacks to functions and procedures of any kind (e.g. standard C,
-// Tiri).
+// Tiri).  Use C_FUNCTION(Routine, Meta) to create a standard C function.
 
 enum class CALL : uint8_t {
    NIL=0,

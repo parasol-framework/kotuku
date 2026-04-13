@@ -3,7 +3,7 @@ static const int MAXLOOP = 1000;
 
 static const char glDefaultStyles[] =
 "<template name=\"h1\"><p leading=\"1.5\" font-size=\"2em\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h2\"><p leading=\"1.5\"  font-size=\"1.8em\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h2\"><p leading=\"1.25\" font-size=\"1.8em\" font-style=\"bold\"><inject/></p></template>\n\
 <template name=\"h3\"><p leading=\"1.25\" font-size=\"1.6em\" font-style=\"bold\"><inject/></p></template>\n\
 <template name=\"h4\"><p leading=\"1.25\" font-size=\"1.4em\"><inject/></p></template>\n\
 <template name=\"h5\"><p leading=\"1.0\"  font-size=\"1.2em\"><inject/></p></template>\n\
@@ -113,9 +113,9 @@ Special operators include:
 
 static std::string write_calc(double Value, int16_t Precision)
 {
-   if (!Precision) return std::to_string(F2T(Value));
+   if (!Precision) return std::to_string(int(Value));
 
-   int64_t wholepart = F2T(Value);
+   int64_t wholepart = int(Value);
    auto out = std::to_string(wholepart);
 
    double fraction = std::abs(Value) - std::abs(wholepart);
@@ -124,7 +124,7 @@ static std::string write_calc(double Value, int16_t Precision)
       fraction *= 10;
       auto px = std::abs(Precision);
       while ((fraction > 0.00001) and (px > 0)) {
-         auto ival = F2T(fraction);
+         auto ival = int(fraction);
          out += char(ival) + '0';
          fraction = (fraction - ival) * 10;
          px--;
@@ -393,11 +393,11 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    Self->Highlight = glHighlight;
 
-   Self->CursorStroke   = "rgba(102,102,204,1.0)";
-   Self->FontFill       = "rgb(0,0,0)";
-   Self->LinkFill       = "rgb(0,0,255)";
-   Self->LinkSelectFill = "rgb(255,0,0)";
-   Self->Background     = "rgba(255,255,255,1.0)";
+   Self->CursorStroke   = "rgb(102 102 204 / 1)";
+   Self->FontFill       = "rgb(0 0 0)";
+   Self->LinkFill       = "rgb(0 0 255)";
+   Self->LinkSelectFill = "rgb(255 0 0)";
+   Self->Background     = "rgb(255 255 255 / 1)";
 
    Self->LeftMargin    = 10;
    Self->RightMargin   = 10;
@@ -425,10 +425,10 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    Self->Links.clear();
 
-   Self->FontFace = DEFAULT_FONTFACE;
-   Self->FontSize = DEFAULT_FONTSIZE;
+   Self->FontFace  = DEFAULT_FONTFACE;
+   Self->FontSize  = DEFAULT_FONTSIZE;
    Self->FontStyle = DEFAULT_FONTSTYLE;
-   Self->PageTag = nullptr;
+   Self->PageTag   = nullptr;
 
    Self->EditCells.clear();
    Self->Stream.clear();

@@ -121,6 +121,32 @@ struct TiriConstant {
 extern ankerl::unordered_dense::map<uint32_t, TiriConstant> glConstantRegistry;
 extern std::shared_mutex glConstantMutex;
 
+// Thread-safe shared pool for async.pool — see tiri_async.cpp
+// Owned by the main script's prvTiri and shared with child scripts via std::shared_ptr.
+
+enum class PoolTag : uint8_t { Number, String, Boolean, ObjectID };
+
+struct PoolValue {
+   PoolTag tag;
+   union {
+      double   num;
+      bool     flag;
+      OBJECTID oid;
+   };
+   std::string str; // Only valid when tag == PoolTag::String
+
+   PoolValue() : tag(PoolTag::Number) { num = 0; }
+   PoolValue(double V)       : tag(PoolTag::Number)   { num = V; }
+   PoolValue(std::string V)  : tag(PoolTag::String), str(std::move(V)) { num = 0; }
+   PoolValue(bool V)         : tag(PoolTag::Boolean)   { flag = V; }
+   static PoolValue object(OBJECTID V) { PoolValue pv; pv.tag = PoolTag::ObjectID; pv.oid = V; return pv; }
+};
+
+struct SharedPool {
+   std::shared_mutex mutex;
+   ankerl::unordered_dense::map<std::string, PoolValue> data;
+};
+
 //********************************************************************************************************************
 // Helper: build a std::string_view from a Lua string argument.
 // Raises a Lua error if the argument at 'idx' is not a string (delegates to luaL_checklstring).
@@ -254,6 +280,7 @@ struct prvTiri {
    ankerl::unordered_dense::map<OBJECTID, int> StateMap;
    pf::vector<std::string> Procedures;
    std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
+   std::shared_ptr<SharedPool> Pool;     // Thread-safe shared pool for async.pool (created on first use, shared with child scripts)
    APTR     FocusEventHandle;
    struct finput *InputList;           // Managed by the input interface
    DateTime CacheDate;
@@ -406,14 +433,13 @@ extern void register_number_class(lua_State *);
 extern void register_processing_class(lua_State *);
 extern void register_regex_class(lua_State *);
 extern void register_struct_class(lua_State *);
-extern void register_thread_class(lua_State *);
+extern void register_async_class(lua_State *);
 //static void register_widget_class(lua_State *);
 void release_object(GCobject *);
 void new_module(lua_State *, objModule *);
 ERR struct_to_table(lua_State *, std::vector<lua_ref> &, struct struct_record &, CPTR);
 ERR table_to_struct(lua_State *, std::string_view, APTR *);
 ERR keyvalue_to_table(lua_State *, const KEYVALUE *);
-ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize);
 
 int fcmd_arg(lua_State *);
 int fcmd_msg(lua_State *);
@@ -443,7 +469,7 @@ inline GCobject * push_object(lua_State *Lua, OBJECTPTR Object, bool Detached = 
 // frame back) is the same function that contains the try block AND is at the same stack frame position.  The frame
 // base check is essential for recursive functions where the same GCfunc can appear at multiple stack depths.
 
-[[maybe_unused]] inline bool in_try_immediate_scope(lua_State *L)
+[[maybe_unused]] static bool in_try_immediate_scope(lua_State *L)
 {
    if (L->try_stack.depth IS 0) return false;
 

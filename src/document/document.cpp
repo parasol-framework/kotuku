@@ -5,15 +5,13 @@ that is distributed with this package.  Please refer to it for further informati
 
 *********************************************************************************************************************/
 
-//#define _DEBUG
-//#define DBG_LAYOUT
-//#define DBG_STREAM
+//#define DBG_LAYOUT   // Enable layout log messages
+//#define DBG_STREAM   // Dump the bytecode stream to the log
 //#define DBG_SEGMENTS // Print list of segments
-//#define DBG_WORDWRAP
-//#define GUIDELINES // Clipping guidelines
-//#define GUIDELINES_CONTENT // Segment guidelines
+//#define DBG_WORDWRAP // Enable word-wrap log messages
+//#define GUIDELINES   // Draw guidelines around all registered content segments
 
-#if (defined(_DEBUG) || defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_SEGMENTS))
+#if (!defined(NDEBUG) || defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_SEGMENTS))
  #define RETAIN_LOG_LEVEL TRUE
 #endif
 
@@ -32,24 +30,6 @@ that is distributed with this package.  Please refer to it for further informati
 #define PRV_DOCUMENT_MODULE
 #define PRV_SURFACE
 
-#include <kotuku/main.h>
-#include <kotuku/modules/xml.h>
-#include <kotuku/modules/document.h>
-#include <kotuku/modules/font.h>
-#include <kotuku/modules/display.h>
-#include <kotuku/modules/svg.h>
-#include <kotuku/modules/vector.h>
-#include <kotuku/strings.hpp>
-
-#include <float.h>
-#include <iomanip>
-#include <algorithm>
-#include <array>
-#include <variant>
-#include <stack>
-#include <cmath>
-#include <mutex>
-#include <charconv>
 #include "defs/hashes.h"
 #include "../link/unicode.h"
 
@@ -70,7 +50,7 @@ JUMPTABLE_VECTOR
 
 //********************************************************************************************************************
 
-static std::string glHighlight = "rgb(219,219,255,255)";
+static std::string glHighlight = "rgb(219 219 255 / 1)";
 
 static OBJECTPTR clDocument = nullptr;
 static OBJECTPTR modDisplay = nullptr, modFont = nullptr, modDocument = nullptr, modVector = nullptr;

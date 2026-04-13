@@ -80,7 +80,7 @@ This documentation is intended for technical reference and is not suitable as an
 #include "defs.h"
 #include <kotuku/modules/core.h>
 
-#ifdef _DEBUG // KMSG() prints straight to stderr without going through the log.
+#ifndef NDEBUG // KMSG() prints straight to stderr without going through the log.
 #define KMSG(...) //fprintf(stderr, __VA_ARGS__)
 #else
 #define KMSG(...)
@@ -215,7 +215,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 #elif _WIN32
    int id = 0;
    if (glEnableCrashHandler) {
-      #ifdef _DEBUG
+      #ifndef NDEBUG
          winInitialise(&id, nullptr); // Don't set a break handler, this will allow GDB intercept CTRL-C.
       #else
          winInitialise(&id, (APTR)&BreakHandler);
@@ -593,7 +593,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    if (glScanClasses) scan_classes();
 #endif
 
-   #ifdef _DEBUG
+   #ifndef NDEBUG
       print_class_list();
    #endif
 

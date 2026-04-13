@@ -9,9 +9,10 @@ Documentation is available in the Kotuku Wiki.
 
    namespace 'gui'
 
-VMARGIN   = gui.style.widget.margin
-GAP       = 26
-ICON_SIZE = 12
+VMARGIN   = gui.sizing.widget.margin
+GAP       <const> = 26
+ICON_SIZE <const> = 12
+
 count = 0
 
 function counter()
@@ -62,7 +63,7 @@ function lastItem(self) -- Return the last item
 end
 
 function newItem(self, Name, ID) -- Append an item to the menu bar
-   if ID and self._lookup[ID] then error('An item with identifier ' .. ID .. ' already exists.') end
+   if ID and self._lookup[ID] then error(f'An item with identifier {ID} already exists.') end
 
    item = { id=ID, name=Name }
    if Name?? then
@@ -97,14 +98,14 @@ function highlightItem(self, Item)
    self._highlight.x          = Item.x
    self._highlight.y          = 0
    self._highlight.width      = Item.width
-   self._highlight.height     = self.viewport.height - 1
+   self._highlight.height     = self.viewport.height
    self._highlight.visibility = 'visible'
 
    self.viewport.acDraw()
 end
 
 function arrangeItems(self)
-   if self._vg then self._vg.free() end
+   self._vg?.free()
 
    self._vg = self.viewport.new('VectorGroup', { name='ItemGroup' })
 
@@ -134,7 +135,7 @@ function arrangeItems(self)
             x        = x + iconWidth + VMARGIN,
             face     = gui.fonts.menu.face,
             fontSize = string.format('%.2fpt', gui.fonts.menu.size),
-            fill     = gui.style.menubar.text,
+            fill     = self.theme.menubar.text,
             string   = item.displayName
          })
 
@@ -166,18 +167,6 @@ gui.menubar = function(Options)
       _arranged = false
    }
 
-   function applyFill(Vector, Fill)
-      while Vector do
-         if Vector.fill != 'none' then
-            Vector.fill = Fill
-         end
-         if Vector.stroke then Vector.stroke = Fill end
-         child = Vector.child
-         if (child != nil) then applyFill(child, Fill) end
-         Vector = Vector.next
-      end
-   end
-
    -- Add a clickable item to the menubar.  The Name acts as the item text that is displayed in the menubar if no
    -- icon can be displayed.  The icon string must be in the standard format of 'category/icon'.
 
@@ -187,7 +176,7 @@ gui.menubar = function(Options)
       item.menuConfig = Menu
 
       if Icon then
-         icon = gui.createIcon(self.viewport.scene, Icon, ICON_SIZE, 'pearl')
+         icon = gui.createIcon(self.viewport.scene, Icon, ICON_SIZE, gui.rgbToIconTheme(self.theme.menubar.text))
          item.icon = self.viewport.new('VectorRectangle', {
             x=0, y=0, width=ICON_SIZE, height=ICON_SIZE, fill = icon.fill
          })
@@ -239,28 +228,27 @@ gui.menubar = function(Options)
    try
       assert(Options.target, 'A target viewport is required.')
 
+      self.theme = gui.getTheme(Options.target)
       self.viewport = Options.target.new('vectorviewport')
       self.viewport.x      = Options.x ?? 0
       self.viewport.y      = Options.y ?? 0
       self.viewport.height = 1
       self.viewport.xOffset = Options.xOffset ?? 0
 
-      assert(self.viewport.init() is ERR_Okay, 'Failed to initialise viewport.')
+      check self.viewport.init()
 
       self.viewport.subscribe('free', function(Viewport, Args)
          self = { }
       end)
 
       self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
-         if (Event is FM_LOST_FOCUS) then
+         if Event is FM_LOST_FOCUS then
             self._hasFocus = false
             if self._currentItem then
                self._highlight.visibility = 'hidden' -- Turn off highlighting
             end
 
-            if self._lastMenu then
-               self._lastMenu.hide()
-            end
+            self._lastMenu?.hide()
          else
             self._hasFocus = true
          end
@@ -287,13 +275,13 @@ gui.menubar = function(Options)
                if self._currentItem then
                   hoverUpdate(nil)
                end
-            elseif ((ev.flags & JTYPE_MOVEMENT) != 0) then
+            elseif ev.flags has JTYPE_MOVEMENT then
                if self._clicked then return end
 
                item = getCursorItem(self, ev.x, ev.y)
 
                hoverUpdate(item)
-            elseif ((ev.flags & JTYPE_BUTTON) != 0) then
+            elseif ev.flags has JTYPE_BUTTON then
                if ev.type != JET_BUTTON_1 then return end
 
                if ev.value != 0 then
@@ -316,7 +304,7 @@ gui.menubar = function(Options)
       end)
 
       self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
-         if (Qualifiers & KQ_PRESSED) != 0 then
+         if Qualifiers has KQ_PRESSED then
             if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) or (Code is KEY_SPACE) then
                activateItem(self)
             elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
@@ -346,23 +334,17 @@ gui.menubar = function(Options)
       self.viewport.height = ICON_SIZE + (VMARGIN * 2)
 
       self._bkgd.new('VectorRectangle', { -- Main background
-         fill   = gui.style.menubar.bkgd,
+         fill   = self.theme.menubar.bkgd,
          x      = 0,
          y      = 0,
          width  = '100%',
-         height = self.viewport.height - 1
+         height = self.viewport.height
       })
 
       self._highlight = self._bkgd.new('VectorRectangle', { -- Highlight for items
-         fill = gui.style.menubar.highlight,
+         fill = self.theme.menubar.highlight,
          x = 0, y = 0, width = 1, height = self.viewport.height - 1,
          visibility = 'hidden'
-      })
-
-      self._bkgd.new('VectorRectangle', { -- Bottom stroke
-         fill = 'rgba(0,0,0,.25)',
-         stroke = 'rgba(255,255,255,.25)', strokeWidth = 1,
-         x = 0, y = self.viewport.height - 1, width = '100%', height = 1
       })
 
       arrangeItems(self)

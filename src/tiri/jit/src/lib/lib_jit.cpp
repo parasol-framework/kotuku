@@ -89,26 +89,30 @@ LJLIB_CF(jit_flush)
 }
 
 //********************************************************************************************************************
-// Push a string for every flag bit that is set.
+// Set boolean key-values in a table for each flag name, based on whether the corresponding bit is set.
 
-static void flagbits_to_strings(lua_State* L, uint32_t flags, uint32_t base, CSTRING str)
+static void flagbits_to_table(lua_State* L, GCtab* t, uint32_t flags, uint32_t base, CSTRING str)
 {
-   for (; *str; base <<= 1, str += 1 + *str)
-      if (flags & base)
-         setstrV(L, L->top++, lj_str_new(L, str + 1, *(uint8_t*)str));
+   for (; *str; base <<= 1, str += 1 + *str) {
+      GCstr* name = lj_str_new(L, str + 1, *(uint8_t*)str);
+      setboolV(lj_tab_setstr(L, t, name), (flags & base) ? 1 : 0);
+      lj_gc_anybarriert(L, t);
+   }
 }
 
 //********************************************************************************************************************
-// Report whether JIT is enabled and list active CPU and optimisation flags.
+// Report whether JIT is enabled and return a table of active CPU and optimisation flags as boolean key-values.
 
 LJLIB_CF(jit_status)
 {
    jit_State* J = L2J(L);
    L->top = L->base;
    setboolV(L->top++, (J->flags & JIT_F_ON) ? 1 : 0);
-   flagbits_to_strings(L, J->flags, JIT_F_CPU, JIT_F_CPUSTRING);
-   flagbits_to_strings(L, J->flags, JIT_F_OPT, JIT_F_OPTSTRING);
-   return (int)(L->top - L->base);
+   lua_createtable(L, 0, 16);
+   GCtab* t = tabV(L->top - 1);
+   flagbits_to_table(L, t, J->flags, JIT_F_CPU, JIT_F_CPUSTRING);
+   flagbits_to_table(L, t, J->flags, JIT_F_OPT, JIT_F_OPTSTRING);
+   return 2;
 }
 
 //********************************************************************************************************************
@@ -663,7 +667,7 @@ extern int luaopen_jit(lua_State* L)
    reg_iface_prototype("jit", "on", {}, { TiriType::Any, TiriType::Bool });
    reg_iface_prototype("jit", "off", {}, { TiriType::Any, TiriType::Bool });
    reg_iface_prototype("jit", "flush", {}, { TiriType::Any });
-   reg_iface_prototype("jit", "status", { TiriType::Bool }, {}, FProtoFlags::Variadic);
+   reg_iface_prototype("jit", "status", { TiriType::Bool, TiriType::Table }, {});
    reg_iface_prototype("jit", "attach", {}, { TiriType::Func, TiriType::Str });
 
    // Register jit.util interface prototypes

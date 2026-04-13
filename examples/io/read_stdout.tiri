@@ -21,6 +21,7 @@ Demonstrates how to launch a sub-process and intercept the data that it prints t
          end
       })
 
+      print(f'Running {task.location}')
       print("Press CTRL-C to exit or wait for program to finish.  Received output is saved to '" .. file_out.path .. "' and '" .. file_err.path .. "'")
       task.acActivate()
       processing.sleep()

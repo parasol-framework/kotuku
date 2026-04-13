@@ -150,36 +150,6 @@ end
    assert(none is "hello", "No whitespace should be unchanged, got '" .. none .. "'")
 end
 
-@Test function Join()
-   -- Basic join
-   joined = string.join({"hello", "world"}, " ")
-   assert(joined is "hello world", "Expected 'hello world', got '" .. joined .. "'")
-
-   -- CSV style
-   csv = string.join({"a", "b", "c"}, ",")
-   assert(csv is "a,b,c", "Expected 'a,b,c', got '" .. csv .. "'")
-
-   -- No separator
-   concat = string.join({"a", "b", "c"})
-   assert(concat is "abc", "Expected 'abc', got '" .. concat .. "'")
-
-   -- Mixed types (numbers should be converted)
-   mixed = string.join({1, "hello", 2.5, "world"}, "-")
-   assert(mixed is "1-hello-2.5-world", "Expected '1-hello-2.5-world', got '" .. mixed .. "'")
-
-   -- Empty table
-   empty = string.join({}, ",")
-   assert(empty is "", "Empty table should return empty string, got '" .. empty .. "'")
-
-   -- Single item
-   single = string.join({"hello"}, ",")
-   assert(single is "hello", "Single item should return 'hello', got '" .. single .. "'")
-
-   -- Empty strings in table
-   withEmpty = string.join({"a", "", "b"}, ",")
-   assert(withEmpty is "a,,b", "Expected 'a,,b', got '" .. withEmpty .. "'")
-end
-
 @Test function StartsWith()
    -- Basic positive case
    assert(string.startsWith("hello world", "hello"), "Should start with 'hello'")

@@ -5,7 +5,7 @@ To create a struct from a registered definition:  xmltag = struct.new('XTag')
 To create a struct with pre-configured values:    xmltag = struct.new('XTag', { name='Hello' })
 To get the byte size of any structure definition: size = struct.size('XTag')
 To get the total number of fields in a structure: #xmltag
-To get the byte size of a created structure:      xmltag.structsize()
+To get the byte size of a created structure:      xmltag.structSize()
 
 Acceptable field definitions:
 
@@ -645,7 +645,7 @@ static int struct_new(lua_State *Lua)
 // Usage: struct.size()
 // Returns the byte size of the structure definition.
 
-static int struct_structsize(lua_State *Lua)
+static int struct_structSize(lua_State *Lua)
 {
    if (auto fs = (fstruct *)get_meta(Lua, lua_upvalueindex(1), "Tiri.struct")) {
       lua_pushnumber(Lua, fs->StructSize);
@@ -680,9 +680,9 @@ static int struct_get(lua_State *Lua)
 {
    if (auto fs = (struct fstruct *)lua_touserdata(Lua, 1)) {
       if (auto fieldname = luaL_checkstring(Lua, 2)) {
-         if (std::string_view("structsize") IS fieldname) {
+         if (std::string_view("structSize") IS fieldname) {
             lua_pushvalue(Lua, 1);
-            lua_pushcclosure(Lua, &struct_structsize, 1);
+            lua_pushcclosure(Lua, &struct_structSize, 1);
             return 1;
          }
 

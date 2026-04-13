@@ -6,11 +6,11 @@ Tests for resolving server names in parallel.
 
 glDomains = array<string> { 'google.com', 'kotuku.dev', 'amazon.co.uk', 'stackoverflow.com', 'theguardian.com', 'www.bbc.co.uk' }
 glTotalResolved = 0
+local proc
 
 @BeforeAll function init()
    global mNet ?= mod.load('network')
-   global glSelf = obj.find('self')
-   global proc = processing.new({ timeout = 5.0 })
+   proc = processing.new({ timeout = 5.0 })
 end
 
 @AfterAll function cleanup()
@@ -42,9 +42,8 @@ function name_resolved(NetLookup, Error)
    addresses = NetLookup.addresses -- array type
    if addresses then
       total_ips = #addresses
-      for i=0,#addresses-1 do
-         ip = addresses[i]
-         assert((ip.type is IPADDR_V4) or (ip.type is IPADDR_V6), 'Unrecognised TCP/IP address type ' .. ip.type)
+      for ip in values(addresses) do
+          assert((ip.type is IPADDR_V4) or (ip.type is IPADDR_V6), 'Unrecognised TCP/IP address type ' .. ip.type)
          if not ip_list then
             ip_list = netAddressToString(ip)
          else

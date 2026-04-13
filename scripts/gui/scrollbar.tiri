@@ -21,8 +21,9 @@ gui.scrollbar = function(Options)
    lBreadth  = Options.breadth ?? 16
    lPageMode = 'fixed'
    lMinWidth = 0
+   lTheme    = gui.getTheme(Options.target)
 
-   function calcSlider(ViewLength, PageLength, HostLength, Position)
+   function calcSlider(ViewLength:num, PageLength:num, HostLength:num, Position:num)
       slider_size = HostLength * (ViewLength / PageLength)
 
       if (PageLength <= ViewLength) then -- Hide the scrollbar if the page is smaller than the view
@@ -31,13 +32,13 @@ gui.scrollbar = function(Options)
 
       local offset
       min_size = 20
-      if (slider_size < min_size) then -- Fixed slider calculation
+      if slider_size < min_size then -- Fixed slider calculation
          slider_size = min_size
          scale = (PageLength - ViewLength) / (HostLength - min_size)
          offset = Position / scale
          if slider_size + offset > HostLength then
             offset = HostLength - slider_size
-            if (offset < 0) then offset = 0 end
+            if offset < 0 then offset = 0 end
             if (slider_size + offset) > HostLength then
                slider_size = HostLength
             end
@@ -64,14 +65,19 @@ gui.scrollbar = function(Options)
       if self.vbar then
          self.vbar.viewport.acMoveToFront()
 
-         offset, slider_size = calcSlider(lView.height, lPage.height, self.vbar.sliderHostVP.height, -lPage.y)
+         host_height = self.vbar.sliderHostVP.height
+         if self.hbar?.viewport.visibility is VIS_VISIBLE then
+            host_height -= lBreadth
+         end
+
+         offset, slider_size = calcSlider(lView.height, lPage.height, host_height, -lPage.y)
          if (offset != self.vbar.slider.offset) or (slider_size != self.vbar.slider.size) then
             self.vbar.slider.offset   = offset
             self.vbar.slider.size     = slider_size
             self.vbar.sliderVP.y      = offset
             self.vbar.sliderVP.height = slider_size
 
-            if (slider_size <= 12) then
+            if slider_size <= 12 then
                self.vbar.viewport.visibility = VIS_HIDDEN
                lView.xOffset = 0
                if self.hbar then self.hbar.viewport.xOffset = 0 end
@@ -90,12 +96,12 @@ gui.scrollbar = function(Options)
 
          offset, slider_size = calcSlider(lView.width, lPage.width, self.hbar.sliderHostVP.width, -lPage.x)
          if (offset != self.hbar.slider.offset) or (slider_size != self.hbar.slider.size) then
-            self.hbar.slider.offset   = offset
-            self.hbar.slider.size     = slider_size
-            self.hbar.sliderVP.x      = offset
-            self.hbar.sliderVP.width  = slider_size
+            self.hbar.slider.offset  = offset
+            self.hbar.slider.size    = slider_size
+            self.hbar.sliderVP.x     = offset
+            self.hbar.sliderVP.width = slider_size
 
-            if (slider_size <= 12) then
+            if slider_size <= 12 then
                self.hbar.viewport.visibility = VIS_HIDDEN
                lView.yOffset = 0
             else
@@ -110,27 +116,25 @@ gui.scrollbar = function(Options)
       lTarget.acDraw()
    end
 
-   function createScrollbar(Direction)
+   function createScrollbar(Direction:str)
       local bar
 
-      if (Direction is 'V') then
-         vp = lTarget.new('VectorViewport', { y = 0, xOffset = 0, yOffset = 0, width = lBreadth, overflow = VOF_HIDDEN })
+      if Direction is 'V' then
+         vp = lTarget.new('VectorViewport', { name='VBarVP', y = 0, xOffset = 0, yOffset = 0, width = lBreadth, overflow = VOF_HIDDEN })
 
          bar = vp._state()
          bar.viewport  = vp
          bar.direction = 'V'
 
-         lStyle.background(bar, bar.viewport)
+         lStyle.background(bar, bar.viewport, lTheme)
 
-         bar.negVP = vp.new('VectorViewport', { width = lBreadth, height = lBreadth, overflow = VOF_HIDDEN })
-         bar.posVP = vp.new('VectorViewport', { yOffset = 0, width = lBreadth, height = lBreadth, overflow = VOF_HIDDEN })
-         bar.sliderHostVP = vp.new('VectorViewport', { y = lBreadth, width = '100%', yOffset = lBreadth, overflow = VOF_HIDDEN })
-         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = lBreadth, height = bar.sliderHostVP.height, overflow = VOF_HIDDEN })
+         bar.sliderHostVP = vp.new('VectorViewport', { name='VSliderHostVP', y = 0, width = '100%', yOffset = 0, overflow = VOF_HIDDEN })
+         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { name='VSliderVP', width = lBreadth, height = bar.sliderHostVP.height, overflow = VOF_HIDDEN })
 
          -- Respond to the user dragging the slider.  Moving the page is all that is necessary; this
          -- will result in downstream callbacks making the necessary updates.
 
-         bar.sliderVP.dragCallback = function(Viewport, X, Y)
+         bar.sliderVP.dragCallback = function(Viewport:obj, X:num, Y:num)
             slider_height = Viewport.height
             host_height   = self.vbar.sliderHostVP.height
             if Y < 0 then Y = 0 end
@@ -144,26 +148,24 @@ gui.scrollbar = function(Options)
             end
          end
       else
-         vp = lTarget.new('VectorViewport', { x = 0, xOffset = 0, yOffset = 0, height = lBreadth })
-         if self.vbar and (self.vbar.viewport.visibility is VIS_VISIBLE) then vp.xOffset = lBreadth end
+         vp = lTarget.new('VectorViewport', { name='HBarVP', x = 0, xOffset = 0, yOffset = 0, height = lBreadth })
+         if self.vbar?.viewport.visibility is VIS_VISIBLE then vp.xOffset = lBreadth end
 
          bar = vp._state()
          bar.viewport  = vp
          bar.direction = 'H'
 
-         lStyle.background(bar, bar.viewport)
+         lStyle.background(bar, bar.viewport, lTheme)
 
-         bar.negVP = vp.new('VectorViewport', { width = lBreadth, height = lBreadth, overflow = VOF_HIDDEN })
-         bar.posVP = vp.new('VectorViewport', { xOffset = 0, width = lBreadth, height = lBreadth, overflow = VOF_HIDDEN })
-         bar.sliderHostVP = vp.new('VectorViewport', { x = lBreadth, height = '100%', xOffset = lBreadth, overflow = VOF_HIDDEN })
-         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = bar.sliderHostVP.height, height = lBreadth, overflow = VOF_HIDDEN })
+         bar.sliderHostVP = vp.new('VectorViewport', { name='HSliderHostVP', x = 0, height = '100%', xOffset = 0, overflow = VOF_HIDDEN })
+         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { name='HSliderVP', width = bar.sliderHostVP.height, height = lBreadth, overflow = VOF_HIDDEN })
 
-         bar.sliderVP.dragCallback = function(Viewport, X, Y)
+         bar.sliderVP.dragCallback = function(Viewport:obj, X:num, Y:num)
             slider_width = Viewport.width
             host_width   = self.hbar.sliderHostVP.width
-            if (X < 0) then X = 0 end
-            if (X + slider_width > host_width) then X = host_width - slider_width end
-            if (Viewport.x is X) then return end
+            if X < 0 then X = 0 end
+            if X + slider_width > host_width then X = host_width - slider_width end
+            if Viewport.x is X then return end
 
             if (X != self.hbar.slider.offset) or (slider_width != self.hbar.slider.size) then
                pct_pos = X / (host_width - slider_width)
@@ -173,14 +175,12 @@ gui.scrollbar = function(Options)
          end
       end
 
-      lStyle.negButton(bar, bar.negVP)
-      lStyle.posButton(bar, bar.posVP)
-      lStyle.slider(bar, bar.sliderVP)
+      lStyle.slider(bar, bar.sliderVP, lTheme)
 
       -- Capture user interactivity within the bar area.
 
       bar.sliderHostVP.mtSubscribeInput(JTYPE_BUTTON|JTYPE_REPEATED,
-         function(Viewport, Msg)
+         function(Viewport:obj, Msg)
             repeat
                if (Msg.type is JET_LMB) and (Msg.value > 0) then
                   if bar.direction is 'V' then
@@ -200,50 +200,13 @@ gui.scrollbar = function(Options)
                Msg = Msg.next
             until not Msg
          end)
-
-      bar.negVP.mtSubscribeInput(JTYPE_BUTTON|JTYPE_REPEATED,
-         function(Viewport, Msg)
-            repeat
-               if Msg.type is JET_LMB then
-                  if Msg.value > 0 then
-                     if bar.direction is 'V' then
-                        self.scrollPage(0, (lView.height * 0.10))
-                     else
-                        self.scrollPage((lView.width * 0.10), 0)
-                     end
-                  end
-
-                  lStyle.negButtonPress(bar, Msg.value)
-               end
-               Msg = Msg.next
-            until not Msg
-         end)
-
-      bar.posVP.mtSubscribeInput(JTYPE_BUTTON|JTYPE_REPEATED,
-         function(Viewport, Msg)
-            repeat
-               if Msg.type is JET_LMB then
-                  if Msg.value > 0 then
-                     if (bar.direction is 'V') then
-                        self.scrollPage(0, -(lView.height * 0.10))
-                     else
-                        self.scrollPage(-(lView.width * 0.10), 0)
-                     end
-                  end
-
-                  lStyle.posButtonPress(bar, Msg.value)
-               end
-               Msg = Msg.next
-            until not Msg
-         end)
-
       return bar
    end
 
    function doSubscriptions()
       -- The slider and possibly the page need to be repositioned whenever the view is resized.
 
-      lView.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+      lView.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport:obj, Event)
          px = lPage.x
          py = lPage.y
          pw = lPage.width
@@ -278,11 +241,11 @@ gui.scrollbar = function(Options)
          recalcSlidersFromView()
       end)
 
-      lPage.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+      lPage.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport:obj, Event)
          recalcSlidersFromView()
       end)
 
-      lPage.mtSubscribeInput(JTYPE_EXT_MOVEMENT, function(Viewport, Events)
+      lPage.mtSubscribeInput(JTYPE_EXT_MOVEMENT, function(Viewport:obj, Events)
          ev = Events
          while ev do
             if ev.type is JET_WHEEL then
@@ -297,7 +260,7 @@ gui.scrollbar = function(Options)
       end)
    end
 
-   self.scrollPage = function(DeltaX, DeltaY)
+   self.scrollPage = function(DeltaX:num, DeltaY:num)
       current_x = lPage.x
       current_y = lPage.y
       x = current_x + DeltaX
@@ -324,13 +287,13 @@ gui.scrollbar = function(Options)
 
    -- NB: As a client you can set the page height and width directly if no mode change is required.
 
-   self.setFixedPageSize = function(Width, Height)
+   self.setFixedPageSize = function(Width:num, Height:num)
       lPageMode = 'fixed'
       if Width != lPage.width then lPage.width = Width end
       if Height != lPage.height then lPage.height = Height end
    end
 
-   self.setDynamicPageSize = function(NominalWidth, MinWidth, Height)
+   self.setDynamicPageSize = function(NominalWidth:num, MinWidth:num, Height:num)
       lPageMode = 'dynamic'
       lMinWidth = MinWidth ?? 0
 

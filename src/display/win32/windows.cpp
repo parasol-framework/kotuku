@@ -67,11 +67,8 @@ typedef long long int64_t;
 #define WM_ICONNOTIFY (WM_USER + 101)
 #define ID_TRAY 100
 
-#ifdef _DEBUG
-#define MSG(...) fprintf(stderr, __VA_ARGS__)
-#else
+//#define MSG(...) fprintf(stderr, __VA_ARGS__)
 #define MSG(...)
-#endif
 
 extern HINSTANCE glInstance;
 extern int glLastPort;
@@ -177,7 +174,7 @@ ERR winGetCoords(HWND Window, int &WinX, int &WinY, int &WinWidth, int &WinHeigh
       ClientHeight = info.rcClient.bottom - info.rcClient.top;
       return ERR::Okay;
    }
-   else return ERR::Failed;
+   else return ERR::SystemCall;
 }
 
 //********************************************************************************************************************
@@ -1116,7 +1113,7 @@ ERR winReadController(int Port, double *Values, CON &Buttons)
       else Buttons = CON::NIL; //state.Gamepad.wButtons;
       return ERR::Okay;
    }
-   else return ERR::Failed;
+   else return ERR::SystemCall;
 }
 
 //********************************************************************************************************************

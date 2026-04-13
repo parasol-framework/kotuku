@@ -2043,7 +2043,7 @@ static void quicksort_func(lua_State *L, GCarray *Arr, int32_t Left, int32_t Rig
 
       int32_t i = Left;
       int32_t j = Right - 1;
-      for (;;) {
+      while (true) {
          while (array_sort_comp(L, Arr, ++i, pivot_idx, FnIdx)) {
             if (i >= Right) lj_err_caller(L, ErrMsg::TABSORT);
          }

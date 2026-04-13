@@ -415,9 +415,9 @@ static ERR msg_action(APTR Custom, int MsgID, int MsgType, APTR Message, int Msg
       ERR error;
       if ((error = AccessObject(action->ObjectID, 5000, &obj)) IS ERR::Okay) {
          if (action->SendArgs IS false) {
-            obj->Flags |= NF::MESSAGE;
+            obj->setFlag(NF::MESSAGE);
             Action(action->ActionID, obj, nullptr);
-            obj->Flags = obj->Flags & (~NF::MESSAGE);
+            obj->clearFlag(NF::MESSAGE);
             ReleaseObject(obj);
          }
          else {
@@ -430,9 +430,9 @@ static ERR msg_action(APTR Custom, int MsgID, int MsgType, APTR Message, int Msg
             }
 
             if (fields) {
-               obj->Flags |= NF::MESSAGE;
+               obj->setFlag(NF::MESSAGE);
                Action(action->ActionID, obj, action+1);
-               obj->Flags = obj->Flags & (~NF::MESSAGE);
+               obj->clearFlag(NF::MESSAGE);
                ReleaseObject(obj);
             }
          }

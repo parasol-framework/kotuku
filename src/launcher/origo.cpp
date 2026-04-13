@@ -39,9 +39,9 @@ static bool glBackstage = false;
 static ERR exec_source(std::string, int, const std::string);
 
 static const std::string glHelp =
-   "Kotuku " KOTUKU_VERSION R"(
+   "Origo " KOTUKU_VERSION R"(
 
-This command-line program can execute Tiri scripts and PARC files developed for Kotuku.
+Origo launches Tiri scripts and PARC files developed for Kotuku.
 
    origo [options] [script.ext] arg1 arg2=value ...
 

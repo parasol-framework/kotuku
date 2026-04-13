@@ -258,11 +258,11 @@
 <h1>Linux Builds</h1>
 <h2 id="gcc">GCC</h2>
 <p>Your Linux system may require a few package dependencies to be installed if a complete build of Kōtuku is desired. For an Apt based system such as Debian or Ubuntu, execute the following:</p>
-<pre><code>sudo apt-get install libasound2-dev libxrandr-dev libxxf86dga-dev cmake g++ xsltproc</code></pre>
+<pre><code>sudo apt-get install libasound2-dev libxrandr-dev libxxf86dga-dev cmake g++ xsltproc nasm</code></pre>
 <p>The following will configure the build process for a standard install to <code>/usr</code> that will be available to all users:</p>
 <pre><code>cmake -S . -B release -DCMAKE_BUILD_TYPE=Release</code></pre>
 <p>The full build and install process can then be performed with:</p>
-<pre><code>cmake --build release -j 8 -- -O
+<pre><code>cmake --build release --parallel -- -O
 sudo cmake --install release</code></pre>
 <h3 id="portable-builds">Portable Builds</h3>
 <p>The release that we make available to the public is a portable build. Portable builds can be distributed as a compressed archive. There is no need for the user to perform an install, and the executable can be launched directly from its folder. The following cmake instruction can be used to create your own portable version of Kōtuku:</p>
