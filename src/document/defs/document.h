@@ -366,53 +366,67 @@ struct font_entry {
    FontMetrics metrics; // Derived from vec::GetFontMetrics() at the time of caching
    int font_size; // 72 DPI pixel size
    ALIGN align;
+   int16_t space_width = 0; // Cached pixel width of ' ' (matches m_space_width type)
+   double zero_width = 0;   // Cached pixel width of '0' (for DU::CHAR unit conversion)
 
    font_entry(APTR pHandle, const std::string_view pFace, const std::string_view pStyle, double pSize) :
       handle(pHandle), face(pFace), style(pStyle), font_size(pSize), align(ALIGN::NIL) {
       vec::GetFontMetrics(pHandle, &metrics);
+      double kerning = 0;
+      space_width = int16_t(vec::CharWidth(pHandle, ' ', 0, &kerning) + kerning);
+      kerning = 0;
+      zero_width = vec::CharWidth(pHandle, '0', 0, &kerning) + kerning;
    }
 
    ~font_entry() { }
 
    font_entry(font_entry &&other) noexcept { // Move constructor
-      handle    = other.handle;
-      metrics   = other.metrics;
-      font_size = other.font_size;
-      face      = other.face;
-      style     = other.style;
-      align     = other.align;
+      handle      = other.handle;
+      metrics     = other.metrics;
+      font_size   = other.font_size;
+      face        = other.face;
+      style       = other.style;
+      align       = other.align;
+      space_width = other.space_width;
+      zero_width  = other.zero_width;
       other.handle = nullptr;
    }
 
    font_entry(const font_entry &other) { // Copy constructor
-      handle    = other.handle;
-      font_size = other.font_size;
-      metrics   = other.metrics;
-      face      = other.face;
-      style     = other.style;
-      align     = other.align;
+      handle      = other.handle;
+      font_size   = other.font_size;
+      metrics     = other.metrics;
+      face        = other.face;
+      style       = other.style;
+      align       = other.align;
+      space_width = other.space_width;
+      zero_width  = other.zero_width;
    }
 
    font_entry& operator=(font_entry &&other) noexcept { // Move assignment
       if (this IS &other) return *this;
-      handle   = other.handle;
-      font_size = other.font_size;
-      metrics   = other.metrics;
-      face      = other.face;
-      style     = other.style;
-      align     = other.align;
+      handle      = other.handle;
+      font_size   = other.font_size;
+      metrics     = other.metrics;
+      face        = other.face;
+      style       = other.style;
+      align       = other.align;
+      space_width = other.space_width;
+      zero_width  = other.zero_width;
       other.handle = nullptr;
       return *this;
    }
 
    font_entry& operator=(const font_entry& other) { // Copy assignment
       if (this IS &other) return *this;
-      handle    = other.handle;
-      font_size = other.font_size;
-      metrics   = other.metrics;
-      face      = other.face;
-      style     = other.style;
-      align     = other.align;
+      handle      = other.handle;
+      font_size   = other.font_size;
+      metrics     = other.metrics;
+      face        = other.face;
+      style       = other.style;
+      align       = other.align;
+      space_width = other.space_width;
+      zero_width  = other.zero_width;
       return *this;
    }
 

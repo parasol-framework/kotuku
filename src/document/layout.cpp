@@ -789,7 +789,7 @@ void layout::apply_style(bc_font &Style) {
    else m_font->align = ALIGN::NIL;
 
    m_no_wrap = ((Style.options & FSO::NO_WRAP) != FSO::NIL);
-   m_space_width = glyph_advance(m_font->handle, ' ');
+   m_space_width = m_font->space_width;
 }
 
 //********************************************************************************************************************
@@ -1642,7 +1642,7 @@ extend_page:
    m_cursor_y       = m_margins.top;
    m_line_seg_start = m_segments.size();
    m_font           = *Font;
-   m_space_width    = glyph_advance(m_font->handle, ' ');
+   m_space_width    = m_font->space_width;
    m_line_count     = 0;
 
    m_word_index.reset();
