@@ -53,7 +53,7 @@ private:
       INDEX index;
       ALIGN align;
 
-      link_marker(double pX, INDEX pIndex, ALIGN pAlign) : x(pX), word_width(0), index(pIndex), align(pAlign) { }
+      constexpr link_marker(double pX, INDEX pIndex, ALIGN pAlign) : x(pX), word_width(0), index(pIndex), align(pAlign) { }
    };
 
    std::stack<bc_list *>      m_stack_list;
