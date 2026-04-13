@@ -204,7 +204,7 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
 
    if ((!Args) or (!Args->Name) or (!Args->Def)) return log.warning(ERR::NullArgs);
 
-   if (Self->HostScene) { // Defer all definitions if a hosting scene is active.
+   if (Self->HostScene) { // Forward all definitions if a hosting scene is active.
       return Self->HostScene->addDef(Args->Name, Args->Def);
    }
 
