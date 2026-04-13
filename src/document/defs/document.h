@@ -1121,6 +1121,31 @@ struct doc_layout_metrics {
 
 //********************************************************************************************************************
 
+struct glyph_cache_key {
+   uintptr_t handle = 0;
+   uint32_t glyph = 0;
+   uint32_t prev_glyph = 0;
+
+   bool operator==(const glyph_cache_key &Other) const {
+      return (handle IS Other.handle) and (glyph IS Other.glyph) and (prev_glyph IS Other.prev_glyph);
+   }
+};
+
+struct glyph_cache_hash {
+   size_t operator()(const glyph_cache_key &Key) const {
+      auto hash = size_t(Key.handle);
+      hash ^= size_t(Key.glyph) + 0x9e3779b97f4a7c15ULL + (hash << 6) + (hash >> 2);
+      hash ^= size_t(Key.prev_glyph) + 0x9e3779b97f4a7c15ULL + (hash << 6) + (hash >> 2);
+      return hash;
+   }
+};
+
+struct glyph_cache_value {
+   double advance = 0;
+};
+
+//********************************************************************************************************************
+
 class extDocument : public objDocument {
    public:
    FUNCTION EventCallback;
@@ -1137,6 +1162,7 @@ class extDocument : public objDocument {
    std::vector<tab>            Tabs;
    std::vector<edit_cell>      EditCells;
    doc_layout_metrics          LayoutMetrics;
+   ankerl::unordered_dense::map<glyph_cache_key, glyph_cache_value, glyph_cache_hash> GlyphAdvanceCache;
    ankerl::unordered_dense::map<std::string_view, doc_edit> EditDefs;
    std::array<std::vector<FUNCTION>, size_t(DRT::END)> Triggers;
    std::vector<const XTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it

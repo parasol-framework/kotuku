@@ -318,6 +318,20 @@ private:
       return m_clips.size();
    }
 
+   double glyph_advance(APTR Handle, uint32_t Glyph, uint32_t PrevGlyph = 0) {
+      if ((!Self) or (!Handle)) return 0;
+
+      auto key = glyph_cache_key { (uintptr_t)Handle, Glyph, PrevGlyph };
+      if (auto it = Self->GlyphAdvanceCache.find(key); it != Self->GlyphAdvanceCache.end()) {
+         return it->second.advance;
+      }
+
+      double kerning = 0;
+      auto advance = vec::CharWidth(Handle, Glyph, PrevGlyph, &kerning) + kerning;
+      Self->GlyphAdvanceCache.try_emplace(key, glyph_cache_value { advance });
+      return advance;
+   }
+
    void size_widget(widget_mgr &, bool);
    WRAP place_widget(widget_mgr &);
    ERR position_widget(widget_mgr &, doc_segment &, objVectorViewport *, bc_font *, double &, double, bool,
@@ -775,7 +789,7 @@ void layout::apply_style(bc_font &Style) {
    else m_font->align = ALIGN::NIL;
 
    m_no_wrap = ((Style.options & FSO::NO_WRAP) != FSO::NIL);
-   m_space_width = vec::CharWidth(m_font->handle, ' ', 0, 0);
+   m_space_width = glyph_advance(m_font->handle, ' ');
 }
 
 //********************************************************************************************************************
@@ -859,10 +873,8 @@ WRAP layout::lay_text()
          }
 
          int unicode;
-         double kerning;
          i += getutf8(str.c_str()+i, &unicode);
-         m_word_width += vec::CharWidth(m_font->handle, unicode, m_kernchar, &kerning);
-         m_word_width += kerning;
+         m_word_width += glyph_advance(m_font->handle, unicode, m_kernchar);
          m_kernchar    = unicode;
 
          if (ascent > m_line.word_height) m_line.word_height = ascent;
@@ -1459,6 +1471,7 @@ static void layout_doc(extDocument *Self)
 
    padding margins { Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin };
 
+   Self->GlyphAdvanceCache.clear();
    Self->LayoutMetrics.reset();
 
    layout l(Self, &Self->Stream, Self->Page, margins);
@@ -1629,7 +1642,7 @@ extend_page:
    m_cursor_y       = m_margins.top;
    m_line_seg_start = m_segments.size();
    m_font           = *Font;
-   m_space_width    = vec::CharWidth(m_font->handle, ' ', 0, nullptr);
+   m_space_width    = glyph_advance(m_font->handle, ' ');
    m_line_count     = 0;
 
    m_word_index.reset();
