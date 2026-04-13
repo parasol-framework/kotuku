@@ -47,6 +47,30 @@ struct layout {
    std::vector<edit_cell>   m_ecells;
 
 private:
+   struct line_state {
+      stream_char index;       // Stream position for the line's content.
+      double descent = 0;      // Vertical spacing accommodated for glyph tails.  Inclusive within the height value, not additive
+      double height = 0;       // The complete height of the line, including inline vectors/images/tables.  Text is drawn so that the text descent is aligned to the base line
+      double x = 0;            // Starting horizontal position
+      double word_height = 0;  // Height of the current word (including inline graphics), utilised for word wrapping
+
+      void reset(double LeftMargin) {
+         x       = LeftMargin;
+         descent = 0;
+         height  = 0;
+      }
+
+      void full_reset(double LeftMargin) {
+         reset(LeftMargin);
+         word_height = 0;
+      }
+
+      void apply_word_height() {
+         if (word_height > height) height = word_height;
+         word_height = 0;
+      }
+   };
+
    struct link_marker {
       double x;           // Starting coordinate of the link.  Can change if the link is split across multiple lines.
       double word_width;  // Reflects the m_word_width value at the moment of a link's termination.
@@ -54,6 +78,37 @@ private:
       ALIGN align;
 
       constexpr link_marker(double pX, INDEX pIndex, ALIGN pAlign) : x(pX), word_width(0), index(pIndex), align(pAlign) { }
+   };
+
+   struct layout_checkpoint {
+      int break_loop = 0;
+      bc_row *row = nullptr;
+      font_entry *font = nullptr;
+      double cursor_x = 0;
+      double cursor_y = 0;
+      double page_width = 0;
+      INDEX index = 0;
+      stream_char word_index;
+      double align_edge = 0;
+      int kernchar = 0;
+      double left_margin = 0;
+      int paragraph_bottom = 0;
+      SEGINDEX line_seg_start = 0;
+      int word_width = 0;
+      int line_count = 0;
+      int16_t space_width = 0;
+      bool no_wrap = false;
+      bool cursor_drawn = false;
+      bool edit_mode = false;
+      line_state line;
+      size_t segment_count = 0;
+      size_t segment_restore_start = 0;
+      size_t ecell_count = 0;
+      size_t clip_count = 0;
+      size_t list_depth = 0;
+      size_t para_depth = 0;
+      size_t font_depth = 0;
+      std::vector<doc_segment> segment_tail;
    };
 
    std::stack<bc_list *>      m_stack_list;
@@ -84,29 +139,92 @@ private:
    bool m_cursor_drawn = false;   // Set to true when the cursor has been drawn during scene graph creation.
    bool m_edit_mode    = false;   // Set to true when inside an area that allows user editing of the content.
 
-   struct {
-      stream_char index;       // Stream position for the line's content.
-      double descent = 0;      // Vertical spacing accommodated for glyph tails.  Inclusive within the height value, not additive
-      double height = 0;       // The complete height of the line, including inline vectors/images/tables.  Text is drawn so that the text descent is aligned to the base line
-      double x = 0;            // Starting horizontal position
-      double word_height = 0;  // Height of the current word (including inline graphics), utilised for word wrapping
+   line_state m_line;
 
-      void reset(double LeftMargin) {
-         x       = LeftMargin;
-         descent = 0;
-         height  = 0;
+   template <class T> static void restore_stack_depth(std::stack<T *> &Stack, size_t Depth) {
+#ifdef _DEBUG
+      assert(Stack.size() >= Depth);
+#endif
+
+      while (Stack.size() > Depth) Stack.pop();
+   }
+
+   layout_checkpoint capture_checkpoint() const {
+      layout_checkpoint state;
+      state.break_loop          = m_break_loop;
+      state.row                 = m_row;
+      state.font                = m_font;
+      state.cursor_x            = m_cursor_x;
+      state.cursor_y            = m_cursor_y;
+      state.page_width          = m_page_width;
+      state.index               = idx;
+      state.word_index          = m_word_index;
+      state.align_edge          = m_align_edge;
+      state.kernchar            = m_kernchar;
+      state.left_margin         = m_left_margin;
+      state.paragraph_bottom    = m_paragraph_bottom;
+      state.line_seg_start      = m_line_seg_start;
+      state.word_width          = m_word_width;
+      state.line_count          = m_line_count;
+      state.space_width         = m_space_width;
+      state.no_wrap             = m_no_wrap;
+      state.cursor_drawn        = m_cursor_drawn;
+      state.edit_mode           = m_edit_mode;
+      state.line                = m_line;
+      state.segment_count       = m_segments.size();
+      state.segment_restore_start = std::min<size_t>(m_line_seg_start, state.segment_count);
+      state.ecell_count         = m_ecells.size();
+      state.clip_count          = m_clips.size();
+      state.list_depth          = m_stack_list.size();
+      state.para_depth          = m_stack_para.size();
+      state.font_depth          = m_stack_font.size();
+      state.segment_tail.assign(m_segments.begin() + state.segment_restore_start, m_segments.end());
+      return state;
+   }
+
+   void restore_checkpoint(const layout_checkpoint &State) {
+#ifdef _DEBUG
+      assert(m_segments.size() >= State.segment_count);
+      assert(m_ecells.size() >= State.ecell_count);
+      assert(m_clips.size() >= State.clip_count);
+      assert(m_stack_list.size() >= State.list_depth);
+      assert(m_stack_para.size() >= State.para_depth);
+      assert(m_stack_font.size() >= State.font_depth);
+#endif
+
+      if (m_segments.size() >= State.segment_count) {
+         m_segments.resize(State.segment_count);
+         std::copy(State.segment_tail.begin(), State.segment_tail.end(), m_segments.begin() + State.segment_restore_start);
       }
 
-      void full_reset(double LeftMargin) {
-         reset(LeftMargin);
-         word_height = 0;
-      }
+      if (m_ecells.size() >= State.ecell_count) m_ecells.resize(State.ecell_count);
+      if (m_clips.size() >= State.clip_count) m_clips.resize(State.clip_count);
 
-      void apply_word_height() {
-         if (word_height > height) height = word_height;
-         word_height = 0;
-      }
-   } m_line;
+      restore_stack_depth(m_stack_list, State.list_depth);
+      restore_stack_depth(m_stack_para, State.para_depth);
+      restore_stack_depth(m_stack_font, State.font_depth);
+
+      m_break_loop       = State.break_loop;
+      m_row              = State.row;
+      m_font             = State.font;
+      m_cursor_x         = State.cursor_x;
+      m_cursor_y         = State.cursor_y;
+      m_page_width       = State.page_width;
+      idx                = State.index;
+      m_word_index       = State.word_index;
+      m_align_edge       = State.align_edge;
+      m_kernchar         = State.kernchar;
+      m_left_margin      = State.left_margin;
+      m_paragraph_bottom = State.paragraph_bottom;
+      m_line_seg_start   = State.line_seg_start;
+      m_word_width       = State.word_width;
+      m_line_count       = State.line_count;
+      m_space_width      = State.space_width;
+      m_no_wrap          = State.no_wrap;
+      m_cursor_drawn     = State.cursor_drawn;
+      m_edit_mode        = State.edit_mode;
+      m_line             = State.line;
+   }
 
    inline void reset() {
       m_clips.clear();
@@ -1430,7 +1548,7 @@ ERR layout::do_layout(font_entry **Font, double &Width, double &Height, bool &Ve
       m_margins.left, m_margins.right, m_margins.top, m_margins.bottom);
    #endif
 
-   layout tablestate(Self, m_stream, m_viewport, m_margins), rowstate(Self, m_stream, m_viewport, m_margins), liststate(Self, m_stream, m_viewport, m_margins);
+   layout_checkpoint tablestate, rowstate, liststate;
    bc_table *table;
    double last_height;
    int edit_segment;
@@ -1601,13 +1719,13 @@ extend_page:
             // This is the start of a list.  Each item in the list will be identified by SCODE::PARAGRAPH codes.  The
             // cursor position is advanced by the size of the item graphics element.
 
-            liststate = *this;
+            liststate = capture_checkpoint();
             m_stack_list.push(&m_stream->lookup<bc_list>(idx));
             m_stack_list.top()->repass = false;
             break;
 
          case SCODE::LIST_END:
-            if (lay_list_end()) *this = liststate;
+            if (lay_list_end()) restore_checkpoint(liststate);
             break;
 
          case SCODE::USE: {
@@ -1686,7 +1804,7 @@ extend_page:
             //    expand the cells to meet the requested width.
             // 5. Restart the page layout using the correct width and height settings for the cells.
 
-            tablestate = *this;
+            tablestate = capture_checkpoint();
 
             table = &m_stream->lookup<bc_table>(idx);
             table->reset_row_height = true; // All rows start with a height of min_height up until TABLE_END in the first pass
@@ -1795,7 +1913,7 @@ wrap_table_cell:
             auto action = lay_table_end(*table, m_margins.top, m_margins.bottom, Height, Width);
             if (action != TE::NIL) {
                auto req_width = m_page_width;
-               *this = tablestate;
+               restore_checkpoint(tablestate);
                m_page_width = req_width;
                if (action IS TE::WRAP_TABLE) {
                   Self->LayoutMetrics.table_wrap_restarts++;
@@ -1815,7 +1933,7 @@ wrap_table_cell:
 
          case SCODE::ROW:
             m_row = &m_stream->lookup<bc_row>(idx);
-            rowstate = *this;
+            rowstate = capture_checkpoint();
 
             if (table->reset_row_height) m_row->row_height = m_row->min_height;
 
@@ -1847,12 +1965,12 @@ repass_row_height:
                   goto exit;
 
                case CELL::WRAP_TABLE_CELL:
-                  *this = tablestate;
+                  restore_checkpoint(tablestate);
                   Self->LayoutMetrics.table_wrap_restarts++;
                   goto wrap_table_cell;
 
                case CELL::REPASS_ROW_HEIGHT:
-                  *this = rowstate;
+                  restore_checkpoint(rowstate);
                   Self->LayoutMetrics.row_repasses++;
                   goto repass_row_height;
 
