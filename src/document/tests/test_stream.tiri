@@ -5,6 +5,15 @@
    global glDocFolder = State.folder
 end
 
+function loadXMLMarkup(Markup:str, PageWidth:num)
+   scene = obj.new('VectorScene', { pageWidth=PageWidth ?? 1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document', { viewport=vp })
+   check doc.acDataFeed(nil, DATA_XML, Markup)
+   err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   return err, xml_str
+end
+
 function loadXML(Path:str)
    scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
    vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
@@ -41,7 +50,6 @@ end
 
 @Test function Paragraphs()
    err, xml_str = loadXML('paragraphs.rpl')
-   print(xml_str)
 
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for paragraphs.rpl, err=' .. err)
    assert(xml_str, 'ReadContent(DATA_XML) returned no string for paragraphs.rpl')
@@ -91,7 +99,6 @@ end
    check doc.acDataFeed(nil, DATA_XML,
       '<body/><page><p>5 &lt; 10 &amp; 3 &gt; 2 <a href="test.rpl" hint="A &lt; B &amp; &quot;quoted&quot;">link</a></p></page>')
    err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
-   print(xml_str)
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed: ' .. mSys.GetErrorMsg(err))
    assert(xml_str:find('&lt;'),  'XML output must contain &lt;, got: ' .. xml_str)
    assert(xml_str:find('&gt;'),  'XML output must contain &gt;, got: ' .. xml_str)
@@ -105,7 +112,7 @@ end
 
 @Test function Tables()
    err, xml_str = loadXML('tables.rpl')
-   print(xml_str)
+   //print(xml_str)
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for tables.rpl, err=' .. err)
 
    xml = parseXML(xml_str)
@@ -139,7 +146,6 @@ end
 
 @Test function FontAttrs()
    err, xml_str = loadXML('fonts.rpl')
-   print(xml_str)
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for fonts.rpl, err=' .. err)
 
    xml = parseXML(xml_str)
@@ -228,7 +234,6 @@ end
    assert(start_index != nil, 'Table stream-index must be numeric, got ' .. tostring(table_start))
 
    err, xml_str = doc.mtReadContent(DATA_XML, start_index, start_index + 1)
-   print(xml_str)
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) must not reject non-text content, err=' .. err)
 
    xml = parseXML(xml_str)
@@ -255,7 +260,6 @@ end
    assert(start_index != nil, 'Cell stream-index must be numeric, got ' .. tostring(cell_start))
 
    err, xml_str = doc.mtReadContent(DATA_XML, start_index, start_index + 1)
-   print(xml_str)
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for isolated cell range, err=' .. err)
 
    xml = parseXML(xml_str)
@@ -296,7 +300,6 @@ end
       '<body/><page><p line-height="0px" leading="0%"><table width="0%" height="0px"><row><cell>Zero</cell></row></table></p></page>')
 
    err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
-   print(xml_str)
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for zero DUNIT test, err=' .. err)
 
    xml = parseXML(xml_str)
