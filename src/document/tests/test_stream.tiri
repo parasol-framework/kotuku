@@ -169,6 +169,49 @@ end
    assert(missing_cache_attrs is 0, 'Every cached font must expose core metrics and cache identity')
 end
 
+@Test function FontCacheReuse()
+   markup = '<body/><page><p><font face="Courier Prime" size="16">Alpha</font> '
+      .. '<a href="tables.rpl"><font face="Courier Prime" style="Bold" size="16">Beta</font></a> '
+      .. '<font face="Courier Prime" style="Italic" size="16">Gamma</font></p>'
+      .. '<p><font face="Noto Sans" style="Bold" size="18">Delta</font></p></page>'
+
+   err1, xml_str1 = loadXMLMarkup(markup, 640)
+   assert(err1 is ERR_Okay, 'First font cache reuse read failed, err=' .. err1)
+   xml1 = parseXML(xml_str1)
+   font_count1 = xpathNum(xml1, 'count(/extract/fonts/font)')
+
+   err2, xml_str2 = loadXMLMarkup(markup, 640)
+   assert(err2 is ERR_Okay, 'Second font cache reuse read failed, err=' .. err2)
+   xml2 = parseXML(xml_str2)
+   font_count2 = xpathNum(xml2, 'count(/extract/fonts/font)')
+
+   assert(font_count2 is font_count1,
+      'Repeated mixed-font layout must not grow the shared font cache')
+   assert(xpathNum(xml2, 'count(/extract/stream//link[@ref="tables.rpl"])') >= 1,
+      'Mixed-font cache reuse test must preserve the nested link run')
+   assert(xpathNum(xml2, 'count(/extract/stream//font[@face="Courier Prime" and @index])') >= 3,
+      'Mixed-font runs must retain cache-backed font identity')
+end
+
+@Test function InvalidFontFallback()
+   fallback_markup = '<body/><page><p><font face="Definitely Missing Font" size="19">Fallback text</font></p></page>'
+
+   err1, xml_str1 = loadXMLMarkup(fallback_markup, 480)
+   assert(err1 is ERR_Okay, 'First invalid font fallback read failed, err=' .. err1)
+   xml1 = parseXML(xml_str1)
+   font_count1 = xpathNum(xml1, 'count(/extract/fonts/font)')
+
+   err2, xml_str2 = loadXMLMarkup(fallback_markup, 480)
+   assert(err2 is ERR_Okay, 'Second invalid font fallback read failed, err=' .. err2)
+   xml2 = parseXML(xml_str2)
+   font_count2 = xpathNum(xml2, 'count(/extract/fonts/font)')
+
+   assert(font_count2 is font_count1,
+      'Repeated missing-font requests must reuse the same shared cache entry')
+   assert(xpathNum(xml2, 'count(/extract/stream//font[@face="Definitely Missing Font" and @index])') >= 1,
+      'Missing font fallback must keep the requested stream font cache-backed')
+end
+
 @Test function NonTextContent()
    -- XML serialisation must remain available even when the selected stream contains no text byte-codes.
    -- Discover the first table byte-code dynamically, then extract that table-only range.

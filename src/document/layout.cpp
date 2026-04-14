@@ -2344,7 +2344,10 @@ font_entry * bc_font::layout_font(layout &Layout)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
+   {
+      std::lock_guard lk(glFontsMutex);
+      if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
+   }
 
    // Sanity check the face and point values
 
@@ -2364,29 +2367,50 @@ font_entry * bc_font::layout_font(layout &Layout)
       face.assign(resolved_face);
    }
 
-   APTR new_handle = nullptr;
-   if (vec::GetFontHandle(face.c_str(), style.c_str(), 400, pixel_size, &new_handle) IS ERR::Okay) {
-      for (unsigned i=0; i < glFonts.size(); i++) {
-         if (new_handle IS glFonts[i].handle) {
-            font_index = i;
-            break;
-         }
+   auto cache_key = font_cache_key { face, style, pixel_size };
+   {
+      std::lock_guard lk(glFontsMutex);
+      if (auto it = glFontIndexCache.find(cache_key); it != glFontIndexCache.end()) {
+         font_index = it->second;
+         if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
       }
    }
 
-   if ((font_index IS -1) and (new_handle)) { // Font not in cache
+   APTR new_handle = nullptr;
+   if (vec::GetFontHandle(face.c_str(), style.c_str(), 400, pixel_size, &new_handle) IS ERR::Okay) {
       std::lock_guard lk(glFontsMutex);
 
-      log.branch("Index: %d, %s, %s, %d", int(std::ssize(glFonts)), face.c_str(), style.c_str(), pixel_size);
+      if (auto it = glFontIndexCache.find(cache_key); it != glFontIndexCache.end()) {
+         font_index = it->second;
+      }
+      else {
+         log.branch("Index: %d, %s, %s, %d", int(std::ssize(glFonts)), face.c_str(), style.c_str(), pixel_size);
 
-      font_index = std::ssize(glFonts);
-      glFonts.emplace_back(new_handle, face, style, pixel_size);
+         font_index = std::ssize(glFonts);
+         glFonts.emplace_back(new_handle, face, style, pixel_size);
+         glFontIndexCache.try_emplace(cache_key, font_index);
+      }
+
+      if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
    }
-
-   if (font_index >= 0) return &glFonts[font_index];
+   else {
+      std::lock_guard lk(glFontsMutex);
+      if (!glFonts.empty()) {
+         font_index = 0;
+         glFontIndexCache.try_emplace(cache_key, font_index);
+         return &glFonts[0];
+      }
+   }
 
    log.warning("Failed to create font %s:%d", face.c_str(), pixel_size);
 
-   if (!glFonts.empty()) return &glFonts[0]; // Always try to return a font rather than null
-   else return nullptr;
+   {
+      std::lock_guard lk(glFontsMutex);
+      if (!glFonts.empty()) {
+         font_index = 0;
+         glFontIndexCache.try_emplace(cache_key, font_index);
+         return &glFonts[0];
+      }
+      else return nullptr;
+   }
 }

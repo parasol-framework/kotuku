@@ -433,6 +433,27 @@ struct font_entry {
 static std::mutex glFontsMutex;
 static std::deque<font_entry> glFonts; // font_entry pointers must be kept stable
 
+struct font_cache_key {
+   std::string face;
+   std::string style;
+   int pixel_size = 0;
+
+   bool operator==(const font_cache_key &Other) const {
+      return (pixel_size IS Other.pixel_size) and (face == Other.face) and (style == Other.style);
+   }
+};
+
+struct font_cache_hash {
+   size_t operator()(const font_cache_key &Key) const {
+      auto hash = std::hash<std::string> {}(Key.face);
+      hash ^= std::hash<std::string> {}(Key.style) + 0x9e3779b97f4a7c15ULL + (hash << 6) + (hash >> 2);
+      hash ^= size_t(Key.pixel_size) + 0x9e3779b97f4a7c15ULL + (hash << 6) + (hash >> 2);
+      return hash;
+   }
+};
+
+static ankerl::unordered_dense::map<font_cache_key, int16_t, font_cache_hash> glFontIndexCache;
+
 struct bc_font : public entity {
 private:
    int16_t font_index;    // Font lookup (will reflect the true font face, point size, style)
@@ -453,7 +474,10 @@ public:
    // Calling this is only valid after the layout process has completed, i.e. during drawing and UI operations
 
    font_entry * get_font() const {
-      if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
+      {
+         std::lock_guard lk(glFontsMutex);
+         if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
+      }
 
       pf::Log log(__FUNCTION__);
       log.error("A font_index is -1."); // An index of -1 means a call to layout_font() is missing.
