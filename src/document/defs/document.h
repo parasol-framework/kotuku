@@ -10,6 +10,7 @@ static constexpr int MAX_PAGE_HEIGHT  = 100000;
 static constexpr int MIN_PAGE_WIDTH   = 20;
 static constexpr int MAX_DEPTH        = 40;    // Limits recursion from tables-within-tables
 static constexpr int WIDTH_LIMIT      = 4000;
+static constexpr int MAX_WORD_TOKEN_WIDTH = 0x7fff; // Cached word widths are limited to signed 16-bit range.
 static constexpr int DEFAULT_FONTSIZE = 14;    // 72DPI pixel size
 static std::string DEFAULT_FONTSTYLE("Medium");
 static std::string DEFAULT_FONTFACE("Noto Sans");
@@ -925,6 +926,7 @@ struct bc_text : public entity {
    bool formatted = false;
    bool tokens_dirty = true;    // Set when text content changes, requiring retokenisation
    bool widths_dirty = true;    // Set when font context changes, requiring width recalculation
+   uint32_t width_cache_generation = 0;
    SEGINDEX segment = -1; // Reference to the first segment that manages this text string.
 
    bc_text() { code = SCODE::TEXT; }
@@ -934,10 +936,12 @@ struct bc_text : public entity {
    void invalidate_tokens() {
       tokens_dirty = true;
       widths_dirty = true;
+      width_cache_generation = 0;
    }
 
    void invalidate_widths() {
       widths_dirty = true;
+      width_cache_generation = 0;
       for (auto &t : tokens) t.invalidate_width();
    }
 
@@ -1255,6 +1259,7 @@ class extDocument : public objDocument {
    std::array<std::vector<FUNCTION>, size_t(DRT::END)> Triggers;
    std::vector<const XTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
+   std::string WidthCacheFontFace;
    RSTREAM Stream;             // Internal stream buffer
    stream_char SelectStart, SelectEnd;  // Selection start & end (stream index)
    stream_char CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
@@ -1267,6 +1272,7 @@ class extDocument : public objDocument {
    std::string Background;     // Background fill instruction
    std::string CursorStroke;   // Stroke instruction for the text cursor
    std::string FontStyle;      // Default font style, usually set to Regular
+   std::string WidthCacheFontStyle;
    objXML *Templates;          // All templates for the current document are stored here
    objXML *PretextXML;         // Execute this XML prior to loading a new page.
    objSVG *SVG;                // Allocated by the <svg> tag
@@ -1278,6 +1284,7 @@ class extDocument : public objDocument {
    objVectorScene *Scene;    // A document specific scene is required to keep our resources away from the host
    double VPWidth, VPHeight; // Dimensions of the host Viewport
    double FontSize;          // The default font-size, measured in 72 DPI pixels
+   double WidthCacheFontSize = 0;
    double MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
    Unit   PageWidth;         // Width of the widest section of the document page.  Can be pre-defined by the client for a fixed or relative width
    double LeftMargin, TopMargin, RightMargin, BottomMargin;
@@ -1293,6 +1300,7 @@ class extDocument : public objDocument {
    TIMER    FlashTimer;       // For flashing the cursor
    CELL_ID  ActiveEditCellID; // If editing is active, this refers to the ID of the cell being edited
    uint32_t ActiveEditCRC;      // CRC for cell editing area, used for managing onchange notifications
+   uint32_t WidthCacheGeneration = 1;
    int16_t  FocusIndex;         // Tab focus index
    int16_t  Invisible;          // Incremented for sections within a hidden index
    uint8_t  Processing;         // If > 0, the page layout is being altered
@@ -1304,6 +1312,11 @@ class extDocument : public objDocument {
    bool   CursorState;      // True if the edit cursor is on, false if off.  Used for flashing of the cursor
 
    std::vector<sorted_segment> & get_sorted_segments();
+
+   inline void invalidate_text_width_cache() {
+      WidthCacheGeneration++;
+      if (!WidthCacheGeneration) WidthCacheGeneration = 1;
+   }
 };
 
 bc_button::bc_button() {

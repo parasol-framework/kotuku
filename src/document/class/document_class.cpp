@@ -418,7 +418,10 @@ static ERR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
             parser parse(Self, &Self->Stream);
             parse.process_page(*xml);
          }
-         else Self->Error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, Self->Stream.size(), STYLE::NIL);
+         else {
+            Self->invalidate_text_width_cache();
+            Self->Error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, Self->Stream.size(), STYLE::NIL);
+         }
 
          Self->UpdatingLayout = true;
          if (Self->initialised()) redraw(Self, true);
@@ -913,6 +916,7 @@ static ERR DOCUMENT_InsertXML(extDocument *Self, doc::InsertXML *Args)
 
    if (not xml.ok()) {
       Self->UpdatingLayout = true;
+      Self->invalidate_text_width_cache();
 
       ERR error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, STYLE::NIL);
       if (error != ERR::Okay) log.warning("Insert failed for: %s", Args->XML);
@@ -961,6 +965,7 @@ static ERR DOCUMENT_InsertText(extDocument *Self, doc::InsertText *Args)
    log.traceBranch("Index: %d, Preformat: %d", Args->Index, Args->Preformat);
 
    Self->UpdatingLayout = true;
+   Self->invalidate_text_width_cache();
 
    INDEX index = Args->Index;
    if (index < 0) index = Self->Stream.size();
@@ -1791,6 +1796,7 @@ static ERR DOCUMENT_RemoveContent(extDocument *Self, doc::RemoveContent *Args)
    copymem(Self->Stream.data.data() + end, Self->Stream.data.data() + Args->Start, Self->Stream.data.size() - end);
    Self->Stream.data.resize(Self->Stream.data.size() - end - Args->Start);
 
+   Self->invalidate_text_width_cache();
    Self->UpdatingLayout = true;
    return ERR::Okay;
 }

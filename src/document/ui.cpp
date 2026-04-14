@@ -123,6 +123,7 @@ static bool delete_selected(extDocument *Self)
          }
       }
 
+      Self->invalidate_text_width_cache();
       Self->CursorIndex = Self->SelectIndex;
       Self->SelectIndex.reset();
       return true;
@@ -274,6 +275,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, int Unico
                      // Delete the character/escape code
                      Self->CursorIndex = index;
                      Self->CursorIndex.erase_char(Self->Stream);
+                     Self->invalidate_text_width_cache();
                   }
 
                   Self->UpdatingLayout = true;
@@ -288,6 +290,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, int Unico
          case KEY::DELETE: {
             if (!delete_selected(Self)) {
                Self->CursorIndex.erase_char(Self->Stream);
+               Self->invalidate_text_width_cache();
             }
             Self->UpdatingLayout = true;
             layout_doc_fast(Self);

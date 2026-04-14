@@ -856,6 +856,7 @@ int layout::compute_word_width(const std::string &Str, const word_token &Token, 
 
 WRAP layout::lay_text()
 {
+   pf::Log log(__FUNCTION__);
    auto wrap_result = WRAP::DO_NOTHING; // Needs to change to WRAP::EXTEND_PAGE if a word is > width
 
    m_align_edge = wrap_edge(); // TODO: Not sure about this following the switch to embedded TEXT structures
@@ -868,6 +869,11 @@ WRAP layout::lay_text()
    // Ensure the token cache is up to date
 
    if (text.tokens_dirty) text.tokenise();
+
+   if (text.width_cache_generation != Self->WidthCacheGeneration) {
+      text.invalidate_widths();
+      text.width_cache_generation = Self->WidthCacheGeneration;
+   }
 
    for (auto &tok : text.tokens) {
       if (tok.is_newline()) {
@@ -910,7 +916,13 @@ WRAP layout::lay_text()
             }
             else {
                auto w = compute_word_width(str, tok, 0, last_char);
-               tok.width = int16_t(w);
+               if (w > MAX_WORD_TOKEN_WIDTH) {
+                  log.warning("Word width %d exceeds the legal limit of %d pixels.", w, MAX_WORD_TOKEN_WIDTH);
+                  Self->Error = ERR::InvalidData;
+                  return WRAP::DO_NOTHING;
+               }
+
+               tok.width = w;
                tok.last_char = last_char;
                m_word_width += w;
             }
@@ -920,7 +932,19 @@ WRAP layout::lay_text()
             // Kerning depends on m_kernchar, so we compute character-by-character.
 
             auto w = compute_word_width(str, tok, m_kernchar, last_char);
+            if (w > MAX_WORD_TOKEN_WIDTH) {
+               log.warning("Word width %d exceeds the legal limit of %d pixels.", w, MAX_WORD_TOKEN_WIDTH);
+               Self->Error = ERR::InvalidData;
+               return WRAP::DO_NOTHING;
+            }
+
             m_word_width += w;
+         }
+
+         if (m_word_width > MAX_WORD_TOKEN_WIDTH) {
+            log.warning("Word width %d exceeds the legal limit of %d pixels.", m_word_width, MAX_WORD_TOKEN_WIDTH);
+            Self->Error = ERR::InvalidData;
+            return WRAP::DO_NOTHING;
          }
 
          m_kernchar = last_char;
@@ -1523,6 +1547,15 @@ static void layout_doc(extDocument *Self)
 
    //Self->GlyphAdvanceCache.clear(); // Retain the glyph advance cache between passes since fonts survive the object's lifetime.
    Self->LayoutMetrics.reset();
+
+   if ((Self->WidthCacheFontSize != Self->FontSize) or
+       (Self->WidthCacheFontFace != Self->FontFace) or
+       (Self->WidthCacheFontStyle != Self->FontStyle)) {
+      Self->invalidate_text_width_cache();
+      Self->WidthCacheFontFace = Self->FontFace;
+      Self->WidthCacheFontStyle = Self->FontStyle;
+      Self->WidthCacheFontSize = Self->FontSize;
+   }
 
    layout l(Self, &Self->Stream, Self->Page, margins);
    bool repeat = true;
