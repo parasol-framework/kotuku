@@ -138,7 +138,7 @@ end
 
 @Test global function W3Coords01() hashTestSVG('coords/w3-coords-coord-01-t.svg', 0x8a49c228) end
 @Test global function W3Coords02() hashTestSVG('coords/w3-coords-coord-02-t.svg', 0x8a49c228) end
-@Test global function W3Coords03() hashTestSVG('coords/w3-coords-units-01-b.svg', 0x1b47372d) end
+@Test global function W3Coords03() hashTestSVG('coords/w3-coords-units-01-b.svg', 0xa56c9214) end
 @Test global function W3Coords04() hashTestSVG('coords/w3-coords-units-02-b.svg', 0x5644fad5) end
 @Test global function W3Coords05() hashTestSVG('coords/w3-coords-units-03-b.svg', 0xb462f91b) end
 @Test global function W3Coords06() hashTestSVG('coords/w3-coords-viewattr-01-b.svg', -1) end
