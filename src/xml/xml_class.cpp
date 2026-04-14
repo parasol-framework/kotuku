@@ -222,7 +222,7 @@ static ERR XML_Evaluate(extXML *Self, struct xml::Evaluate *Args)
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
       xq->set(FID_Statement, Args->Statement);
       if (auto error = xq->init(); error IS ERR::Okay) {
-         if (error = xq->evaluate(Self); error IS ERR::Okay) {
+         if (error = xq->evaluate(Self, 0, XEF::NIL); error IS ERR::Okay) {
             CSTRING result;
             if (xq->get(FID_ResultString, result) IS ERR::Okay) Args->Result = pf::strclone(result);
             FreeResource(xq);
@@ -281,7 +281,7 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
       if (auto error = xq->init(); error IS ERR::Okay) {
          matching_tag_opt opt;
          auto callback = C_FUNCTION(save_matching_tag, &opt);
-         if (error = xq->search(Self, callback); error IS ERR::Terminate) {
+         if (error = xq->search(Self, callback, 0, XEF::NIL); error IS ERR::Terminate) {
             if (opt.tag_id) {
                auto tag = Self->getTag(opt.tag_id);
                auto new_tags = TAGS(tag, tag + 1);
@@ -371,11 +371,11 @@ static ERR XML_Search(extXML *Self, struct xml::Search *Args)
          if ((Args->Callback) and (Args->Callback->defined())) {
             opt.callback = Args->Callback;
             callback = C_FUNCTION(find_all_tags, &opt);
-            error = xq->search((objXML *)Self, callback);
+            error = xq->search((objXML *)Self, callback, 0, XEF::NIL);
          }
          else {
             callback = C_FUNCTION(save_matching_tag, &opt);
-            error = xq->search((objXML *)Self, callback);
+            error = xq->search((objXML *)Self, callback, 0, XEF::NIL);
             if (error IS ERR::Terminate) error = ERR::Okay; // Terminate means a match was accepted
             else if (error IS ERR::Okay) error = ERR::Search; // Nothing found
          }
@@ -622,7 +622,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
       xq->set(FID_Statement, Args->Key);
       if (auto error = xq->init(); error IS ERR::Okay) {
-         if (error = xq->evaluate(Self); error IS ERR::Okay) {
+         if (error = xq->evaluate(Self, 0, XEF::NIL); error IS ERR::Okay) {
             auto result = xq->get<CSTRING>(FID_ResultString);
             if (result) pf::strcopy(result, Args->Value, Args->Size);
             FreeResource(xq);
@@ -976,7 +976,7 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
       if (auto error = xq->init(); error IS ERR::Okay) {
          matching_tag_opt opt;
          auto callback = C_FUNCTION(save_matching_tag, &opt);
-         if (error = xq->search((objXML *)Self, callback); error IS ERR::Terminate) {
+         if (error = xq->search((objXML *)Self, callback, 0, XEF::NIL); error IS ERR::Terminate) {
             xml::InsertXML insert { .Index = opt.tag_id, .Where = Args->Where, .XML = Args->XML };
             if (error = XML_InsertXML(Self, &insert); error IS ERR::Okay) {
                Args->Result = insert.Result;
@@ -1267,7 +1267,7 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
          while (limit > 0) {
             matching_tag_opt opt;
             auto callback = C_FUNCTION(save_matching_tag, &opt);
-            if (xq->search((objXML *)Self, callback) != ERR::Terminate) break;
+            if (xq->search((objXML *)Self, callback, 0, XEF::NIL) != ERR::Terminate) break;
             auto tag = Self->getTag(opt.tag_id);
             if (!tag) break; // Sanity check
 
@@ -1575,7 +1575,7 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
       if (auto error = xq->init(); error IS ERR::Okay) {
          matching_tag_opt opt;
          auto callback = C_FUNCTION(save_matching_tag, &opt);
-         if (error = xq->search((objXML *)Self, callback); error IS ERR::Terminate) {
+         if (error = xq->search((objXML *)Self, callback, 0, XEF::NIL); error IS ERR::Terminate) {
             auto tag = Self->getTag(opt.tag_id);
             if (not tag) {
                FreeResource(xq);
@@ -1713,7 +1713,7 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
          if (auto error = xq->init(); error IS ERR::Okay) {
             matching_tag_opt opt;
             auto callback = C_FUNCTION(save_matching_tag, &opt.tag_id);
-            if (error = xq->search((objXML *)Self, callback); error != ERR::Terminate) {
+            if (error = xq->search((objXML *)Self, callback, 0, XEF::NIL); error != ERR::Terminate) {
                CSTRING str;
                if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
                FreeResource(xq);

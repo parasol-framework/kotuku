@@ -16,6 +16,10 @@
   </info>
 
   <types>
+    <constants lookup="XEF" comment="Options for XQuery evaluation flags.">
+      <const name="LIMIT_SCOPE">For tag specific queries, limit the scope to the specified element.</const>
+    </constants>
+
     <constants lookup="XIF" comment="Result flags for InspectFunctions().">
       <const name="ALL">Synonym for <code>AST | NAME | PARAMETERS | RETURN_TYPE | USER_DEFINED | SIGNATURE</code></const>
       <const name="AST">Include the compiled function body in the inspection result.</const>
