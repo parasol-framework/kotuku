@@ -281,19 +281,206 @@ void parser::process_page(objXML *pXML)
 }
 
 //********************************************************************************************************************
+// Determine whether an attribute on a given tag should be treated as an XQuery expression (evaluated as a whole) or
+// as an attribute value template (AVT) with embedded `{...}` expression fragments.  Attributes so classified are
+// bypassed by translate_attrib_args() so that their source text is preserved for late XQuery evaluation by the tag
+// handler.
+//
+// Stage 1 scope:
+//   if@test, elseif@test, while@test       -> XQuery expression attributes
+//   print@select, parse@select             -> XQuery expression attributes
+//   print@value                            -> AVT
+
+static bool is_xquery_expression_attrib(uint32_t TagHash, std::string_view AttribName)
+{
+   auto name = AttribName;
+   if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+
+   if (iequals("test", name)) {
+      return (TagHash IS HASH_if) or (TagHash IS HASH_elseif) or (TagHash IS HASH_while);
+   }
+   else if (iequals("select", name)) {
+      return (TagHash IS HASH_print) or (TagHash IS HASH_parse);
+   }
+   return false;
+}
+
+static bool is_xquery_avt_attrib(uint32_t TagHash, std::string_view AttribName, std::string_view AttribValue)
+{
+   auto name = AttribName;
+   if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+
+   if ((TagHash IS HASH_print) and (iequals("value", name))) {
+      // Only bypass legacy [%...] substitution when the value contains AVT markers.
+      return (AttribValue.find('{') != std::string_view::npos) or
+             (AttribValue.find('}') != std::string_view::npos);
+   }
+   return false;
+}
+
+//********************************************************************************************************************
 // Translate all arguments found in a list of XML attributes.
+//
+// XQuery-aware attributes (test, select, and AVT-capable value attributes on selected tags) are bypassed here so that
+// their source text is preserved untouched for evaluation by the tag handler.
 
 void parser::translate_attrib_args(pf::vector<XMLAttrib> &Attribs)
 {
    if (Attribs[0].isContent()) return;
 
+   std::string_view tag_name(Attribs[0].Name);
+   if ((!tag_name.empty()) and (tag_name.front() IS '$')) tag_name.remove_prefix(1);
+   auto tag_hash = strihash(tag_name);
+
    for (int attrib=1; attrib < std::ssize(Attribs); attrib++) {
       if (Attribs[attrib].Name.starts_with('$')) continue;
+
+      if (is_xquery_expression_attrib(tag_hash, Attribs[attrib].Name)) continue;
+      if (is_xquery_avt_attrib(tag_hash, Attribs[attrib].Name, Attribs[attrib].Value)) continue;
 
       std::string output;
       translate_args(Attribs[attrib].Value, output);
       Attribs[attrib].Value = output;
    }
+}
+
+//********************************************************************************************************************
+// XQuery evaluation helpers for Stage 1.
+//
+// These helpers are intentionally thin wrappers around the XQuery object class so that parser-visible behaviour mirrors
+// a standard xml:evaluate() call.  The XML context is optional; when absent, the evaluator still supports literal and
+// function-based expressions.  Errors from compilation or evaluation propagate to the caller via the returned ERR and
+// the document Self->Error field.
+
+enum class XQEval { STRING, BOOLEAN };
+
+static ERR xquery_eval_helper(extDocument *Self, objXML *XMLContext, const std::string &Expression,
+   XQEval Mode, std::string &OutString, bool &OutBoolean)
+{
+   pf::Log log(__FUNCTION__);
+
+   OutString.clear();
+   OutBoolean = false;
+
+   if (Expression.empty()) return ERR::Okay;
+
+   objXQuery *xq;
+   if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) != ERR::Okay) {
+      log.warning("Failed to allocate XQuery object.");
+      return ERR::NewObject;
+   }
+
+   xq->set(FID_Statement, Expression.c_str());
+
+   ERR err = xq->init();
+   if (err IS ERR::Okay) {
+      err = xq->evaluate(XMLContext);
+   }
+
+   if (err != ERR::Okay) {
+      CSTRING msg;
+      if (xq->get(FID_ErrorMsg, msg) IS ERR::Okay) {
+         log.warning("XQuery error evaluating \"%s\": %s", Expression.c_str(), msg ? msg : "(none)");
+      }
+      else log.warning("XQuery error evaluating \"%s\".", Expression.c_str());
+      FreeResource(xq);
+      return err;
+   }
+
+   if (Mode IS XQEval::STRING) {
+      CSTRING result;
+      if (xq->get(FID_ResultString, result) IS ERR::Okay) {
+         if (result) OutString.assign(result);
+      }
+   }
+   else {
+      // XPath effective boolean value: evaluate as boolean via wrapping in boolean(...) to reuse XQuery's coercion.
+      objXQuery *xqb;
+      if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xqb) IS ERR::Okay) {
+         std::string bool_expr = "boolean(" + Expression + ")";
+         xqb->set(FID_Statement, bool_expr.c_str());
+         if ((xqb->init() IS ERR::Okay) and (xqb->evaluate(XMLContext) IS ERR::Okay)) {
+            CSTRING result;
+            if (xqb->get(FID_ResultString, result) IS ERR::Okay) {
+               if (result and iequals("true", result)) OutBoolean = true;
+            }
+         }
+         FreeResource(xqb);
+      }
+   }
+
+   FreeResource(xq);
+   return ERR::Okay;
+}
+
+// Expand a string containing attribute value template fragments `{...}`, evaluating each embedded XQuery expression
+// and concatenating the result with literal parts.  Follows the same escaping rules as the XQuery tokeniser so that
+// `{{` and `}}` are preserved as literal `{` and `}`.
+
+static ERR xquery_expand_avt(extDocument *Self, objXML *XMLContext, const std::string &Input, std::string &Output)
+{
+   pf::Log log(__FUNCTION__);
+   Output.clear();
+
+   size_t pos = 0;
+   const size_t len = Input.size();
+
+   while (pos < len) {
+      char ch = Input[pos];
+
+      if (ch IS '{') {
+         if ((pos + 1 < len) and (Input[pos + 1] IS '{')) {
+            Output += '{';
+            pos += 2;
+            continue;
+         }
+
+         // Scan expression body, respecting nested braces and quoted strings.
+         size_t expr_start = pos + 1;
+         size_t scan = expr_start;
+         int depth = 1;
+         while ((scan < len) and (depth > 0)) {
+            char sc = Input[scan];
+            if ((sc IS '\'') or (sc IS '"')) {
+               char quote = sc;
+               scan++;
+               while (scan < len) {
+                  char inner = Input[scan++];
+                  if (inner IS '\\' and scan < len) { scan++; continue; }
+                  if (inner IS quote) break;
+               }
+               continue;
+            }
+            else if (sc IS '{') { depth++; scan++; }
+            else if (sc IS '}') { depth--; if (depth IS 0) break; else scan++; }
+            else scan++;
+         }
+
+         if (depth != 0) {
+            log.warning("Unterminated attribute value template: %s", Input.c_str());
+            return ERR::Syntax;
+         }
+
+         std::string expr = Input.substr(expr_start, scan - expr_start);
+         pos = scan + 1;
+
+         std::string evaluated;
+         bool unused;
+         ERR err = xquery_eval_helper(Self, XMLContext, expr, XQEval::STRING, evaluated, unused);
+         if (err != ERR::Okay) return err;
+         Output += evaluated;
+      }
+      else if (ch IS '}' and (pos + 1 < len) and (Input[pos + 1] IS '}')) {
+         Output += '}';
+         pos += 2;
+      }
+      else {
+         Output += ch;
+         pos++;
+      }
+   }
+
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -837,10 +1024,32 @@ static bool eval_condition(const std::string &String)
 
 //********************************************************************************************************************
 // Used by if, elseif, while statements to check the satisfaction of conditions.
+//
+// Stage 1 XQuery integration: the `test` attribute is recognised as a standalone XQuery expression.  When present it
+// takes precedence over the legacy statement/exists/notnull/null/not attributes.  The result of the expression is
+// coerced via XQuery's effective boolean value rules (boolean(...)).
 
 static bool check_tag_conditions(extDocument *Self, XTag &Tag)
 {
    pf::Log log("eval");
+
+   // Check for an XQuery test attribute first so that it overrides legacy condition attributes.
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      auto name = std::string_view(Tag.Attribs[i].Name);
+      if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+      if (iequals("test", name)) {
+         std::string result;
+         bool boolean_result = false;
+         auto err = xquery_eval_helper(Self, nullptr, Tag.Attribs[i].Value,
+            XQEval::BOOLEAN, result, boolean_result);
+         if (err != ERR::Okay) {
+            log.warning("XQuery test failed: %s", Tag.Attribs[i].Value.c_str());
+            return false;
+         }
+         log.trace("Test: %s -> %s", Tag.Attribs[i].Value.c_str(), boolean_result ? "true" : "false");
+         return boolean_result;
+      }
+   }
 
    bool satisfied = false;
    bool reverse = false;
@@ -2301,8 +2510,42 @@ void parser::tag_parse(XTag &Tag)
 
    // The value attribute will contain XML.  We will parse the XML as if it were part of the document source.  This feature
    // is typically used when pulling XML information out of an object field.
+   //
+   // Stage 1 XQuery integration:
+   //   select="..."  evaluates an XQuery expression and parses the resulting string as XML/RIPL content.
 
    if (std::ssize(Tag.Attribs) > 1) {
+      // Prefer select over value when both are present.
+      for (int i=1; i < std::ssize(Tag.Attribs); i++) {
+         auto name = std::string_view(Tag.Attribs[i].Name);
+         if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+         if (iequals("select", name)) {
+            std::string result;
+            bool unused;
+            auto err = xquery_eval_helper(Self, nullptr, Tag.Attribs[i].Value,
+               XQEval::STRING, result, unused);
+            if (err != ERR::Okay) {
+               log.warning("<parse select=\"%s\"> failed.", Tag.Attribs[i].Value.c_str());
+               Self->Error = err;
+               return;
+            }
+
+            log.traceBranch("Parsing XQuery result as XML...");
+            auto xmlinc = objXML::create::local(fl::Statement(result),
+               fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
+            if (!xmlinc) {
+               log.warning("<parse select> produced non-parseable XML: %.120s", result.c_str());
+               Self->Error = ERR::Syntax;
+               return;
+            }
+            auto old_xml = change_xml(xmlinc);
+            parse_tags(xmlinc->Tags);
+            change_xml(old_xml);
+            Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
+            return;
+         }
+      }
+
       if ((iequals("value", Tag.Attribs[1].Name)) or
           (iequals("$value", Tag.Attribs[1].Name))) {
          log.traceBranch("Parsing string value as XML...");
@@ -2666,13 +2909,48 @@ void parser::tag_print(XTag &Tag)
 
    // Copy the content from the value attribute into the document stream.  If used inside an object, the data is sent
    // to that object as XML.
+   //
+   // Stage 1 XQuery integration:
+   //   select="..."  evaluates an XQuery expression and inserts its string value
+   //   value="..."   may contain `{...}` attribute value template fragments
 
    if (Tag.Attribs.size() > 1) {
+      // Prefer select over value when both are present.
+      for (int i=1; i < std::ssize(Tag.Attribs); i++) {
+         auto name = std::string_view(Tag.Attribs[i].Name);
+         if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+         if (iequals("select", name)) {
+            std::string result;
+            bool unused;
+            auto err = xquery_eval_helper(Self, nullptr, Tag.Attribs[i].Value,
+               XQEval::STRING, result, unused);
+            if (err != ERR::Okay) {
+               log.warning("<print select=\"%s\"> failed.", Tag.Attribs[i].Value.c_str());
+               return;
+            }
+            insert_text(Self, m_stream, m_index, result, (m_style.options & FSO::PREFORMAT) != FSO::NIL);
+            return;
+         }
+      }
+
       auto tagname = Tag.Attribs[1].Name.c_str();
       if (*tagname IS '$') tagname++;
 
       if (iequals("value", tagname)) {
-         insert_text(Self, m_stream, m_index, Tag.Attribs[1].Value, (m_style.options & FSO::PREFORMAT) != FSO::NIL);
+         // If the attribute contains AVT fragments, expand them via XQuery.  Otherwise preserve existing behaviour.
+         const auto &raw = Tag.Attribs[1].Value;
+         bool has_avt = (raw.find('{') != std::string::npos) or (raw.find('}') != std::string::npos);
+
+         if (has_avt) {
+            std::string expanded;
+            auto err = xquery_expand_avt(Self, nullptr, raw, expanded);
+            if (err != ERR::Okay) {
+               log.warning("<print value=\"%s\"> AVT expansion failed.", raw.c_str());
+               return;
+            }
+            insert_text(Self, m_stream, m_index, expanded, (m_style.options & FSO::PREFORMAT) != FSO::NIL);
+         }
+         else insert_text(Self, m_stream, m_index, raw, (m_style.options & FSO::PREFORMAT) != FSO::NIL);
       }
       else if (iequals("src", Tag.Attribs[1].Name)) {
          // This option is only supported in unrestricted mode
