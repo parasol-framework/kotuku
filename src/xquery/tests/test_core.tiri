@@ -236,6 +236,12 @@ end
    err, bookId = xml.mtSearch('/root/book[@id="b"]')
    assert(err is ERR_Okay, 'Should locate the target book for indexed XQuery evaluation')
 
+   err, bookAId = xml.mtSearch('/root/book[@id="a"]')
+   assert(err is ERR_Okay, 'Should locate the sibling book for indexed escape checks')
+
+   err, chapterId = xml.mtSearch('/root/book[@id="b"]/chapter[@id="c"]')
+   assert(err is ERR_Okay, 'Should locate the nested chapter for indexed escape checks')
+
    xq = obj.new('xquery', { statement = '@id' })
    err = xq.mtEvaluate(xml, bookId)
    assert(err is ERR_Okay, 'Indexed evaluate should accept direct attribute queries: ' .. mSys.GetErrorMsg(err))
@@ -262,6 +268,34 @@ end
    err = xq.mtSearch(xml, (XML, TagID) => chapterCount++, bookId)
    assert(err is ERR_Okay and chapterCount is 1,
       'Indexed descendant queries should remain scoped to the selected subtree, count=' .. tostring(chapterCount))
+
+   xq.statement = '..'
+   local escapedId = nil
+   err = xq.mtSearch(xml, function(XML, TagID)
+      escapedId = TagID
+   end, chapterId)
+   assert(escapedId is nil, 'Indexed parent navigation should not escape the selected subtree root')
+
+   xq.statement = 'ancestor::root'
+   escapedId = nil
+   err = xq.mtSearch(xml, function(XML, TagID)
+      escapedId = TagID
+   end, chapterId)
+   assert(escapedId is nil, 'Indexed ancestor navigation should not reach nodes above the selected subtree root')
+
+   xq.statement = 'following-sibling::book'
+   escapedId = nil
+   err = xq.mtSearch(xml, function(XML, TagID)
+      escapedId = TagID
+   end, bookAId)
+   assert(escapedId is nil, 'Indexed sibling navigation should not reach sibling nodes outside the selected subtree')
+
+   xq.statement = 'title/following::chapter'
+   escapedId = nil
+   err = xq.mtSearch(xml, function(XML, TagID)
+      escapedId = TagID
+   end, bookAId)
+   assert(escapedId is nil, 'Indexed following axis should not return nodes that fall outside the selected subtree')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

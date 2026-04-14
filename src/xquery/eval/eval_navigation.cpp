@@ -29,19 +29,41 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
 {
    std::vector<AxisMatch> matches;
    XTag *root_scope = absolute_root_node;
+   bool scope_active = root_scope != nullptr;
 
    size_t estimated_capacity = axis_evaluator.estimate_result_size(Axis, ContextNode);
    matches.reserve(estimated_capacity);
 
-   auto append_nodes = [this, &matches](NODES &nodes) {
+   auto is_within_root_scope = [this, root_scope, scope_active](XTag *Node) -> bool {
+      if (not scope_active) return true;
+      if (not Node) return false;
+      if (Node IS root_scope) return true;
+
+      XTag *current = Node;
+      while (current) {
+         auto &parent_buffer = arena.acquire_node_vector(1);
+         axis_evaluator.evaluate_axis(AxisType::PARENT, current, parent_buffer);
+         XTag *parent = parent_buffer.empty() ? nullptr : parent_buffer[0];
+         arena.release_node_vector(parent_buffer);
+
+         if (parent IS root_scope) return true;
+         current = parent;
+      }
+
+      return false;
+   };
+
+   auto append_nodes = [this, &matches, &is_within_root_scope](NODES &nodes) {
       matches.reserve(matches.size() + nodes.size());
       for (auto *node : nodes) {
+         if (not is_within_root_scope(node)) continue;
          matches.push_back({ node, nullptr });
       }
       arena.release_node_vector(nodes);
    };
 
    bool attribute_context = ContextAttribute != nullptr;
+   bool context_in_scope = (not scope_active) or is_within_root_scope(ContextNode);
 
    switch (Axis) {
       case AxisType::CHILD: {
@@ -96,7 +118,7 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
 
       case AxisType::DESCENDANT_OR_SELF: {
          if (attribute_context) {
-            matches.push_back({ ContextNode, ContextAttribute });
+            if (context_in_scope) matches.push_back({ ContextNode, ContextAttribute });
             break;
          }
 
@@ -119,7 +141,7 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
             }
          }
          else {
-            matches.push_back({ ContextNode, nullptr });
+            if (context_in_scope) matches.push_back({ ContextNode, nullptr });
             auto &desc_buffer = arena.acquire_node_vector();
             axis_evaluator.evaluate_axis(AxisType::DESCENDANT, ContextNode, desc_buffer);
             append_nodes(desc_buffer);
@@ -129,15 +151,15 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
 
       case AxisType::SELF: {
          if (attribute_context) {
-            matches.push_back({ ContextNode, ContextAttribute });
+            if (context_in_scope) matches.push_back({ ContextNode, ContextAttribute });
          }
-         else matches.push_back({ ContextNode, nullptr });
+         else if (context_in_scope) matches.push_back({ ContextNode, nullptr });
          break;
       }
 
       case AxisType::PARENT: {
          if (attribute_context) {
-            if (ContextNode) matches.push_back({ ContextNode, nullptr });
+            if (ContextNode and context_in_scope) matches.push_back({ ContextNode, nullptr });
          }
          else if (ContextNode) {
             auto &parent_buffer = arena.acquire_node_vector();
@@ -149,7 +171,7 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
 
       case AxisType::ANCESTOR: {
          if (attribute_context) {
-            if (ContextNode) {
+            if (ContextNode and context_in_scope) {
                matches.push_back({ ContextNode, nullptr });
                auto &ancestor_buffer = arena.acquire_node_vector();
                axis_evaluator.evaluate_axis(AxisType::ANCESTOR, ContextNode, ancestor_buffer);
@@ -165,7 +187,7 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
       }
 
       case AxisType::ANCESTOR_OR_SELF: {
-         if (attribute_context) {
+         if (attribute_context and context_in_scope) {
             matches.push_back({ ContextNode, ContextAttribute });
             if (ContextNode) {
                matches.push_back({ ContextNode, nullptr });
@@ -174,7 +196,7 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
                append_nodes(ancestor_buffer);
             }
          }
-         else if (ContextNode) {
+         else if (ContextNode and context_in_scope) {
             matches.push_back({ ContextNode, nullptr });
             auto &ancestor_buffer = arena.acquire_node_vector();
             axis_evaluator.evaluate_axis(AxisType::ANCESTOR, ContextNode, ancestor_buffer);
