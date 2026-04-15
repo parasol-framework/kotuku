@@ -774,7 +774,8 @@ static ERR TASK_Activate(extTask *Self)
    if ((Self->Flags & TSF::PIPE) != TSF::NIL) internal_redirect |= TSTD_IN;
 
    if (not (winerror = winLaunchProcess(Self, final_buffer.data(), (!launchdir.empty()) ? launchdir.data() : 0, group,
-         internal_redirect, &Self->Platform, hide_output, redirect_stdout.data(), redirect_stderr.data(), &Self->ProcessID))) {
+         internal_redirect, &Self->Platform, hide_output, (!redirect_stdout.empty()) ? redirect_stdout.data() : nullptr,
+         (!redirect_stderr.empty()) ? redirect_stderr.data() : nullptr, &Self->ProcessID))) {
 
       error = ERR::Okay;
       if (((Self->Flags & TSF::WAIT) != TSF::NIL) and (Self->TimeOut > 0)) {
@@ -802,8 +803,10 @@ static ERR TASK_Activate(extTask *Self)
 
    CSTRING path = nullptr;
    GET_LaunchPath(Self, &path);
+   if ((path) and (not *path)) path = nullptr;
 
    std::ostringstream buffer;
+   std::string fallback_path;
 
    i = 0;
    if (((Self->Flags & TSF::RESET_PATH) != TSF::NIL) or (path)) {
@@ -811,26 +814,37 @@ static ERR TASK_Activate(extTask *Self)
 
       buffer << "cd ";
 
-      if (not path) path = Self->Location.c_str();
+      if (not path) {
+         fallback_path.assign(Self->Location);
+         if (auto i = fallback_path.find_last_of("/\\:"); i != std::string::npos) fallback_path.resize(i+1);
+         else fallback_path.clear();
+         path = fallback_path.c_str();
+      }
       std::string rpath;
       if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
          while (rpath.ends_with('/')) rpath.pop_back();
-         buffer << rpath;
+         buffer << '"' << rpath << '"';
       }
       else {
          auto p = std::string_view(path);
          while (p.ends_with('/')) p.remove_suffix(1);
-         buffer << p;
+         buffer << '"' << p << '"';
       }
+
+      buffer << " && ";
    }
 
    // Resolve the location of the executable (may contain an volume) and copy it to the command line buffer.
 
    std::string rpath;
    if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
-      buffer << rpath;
+      if ((Self->Flags & TSF::SHELL) != TSF::NIL) buffer << '"' << rpath << '"';
+      else buffer << rpath;
    }
-   else buffer << Self->Location;
+   else {
+      if ((Self->Flags & TSF::SHELL) != TSF::NIL) buffer << '"' << Self->Location << '"';
+      else buffer << Self->Location;
+   }
 
    // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF::SHELL is used,
    // however it is extremely useful in the debug printout to see what is being executed.
@@ -899,7 +913,7 @@ static ERR TASK_Activate(extTask *Self)
 
    if ((out_fd IS -1) and ((Self->Flags & TSF::QUIET) != TSF::NIL)) {
       log.msg("Output will go to NULL");
-      out_fd = open("/dev/null", O_RDONLY);
+      out_fd = open("/dev/null", O_WRONLY);
    }
 
    if (Self->ErrorCallback.defined()) {
@@ -916,7 +930,7 @@ static ERR TASK_Activate(extTask *Self)
    }
 
    if ((out_errfd IS -1) and ((Self->Flags & TSF::QUIET) != TSF::NIL)) {
-      out_errfd = open("/dev/null", O_RDONLY);
+      out_errfd = open("/dev/null", O_WRONLY);
    }
 
    // Fork a new task.  Remember that forking produces an exact duplicate of the process that made the fork.
@@ -1048,7 +1062,7 @@ static ERR TASK_Activate(extTask *Self)
    }
    else execv(final_buffer.c_str(), (char * const *)&argslist);
 
-   exit(EXIT_FAILURE);
+   _exit(EXIT_FAILURE);
 #endif
 }
 
