@@ -1178,8 +1178,6 @@ cases, the system's environment variables are queried):
 \HKEY_USERS\
 </pre>
 
-Example for reading the `Kotuku` key value `\HKEY_CURRENT_USER\Software\Kotuku`
-
 If the `Name` string ends with a trailing backslash, all keys and sub-keys held at that location are returned as a
 tab-separated list in the form `Name1\tName2...`.  Sub-key names are distinguished from values by a trailing
 backslash, e.g. `SubKey\\`.  This is useful for enumerating the complete contents of a registry key without needing
@@ -1284,22 +1282,14 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
                Self->Env.clear();
                char value_name[256];
                int8_t buffer[4096];
-               std::string formatted;
 
-               // Enumerate all values stored at this key.
+               // Enumerate all key-value names stored at this key.
 
                for (int index = 0; ; index++) {
                   int name_len = sizeof(value_name);
                   int data_len = sizeof(buffer);
                   int type;
                   if (RegEnumValueA(keyhandle, index, value_name, &name_len, 0, &type, buffer, &data_len)) break;
-
-                  formatted.clear();
-                  if (not format_value(type, buffer, data_len, formatted)) {
-                     log.warning("Unsupported registry type %d for value %s", type, value_name);
-                     continue;
-                  }
-
                   if (not Self->Env.empty()) Self->Env += '\t';
                   Self->Env.append(value_name, name_len);
                }
