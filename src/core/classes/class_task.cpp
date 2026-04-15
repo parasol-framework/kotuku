@@ -629,10 +629,11 @@ static ERR TASK_Activate(extTask *Self)
       bool hide_output;
       int winerror;
    #endif
-   #ifdef __unix__
+#ifdef __unix__
       int pid;
       int8_t privileged, shell;
-   #endif
+      int8_t requested_shell;
+#endif
 
    Self->ReturnCodeSet = false;
 
@@ -774,7 +775,8 @@ static ERR TASK_Activate(extTask *Self)
    if ((Self->Flags & TSF::PIPE) != TSF::NIL) internal_redirect |= TSTD_IN;
 
    if (not (winerror = winLaunchProcess(Self, final_buffer.data(), (!launchdir.empty()) ? launchdir.data() : 0, group,
-         internal_redirect, &Self->Platform, hide_output, redirect_stdout.data(), redirect_stderr.data(), &Self->ProcessID))) {
+         internal_redirect, &Self->Platform, hide_output, (!redirect_stdout.empty()) ? redirect_stdout.data() : nullptr,
+         (!redirect_stderr.empty()) ? redirect_stderr.data() : nullptr, &Self->ProcessID))) {
 
       error = ERR::Okay;
       if (((Self->Flags & TSF::WAIT) != TSF::NIL) and (Self->TimeOut > 0)) {
@@ -800,10 +802,25 @@ static ERR TASK_Activate(extTask *Self)
 
    // Add a 'cd' command so that the application starts in its own folder
 
+   auto shell_quote = [](std::string_view Value) {
+      std::string quoted;
+      quoted.reserve(Value.size() + 2);
+      quoted += '\'';
+      for (auto ch : Value) {
+         if (ch != '\'') quoted += ch;
+         else quoted.append("'\\''");
+      }
+      quoted += '\'';
+      return quoted;
+   };
+
    CSTRING path = nullptr;
    GET_LaunchPath(Self, &path);
+   if ((path) and (not *path)) path = nullptr;
+   requested_shell = ((Self->Flags & TSF::SHELL) != TSF::NIL) ? 1 : 0;
 
    std::ostringstream buffer;
+   std::string fallback_path;
 
    i = 0;
    if (((Self->Flags & TSF::RESET_PATH) != TSF::NIL) or (path)) {
@@ -811,26 +828,37 @@ static ERR TASK_Activate(extTask *Self)
 
       buffer << "cd ";
 
-      if (not path) path = Self->Location.c_str();
+      if (not path) {
+         fallback_path.assign(Self->Location);
+         if (auto i = fallback_path.find_last_of("/\\:"); i != std::string::npos) fallback_path.resize(i+1);
+         else fallback_path.clear();
+         path = fallback_path.c_str();
+      }
       std::string rpath;
       if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
          while (rpath.ends_with('/')) rpath.pop_back();
-         buffer << rpath;
+         buffer << shell_quote(rpath);
       }
       else {
          auto p = std::string_view(path);
          while (p.ends_with('/')) p.remove_suffix(1);
-         buffer << p;
+         buffer << shell_quote(p);
       }
+
+      buffer << " && ";
    }
 
    // Resolve the location of the executable (may contain an volume) and copy it to the command line buffer.
 
    std::string rpath;
    if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
-      buffer << rpath;
+      if (((Self->Flags & TSF::SHELL) != TSF::NIL) and (!requested_shell)) buffer << shell_quote(rpath);
+      else buffer << rpath;
    }
-   else buffer << Self->Location;
+   else {
+      if (((Self->Flags & TSF::SHELL) != TSF::NIL) and (!requested_shell)) buffer << shell_quote(Self->Location);
+      else buffer << Self->Location;
+   }
 
    // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF::SHELL is used,
    // however it is extremely useful in the debug printout to see what is being executed.
@@ -838,16 +866,11 @@ static ERR TASK_Activate(extTask *Self)
    std::ostringstream params;
    if ((Self->Flags & TSF::SHELL) != TSF::NIL) {
       for (auto &param : Self->Parameters) {
-         params << ' ';
-         if (param.find(' ') != std::string::npos) params << '"' << param << '"';
-         else params << param;
+         params << ' ' << shell_quote(param);
       }
    }
 
-   // Convert single quotes into double quotes
-
    auto final_buffer = buffer.str();
-   for (int i=0; i < std::ssize(final_buffer); i++) if (final_buffer[i] IS '\'') final_buffer[i] = '"';
 
    log.msg("%s", final_buffer.c_str());
 
@@ -899,7 +922,7 @@ static ERR TASK_Activate(extTask *Self)
 
    if ((out_fd IS -1) and ((Self->Flags & TSF::QUIET) != TSF::NIL)) {
       log.msg("Output will go to NULL");
-      out_fd = open("/dev/null", O_RDONLY);
+      out_fd = open("/dev/null", O_WRONLY);
    }
 
    if (Self->ErrorCallback.defined()) {
@@ -916,7 +939,7 @@ static ERR TASK_Activate(extTask *Self)
    }
 
    if ((out_errfd IS -1) and ((Self->Flags & TSF::QUIET) != TSF::NIL)) {
-      out_errfd = open("/dev/null", O_RDONLY);
+      out_errfd = open("/dev/null", O_WRONLY);
    }
 
    // Fork a new task.  Remember that forking produces an exact duplicate of the process that made the fork.
@@ -1039,16 +1062,12 @@ static ERR TASK_Activate(extTask *Self)
    }
 
    final_buffer.append(params.str());
-   if (shell) { // For some reason, bash terminates the argument list if it encounters a # symbol, so we'll strip those out.
-      for (j=0,i=0; i < std::ssize(final_buffer); i++) {
-         if (final_buffer[i] != '#') final_buffer[j++] = final_buffer[i];
-      }
-
+   if (shell) {
       execl("/bin/sh", "sh", "-c", final_buffer.c_str(), (char *)nullptr);
    }
    else execv(final_buffer.c_str(), (char * const *)&argslist);
 
-   exit(EXIT_FAILURE);
+   _exit(EXIT_FAILURE);
 #endif
 }
 
