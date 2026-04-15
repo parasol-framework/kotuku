@@ -924,26 +924,12 @@ static ERR TASK_Activate(extTask *Self)
    privileged = ((Self->Flags & TSF::PRIVILEGED) != TSF::NIL) ? 1 : 0;
    shell = ((Self->Flags & TSF::SHELL) != TSF::NIL) ? 1 : 0;
 
-   // Check system resource limits before forking
-   struct rlimit rlim;
-   if (getrlimit(RLIMIT_NPROC, &rlim) IS 0) {
-      if (rlim.rlim_cur != RLIM_INFINITY) {
-         // Count current processes to see if we're near the limit
-         // Leave some margin (10% or at least 5 processes) before hitting the limit
-         auto margin = std::max(5UL, rlim.rlim_cur / 10);
-         if ((rlim.rlim_cur + margin) >= rlim.rlim_max) {
-            log.warning("Too close to process limit (%lu/%lu), refusing to fork", rlim.rlim_cur, rlim.rlim_max);
-            cleanup_task_fds(input_fd, out_fd, out_errfd, in_fd, in_errfd);
-            return ERR::ProcessCreation;
-         }
-      }
-   }
-
    pid = fork();
 
    if (pid IS -1) {
       cleanup_task_fds(input_fd, out_fd, out_errfd, in_fd, in_errfd);
-      log.warning("Failed in an attempt to fork(): %s", strerror(errno));
+      if (errno IS EAGAIN) log.warning("Failed in an attempt to fork(): process limit or system resources exhausted.");
+      else log.warning("Failed in an attempt to fork(): %s", strerror(errno));
       return ERR::ProcessCreation;
    }
 
