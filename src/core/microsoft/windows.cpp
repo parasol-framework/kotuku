@@ -276,6 +276,22 @@ static void printerror(void)
 }
 
 //********************************************************************************************************************
+// Check if a handle refers to a console
+
+static int8_t is_console(HANDLE h)
+{
+   if (FILE_TYPE_UNKNOWN IS GetFileType(h) and ERROR_INVALID_HANDLE IS GetLastError()) {
+       if ((h = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr))) {
+           CloseHandle(h);
+           return true;
+       }
+   }
+
+   CONSOLE_FONT_INFO cfi;
+   return GetCurrentConsoleFont(h, false, &cfi) != 0;
+}
+
+//********************************************************************************************************************
 // If the program is launched from a console, attach to it.  Otherwise create a new console window and redirect output
 // to it (e.g. if launched from a desktop icon).
 
@@ -288,10 +304,17 @@ extern "C" void activate_console(int8_t AllowOpenConsole)
       if (GetEnvironmentVariable("TERM", value, sizeof(value)) or
           GetEnvironmentVariable("PROMPT", value, sizeof(value))) { // TERM defined by Cygwin, Mingw, PROMPT defined by cmd.exe
 
+         HANDLE current_out = GetStdHandle(STD_OUTPUT_HANDLE);
+         HANDLE current_err = GetStdHandle(STD_ERROR_HANDLE);
+
          AttachConsole(ATTACH_PARENT_PROCESS);
 
-         freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
-         freopen("CON", "w", stderr);
+         // Double-check if we're attached to the console with is_console() because the parent process may have
+         // redirected the std* descriptors to a file for instance.  If we freopen() blindly then we otherwise
+         // revert output back to the console.
+
+         if (is_console(current_out)) freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
+         if (is_console(current_err)) freopen("CON", "w", stderr);
       }
       else if (AllowOpenConsole) { // Assume that executable was launched from desktop without a console
          AllocConsole();
