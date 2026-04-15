@@ -737,6 +737,10 @@ extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
                      // Replace device path with DOS path
                      std::string tmpfile = szDrive + std::string(String+devlen);
                      if ((tmpfile.size() > 0) and (tmpfile.size() < MAX_PATH)) {
+                        size_t last_slash = tmpfile.find_last_of('\\');
+                        if (last_slash != std::string::npos) tmpfile.resize(last_slash + 1);
+                        else return 0;
+
                         size_t copy_len = std::min<size_t>(tmpfile.size(), Length - 1);
                         memcpy(String, tmpfile.c_str(), copy_len);
                         String[copy_len] = 0;
