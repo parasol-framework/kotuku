@@ -306,7 +306,8 @@ or booleans.
 
 -INPUT-
 obj(XML) XML: Targeted XML document to query.  Can be NULL for XQuery expressions that do not require a context.
-int Index: Optional tag index that establishes the initial context and absolute root scope for the query.
+int Index: Optional tag index that establishes the initial context for the query.
+int(XEF) Flags: Optional flags.
 
 -ERRORS-
 Okay
@@ -363,7 +364,7 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
 
       XPathEvaluator eval(Self, xml, Self->ParseResult.expression.get(), &Self->ParseResult);
       if (root_tag) {
-         eval.set_absolute_root_node(root_tag);
+         if ((Args->Flags & XEF::LIMIT_SCOPE) != XEF::NIL) eval.set_absolute_root_node(root_tag);
          eval.push_context(root_tag, 1, 1);
       }
       auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
@@ -643,7 +644,8 @@ The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib,
 -INPUT-
 obj(XML) XML: Target XML document to search.
 ptr(func) Callback: Optional callback function to invoke for each matching node.
-int Index: Optional tag index that establishes the initial context and absolute root scope for the query.
+int Index: Optional tag index that establishes the initial context for the query.
+int(XEF) Flags: Optional flags.
 
 -ERRORS-
 Okay: At least one matching node was found and processed.
@@ -705,7 +707,7 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
       (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
       XPathEvaluator eval(Self, xml, Self->ParseResult.expression.get(), &Self->ParseResult);
       if (root_tag) {
-         eval.set_absolute_root_node(root_tag);
+         if ((Args->Flags & XEF::LIMIT_SCOPE) != XEF::NIL) eval.set_absolute_root_node(root_tag);
          eval.push_context(root_tag, 1, 1);
       }
       auto error = eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match

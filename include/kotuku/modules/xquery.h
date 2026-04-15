@@ -120,6 +120,15 @@ enum class XIF : uint32_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(XIF)
 
+// Options for XQuery evaluation flags.
+
+enum class XEF : uint32_t {
+   NIL = 0,
+   LIMIT_SCOPE = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(XEF)
+
 // XQuery class definition
 
 #define VER_XQUERY (1.000000)
@@ -127,8 +136,8 @@ DEFINE_ENUM_FLAG_OPERATORS(XIF)
 // XQuery methods
 
 namespace xq {
-struct Evaluate { objXML * XML; int Index; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Search { objXML * XML; FUNCTION * Callback; int Index; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Evaluate { objXML * XML; int Index; XEF Flags; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Search { objXML * XML; FUNCTION * Callback; int Index; XEF Flags; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RegisterFunction { CSTRING FunctionName; FUNCTION * Callback; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct InspectFunctions { CSTRING Name; XIF ResultFlags; CSTRING Result; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
@@ -157,12 +166,12 @@ class objXQuery : public Object {
       struct acSetKey args = { FieldName, Value };
       return Action(AC::SetKey, this, &args);
    }
-   inline ERR evaluate(objXML * XML, int Index = 0) noexcept {
-      struct xq::Evaluate args = { XML, Index };
+   inline ERR evaluate(objXML * XML, int Index, XEF Flags) noexcept {
+      struct xq::Evaluate args = { XML, Index, Flags };
       return(Action(AC(-1), this, &args));
    }
-   inline ERR search(objXML * XML, FUNCTION Callback, int Index = 0) noexcept {
-      struct xq::Search args = { XML, &Callback, Index };
+   inline ERR search(objXML * XML, FUNCTION Callback, int Index, XEF Flags) noexcept {
+      struct xq::Search args = { XML, &Callback, Index, Flags };
       return(Action(AC(-2), this, &args));
    }
    inline ERR registerFunction(CSTRING FunctionName, FUNCTION Callback) noexcept {

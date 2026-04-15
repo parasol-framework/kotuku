@@ -1,7 +1,8 @@
 -- Core XPath query tests
 
    include 'xml'
-
+   include 'xquery'
+   
 function contains(table, element)
    for value in values(table) do
       if value is element then return true end
@@ -242,6 +243,9 @@ end
    err, chapterId = xml.mtSearch('/root/book[@id="b"]/chapter[@id="c"]')
    assert(err is ERR_Okay, 'Should locate the nested chapter for indexed escape checks')
 
+   err, rootId = xml.mtSearch('/root')
+   assert(err is ERR_Okay, 'Should locate the document root for indexed ancestor checks')
+
    xq = obj.new('xquery', { statement = '@id' })
    err = xq.mtEvaluate(xml, bookId)
    assert(err is ERR_Okay, 'Indexed evaluate should accept direct attribute queries: ' .. mSys.GetErrorMsg(err))
@@ -259,42 +263,76 @@ end
       'Relative title lookup should return the title under the selected book')
 
    xq.statement = '/book/title'
-   err = xq.mtEvaluate(xml, bookId)
+   err = xq.mtEvaluate(xml, bookId, XEF_LIMIT_SCOPE)
    assert(err is ERR_Okay, 'Indexed absolute paths should be rooted at the selected tag subtree: ' .. mSys.GetErrorMsg(err))
    assert(xq.resultString is 'Two', 'Absolute indexed query should resolve within the selected subtree')
 
    xq.statement = '//chapter'
    chapterCount = 0
-   err = xq.mtSearch(xml, (XML, TagID) => chapterCount++, bookId)
+   err = xq.mtSearch(xml, (XML, TagID) => chapterCount++, bookId, XEF_LIMIT_SCOPE)
    assert(err is ERR_Okay and chapterCount is 1,
       'Indexed descendant queries should remain scoped to the selected subtree, count=' .. tostring(chapterCount))
+
+   xq.statement = '/root/book[@id="a"]/title'
+   err = xq.mtEvaluate(xml, bookId)
+   assert(err is ERR_Okay, 'Unscoped indexed absolute paths should still evaluate against the full document: ' .. mSys.GetErrorMsg(err))
+   assert(xq.resultString is 'One', 'Unscoped indexed absolute paths should not be limited to the selected subtree')
 
    xq.statement = '..'
    local escapedId = nil
    err = xq.mtSearch(xml, function(XML, TagID)
       escapedId = TagID
    end, chapterId)
-   assert(escapedId is nil, 'Indexed parent navigation should not escape the selected subtree root')
+   assert(err is ERR_Okay and escapedId is bookId, 'Unscoped indexed parent navigation should reach the parent node')
 
    xq.statement = 'ancestor::root'
    escapedId = nil
    err = xq.mtSearch(xml, function(XML, TagID)
       escapedId = TagID
    end, chapterId)
-   assert(escapedId is nil, 'Indexed ancestor navigation should not reach nodes above the selected subtree root')
+   assert(err is ERR_Okay and escapedId is rootId, 'Unscoped indexed ancestor navigation should reach the document root')
 
    xq.statement = 'following-sibling::book'
    escapedId = nil
    err = xq.mtSearch(xml, function(XML, TagID)
       escapedId = TagID
    end, bookAId)
-   assert(escapedId is nil, 'Indexed sibling navigation should not reach sibling nodes outside the selected subtree')
+   assert(err is ERR_Okay and escapedId is bookId, 'Unscoped indexed sibling navigation should reach sibling nodes outside the selected subtree')
 
    xq.statement = 'title/following::chapter'
    escapedId = nil
    err = xq.mtSearch(xml, function(XML, TagID)
       escapedId = TagID
    end, bookAId)
+   assert(err is ERR_Okay and escapedId is chapterId,
+      'Unscoped indexed following axis should return nodes outside the selected subtree')
+
+   xq.statement = '..'
+   escapedId = nil
+   err = xq.mtSearch(xml, function(XML, TagID)
+      escapedId = TagID
+   end, chapterId, XEF_LIMIT_SCOPE)
+   assert(escapedId is nil, 'Indexed parent navigation should not escape the selected subtree root')
+
+   xq.statement = 'ancestor::root'
+   escapedId = nil
+   err = xq.mtSearch(xml, function(XML, TagID)
+      escapedId = TagID
+   end, chapterId, XEF_LIMIT_SCOPE)
+   assert(escapedId is nil, 'Indexed ancestor navigation should not reach nodes above the selected subtree root')
+
+   xq.statement = 'following-sibling::book'
+   escapedId = nil
+   err = xq.mtSearch(xml, function(XML, TagID)
+      escapedId = TagID
+   end, bookAId, XEF_LIMIT_SCOPE)
+   assert(escapedId is nil, 'Indexed sibling navigation should not reach sibling nodes outside the selected subtree')
+
+   xq.statement = 'title/following::chapter'
+   escapedId = nil
+   err = xq.mtSearch(xml, function(XML, TagID)
+      escapedId = TagID
+   end, bookAId, XEF_LIMIT_SCOPE)
    assert(escapedId is nil, 'Indexed following axis should not return nodes that fall outside the selected subtree')
 end
 
