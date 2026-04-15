@@ -107,6 +107,7 @@ flute_test (${MOD}_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced.tir
 flute_test (${MOD}_advanced_paths "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_paths.tiri")
 flute_test (${MOD}_flwor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor.tiri")
 flute_test (${MOD}_module_loading "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_module_loading.tiri")
+flute_test (${MOD}_resolve_variable "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_resolve_variable.tiri")
 flute_test (${MOD}_type_expr "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_type_expr.tiri")
 flute_test (${MOD}_type_constructors "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_type_constructors.tiri")
 flute_test (${MOD}_sequence_cardinality "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_sequence_cardinality.tiri")
