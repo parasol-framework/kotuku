@@ -204,5 +204,6 @@ class objXQuery : public Object {
 namespace xq {
 
 using XQueryFunction = ERR (*)(objXQuery *Query, std::string_view FunctionName, const std::vector<XPathValue> &Input, XPathValue &Result, APTR Meta);
+using XQueryResolveVariable = ERR (*)(objXQuery *Query, std::string_view Name, XPathValue *Result, APTR Meta);
 
 } // namespace xq

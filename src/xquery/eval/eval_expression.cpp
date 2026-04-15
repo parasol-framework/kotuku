@@ -257,11 +257,64 @@ static XPathVal clone_xpath_value(const XPathValue &Source)
    clone.node_set_string_override = Source.node_set_string_override;
    clone.node_set_string_values = Source.node_set_string_values;
    clone.node_set_attributes = Source.node_set_attributes;
-    clone.node_set_composite_values = Source.node_set_composite_values;
+   clone.node_set_composite_values = Source.node_set_composite_values;
    clone.preserve_node_order = Source.preserve_node_order;
    clone.map_storage = Source.map_storage;
    clone.array_storage = Source.array_storage;
    return clone;
+}
+
+//********************************************************************************************************************
+// Invokes the late-bound variable resolver callback and caches both hit and miss outcomes for the current evaluation.
+
+static ERR resolve_variable_callback(XPathEvaluator &Evaluator, std::string_view Name,
+   XPathVal &OutValue, const XPathNode *ReferenceNode)
+{
+   if (not Evaluator.query->ResolveVariable.defined()) return ERR::Search;
+
+   std::string cache_key(Name);
+
+   if (auto cached = Evaluator.resolved_callback_variables.find(cache_key);
+      cached != Evaluator.resolved_callback_variables.end()) {
+      OutValue = cached->second;
+      return ERR::Okay;
+   }
+
+   if (Evaluator.missing_callback_variables.find(cache_key) != Evaluator.missing_callback_variables.end()) {
+      return ERR::Search;
+   }
+
+   if (Evaluator.query->ResolveVariable.Type IS CALL::SCRIPT) {
+      Evaluator.record_error("ResolveVariable script callbacks are not supported.", ReferenceNode, true);
+      return ERR::NoSupport;
+   }
+
+   if ((Evaluator.query->ResolveVariable.Type != CALL::STD_C) or (not Evaluator.query->ResolveVariable.Routine)) {
+      Evaluator.record_error("ResolveVariable callback is invalid.", ReferenceNode, true);
+      return ERR::Args;
+   }
+
+   auto routine = (ERR (*)(objXQuery *, std::string_view, XPathValue *, APTR))Evaluator.query->ResolveVariable.Routine;
+
+   XPathValue resolved_public(XPVT::Boolean);
+   resolved_public.reset();
+
+   auto error = routine(Evaluator.query, Name, &resolved_public, Evaluator.query->ResolveVariable.Meta);
+   if (error IS ERR::Search) {
+      Evaluator.missing_callback_variables.insert(std::move(cache_key));
+      return ERR::Search;
+   }
+
+   if (error != ERR::Okay) {
+      std::string message = "ResolveVariable callback failed for $" + std::string(Name) + ": " + GetErrorMsg(error);
+      Evaluator.record_error(message, ReferenceNode, true);
+      return error;
+   }
+
+   XPathVal resolved_value = clone_xpath_value(resolved_public);
+   auto inserted = Evaluator.resolved_callback_variables.insert_or_assign(cache_key, std::move(resolved_value));
+   OutValue = inserted.first->second;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1002,7 +1055,9 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    }
 
    auto prolog = context.prolog;
-   if (not prolog) return false;
+   if (not prolog) {
+      return resolve_variable_callback(*this, QName, OutValue, ReferenceNode) IS ERR::Okay;
+   }
 
    const XQueryVariable *variable = prolog->find_variable(QName);
    std::shared_ptr<XQueryProlog> owner_prolog = prolog;
@@ -1129,7 +1184,9 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
          active_module_cache = module_cache;
       }
 
-      if (not variable) return false;
+      if (not variable) {
+         return resolve_variable_callback(*this, QName, OutValue, ReferenceNode) IS ERR::Okay;
+      }
    }
 
    if (owner_prolog) {
