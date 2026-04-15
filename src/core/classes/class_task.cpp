@@ -24,10 +24,6 @@ The task object that represents the active process can be acquired from ~Current
 
 #define PRV_TASK
 
-#ifdef __CYGWIN__
-#undef __unix__
-#endif
-
 #ifdef __unix__
  #include <unistd.h>
  #include <stdio.h>
@@ -45,11 +41,7 @@ The task object that represents the active process can be acquired from ~Current
 #endif
 
 #ifdef _WIN32
- #ifdef __CYGWIN__
-  #include <unistd.h>
- #else
-  #include <direct.h>
- #endif
+ #include <direct.h>
  #include <stdio.h>
 #endif
 

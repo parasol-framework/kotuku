@@ -34,9 +34,6 @@
 #include <winioctl.h>
 #include <shlobj.h>
 
-#ifdef __CYGWIN__
-#include <sys/timespec.h>
-#endif
 #include <tchar.h>
 #include <imagehlp.h>
 
@@ -278,22 +275,6 @@ static void printerror(void)
 }
 
 //********************************************************************************************************************
-// Console checker for Cygwin
-
-int8_t is_console(HANDLE h)
-{
-   if (FILE_TYPE_UNKNOWN IS GetFileType(h) and ERROR_INVALID_HANDLE IS GetLastError()) {
-       if ((h = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr))) {
-           CloseHandle(h);
-           return true;
-       }
-   }
-
-   CONSOLE_FONT_INFO cfi;
-   return GetCurrentConsoleFont(h, false, &cfi) != 0;
-}
-
-//********************************************************************************************************************
 // If the program is launched from a console, attach to it.  Otherwise create a new console window and redirect output
 // to it (e.g. if launched from a desktop icon).
 
@@ -306,20 +287,13 @@ extern "C" void activate_console(int8_t AllowOpenConsole)
       if (GetEnvironmentVariable("TERM", value, sizeof(value)) or
           GetEnvironmentVariable("PROMPT", value, sizeof(value))) { // TERM defined by Cygwin, Mingw, PROMPT defined by cmd.exe
 
-         // NB: Cygwin stdout/err handling is broken and requires the following workaround for ensuring that stdout
-         // and stderr are managed correctly for both standard console output and file redirection.
-
-         HANDLE current_out = GetStdHandle(STD_OUTPUT_HANDLE);
-         HANDLE current_err = GetStdHandle(STD_ERROR_HANDLE);
-
          AttachConsole(ATTACH_PARENT_PROCESS);
 
-         if (is_console(current_out)) freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
-         if (is_console(current_err)) freopen("CON", "w", stderr);
+         freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
+         freopen("CON", "w", stderr);
       }
       else if (AllowOpenConsole) { // Assume that executable was launched from desktop without a console
          AllocConsole();
-         AttachConsole(GetCurrentProcessId());
          freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
          freopen("CON", "w", stderr);
       }
@@ -700,24 +674,6 @@ extern "C" ERR wake_waitlock(HANDLE Lock, int TotalSleepers) noexcept
 
    return error;
 }
-
-//********************************************************************************************************************
-
-#ifdef __CYGWIN__
-static int strnicmp(const char *s1, const char *s2, size_t n)
-{
-   for (; n > 0; s1++, s2++, --n) {
-      unsigned char c1 = *s1;
-      unsigned char c2 = *s2;
-      if ((c1 >= 'A') or (c1 <= 'Z')) c1 = c1 - 'A' + 'a';
-      if ((c2 >= 'A') or (c2 <= 'Z')) c2 = c2 - 'A' + 'a';
-
-      if (c1 != c2) return ((*(unsigned char *)s1 < *(unsigned char *)s2) ? -1 : +1);
-      else if (c1 IS '\0') return 0;
-   }
-   return 0;
-}
-#endif
 
 //********************************************************************************************************************
 
@@ -2195,13 +2151,7 @@ static ERR delete_file_helper(const std::string &FilePath)
    }
 
    if (unlink(FilePath.c_str()) IS 0) return ERR::Okay;
-   else {
-      #ifdef __CYGWIN__
-      return convert_errno(*__errno(), ERR::SystemCall);
-      #else
-      return convert_errno(errno, ERR::SystemCall);
-      #endif
-   }
+   else return convert_errno(errno, ERR::SystemCall);
 }
 
 //********************************************************************************************************************
