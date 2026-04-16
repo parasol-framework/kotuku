@@ -104,7 +104,7 @@ end
 end
 
 @Test function FixtureLoopFrameIntegration()
-   xml_str = loadAndRead('xquery_stage3.rpl')
+   xml_str = loadAndRead('xquery_iterate.rpl')
 
    assert(contains(xml_str, 'REPEAT-FRAME idx=2 iter=0 start=2 step=1 count=4 end=6'),
       '$loop metadata must expose the first repeat iteration state')

@@ -2,17 +2,16 @@
 <!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
 
 <info>
- <title>XQuery Stage 3 Tests</title>
+ <title>XQuery Iteration Tests</title>
  <author>Paul Manias</author>
- <keywords>xquery, test, stage3</keywords>
- <description>Stage 3 runtime loop-frame tests for repeat and while execution, nested loop restoration and loop control.</description>
+ <description>Loop-frame tests for repeat and while execution, nested loop restoration and loop control.</description>
 </info>
 
 <body face="Noto Sans" font-size="10pt"/>
 
-<page name="Stage3">
+<page>
 
-<p>XQuery Stage 3</p>
+<p>XQuery Iteration Tests</p>
 
 <repeat start="2" end="6">
   <p><print value="REPEAT-FRAME idx={$loop?index} iter={$loop?iteration} start={$loop?start} step={$loop?step} count={$loop?count} end={$loop?end}"/></p>
