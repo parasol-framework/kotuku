@@ -70,8 +70,8 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Fixture coverage
 
-@Test function FixtureStageOneSurface()
-   xml_str = loadAndRead('xquery_stage1.rpl')
+@Test function Conditionals()
+   xml_str = loadAndRead('xquery.rpl')
 
    assert(contains(xml_str, 'IF-TEST-TRUE'), 'if@test true branch must emit IF-TEST-TRUE')
    assert(not contains(xml_str, 'IF-TEST-FAIL'), 'if@test false branch must not emit IF-TEST-FAIL')
@@ -103,7 +103,7 @@ end
    assert(contains(xml_str, 'MISSING fallback'), 'Missing map lookups must fall through to defaults')
 end
 
-@Test function FixtureLoopFrameIntegration()
+@Test function LoopFrameIntegration()
    xml_str = loadAndRead('xquery_iterate.rpl')
 
    assert(contains(xml_str, 'REPEAT-FRAME idx=2 iter=0 start=2 step=1 count=4 end=6'),
@@ -154,19 +154,11 @@ end
       'Descending repeat loops must keep the end bound exclusive')
 end
 
-@Test function FixtureMigrationSurface()
+@Test function BuiltInVariables()
    xml_str = loadAndRead('xquery_stage4.rpl', 1024, nil, 'stage4document', true)
 
-   assert(contains(xml_str, 'IF-TEST-TRUE'), 'if@test must remain the canonical conditional surface')
-   assert(not contains(xml_str, 'IF-TEST-FAIL'), 'if@test must not fall through to the else branch when true')
-   assert(contains(xml_str, 'ELSEIF-TEST-TRUE'), 'elseif@test must evaluate XQuery conditions')
-   assert(not contains(xml_str, 'ELSEIF-FAIL'), 'elseif@test must suppress failure markers')
-   assert(contains(xml_str, 'OBJECT-EXISTS-TRUE'), 'kt-object-exists() must resolve known objects')
-   assert(contains(xml_str, 'OBJECT-EXISTS-FALSE'), 'kt-object-exists() must report missing objects cleanly')
-   assert(contains(xml_str, 'REPEAT 0'), '$loop?index must drive migrated repeat output')
-   assert(contains(xml_str, 'REPEAT 2'), '$loop?index must rebind across repeat iterations')
-   assert(contains(xml_str, 'WHILE 0'), '$loop?index must drive migrated while output')
-   assert(contains(xml_str, 'WHILE 2'), '$loop?index must keep incrementing inside while loops')
+   assert(contains(xml_str, 'OBJECT-EXISTS-TRUE'), 'kt:object-exists() must resolve known objects')
+   assert(contains(xml_str, 'OBJECT-EXISTS-FALSE'), 'kt:object-exists() must report missing objects cleanly')
    assert(contains(xml_str, 'STYLE italic courier 20px red'), '$style must expose the active parser style')
    assert(contains(xml_str, 'PAGE Stage4'), '$meta?current-page must remain available after migration')
    assert(contains(xml_str, 'LAYOUT 1024 x 768'), '$layout view dimensions must remain available after migration')

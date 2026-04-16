@@ -14,11 +14,11 @@
 
 <p>XQuery Stage 4</p>
 
-<if test="kt-object-exists('stage4document')">
+<if test="kt:object-exists('stage4document')">
   <p>OBJECT-EXISTS-TRUE</p>
 </if>
 
-<if test="not(kt-object-exists('MissingObject'))">
+<if test="not(kt:object-exists('MissingObject'))">
   <p>OBJECT-EXISTS-FALSE</p>
 </if>
 

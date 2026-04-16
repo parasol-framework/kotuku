@@ -462,11 +462,35 @@ void parser::translate_attrib_args(pf::vector<XMLAttrib> &Attribs)
 
 enum class XQEval { STRING, BOOLEAN };
 
-static constexpr std::string_view XQ_OBJECT_EXISTS_FUNCTION = "kt-object-exists";
-static constexpr std::string_view XQ_OBJECT_ID_FUNCTION = "kt-object-id";
-static constexpr std::string_view XQ_SELF_ID_FUNCTION = "kt-self-id";
-static constexpr std::string_view XQ_FIELD_FUNCTION = "kt-field";
-static constexpr std::string_view XQ_KEY_FUNCTION = "kt-key";
+static constexpr std::string_view XQ_KOTUKU_NAMESPACE_URI = "http://www.kotuku.dev/namespaces/kotuku";
+static constexpr std::string_view XQ_OBJECT_EXISTS_FUNCTION = "kt:object-exists";
+static constexpr std::string_view XQ_OBJECT_ID_FUNCTION = "kt:object-id";
+static constexpr std::string_view XQ_SELF_ID_FUNCTION = "kt:self-id";
+static constexpr std::string_view XQ_FIELD_FUNCTION = "kt:field";
+static constexpr std::string_view XQ_KEY_FUNCTION = "kt:key";
+
+static std::string xq_build_eval_expression(std::string_view Expression, XQEval Mode)
+{
+   std::string eval_expression;
+   bool uses_kt_prefix = Expression.find("kt:") != std::string_view::npos;
+   bool declares_kt_namespace = Expression.find("declare namespace kt") != std::string_view::npos;
+
+   if ((uses_kt_prefix) and (!declares_kt_namespace)) {
+      eval_expression.reserve(Expression.size() + XQ_KOTUKU_NAMESPACE_URI.size() + 40);
+      eval_expression += "declare namespace kt = '";
+      eval_expression += XQ_KOTUKU_NAMESPACE_URI;
+      eval_expression += "'; ";
+   }
+
+   if (Mode IS XQEval::BOOLEAN) {
+      eval_expression += "boolean(";
+      eval_expression += Expression;
+      eval_expression += ")";
+   }
+   else eval_expression += Expression;
+
+   return eval_expression;
+}
 
 static inline void xq_map_append_value(std::shared_ptr<XPathMapStorage> &Storage, std::string_view Key,
    const XPathValue &Value)
@@ -900,9 +924,7 @@ static ERR xq_eval_helper(parser *Parser, objXML *XMLContext, XTag *ContextTag, 
 
    if (Expression.empty()) return ERR::Okay;
 
-   std::string eval_expression;
-   if (Mode IS XQEval::BOOLEAN) eval_expression = "boolean(" + Expression + ")";
-   else eval_expression = Expression;
+   auto eval_expression = xq_build_eval_expression(Expression, Mode);
 
    if (not Self->Query) {
       if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&Self->Query) IS ERR::Okay) {
