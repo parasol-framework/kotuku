@@ -73,12 +73,20 @@ else ()
 endif ()
 
 if (WIN32)
-   # Specifying the WIN32 option will generate a Windows GUI application
-   add_executable (origo_cmd WIN32 "origo.cpp" "sandbox-win.cpp" "${PROJECT_SOURCE_DIR}/src/link/resource.rc")
+   if (ORIGO_CONSOLE)
+      add_executable (origo_cmd "origo.cpp" "sandbox-win.cpp" "${PROJECT_SOURCE_DIR}/src/link/resource.rc")
+   else ()
+      # WIN32 keyword sets the Windows subsystem to GUI (no console window)
+      add_executable (origo_cmd WIN32 "origo.cpp" "sandbox-win.cpp" "${PROJECT_SOURCE_DIR}/src/link/resource.rc")
+   endif ()
 
    # Disable automatic manifest generation since we provide our own
    if (MSVC)
-      set_target_properties(origo_cmd PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+      if (ORIGO_CONSOLE)
+         set_target_properties(origo_cmd PROPERTIES LINK_FLAGS "/MANIFEST:NO /SUBSYSTEM:CONSOLE")
+      else ()
+         set_target_properties(origo_cmd PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+      endif ()
    endif()
 else ()
    add_executable (origo_cmd "origo.cpp")
