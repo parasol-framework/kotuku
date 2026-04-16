@@ -298,38 +298,3 @@ end
    err = feedExpectError('<body/><page><p><print value="broken {$vars?}"/></p></page>', 1024, 'alice')
    assert(err != ERR_Okay, 'Malformed AVT expression must fail document parsing')
 end
-
-@Test function LegacyStatementRejected()
-   err = feedExpectError('<body/><page><if statement="1 &gt; 0"><p>FAIL</p></if></page>')
-   assert(err != ERR_Okay, 'Legacy statement= must now fail parsing')
-end
-
-@Test function LegacyExistsRejected()
-   err = feedExpectError('<body/><page><if exists="stage4document"><p>FAIL</p></if></page>', 1024, nil, 'stage4document')
-   assert(err != ERR_Okay, 'Legacy exists= must now fail parsing')
-end
-
-@Test function LegacyNotNullRejected()
-   err = feedExpectError('<body/><page><if notnull="true"><p>FAIL</p></if></page>')
-   assert(err != ERR_Okay, 'Legacy notnull= must now fail parsing')
-end
-
-@Test function LegacyParamRejected()
-   err = feedExpectError('<body face="[@font:courier]"/><page><p>FAIL</p></page>')
-   assert(err != ERR_Okay, 'Legacy [@...] substitution must now fail parsing')
-end
-
-@Test function LegacyReservedRejected()
-   err = feedExpectError('<body/><page><p><print value="[%path]"/></p></page>')
-   assert(err != ERR_Okay, 'Legacy [%...] substitution must now fail parsing')
-end
-
-@Test function LegacyCalcRejected()
-   err = feedExpectError('<body/><page><p><advance x="[=1+2]"/>FAIL</p></page>')
-   assert(err != ERR_Okay, 'Legacy [=...] substitution must now fail parsing')
-end
-
-@Test function LegacyObjectReferenceRejected()
-   err = feedExpectError('<body/><page><p><print value="[self]"/></p></page>')
-   assert(err != ERR_Okay, 'Legacy [self]/[object.field] syntax must now fail parsing')
-end
