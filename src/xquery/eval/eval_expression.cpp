@@ -1027,7 +1027,7 @@ static bool evaluate_quantified_binding_recursive(XPathEvaluator &Self, XPathCon
 //********************************************************************************************************************
 // Resolves a variable reference by consulting the dynamic context, document bindings, and finally the prolog.
 
-bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
+ERR XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
    XPathVal &OutValue, const XPathNode *ReferenceNode)
 {
    std::string name(QName);
@@ -1037,18 +1037,18 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       auto local_variable = context.variables->find(name);
       if (local_variable != context.variables->end()) {
          OutValue = local_variable->second;
-         return true;
+         return ERR::Okay;
       }
    }
 
    if (auto var = query->Variables.find(name); var != query->Variables.end()) {
       OutValue = XPathVal(var->second);
-      return true;
+      return ERR::Okay;
    }
 
    auto prolog = context.prolog;
    if (not prolog) {
-      return resolve_variable_callback(*this, QName, OutValue, ReferenceNode) IS ERR::Okay;
+      return resolve_variable_callback(*this, QName, OutValue, ReferenceNode);
    }
 
    const XQueryVariable *variable = prolog->find_variable(QName);
@@ -1105,13 +1105,13 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
          if (module_uri.empty()) {
             std::string message = "Module variable '" + name + "' has an unresolved namespace.";
             record_error(message, ReferenceNode, true);
-            return false;
+            return ERR::Syntax;
          }
 
          auto module_cache = context.module_cache;
          if (not module_cache) {
             record_error("Module variable '" + name + "' requires a module cache.", ReferenceNode, true);
-            return false;
+            return ERR::Syntax;
          }
 
          (void)module_cache->fetch_or_load(module_uri, *prolog, *this);
@@ -1120,11 +1120,11 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
          if (not module_info) {
             // Preserve earlier loader diagnostics when present
             record_error("Module '" + module_uri + "' could not be loaded for variable '" + name + "'.", ReferenceNode, false);
-            return false;
+            return ERR::Syntax;
          }
          else if (not module_info->prolog) {
             record_error("Module '" + module_uri + "' does not expose a prolog.", ReferenceNode, false);
-            return false;
+            return ERR::Syntax;
          }
 
          const XQueryVariable *module_variable = module_info->prolog->find_variable(name);
@@ -1168,7 +1168,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
          if (not module_variable) {
             std::string message = "Module variable '" + name + "' is not declared by namespace '" + module_uri + "'.";
             record_error(message, ReferenceNode, true);
-            return false;
+            return ERR::Syntax;
          }
 
          variable = module_variable;
@@ -1177,7 +1177,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       }
 
       if (not variable) {
-         return resolve_variable_callback(*this, QName, OutValue, ReferenceNode) IS ERR::Okay;
+         return resolve_variable_callback(*this, QName, OutValue, ReferenceNode);
       }
    }
 
@@ -1194,7 +1194,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    auto cached_value = prolog_variable_cache.find(normalised_name);
    if (cached_value != prolog_variable_cache.end()) {
       OutValue = cached_value->second;
-      return true;
+      return ERR::Okay;
    }
 
    if (normalised_name != name) {
@@ -1202,7 +1202,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       if (alias_value != prolog_variable_cache.end()) {
          prolog_variable_cache.insert_or_assign(normalised_name, alias_value->second);
          OutValue = alias_value->second;
-         return true;
+         return ERR::Okay;
       }
    }
 
@@ -1214,26 +1214,26 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
             prolog_variable_cache.insert_or_assign(name, declared_value->second);
          }
          OutValue = declared_value->second;
-         return true;
+         return ERR::Okay;
       }
    }
 
    if (variable->is_external) {
       std::string message = "External variable '" + name + "' is not supported.";
       record_error(message, ReferenceNode, true);
-      return false;
+      return ERR::Syntax;
    }
 
    if (not variable->initializer) {
       std::string message = "Variable '" + name + "' is missing an initialiser.";
       record_error(message, ReferenceNode, true);
-      return false;
+      return ERR::Syntax;
    }
 
    if (variables_in_evaluation.find(normalised_name) != variables_in_evaluation.end()) {
       std::string message = "Variable '" + name + "' has a circular dependency.";
       record_error(message, ReferenceNode, true);
-      return false;
+      return ERR::Syntax;
    }
 
    auto previous_prolog = context.prolog;
@@ -1258,7 +1258,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    if (expression_unsupported) {
       std::string message = "Failed to evaluate initialiser for variable '" + name + "'.";
       record_error(message, ReferenceNode);
-      return false;
+      return ERR::Syntax;
    }
 
    auto inserted = prolog_variable_cache.insert_or_assign(normalised_name, computed_value);
@@ -1272,7 +1272,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       prolog_variable_cache.insert_or_assign(variable->qname, inserted.first->second);
    }
 
-   return true;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -4087,9 +4087,11 @@ XPathVal XPathEvaluator::handle_variable_reference(const XPathNode *Node, uint32
 {
    XPathVal resolved_value;
    auto variable_name = Node->get_value_view();
-   if (resolve_variable_value(variable_name, CurrentPrefix, resolved_value, Node)) {
+   auto error = resolve_variable_value(variable_name, CurrentPrefix, resolved_value, Node);
+   if (error IS ERR::Okay) {
       return resolved_value;
    }
+   else if (error != ERR::Search) return XPathVal();
 
    pf::Log log("XPath");
 
