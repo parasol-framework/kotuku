@@ -1522,7 +1522,7 @@ class XPathEvaluator : public XPathErrorReporter {
       const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode);
    XPathVal evaluate_user_defined_function(const XQueryFunction &Function,
       const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode);
-   bool resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
+   ERR resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
       XPathVal &OutValue, const XPathNode *ReferenceNode);
 
    public:

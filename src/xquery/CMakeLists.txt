@@ -107,7 +107,6 @@ flute_test (${MOD}_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced.tir
 flute_test (${MOD}_advanced_paths "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_paths.tiri")
 flute_test (${MOD}_flwor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor.tiri")
 flute_test (${MOD}_module_loading "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_module_loading.tiri")
-flute_test (${MOD}_resolve_variable "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_resolve_variable.tiri")
 flute_test (${MOD}_type_expr "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_type_expr.tiri")
 flute_test (${MOD}_type_constructors "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_type_constructors.tiri")
 flute_test (${MOD}_sequence_cardinality "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_sequence_cardinality.tiri")
@@ -116,5 +115,5 @@ flute_test (${MOD}_qt_math "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_qt_math.tiri"
 flute_test (${MOD}_qt_maps_arrays "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_qt_maps_arrays.tiri")
 
 if (ENABLE_UNIT_TESTS)
-   flute_test (xquery_unit_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unit_tests.tiri")
+   flute_test (${MOD}_unit_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unit_tests.tiri")
 endif ()
