@@ -1,0 +1,329 @@
+-- $TIRI
+-- Flute tests for XQuery support in RIPL documents.
+
+include 'document'
+
+@BeforeAll function init(State)
+   global glDocFolder = State.folder
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Helpers
+
+function contains(Haystack:str, Needle:str)
+   return regex.new(Needle).test(Haystack)
+end
+
+function feedAndRead(Content:str, PageWidth:num, Username:str, ObjectName:str)
+   scene = obj.new('VectorScene', { pageWidth=PageWidth ?? 1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document', { viewport=vp })
+
+   if Username?? then check doc.acSetKey('username', Username) end
+   if ObjectName?? then doc.name = ObjectName end
+
+   check doc.acDataFeed(nil, DATA_XML, Content)
+   err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed: ' .. mSys.GetErrorMsg(err))
+   assert(xml_str, 'ReadContent(DATA_XML) returned nil')
+   return xml_str
+end
+
+function feedExpectError(Content:str, PageWidth:num, Username:str, ObjectName:str)
+   scene = obj.new('VectorScene', { pageWidth=PageWidth ?? 1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document', { viewport=vp })
+
+   if Username?? then check doc.acSetKey('username', Username) end
+   if ObjectName?? then doc.name = ObjectName end
+
+   err = doc.acDataFeed(nil, DATA_XML, Content)
+   if err != ERR_Okay then return err end
+   err, _ = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   return err
+end
+
+function loadAndRead(Path:str, PageWidth:num, Username:str, ObjectName:str, Unrestricted:any)
+   scene = obj.new('VectorScene', { pageWidth=PageWidth ?? 1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document')
+
+   doc.viewport = vp
+   doc.path = glDocFolder .. Path
+
+   if Unrestricted then doc.flags = DCF_UNRESTRICTED end
+   if Username?? then check doc.acSetKey('username', Username) end
+
+   if ObjectName?? then
+      if Unrestricted then doc.new('xml', { name=ObjectName, flags=XMF_NEW })
+      else doc.name = ObjectName
+      end
+   end
+
+   check doc.init()
+   err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for ' .. Path .. ': ' .. mSys.GetErrorMsg(err))
+   assert(xml_str, 'ReadContent(DATA_XML) returned nil')
+   return xml_str
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Fixture coverage
+
+@Test function FixtureStageOneSurface()
+   xml_str = loadAndRead('xquery_stage1.rpl')
+
+   assert(contains(xml_str, 'IF-TEST-TRUE'), 'if@test true branch must emit IF-TEST-TRUE')
+   assert(not contains(xml_str, 'IF-TEST-FAIL'), 'if@test false branch must not emit IF-TEST-FAIL')
+   assert(contains(xml_str, 'ELSEIF-TEST-TRUE'), 'elseif@test true branch must emit ELSEIF-TEST-TRUE')
+   assert(not contains(xml_str, 'ELSEIF-FAIL'), 'elseif@test false branches must not emit failure markers')
+   assert(contains(xml_str, 'a-b-c'), 'print@select must evaluate XQuery and emit joined string')
+   assert(contains(xml_str, 'PAGE-NAME-Index'), 'print@select must query the active XML document context')
+   assert(contains(xml_str, 'VAL 3'), 'print@value AVT must emit "VAL 3"')
+   assert(contains(xml_str, 'PARSE-SELECT-INJECTED'), 'parse@select must inject parsed content')
+   assert(not contains(xml_str, 'WHILE-SHOULD-NOT-APPEAR'), 'while@test false must skip the loop body')
+end
+
+@Test function FixtureRuntimeScopeBindings()
+   xml_str = loadAndRead('xquery_stage2.rpl?mode=preview', 1024, 'alice')
+
+   assert(contains(xml_str, 'PARAM-MODE-PREVIEW'), '$params must be visible in test attributes')
+   assert(contains(xml_str, 'VAR-USERNAME-ALICE'), '$vars must be visible in test attributes')
+   assert(contains(xml_str, 'XQuery Stage 2 Tests / Stage2 / 1024'), '$meta and $layout must be visible in select attributes')
+   assert(contains(xml_str, 'PARSE-alice'), '$vars must be visible in parse@select')
+   assert(contains(xml_str, 'ARG-OUTER Outer Arg'), '$args must expose the outer template call arguments')
+   assert(contains(xml_str, 'ARG-INNER Inner Arg'), 'Inner template call arguments must override outer $args')
+   assert(contains(xml_str, 'VARS-VIS alice'), '$vars must remain visible while $args changes')
+   assert(contains(xml_str, 'LOOP-TEST 0'), '$loop?index must be visible in repeat test attributes')
+   assert(contains(xml_str, 'LOOP-TEST 1'), '$loop?index must update across repeat iterations')
+   assert(not contains(xml_str, 'LOOP-TEST 2'), '$loop?index test must stop matching once the condition becomes false')
+   assert(contains(xml_str, 'LOOP-VALUE 0'), '$loop?index must be visible in AVT expansion')
+   assert(contains(xml_str, 'LOOP-VALUE 1'), '$loop?index must emit the second repeat iteration')
+   assert(contains(xml_str, 'LOOP-VALUE 2'), '$loop?index must emit the third repeat iteration')
+   assert(contains(xml_str, 'MISSING fallback'), 'Missing map lookups must fall through to defaults')
+end
+
+@Test function FixtureLoopFrameIntegration()
+   xml_str = loadAndRead('xquery_stage3.rpl')
+
+   assert(contains(xml_str, 'REPEAT-FRAME idx=2 iter=0 start=2 step=1 count=4 end=6'),
+      '$loop metadata must expose the first repeat iteration state')
+   assert(contains(xml_str, 'REPEAT-FRAME idx=5 iter=3 start=2 step=1 count=4 end=6'),
+      '$loop metadata must rebind on later repeat iterations')
+   assert(contains(xml_str, 'OUTER-BEFORE 0'),
+      '$loop?index must resolve for the outer loop before entering an inner loop')
+   assert(contains(xml_str, 'INNER 0'),
+      '$loop?index must resolve for the first inner loop iteration')
+   assert(contains(xml_str, 'INNER 1'),
+      '$loop?index must resolve inside the inner loop body')
+   assert(contains(xml_str, 'OUTER-AFTER 1'),
+      '$loop?index must be restored to the outer loop after the inner loop exits')
+   assert(contains(xml_str, 'OUTSIDE-LOOP missing'),
+      '$loop must fall back to empty outside any active loop')
+   assert(contains(xml_str, 'REPEAT-CONTROL 0'),
+      'repeat must execute its first iteration')
+   assert(contains(xml_str, 'REPEAT-CONTROL 2'),
+      'repeat must continue after a continue tag')
+   assert(not contains(xml_str, 'REPEAT-CONTROL 1'),
+      'repeat continue must skip the remainder of the current iteration')
+   assert(not contains(xml_str, 'REPEAT-CONTROL 3'),
+      'repeat break must exit the innermost loop')
+   assert(contains(xml_str, 'REPEAT-CONTROL-AFTER'),
+      'repeat break/continue must not leak control flow beyond the loop')
+   assert(contains(xml_str, 'WHILE-XQ 0'),
+      'while@test must evaluate with the first loop frame bound')
+   assert(contains(xml_str, 'WHILE-XQ 2'),
+      'while@test must advance the loop frame across iterations')
+   assert(contains(xml_str, 'WHILE-IF-HIT'),
+      'Nested if@test inside while must observe the current loop frame')
+   assert(contains(xml_str, 'WHILE-CONTROL 0'),
+      'while control-flow testing must execute its first iteration')
+   assert(contains(xml_str, 'WHILE-CONTROL 2'),
+      'while continue must proceed to the next iteration')
+   assert(not contains(xml_str, 'WHILE-CONTROL 1'),
+      'while continue must skip the remainder of the current iteration')
+   assert(not contains(xml_str, 'WHILE-CONTROL 3'),
+      'while break must exit the loop')
+   assert(contains(xml_str, 'WHILE-CONTROL-AFTER'),
+      'while break/continue must not leak control flow beyond the loop')
+   assert(contains(xml_str, 'DESC 3'),
+      'Descending repeat loops must emit the starting value')
+   assert(contains(xml_str, 'DESC 1'),
+      'Descending repeat loops must continue down to the exclusive end')
+   assert(not contains(xml_str, 'DESC 0'),
+      'Descending repeat loops must keep the end bound exclusive')
+end
+
+@Test function FixtureMigrationSurface()
+   xml_str = loadAndRead('xquery_stage4.rpl', 1024, nil, 'stage4document', true)
+
+   assert(contains(xml_str, 'IF-TEST-TRUE'), 'if@test must remain the canonical conditional surface')
+   assert(not contains(xml_str, 'IF-TEST-FAIL'), 'if@test must not fall through to the else branch when true')
+   assert(contains(xml_str, 'ELSEIF-TEST-TRUE'), 'elseif@test must evaluate XQuery conditions')
+   assert(not contains(xml_str, 'ELSEIF-FAIL'), 'elseif@test must suppress failure markers')
+   assert(contains(xml_str, 'OBJECT-EXISTS-TRUE'), 'kt-object-exists() must resolve known objects')
+   assert(contains(xml_str, 'OBJECT-EXISTS-FALSE'), 'kt-object-exists() must report missing objects cleanly')
+   assert(contains(xml_str, 'REPEAT 0'), '$loop?index must drive migrated repeat output')
+   assert(contains(xml_str, 'REPEAT 2'), '$loop?index must rebind across repeat iterations')
+   assert(contains(xml_str, 'WHILE 0'), '$loop?index must drive migrated while output')
+   assert(contains(xml_str, 'WHILE 2'), '$loop?index must keep incrementing inside while loops')
+   assert(contains(xml_str, 'STYLE italic courier 20px red'), '$style must expose the active parser style')
+   assert(contains(xml_str, 'PAGE Stage4'), '$meta?current-page must remain available after migration')
+   assert(contains(xml_str, 'LAYOUT 1024 x 768'), '$layout view dimensions must remain available after migration')
+   assert(regex.new('LINE [0-9]+').test(xml_str), '$meta?line-no must expose the current line number')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Surface behaviour
+
+@Test function PrintSelect()
+   xml_str = feedAndRead('<body/><page><p><print select="upper-case(\'hello\')"/></p></page>')
+   assert(contains(xml_str, 'HELLO'), 'print@select must upper-case "hello" via XQuery, got: ' .. xml_str)
+end
+
+@Test function PrintSelectDocumentContext()
+   xml_str = feedAndRead('<body/><page name="Ctx"><p><print select="string((/page/@name)[1])"/></p></page>')
+   assert(contains(xml_str, 'Ctx'),
+      'print@select must evaluate against the active XML context, got: ' .. xml_str)
+end
+
+@Test function PrintValueAVT()
+   xml_str = feedAndRead('<body/><page><p><print value="sum={1 + 2 + 3}"/></p></page>')
+   assert(contains(xml_str, 'sum=6'), 'print@value AVT must evaluate embedded XQuery, got: ' .. xml_str)
+end
+
+@Test function PrintValueAVTDocumentContext()
+   xml_str = feedAndRead('<body/><page name="AVT"><p><print value="page={string((/page/@name)[1])}"/></p></page>')
+   assert(contains(xml_str, 'page=AVT'),
+      'print@value AVT must evaluate embedded XQuery against the active XML context, got: ' .. xml_str)
+end
+
+@Test function PrintValueEscapedBraces()
+   xml_str = feedAndRead('<body/><page><p><print value="literal {{ and }} braces"/></p></page>')
+   assert(regex.new('literal \\{ and \\} braces').test(xml_str),
+      'print@value AVT must treat {{/}} as literal braces, got: ' .. xml_str)
+end
+
+@Test function IfTestTrue()
+   xml_str = feedAndRead(
+      '<body/><page><if test="2 gt 1"><p>HIT-TRUE</p></if><else><p>HIT-FALSE</p></else></page>')
+   assert(contains(xml_str, 'HIT-TRUE'), 'if@test=2 gt 1 must take the true branch')
+   assert(not contains(xml_str, 'HIT-FALSE'), 'if@test=2 gt 1 must not run the else branch')
+end
+
+@Test function IfTestFalseWithElseif()
+   xml_str = feedAndRead(
+      '<body/><page>'
+      .. '<if test="1 gt 2"><p>FAIL-IF</p></if>'
+      .. '<elseif test="starts-with(\'warning\', \'warn\')"><p>HIT-ELSEIF</p></elseif>'
+      .. '<else><p>FAIL-ELSE</p></else>'
+      .. '</page>')
+   assert(contains(xml_str, 'HIT-ELSEIF'), 'elseif@test must match')
+   assert(not contains(xml_str, 'FAIL-IF'), 'if@test false branch must not run')
+   assert(not contains(xml_str, 'FAIL-ELSE'), 'else must not run when elseif matches')
+end
+
+@Test function IfTestDocumentContext()
+   xml_str = feedAndRead(
+      '<body/><page name="Ctx"><if test="exists(/page[@name=\'Ctx\'])"><p>CTX-HIT</p></if></page>')
+   assert(contains(xml_str, 'CTX-HIT'),
+      'if@test must evaluate against the active XML context')
+end
+
+@Test function WhileTestFalseSkipsBody()
+   xml_str = feedAndRead(
+      '<body/><page><while test="false()"><p>SHOULD-NOT-EMIT</p></while></page>')
+   assert(not contains(xml_str, 'SHOULD-NOT-EMIT'), 'while@test=false() must not emit the body')
+end
+
+@Test function ParseSelect()
+   xml_str = feedAndRead(
+      '<body/><page><parse select="\'&lt;p&gt;PARSED-FROM-XQUERY&lt;/p&gt;\'"/></page>')
+   assert(contains(xml_str, 'PARSED-FROM-XQUERY'),
+      'parse@select must evaluate XQuery and parse the result as XML, got: ' .. xml_str)
+end
+
+@Test function ParseSelectDocumentContext()
+   xml_str = feedAndRead(
+      '<body/><page name="ParseCtx"><parse select="concat(\'&lt;p&gt;\', string((/page/@name)[1]), \'&lt;/p&gt;\')"/></page>')
+   assert(contains(xml_str, 'ParseCtx'),
+      'parse@select must evaluate against the active XML context, got: ' .. xml_str)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Runtime bindings and loop frames
+
+@Test function VarsInDirectFeed()
+   xml_str = feedAndRead(
+      '<body/><page><if test="$vars?username = \'alice\'"><p>DIRECT-VAR-HIT</p></if>'
+      .. '<p><print value="user={$vars?username}"/></p>'
+      .. '<parse select="concat(\'&lt;p&gt;\', $vars?username, \'&lt;/p&gt;\')"/></page>',
+      800,
+      'alice')
+
+   assert(contains(xml_str, 'DIRECT-VAR-HIT'), '$vars must resolve in direct feed test expressions')
+   assert(contains(xml_str, 'user=alice'), '$vars must resolve in direct feed AVTs')
+   assert(contains(xml_str, '>alice<'), '$vars must resolve in direct feed parse@select expressions')
+end
+
+@Test function WhileLoopStartsAtZero()
+   xml_str = feedAndRead(
+      '<body/><page><while test="$loop?index lt 2">'
+      .. '<p><print value="idx={$loop?index} iter={$loop?iteration} start={$loop?start} step={$loop?step}"/></p>'
+      .. '</while></page>')
+
+   assert(contains(xml_str, 'idx=0 iter=0 start=0 step=1'),
+      'while loops must expose a zero-based initial loop frame')
+   assert(contains(xml_str, 'idx=1 iter=1 start=0 step=1'),
+      'while loops must increment both index and iteration together')
+end
+
+@Test function RepeatLegacyAliasDoesNotOverrideDocumentVars()
+   scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
+   vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   doc = vp.new('document', { viewport=vp })
+
+   check doc.acSetKey('item', 'document-var')
+   check doc.acDataFeed(nil, DATA_XML,
+      '<body/><page>'
+      .. '<repeat count="2" index="item"><p><print value="INNER [@item]"/></p></repeat>'
+      .. '<p><print value="OUTER [@item]"/></p>'
+      .. '</page>')
+
+   err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
+   assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed: ' .. mSys.GetErrorMsg(err))
+   assert(contains(xml_str, 'INNER 0'), 'Loop-local named indexes must shadow document variables inside the loop')
+   assert(contains(xml_str, 'INNER 1'), 'Loop-local named indexes must rebind per iteration')
+   assert(contains(xml_str, 'OUTER document-var'),
+      'Document variables must be restored automatically after the loop exits')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Migration and failure cases
+
+@Test function MalformedTestExpression()
+   err = feedExpectError(
+      '<body/><page><if test="this is not valid xquery @@"><p>SHOULD-NOT-HIT</p></if>'
+      .. '<else><p>MALFORMED-FELL-THROUGH</p></else></page>')
+   assert(err != ERR_Okay, 'Malformed test expression must fail parsing')
+end
+
+@Test function MalformedAVTExpression()
+   err = feedExpectError('<body/><page><p><print value="broken {$vars?}"/></p></page>', 1024, 'alice')
+   assert(err != ERR_Okay, 'Malformed AVT expression must fail document parsing')
+end
+
+@Test function LegacyStatementRejected()
+   err = feedExpectError('<body/><page><if statement="1 &gt; 0"><p>FAIL</p></if></page>')
+   assert(err != ERR_Okay, 'Legacy statement= must now fail parsing')
+end
+
+@Test function LegacyExistsRejected()
+   err = feedExpectError('<body/><page><if exists="stage4document"><p>FAIL</p></if></page>', 1024, nil, 'stage4document')
+   assert(err != ERR_Okay, 'Legacy exists= must now fail parsing')
+end
+
+@Test function LegacyNotNullRejected()
+   err = feedExpectError('<body/><page><if notnull="true"><p>FAIL</p></if></page>')
+   assert(err != ERR_Okay, 'Legacy notnull= must now fail parsing')
+end
