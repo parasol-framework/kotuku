@@ -73,10 +73,10 @@ from the hash-checked suite because they would vary between runs. -->
 
 <p>The line below tests use of the '{{' and '}}' characters to prevent translation of attribute values.  The string should be printed complete with untranslated object, argument and bracket references.</p>
 
-<p indent><print value="&lsqr; &rsqr; {{$meta?author}}"/></p>
+<p indent><print value="{{$meta?author}}"/></p>
 
-<p>Here is the same string, translated:</p>
+<p>Here is the same XQuery string, translated:</p>
 
-<p indent><print value="&lsqr; &rsqr; {$meta?author}"/></p>
+<p indent><print value="{$meta?author}"/></p>
 
 </page>
