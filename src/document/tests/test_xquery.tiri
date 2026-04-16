@@ -82,6 +82,19 @@ end
    assert(contains(xml_str, 'VAL 3'), 'print@value AVT must emit "VAL 3"')
    assert(contains(xml_str, 'PARSE-SELECT-INJECTED'), 'parse@select must inject parsed content')
    assert(not contains(xml_str, 'WHILE-SHOULD-NOT-APPEAR'), 'while@test false must skip the loop body')
+
+   assert(contains(xml_str, 'DOC-EMPTY'), '$doc must be empty before the first <data select>')
+   assert(contains(xml_str, 'PAGE-DIRECT Index'), '$page must expose the active source page directly')
+   assert(contains(xml_str, 'PAGE-TEMPLATE Index'), '$page must remain stable inside templates')
+   assert(contains(xml_str, 'DOC-LOADED'), '$doc must become queryable after <data select> loads XML')
+
+   assert(contains(xml_str, 'LET-TEST OUTER'), '<let> bindings must be visible in test attributes')
+   assert(contains(xml_str, 'LET-AVT outer'), '<let> bindings must be visible in AVTs')
+   assert(contains(xml_str, 'LET-SELECT outer'), '<let> bindings must be visible in print@select')
+   assert(contains(xml_str, 'LET-PARSE outer'), '<let> bindings must be visible in parse@select')
+   assert(contains(xml_str, 'LET-INNER inner'), 'Inner <let> bindings must shadow outer bindings')
+   assert(contains(xml_str, 'LET-RESTORED outer'), 'Outer <let> bindings must be restored after inner scope exit')
+   assert(contains(xml_str, 'LET-NODE B'), '$state bindings must support node-sequence values')
 end
 
 @Test function FixtureRuntimeScopeBindings()
@@ -106,52 +119,49 @@ end
 @Test function LoopFrameIntegration()
    xml_str = loadAndRead('xquery_iterate.rpl')
 
-   assert(contains(xml_str, 'REPEAT-FRAME idx=2 iter=0 start=2 step=1 count=4 end=6'),
-      '$loop metadata must expose the first repeat iteration state')
-   assert(contains(xml_str, 'REPEAT-FRAME idx=5 iter=3 start=2 step=1 count=4 end=6'),
-      '$loop metadata must rebind on later repeat iterations')
-   assert(contains(xml_str, 'OUTER-BEFORE 0'),
-      '$loop?index must resolve for the outer loop before entering an inner loop')
-   assert(contains(xml_str, 'INNER 0'),
-      '$loop?index must resolve for the first inner loop iteration')
-   assert(contains(xml_str, 'INNER 1'),
-      '$loop?index must resolve inside the inner loop body')
-   assert(contains(xml_str, 'OUTER-AFTER 1'),
-      '$loop?index must be restored to the outer loop after the inner loop exits')
-   assert(contains(xml_str, 'OUTSIDE-LOOP missing'),
-      '$loop must fall back to empty outside any active loop')
-   assert(contains(xml_str, 'REPEAT-CONTROL 0'),
-      'repeat must execute its first iteration')
-   assert(contains(xml_str, 'REPEAT-CONTROL 2'),
-      'repeat must continue after a continue tag')
-   assert(not contains(xml_str, 'REPEAT-CONTROL 1'),
-      'repeat continue must skip the remainder of the current iteration')
-   assert(not contains(xml_str, 'REPEAT-CONTROL 3'),
-      'repeat break must exit the innermost loop')
-   assert(contains(xml_str, 'REPEAT-CONTROL-AFTER'),
-      'repeat break/continue must not leak control flow beyond the loop')
-   assert(contains(xml_str, 'WHILE-XQ 0'),
-      'while@test must evaluate with the first loop frame bound')
-   assert(contains(xml_str, 'WHILE-XQ 2'),
-      'while@test must advance the loop frame across iterations')
-   assert(contains(xml_str, 'WHILE-IF-HIT'),
-      'Nested if@test inside while must observe the current loop frame')
-   assert(contains(xml_str, 'WHILE-CONTROL 0'),
-      'while control-flow testing must execute its first iteration')
-   assert(contains(xml_str, 'WHILE-CONTROL 2'),
-      'while continue must proceed to the next iteration')
-   assert(not contains(xml_str, 'WHILE-CONTROL 1'),
-      'while continue must skip the remainder of the current iteration')
-   assert(not contains(xml_str, 'WHILE-CONTROL 3'),
-      'while break must exit the loop')
-   assert(contains(xml_str, 'WHILE-CONTROL-AFTER'),
-      'while break/continue must not leak control flow beyond the loop')
-   assert(contains(xml_str, 'DESC 3'),
-      'Descending repeat loops must emit the starting value')
-   assert(contains(xml_str, 'DESC 1'),
-      'Descending repeat loops must continue down to the exclusive end')
-   assert(not contains(xml_str, 'DESC 0'),
-      'Descending repeat loops must keep the end bound exclusive')
+   assert(contains(xml_str, 'REPEAT-FRAME idx=2 iter=0 start=2 step=1 count=4 end=6'), '$loop metadata must expose the first repeat iteration state')
+   assert(contains(xml_str, 'REPEAT-FRAME idx=5 iter=3 start=2 step=1 count=4 end=6'), '$loop metadata must rebind on later repeat iterations')
+   assert(contains(xml_str, 'OUTER-BEFORE 0'), '$loop?index must resolve for the outer loop before entering an inner loop')
+   assert(contains(xml_str, 'INNER 0'), '$loop?index must resolve for the first inner loop iteration')
+   assert(contains(xml_str, 'INNER 1'), '$loop?index must resolve inside the inner loop body')
+   assert(contains(xml_str, 'OUTER-AFTER 1'), '$loop?index must be restored to the outer loop after the inner loop exits')
+   assert(contains(xml_str, 'OUTSIDE-LOOP missing'), '$loop must fall back to empty outside any active loop')
+   assert(contains(xml_str, 'REPEAT-CONTROL 0'), 'repeat must execute its first iteration')
+   assert(contains(xml_str, 'REPEAT-CONTROL 2'), 'repeat must continue after a continue tag')
+   assert(not contains(xml_str, 'REPEAT-CONTROL 1'), 'repeat continue must skip the remainder of the current iteration')
+   assert(not contains(xml_str, 'REPEAT-CONTROL 3'), 'repeat break must exit the innermost loop')
+   assert(contains(xml_str, 'REPEAT-CONTROL-AFTER'), 'repeat break/continue must not leak control flow beyond the loop')
+   assert(contains(xml_str, 'WHILE-XQ 0'), 'while@test must evaluate with the first loop frame bound')
+   assert(contains(xml_str, 'WHILE-XQ 2'), 'while@test must advance the loop frame across iterations')
+   assert(contains(xml_str, 'WHILE-IF-HIT'), 'Nested if@test inside while must observe the current loop frame')
+   assert(contains(xml_str, 'WHILE-CONTROL 0'), 'while control-flow testing must execute its first iteration')
+   assert(contains(xml_str, 'WHILE-CONTROL 2'), 'while continue must proceed to the next iteration')
+   assert(not contains(xml_str, 'WHILE-CONTROL 1'), 'while continue must skip the remainder of the current iteration')
+   assert(not contains(xml_str, 'WHILE-CONTROL 3'), 'while break must exit the loop')
+   assert(contains(xml_str, 'WHILE-CONTROL-AFTER'), 'while break/continue must not leak control flow beyond the loop')
+   assert(contains(xml_str, 'DESC 3'), 'Descending repeat loops must emit the starting value')
+   assert(contains(xml_str, 'DESC 1'), 'Descending repeat loops must continue down to the exclusive end')
+   assert(not contains(xml_str, 'DESC 0'), 'Descending repeat loops must keep the end bound exclusive')
+
+   assert(contains(xml_str, 'FOR-EACH code=A loop-pos=0 idx=0 count=3'), '<for-each> must rebind the context item and expose the loop frame position')
+   assert(contains(xml_str, 'FOR-EACH code=C loop-pos=2 idx=2 count=3'), '<for-each> must keep zero-based index and stable total count on later iterations')
+
+   assert(contains(xml_str, 'OUTER-BEFORE R1 0'), 'Outer <for-each> loop state must start at zero')
+   assert(contains(xml_str, 'INNER A 0 0'), 'Inner <for-each> must expose its own loop frame')
+   assert(contains(xml_str, 'INNER B 1 1'), 'Inner <for-each> must advance $loop correctly')
+   assert(contains(xml_str, 'OUTER-AFTER R2 1'), 'Outer <for-each> loop state must be restored after nested loops')
+
+   assert(contains(xml_str, 'CONTROL-ROW R1'), 'Nested control-flow fixture must enter the first outer row')
+   assert(contains(xml_str, 'CONTROL-ROW R2'), 'Inner break must not stop the outer <for-each>')
+   assert(not contains(xml_str, 'CONTROL-CELL skip'), 'continue must skip the remainder of the current inner iteration')
+   assert(not contains(xml_str, 'CONTROL-CELL after'), 'break must stop the innermost active <for-each>')
+   assert(contains(xml_str, 'CONTROL-CELL keep'), 'Outer iteration must continue after an inner break')
+   assert(contains(xml_str, 'CONTROL-AFTER'), 'break/continue must not leak outside the enclosing <for-each>')
+
+   assert(contains(xml_str, 'PARSE-NODE-A'), 'parse@select must accept node-sequence results directly')
+   assert(contains(xml_str, 'PARSE-NODE-B'), 'parse@select must serialise and reparse each selected node')
+   assert(contains(xml_str, 'REPEAT-STILL 0'), 'Numeric repeat loops must remain unchanged by Stage 6')
+   assert(contains(xml_str, 'REPEAT-STILL 1'), 'Numeric repeat loops must still advance normally')
 end
 
 @Test function BuiltInVariables()
@@ -289,4 +299,16 @@ end
 @Test function MalformedAVTExpression()
    err = feedExpectError('<body/><page><p><print value="broken {$vars?}"/></p></page>', 1024, 'alice')
    assert(err != ERR_Okay, 'Malformed AVT expression must fail document parsing')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test function DataSelectRejectsNonXmlScalar()
+   err = feedExpectError('<body/><page><data select="\'plain text\'"/></page>')
+   assert(err != ERR_Okay, '<data select> must reject non-XML scalar results')
+end
+
+@Test function RepeatSelectRejected()
+   err = feedExpectError('<body/><page><repeat select="(1, 2)"><p>BAD</p></repeat></page>')
+   assert(err != ERR_Okay, 'repeat select="..." must be rejected in Stage 6')
 end
