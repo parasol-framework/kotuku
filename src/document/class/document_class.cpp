@@ -639,8 +639,8 @@ static ERR DOCUMENT_Free(extDocument *Self)
 
    unload_doc(Self, ULD::TERMINATE);
 
+   if (Self->Query) { FreeResource(Self->Query); Self->Query = nullptr; }
    if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = nullptr; }
-
    if (Self->Page) { FreeResource(Self->Page); Self->Page = nullptr; }
    if (Self->View) { FreeResource(Self->View); Self->View = nullptr; }
 

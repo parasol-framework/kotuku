@@ -35,8 +35,11 @@ end
 function loadAndRead(Path:str, Username:str)
    scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
    vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
-   doc = vp.new('document', { viewport=vp, path=glDocFolder .. Path })
+   doc = vp.new('document')
+   doc.viewport = vp
+   doc.path = glDocFolder .. Path
    if Username?? then check doc.acSetKey('username', Username) end
+   check doc.init()
    err, xml_str = doc.mtReadContent(DATA_XML, 0, 0x7fffffff)
    assert(err is ERR_Okay, 'ReadContent(DATA_XML) failed for ' .. Path .. ': ' .. mSys.GetErrorMsg(err))
    return xml_str

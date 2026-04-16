@@ -291,7 +291,7 @@ void parser::process_page(objXML *pXML)
 //   print@select, parse@select             -> XQuery expression attributes
 //   print@value                            -> AVT
 
-static bool is_xquery_expression_attrib(uint32_t TagHash, std::string_view AttribName)
+static bool is_xq_expression_attrib(uint32_t TagHash, std::string_view AttribName)
 {
    auto name = AttribName;
    if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
@@ -305,7 +305,7 @@ static bool is_xquery_expression_attrib(uint32_t TagHash, std::string_view Attri
    return false;
 }
 
-static bool is_xquery_avt_attrib(uint32_t TagHash, std::string_view AttribName, std::string_view AttribValue)
+static bool is_xq_avt_attrib(uint32_t TagHash, std::string_view AttribName, std::string_view AttribValue)
 {
    auto name = AttribName;
    if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
@@ -335,8 +335,8 @@ void parser::translate_attrib_args(pf::vector<XMLAttrib> &Attribs)
    for (int attrib=1; attrib < std::ssize(Attribs); attrib++) {
       if (Attribs[attrib].Name.starts_with('$')) continue;
 
-      if (is_xquery_expression_attrib(tag_hash, Attribs[attrib].Name)) continue;
-      if (is_xquery_avt_attrib(tag_hash, Attribs[attrib].Name, Attribs[attrib].Value)) continue;
+      if (is_xq_expression_attrib(tag_hash, Attribs[attrib].Name)) continue;
+      if (is_xq_avt_attrib(tag_hash, Attribs[attrib].Name, Attribs[attrib].Value)) continue;
 
       std::string output;
       translate_args(Attribs[attrib].Value, output);
@@ -354,10 +354,150 @@ void parser::translate_attrib_args(pf::vector<XMLAttrib> &Attribs)
 
 enum class XQEval { STRING, BOOLEAN };
 
-static ERR xquery_eval_helper(extDocument *Self, objXML *XMLContext, XTag *ContextTag, const std::string &Expression,
+static inline void xq_map_append_value(std::shared_ptr<XPathMapStorage> &Storage, std::string_view Key,
+   const XPathValue &Value)
+{
+   XPathMapEntry entry;
+   entry.key.assign(Key);
+   entry.value.items.push_back(Value);
+   Storage->entries.push_back(std::move(entry));
+}
+
+static inline void xq_map_append_string(std::shared_ptr<XPathMapStorage> &Storage, std::string_view Key,
+   std::string_view Value)
+{
+   XPathValue result(XPVT::String);
+   result.StringValue.assign(Value);
+   xq_map_append_value(Storage, Key, result);
+}
+
+static inline void xq_map_append_number(std::shared_ptr<XPathMapStorage> &Storage, std::string_view Key, double Value)
+{
+   XPathValue result(XPVT::Number);
+   result.NumberValue = Value;
+   xq_map_append_value(Storage, Key, result);
+}
+
+static XPathValue xq_keyvalue_to_map(const KEYVALUE &Source)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+
+   for (const auto &entry : Source) {
+      xq_map_append_string(result.map_storage, entry.first, entry.second);
+   }
+
+   return result;
+}
+
+static XPathValue xq_template_args_to_map(extDocument *Self)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+
+   if (Self->TemplateArgs.empty()) return result;
+
+   auto args = Self->TemplateArgs.back();
+   if (!args) return result;
+
+   for (int i=1; i < std::ssize(args->Attribs); i++) {
+      auto name = std::string_view(args->Attribs[i].Name);
+      if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+      if (name.empty()) continue;
+      xq_map_append_string(result.map_storage, name, args->Attribs[i].Value);
+   }
+
+   return result;
+}
+
+static XPathValue xq_meta_to_map(extDocument *Self)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+
+   if (Self->Title) xq_map_append_string(result.map_storage, "title", Self->Title);
+   if (Self->Author) xq_map_append_string(result.map_storage, "author", Self->Author);
+   if (Self->Description) xq_map_append_string(result.map_storage, "description", Self->Description);
+   if (Self->Copyright) xq_map_append_string(result.map_storage, "copyright", Self->Copyright);
+   if (Self->Keywords) xq_map_append_string(result.map_storage, "keywords", Self->Keywords);
+   if (!Self->Path.empty()) xq_map_append_string(result.map_storage, "path", Self->Path);
+
+   if (Self->PageTag) {
+      if (auto current_page = Self->PageTag->attrib("name")) {
+         xq_map_append_string(result.map_storage, "current-page", *current_page);
+      }
+
+      if (auto next_page = Self->PageTag->attrib("next-page")) {
+         xq_map_append_string(result.map_storage, "next-page", *next_page);
+      }
+
+      if (auto prev_page = Self->PageTag->attrib("prev-page")) {
+         xq_map_append_string(result.map_storage, "prev-page", *prev_page);
+      }
+   }
+
+   return result;
+}
+
+static XPathValue xq_layout_to_map(extDocument *Self)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+
+   xq_map_append_number(result.map_storage, "view-width", Self->VPWidth);
+   xq_map_append_number(result.map_storage, "view-height", Self->VPHeight);
+   xq_map_append_number(result.map_storage, "page-height", Self->PageHeight);
+
+   if (Self->CalcWidth > 0) xq_map_append_number(result.map_storage, "page-width", Self->CalcWidth);
+   else if (Self->VPWidth > 0) xq_map_append_number(result.map_storage, "page-width", Self->VPWidth);
+
+   return result;
+}
+
+static XPathValue xq_loop_to_map(parser *Parser)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+   xq_map_append_number(result.map_storage, "index", Parser->m_loop_index);
+   return result;
+}
+
+static ERR xq_resolve_runtime_scope(objXQuery *Query, std::string_view Name, XPathValue *Result, APTR Meta)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   if (Name IS "params") {
+      *Result = xq_keyvalue_to_map(Self->Params);
+      return ERR::Okay;
+   }
+   else if (Name IS "args") {
+      *Result = xq_template_args_to_map(Self);
+      return ERR::Okay;
+   }
+   else if (Name IS "vars") {
+      *Result = xq_keyvalue_to_map(Self->Vars);
+      return ERR::Okay;
+   }
+   else if (Name IS "meta") {
+      *Result = xq_meta_to_map(Self);
+      return ERR::Okay;
+   }
+   else if (Name IS "layout") {
+      *Result = xq_layout_to_map(Self);
+      return ERR::Okay;
+   }
+   else if (Name IS "loop") {
+      *Result = xq_loop_to_map((parser *)Meta);
+      return ERR::Okay;
+   }
+   else return ERR::Search;
+}
+
+static ERR xq_eval_helper(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Expression,
    XQEval Mode, std::string &OutString, bool &OutBoolean)
 {
    pf::Log log(__FUNCTION__);
+   auto Self = Parser->Self;
 
    OutString.clear();
    OutBoolean = false;
@@ -368,47 +508,56 @@ static ERR xquery_eval_helper(extDocument *Self, objXML *XMLContext, XTag *Conte
    if (Mode IS XQEval::BOOLEAN) eval_expression = "boolean(" + Expression + ")";
    else eval_expression = Expression;
 
-   objXQuery *xq;
-   if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) != ERR::Okay) {
-      log.warning("Failed to allocate XQuery object.");
-      if (Self) Self->Error = ERR::NewObject;
-      return ERR::NewObject;
-   }
-
-   xq->set(FID_Statement, eval_expression.c_str());
-
-   ERR err = xq->init();
-   if (err IS ERR::Okay) err = xq->evaluate(XMLContext, ContextTag ? ContextTag->ID : 0, XEF::NIL);
-
-   if (err != ERR::Okay) {
-      CSTRING msg;
-      if (xq->get(FID_ErrorMsg, msg) IS ERR::Okay) {
-         log.warning("XQuery error evaluating \"%s\": %s", Expression.c_str(), msg ? msg : "(none)");
+   if (not Self->Query) {
+      if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&Self->Query) IS ERR::Okay) {
+         if (Self->Query->init() != ERR::Okay) {
+            Self->Error = ERR::Init;
+            FreeResource(Self->Query);
+            Self->Query = nullptr;
+            return log.warning(ERR::Init);
+         }
       }
-      else log.warning("XQuery error evaluating \"%s\".", Expression.c_str());
-      if (Self) Self->Error = err;
-      FreeResource(xq);
-      return err;
-   }
-
-   CSTRING result;
-   if (xq->get(FID_ResultString, result) IS ERR::Okay) {
-      if (Mode IS XQEval::STRING) {
-         if (result) OutString.assign(result);
+      else {
+         Self->Error = ERR::NewObject;
+         return log.warning(ERR::NewObject);
       }
-      else if (result and iequals("true", result)) OutBoolean = true;
    }
 
-   FreeResource(xq);
-   return ERR::Okay;
+   Self->Query->setResolveVariable(C_FUNCTION(xq_resolve_runtime_scope, Parser));
+
+   if (Self->Query->setStatement(eval_expression) IS ERR::Okay) {
+      if (auto err = Self->Query->evaluate(XMLContext, ContextTag ? ContextTag->ID : 0, XEF::NIL); err != ERR::Okay) {
+         CSTRING msg;
+         if (Self->Query->get(FID_ErrorMsg, msg) IS ERR::Okay) {
+            log.warning("XQuery error evaluating \"%s\": %s", Expression.c_str(), msg ? msg : "(none)");
+         }
+         else log.warning("XQuery error evaluating \"%s\".", Expression.c_str());
+         Self->Error = err;
+         return err;
+      }
+
+      CSTRING result;
+      if (Self->Query->get(FID_ResultString, result) IS ERR::Okay) {
+         if (Mode IS XQEval::STRING) {
+            if (result) OutString.assign(result);
+         }
+         else if (result and iequals("true", result)) OutBoolean = true;
+      }
+
+      return ERR::Okay;
+   }
+   else {
+      Self->Error = ERR::SetField;
+      return ERR::SetField;
+   }
 }
 
 // Expand a string containing attribute value template fragments `{...}`, evaluating each embedded XQuery expression
 // and concatenating the result with literal parts.  Follows the same escaping rules as the XQuery tokeniser so that
 // `{{` and `}}` are preserved as literal `{` and `}`.
 
-static ERR xquery_expand_avt(extDocument *Self, objXML *XMLContext, XTag *ContextTag,
-   const std::string &Input, std::string &Output)
+static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Input,
+   std::string &Output)
 {
    pf::Log log(__FUNCTION__);
    Output.clear();
@@ -457,7 +606,7 @@ static ERR xquery_expand_avt(extDocument *Self, objXML *XMLContext, XTag *Contex
 
          std::string evaluated;
          bool unused;
-         ERR err = xquery_eval_helper(Self, XMLContext, ContextTag, expr, XQEval::STRING, evaluated, unused);
+         auto err = xq_eval_helper(Parser, XMLContext, ContextTag, expr, XQEval::STRING, evaluated, unused);
          if (err != ERR::Okay) return err;
          Output += evaluated;
       }
@@ -1020,7 +1169,7 @@ static bool eval_condition(const std::string &String)
 // takes precedence over the legacy statement/exists/notnull/null/not attributes.  The result of the expression is
 // coerced via XQuery's effective boolean value rules (boolean(...)).
 
-static bool check_tag_conditions(extDocument *Self, objXML *XMLContext, XTag &Tag)
+static bool check_tag_conditions(parser *Parser, XTag &Tag)
 {
    pf::Log log("eval");
 
@@ -1031,11 +1180,11 @@ static bool check_tag_conditions(extDocument *Self, objXML *XMLContext, XTag &Ta
       if (iequals("test", name)) {
          std::string result;
          bool boolean_result = false;
-         auto err = xquery_eval_helper(Self, XMLContext, &Tag, Tag.Attribs[i].Value,
+         auto err = xq_eval_helper(Parser, Parser->m_xml, &Tag, Tag.Attribs[i].Value,
             XQEval::BOOLEAN, result, boolean_result);
          if (err != ERR::Okay) {
             log.warning("XQuery test failed: %s", Tag.Attribs[i].Value.c_str());
-            Self->Error = err;
+            Parser->Self->Error = err;
             return false;
          }
          log.trace("Test: %s -> %s", Tag.Attribs[i].Value.c_str(), boolean_result ? "true" : "false");
@@ -1269,7 +1418,7 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
          break;
 
       case HASH_if:
-         if (check_tag_conditions(Self, m_xml, Tag)) { // Statement is true
+         if (check_tag_conditions(this, Tag)) { // Statement is true
             m_check_else = false;
             result = parse_tags(Tag.Children, Flags);
          }
@@ -1278,7 +1427,7 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
 
       case HASH_elseif:
          if (m_check_else) {
-            if (check_tag_conditions(Self, m_xml, Tag)) { // Statement is true
+            if (check_tag_conditions(this, Tag)) { // Statement is true
                m_check_else = false;
                result = parse_tags(Tag.Children, Flags);
             }
@@ -1296,12 +1445,12 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
          auto saveindex = m_loop_index;
          m_loop_index = 0;
 
-         if ((!Tag.Children.empty()) and (check_tag_conditions(Self, m_xml, Tag))) {
+         if ((!Tag.Children.empty()) and (check_tag_conditions(this, Tag))) {
             // Save/restore the statement string on each cycle to fully evaluate the condition each time.
 
             bool state = true;
             while (state) {
-               state = check_tag_conditions(Self, m_xml, Tag);
+               state = check_tag_conditions(this, Tag);
                Tag.Attribs = saved_attribs;
                translate_attrib_args(Tag.Attribs);
 
@@ -2514,7 +2663,7 @@ void parser::tag_parse(XTag &Tag)
          if (iequals("select", name)) {
             std::string result;
             bool unused;
-            auto err = xquery_eval_helper(Self, m_xml, &Tag, Tag.Attribs[i].Value,
+            auto err = xq_eval_helper(this, m_xml, &Tag, Tag.Attribs[i].Value,
                XQEval::STRING, result, unused);
             if (err != ERR::Okay) {
                log.warning("<parse select=\"%s\"> failed.", Tag.Attribs[i].Value.c_str());
@@ -2914,7 +3063,7 @@ void parser::tag_print(XTag &Tag)
          if (iequals("select", name)) {
             std::string result;
             bool unused;
-            auto err = xquery_eval_helper(Self, m_xml, &Tag, Tag.Attribs[i].Value,
+            auto err = xq_eval_helper(this, m_xml, &Tag, Tag.Attribs[i].Value,
                XQEval::STRING, result, unused);
             if (err != ERR::Okay) {
                log.warning("<print select=\"%s\"> failed.", Tag.Attribs[i].Value.c_str());
@@ -2936,8 +3085,7 @@ void parser::tag_print(XTag &Tag)
 
          if (has_avt) {
             std::string expanded;
-            auto err = xquery_expand_avt(Self, m_xml, &Tag, raw, expanded);
-            if (err != ERR::Okay) {
+            if (auto err = xq_expand_avt(this, m_xml, &Tag, raw, expanded); err != ERR::Okay) {
                log.warning("<print value=\"%s\"> AVT expansion failed.", raw.c_str());
                Self->Error = err;
                return;
