@@ -115,14 +115,26 @@ struct parser {
    // m_state_values for the duration of the current scope and the previous binding
    // (if any) is restored automatically when the guard is destroyed.
 
+   using xq_xml_owner = std::shared_ptr<objXML>;
+
+   struct xq_value_binding {
+      XPathValue value;
+      xq_xml_owner owned_xml;
+
+      xq_value_binding() : value(XPVT::String) { }
+      explicit xq_value_binding(const XPathValue &Value) : value(Value) { }
+   };
+
    struct state_guard {
       parser *owner = nullptr;
       std::string name;
-      std::optional<XPathValue> previous_value;
+      std::optional<xq_value_binding> previous_value;
       bool had_previous_value = false;
       bool active = false;
 
-      state_guard(parser *Owner, std::string Name, const XPathValue &Value) : owner(Owner), name(std::move(Name)), active(true) {
+      state_guard(parser *Owner, std::string Name, const xq_value_binding &Value)
+         : owner(Owner), name(std::move(Name)), active(true)
+      {
          auto existing = owner->m_state_values.find(name);
          if (existing != owner->m_state_values.end()) {
             had_previous_value = true;
@@ -183,7 +195,7 @@ struct parser {
    objTime *m_time = nullptr;
    pf::vector<loop_frame> m_loop_stack;
    pf::vector<xq_context_frame> m_xq_context_stack; // Active XQuery context overrides for <for-each>.
-   ankerl::unordered_dense::map<std::string, XPathValue> m_state_values; // Lexical bindings exposed through $state.
+   ankerl::unordered_dense::map<std::string, xq_value_binding> m_state_values; // Lexical bindings exposed through $state.
    uint16_t m_paragraph_depth = 0;     // Incremented when inside <p> tags
    char  m_in_template = 0;
    bool  m_strip_feeds = false;
@@ -227,7 +239,6 @@ struct parser {
    inline TRF  parse_tags_with_embedded_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
    inline void process_page(objXML *pXML);
    inline void tag_xml_content(XTag &, PXF);
-   inline void translate_attrib_args(pf::vector<XMLAttrib> &);
    inline void trim_preformat(extDocument *);
 
    // Switching out the XML object is sometimes done for things like template injection
@@ -274,7 +285,6 @@ struct parser {
    inline void tag_template(XTag &);
    inline void tag_trigger(XTag &);
    inline void tag_use(XTag &);
-   inline void tag_object(XTag &);
    inline bool check_para_attrib(const XMLAttrib &, bc_paragraph *, bc_font &);
    inline bool check_font_attrib(const XMLAttrib &, bc_font &);
    inline loop_frame * active_loop() {
@@ -478,9 +488,7 @@ void parser::process_page(objXML *pXML)
 
 //********************************************************************************************************************
 // Determine whether an attribute on a given tag should be treated as an XQuery expression (evaluated as a whole) or
-// as an attribute value template (AVT) with embedded {...} expression fragments.  Attributes so classified are
-// bypassed by translate_attrib_args() so that their source text is preserved for late XQuery evaluation by the tag
-// handler.
+// as an attribute value template (AVT) with embedded {...} expression fragments.
 //
 //   if@test, elseif@test, while@test       -> XQuery expression attributes
 //   print@select, parse@select             -> XQuery expression attributes
@@ -489,50 +497,6 @@ void parser::process_page(objXML *pXML)
 static bool has_avt_markers(std::string_view Value)
 {
    return (Value.find('{') != std::string_view::npos) or (Value.find('}') != std::string_view::npos);
-}
-
-static bool is_managed_attrib(uint32_t TagHash, std::string_view AttribName)
-{
-   auto name = AttribName;
-   if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
-
-   if ((TagHash IS HASH_print) and (iequals("value", name))) return true;
-
-   auto name_hash = strhash(name);
-   return (name_hash IS HASH_x) or
-      (name_hash IS HASH_y) or
-      (name_hash IS HASH_width) or
-      (name_hash IS HASH_height) or
-      (name_hash IS HASH_min_width) or
-      (name_hash IS HASH_min_height) or
-      (name_hash IS HASH_minwidth) or
-      (name_hash IS HASH_minheight) or
-      (name_hash IS HASH_maxwidth) or
-      (name_hash IS HASH_maxheight) or
-      (name_hash IS HASH_xoffset) or
-      (name_hash IS HASH_yoffset) or
-      (name_hash IS HASH_insidewidth) or
-      (name_hash IS HASH_insideheight) or
-      (name_hash IS HASH_labelwidth) or
-      (name_hash IS HASH_font_size) or
-      (name_hash IS HASH_size) or
-      (name_hash IS HASH_leading) or
-      (name_hash IS HASH_indent) or
-      (name_hash IS HASH_padding) or
-      (name_hash IS HASH_gap) or
-      (name_hash IS HASH_spacing) or
-      (name_hash IS HASH_v_spacing) or
-      (name_hash IS HASH_h_spacing) or
-      (name_hash IS HASH_cell_padding) or
-      (name_hash IS HASH_margins) or
-      (name_hash IS HASH_face) or
-      (name_hash IS HASH_fill) or
-      (name_hash IS HASH_hint) or
-      (name_hash IS HASH_title) or
-      (name_hash IS HASH_name) or
-      (name_hash IS HASH_object) or
-      (name_hash IS HASH_value) or
-      (name_hash IS HASH_label);
 }
 
 static bool is_xq_expression_attrib(uint32_t TagHash, std::string_view AttribName)
@@ -550,34 +514,9 @@ static bool is_xq_expression_attrib(uint32_t TagHash, std::string_view AttribNam
    return false;
 }
 
-static bool is_xq_avt_attrib(uint32_t TagHash, std::string_view AttribName, std::string_view AttribValue)
+inline bool is_xq_avt_attrib(uint32_t TagHash, std::string_view AttribName, std::string_view AttribValue)
 {
-   auto name = AttribName;
-   if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
-
-   return has_avt_markers(AttribValue) or is_managed_attrib(TagHash, name);
-}
-
-//********************************************************************************************************************
-// Translate all arguments found in a list of XML attributes.
-//
-// XQuery-aware attributes (test, select, and AVT-capable value attributes on selected tags) are bypassed here so that
-// their source text is preserved untouched for evaluation by the tag handler.
-
-void parser::translate_attrib_args(pf::vector<XMLAttrib> &Attribs)
-{
-   if (Attribs[0].isContent()) return;
-
-   std::string_view tag_name(Attribs[0].Name);
-   if ((!tag_name.empty()) and (tag_name.front() IS '$')) tag_name.remove_prefix(1);
-   auto tag_hash = strihash(tag_name);
-
-   for (int attrib=1; attrib < std::ssize(Attribs); attrib++) {
-      if (Attribs[attrib].Name.starts_with('$')) continue; // Don't translate attribute values beginning with '$'
-
-      if (is_xq_expression_attrib(tag_hash, Attribs[attrib].Name)) continue;
-      if (is_xq_avt_attrib(tag_hash, Attribs[attrib].Name, Attribs[attrib].Value)) continue;
-   }
+   return (AttribValue.find('{') != std::string_view::npos) or (AttribValue.find('}') != std::string_view::npos);
 }
 
 //********************************************************************************************************************
@@ -660,6 +599,40 @@ static bool xq_nodeset_has_real_composites(const XPathValue &Value)
       if (composite) return true;
    }
    return false;
+}
+
+static parser::xq_xml_owner xq_adopt_xml(objXML *XML)
+{
+   return parser::xq_xml_owner(XML, [](objXML *OwnedXML) {
+      if (OwnedXML) FreeResource(OwnedXML);
+   });
+}
+
+static void xq_clone_tag_tree(const XTag &Source, XTag &Target, int ParentID, int &NextID)
+{
+   Target = XTag(NextID--, Source.LineNo, Source.Attribs);
+   Target.ParentID = ParentID;
+   Target.Flags = Source.Flags;
+   Target.NamespaceID = Source.NamespaceID;
+   Target.Reserved = Source.Reserved;
+   Target.Children.clear();
+   Target.Children.reserve(Source.Children.size());
+
+   for (const auto &child : Source.Children) {
+      Target.Children.emplace_back();
+      xq_clone_tag_tree(child, Target.Children.back(), Target.ID, NextID);
+   }
+}
+
+static size_t xq_find_attrib_index(const XTag *Node, const XMLAttrib *Attrib)
+{
+   if ((!Node) or (!Attrib)) return std::numeric_limits<size_t>::max();
+
+   for (size_t index = 0; index < Node->Attribs.size(); ++index) {
+      if (&Node->Attribs[index] IS Attrib) return index;
+   }
+
+   return std::numeric_limits<size_t>::max();
 }
 
 // Store a runtime value into a map entry while preserving the XQuery rule that an empty
@@ -854,7 +827,7 @@ static XPathValue xq_state_to_map(parser *Parser)
    if (!Parser) return result;
 
    for (auto &entry : Parser->m_state_values) {
-      xq_map_append_runtime_value(result.map_storage, entry.first, entry.second);
+      xq_map_append_runtime_value(result.map_storage, entry.first, entry.second.value);
    }
 
    return result;
@@ -1438,7 +1411,7 @@ static bool xq_xml_owns_node(objXML *XML, XTag *Node)
 // Resolve which XML object currently owns a node so <for-each> can rebind the XQuery context against the correct
 // tree when evaluating relative paths.
 
-static objXML * xq_resolve_node_owner(parser *Parser, XTag *Node)
+static objXML * xq_find_known_node_owner(parser *Parser, XTag *Node)
 {
    if ((!Parser) or (!Node)) return nullptr;
 
@@ -1447,7 +1420,56 @@ static objXML * xq_resolve_node_owner(parser *Parser, XTag *Node)
    if (xq_xml_owns_node(Parser->m_source_xml, Node)) return Parser->m_source_xml;
    if (xq_xml_owns_node(Parser->m_inject_xml, Node)) return Parser->m_inject_xml;
    if ((Parser->Self) and xq_xml_owns_node(Parser->Self->Templates, Node)) return Parser->Self->Templates;
-   return Parser->m_xml ? Parser->m_xml : Parser->m_source_xml;
+   return nullptr;
+}
+
+static objXML * xq_resolve_node_owner(parser *Parser, XTag *Node)
+{
+   if (auto owner = xq_find_known_node_owner(Parser, Node)) return owner;
+   return (Parser and Parser->m_xml) ? Parser->m_xml : (Parser ? Parser->m_source_xml : nullptr);
+}
+
+static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser::xq_value_binding &Result)
+{
+   Result = parser::xq_value_binding(Source);
+   if ((!Parser) or (Source.Type != XPVT::NodeSet)) return ERR::Okay;
+
+   bool requires_owned_xml = false;
+   for (auto *node : Source.node_set) {
+      if (node and (!xq_find_known_node_owner(Parser, node))) {
+         requires_owned_xml = true;
+         break;
+      }
+   }
+
+   if (!requires_owned_xml) return ERR::Okay;
+
+   auto xml = objXML::create::local(fl::Flags(XMF::NEW|XMF::READABLE));
+   if (!xml) return ERR::NewObject;
+
+   xml->Tags.clear();
+   int next_id = -1;
+
+   for (size_t index = 0; index < Source.node_set.size(); ++index) {
+      auto *node = Source.node_set[index];
+      if ((!node) or xq_find_known_node_owner(Parser, node)) continue;
+
+      xml->Tags.emplace_back();
+      auto &clone = xml->Tags.back();
+      xq_clone_tag_tree(*node, clone, 0, next_id);
+      Result.value.node_set[index] = &clone;
+
+      if ((index < Source.node_set_attributes.size()) and Source.node_set_attributes[index]) {
+         auto attrib_index = xq_find_attrib_index(node, Source.node_set_attributes[index]);
+         if ((attrib_index != std::numeric_limits<size_t>::max()) and (attrib_index < clone.Attribs.size())) {
+            Result.value.node_set_attributes[index] = &clone.Attribs[attrib_index];
+         }
+         else Result.value.node_set_attributes[index] = nullptr;
+      }
+   }
+
+   Result.owned_xml = xq_adopt_xml(xml);
+   return ERR::Okay;
 }
 
 static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Input,
@@ -1456,20 +1478,17 @@ static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, XTag *ContextTag, c
 static ERR xq_prepare_attribs(parser *Parser, XTag &Tag)
 {
    auto tag_name = std::string_view(Tag.Attribs[0].Name);
-   if ((!tag_name.empty()) and (tag_name.front() IS '$')) tag_name.remove_prefix(1);
+   if ((!tag_name.empty()) and (tag_name.front() IS '$')) return ERR::Okay;
    auto tag_hash = strihash(tag_name);
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       auto name = std::string_view(Tag.Attribs[i].Name);
-      if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+      if ((!name.empty()) and (name.front() IS '$')) continue;
       if (name.empty()) continue;
 
       auto &value = Tag.Attribs[i].Value;
-      bool is_expression = is_xq_expression_attrib(tag_hash, name);
-      bool is_managed = is_managed_attrib(tag_hash, name);
-      bool has_avt = has_avt_markers(value);
 
-      if ((!is_expression) and has_avt) {
+      if ((not is_xq_expression_attrib(tag_hash, name)) and has_avt_markers(value)) {
          std::string expanded;
          if (auto err = xq_expand_avt(Parser, Parser->m_xml, &Tag, value, expanded); err != ERR::Okay) {
             return err;
@@ -1604,7 +1623,6 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
    XTag *object_template = nullptr;
 
    auto saved_attribs = Tag.Attribs;
-   translate_attrib_args(Tag.Attribs);
    if (xq_prepare_attribs(this, Tag) != ERR::Okay) {
       Tag.Attribs = saved_attribs;
       return TRF::NIL;
@@ -1654,8 +1672,7 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
       }
 
       if (Self->TemplateIndex.contains(tag_hash)) {
-         // Process the template by jumping into it.  Key-values in the tag are added to a sequential
-         // list that will be processed in reverse by translate_attrib_args().
+         // Process the template by jumping into it.
 
          auto xml  = m_inject_xml;
          auto tags = m_inject_tag;
@@ -3581,234 +3598,6 @@ void parser::tag_font(XTag &Tag)
 }
 
 //********************************************************************************************************************
-
-void parser::tag_object(XTag &Tag)
-{
-   /*
-   pf::Log log(__FUNCTION__);
-
-   // NF::LOCAL is only set when the object is owned by the document
-
-   OBJECTPTR object;
-   if (NewObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::LOCAL, (OBJECTPTR *)&object)) {
-      log.warning("Failed to create object of class #%d.", class_id);
-      return;
-   }
-
-   log.branch("Processing %s object from document tag, owner #%d.", object->Class->ClassName, Self->CurrentObject ? Self->CurrentObject->UID : -1);
-
-   // Setup the callback interception so that we can control the order in which objects draw their graphics to the surface.
-
-   if (Self->CurrentObject) {
-      SetOwner(object, Self->CurrentObject);
-   }
-   else if (!pagetarget.empty()) {
-      auto field_id = strihash(pagetarget);
-      if (Self->BkgdGfx) object->set(field_id, Self->View);
-      else object->set(field_id, Self->Page);
-   }
-
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      auto argname = Tag.Attribs[i].Name.c_str();
-      while (*argname IS '$') argname++;
-      if (Tag.Attribs[i].Value.empty()) object->set(strihash(argname), "1");
-      else object->set(strihash(argname), Tag.Attribs[i].Value);
-   }
-
-   // Check for the 'data' tag which can be used to send data feed information prior to initialisation.
-   //
-   // <data type="text">Content</data>
-   // <data type="xml" template="TemplateName"/>
-   // <data type="xml" object="[xmlobj]"/>
-   // <data type="xml">Content</data>
-
-   bool customised = false;
-
-   if (!Tag.Children.empty()) {
-      STRING src;
-
-      for (auto &scan : Tag.Children) {
-         if (!iequals("data", scan.Attribs[0].name)) continue;
-
-         if (*e_revert > *s_revert) {
-            while (*e_revert > *s_revert) {
-               *e_revert -= 1;
-               Self->RestoreAttrib[*e_revert].Attrib[0] = Self->RestoreAttrib[*e_revert].String;
-            }
-         }
-         Self->RestoreAttrib.resize(*s_revert);
-
-         *s_revert = Self->RestoreAttrib.size();
-         *e_revert = 0;
-         translate_attrib_args(scan.Attribs);
-         *e_revert = Self->RestoreAttrib.size();
-
-         const std::string *type = scan.attrib("type");
-
-         if ((!type) or (iequals("text", type))) {
-            if (scan.Children.empty()) continue;
-            std::string buffer;
-            xmlGetContent(scan, buffer);
-            if (!buffer.empty()) acDataText(object, buffer.c_str());
-         }
-         else if (iequals("xml", type)) {
-            customised = true;
-
-            if (auto t = scan.attrib("template")) {
-               for (auto &tmp : Self->Templates->Tags) {
-                  for (unsigned i=1; i < tmp.Attribs.size(); i++) {
-                     if ((iequals("name", tmp.Attribs[i].name)) and (iequals(t, tmp.Attribs[i].Value))) {
-                        if (!xmlSerialise(Self->Templates, tmp.Children[0].ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
-                           acDataXML(object, content.c_str());
-                        }
-
-                        break;
-                     }
-                  }
-               }
-            }
-            else if (auto src = scan.attrib("object")) {
-               OBJECTID objectid;
-               if (!FindObject(src.c_str(), 0, FOF::SMART_NAMES, &objectid)) {
-                  if ((objectid) and (valid_objectid(Self, objectid))) {
-                     objXML *objxml;
-                     if (!AccessObject(objectid, 3000, &objxml)) {
-                        if (objxml->classID() IS CLASSID::XML) {
-                           if (!xmlSerialise(objxml, 0, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
-                              acDataXML(object, content.c_str());
-                           }
-                        }
-                        else log.warning("Cannot extract XML data from a non-XML object.");
-                        ReleaseObject(objxml);
-                     }
-                  }
-                  else log.warning("Invalid object reference '%s'", src);
-               }
-               else log.warning("Unable to find object '%s'", src);
-            }
-            else {
-               if (scan.Children.empty()) continue;
-               if (!xmlSerialise(XML, scan.Children.ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
-                  acDataXML(object, content.c_str());
-               }
-            }
-         }
-         else log.warning("Unsupported data type '%s'", type);
-      }
-   }
-
-   // Feeds are applied to invoked objects, whereby the object's class name matches a feed.
-
-   if ((!customised) and (Template)) {
-      STRING content;
-      if (!xmlSerialise(Self->Templates, Template->Children[0].ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
-         acDataXML(object, content);
-         FreeResource(content);
-      }
-   }
-
-   if (!InitObject(object)) {
-      bc_vector escobj;
-
-      if (Self->Invisible) acHide(object); // Hide the object if it's in an invisible section
-
-      // Child tags are processed as normal, but are applied with respect to the object.  Any tags that reflect
-      // document content are passed to the object as XML.
-
-      if (!Tag.Children.empty()) {
-         pf::Log log(__FUNCTION__);
-         log.traceBranch("Processing child tags for object #%d.", object->UID);
-         auto prevobject = Self->CurrentObject;
-         Self->CurrentObject = object;
-         parse_tags(Tag.Children, Flags & (~IPF::FILTER_ALL));
-         Self->CurrentObject = prevobject;
-      }
-
-      if (&Children != &Tag.Children) {
-         pf::Log log(__FUNCTION__);
-         log.traceBranch("Processing further child tags for object #%d.", object->UID);
-         auto prevobject = Self->CurrentObject;
-         Self->CurrentObject = object;
-         parse_tags(Children, Flags & (~IPF::FILTER_ALL));
-         Self->CurrentObject = prevobject;
-      }
-
-      // The object can self-destruct in ClosingTag(), so check that it still exists before inserting it into the text stream.
-
-      if (!CheckObjectExists(object->UID)) {
-         if (Self->BkgdGfx) {
-            auto &resource = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
-            resource.class_id = class_id;
-         }
-         else {
-            escobj.object_id = object->UID;
-            escobj.class_id  = object->classID();
-            escobj.in_line = false;
-            if (Self->CurrentObject) escobj.owned = true;
-
-            // By default objects are assumed to be in the background (thus not embedded as part of the text stream).
-            // This section is intended to confirm the graphical state of the object.
-
-            if (object->classID() IS CLASSID::VECTOR) {
-               //if (layout->Layout & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND));
-               //else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Inline = true;
-            }
-            else escobj.in_line = true; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
-
-            m_stream->emplace(Index, escobj);
-
-            if (Self->ObjectCache) {
-               switch (object->classID()) {
-                  // The following class types can be cached
-                  case CLASSID::XML:
-                  case CLASSID::FILE:
-                  case CLASSID::CONFIG:
-                  case CLASSID::COMPRESSION:
-                  case CLASSID::SCRIPT: {
-                     Self->Resources.emplace_back(object->UID, RTD::PERSISTENT_OBJECT);
-                     break;
-                  }
-
-                  // The following class types use their own internal caching system
-
-                  default:
-                     log.warning("Cannot cache object of class type '%s'", object->Class->ClassName);
-                  //case CLASSID::IMAGE:
-                  //   auto &res = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
-                     break;
-               }
-            }
-            else {
-               auto &res = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
-               res.class_id = class_id;
-            }
-
-            // If the object is inline, we will allow whitespace to immediately follow the object.
-
-            if (escobj.in_line) Self->NoWhitespace = false;
-
-            // Add the object to the tab-list if it is in our list of classes that support keyboard input.
-
-            static const CLASSID classes[] = { CLASSID::VECTOR };
-
-            for (unsigned i=0; i < std::ssize(classes); i++) {
-               if (classes[i] IS class_id) {
-                  add_tabfocus(Self, TT::OBJECT, object->UID);
-                  break;
-               }
-            }
-         }
-      }
-      else log.trace("Object %d self-destructed.", object->UID);
-   }
-   else {
-      FreeResource(object);
-      log.warning("Failed to initialise object of class $%.8x", class_id);
-   }
-      */
-}
-
-//********************************************************************************************************************
 // The use of pre will turn off the automated whitespace management so that all whitespace is parsed as-is.  It does
 // not switch to a monospaced font.
 
@@ -4142,7 +3931,14 @@ TRF parser::tag_let(XTag &Tag, IPF &Flags)
       value.StringValue = result;
    }
 
-   state_guard binding(this, std::move(binding_name), value);
+   xq_value_binding binding_value;
+   if ((err = xq_make_stored_value(this, value, binding_value)) != ERR::Okay) {
+      log.warning("<let select=\"%s\"> could not preserve the selected value.", select->c_str());
+      Self->Error = err;
+      return TRF::NIL;
+   }
+
+   state_guard binding(this, std::move(binding_name), binding_value);
    return parse_tags(Tag.Children, Flags);
 }
 
@@ -4173,29 +3969,51 @@ TRF parser::tag_for_each(XTag &Tag, IPF &Flags)
 
    if ((!has_value) and result.empty()) return TRF::NIL;
 
-   if ((not has_value) or (not (value.Type IS XPVT::NodeSet)) or
-      xq_nodeset_has_real_attributes(value) or xq_nodeset_has_real_composites(value)) {
+   xq_value_binding sequence_value;
+   if ((err = xq_make_stored_value(this, value, sequence_value)) != ERR::Okay) {
+      log.warning("<for-each select=\"%s\"> could not preserve the selected sequence.", select->c_str());
+      Self->Error = err;
+      return TRF::NIL;
+   }
+
+   auto &stored_value = sequence_value.value;
+
+   if ((not has_value) or (not (stored_value.Type IS XPVT::NodeSet)) or
+      xq_nodeset_has_real_attributes(stored_value) or xq_nodeset_has_real_composites(stored_value)) {
       log.warning("<for-each> currently requires a node sequence result.");
       Self->Error = ERR::InvalidData;
       return TRF::NIL;
    }
 
-   if (value.node_set.empty()) return TRF::NIL;
+   if (stored_value.node_set.empty()) {
+      if (xq_value_is_empty_sequence(stored_value)) return TRF::NIL;
+
+      log.warning("<for-each> currently requires a node sequence result.");
+      Self->Error = ERR::InvalidData;
+      return TRF::NIL;
+   }
+
+   for (auto *node : stored_value.node_set) {
+      if (!node) {
+         log.warning("<for-each> currently requires a node sequence result.");
+         Self->Error = ERR::InvalidData;
+         return TRF::NIL;
+      }
+   }
 
    loop_frame frame;
    frame.index = 0;
    frame.iteration = 0;
    frame.start = 0;
    frame.step = 1;
-   frame.count = int(value.node_set.size());
+   frame.count = int(stored_value.node_set.size());
    frame.count_known = true;
 
    loop_guard loop(this, frame);
    TRF result_flags = TRF::NIL;
 
-   for (size_t item_index = 0; item_index < value.node_set.size(); ++item_index) {
-      XTag *item = value.node_set[item_index];
-      if (!item) continue;
+   for (size_t item_index = 0; item_index < stored_value.node_set.size(); ++item_index) {
+      XTag *item = stored_value.node_set[item_index];
 
       auto active_loop = loop.frame();
       if (!active_loop) break;
@@ -4203,7 +4021,16 @@ TRF parser::tag_for_each(XTag &Tag, IPF &Flags)
       active_loop->index = int(item_index);
       active_loop->iteration = int(item_index);
 
-      auto item_xml = xq_resolve_node_owner(this, item);
+      auto item_xml = xq_find_known_node_owner(this, item);
+      if ((!item_xml) and sequence_value.owned_xml and xq_xml_owns_node(sequence_value.owned_xml.get(), item)) {
+         item_xml = sequence_value.owned_xml.get();
+      }
+      if (!item_xml) {
+         log.warning("<for-each> could not resolve the owning XML document for the current item.");
+         Self->Error = ERR::InvalidData;
+         return TRF::NIL;
+      }
+
       xq_context_guard item_context(this, item_xml, item);
 
       result_flags = parse_tags(Tag.Children, Flags);

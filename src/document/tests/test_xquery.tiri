@@ -160,7 +160,7 @@ end
 
    assert(contains(xml_str, 'PARSE-NODE-A'), 'parse@select must accept node-sequence results directly')
    assert(contains(xml_str, 'PARSE-NODE-B'), 'parse@select must serialise and reparse each selected node')
-   assert(contains(xml_str, 'REPEAT-STILL 0'), 'Numeric repeat loops must remain unchanged by Stage 6')
+   assert(contains(xml_str, 'REPEAT-STILL 0'), 'Numeric repeat loops must remain unchanged')
    assert(contains(xml_str, 'REPEAT-STILL 1'), 'Numeric repeat loops must still advance normally')
 end
 
@@ -310,5 +310,50 @@ end
 
 @Test function RepeatSelectRejected()
    err = feedExpectError('<body/><page><repeat select="(1, 2)"><p>BAD</p></repeat></page>')
-   assert(err != ERR_Okay, 'repeat select="..." must be rejected in Stage 6')
+   assert(err != ERR_Okay, 'repeat select="..." must be rejected')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test function LetConstructedNodeBindingSurvivesChildQueries()
+   xml_str = feedAndRead([[
+      <body/>
+      <page>
+         <let name="x" select="element item { attribute code {'A'} }">
+            <p><print select="concat('LET-SELECT ', string($state?x/@code))"/></p>
+            <p><print value="LET-AVT {$state?x/@code}"/></p>
+            <if test="string($state?x/@code) = 'A'">
+               <p>LET-CONSTRUCTED-HIT</p>
+            </if>
+         </let>
+      </page>
+   ]])
+
+   assert(contains(xml_str, 'LET-SELECT A'), 'Constructed-node <let> bindings must survive print@select lookups')
+   assert(contains(xml_str, 'LET-AVT A'), 'Constructed-node <let> bindings must survive AVT lookups')
+   assert(contains(xml_str, 'LET-CONSTRUCTED-HIT'), 'Constructed-node <let> bindings must survive nested if@test queries')
+end
+
+@Test function ForEachConstructedNodeContext()
+   xml_str = feedAndRead([[
+      <body/>
+      <page>
+         <for-each select="(
+            element item { attribute code {'A'}, element name {'Alpha'} },
+            element item { attribute code {'B'}, element name {'Bravo'} }
+         )">
+            <p><print value="FOR-EACH-ITEM {string(@code)} {local-name(.)} {string(name)}"/></p>
+         </for-each>
+      </page>
+   ]])
+
+   assert(contains(xml_str, 'FOR-EACH-ITEM A item Alpha'),
+      'Constructed-node <for-each> must bind relative queries against the current constructed item')
+   assert(contains(xml_str, 'FOR-EACH-ITEM B item Bravo'),
+      'Constructed-node <for-each> must advance across constructed-node sequences')
+end
+
+@Test function ForEachRejectsAtomicSequence()
+   err = feedExpectError('<body/><page><for-each select="1 to 2"><p>BAD</p></for-each></page>')
+   assert(err != ERR_Okay, '<for-each> must reject atomic sequences instead of treating them as empty')
 end
