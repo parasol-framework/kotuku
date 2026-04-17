@@ -1207,17 +1207,14 @@ static ERR xq_select_to_xml_fragment(parser *Parser, const XPathValue &Value, st
 }
 
 struct xq_attrib_change {
-   int index = 0;
-   std::string original_value;
+   bool saved = false;
+   pf::vector<XMLAttrib> original_attribs;
 };
 
 static void xq_restore_attribs(XTag &Tag, pf::vector<xq_attrib_change> &Changes)
 {
-   for (int i = std::ssize(Changes) - 1; i >= 0; i--) {
-      auto &change = Changes[i];
-      if ((change.index >= 0) and (change.index < std::ssize(Tag.Attribs))) {
-         Tag.Attribs[change.index].Value = std::move(change.original_value);
-      }
+   if ((not Changes.empty()) and Changes[0].saved) {
+      Tag.Attribs = std::move(Changes[0].original_attribs);
    }
 
    Changes.clear();
@@ -1229,6 +1226,9 @@ static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, XTag *ContextTag, c
 static ERR xq_prepare_attribs(parser *Parser, XTag &Tag, pf::vector<xq_attrib_change> &Changes)
 {
    Changes.clear();
+   Changes.emplace_back();
+   Changes[0].saved = true;
+   Changes[0].original_attribs = Tag.Attribs;
 
    if (Tag.Attribs.size() < 2) return ERR::Okay;
 
@@ -1250,10 +1250,7 @@ static ERR xq_prepare_attribs(parser *Parser, XTag &Tag, pf::vector<xq_attrib_ch
             return err;
          }
 
-         if (expanded != value) {
-            Changes.push_back({ i, value });
-            value = std::move(expanded);
-         }
+         if (expanded != value) value = std::move(expanded);
       }
    }
 
