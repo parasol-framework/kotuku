@@ -1,5 +1,4 @@
 /*
-
 The parsing code converts XML data to a serial byte stream, after which the XML data can be discarded.  A DOM
 of the original XML content is *not* maintained.  After parsing, the stream will be ready for presentation via the
 layout code elsewhere in this code base.
@@ -7,43 +6,12 @@ layout code elsewhere in this code base.
 The stream consists of byte codes represented by the entity class.  Each type of code is represented by a C++
 class prefixed with 'bc'.  Each code type has a specific purpose such as defining a new font style, paragraph,
 hyperlink etc.  When a type is instantiated it will be assigned a UID and stored in the Codes hashmap.
-
 */
-
-// RESERVED WORDS
-//   index        Current loop index, if within a repeat loop.
-//   id           A unique ID that is regenerated on each document refresh.
-//   self         ID of the document object.
-//   platform     Windows, Linux or Native.
-//   random       Random string of 9 digits.
-//   current-page name of the current page.
-//   next-page    name of the next page.
-//   prev-page    name of the previous page.
-//   path         Current working path.
-//   author       Document author.
-//   description  Document description.
-//   copyright    Document copyright.
-//   keywords     Document keywords.
-//   title        Document title.
-//   font         Face, point size and style of the current font.
-//   font-face    Face of the current font.
-//   font-fill    Paint-fill instruction for the current font.
-//   font-size    Pixel size of the current font, scaled to 72 DPI.
-//   line-no      The current 'line' (technically segmented line) in the document.
-//   content      Inject content (same as <inject/> but usable inside tag attributes)
-//   tm-day       The current day (0 - 31)
-//   tm-month     The current month (1 - 12)
-//   tm-year      The current year (2008+)
-//   tm-hour      The current hour (0 - 23)
-//   tm-minute    The current minute (0 - 59)
-//   tm-second    The current second (0 - 59)
-//   view-height  Height of the document's available viewing area
-//   view-width   Width of the the document's available viewing area.
 
 #include <cfloat>
 
-static constexpr uint32_t HASH_let = strhash("let");
-static constexpr uint32_t HASH_for_each = strhash("for-each");
+static constexpr uint32_t HASH_let           = strhash("let");
+static constexpr uint32_t HASH_for_each      = strhash("for-each");
 static constexpr uint32_t HASH_min_width     = strhash("min-width");
 static constexpr uint32_t HASH_min_height    = strhash("min-height");
 static constexpr uint32_t HASH_minwidth      = strhash("minwidth");
@@ -346,7 +314,7 @@ struct parser {
             fl::Name("default_widget_bkgd"),
             fl::Owner(pattern->Scene->Viewport->UID),
             fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(1.0),
+            fl::Stroke("white"), fl::StrokeWidth(1.0),
             fl::RoundX(SCALE(0.03)), fl::RoundY(SCALE(0.03)),
             fl::Fill("rgba(0,0,0,.7)")
          });
@@ -767,10 +735,12 @@ static XPathValue xq_meta_to_map(extDocument *Self)
       }
 
       if (auto next_page = Self->PageTag->attrib("next-page")) {
+         // Returns the name of the next page to link to (user defined, not the next page in the document)
          xq_map_append_string(result.map_storage, "next-page", *next_page);
       }
 
       if (auto prev_page = Self->PageTag->attrib("prev-page")) {
+         // Returns the name of the previous page (user defined, not the previous page in the document)
          xq_map_append_string(result.map_storage, "prev-page", *prev_page);
       }
    }
@@ -2590,9 +2560,9 @@ static const char glButtonSVG[] = R"-(
 <svg width="100%" height="100%">
   <defs>
     <linearGradient id="darkEdge" x1="0" y1="1" x2="0" y2="0" gradientUnits="objectBoundingBox">
-      <stop stop-color="#000000" stop-opacity="1" offset="0"/>
-      <stop stop-color="#050505" stop-opacity="1" offset="0.84"/>
-      <stop stop-color="#afafaf" stop-opacity="1" offset="1"/>
+      <stop stop-color="black" stop-opacity="1" offset="0"/>
+      <stop stop-color="oklch(0.115 0.000 89.876)" stop-opacity="1" offset="0.84"/>
+      <stop stop-color="oklch(0.754 0.000 89.876)" stop-opacity="1" offset="1"/>
     </linearGradient>
 
     <filter id="dropShadow" color-interpolation-filters="sRGB" primitiveUnits="objectBoundingBox">
@@ -2600,15 +2570,15 @@ static const char glButtonSVG[] = R"-(
     </filter>
 
     <linearGradient id="shading" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="0" y2="1.04">
-      <stop stop-color="#ffffff" stop-opacity="0.50" offset="0"/>
-      <stop stop-color="#7f7f7f" stop-opacity="0" offset="0.5"/>
-      <stop stop-color="#000000" stop-opacity="0.54" offset="1"/>
+      <stop stop-color="white" stop-opacity="0.50" offset="0"/>
+      <stop stop-color="oklch(0.596 0.000 89.876)" stop-opacity="0" offset="0.5"/>
+      <stop stop-color="black" stop-opacity="0.54" offset="1"/>
     </linearGradient>
   </defs>
 
-  <rect opacity="0.6" fill="rgb(0,0,0)" filter="url(#dropShadow)" width="95%" height="93%"
+  <rect opacity="0.6" fill="black" filter="url(#dropShadow)" width="95%" height="93%"
     x="2.5%" y="4%" ry="7.5%" rx="7.5%"/>
-  <rect fill="#555d6d" width="95%" height="93%" x="2.5%" y="2.5%" ry="7.5%" rx="7.5%"/>
+  <rect fill="oklch(0.477 0.028 264.267)" width="95%" height="93%" x="2.5%" y="2.5%" ry="7.5%" rx="7.5%"/>
   <rect rx="7.5%" ry="7.5%" width="95%" height="93%" x="2.5%" y="2.5%" fill="none" stroke="url(#darkEdge)"
     stroke-width="0.5%" stroke-linecap="round" stroke-opacity="0.7" stroke-linejoin="round" stroke-miterlimit="4"/>
   <rect rx="7.5%" ry="7.5%" width="95%" height="93%" x="2.5%" y="2.5%" fill="url(#shading)"/>
@@ -2653,9 +2623,9 @@ void parser::tag_button(XTag &Tag)
             objVectorRectangle::create::global({
                fl::Owner(pattern_active->Scene->Viewport->UID),
                fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-               fl::Stroke("rgb(64 64 64 / .5)"), fl::StrokeWidth(2.0),
+               fl::Stroke("oklch(0.371 0.000 89.876 / 0.500)"), fl::StrokeWidth(2.0),
                fl::RoundX(SCALE(0.1)),
-               fl::Fill("rgb(0 0 0 / .125)")
+               fl::Fill("oklch(0.000 0.000 0.000 / 0.125)")
             });
          }
 
@@ -2676,9 +2646,9 @@ void parser::tag_button(XTag &Tag)
             objVectorRectangle::create::global({
                fl::Owner(pattern_inactive->Scene->Viewport->UID),
                fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-               fl::Stroke("rgb(0 0 0 / .25)"), fl::StrokeWidth(2.0),
+               fl::Stroke("oklch(0.000 0.000 0.000 / 0.250)"), fl::StrokeWidth(2.0),
                fl::RoundX(SCALE(0.1)),
-               fl::Fill("rgb(255 255 255 / .37)")
+               fl::Fill("oklch(1.000 0.000 89.876 / 0.370)")
             });
          }
 
@@ -2751,15 +2721,15 @@ void parser::tag_checkbox(XTag &Tag)
          objVectorRectangle::create::global({
             fl::Owner(vp->UID),
             fl::X(-8), fl::Y(-8), fl::Width(54), fl::Height(54),
-            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0),
+            fl::Stroke("white"), fl::StrokeWidth(2.0),
             fl::RoundX(6), fl::RoundY(6),
-            fl::Fill("rgba(0,0,0,.7)")
+            fl::Fill("rgb(0 0 0 / .7)")
          });
 
          objVectorPath::create::global({
             fl::Owner(vp->UID),
             fl::Sequence("M4.75 15.0832 15.8333 26.1665 33.2498 4 38 8.75 15.8333 35.6665 0 19.8332 4.75 15.0832Z"),
-            fl::Fill("rgb(255,255,255)")
+            fl::Fill("white")
          });
 
          vp->setFields(fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN|ARF::MEET),
@@ -2777,7 +2747,7 @@ void parser::tag_checkbox(XTag &Tag)
          objVectorRectangle::create::global({
             fl::Owner(vp->UID),
             fl::X(-8), fl::Y(-8), fl::Width(54), fl::Height(54),
-            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0),
+            fl::Stroke("white"), fl::StrokeWidth(2.0),
             fl::RoundX(6), fl::RoundY(6),
             fl::Fill("rgba(0,0,0,.7)")
          });
@@ -2913,7 +2883,7 @@ void parser::tag_combobox(XTag &Tag)
       widget.fill = "url(#/widget/default);url(#/widget/combobox)";
    }
 
-   if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
+   if (widget.font_fill.empty()) widget.font_fill = "white";
 
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
    widget.label_pad = DUNIT(0.5, DU::FONT_SIZE);
@@ -2956,7 +2926,7 @@ void parser::tag_input(XTag &Tag)
       widget.fill = "url(#/widget/default)";
    }
 
-   if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
+   if (widget.font_fill.empty()) widget.font_fill = "white";
 
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
    widget.label_pad = DUNIT(0.5, DU::FONT_SIZE);
@@ -4325,12 +4295,12 @@ void parser::tag_repeat(XTag &Tag)
 }
 
 //********************************************************************************************************************
-// <table columns="10%,90%" width="100" height="100" fill="rgb(128,128,128)">
+// <table columns="10%,90%" width="100" height="100" fill="oklch(0.600 0.000 89.876)">
 //  <row><cell>Activate<brk/>This activates the object.</cell></row>
 //  <row><cell span="2">Reset</cell></row>
 // </table>
 //
-// <table width="100" height="100" fill="rgb(128,128,128)">
+// <table width="100" height="100" fill="oklch(0.600 0.000 89.876)">
 //  <cell>Activate</cell><cell>This activates the object.</cell>
 //  <cell colspan="2">Reset</cell>
 // </table>
