@@ -1150,10 +1150,18 @@ static objXML * xq_find_known_node_owner(parser *Parser, const XTag *Node)
    return nullptr;
 }
 
-static objXML * xq_resolve_node_owner(parser *Parser, const XTag *Node)
+static objXML * xq_resolve_binding_node_owner(parser *Parser, const parser::xq_value_binding &Binding,
+   size_t Index, const XTag *Node)
 {
-   if (auto owner = xq_find_known_node_owner(Parser, Node)) return owner;
-   return (Parser and Parser->m_xml) ? Parser->m_xml : (Parser ? Parser->m_source_xml : nullptr);
+   if (Index < Binding.node_owners.size()) {
+      if (auto owner = Binding.node_owners[Index]) return owner;
+   }
+
+   if (Binding.owned_xml and Node and xq_xml_owns_node(Binding.owned_xml.get(), Node)) {
+      return Binding.owned_xml.get();
+   }
+
+   return xq_find_known_node_owner(Parser, Node);
 }
 
 static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser::xq_value_binding &Result)
@@ -1163,8 +1171,14 @@ static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser
 
    bool requires_owned_xml = false;
    size_t owned_node_count = 0;
-   for (auto *node : Source.node_set) {
-      if (node and (not xq_find_known_node_owner(Parser, node))) {
+   for (size_t index = 0; index < Source.node_set.size(); ++index) {
+      auto *node = Source.node_set[index];
+      if (not node) continue;
+
+      auto owner = xq_find_known_node_owner(Parser, node);
+      Result.node_owners[index] = owner;
+
+      if (not owner) {
          requires_owned_xml = true;
          owned_node_count++;
       }
@@ -1181,12 +1195,13 @@ static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser
 
    for (size_t index = 0; index < Source.node_set.size(); ++index) {
       auto *node = Source.node_set[index];
-      if ((not node) or xq_find_known_node_owner(Parser, node)) continue;
+      if ((not node) or Result.node_owners[index]) continue;
 
       xml->Tags.emplace_back();
       auto &clone = xml->Tags.back();
       xq_clone_tag_tree(*node, clone, 0, next_id);
       Result.value.node_set[index] = &clone;
+      Result.node_owners[index] = xml;
 
       if ((index < Source.node_set_attributes.size()) and Source.node_set_attributes[index]) {
          auto attrib_index = find_attrib_index(node, Source.node_set_attributes[index]);
@@ -1262,14 +1277,11 @@ static ERR xq_parse_selected_nodes(parser *Parser, const XPathValue &Value)
 
    IPF flags = IPF::NIL;
 
-   for (auto *node : stored_value.value.node_set) {
+   for (size_t node_index = 0; node_index < stored_value.value.node_set.size(); ++node_index) {
+      auto *node = stored_value.value.node_set[node_index];
       if (not node) return ERR::InvalidData;
 
-      auto node_xml = xq_find_known_node_owner(Parser, node);
-      if ((not node_xml) and stored_value.owned_xml and xq_xml_owns_node(stored_value.owned_xml.get(), node)) {
-         node_xml = stored_value.owned_xml.get();
-      }
-
+      auto node_xml = xq_resolve_binding_node_owner(Parser, stored_value, node_index, node);
       if (not node_xml) return ERR::InvalidData;
 
       auto old_xml = Parser->change_xml(node_xml);
@@ -1839,10 +1851,7 @@ TRF parser::tag_for_each(const tag_view &Tag, IPF &Flags)
       active_loop->index = int(item_index);
       active_loop->iteration = int(item_index);
 
-      auto item_xml = xq_find_known_node_owner(this, item);
-      if ((not item_xml) and sequence_value.owned_xml and xq_xml_owns_node(sequence_value.owned_xml.get(), item)) {
-         item_xml = sequence_value.owned_xml.get();
-      }
+      auto item_xml = xq_resolve_binding_node_owner(this, sequence_value, item_index, item);
       if (not item_xml) {
          log.warning("<for-each> could not resolve the owning XML document for the current item.");
          Self->Error = ERR::InvalidData;

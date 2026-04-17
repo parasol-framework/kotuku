@@ -123,9 +123,12 @@ struct parser {
    struct xq_value_binding {
       XPathValue value;
       xq_xml_owner owned_xml;
+      pf::vector<objXML *> node_owners; // Aligned with value.node_set so preserved node sequences can reuse owner lookups.
 
       xq_value_binding() : value(XPVT::String) { }
-      explicit xq_value_binding(const XPathValue &Value) : value(Value) { }
+      explicit xq_value_binding(const XPathValue &Value) : value(Value) {
+         if (Value.Type IS XPVT::NodeSet) node_owners.resize(Value.node_set.size(), nullptr);
+      }
    };
 
    struct state_guard {
