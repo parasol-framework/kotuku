@@ -151,7 +151,7 @@ static size_t find_attrib_index(const XTag *Node, const XMLAttrib *Attrib)
    return std::numeric_limits<size_t>::max();
 }
 
-static void xq_append_node_text(XTag *Node, std::string &Output)
+static void xq_append_node_text(const XTag *Node, std::string &Output)
 {
    if (not Node) return;
 
@@ -160,14 +160,14 @@ static void xq_append_node_text(XTag *Node, std::string &Output)
          Output.append(Node->Attribs[0].Value);
       }
 
-      for (auto &child : Node->Children) {
+      for (const auto &child : Node->Children) {
          xq_append_node_text(&child, Output);
       }
 
       return;
    }
 
-   for (auto &child : Node->Children) {
+   for (const auto &child : Node->Children) {
       if (child.Attribs.empty()) continue;
 
       if (child.Attribs[0].isContent()) Output.append(child.Attribs[0].Value);
@@ -175,7 +175,7 @@ static void xq_append_node_text(XTag *Node, std::string &Output)
    }
 }
 
-static std::string xq_node_string_value(XTag *Node)
+static std::string xq_node_string_value(const XTag *Node)
 {
    std::string value;
    xq_append_node_text(Node, value);
@@ -241,7 +241,7 @@ static XPathValue xq_keyvalue_to_map(const KEYVALUE &Source)
    return result;
 }
 
-static XPathValue xq_template_args_to_map(extDocument *Self)
+static XPathValue xq_template_args_to_map(const extDocument *Self)
 {
    XPathValue result(XPVT::Map);
    result.map_storage = std::make_shared<XPathMapStorage>();
@@ -262,7 +262,7 @@ static XPathValue xq_template_args_to_map(extDocument *Self)
    return result;
 }
 
-static XPathValue xq_meta_to_map(extDocument *Self)
+static XPathValue xq_meta_to_map(const extDocument *Self)
 {
    XPathValue result(XPVT::Map);
    result.map_storage = std::make_shared<XPathMapStorage>();
@@ -294,7 +294,7 @@ static XPathValue xq_meta_to_map(extDocument *Self)
    return result;
 }
 
-static XPathValue xq_layout_to_map(extDocument *Self)
+static XPathValue xq_layout_to_map(const extDocument *Self)
 {
    XPathValue result(XPVT::Map);
    result.map_storage = std::make_shared<XPathMapStorage>();
@@ -309,7 +309,7 @@ static XPathValue xq_layout_to_map(extDocument *Self)
    return result;
 }
 
-static XPathValue xq_loop_to_map(parser *Parser)
+static XPathValue xq_loop_to_map(const parser *Parser)
 {
    XPathValue result(XPVT::Map);
    result.map_storage = std::make_shared<XPathMapStorage>();
@@ -326,7 +326,7 @@ static XPathValue xq_loop_to_map(parser *Parser)
    return result;
 }
 
-static XPathValue xq_style_to_map(parser *Parser)
+static XPathValue xq_style_to_map(const parser *Parser)
 {
    XPathValue result(XPVT::Map);
    result.map_storage = std::make_shared<XPathMapStorage>();
@@ -388,13 +388,13 @@ static XPathValue xq_template_content_to_nodeset(parser *Parser)
 // Materialise the parser's lexical bindings as an XQuery map so $state?name can read the exact raw values produced
 // by <let>, including node sequences.
 
-static XPathValue xq_state_to_map(parser *Parser)
+static XPathValue xq_state_to_map(const parser *Parser)
 {
    XPathValue result(XPVT::Map);
    result.map_storage = std::make_shared<XPathMapStorage>();
    if (not Parser) return result;
 
-   for (auto &entry : Parser->m_state_values) {
+   for (const auto &entry : Parser->m_state_values) {
       xq_map_append_runtime_value(result.map_storage, entry.first, entry.second.value);
    }
 
@@ -584,7 +584,7 @@ static std::string xq_format_object_id(OBJECTID ObjectID)
    return "#" + std::to_string(ObjectID);
 }
 
-static ERR xq_resolve_document_object(parser *Parser, std::string_view ObjectName, OBJECTID &ObjectID)
+static ERR xq_resolve_document_object(const parser *Parser, std::string_view ObjectName, OBJECTID &ObjectID)
 {
    ObjectID = 0;
    if ((not Parser) or ObjectName.empty()) return ERR::Args;
@@ -1086,11 +1086,11 @@ static ERR xq_value_to_xml_fragment(const XPathValue &Value, std::string &OutXml
 // <data> requires at least one real top-level tag in the parsed fragment, while parse@select is allowed to accept
 // more permissive fragments.
 
-static bool xq_has_top_level_tag(objXML *XML)
+static bool xq_has_top_level_tag(const objXML *XML)
 {
    if (not XML) return false;
 
-   for (auto &tag : XML->Tags) {
+   for (const auto &tag : XML->Tags) {
       if (tag.isTag()) return true;
    }
 
@@ -1134,7 +1134,7 @@ static bool xq_xml_owns_node(objXML *XML, const XTag *Node)
 // Resolve which XML object currently owns a node so <for-each> can rebind the XQuery context against the correct
 // tree when evaluating relative paths.
 
-static objXML * xq_find_known_node_owner(parser *Parser, const XTag *Node)
+static objXML * xq_find_known_node_owner(const parser *Parser, const XTag *Node)
 {
    if ((not Parser) or (not Node)) return nullptr;
 
@@ -1150,7 +1150,7 @@ static objXML * xq_find_known_node_owner(parser *Parser, const XTag *Node)
    return nullptr;
 }
 
-static objXML * xq_resolve_binding_node_owner(parser *Parser, const parser::xq_value_binding &Binding,
+static objXML * xq_resolve_binding_node_owner(const parser *Parser, const parser::xq_value_binding &Binding,
    size_t Index, const XTag *Node)
 {
    if (Index < Binding.node_owners.size()) {
@@ -1164,9 +1164,11 @@ static objXML * xq_resolve_binding_node_owner(parser *Parser, const parser::xq_v
    return xq_find_known_node_owner(Parser, Node);
 }
 
-static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser::xq_value_binding &Result)
+static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser::xq_value_binding &Result,
+   objXML **OwnedXML = nullptr)
 {
    Result = parser::xq_value_binding(Source);
+   if (OwnedXML) *OwnedXML = nullptr;
    if ((not Parser) or (Source.Type != XPVT::NodeSet)) return ERR::Okay;
 
    bool requires_owned_xml = false;
@@ -1212,7 +1214,8 @@ static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser
       }
    }
 
-   Result.owned_xml = xq_adopt_xml(xml);
+   if (OwnedXML) *OwnedXML = xml;
+   else Result.owned_xml = xq_adopt_xml(xml);
    return ERR::Okay;
 }
 
@@ -1273,7 +1276,10 @@ static ERR xq_parse_selected_nodes(parser *Parser, const XPathValue &Value)
    if (Value.node_set.empty()) return ERR::Args;
 
    parser::xq_value_binding stored_value;
-   if (auto err = xq_make_stored_value(Parser, Value, stored_value); err != ERR::Okay) return err;
+   objXML *owned_xml = nullptr;
+   if (auto err = xq_make_stored_value(Parser, Value, stored_value, &owned_xml); err != ERR::Okay) return err;
+
+   if (owned_xml) Parser->Self->Resources.emplace_back(owned_xml->UID, RTD::OBJECT_TEMP);
 
    IPF flags = IPF::NIL;
 
