@@ -361,7 +361,7 @@ static XPathValue xq_page_to_nodeset(parser *Parser)
    XPathValue result(XPVT::NodeSet);
    if ((not Parser) or (not Parser->Self) or (not Parser->Self->PageTag)) return result;
 
-   result.node_set.push_back(Parser->Self->PageTag);
+   result.node_set.push_back((XTag *)Parser->Self->PageTag);
    return result;
 }
 
@@ -377,7 +377,7 @@ static XPathValue xq_template_content_to_nodeset(parser *Parser)
    result.preserve_node_order = true;
    result.node_set.reserve(Parser->m_inject_tag[0].size());
    for (auto &tag : Parser->m_inject_tag[0]) {
-      result.node_set.push_back(&tag);
+      result.node_set.push_back((XTag *)&tag);
    }
 
    return result;
@@ -1536,7 +1536,7 @@ void parser::tag_print(const XTag &Tag)
 // <let> introduces a lexical $state binding that is visible only to the element's children.  The state_guard above
 // restores any previous binding automatically.
 
-TRF parser::tag_let(XTag &Tag, IPF &Flags)
+TRF parser::tag_let(const XTag &Tag, IPF &Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1592,7 +1592,7 @@ TRF parser::tag_let(XTag &Tag, IPF &Flags)
 // <for-each> evaluates its select expression once, requires a node sequence, and then parses its children once for
 // each item with both $loop and the XQuery context item rebound to that node.
 
-TRF parser::tag_for_each(XTag &Tag, IPF &Flags)
+TRF parser::tag_for_each(const XTag &Tag, IPF &Flags)
 {
    pf::Log log(__FUNCTION__);
 
