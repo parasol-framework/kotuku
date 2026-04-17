@@ -175,6 +175,22 @@ end
    assert(regex.new('LINE [0-9]+').test(xml_str), '$meta?line-no must expose the current line number')
 end
 
+@Test function HelperUid()
+   xml_str = feedAndRead(
+      '<body/><page><p><print select="concat(\'UID \', kt:uid())"/></p></page>')
+
+   assert(regex.new('UID [0-9]+').test(xml_str),
+      'kt:uid() must expose a refresh-local generated ID, got: ' .. xml_str)
+end
+
+@Test function HelperPlatform()
+   xml_str = feedAndRead(
+      '<body/><page><p><print select="kt:platform()"/></p></page>')
+
+   assert(regex.new('(Windows|Linux|OSX|Unknown)').test(xml_str),
+      'kt:platform() must expose the host platform string, got: ' .. xml_str)
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Surface behaviour
 

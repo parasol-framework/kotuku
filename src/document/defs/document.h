@@ -1267,6 +1267,7 @@ class extDocument : public objDocument {
    std::string Path;           // Optional file to load on Init()
    std::string PageName;       // Page name to load from the Path
    std::string Bookmark;       // Bookmark name processed from the Path
+   std::string RuntimeUID;     // Refresh-local generated ID used by document-side XQuery helpers.
    std::string WorkingPath;    // String storage for the WorkingPath field
    std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
    std::string Background;     // Background fill instruction
