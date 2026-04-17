@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
+
+<info>
+ <title>XQuery Tests</title>
+ <author>Paul Manias</author>
+ <keywords>xquery, test</keywords>
+ <description>XQuery tests for XQuery-only conditionals, object existence helpers and migrated runtime scope usage.</description>
+</info>
+
+<body face="Noto Sans" font-size="10pt"/>
+
+<page name="Stage4">
+
+<p>XQuery Stage 4</p>
+
+<if test="kt:object-exists('stage4document')">
+  <p>OBJECT-EXISTS-TRUE</p>
+</if>
+
+<if test="not(kt:object-exists('MissingObject'))">
+  <p>OBJECT-EXISTS-FALSE</p>
+</if>
+
+<p><font face="courier" fill="red" style="italic" size="20"><print value="STYLE {$style?font-style} {$style?font-face} {$style?font-size} {$style?font-fill}"/></font></p>
+<p><print value="PAGE {$meta?current-page}"/></p>
+<p><print value="LAYOUT {$layout?view-width} x {$layout?view-height}"/></p>
+<p><print value="LINE {$meta?line-no}"/></p>
+
+</page>

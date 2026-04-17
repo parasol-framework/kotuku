@@ -10,7 +10,61 @@ hyperlink etc.  When a type is instantiated it will be assigned a UID and stored
 
 */
 
+// RESERVED WORDS
+//   index        Current loop index, if within a repeat loop.
+//   id           A unique ID that is regenerated on each document refresh.
+//   self         ID of the document object.
+//   platform     Windows, Linux or Native.
+//   random       Random string of 9 digits.
+//   current-page name of the current page.
+//   next-page    name of the next page.
+//   prev-page    name of the previous page.
+//   path         Current working path.
+//   author       Document author.
+//   description  Document description.
+//   copyright    Document copyright.
+//   keywords     Document keywords.
+//   title        Document title.
+//   font         Face, point size and style of the current font.
+//   font-face    Face of the current font.
+//   font-fill    Paint-fill instruction for the current font.
+//   font-size    Pixel size of the current font, scaled to 72 DPI.
+//   line-no      The current 'line' (technically segmented line) in the document.
+//   content      Inject content (same as <inject/> but usable inside tag attributes)
+//   tm-day       The current day (0 - 31)
+//   tm-month     The current month (1 - 12)
+//   tm-year      The current year (2008+)
+//   tm-hour      The current hour (0 - 23)
+//   tm-minute    The current minute (0 - 59)
+//   tm-second    The current second (0 - 59)
+//   view-height  Height of the document's available viewing area
+//   view-width   Width of the the document's available viewing area.
+
 #include <cfloat>
+
+static constexpr uint32_t HASH_let = strhash("let");
+static constexpr uint32_t HASH_for_each = strhash("for-each");
+static constexpr uint32_t HASH_min_width     = strhash("min-width");
+static constexpr uint32_t HASH_min_height    = strhash("min-height");
+static constexpr uint32_t HASH_minwidth      = strhash("minwidth");
+static constexpr uint32_t HASH_minheight     = strhash("minheight");
+static constexpr uint32_t HASH_maxwidth      = strhash("maxwidth");
+static constexpr uint32_t HASH_maxheight     = strhash("maxheight");
+static constexpr uint32_t HASH_xoffset       = strhash("xoffset");
+static constexpr uint32_t HASH_yoffset       = strhash("yoffset");
+static constexpr uint32_t HASH_insidewidth   = strhash("insidewidth");
+static constexpr uint32_t HASH_insideheight  = strhash("insideheight");
+static constexpr uint32_t HASH_labelwidth    = strhash("labelwidth");
+static constexpr uint32_t HASH_gap           = strhash("gap");
+static constexpr uint32_t HASH_object        = strhash("object");
+static constexpr uint32_t HASH_params        = strhash("params");
+static constexpr uint32_t HASH_args          = strhash("args");
+static constexpr uint32_t HASH_vars          = strhash("vars");
+static constexpr uint32_t HASH_meta          = strhash("meta");
+static constexpr uint32_t HASH_layout        = strhash("layout");
+static constexpr uint32_t HASH_loop          = strhash("loop");
+static constexpr uint32_t HASH_doc           = strhash("doc");
+static constexpr uint32_t HASH_state         = strhash("state");
 
 // State machine for the parser.  This information is discarded after parsing.
 
@@ -20,15 +74,128 @@ struct parser {
       int row_col;
    };
 
+   struct loop_frame {
+      int index = 0;
+      int iteration = 0;
+      int start = 0;
+      int end = 0;
+      int step = 1;
+      int count = 0;
+      bool count_known = false;
+      bool end_known = false;
+      std::string alias_name;
+   };
+
+   struct loop_guard {
+      parser *owner = nullptr;
+      bool active = false;
+
+      loop_guard(parser *Owner, const loop_frame &Frame) : owner(Owner), active(true) {
+         owner->m_loop_stack.push_back(Frame);
+      }
+
+      ~loop_guard() {
+         if ((active) and (owner) and (!owner->m_loop_stack.empty())) {
+            owner->m_loop_stack.pop_back();
+         }
+      }
+
+      inline loop_frame * frame() {
+         if ((!active) or (!owner) or (owner->m_loop_stack.empty())) return nullptr;
+         return &owner->m_loop_stack.back();
+      }
+
+      inline const loop_frame * frame() const {
+         if ((!active) or (!owner) or (owner->m_loop_stack.empty())) return nullptr;
+         return &owner->m_loop_stack.back();
+      }
+   };
+
+   // RAII helper for <let> lexical bindings.  The selected value is installed into
+   // m_state_values for the duration of the current scope and the previous binding
+   // (if any) is restored automatically when the guard is destroyed.
+
+   using xq_xml_owner = std::shared_ptr<objXML>;
+
+   struct xq_value_binding {
+      XPathValue value;
+      xq_xml_owner owned_xml;
+
+      xq_value_binding() : value(XPVT::String) { }
+      explicit xq_value_binding(const XPathValue &Value) : value(Value) { }
+   };
+
+   struct state_guard {
+      parser *owner = nullptr;
+      std::string name;
+      std::optional<xq_value_binding> previous_value;
+      bool had_previous_value = false;
+      bool active = false;
+
+      state_guard(parser *Owner, std::string Name, const xq_value_binding &Value)
+         : owner(Owner), name(std::move(Name)), active(true)
+      {
+         auto existing = owner->m_state_values.find(name);
+         if (existing != owner->m_state_values.end()) {
+            had_previous_value = true;
+            previous_value = existing->second;
+            existing->second = Value;
+         }
+         else owner->m_state_values.emplace(name, Value);
+      }
+
+      ~state_guard() {
+         if ((!active) or (!owner)) return;
+
+         if (had_previous_value and previous_value.has_value()) {
+            auto existing = owner->m_state_values.find(name);
+            if (existing != owner->m_state_values.end()) existing->second = *previous_value;
+            else owner->m_state_values.emplace(name, *previous_value);
+         }
+         else owner->m_state_values.erase(name);
+      }
+   };
+
+   // Temporary XQuery context override used by <for-each> so that '.' and relative
+   // path expressions resolve against the current item rather than the parser's base
+   // document node.
+
+   struct xq_context_frame {
+      objXML *xml = nullptr;
+      XTag *node = nullptr;
+   };
+
+   // RAII wrapper that pushes a transient XQuery context frame for the current parse
+   // branch and pops it again when the scope exits.
+
+   struct xq_context_guard {
+      parser *owner = nullptr;
+      bool active = false;
+
+      xq_context_guard(parser *Owner, objXML *XML, XTag *Node) : owner(Owner), active(true) {
+         owner->m_xq_context_stack.push_back({ XML, Node });
+      }
+
+      ~xq_context_guard() {
+         if ((active) and (owner) and (!owner->m_xq_context_stack.empty())) {
+            owner->m_xq_context_stack.pop_back();
+         }
+      }
+   };
+
    extDocument *Self;
    objXML *m_xml;
+   objXML *m_source_xml = nullptr;
+   objXML *m_doc_xml = nullptr;
 
    RSTREAM *m_stream;                 // Generated stream content
    std::unique_ptr<RSTREAM> m_stream_alloc;
    objXML *m_inject_xml = nullptr;
    objXML::TAGS *m_inject_tag = nullptr, *m_header_tag = nullptr, *m_footer_tag = nullptr, *m_body_tag = nullptr;
    objTime *m_time = nullptr;
-   int  m_loop_index  = 0;
+   pf::vector<loop_frame> m_loop_stack;
+   pf::vector<xq_context_frame> m_xq_context_stack; // Active XQuery context overrides for <for-each>.
+   ankerl::unordered_dense::map<std::string, xq_value_binding> m_state_values; // Lexical bindings exposed through $state.
    uint16_t m_paragraph_depth = 0;     // Incremented when inside <p> tags
    char  m_in_template = 0;
    bool  m_strip_feeds = false;
@@ -54,7 +221,7 @@ struct parser {
       }
    }
 
-   parser(extDocument *pSelf, objXML *pXML, RSTREAM *pStream = nullptr) : Self(pSelf), m_xml(pXML) {
+   parser(extDocument *pSelf, objXML *pXML, RSTREAM *pStream = nullptr) : Self(pSelf), m_xml(pXML), m_source_xml(pXML) {
       if (pStream) {
          m_stream = pStream;
          m_index = stream_char(pStream->size());
@@ -66,19 +233,12 @@ struct parser {
       }
    }
 
-   inline ERR  calc(const std::string &, double *, std::string &);
    inline TRF  parse_tag(XTag &, IPF &);
    inline TRF  parse_tags(objXML::TAGS &, IPF = IPF::NIL);
    inline TRF  parse_tags_with_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
    inline TRF  parse_tags_with_embedded_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
    inline void process_page(objXML *pXML);
    inline void tag_xml_content(XTag &, PXF);
-   inline void translate_attrib_args(pf::vector<XMLAttrib> &);
-   inline void translate_args(const std::string &, std::string &);
-   inline void translate_calc(std::string &, size_t);
-   inline void translate_param(std::string &, size_t);
-   inline void translate_reserved(std::string &, size_t, bool &);
-   inline ERR  tag_xml_content_eval(std::string &);
    inline void trim_preformat(extDocument *);
 
    // Switching out the XML object is sometimes done for things like template injection
@@ -96,9 +256,11 @@ struct parser {
    inline void tag_cell(XTag &);
    inline void tag_checkbox(XTag &);
    inline void tag_combobox(XTag &);
+   inline void tag_data(XTag &);
    inline void tag_debug(XTag &);
    inline void tag_div(XTag &);
    inline void tag_editdef(XTag &);
+   inline TRF  tag_for_each(XTag &, IPF &);
    inline void tag_font(XTag &);
    inline void tag_font_style(objXML::TAGS &, FSO, std::string_view);
    inline void tag_head(XTag &);
@@ -106,6 +268,7 @@ struct parser {
    inline void tag_include(XTag &);
    inline void tag_index(XTag &);
    inline void tag_input(XTag &);
+   inline TRF  tag_let(XTag &, IPF &);
    inline void tag_li(XTag &);
    inline void tag_link(XTag &);
    inline void tag_list(XTag &);
@@ -122,12 +285,52 @@ struct parser {
    inline void tag_template(XTag &);
    inline void tag_trigger(XTag &);
    inline void tag_use(XTag &);
-   inline void tag_object(XTag &);
    inline bool check_para_attrib(const XMLAttrib &, bc_paragraph *, bc_font &);
    inline bool check_font_attrib(const XMLAttrib &, bc_font &);
+   inline loop_frame * active_loop() {
+      if (m_loop_stack.empty()) return nullptr;
+      return &m_loop_stack.back();
+   }
+
+   inline const loop_frame * active_loop() const {
+      if (m_loop_stack.empty()) return nullptr;
+      return &m_loop_stack.back();
+   }
+
+   inline xq_context_frame * active_xq_context() {
+      if (m_xq_context_stack.empty()) return nullptr;
+      return &m_xq_context_stack.back();
+   }
+
+   inline const xq_context_frame * active_xq_context() const {
+      if (m_xq_context_stack.empty()) return nullptr;
+      return &m_xq_context_stack.back();
+   }
+
+   inline int current_loop_index() const {
+      if (auto frame = active_loop()) return frame->index;
+      else return 0;
+   }
+
+   inline bool resolve_loop_alias(std::string_view Name, std::string &Value) const {
+      for (int i = std::ssize(m_loop_stack) - 1; i >= 0; i--) {
+         auto &frame = m_loop_stack[i];
+         if ((!frame.alias_name.empty()) and (iequals(frame.alias_name, Name))) {
+            Value = std::to_string(frame.index);
+            return true;
+         }
+      }
+      return false;
+   }
 
    ~parser() {
       if (m_time) FreeResource(m_time);
+      if (m_doc_xml) FreeResource(m_doc_xml);
+   }
+
+   inline void replace_doc_xml(objXML *XML) {
+      if ((m_doc_xml) and (not (m_doc_xml IS XML))) FreeResource(m_doc_xml);
+      m_doc_xml = XML;
    }
 
    void config_default_pattern() {
@@ -168,6 +371,9 @@ void parser::process_page(objXML *pXML)
 
    if (!pXML) { Self->Error = ERR::NoData; return; }
    m_xml = pXML;
+   m_source_xml = pXML;
+   m_state_values.clear();
+   m_xq_context_stack.clear();
 
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
    // within the XML source - they don't have to be at the root.
@@ -258,7 +464,7 @@ void parser::process_page(objXML *pXML)
    }
 /*
    if ((!Self->Error) and (Self->MouseInPage)) {
-      DOUBLE x, y;
+      double x, y;
       if (!gfxGetRelativeCursorPos(Self->Page->UID, &x, &y)) {
          check_mouse_pos(Self, x, y);
       }
@@ -281,604 +487,1261 @@ void parser::process_page(objXML *pXML)
 }
 
 //********************************************************************************************************************
-// Translate all arguments found in a list of XML attributes.
+// Determine whether an attribute on a given tag should be treated as an XQuery expression (evaluated as a whole) or
+// as an attribute value template (AVT) with embedded {...} expression fragments.
+//
+//   if@test, elseif@test, while@test       -> XQuery expression attributes
+//   print@select, parse@select             -> XQuery expression attributes
+//   print@value                            -> AVT
 
-void parser::translate_attrib_args(pf::vector<XMLAttrib> &Attribs)
+static bool has_avt_markers(std::string_view Value)
 {
-   if (Attribs[0].isContent()) return;
+   return (Value.find('{') != std::string_view::npos) or (Value.find('}') != std::string_view::npos);
+}
 
-   for (int attrib=1; attrib < std::ssize(Attribs); attrib++) {
-      if (Attribs[attrib].Name.starts_with('$')) continue;
+static bool is_xq_expression_attrib(uint32_t TagHash, std::string_view AttribName)
+{
+   auto name = AttribName;
+   if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
 
-      std::string output;
-      translate_args(Attribs[attrib].Value, output);
-      Attribs[attrib].Value = output;
+   if (iequals("test", name)) {
+      return (TagHash IS HASH_if) or (TagHash IS HASH_elseif) or (TagHash IS HASH_while);
    }
+   else if (iequals("select", name)) {
+      return (TagHash IS HASH_print) or (TagHash IS HASH_parse) or (TagHash IS HASH_data) or
+         (TagHash IS HASH_let) or (TagHash IS HASH_for_each);
+   }
+   return false;
+}
+
+inline bool is_xq_avt_attrib(uint32_t TagHash, std::string_view AttribName, std::string_view AttribValue)
+{
+   return (AttribValue.find('{') != std::string_view::npos) or (AttribValue.find('}') != std::string_view::npos);
 }
 
 //********************************************************************************************************************
-// This function converts arguments such as [@arg] in a string.
+// XQuery evaluation helpers
 //
-// Calculations can also be performed, e.g. [=5+7]
-//
-// The escape code for brackets are &lsqr; and &rsqr; (not in the XML escape code standard and thus are unconverted up
-// until this function is reached).
-//
-// If an attribute name is prefixed with '$' then no translation of the attribute value is attempted.
-//
-// URI parameters are referenced with [@param:default_val]
-//
-// If a major error occurs during processing, the function will abort, returning the error and also setting the Error
-// field to the resulting error code.  The most common reason for an abort is a buffer overflow or memory allocation
-// problems, so a complete abort of document processing is advisable.
-//
-// RESERVED WORDS
-//    %index        Current loop index, if within a repeat loop.
-//    %id           A unique ID that is regenerated on each document refresh.
-//    %self         ID of the document object.
-//    %platform     Windows, Linux or Native.
-//    %random       Random string of 9 digits.
-//    %current-page name of the current page.
-//    %next-page    name of the next page.
-//    %prev-page    name of the previous page.
-//    %path         Current working path.
-//    %author       Document author.
-//    %description  Document description.
-//    %copyright    Document copyright.
-//    %keywords     Document keywords.
-//    %title        Document title.
-//    %font         Face, point size and style of the current font.
-//    %font-face    Face of the current font.
-//    %font-fill    Paint-fill instruction for the current font.
-//    %font-size    Pixel size of the current font, scaled to 72 DPI.
-//    %line-no      The current 'line' (technically segmented line) in the document.
-//    %content      Inject content (same as <inject/> but usable inside tag attributes)
-//    %tm-day       The current day (0 - 31)
-//    %tm-month     The current month (1 - 12)
-//    %tm-year      The current year (2008+)
-//    %tm-hour      The current hour (0 - 23)
-//    %tm-minute    The current minute (0 - 59)
-//    %tm-second    The current second (0 - 59)
-//    %view-height  Height of the document's available viewing area
-//    %view-width   Width of the the document's available viewing area.
+// These helpers are intentionally thin wrappers around the XQuery object class so that parser-visible behaviour mirrors
+// a standard xml:evaluate() call.  The XML context is optional; when absent, the evaluator still supports literal and
+// function-based expressions.  Errors from compilation or evaluation propagate to the caller via the returned ERR and
+// the document Self->Error field.
 
-void parser::translate_args(const std::string &Input, std::string &Output)
+enum class XQEval { STRING, BOOLEAN };
+
+static constexpr std::string_view XQ_KOTUKU_NAMESPACE_URI = "http://www.kotuku.dev/namespaces/kotuku";
+static constexpr std::string_view XQ_OBJECT_EXISTS_FUNCTION = "kt:object-exists";
+static constexpr std::string_view XQ_OBJECT_ID_FUNCTION = "kt:object-id";
+static constexpr std::string_view XQ_SELF_ID_FUNCTION = "kt:self-id";
+static constexpr std::string_view XQ_FIELD_FUNCTION = "kt:field";
+static constexpr std::string_view XQ_KEY_FUNCTION = "kt:key";
+
+static std::string xq_build_eval_expression(std::string_view Expression, XQEval Mode)
+{
+   std::string eval_expression;
+   bool uses_kt_prefix = Expression.find("kt:") != std::string_view::npos;
+   bool declares_kt_namespace = Expression.find("declare namespace kt") != std::string_view::npos;
+
+   if ((uses_kt_prefix) and (!declares_kt_namespace)) {
+      eval_expression.reserve(Expression.size() + XQ_KOTUKU_NAMESPACE_URI.size() + 40);
+      eval_expression += "declare namespace kt = '";
+      eval_expression += XQ_KOTUKU_NAMESPACE_URI;
+      eval_expression += "'; ";
+   }
+
+   if (Mode IS XQEval::BOOLEAN) {
+      eval_expression += "boolean(";
+      eval_expression += Expression;
+      eval_expression += ")";
+   }
+   else eval_expression += Expression;
+
+   return eval_expression;
+}
+
+static inline void xq_map_append_value(std::shared_ptr<XPathMapStorage> &Storage, std::string_view Key,
+   const XPathValue &Value)
+{
+   XPathMapEntry entry;
+   entry.key.assign(Key);
+   entry.value.items.push_back(Value);
+   Storage->entries.push_back(std::move(entry));
+}
+
+static bool xq_value_is_empty_sequence(const XPathValue &Value)
+{
+   if (Value.Type != XPVT::NodeSet) return false;
+
+   return Value.node_set.empty() and
+      Value.node_set_attributes.empty() and
+      Value.node_set_string_values.empty() and
+      (not Value.node_set_string_override.has_value()) and
+      Value.node_set_composite_values.empty();
+}
+
+// A node-set may carry parallel attribute slots, but Stage 6 only treats the value as
+// attribute-backed if at least one slot actually points to a live attribute.
+
+static bool xq_nodeset_has_real_attributes(const XPathValue &Value)
+{
+   for (auto *attribute : Value.node_set_attributes) {
+      if (attribute) return true;
+   }
+   return false;
+}
+
+// Likewise for composite entries: null placeholders are tolerated, but real composite
+// items mean the sequence is not serialisable as plain XML markup.
+
+static bool xq_nodeset_has_real_composites(const XPathValue &Value)
+{
+   for (const auto &composite : Value.node_set_composite_values) {
+      if (composite) return true;
+   }
+   return false;
+}
+
+static parser::xq_xml_owner xq_adopt_xml(objXML *XML)
+{
+   return parser::xq_xml_owner(XML, [](objXML *OwnedXML) {
+      if (OwnedXML) FreeResource(OwnedXML);
+   });
+}
+
+static void xq_clone_tag_tree(const XTag &Source, XTag &Target, int ParentID, int &NextID)
+{
+   Target = XTag(NextID--, Source.LineNo, Source.Attribs);
+   Target.ParentID = ParentID;
+   Target.Flags = Source.Flags;
+   Target.NamespaceID = Source.NamespaceID;
+   Target.Reserved = Source.Reserved;
+   Target.Children.clear();
+   Target.Children.reserve(Source.Children.size());
+
+   for (const auto &child : Source.Children) {
+      Target.Children.emplace_back();
+      xq_clone_tag_tree(child, Target.Children.back(), Target.ID, NextID);
+   }
+}
+
+static size_t xq_find_attrib_index(const XTag *Node, const XMLAttrib *Attrib)
+{
+   if ((!Node) or (!Attrib)) return std::numeric_limits<size_t>::max();
+
+   for (size_t index = 0; index < Node->Attribs.size(); ++index) {
+      if (&Node->Attribs[index] IS Attrib) return index;
+   }
+
+   return std::numeric_limits<size_t>::max();
+}
+
+static void xq_append_node_text(XTag *Node, std::string &Output)
+{
+   if (!Node) return;
+
+   if (Node->isContent()) {
+      if ((!Node->Attribs.empty()) and Node->Attribs[0].isContent()) {
+         Output.append(Node->Attribs[0].Value);
+      }
+
+      for (auto &child : Node->Children) {
+         xq_append_node_text(&child, Output);
+      }
+
+      return;
+   }
+
+   for (auto &child : Node->Children) {
+      if (child.Attribs.empty()) continue;
+
+      if (child.Attribs[0].isContent()) Output.append(child.Attribs[0].Value);
+      else xq_append_node_text(&child, Output);
+   }
+}
+
+static std::string xq_node_string_value(XTag *Node)
+{
+   std::string value;
+   xq_append_node_text(Node, value);
+   return value;
+}
+
+// Store a runtime value into a map entry while preserving the XQuery rule that an empty
+// sequence is represented by an empty slot rather than a concrete item.
+
+static inline void xq_map_append_runtime_value(std::shared_ptr<XPathMapStorage> &Storage, std::string_view Key,
+   const XPathValue &Value)
+{
+   XPathMapEntry entry;
+   entry.key.assign(Key);
+   if (not xq_value_is_empty_sequence(Value)) entry.value.items.push_back(Value);
+   Storage->entries.push_back(std::move(entry));
+}
+
+static inline void xq_map_append_string(std::shared_ptr<XPathMapStorage> &Storage, std::string_view Key,
+   std::string_view Value)
+{
+   XPathValue result(XPVT::String);
+   result.StringValue.assign(Value);
+   xq_map_append_value(Storage, Key, result);
+}
+
+static inline void xq_map_append_number(std::shared_ptr<XPathMapStorage> &Storage, std::string_view Key, double Value)
+{
+   XPathValue result(XPVT::Number);
+   result.NumberValue = Value;
+   xq_map_append_value(Storage, Key, result);
+}
+
+static std::string xq_format_font_size(const bc_font &Style)
+{
+   char buffer[28];
+   switch(Style.req_size.type) {
+      case DU::PIXEL:
+         snprintf(buffer, sizeof(buffer), "%gpx", Style.req_size.value);
+         break;
+      case DU::FONT_SIZE:
+         snprintf(buffer, sizeof(buffer), "%gem", Style.req_size.value);
+         break;
+      case DU::SCALED:
+         snprintf(buffer, sizeof(buffer), "%g%%", Style.req_size.value * 100.0);
+         break;
+      default:
+         snprintf(buffer, sizeof(buffer), "%dpx", DEFAULT_FONTSIZE);
+         break;
+   }
+   return std::string(buffer);
+}
+
+static XPathValue xq_keyvalue_to_map(const KEYVALUE &Source)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+
+   for (const auto &entry : Source) {
+      xq_map_append_string(result.map_storage, entry.first, entry.second);
+   }
+
+   return result;
+}
+
+static XPathValue xq_template_args_to_map(extDocument *Self)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+
+   if (Self->TemplateArgs.empty()) return result;
+
+   auto args = Self->TemplateArgs.back();
+   if (!args) return result;
+
+   for (int i=1; i < std::ssize(args->Attribs); i++) {
+      auto name = std::string_view(args->Attribs[i].Name);
+      if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+      if (name.empty()) continue;
+      xq_map_append_string(result.map_storage, name, args->Attribs[i].Value);
+   }
+
+   return result;
+}
+
+static XPathValue xq_meta_to_map(extDocument *Self)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+
+   if (Self->Title)         xq_map_append_string(result.map_storage, "title", Self->Title);
+   if (Self->Author)        xq_map_append_string(result.map_storage, "author", Self->Author);
+   if (Self->Description)   xq_map_append_string(result.map_storage, "description", Self->Description);
+   if (Self->Copyright)     xq_map_append_string(result.map_storage, "copyright", Self->Copyright);
+   if (Self->Keywords)      xq_map_append_string(result.map_storage, "keywords", Self->Keywords);
+   if (!Self->Path.empty()) xq_map_append_string(result.map_storage, "path", Self->Path);
+   xq_map_append_number(result.map_storage, "line-no", double(Self->Segments.size()));
+
+   if (Self->PageTag) {
+      if (auto current_page = Self->PageTag->attrib("name")) {
+         xq_map_append_string(result.map_storage, "current-page", *current_page);
+      }
+
+      if (auto next_page = Self->PageTag->attrib("next-page")) {
+         xq_map_append_string(result.map_storage, "next-page", *next_page);
+      }
+
+      if (auto prev_page = Self->PageTag->attrib("prev-page")) {
+         xq_map_append_string(result.map_storage, "prev-page", *prev_page);
+      }
+   }
+
+   return result;
+}
+
+static XPathValue xq_layout_to_map(extDocument *Self)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+
+   xq_map_append_number(result.map_storage, "view-width", Self->VPWidth);
+   xq_map_append_number(result.map_storage, "view-height", Self->VPHeight);
+   xq_map_append_number(result.map_storage, "page-height", Self->PageHeight);
+
+   if (Self->CalcWidth > 0) xq_map_append_number(result.map_storage, "page-width", Self->CalcWidth);
+   else if (Self->VPWidth > 0) xq_map_append_number(result.map_storage, "page-width", Self->VPWidth);
+
+   return result;
+}
+
+static XPathValue xq_loop_to_map(parser *Parser)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+
+   auto frame = Parser->active_loop();
+   if (!frame) return result;
+
+   xq_map_append_number(result.map_storage, "index", frame->index);
+   xq_map_append_number(result.map_storage, "iteration", frame->iteration);
+   xq_map_append_number(result.map_storage, "start", frame->start);
+   xq_map_append_number(result.map_storage, "step", frame->step);
+   if (frame->count_known) xq_map_append_number(result.map_storage, "count", frame->count);
+   if (frame->end_known) xq_map_append_number(result.map_storage, "end", frame->end);
+   return result;
+}
+
+static XPathValue xq_style_to_map(parser *Parser)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+
+   xq_map_append_string(result.map_storage, "font-face", Parser->m_style.face);
+   xq_map_append_string(result.map_storage, "font-style", Parser->m_style.style);
+   xq_map_append_string(result.map_storage, "font-fill", Parser->m_style.fill);
+   xq_map_append_string(result.map_storage, "font-size", xq_format_font_size(Parser->m_style));
+   return result;
+}
+
+//********************************************************************************************************************
+// Convert the top-level roots of an XML tree into the node-sequence form expected by the XQuery runtime.  This is
+// used for $doc.
+
+static XPathValue xq_xml_roots_to_nodeset(objXML *XML)
+{
+   XPathValue result(XPVT::NodeSet);
+   if (!XML) return result;
+
+   for (auto &tag : XML->Tags) {
+      if (tag.isTag()) result.node_set.push_back(&tag);
+   }
+
+   return result;
+}
+
+//********************************************************************************************************************
+// $page always refers to the active source <page> node, regardless of which child tag is currently being parsed.
+
+static XPathValue xq_page_to_nodeset(parser *Parser)
+{
+   XPathValue result(XPVT::NodeSet);
+   if ((!Parser) or (!Parser->Self) or (!Parser->Self->PageTag)) return result;
+
+   result.node_set.push_back(Parser->Self->PageTag);
+   return result;
+}
+
+//********************************************************************************************************************
+// Materialise the parser's lexical bindings as an XQuery map so $state?name can read the exact raw values produced
+// by <let>, including node sequences.
+
+static XPathValue xq_state_to_map(parser *Parser)
+{
+   XPathValue result(XPVT::Map);
+   result.map_storage = std::make_shared<XPathMapStorage>();
+   if (!Parser) return result;
+
+   for (auto &entry : Parser->m_state_values) {
+      xq_map_append_runtime_value(result.map_storage, entry.first, entry.second.value);
+   }
+
+   return result;
+}
+
+static bool loop_index_in_range(int Index, int End, int Step)
+{
+   if (Step > 0) return Index < End;
+   else if (Step < 0) return Index > End;
+   else return false;
+}
+
+static int compute_numeric_loop_count(int Start, int End, int Step)
+{
+   if (Step > 0) {
+      if (Start >= End) return 0;
+      return ((End - Start - 1) / Step) + 1;
+   }
+   else if (Step < 0) {
+      auto distance = Start - End;
+      if (distance <= 0) return 0;
+      return ((distance - 1) / (-Step)) + 1;
+   }
+   else return 0;
+}
+
+//********************************************************************************************************************
+
+static ERR xq_resolve_runtime_scope(objXQuery *Query, std::string_view Name, XPathValue *Result, APTR Meta)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   auto name_hash = strhash(Name);
+   if (name_hash IS HASH_params) {
+      *Result = xq_keyvalue_to_map(Self->Params);
+   }
+   else if (name_hash IS HASH_args) {
+      *Result = xq_template_args_to_map(Self);
+   }
+   else if (name_hash IS HASH_vars) {
+      *Result = xq_keyvalue_to_map(Self->Vars);
+   }
+   else if (name_hash IS HASH_meta) {
+      *Result = xq_meta_to_map(Self);
+   }
+   else if (name_hash IS HASH_layout) {
+      *Result = xq_layout_to_map(Self);
+   }
+   else if (name_hash IS HASH_loop) {
+      *Result = xq_loop_to_map((parser *)Meta);
+   }
+   else if (name_hash IS HASH_doc) {
+      auto p = (parser *)Meta;
+      *Result = p ? xq_xml_roots_to_nodeset(p->m_doc_xml) : XPathValue(XPVT::NodeSet);
+   }
+   else if (name_hash IS HASH_page) {
+      *Result = xq_page_to_nodeset((parser *)Meta);
+   }
+   else if (name_hash IS HASH_state) {
+      *Result = xq_state_to_map((parser *)Meta);
+   }
+   else if (name_hash IS HASH_style) {
+      *Result = xq_style_to_map((parser *)Meta);
+   }
+   else return ERR::Search;
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR xq_document_object_exists(objXQuery *, std::string_view, const std::vector<XPathValue> &Input,
+   XPathValue &Result, APTR Meta)
 {
    pf::Log log(__FUNCTION__);
 
-   bool time_queried = false;
-   Output = Input;
+   auto Parser = (parser *)Meta;
+   Result = XPathValue(XPVT::Boolean);
+   Result.reset();
 
-   // Do nothing if there are no special references being used
+   if ((not Parser) or Input.empty()) return ERR::Args;
 
-   {
-      unsigned i;
-      for (i=0; i < Input.size(); i++) {
-         if (Input[i] IS '[') break;
-         if ((Input[i] IS '&') and
-             ((startswith("&lsqr;", std::string_view(Input.begin()+i, Input.end()))) or
-              (startswith("&rsqr;", std::string_view(Input.begin()+i, Input.end()))))) break;
-      }
-      if (i >= Input.size()) return;
+   std::string object_name;
+   auto &value = Input[0];
+   if (value.Type IS XPVT::String) object_name = value.StringValue;
+   else if ((value.Type IS XPVT::Number) or (value.Type IS XPVT::Boolean)) object_name = std::to_string(value.NumberValue);
+   else if (value.node_set_string_override.has_value()) object_name = *value.node_set_string_override;
+   else if (!value.node_set_string_values.empty()) object_name = value.node_set_string_values[0];
+   else return log.warning(ERR::Args);
+
+   OBJECTID object_id = 0;
+   bool exists = false;
+   if ((!object_name.empty()) and
+      (FindObject(object_name.c_str(), CLASSID::NIL, FOF::NIL, &object_id) IS ERR::Okay)) {
+      exists = valid_objectid(Parser->Self, object_id) ? true : false;
    }
 
-   for (auto pos = std::ssize(Output)-1; pos >= 0; pos--) {
-      if (Output[pos] IS '&') {
-         if (startswith("&lsqr;", std::string_view(Output.begin()+pos, Output.end()))) Output.replace(pos, 6, "[");
-         else if (startswith("&rsqr;", std::string_view(Output.begin()+pos, Output.end()))) Output.replace(pos, 6, "]");
-      }
-      else if (Output[pos] IS '[') {
-         if (Output[pos+1] IS '=') { // Perform a calcuation within [= ... ]
-            translate_calc(Output, pos);
-         }
-         else if (Output[pos+1] IS '@') {
-            translate_param(Output, pos);
-         }
-         else if (Output[pos+1] IS '%') {
-            translate_reserved(Output, pos, time_queried);
-         }
-         else { // Object translation, can be [object] or [object.field]
-            // Make sure that there is a closing bracket
-
-            int balance = 1;
-            unsigned end;
-            for (end=pos+1; (end < Output.size()) and (balance > 0); end++) {
-               if (Output[end] IS '[') balance++;
-               else if (Output[end] IS ']') balance--;
-            }
-
-            if (Output[end] != ']') {
-               log.warning("Object reference missing square end bracket.");
-               break;
-            }
-            end++;
-
-            auto name = Output.substr(pos+1, Output.find_first_of(".]")-pos);
-
-            // Get the object ID
-
-            OBJECTID objectid = 0;
-            if (!name.empty()) {
-               if (FindObject(name.c_str(), CLASSID::NIL, FOF::SMART_NAMES, &objectid) IS ERR::Okay) {
-                  if ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL) {
-                     // Only consider objects that are children of the document
-                     bool valid = false;
-                     for (auto parent_id = GetOwnerID(objectid); parent_id; parent_id = GetOwnerID(parent_id)) {
-                        if (parent_id IS Self->UID) {
-                           valid = true;
-                           break;
-                        }
-                     }
-                     if (!valid) objectid = 0;
-                  }
-               }
-
-               if (objectid) {
-                  if (valid_objectid(Self, objectid)) {
-                     if (auto dot = Output.find('.'); dot != std::string::npos) { // Object makes a field reference
-                        pf::ScopedObjectLock object(objectid, 2000);
-                        if (object.granted()) {
-                           OBJECTPTR target;
-                           auto fieldname = Output.substr(dot+1, end-(dot+1));
-                           if (auto classfield = FindField(object.obj, strihash(fieldname), &target)) {
-                              std::string str;
-                              if (target->get(classfield->FieldID, str) IS ERR::Okay) Output.replace(pos, end-pos, str);
-                              else Output.replace(pos, end-pos, "");
-                           }
-                           else if (CheckAction(object.obj, AC::GetKey) IS ERR::Okay) {
-                              // Get field as an unlisted type and manage any buffer overflow
-                              std::string tbuffer;
-                              tbuffer.reserve(4096);
-repeat:
-                              tbuffer[tbuffer.capacity()-1] = 0;
-                              struct acGetKey var = { fieldname.c_str(), tbuffer.data(), int(tbuffer.size()) };
-                              if (Action(AC::GetKey, object.obj, &var) IS ERR::Okay) {
-                                 if (tbuffer[tbuffer.capacity()-1]) {
-                                    tbuffer.reserve(tbuffer.capacity() * 2);
-                                    goto repeat;
-                                 }
-                                 Output.replace(pos, end-pos, tbuffer);
-                              }
-                           }
-                           else Output.replace(pos, end-pos, "");
-                        }
-                        else Output.replace(pos, end-pos, "");
-                     }
-                     else { // Convert the object reference to an ID
-                        Output.replace(pos, end-pos, "#" + std::to_string(objectid));
-                     }
-                  }
-                  else log.warning("Access denied to object '%s' #%d", name.c_str(), objectid);
-               }
-               else log.warning("Object '%s' does not exist.", name.c_str());
-            }
-         }
-      }
-   }
+   Result.Type = XPVT::Boolean;
+   Result.NumberValue = exists ? 1.0 : 0.0;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-void parser::translate_calc(std::string &Output, size_t pos)
+static ERR xq_value_to_string(const XPathValue &Value, std::string &Result)
 {
-   std::string temp;
-   temp.reserve(Output.size());
-   unsigned j = 0;
-   auto end = pos + 2;
-   while ((end < Output.size()) and (Output[end] != ']')) {
-      if (Output[end] IS '\'') {
-         temp[j++] = '\'';
-         for (++end; (Output[end]) and (Output[end] != '\''); end++) temp[j++] = Output[end];
-         if (Output[end]) temp[j++] = Output[end++];
+   Result.clear();
+
+   if (Value.Type IS XPVT::NodeSet) {
+      if (xq_value_is_empty_sequence(Value)) return ERR::Okay;
+
+      if (Value.node_set_string_override.has_value()) {
+         Result = *Value.node_set_string_override;
+         return ERR::Okay;
       }
-      else if (Output[end] IS '"') {
-         temp[j++] = '"';
-         for (++end; (Output[end]) and (Output[end] != '"'); end++);
-         if (Output[end]) temp[j++] = Output[end++];
+
+      if (!Value.node_set_string_values.empty()) {
+         if (Value.node_set_string_values.size() IS 1) {
+            Result = Value.node_set_string_values[0];
+            return ERR::Okay;
+         }
+
+         for (size_t index = 0; index < Value.node_set_string_values.size(); ++index) {
+            if (index > 0) Result.push_back(':');
+            Result += Value.node_set_string_values[index];
+         }
+         return ERR::Okay;
       }
-      else temp[j++] = Output[end++];
+
+      if (!Value.node_set_attributes.empty()) {
+         auto count = std::max(Value.node_set_attributes.size(), Value.node_set.size());
+         for (size_t index = 0; index < count; ++index) {
+            if (index > 0) Result.push_back(':');
+            if ((index < Value.node_set_attributes.size()) and Value.node_set_attributes[index]) {
+               Result += Value.node_set_attributes[index]->Value;
+            }
+            else if ((index < Value.node_set.size()) and Value.node_set[index]) {
+               Result += xq_node_string_value(Value.node_set[index]);
+            }
+         }
+         return ERR::Okay;
+      }
+
+      if (!Value.node_set.empty()) {
+         if (Value.node_set.size() IS 1) {
+            Result = xq_node_string_value(Value.node_set[0]);
+            return ERR::Okay;
+         }
+
+         for (size_t index = 0; index < Value.node_set.size(); ++index) {
+            if (index > 0) Result.push_back(':');
+            Result += xq_node_string_value(Value.node_set[index]);
+         }
+         return ERR::Okay;
+      }
    }
-   if (end < Output.size()) end++; // Skip ']'
-   std::string calcbuffer;
-   calc(temp, 0, calcbuffer);
-   Output.replace(pos, end-pos, calcbuffer);
+
+   if (Value.Type IS XPVT::String) {
+      Result = Value.StringValue;
+      return ERR::Okay;
+   }
+   else if (Value.Type IS XPVT::Number) {
+      Result = std::to_string(Value.NumberValue);
+      while ((!Result.empty()) and (Result.back() IS '0')) Result.pop_back();
+      if ((!Result.empty()) and (Result.back() IS '.')) Result.pop_back();
+      return ERR::Okay;
+   }
+   else if (Value.Type IS XPVT::Boolean) {
+      Result = (Value.NumberValue != 0.0) ? "true" : "false";
+      return ERR::Okay;
+   }
+   else if (Value.node_set_string_override.has_value()) {
+      Result = *Value.node_set_string_override;
+      return ERR::Okay;
+   }
+   else if (!Value.node_set_string_values.empty()) {
+      Result = Value.node_set_string_values[0];
+      return ERR::Okay;
+   }
+
+   return ERR::Args;
+}
+
+static std::string xq_format_object_id(OBJECTID ObjectID)
+{
+   return "#" + std::to_string(ObjectID);
+}
+
+static ERR xq_resolve_document_object(parser *Parser, std::string_view ObjectName, OBJECTID &ObjectID)
+{
+   ObjectID = 0;
+   if ((not Parser) or ObjectName.empty()) return ERR::Args;
+
+   if (iequals(ObjectName, "self")) {
+      if (auto context = CurrentContext()) ObjectID = context->UID;
+      else ObjectID = Parser->Self->UID;
+   }
+   else if (ObjectName.front() IS '#') {
+      char *end = nullptr;
+      auto object_name = std::string(ObjectName.substr(1));
+      auto object_id = strtoll(object_name.c_str(), &end, 10);
+      if ((end) and (*end)) return ERR::InvalidData;
+      ObjectID = OBJECTID(object_id);
+   }
+   else {
+      auto object_name = std::string(ObjectName);
+      if (FindObject(object_name.c_str(), CLASSID::NIL, FOF::SMART_NAMES, &ObjectID) != ERR::Okay) {
+         return ERR::NoMatchingObject;
+      }
+   }
+
+   if (!ObjectID) return ERR::NoMatchingObject;
+   if (ObjectID IS Parser->Self->UID) return ERR::Okay;
+   if (auto context = CurrentContext(); (context) and (ObjectID IS context->UID)) return ERR::Okay;
+   if (!valid_objectid(Parser->Self, ObjectID)) return ERR::AccessObject;
+   return ERR::Okay;
+}
+
+static ERR xq_get_object_key(OBJECTPTR Object, std::string_view Key, std::string &Result)
+{
+   if (CheckAction(Object, AC::GetKey) != ERR::Okay) return ERR::Search;
+
+   auto key = std::string(Key);
+   std::string buffer(4096, 0);
+   while (true) {
+      buffer.back() = 0;
+      struct acGetKey var = { key.c_str(), buffer.data(), int(buffer.size()) };
+      if (Action(AC::GetKey, Object, &var) != ERR::Okay) return ERR::Search;
+      if (buffer.back()) {
+         buffer.resize(buffer.size() * 2);
+         continue;
+      }
+
+      Result.assign(buffer.c_str());
+      return ERR::Okay;
+   }
+}
+
+static ERR xq_get_object_field(OBJECTID ObjectID, std::string_view FieldName, std::string &Result)
+{
+   OBJECTPTR object = nullptr;
+   auto access = AccessObject(ObjectID, 2000, &object);
+   if (access != ERR::Okay) return access;
+
+   auto cleanup = pf::Defer([&]() {
+      if (object) ReleaseObject(object);
+   });
+
+   auto field_name = std::string(FieldName);
+   OBJECTPTR target = nullptr;
+   if (auto classfield = FindField(object, strihash(field_name), &target)) {
+      return target->get(classfield->FieldID, Result);
+   }
+
+   return xq_get_object_key(object, FieldName, Result);
+}
+
+static ERR xq_document_object_id(objXQuery *, std::string_view, const std::vector<XPathValue> &Input,
+   XPathValue &Result, APTR Meta)
+{
+   auto Parser = (parser *)Meta;
+   if ((not Parser) or Input.empty()) return ERR::Args;
+
+   std::string object_name;
+   if (auto err = xq_value_to_string(Input[0], object_name); err != ERR::Okay) return err;
+
+   OBJECTID object_id = 0;
+   if (auto err = xq_resolve_document_object(Parser, object_name, object_id); err != ERR::Okay) return err;
+
+   Result = XPathValue(XPVT::String);
+   Result.reset();
+   Result.StringValue = xq_format_object_id(object_id);
+   return ERR::Okay;
+}
+
+static ERR xq_document_self_id(objXQuery *, std::string_view, const std::vector<XPathValue> &,
+   XPathValue &Result, APTR Meta)
+{
+   auto Parser = (parser *)Meta;
+   if (not Parser) return ERR::Args;
+
+   OBJECTID object_id = 0;
+   if (auto context = CurrentContext()) object_id = context->UID;
+   else object_id = Parser->Self->UID;
+
+   Result = XPathValue(XPVT::String);
+   Result.reset();
+   Result.StringValue = xq_format_object_id(object_id);
+   return ERR::Okay;
+}
+
+static ERR xq_document_field(objXQuery *, std::string_view, const std::vector<XPathValue> &Input,
+   XPathValue &Result, APTR Meta)
+{
+   auto Parser = (parser *)Meta;
+   if ((not Parser) or (Input.size() < 2)) return ERR::Args;
+
+   std::string object_name, field_name, field_value;
+   if (auto err = xq_value_to_string(Input[0], object_name); err != ERR::Okay) return err;
+   if (auto err = xq_value_to_string(Input[1], field_name); err != ERR::Okay) return err;
+
+   OBJECTID object_id = 0;
+   if (auto err = xq_resolve_document_object(Parser, object_name, object_id); err != ERR::Okay) return err;
+   if (auto err = xq_get_object_field(object_id, field_name, field_value); err != ERR::Okay) return err;
+
+   Result = XPathValue(XPVT::String);
+   Result.reset();
+   Result.StringValue = field_value;
+   return ERR::Okay;
+}
+
+static ERR xq_document_key(objXQuery *, std::string_view, const std::vector<XPathValue> &Input,
+   XPathValue &Result, APTR Meta)
+{
+   auto Parser = (parser *)Meta;
+   if ((not Parser) or (Input.size() < 2)) return ERR::Args;
+
+   std::string object_name, key_name, key_value;
+   if (auto err = xq_value_to_string(Input[0], object_name); err != ERR::Okay) return err;
+   if (auto err = xq_value_to_string(Input[1], key_name); err != ERR::Okay) return err;
+
+   OBJECTID object_id = 0;
+   if (auto err = xq_resolve_document_object(Parser, object_name, object_id); err != ERR::Okay) return err;
+
+   OBJECTPTR object = nullptr;
+   auto access = AccessObject(object_id, 2000, &object);
+   if (access != ERR::Okay) return access;
+
+   auto cleanup = pf::Defer([&]() {
+      if (object) ReleaseObject(object);
+   });
+
+   if (auto err = xq_get_object_key(object, key_name, key_value); err != ERR::Okay) return err;
+
+   Result = XPathValue(XPVT::String);
+   Result.reset();
+   Result.StringValue = key_value;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
-// Translate argument reference.
-// Valid examples: [@arg] [@arg:defaultvalue] [@arg:"value[]"] [@arg:'value[[]]]']
+// Shared setup for all document-side XQuery surfaces.  The query object is cached on the document and reconfigured
+// for the current parser instance each time so the runtime variable resolver and helper functions see the active
+// page/document state.
 
-void parser::translate_param(std::string &Output, size_t pos)
+static ERR xq_prepare_query(parser *Parser, const std::string &Expression, XQEval Mode)
 {
-   char terminator = ']';
-   auto name_end = Output.find_first_of("]:", pos);
-   if (name_end IS std::string::npos) return; // Invalid format
+   auto Self = Parser->Self;
 
-   auto argname = Output.substr(pos+2, name_end-pos-2);
+   auto eval_expression = xq_build_eval_expression(Expression, Mode);
 
-   auto true_end = name_end;
-   if (Output[true_end] IS ':') {
-      true_end++;
-      if ((Output[name_end] IS '\'') or (Output[name_end] IS '"')) {
-         terminator = Output[name_end];
-         for (++true_end; (true_end < Output.size()) and (Output[true_end] != terminator); true_end++);
-         true_end++; // Skip terminator and the end bracket should appear immediately after.
-         if ((true_end >= Output.size()) or (Output[true_end] != ']')) return;
+   if (not Self->Query) {
+      if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&Self->Query) IS ERR::Okay) {
+         if (Self->Query->init() != ERR::Okay) {
+            Self->Error = ERR::Init;
+            FreeResource(Self->Query);
+            Self->Query = nullptr;
+            return ERR::Init;
+         }
       }
       else {
-         true_end = Output.find(']', true_end);
-         if (true_end IS std::string::npos) return; // Invalid format
+         Self->Error = ERR::NewObject;
+         return ERR::NewObject;
       }
    }
 
-   if (!Self->TemplateArgs.empty()) {
-      bool processed = false;
-      for (auto it=Self->TemplateArgs.rbegin(); (!processed) and (it != Self->TemplateArgs.rend()); it++) {
-         auto args = *it;
-         for (int arg=1; arg < std::ssize(args->Attribs); arg++) {
-            if (!iequals(args->Attribs[arg].Name, argname)) continue;
-            Output.replace(pos, true_end+1-pos, args->Attribs[arg].Value);
-            processed = true;
-            break;
-         }
-      }
+   Self->Query->setResolveVariable(C_FUNCTION(xq_resolve_runtime_scope, Parser));
+   Self->Query->registerFunction(XQ_OBJECT_EXISTS_FUNCTION.data(), C_FUNCTION(xq_document_object_exists, Parser));
+   Self->Query->registerFunction(XQ_OBJECT_ID_FUNCTION.data(), C_FUNCTION(xq_document_object_id, Parser));
+   Self->Query->registerFunction(XQ_SELF_ID_FUNCTION.data(), C_FUNCTION(xq_document_self_id, Parser));
+   Self->Query->registerFunction(XQ_FIELD_FUNCTION.data(), C_FUNCTION(xq_document_field, Parser));
+   Self->Query->registerFunction(XQ_KEY_FUNCTION.data(), C_FUNCTION(xq_document_key, Parser));
 
-      if (processed) return;
+   if (Self->Query->setStatement(eval_expression) != ERR::Okay) {
+      Self->Error = ERR::SetField;
+      return ERR::SetField;
    }
 
-   // Check against global arguments / variables
-
-   if (Self->Vars.contains(argname)) {
-      Output.replace(pos, true_end+1-pos, Self->Vars[argname]);
-   }
-   else if (Self->Params.contains(argname)) {
-      Output.replace(pos, true_end+1-pos, Self->Params[argname]);
-   }
-   else if (Output[name_end] IS ':') { // Resort to the default value
-      name_end++;
-      if ((Output[name_end] IS '\'') or (Output[name_end] IS '"')) {
-         auto default_value = Output.substr(name_end + 1, true_end);
-         Output.replace(pos, true_end+1-pos, default_value);
-      }
-      else {
-         auto default_value = Output.substr(name_end, true_end - name_end);
-         Output.replace(pos, true_end+1-pos, default_value);
-      }
-   }
-   else Output.replace(pos, true_end+1-pos, "");
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
+// Execute a prepared XQuery expression against the effective parser context.  The XML and tag defaults come from the
+// caller, but <for-each> may temporarily override them via m_xq_context_stack so relative paths evaluate against
+// the current item.
 
-void parser::translate_reserved(std::string &Output, size_t pos, bool &time_queried)
+static ERR xq_execute_query(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Expression,
+   XQEval Mode, std::string *OutString, bool *OutBoolean, XPathValue *OutValue, bool *OutHasValue)
 {
-   if (!Output.compare(pos, sizeof("[%index]")-1, "[%index]")) {
-      Output.replace(pos, sizeof("[%index]")-1, std::to_string(m_loop_index));
+   pf::Log log(__FUNCTION__);
+   auto Self = Parser->Self;
+
+   if (OutString) OutString->clear();
+   if (OutBoolean) *OutBoolean = false;
+   if (OutHasValue) *OutHasValue = false;
+
+   if (Expression.empty()) return ERR::Okay;
+
+   if (auto err = xq_prepare_query(Parser, Expression, Mode); err != ERR::Okay) {
+      return log.warning(err);
    }
-   else if (!Output.compare(pos, sizeof("[%id]")-1, "[%id]")) {
-      Output.replace(pos, sizeof("[%id]")-1, std::to_string(Self->UID));
+
+   objXML *effective_xml = XMLContext;
+   XTag *effective_tag = ContextTag;
+   if (auto xq_context = Parser->active_xq_context()) {
+      if (xq_context->xml) effective_xml = xq_context->xml;
+      if (xq_context->node) effective_tag = xq_context->node;
    }
-   else if (!Output.compare(pos, sizeof("[%self]")-1, "[%self]")) {
-      Output.replace(pos, sizeof("[%self]")-1, std::to_string(Self->UID));
-   }
-   else if (!Output.compare(pos, sizeof("[%platform]")-1, "[%platform]")) {
-      Output.replace(pos, sizeof("[%platform]")-1, GetSystemState()->Platform);
-   }
-   else if (!Output.compare(pos, sizeof("[%random]")-1, "[%random]")) {
-      // Generate a random string of digits
-      std::string random;
-      random.resize(10);
-      for (unsigned j=0; j < random.size(); j++) random[j] = '0' + (rand() % 10);
-      Output.replace(pos, sizeof("[%random]")-1, random);
-   }
-   else if (!Output.compare(pos, sizeof("[%current-page]")-1, "[%current-page]")) {
-      if (Self->PageTag) {
-         if (auto page_name = Self->PageTag[0].attrib("name")) {
-            Output.replace(pos, sizeof("[%current-page]")-1, page_name[0]);
-         }
-         else Output.replace(pos, sizeof("[%current-page]")-1, "");
+
+   if (auto err = Self->Query->evaluate(effective_xml, effective_tag ? effective_tag->ID : 0, XEF::NIL); err != ERR::Okay) {
+      CSTRING msg;
+      if (Self->Query->get(FID_ErrorMsg, msg) IS ERR::Okay) {
+         log.warning("XQuery error evaluating \"%s\": %s", Expression.c_str(), msg ? msg : "(none)");
       }
-      else Output.replace(pos, sizeof("[%current-page]")-1, "");
+      else log.warning("XQuery error evaluating \"%s\".", Expression.c_str());
+      Self->Error = err;
+      return err;
    }
-   else if (!Output.compare(pos, sizeof("[%next-page]")-1, "[%next-page]")) {
-      if (Self->PageTag) {
-         auto next = Self->PageTag->attrib("next-page");
-         Output.replace(pos, sizeof("[%next-page]")-1, next ? *next : "");
+
+   CSTRING result = nullptr;
+   if (Self->Query->get(FID_ResultString, result) IS ERR::Okay) {
+      if ((OutString) and result) OutString->assign(result);
+      if ((OutBoolean) and result and iequals("true", result)) *OutBoolean = true;
+   }
+
+   if ((OutValue) or (OutHasValue)) {
+      XPathValue *query_value = nullptr;
+      if ((Self->Query->get(FID_Result, query_value) IS ERR::Okay) and query_value) {
+         if (OutValue) *OutValue = *query_value;
+         if (OutHasValue) *OutHasValue = true;
       }
    }
-   else if (!Output.compare(pos, sizeof("[%prev-page]")-1, "[%prev-page]")) {
-      if (Self->PageTag) {
-         auto next = Self->PageTag->attrib("prev-page");
-         Output.replace(pos, sizeof("[%prev-page]")-1, next ? *next : "");
-      }
+
+   return ERR::Okay;
+}
+
+static ERR xq_eval_helper(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Expression,
+   XQEval Mode, std::string &OutString, bool &OutBoolean)
+{
+   return xq_execute_query(Parser, XMLContext, ContextTag, Expression, Mode, &OutString, &OutBoolean, nullptr, nullptr);
+}
+
+//********************************************************************************************************************
+// Variant of the helper above that preserves the raw XPathValue result for features such as <data>, <let>,
+// <for-each>, and parse@select.  If the query only exposes a string value, callers still receive a string-typed
+// XPathValue.
+
+static ERR xq_eval_value_helper(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Expression,
+   XPathValue &OutValue, std::string &OutString, bool &OutHasValue)
+{
+   bool unused_boolean = false;
+   OutValue = XPathValue(XPVT::String);
+   OutValue.StringValue.clear();
+
+   auto err = xq_execute_query(Parser, XMLContext, ContextTag, Expression, XQEval::STRING, &OutString,
+      &unused_boolean, &OutValue, &OutHasValue);
+   if (err != ERR::Okay) return err;
+
+   if (not OutHasValue) {
+      OutValue = XPathValue(XPVT::String);
+      OutValue.StringValue = OutString;
    }
-   else if (!Output.compare(pos, sizeof("[%path]"), "[%path]")) {
-      CSTRING workingpath = "";
-      Self->get(FID_WorkingPath, workingpath);
-      if (!workingpath) workingpath = "";
-      Output.replace(pos, sizeof("[%path]")-1, workingpath);
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Attribute lookup.  Attribute names may still carry a leading $ after preprocessing, so the lookup normalises
+// that away.
+
+static const std::string * xq_find_attrib(const XTag &Tag, std::string_view Name)
+{
+   for (int i=1; i < std::ssize(Tag.Attribs); i++) {
+      auto attrib_name = std::string_view(Tag.Attribs[i].Name);
+      if ((!attrib_name.empty()) and (attrib_name.front() IS '$')) attrib_name.remove_prefix(1);
+      if (iequals(attrib_name, Name)) return &Tag.Attribs[i].Value;
    }
-   else if (!Output.compare(pos, sizeof("[%author]")-1, "[%author]")) {
-      Output.replace(pos, sizeof("[%author]")-1, Self->Author);
-   }
-   else if (!Output.compare(pos, sizeof("[%description]")-1, "[%description]")) {
-      Output.replace(pos, sizeof("[%description]")-1, Self->Description);
-   }
-   else if (!Output.compare(pos, sizeof("[%copyright]")-1, "[%copyright]")) {
-      Output.replace(pos, sizeof("[%copyright]")-1, Self->Copyright);
-   }
-   else if (!Output.compare(pos, sizeof("[%keywords]")-1, "[%keywords]")) {
-      Output.replace(pos, sizeof("[%keywords]")-1, Self->Keywords);
-   }
-   else if (!Output.compare(pos, sizeof("[%title]")-1, "[%title]")) {
-      Output.replace(pos, sizeof("[%title]")-1, Self->Title);
-   }
-   else if (!Output.compare(pos, sizeof("[%font-style]")-1, "[%font-style]")) {
-      Output.replace(pos, sizeof("[%font-style]")-1, m_style.style);
-   }
-   else if (!Output.compare(pos, sizeof("[%font-face]")-1, "[%font-face]")) {
-      Output.replace(pos, sizeof("[%font-face]")-1, m_style.face);
-   }
-   else if (!Output.compare(pos, sizeof("[%font-fill]")-1, "[%font-fill]")) {
-      Output.replace(pos, sizeof("[%font-fill]")-1, m_style.fill);
-   }
-   else if (!Output.compare(pos, sizeof("[%font-size]")-1, "[%font-size]")) {
-      char buffer[28];
-      switch(m_style.req_size.type) {
-         case DU::PIXEL:
-            snprintf(buffer, sizeof(buffer), "%gpx", m_style.req_size.value);
+   return nullptr;
+}
+
+//********************************************************************************************************************
+// Minimal XML escaping helper for serialising XQuery node sequences back into markup.
+
+static void xq_append_xml_escaped(std::ostringstream &Buffer, std::string_view Text, bool AttributeMode)
+{
+   for (char ch : Text) {
+      switch (ch) {
+         case '&': Buffer << "&amp;"; break;
+         case '<': Buffer << "&lt;"; break;
+         case '>': Buffer << "&gt;"; break;
+         case '"':
+            if (AttributeMode) Buffer << "&quot;";
+            else Buffer << '"';
             break;
-         case DU::FONT_SIZE:
-            snprintf(buffer, sizeof(buffer), "%gem", m_style.req_size.value);
-            break;
-         case DU::SCALED:
-            snprintf(buffer, sizeof(buffer), "%g%%", m_style.req_size.value * 100.0);
+         case '\'':
+            if (AttributeMode) Buffer << "&apos;";
+            else Buffer << '\'';
             break;
          default:
-            snprintf(buffer, sizeof(buffer), "%dpx", DEFAULT_FONTSIZE);
+            Buffer << ch;
             break;
       }
-      Output.replace(pos, sizeof("[%font-size]")-1, buffer);
-   }
-   else if (!Output.compare(pos, sizeof("[%line-no]")-1, "[%line-no]")) {
-      auto num = std::to_string(Self->Segments.size());
-      Output.replace(pos, sizeof("[%line-no]")-1, num);
-   }
-   else if (!Output.compare(pos, sizeof("[%content]")-1, "[%content]")) {
-      if ((m_in_template) and (m_inject_tag)) {
-         std::string content = xml::GetContent(m_inject_tag[0][0]);
-         Output.replace(pos, sizeof("[%content]")-1, content);
-
-         //if (!xmlSerialise(m_inject_xml, m_inject_tag[0][0].ID, XMF::INCLUDE_SIBLINGS, &content)) {
-         //   Output.replace(pos, sizeof("[%content]")-1, content);
-         //   FreeResource(content);
-         //}
-      }
-   }
-   else if (!Output.compare(pos, sizeof("[%tm-day]")-1, "[%tm-day]")) {
-      if (!m_time) m_time = objTime::create::local();
-      if (!time_queried) { acQuery(m_time); time_queried = true; }
-      Output.replace(pos, sizeof("[%tm-day]")-1, std::to_string(m_time->Day));
-   }
-   else if (!Output.compare(pos, sizeof("[%tm-month]")-1, "[%tm-month]")) {
-      if (!m_time) m_time = objTime::create::local();
-      if (!time_queried) { acQuery(m_time); time_queried = true; }
-      Output.replace(pos, sizeof("[%tm-month]")-1, std::to_string(m_time->Month));
-   }
-   else if (!Output.compare(pos, sizeof("[%tm-year]")-1, "[%tm-year]")) {
-      if (!m_time) m_time = objTime::create::local();
-      if (!time_queried) { acQuery(m_time); time_queried = true; }
-      Output.replace(pos, sizeof("[%tm-year]")-1, std::to_string(m_time->Year));
-   }
-   else if (!Output.compare(pos, sizeof("[%tm-hour]")-1, "[%tm-hour]")) {
-      if (!m_time) m_time = objTime::create::local();
-      if (!time_queried) { acQuery(m_time); time_queried = true; }
-      Output.replace(pos, sizeof("[%tm-hour]")-1, std::to_string(m_time->Hour));
-   }
-   else if (!Output.compare(pos, sizeof("[%tm-minute]")-1, "[%tm-minute]")) {
-      if (!m_time) m_time = objTime::create::local();
-      if (!time_queried) { acQuery(m_time); time_queried = true; }
-      Output.replace(pos, sizeof("[%tm-minute]")-1, std::to_string(m_time->Minute));
-   }
-   else if (!Output.compare(pos, sizeof("[%tm-second]")-1, "[%tm-second]")) {
-      if (!m_time) m_time = objTime::create::local();
-      if (!time_queried) { acQuery(m_time); time_queried = true; }
-      Output.replace(pos, sizeof("[%tm-second]")-1, std::to_string(m_time->Second));
-   }
-   else if (!Output.compare(pos, sizeof("[%version]")-1, "[%version]")) {
-      Output.replace(pos, sizeof("[%version]")-1, RIPL_VERSION);
-   }
-   else if (!Output.compare(pos, sizeof("[%view-height]")-1, "[%view-height]")) {
-      char buffer[28];
-      snprintf(buffer, sizeof(buffer), "%g", Self->VPHeight);
-      Output.replace(pos, sizeof("[%view-height]")-1, buffer);
-   }
-   else if (!Output.compare(pos, sizeof("[%view-width]")-1, "[%view-width]")) {
-      char buffer[28];
-      snprintf(buffer, sizeof(buffer), "%g", Self->VPWidth);
-      Output.replace(pos, sizeof("[%view-width]")-1, buffer);
    }
 }
 
 //********************************************************************************************************************
+// Serialise an XTag subtree into XML fragment form.  This is used when <data> or <parse> receives a
+// node-sequence result and needs reparsing through the document parser rather than ordinary XQuery string-value rules.
 
-static int8_t datatype(std::string_view String)
+static void xq_serialise_tag_fragment(XTag &Tag, std::ostringstream &Buffer)
 {
-   size_t i = 0;
-   while ((i < String.size()) and (String[i]) and (String[i] <= 0x20)) i++; // Skip white-space
+   if (Tag.Attribs.empty()) return;
 
-   if ((i < String.size()) and (String[i] IS '0') and (i+1 < String.size()) and (String[i+1] IS 'x')) {
-      for (i+=2; (i < String.size()) and String[i]; i++) {
-         if (((String[i] >= '0') and (String[i] <= '9')) or
-             ((String[i] >= 'A') and (String[i] <= 'F')) or
-             ((String[i] >= 'a') and (String[i] <= 'f')));
-         else return 's';
-      }
-      return 'h';
+   if (Tag.Attribs[0].isContent()) {
+      if (!Tag.Attribs[0].Value.empty()) xq_append_xml_escaped(Buffer, Tag.Attribs[0].Value, false);
+      return;
    }
 
-   bool is_number = true;
-   bool is_float  = false;
+   Buffer << '<';
+   xq_append_xml_escaped(Buffer, Tag.Attribs[0].Name, false);
 
-   for (; (i < String.size()) and (String[i]) and (is_number); i++) {
-      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = false;
-      if (String[i] IS '.') is_float = true;
+   for (size_t index = 1; index < Tag.Attribs.size(); ++index) {
+      auto &attrib = Tag.Attribs[index];
+      Buffer << ' ';
+      xq_append_xml_escaped(Buffer, attrib.Name, false);
+      Buffer << "=\"";
+      xq_append_xml_escaped(Buffer, attrib.Value, true);
+      Buffer << '"';
    }
 
-   if ((is_float) and (is_number)) return 'f';
-   else if (is_number) return 'i';
-   else return 's';
+   if ((Tag.Flags & XTF::INSTRUCTION) != XTF::NIL) {
+      Buffer << "?>";
+      return;
+   }
+
+   if ((Tag.Flags & XTF::NOTATION) != XTF::NIL) {
+      Buffer << '>';
+      return;
+   }
+
+   if (Tag.Children.empty()) {
+      Buffer << "/>";
+      return;
+   }
+
+   Buffer << '>';
+   for (auto &child : Tag.Children) {
+      xq_serialise_tag_fragment(child, Buffer);
+   }
+
+   Buffer << "</";
+   xq_append_xml_escaped(Buffer, Tag.Attribs[0].Name, false);
+   Buffer << '>';
 }
 
 //********************************************************************************************************************
+// Convert a pure node sequence into reparsable XML fragment text.  Attribute-backed or composite sequences are
+// rejected here because we only accept concrete markup.
 
-static bool eval_condition(const std::string &String)
+static ERR xq_value_to_xml_fragment(const XPathValue &Value, std::string &OutXml)
+{
+   OutXml.clear();
+
+   if (Value.Type != XPVT::NodeSet) return ERR::Args;
+   if (Value.node_set.empty()) return ERR::Args;
+   if (xq_nodeset_has_real_attributes(Value) or xq_nodeset_has_real_composites(Value)) {
+      return ERR::Args;
+   }
+
+   std::ostringstream buffer;
+   for (auto *node : Value.node_set) {
+      if (!node) return ERR::Args;
+      xq_serialise_tag_fragment(*node, buffer);
+   }
+
+   OutXml = buffer.str();
+   if (OutXml.empty()) return ERR::Args;
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// <data> requires at least one real top-level tag in the parsed fragment, while parse@select is allowed to accept
+// more permissive fragments.
+
+static bool xq_has_top_level_tag(objXML *XML)
+{
+   if (!XML) return false;
+
+   for (auto &tag : XML->Tags) {
+      if (tag.isTag()) return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+// Centralised fragment parser for XML-emitting surfaces.  RequireTag lets callers distinguish between "must load a
+// document tree" and "may parse loose markup".
+
+static ERR xq_parse_xml_fragment(std::string_view Fragment, objXML *&OutXML, bool RequireTag)
+{
+   OutXML = nullptr;
+
+   auto xml = objXML::create::local(fl::Statement(std::string(Fragment)), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
+   if (!xml) return ERR::Syntax;
+
+   if (RequireTag and (not xq_has_top_level_tag(xml))) {
+      FreeResource(xml);
+      return ERR::Syntax;
+   }
+
+   OutXML = xml;
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Best-effort ownership test for XTag pointers drawn from mixed XML sources such as the original RIPL, $doc,
+// included XML, or templates.
+
+static bool xq_xml_owns_node(objXML *XML, XTag *Node)
+{
+   if ((!XML) or (!Node)) return false;
+
+   XTag *tag = nullptr;
+   if (XML->getTag(Node->ID, &tag) != ERR::Okay) return false;
+   return tag IS Node;
+}
+
+//********************************************************************************************************************
+// Resolve which XML object currently owns a node so <for-each> can rebind the XQuery context against the correct
+// tree when evaluating relative paths.
+
+static objXML * xq_find_known_node_owner(parser *Parser, XTag *Node)
+{
+   if ((!Parser) or (!Node)) return nullptr;
+
+   if (xq_xml_owns_node(Parser->m_xml, Node)) return Parser->m_xml;
+   if (xq_xml_owns_node(Parser->m_doc_xml, Node)) return Parser->m_doc_xml;
+   if (xq_xml_owns_node(Parser->m_source_xml, Node)) return Parser->m_source_xml;
+   if (xq_xml_owns_node(Parser->m_inject_xml, Node)) return Parser->m_inject_xml;
+   if ((Parser->Self) and xq_xml_owns_node(Parser->Self->Templates, Node)) return Parser->Self->Templates;
+   return nullptr;
+}
+
+static objXML * xq_resolve_node_owner(parser *Parser, XTag *Node)
+{
+   if (auto owner = xq_find_known_node_owner(Parser, Node)) return owner;
+   return (Parser and Parser->m_xml) ? Parser->m_xml : (Parser ? Parser->m_source_xml : nullptr);
+}
+
+static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser::xq_value_binding &Result)
+{
+   Result = parser::xq_value_binding(Source);
+   if ((!Parser) or (Source.Type != XPVT::NodeSet)) return ERR::Okay;
+
+   bool requires_owned_xml = false;
+   for (auto *node : Source.node_set) {
+      if (node and (!xq_find_known_node_owner(Parser, node))) {
+         requires_owned_xml = true;
+         break;
+      }
+   }
+
+   if (!requires_owned_xml) return ERR::Okay;
+
+   auto xml = objXML::create::local(fl::Flags(XMF::NEW|XMF::READABLE));
+   if (!xml) return ERR::NewObject;
+
+   xml->Tags.clear();
+   int next_id = -1;
+
+   for (size_t index = 0; index < Source.node_set.size(); ++index) {
+      auto *node = Source.node_set[index];
+      if ((!node) or xq_find_known_node_owner(Parser, node)) continue;
+
+      xml->Tags.emplace_back();
+      auto &clone = xml->Tags.back();
+      xq_clone_tag_tree(*node, clone, 0, next_id);
+      Result.value.node_set[index] = &clone;
+
+      if ((index < Source.node_set_attributes.size()) and Source.node_set_attributes[index]) {
+         auto attrib_index = xq_find_attrib_index(node, Source.node_set_attributes[index]);
+         if ((attrib_index != std::numeric_limits<size_t>::max()) and (attrib_index < clone.Attribs.size())) {
+            Result.value.node_set_attributes[index] = &clone.Attribs[attrib_index];
+         }
+         else Result.value.node_set_attributes[index] = nullptr;
+      }
+   }
+
+   Result.owned_xml = xq_adopt_xml(xml);
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Convert a select result into plain text using XQuery string-value semantics.  This keeps print@select text-only,
+// even when the expression yields nodes.
+
+static ERR xq_stringify_select_value(const XPathValue &Value, std::string &Result)
+{
+   Result.clear();
+
+   if ((Value.Type IS XPVT::NodeSet) and xq_value_is_empty_sequence(Value)) return ERR::Okay;
+   return xq_value_to_string(Value, Result);
+}
+
+//********************************************************************************************************************
+// print@select always inserts text.  Callers may fall back to the exposed FID_ResultString when the raw value is not
+// available from the XQuery object.
+
+static ERR xq_select_to_print_text(const XPathValue &Value, std::string_view Fallback, bool HasValue,
+   std::string &OutText)
+{
+   OutText.clear();
+
+   if (HasValue) {
+      if (auto err = xq_stringify_select_value(Value, OutText); err IS ERR::Okay) return ERR::Okay;
+   }
+
+   OutText.assign(Fallback);
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// data@select and parse@select are the XML/RIPL injection surfaces.  Concrete node sequences are serialised back
+// into markup, while scalar results are only accepted via their string value.
+
+static ERR xq_select_to_xml_fragment(parser *Parser, const XPathValue &Value, std::string_view Fallback,
+   bool HasValue, std::string &OutXml)
+{
+   OutXml.clear();
+
+   if (not HasValue) {
+      OutXml.assign(Fallback);
+      return ERR::Okay;
+   }
+
+   if (Value.Type != XPVT::NodeSet) return xq_stringify_select_value(Value, OutXml);
+
+   if (xq_nodeset_has_real_attributes(Value) or xq_nodeset_has_real_composites(Value)) return ERR::InvalidData;
+
+   if (Value.node_set.empty()) {
+      if (xq_value_is_empty_sequence(Value)) return ERR::Okay;
+      return xq_stringify_select_value(Value, OutXml);
+   }
+
+   parser::xq_value_binding stored_value;
+   if (auto err = xq_make_stored_value(Parser, Value, stored_value); err != ERR::Okay) return err;
+   return xq_value_to_xml_fragment(stored_value.value, OutXml);
+}
+
+static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Input,
+   std::string &Output);
+
+static ERR xq_prepare_attribs(parser *Parser, XTag &Tag)
+{
+   auto tag_name = std::string_view(Tag.Attribs[0].Name);
+   if ((!tag_name.empty()) and (tag_name.front() IS '$')) return ERR::Okay;
+   auto tag_hash = strihash(tag_name);
+
+   for (int i=1; i < std::ssize(Tag.Attribs); i++) {
+      auto name = std::string_view(Tag.Attribs[i].Name);
+      if ((!name.empty()) and (name.front() IS '$')) continue;
+      if (name.empty()) continue;
+
+      auto &value = Tag.Attribs[i].Value;
+
+      if ((not is_xq_expression_attrib(tag_hash, name)) and has_avt_markers(value)) {
+         std::string expanded;
+         if (auto err = xq_expand_avt(Parser, Parser->m_xml, &Tag, value, expanded); err != ERR::Okay) {
+            return err;
+         }
+         value = std::move(expanded);
+      }
+   }
+
+   return ERR::Okay;
+}
+
+// Expand a string containing attribute value template fragments {...}, evaluating each embedded XQuery expression
+// and concatenating the result with literal parts.  Follows the same escaping rules as the XQuery tokeniser so that
+// {{ and }} are preserved as literal { and }.
+
+static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Input,
+   std::string &Output)
 {
    pf::Log log(__FUNCTION__);
+   Output.clear();
 
-   static const FieldDef table[] = {
-      { "<>", COND_NOT_EQUAL },
-      { "!=", COND_NOT_EQUAL },
-      { "=",  COND_EQUAL },
-      { "==", COND_EQUAL },
-      { "<",  COND_LESS_THAN },
-      { "<=", COND_LESS_EQUAL },
-      { ">",  COND_GREATER_THAN },
-      { ">=", COND_GREATER_EQUAL },
-      { nullptr, 0 }
-   };
+   size_t pos = 0;
+   const size_t len = Input.size();
 
-   int start = 0;
-   while ((start < int(String.size())) and (unsigned(String[start]) <= 0x20)) start++;
+   while (pos < len) {
+      char ch = Input[pos];
 
-   bool reverse = false;
-
-   // Find the condition statement
-
-   size_t i;
-   for (i=start; i < String.size(); i++) {
-      if ((String[i] IS '!') and (i+1 < String.size()) and (String[i+1] IS '=')) break;
-      if (String[i] IS '>') break;
-      if (String[i] IS '<') break;
-      if (String[i] IS '=') break;
-   }
-
-   // If there is no condition statement, evaluate the statement as an integer
-
-   if (i >= String.size()) {
-      if (std::stoi(String)) return true;
-      else return false;
-   }
-
-   auto cpos = i;
-
-   // Extract Test value
-
-   while ((i > 0) and (String[i-1] IS ' ')) i--;
-   std::string test(String, 0, i);
-
-   // Condition value
-
-   int condition = 0;
-   {
-      char cond[4];
-      int c;
-      for (i=cpos,c=0; (c < 2) and (i < String.size()) and ((String[i] IS '!') or (String[i] IS '=') or (String[i] IS '>') or (String[i] IS '<')); i++) {
-         cond[c++] = String[i];
-      }
-      cond[c] = 0;
-
-      for (unsigned j=0; table[j].Name; j++) {
-         if (iequals(cond, table[j].Name)) {
-            condition = table[j].Value;
-            break;
+      if (ch IS '{') {
+         if ((pos + 1 < len) and (Input[pos + 1] IS '{')) {
+            Output += '{';
+            pos += 2;
+            continue;
          }
-      }
-   }
 
-   while ((i < String.size()) and (String[i]) and (unsigned(String[i]) <= 0x20)) i++; // skip white-space
-
-   bool truth = false;
-   if (!test.empty()) {
-      if (condition) {
-         // Convert the If->Compare to its specified type
-
-         auto cmp_type  = datatype(std::string_view(String.begin()+i, String.end()));
-         auto test_type = datatype(test);
-
-         if (((test_type IS 'i') or (test_type IS 'f')) and ((cmp_type IS 'i') or (cmp_type IS 'f'))) {
-            auto cmp_float  = strtod(String.c_str()+i, nullptr);
-            auto test_float = strtod(test.c_str(), nullptr);
-            switch (condition) {
-               case COND_NOT_EQUAL:     if (test_float != cmp_float) truth = true; break;
-               case COND_EQUAL:         if (test_float IS cmp_float) truth = true; break;
-               case COND_LESS_THAN:     if (test_float <  cmp_float) truth = true; break;
-               case COND_LESS_EQUAL:    if (test_float <= cmp_float) truth = true; break;
-               case COND_GREATER_THAN:  if (test_float >  cmp_float) truth = true; break;
-               case COND_GREATER_EQUAL: if (test_float >= cmp_float) truth = true; break;
-               default: log.warning("Unsupported condition type %d.", condition);
+         // Scan expression body, respecting nested braces and quoted strings.
+         size_t expr_start = pos + 1;
+         size_t scan = expr_start;
+         int depth = 1;
+         while ((scan < len) and (depth > 0)) {
+            char sc = Input[scan];
+            if ((sc IS '\'') or (sc IS '"')) {
+               char quote = sc;
+               scan++;
+               while (scan < len) {
+                  char inner = Input[scan++];
+                  if (inner IS '\\' and scan < len) { scan++; continue; }
+                  if (inner IS quote) break;
+               }
+               continue;
             }
+            else if (sc IS '{') { depth++; scan++; }
+            else if (sc IS '}') { depth--; if (depth IS 0) break; else scan++; }
+            else scan++;
          }
-         else if (condition IS COND_EQUAL) {
-            truth = iequals(test, String.c_str()+i);
-         }
-         else if (condition IS COND_NOT_EQUAL) {
-            truth = !iequals(test, String.c_str()+i);
-         }
-         else log.warning("String comparison for condition %d not possible.", condition);
-      }
-      else log.warning("No test condition in \"%s\".", String.c_str());
-   }
-   else log.warning("No test value in \"%s\".", String.c_str());
 
-   if (reverse) return truth ^ 1;
-   else return truth;
+         if (depth != 0) {
+            log.warning("Unterminated attribute value template: %s", Input.c_str());
+            return ERR::Syntax;
+         }
+
+         std::string expr = Input.substr(expr_start, scan - expr_start);
+         pos = scan + 1;
+
+         std::string evaluated;
+         bool unused;
+         auto err = xq_eval_helper(Parser, XMLContext, ContextTag, expr, XQEval::STRING, evaluated, unused);
+         if (err != ERR::Okay) return err;
+         Output += evaluated;
+      }
+      else if (ch IS '}' and (pos + 1 < len) and (Input[pos + 1] IS '}')) {
+         Output += '}';
+         pos += 2;
+      }
+      else {
+         Output += ch;
+         pos++;
+      }
+   }
+
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Used by if, elseif, while statements to check the satisfaction of conditions.
+//
+// XQuery integration: the test attribute is recognised as a standalone XQuery expression.  The result of the
+// expression is coerced via XQuery's effective boolean value rules (boolean(...)).
 
-static bool check_tag_conditions(extDocument *Self, XTag &Tag)
+static bool check_tag_conditions(parser *Parser, XTag &Tag)
 {
-   pf::Log log("eval");
+   pf::Log log(__FUNCTION__);
 
-   bool satisfied = false;
-   bool reverse = false;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (iequals("statement", Tag.Attribs[i].Name)) {
-         satisfied = eval_condition(Tag.Attribs[i].Value);
-         log.trace("Statement: %s", Tag.Attribs[i].Value);
-         break;
-      }
-      else if (iequals("exists", Tag.Attribs[i].Name)) {
-         OBJECTID object_id;
-         if (FindObject(Tag.Attribs[i].Value.c_str(), CLASSID::NIL, FOF::SMART_NAMES, &object_id) IS ERR::Okay) {
-            satisfied = valid_objectid(Self, object_id) ? true : false;
+      auto name = std::string_view(Tag.Attribs[i].Name);
+      if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+   }
+
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      auto name = std::string_view(Tag.Attribs[i].Name);
+      if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+      if (iequals("test", name)) {
+         std::string result;
+         bool boolean_result = false;
+         auto err = xq_eval_helper(Parser, Parser->m_xml, &Tag, Tag.Attribs[i].Value,
+            XQEval::BOOLEAN, result, boolean_result);
+         if (err != ERR::Okay) {
+            log.warning("XQuery test failed: %s", Tag.Attribs[i].Value.c_str());
+            Parser->Self->Error = err;
+            return false;
          }
-         break;
-      }
-      else if (iequals("notnull", Tag.Attribs[i].Name)) {
-         log.trace("NotNull: %s", Tag.Attribs[i].Value);
-         if (Tag.Attribs[i].Value.empty()) satisfied = false;
-         else if (Tag.Attribs[i].Value IS "0") satisfied = false;
-         else satisfied = true;
-      }
-      else if ((iequals("isnull", Tag.Attribs[i].Name)) or (iequals("null", Tag.Attribs[i].Name))) {
-         log.trace("IsNull: %s", Tag.Attribs[i].Value);
-            if (Tag.Attribs[i].Value.empty()) satisfied = true;
-            else if (Tag.Attribs[i].Value IS "0") satisfied = true;
-            else satisfied = false;
-      }
-      else if (iequals("not", Tag.Attribs[i].Name)) {
-         reverse = true;
+         log.trace("Test: %s -> %s", Tag.Attribs[i].Value.c_str(), boolean_result ? "true" : "false");
+         return boolean_result;
       }
    }
 
-   // Check for a not condition and invert the satisfied value if found
-
-   if (reverse) satisfied = satisfied ^ 1;
-
-   return satisfied;
+   return false;
 }
 
 //********************************************************************************************************************
@@ -897,7 +1760,10 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
    XTag *object_template = nullptr;
 
    auto saved_attribs = Tag.Attribs;
-   translate_attrib_args(Tag.Attribs);
+   if (xq_prepare_attribs(this, Tag) != ERR::Okay) {
+      Tag.Attribs = saved_attribs;
+      return TRF::NIL;
+   }
 
    auto tagname = Tag.Attribs[0].Name;
    if (tagname.starts_with('$')) tagname.erase(0, 1);
@@ -943,8 +1809,7 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
       }
 
       if (Self->TemplateIndex.contains(tag_hash)) {
-         // Process the template by jumping into it.  Key-values in the tag are added to a sequential
-         // list that will be processed in reverse by translate_attrib_args().
+         // Process the template by jumping into it.
 
          auto xml  = m_inject_xml;
          auto tags = m_inject_tag;
@@ -992,6 +1857,17 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
          default:
             break;
       }
+   }
+
+   if (iequals(tagname, "let")) {
+      result = tag_let(Tag, Flags);
+      Tag.Attribs = saved_attribs;
+      return result;
+   }
+   else if (iequals(tagname, "for-each")) {
+      result = tag_for_each(Tag, Flags);
+      Tag.Attribs = saved_attribs;
+      return result;
    }
 
    switch (tag_hash) {
@@ -1068,7 +1944,7 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
          break;
 
       case HASH_if:
-         if (check_tag_conditions(Self, Tag)) { // Statement is true
+         if (check_tag_conditions(this, Tag)) { // Statement is true
             m_check_else = false;
             result = parse_tags(Tag.Children, Flags);
          }
@@ -1077,7 +1953,7 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
 
       case HASH_elseif:
          if (m_check_else) {
-            if (check_tag_conditions(Self, Tag)) { // Statement is true
+            if (check_tag_conditions(this, Tag)) { // Statement is true
                m_check_else = false;
                result = parse_tags(Tag.Children, Flags);
             }
@@ -1092,25 +1968,38 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
          break;
 
       case HASH_while: {
-         auto saveindex = m_loop_index;
-         m_loop_index = 0;
+         if (!Tag.Children.empty()) {
+            loop_frame frame;
+            frame.index = 0;
+            frame.iteration = 0;
+            frame.start = 0;
+            frame.step = 1;
 
-         if ((!Tag.Children.empty()) and (check_tag_conditions(Self, Tag))) {
-            // Save/restore the statement string on each cycle to fully evaluate the condition each time.
+            loop_guard loop(this, frame);
 
-            bool state = true;
-            while (state) {
-               state = check_tag_conditions(Self, Tag);
-               Tag.Attribs = saved_attribs;
-               translate_attrib_args(Tag.Attribs);
+            while (true) {
+               if (!check_tag_conditions(this, Tag)) break;
+               if (Self->Error != ERR::Okay) break;
 
-               if ((state) and ((parse_tags(Tag.Children, Flags) & TRF::BREAK) != TRF::NIL)) break;
+               result = parse_tags(Tag.Children, Flags);
+               if (Self->Error != ERR::Okay) break;
 
-               m_loop_index++;
+               if ((result & TRF::BREAK) != TRF::NIL) {
+                  result = TRF::NIL;
+                  break;
+               }
+
+               if (auto active_loop = loop.frame()) {
+                  active_loop->index += active_loop->step;
+                  active_loop->iteration++;
+               }
+
+               if ((result & TRF::CONTINUE) != TRF::NIL) {
+                  result = TRF::NIL;
+                  continue;
+               }
             }
          }
-
-         m_loop_index = saveindex;
          break;
       }
 
@@ -1161,7 +2050,7 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
 
       // Others
 
-      case HASH_data: break; // Intentionally does nothing
+      case HASH_data: tag_data(Tag); break;
 
       case HASH_edit_def: tag_editdef(Tag); break;
 
@@ -1675,7 +2564,7 @@ void parser::tag_call(XTag &Tag)
 // A button can have both an on and off pattern, but for our purposes we'll have one pattern and rely on the click
 // action to provide feedback that the button has been pressed.
 
-const char glButtonSVG[] = R"-(
+static const char glButtonSVG[] = R"-(
 <svg width="100%" height="100%">
   <defs>
     <linearGradient id="darkEdge" x1="0" y1="1" x2="0" y2="0" gradientUnits="objectBoundingBox">
@@ -1742,9 +2631,9 @@ void parser::tag_button(XTag &Tag)
             objVectorRectangle::create::global({
                fl::Owner(pattern_active->Scene->Viewport->UID),
                fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-               fl::Stroke("rgba(64,64,64,.5)"), fl::StrokeWidth(2.0),
+               fl::Stroke("rgb(64 64 64 / .5)"), fl::StrokeWidth(2.0),
                fl::RoundX(SCALE(0.1)),
-               fl::Fill("rgba(0,0,0,.125)")
+               fl::Fill("rgb(0 0 0 / .125)")
             });
          }
 
@@ -1765,9 +2654,9 @@ void parser::tag_button(XTag &Tag)
             objVectorRectangle::create::global({
                fl::Owner(pattern_inactive->Scene->Viewport->UID),
                fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-               fl::Stroke("rgba(0,0,0,.25)"), fl::StrokeWidth(2.0),
+               fl::Stroke("rgb(0 0 0 / .25)"), fl::StrokeWidth(2.0),
                fl::RoundX(SCALE(0.1)),
-               fl::Fill("rgba(255,255,255,.37)")
+               fl::Fill("rgb(255 255 255 / .37)")
             });
          }
 
@@ -2293,6 +3182,46 @@ void parser::tag_include(XTag &Tag)
 }
 
 //********************************************************************************************************************
+// Load or replace the parser-local document data scope.
+
+void parser::tag_data(XTag &Tag)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto select = xq_find_attrib(Tag, "select");
+   if (!select) return;
+
+   XPathValue value(XPVT::String);
+   std::string result;
+   bool has_value = false;
+   auto err = xq_eval_value_helper(this, m_xml, &Tag, *select, value, result, has_value);
+   if (err != ERR::Okay) {
+      log.warning("<data select=\"%s\"> failed.", select->c_str());
+      Self->Error = err;
+      return;
+   }
+
+   std::string xml_fragment;
+   err = xq_select_to_xml_fragment(this, value, result, has_value, xml_fragment);
+   if (err != ERR::Okay) {
+      log.warning("<data select> requires parseable XML/RIPL markup or a concrete XML node sequence.");
+      Self->Error = err;
+      return;
+   }
+
+   objXML *new_doc = nullptr;
+   err = xq_parse_xml_fragment(xml_fragment, new_doc, true);
+   if (err != ERR::Okay) {
+      log.warning("<data select> requires parseable XML/RIPL markup or an XML node sequence, got: %.120s",
+         xml_fragment.c_str());
+      Self->Error = err;
+      return;
+   }
+
+   replace_doc_xml(new_doc);
+}
+
+//********************************************************************************************************************
 // Parse a string value as XML
 
 void parser::tag_parse(XTag &Tag)
@@ -2301,8 +3230,49 @@ void parser::tag_parse(XTag &Tag)
 
    // The value attribute will contain XML.  We will parse the XML as if it were part of the document source.  This feature
    // is typically used when pulling XML information out of an object field.
+   //
+   //   select="..."  evaluates an XQuery expression and parses the resulting string as XML/RIPL content.
 
    if (std::ssize(Tag.Attribs) > 1) {
+      // Prefer select over value when both are present.
+      for (int i=1; i < std::ssize(Tag.Attribs); i++) {
+         auto name = std::string_view(Tag.Attribs[i].Name);
+         if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+         if (iequals("select", name)) {
+            XPathValue value(XPVT::String);
+            std::string result;
+            bool has_value = false;
+            auto err = xq_eval_value_helper(this, m_xml, &Tag, Tag.Attribs[i].Value, value, result, has_value);
+            if (err != ERR::Okay) {
+               log.warning("<parse select=\"%s\"> failed.", Tag.Attribs[i].Value.c_str());
+               Self->Error = err;
+               return;
+            }
+
+            std::string xml_fragment;
+            err = xq_select_to_xml_fragment(this, value, result, has_value, xml_fragment);
+            if (err != ERR::Okay) {
+               log.warning("<parse select> requires parseable XML/RIPL markup or a concrete XML node sequence.");
+               Self->Error = err;
+               return;
+            }
+
+            log.traceBranch("Parsing XQuery result as XML...");
+            objXML *xmlinc = nullptr;
+            if (xq_parse_xml_fragment(xml_fragment, xmlinc, false) != ERR::Okay) {
+               log.warning("<parse select> requires parseable XML/RIPL markup or an XML node sequence, got: %.120s",
+                  xml_fragment.c_str());
+               Self->Error = ERR::Syntax;
+               return;
+            }
+            auto old_xml = change_xml(xmlinc);
+            parse_tags(xmlinc->Tags);
+            change_xml(old_xml);
+            Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
+            return;
+         }
+      }
+
       if ((iequals("value", Tag.Attribs[1].Name)) or
           (iequals("$value", Tag.Attribs[1].Name))) {
          log.traceBranch("Parsing string value as XML...");
@@ -2666,13 +3636,42 @@ void parser::tag_print(XTag &Tag)
 
    // Copy the content from the value attribute into the document stream.  If used inside an object, the data is sent
    // to that object as XML.
+   //
+   //   select="..."  evaluates an XQuery expression and inserts its string value
+   //   value="..."   may contain {...} attribute value template fragments
 
    if (Tag.Attribs.size() > 1) {
+      // Prefer select over value when both are present.
+      for (int i=1; i < std::ssize(Tag.Attribs); i++) {
+         auto name = std::string_view(Tag.Attribs[i].Name);
+         if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
+         if (iequals("select", name)) {
+            XPathValue value(XPVT::String);
+            std::string result;
+            bool has_value = false;
+            auto err = xq_eval_value_helper(this, m_xml, &Tag, Tag.Attribs[i].Value, value, result, has_value);
+            if (err != ERR::Okay) {
+               log.warning("<print select=\"%s\"> failed.", Tag.Attribs[i].Value.c_str());
+               Self->Error = err;
+               return;
+            }
+            err = xq_select_to_print_text(value, result, has_value, result);
+            if (err != ERR::Okay) {
+               log.warning("<print select=\"%s\"> could not be converted into text.", Tag.Attribs[i].Value.c_str());
+               Self->Error = err;
+               return;
+            }
+            insert_text(Self, m_stream, m_index, result, (m_style.options & FSO::PREFORMAT) != FSO::NIL);
+            return;
+         }
+      }
+
       auto tagname = Tag.Attribs[1].Name.c_str();
       if (*tagname IS '$') tagname++;
 
       if (iequals("value", tagname)) {
-         insert_text(Self, m_stream, m_index, Tag.Attribs[1].Value, (m_style.options & FSO::PREFORMAT) != FSO::NIL);
+         insert_text(Self, m_stream, m_index, Tag.Attribs[1].Value,
+            (m_style.options & FSO::PREFORMAT) != FSO::NIL);
       }
       else if (iequals("src", Tag.Attribs[1].Name)) {
          // This option is only supported in unrestricted mode
@@ -2726,305 +3725,6 @@ void parser::tag_template(XTag &Tag)
 
 //********************************************************************************************************************
 
-ERR parser::calc(const std::string &String, double *Result, std::string &Output)
-{
-   enum SIGN { PLUS=1, MINUS, MULTIPLY, DIVIDE, MODULO };
-
-   if (Result) *Result = 0;
-
-   Output.clear();
-
-   // Search for brackets and translate them first
-
-   std::string in(String);
-   while (true) {
-      // Find the last bracketed reference
-
-      int last_bracket = 0;
-      for (unsigned i=0; i < in.size(); i++) {
-         if (in[i] IS '\'') { // Skip anything in quotes
-            i++;
-            while (in[i]) {
-               if (in[i] IS '\\') {
-                  i++; // Skip backslashes and the following character
-                  if (!in[i]) break;
-               }
-               else if (in[i] IS '\'') break;
-               i++;
-            }
-            if (in[i] IS '\'') i++;
-         }
-         else if (in[i] IS '(') last_bracket = i;
-      }
-
-      if (last_bracket > 0) { // Bracket found, translate its contents
-         int end;
-         for (end=last_bracket+1; (in[end]) and (in[end-1] != ')'); end++);
-         std::string buf(in, last_bracket, end - last_bracket);
-
-         double calc_float;
-         std::string out;
-         calc(buf.c_str()+1, &calc_float, out);
-         in.replace(last_bracket, end - last_bracket, out);
-      }
-      else break;
-   }
-
-   // Perform the calculation
-
-   STRING end;
-   int16_t precision = 9;
-   double total   = 0;
-   double overall = 0;
-   int index     = 0;
-   SIGN sign      = PLUS;
-   bool number    = false;
-   for (unsigned s=0; in[s];) {
-      if (unsigned(in[s]) <= 0x20); // Do nothing with whitespace
-      else if (in[s] IS '\'') {
-         if (number) { // Write the current floating point number to the buffer before the next calculation
-            Output  += write_calc(total, precision);
-            overall += total; // Reset the number
-            total   = 0;
-            number  = false;
-         }
-
-         s++;
-         while (index < int(Output.size())-1) {
-            if (in[s] IS '\\') s++; // Skip the \ character and continue so that we can copy the character immediately after it
-            else if (in[s] IS '\'') break;
-
-            Output += in[s++];
-         }
-      }
-      else if (in[s] IS 'f') { // Fixed floating point precision adjustment
-         s++;
-         precision = -strtol(in.c_str() + s, &end, 10);
-         s += end - in.c_str();
-         continue;
-      }
-      else if (in[s] IS 'p') { // Floating point precision adjustment
-         s++;
-         precision = strtol(in.c_str() + s, &end, 10);
-         s += end - in.c_str();
-         continue;
-      }
-      else if ((in[s] >= '0') and (in[s] <= '9')) {
-         number = true;
-         double fvalue = strtod(in.c_str() + s, &end);
-         s += end - in.c_str();
-
-         if (sign IS MINUS)         total = total - fvalue;
-         else if (sign IS MULTIPLY) total = total * fvalue;
-         else if (sign IS MODULO)   total = F2I(total) % F2I(fvalue);
-         else if (sign IS DIVIDE) {
-            if (fvalue) total = total / fvalue; // NB: Avoid division by zero errors
-         }
-         else total += fvalue;
-
-         sign = PLUS; // The mathematical sign is reset whenever a number is encountered
-         continue;
-      }
-      else if (in[s] IS '-') {
-         if (sign IS MINUS) sign = PLUS; // Handle double-negatives
-         else sign = MINUS;
-      }
-      else if (in[s] IS '+') sign = PLUS;
-      else if (in[s] IS '*') sign = MULTIPLY;
-      else if (in[s] IS '/') sign = DIVIDE;
-      else if (in[s] IS '%') sign = MODULO;
-
-      for (++s; (in[s] & 0xc0) IS 0x80; s++);
-   }
-
-   if (number) Output += write_calc(total, precision);
-   if (Result) *Result = overall + total;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
-This function is used to translate strings that make object and field references using the standard referencing format.
-References are made to objects by enclosing statements within square brackets.  As a result of calling this function,
-all references within the Buffer will be translated to their relevant format.  The Buffer needs to be large enough to
-accommodate these adjustments as it will be expanded during the translation.  It is recommended that the Buffer is at
-least two times the actual length of the string that you are translating.
-
-Valid references can be made to an object by name, ID or relative parameters.  Here are some examples illustrating the
-different variations:
-
-<types type="Reference">
-<type name="[surface]">Name reference.</>
-<type name="[#49302]">ID reference.</>
-<type name="[self]">Relative reference to the object that has the current context, or the document.</>
-</table>
-
-Field references are a slightly different matter and will be converted to the value of the field that they are
-referencing.  A field reference is defined using the object referencing format, but they contain a `.fieldname`
-extension.  Here are some examples:
-
-<pre>
-[surface.width]
-[file.location]
-</pre>
-
-A string such as `[mywindow.height] + [mywindow.width]` could be translated to `255 + 120` for instance.
-
-Simple calculations are possible by enclosing a statement within a `[=...]` section.  For example the aforementioned
-string can be expanded to `[=[mywindow.height] + [mywindow.width]]`, which would give a result of 375.
-
-The escape character for string translation is `$` and should be used as `[$...]`, which prevents everything within the
-square brackets from being translated.  The `[$]` characters will be removed as part of this process unless the
-KEEP_ESCAPE flag is used.  To escape a single right or left bracket, use `[rb]` or `[lb]` respectively.
-
-*********************************************************************************************************************/
-
-// Evaluate object references and calculations
-
-ERR parser::tag_xml_content_eval(std::string &Buffer)
-{
-   pf::Log log(__FUNCTION__);
-   int i;
-
-   // Quick check for translation symbols
-
-   if (Buffer.find('[') IS std::string::npos) return ERR::EmptyString;
-
-   log.traceBranch("%.80s", Buffer.c_str());
-
-   ERR error = ERR::Okay;
-   ERR majorerror = ERR::Okay;
-
-   // Skip to the end of the buffer (translation occurs 'backwards')
-
-   auto pos = std::ssize(Buffer) - 1;
-   while (pos >= 0) {
-      if ((Buffer[pos] IS '[') and ((Buffer[pos+1] IS '@') or (Buffer[pos+1] IS '%'))) {
-         // Ignore arguments, e.g. [@id] or [%id].  It's also useful for ignoring [@attrib] in xpath.
-         pos--;
-      }
-      else if (Buffer[pos] IS '[') {
-         // Make sure that there is a balanced closing bracket
-
-         int end;
-         int balance = 0;
-         for (end=pos; Buffer[end]; end++) {
-            if (Buffer[end] IS '[') balance++;
-            else if (Buffer[end] IS ']') {
-               balance--;
-               if (!balance) break;
-            }
-         }
-
-         if (Buffer[end] != ']') {
-            log.warning("Unbalanced string: %.90s ...", Buffer.c_str());
-            return ERR::InvalidData;
-         }
-
-         if (Buffer[pos+1] IS '=') { // Perform a calculation
-            std::string num;
-            num.assign(Buffer, pos+2, end-(pos+2));
-
-            std::string calcbuffer;
-            double value;
-            calc(num, &value, calcbuffer);
-            Buffer.insert(end-pos+1, calcbuffer);
-         }
-         else if (Buffer[pos+1] IS '$') { // Escape sequence - e.g. translates [$ABC] to ABC.  Note: Use [rb] and [lb] instead for brackets.
-            Buffer.erase(end, 1); // ']'
-            Buffer.erase(pos, 2); // '[$'
-            pos--;
-            continue;
-         }
-         else {
-            std::string name;
-            name.reserve(64);
-
-            for (i=pos+1; (Buffer[i] != '.') and (i < end); i++) {
-               name += std::tolower(Buffer[i]);
-            }
-
-            // Check for [lb] and [rb] escape codes
-
-            char code = 0;
-            if (name IS "rb") code = ']';
-            else if (name IS "lb") code = '[';
-
-            if (code) {
-               Buffer[pos] = code;
-               Buffer.erase(pos+1, 3);
-               pos--;
-               continue;
-            }
-            else {
-               OBJECTID objectid = 0;
-               if (iequals(name, "self")) objectid = CurrentContext()->UID;
-               else FindObject(name.c_str(), CLASSID::NIL, FOF::SMART_NAMES, &objectid);
-
-               if (objectid) {
-                  OBJECTPTR object = nullptr;
-                  if (Buffer[i] IS '.') {
-                     // Get the field from the object
-                     i++;
-
-                     std::string field(Buffer, i, end);
-                     if (AccessObject(objectid, 2000, &object) IS ERR::Okay) {
-                        OBJECTPTR target;
-                        const Field *classfield;
-                        if (((classfield = find_field(object, field, &target))) and (classfield->Flags & FD_STRING)) {
-                           CSTRING str;
-                           if (object->get(classfield->FieldID, str) IS ERR::Okay) {
-                              Buffer.insert(end-pos+1, str);
-                           }
-                        }
-                        else if (CheckAction(object, AC::GetKey) IS ERR::Okay) {
-                           // Get field as an unlisted type and manage any buffer overflow
-                           std::string tbuffer;
-                           tbuffer.reserve(4096);
-repeat:
-                           tbuffer[tbuffer.capacity()-1] = 0;
-                           struct acGetKey var{ field.c_str(), tbuffer.data(), int(tbuffer.size()) };
-                           if (Action(AC::GetKey, object, &var) IS ERR::Okay) {
-                              if (tbuffer[tbuffer.capacity()-1]) {
-                                 tbuffer.reserve(tbuffer.capacity() * 2);
-                                 goto repeat;
-                              }
-                              Buffer.insert(end-pos+1, tbuffer);
-                           }
-                        }
-                        // NB: For fields, error code is always Okay so that the reference evaluates to NULL
-
-                        ReleaseObject(object);
-                     }
-                     else error = ERR::AccessObject;
-                  }
-                  else { // Convert the object reference to an ID
-                     Buffer.insert(end-pos+1, std::move(std::string("#") + std::to_string(objectid)));
-                  }
-               }
-               else {
-                  error = ERR::NoMatchingObject;
-                  log.traceWarning("Failed to find object '%s'", name.c_str());
-               }
-            }
-         }
-
-         if (error != ERR::Okay) {
-            pos--;
-            majorerror = error;
-            error = ERR::Okay;
-         }
-      }
-      else pos--;
-   }
-
-   log.trace("Result: %s", Buffer.c_str());
-
-   return majorerror;
-}
-
-//********************************************************************************************************************
-
 void parser::tag_font(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
@@ -3044,234 +3744,6 @@ void parser::tag_font(XTag &Tag)
    parse_tags_with_style(Tag.Children, new_style);
 
    if (preformat) trim_preformat(Self);
-}
-
-//********************************************************************************************************************
-
-void parser::tag_object(XTag &Tag)
-{
-   /*
-   pf::Log log(__FUNCTION__);
-
-   // NF::LOCAL is only set when the object is owned by the document
-
-   OBJECTPTR object;
-   if (NewObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::LOCAL, (OBJECTPTR *)&object)) {
-      log.warning("Failed to create object of class #%d.", class_id);
-      return;
-   }
-
-   log.branch("Processing %s object from document tag, owner #%d.", object->Class->ClassName, Self->CurrentObject ? Self->CurrentObject->UID : -1);
-
-   // Setup the callback interception so that we can control the order in which objects draw their graphics to the surface.
-
-   if (Self->CurrentObject) {
-      SetOwner(object, Self->CurrentObject);
-   }
-   else if (!pagetarget.empty()) {
-      auto field_id = strihash(pagetarget);
-      if (Self->BkgdGfx) object->set(field_id, Self->View);
-      else object->set(field_id, Self->Page);
-   }
-
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      auto argname = Tag.Attribs[i].Name.c_str();
-      while (*argname IS '$') argname++;
-      if (Tag.Attribs[i].Value.empty()) object->set(strihash(argname), "1");
-      else object->set(strihash(argname), Tag.Attribs[i].Value);
-   }
-
-   // Check for the 'data' tag which can be used to send data feed information prior to initialisation.
-   //
-   // <data type="text">Content</data>
-   // <data type="xml" template="TemplateName"/>
-   // <data type="xml" object="[xmlobj]"/>
-   // <data type="xml">Content</data>
-
-   bool customised = false;
-
-   if (!Tag.Children.empty()) {
-      STRING src;
-
-      for (auto &scan : Tag.Children) {
-         if (!iequals("data", scan.Attribs[0].name)) continue;
-
-         if (*e_revert > *s_revert) {
-            while (*e_revert > *s_revert) {
-               *e_revert -= 1;
-               Self->RestoreAttrib[*e_revert].Attrib[0] = Self->RestoreAttrib[*e_revert].String;
-            }
-         }
-         Self->RestoreAttrib.resize(*s_revert);
-
-         *s_revert = Self->RestoreAttrib.size();
-         *e_revert = 0;
-         translate_attrib_args(scan.Attribs);
-         *e_revert = Self->RestoreAttrib.size();
-
-         const std::string *type = scan.attrib("type");
-
-         if ((!type) or (iequals("text", type))) {
-            if (scan.Children.empty()) continue;
-            std::string buffer;
-            xmlGetContent(scan, buffer);
-            if (!buffer.empty()) acDataText(object, buffer.c_str());
-         }
-         else if (iequals("xml", type)) {
-            customised = true;
-
-            if (auto t = scan.attrib("template")) {
-               for (auto &tmp : Self->Templates->Tags) {
-                  for (unsigned i=1; i < tmp.Attribs.size(); i++) {
-                     if ((iequals("name", tmp.Attribs[i].name)) and (iequals(t, tmp.Attribs[i].Value))) {
-                        if (!xmlSerialise(Self->Templates, tmp.Children[0].ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
-                           acDataXML(object, content.c_str());
-                        }
-
-                        break;
-                     }
-                  }
-               }
-            }
-            else if (auto src = scan.attrib("object")) {
-               OBJECTID objectid;
-               if (!FindObject(src.c_str(), 0, FOF::SMART_NAMES, &objectid)) {
-                  if ((objectid) and (valid_objectid(Self, objectid))) {
-                     objXML *objxml;
-                     if (!AccessObject(objectid, 3000, &objxml)) {
-                        if (objxml->classID() IS CLASSID::XML) {
-                           if (!xmlSerialise(objxml, 0, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
-                              acDataXML(object, content.c_str());
-                           }
-                        }
-                        else log.warning("Cannot extract XML data from a non-XML object.");
-                        ReleaseObject(objxml);
-                     }
-                  }
-                  else log.warning("Invalid object reference '%s'", src);
-               }
-               else log.warning("Unable to find object '%s'", src);
-            }
-            else {
-               if (scan.Children.empty()) continue;
-               if (!xmlSerialise(XML, scan.Children.ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
-                  acDataXML(object, content.c_str());
-               }
-            }
-         }
-         else log.warning("Unsupported data type '%s'", type);
-      }
-   }
-
-   // Feeds are applied to invoked objects, whereby the object's class name matches a feed.
-
-   if ((!customised) and (Template)) {
-      STRING content;
-      if (!xmlSerialise(Self->Templates, Template->Children[0].ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
-         acDataXML(object, content);
-         FreeResource(content);
-      }
-   }
-
-   if (!InitObject(object)) {
-      bc_vector escobj;
-
-      if (Self->Invisible) acHide(object); // Hide the object if it's in an invisible section
-
-      // Child tags are processed as normal, but are applied with respect to the object.  Any tags that reflect
-      // document content are passed to the object as XML.
-
-      if (!Tag.Children.empty()) {
-         pf::Log log(__FUNCTION__);
-         log.traceBranch("Processing child tags for object #%d.", object->UID);
-         auto prevobject = Self->CurrentObject;
-         Self->CurrentObject = object;
-         parse_tags(Tag.Children, Flags & (~IPF::FILTER_ALL));
-         Self->CurrentObject = prevobject;
-      }
-
-      if (&Children != &Tag.Children) {
-         pf::Log log(__FUNCTION__);
-         log.traceBranch("Processing further child tags for object #%d.", object->UID);
-         auto prevobject = Self->CurrentObject;
-         Self->CurrentObject = object;
-         parse_tags(Children, Flags & (~IPF::FILTER_ALL));
-         Self->CurrentObject = prevobject;
-      }
-
-      // The object can self-destruct in ClosingTag(), so check that it still exists before inserting it into the text stream.
-
-      if (!CheckObjectExists(object->UID)) {
-         if (Self->BkgdGfx) {
-            auto &resource = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
-            resource.class_id = class_id;
-         }
-         else {
-            escobj.object_id = object->UID;
-            escobj.class_id  = object->classID();
-            escobj.in_line = false;
-            if (Self->CurrentObject) escobj.owned = true;
-
-            // By default objects are assumed to be in the background (thus not embedded as part of the text stream).
-            // This section is intended to confirm the graphical state of the object.
-
-            if (object->classID() IS CLASSID::VECTOR) {
-               //if (layout->Layout & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND));
-               //else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Inline = true;
-            }
-            else escobj.in_line = true; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
-
-            m_stream->emplace(Index, escobj);
-
-            if (Self->ObjectCache) {
-               switch (object->classID()) {
-                  // The following class types can be cached
-                  case CLASSID::XML:
-                  case CLASSID::FILE:
-                  case CLASSID::CONFIG:
-                  case CLASSID::COMPRESSION:
-                  case CLASSID::SCRIPT: {
-                     Self->Resources.emplace_back(object->UID, RTD::PERSISTENT_OBJECT);
-                     break;
-                  }
-
-                  // The following class types use their own internal caching system
-
-                  default:
-                     log.warning("Cannot cache object of class type '%s'", object->Class->ClassName);
-                  //case CLASSID::IMAGE:
-                  //   auto &res = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
-                     break;
-               }
-            }
-            else {
-               auto &res = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
-               res.class_id = class_id;
-            }
-
-            // If the object is inline, we will allow whitespace to immediately follow the object.
-
-            if (escobj.in_line) Self->NoWhitespace = false;
-
-            // Add the object to the tab-list if it is in our list of classes that support keyboard input.
-
-            static const CLASSID classes[] = { CLASSID::VECTOR };
-
-            for (unsigned i=0; i < std::ssize(classes); i++) {
-               if (classes[i] IS class_id) {
-                  add_tabfocus(Self, TT::OBJECT, object->UID);
-                  break;
-               }
-            }
-         }
-      }
-      else log.trace("Object %d self-destructed.", object->UID);
-   }
-   else {
-      FreeResource(object);
-      log.warning("Failed to initialise object of class $%.8x", class_id);
-   }
-      */
 }
 
 //********************************************************************************************************************
@@ -3564,13 +4036,179 @@ void parser::tag_li(XTag &Tag)
 }
 
 //********************************************************************************************************************
+// <let> introduces a lexical $state binding that is visible only to the element's children.  The state_guard above
+// restores any previous binding automatically.
+
+TRF parser::tag_let(XTag &Tag, IPF &Flags)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (Tag.Children.empty()) {
+      log.warning("<let> requires child content.");
+      Self->Error = ERR::InvalidData;
+      return TRF::NIL;
+   }
+
+   auto name = xq_find_attrib(Tag, "name");
+   auto select = xq_find_attrib(Tag, "select");
+   if ((!name) or name->empty() or (!select)) {
+      log.warning("<let> requires both name and select attributes.");
+      Self->Error = ERR::InvalidData;
+      return TRF::NIL;
+   }
+
+   std::string binding_name = *name;
+   if ((!binding_name.empty()) and (binding_name.front() IS '$')) binding_name.erase(0, 1);
+   if (binding_name.empty()) {
+      log.warning("<let name=\"...\"> resolved to an empty binding name.");
+      Self->Error = ERR::InvalidData;
+      return TRF::NIL;
+   }
+
+   XPathValue value(XPVT::String);
+   std::string result;
+   bool has_value = false;
+   auto err = xq_eval_value_helper(this, m_xml, &Tag, *select, value, result, has_value);
+   if (err != ERR::Okay) {
+      log.warning("<let select=\"%s\"> failed.", select->c_str());
+      Self->Error = err;
+      return TRF::NIL;
+   }
+
+   if (not has_value) {
+      value = XPathValue(XPVT::String);
+      value.StringValue = result;
+   }
+
+   xq_value_binding binding_value;
+   if ((err = xq_make_stored_value(this, value, binding_value)) != ERR::Okay) {
+      log.warning("<let select=\"%s\"> could not preserve the selected value.", select->c_str());
+      Self->Error = err;
+      return TRF::NIL;
+   }
+
+   state_guard binding(this, std::move(binding_name), binding_value);
+   return parse_tags(Tag.Children, Flags);
+}
+
+//********************************************************************************************************************
+// <for-each> evaluates its select expression once, requires a node sequence, and then parses its children once for
+// each item with both $loop and the XQuery context item rebound to that node.
+
+TRF parser::tag_for_each(XTag &Tag, IPF &Flags)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto select = xq_find_attrib(Tag, "select");
+   if (!select) {
+      log.warning("<for-each> requires a select attribute.");
+      Self->Error = ERR::InvalidData;
+      return TRF::NIL;
+   }
+
+   XPathValue value(XPVT::String);
+   std::string result;
+   bool has_value = false;
+   auto err = xq_eval_value_helper(this, m_xml, &Tag, *select, value, result, has_value);
+   if (err != ERR::Okay) {
+      log.warning("<for-each select=\"%s\"> failed.", select->c_str());
+      Self->Error = err;
+      return TRF::NIL;
+   }
+
+   if ((!has_value) and result.empty()) return TRF::NIL;
+
+   xq_value_binding sequence_value;
+   if ((err = xq_make_stored_value(this, value, sequence_value)) != ERR::Okay) {
+      log.warning("<for-each select=\"%s\"> could not preserve the selected sequence.", select->c_str());
+      Self->Error = err;
+      return TRF::NIL;
+   }
+
+   auto &stored_value = sequence_value.value;
+
+   if ((not has_value) or (not (stored_value.Type IS XPVT::NodeSet)) or
+      xq_nodeset_has_real_attributes(stored_value) or xq_nodeset_has_real_composites(stored_value)) {
+      log.warning("<for-each> currently requires a node sequence result.");
+      Self->Error = ERR::InvalidData;
+      return TRF::NIL;
+   }
+
+   if (stored_value.node_set.empty()) {
+      if (xq_value_is_empty_sequence(stored_value)) return TRF::NIL;
+
+      log.warning("<for-each> currently requires a node sequence result.");
+      Self->Error = ERR::InvalidData;
+      return TRF::NIL;
+   }
+
+   for (auto *node : stored_value.node_set) {
+      if (!node) {
+         log.warning("<for-each> currently requires a node sequence result.");
+         Self->Error = ERR::InvalidData;
+         return TRF::NIL;
+      }
+   }
+
+   loop_frame frame;
+   frame.index = 0;
+   frame.iteration = 0;
+   frame.start = 0;
+   frame.step = 1;
+   frame.count = int(stored_value.node_set.size());
+   frame.count_known = true;
+
+   loop_guard loop(this, frame);
+   TRF result_flags = TRF::NIL;
+
+   for (size_t item_index = 0; item_index < stored_value.node_set.size(); ++item_index) {
+      XTag *item = stored_value.node_set[item_index];
+
+      auto active_loop = loop.frame();
+      if (!active_loop) break;
+
+      active_loop->index = int(item_index);
+      active_loop->iteration = int(item_index);
+
+      auto item_xml = xq_find_known_node_owner(this, item);
+      if ((!item_xml) and sequence_value.owned_xml and xq_xml_owns_node(sequence_value.owned_xml.get(), item)) {
+         item_xml = sequence_value.owned_xml.get();
+      }
+      if (!item_xml) {
+         log.warning("<for-each> could not resolve the owning XML document for the current item.");
+         Self->Error = ERR::InvalidData;
+         return TRF::NIL;
+      }
+
+      xq_context_guard item_context(this, item_xml, item);
+
+      result_flags = parse_tags(Tag.Children, Flags);
+      if (Self->Error != ERR::Okay) break;
+
+      if ((result_flags & TRF::BREAK) != TRF::NIL) {
+         result_flags = TRF::NIL;
+         break;
+      }
+
+      if ((result_flags & TRF::CONTINUE) != TRF::NIL) {
+         result_flags = TRF::NIL;
+         continue;
+      }
+   }
+
+   return result_flags;
+}
+
+//********************************************************************************************************************
 
 void parser::tag_repeat(XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
    std::string index_name;
-   int loop_start = 0, loop_end = 0, count = 0, step  = 0;
+   int loop_start = 0, loop_end = 0, count = 0, step = 0;
+   bool have_end = false;
+   bool have_count = false;
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("start", Tag.Attribs[i].Name)) {
@@ -3583,9 +4221,11 @@ void parser::tag_repeat(XTag &Tag)
             log.warning("Invalid count value of %d", count);
             return;
          }
+         have_count = true;
       }
       else if (iequals("end", Tag.Attribs[i].Name)) {
-         loop_end = std::stoi(Tag.Attribs[i].Value) + 1;
+         loop_end = std::stoi(Tag.Attribs[i].Value);
+         have_end = true;
       }
       else if (iequals("step", Tag.Attribs[i].Name)) {
          step = std::stoi(Tag.Attribs[i].Value);
@@ -3596,10 +4236,15 @@ void parser::tag_repeat(XTag &Tag)
 
          index_name = Tag.Attribs[i].Value;
       }
+      else if (iequals("select", Tag.Attribs[i].Name)) {
+         log.warning("<repeat select=\"...\"> is not supported.  Use <for-each select=\"...\"> for sequence iteration.");
+         Self->Error = ERR::InvalidData;
+         return;
+      }
    }
 
    if (!step) {
-      if (loop_end < loop_start) step = -1;
+      if ((have_end) and (loop_end < loop_start)) step = -1;
       else step = 1;
    }
 
@@ -3608,7 +4253,12 @@ void parser::tag_repeat(XTag &Tag)
    //
    // If the user set both count and end attributes, the count attribute will be given the priority here.
 
-   if (count > 0) loop_end = loop_start + (count * step);
+   if (have_count) {
+      if (count IS 0) return;
+      loop_end = loop_start + (count * step);
+      have_end = true;
+   }
+   else if (!have_end) return;
 
    if (step > 0) {
       if (loop_end < loop_start) step = -step;
@@ -3617,17 +4267,37 @@ void parser::tag_repeat(XTag &Tag)
 
    log.traceBranch("Performing a repeat loop (start: %d, end: %d, step: %d).", loop_start, loop_end, step);
 
-   auto save_index = m_loop_index;
+   auto loop_count = compute_numeric_loop_count(loop_start, loop_end, step);
+   if (loop_count <= 0) return;
 
-   while (loop_start < loop_end) {
-      if (index_name.empty()) m_loop_index = loop_start;
-      else acSetKey(Self, index_name.c_str(), std::to_string(loop_start).c_str());
+   loop_frame frame;
+   frame.index = loop_start;
+   frame.iteration = 0;
+   frame.start = loop_start;
+   frame.end = loop_end;
+   frame.step = step;
+   frame.count = loop_count;
+   frame.count_known = true;
+   frame.end_known = true;
+   frame.alias_name = index_name;
 
-      parse_tags(Tag.Children);
-      loop_start += step;
+   loop_guard loop(this, frame);
+
+   while (auto active_loop = loop.frame()) {
+      if (!loop_index_in_range(active_loop->index, active_loop->end, active_loop->step)) break;
+
+      auto result = parse_tags(Tag.Children);
+      if (Self->Error != ERR::Okay) break;
+      if ((result & TRF::BREAK) != TRF::NIL) break;
+
+      active_loop = loop.frame();
+      if (!active_loop) break;
+
+      active_loop->index += active_loop->step;
+      active_loop->iteration++;
+
+      if ((result & TRF::CONTINUE) != TRF::NIL) continue;
    }
-
-   if (index_name.empty()) m_loop_index = save_index;
 
    log.trace("insert_child:","Repeat loop ends.");
 }
