@@ -398,7 +398,9 @@ void parser::process_page(objXML *pXML)
          pf::Log log(__FUNCTION__);
          log.traceBranch("Processing this page through the body tag.");
 
+         auto xml = m_inject_xml;
          auto tags = m_inject_tag;
+         m_inject_xml = m_xml;
          m_inject_tag = &page->Children;
          m_in_template++;
 
@@ -406,6 +408,7 @@ void parser::process_page(objXML *pXML)
 
          m_in_template--;
          m_inject_tag = tags;
+         m_inject_xml = xml;
       }
       else {
          pf::Log log(__FUNCTION__);
@@ -534,7 +537,7 @@ TRF parser::parse_tag(XTag &Tag, IPF &Flags)
 
          auto xml  = m_inject_xml;
          auto tags = m_inject_tag;
-         m_inject_xml = xml;
+         m_inject_xml = m_xml;
          m_inject_tag = &Tag.Children;
          m_in_template++;
 
@@ -1394,6 +1397,9 @@ void parser::tag_button(XTag &Tag)
       Self->NoWhitespace = true; // Reset whitespace flag: false allows whitespace at the start of the cell, true prevents whitespace
 
       parser parse(Self, widget.stream);
+      parse.m_in_template = m_in_template;
+      parse.m_inject_tag  = m_inject_tag;
+      parse.m_inject_xml  = m_inject_xml;
 
       auto new_style = m_style;
       new_style.options = FSO::ALIGN_CENTER;
@@ -2974,6 +2980,7 @@ void parser::tag_cell(XTag &Tag)
 
       parse.m_in_template = m_in_template;
       parse.m_inject_tag  = m_inject_tag;
+      parse.m_inject_xml  = m_inject_xml;
       parse.m_paragraph_depth++;
       parse.parse_tags_with_style(Tag.Children, new_style);
       parse.m_paragraph_depth--;

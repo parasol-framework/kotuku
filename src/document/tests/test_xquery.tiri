@@ -191,6 +191,35 @@ end
       'kt:platform() must expose the host platform string, got: ' .. xml_str)
 end
 
+@Test function HelperTemplateContentAvt()
+   xml_str = feedAndRead(
+      '<body/><template name="content_probe"><p><print value="TEMPLATE-CONTENT-AVT {kt:template-content()}"/></p></template>'
+      .. '<page><content_probe>Alpha</content_probe></page>')
+
+   assert(contains(xml_str, 'TEMPLATE-CONTENT-AVT Alpha'),
+      'kt:template-content() must expose template caller text to AVTs, got: ' .. xml_str)
+end
+
+@Test function HelperTemplateContentParseSelect()
+   xml_str = feedAndRead(
+      '<body/><template name="content_probe"><parse select="kt:template-content()"/></template>'
+      .. '<page><content_probe><p>TEMPLATE-CONTENT-PARSE</p></content_probe></page>')
+
+   assert(contains(xml_str, 'TEMPLATE-CONTENT-PARSE'),
+      'kt:template-content() must let parse@select inject caller markup like <inject/>, got: ' .. xml_str)
+end
+
+@Test function HelperTemplateContentForEach()
+   xml_str = feedAndRead(
+      '<body/><template name="content_probe"><for-each select="kt:template-content()"><p><print value="TEMPLATE-CONTENT-NODE {local-name(.)} {string(.)} {$loop?index}"/></p></for-each></template>'
+      .. '<page><content_probe><item>A</item><item>B</item></content_probe></page>')
+
+   assert(contains(xml_str, 'TEMPLATE-CONTENT-NODE item A 0'),
+      'kt:template-content() must return caller nodes that for-each can iterate with relative queries')
+   assert(contains(xml_str, 'TEMPLATE-CONTENT-NODE item B 1'),
+      'kt:template-content() must preserve caller node order for later template content items')
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Surface behaviour
 

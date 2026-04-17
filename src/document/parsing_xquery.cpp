@@ -50,6 +50,7 @@ static constexpr std::string_view XQ_UID_FUNCTION = "kt:uid";
 static constexpr std::string_view XQ_PLATFORM_FUNCTION = "kt:platform";
 static constexpr std::string_view XQ_FIELD_FUNCTION = "kt:field";
 static constexpr std::string_view XQ_KEY_FUNCTION = "kt:key";
+static constexpr std::string_view XQ_TEMPLATE_CONTENT_FUNCTION = "kt:template-content";
 
 static std::string xq_build_eval_expression(std::string_view Expression, XQEval Mode)
 {
@@ -361,6 +362,24 @@ static XPathValue xq_page_to_nodeset(parser *Parser)
    if ((not Parser) or (not Parser->Self) or (not Parser->Self->PageTag)) return result;
 
    result.node_set.push_back(Parser->Self->PageTag);
+   return result;
+}
+
+//********************************************************************************************************************
+// Expose the current template caller content as a concrete node sequence so template attributes can consume the same
+// injected content that <inject/> would parse directly.
+
+static XPathValue xq_template_content_to_nodeset(parser *Parser)
+{
+   XPathValue result(XPVT::NodeSet);
+   if ((not Parser) or (not Parser->m_inject_tag)) return result;
+
+   result.preserve_node_order = true;
+   result.node_set.reserve(Parser->m_inject_tag[0].size());
+   for (auto &tag : Parser->m_inject_tag[0]) {
+      result.node_set.push_back(&tag);
+   }
+
    return result;
 }
 
@@ -733,6 +752,15 @@ static ERR xq_document_key(objXQuery *, std::string_view, const std::vector<XPat
    return ERR::Okay;
 }
 
+static ERR xq_document_template_content(objXQuery *, std::string_view, const std::vector<XPathValue> &Input,
+   XPathValue &Result, APTR Meta)
+{
+   if (not Input.empty()) return ERR::Args;
+
+   Result = xq_template_content_to_nodeset((parser *)Meta);
+   return ERR::Okay;
+}
+
 //********************************************************************************************************************
 // Shared setup for all document-side XQuery surfaces.  The query object is cached on the document and reconfigured
 // for the current parser instance each time so the runtime variable resolver and helper functions see the active
@@ -767,6 +795,7 @@ static ERR xq_prepare_query(parser *Parser, const std::string &Expression, XQEva
    Self->Query->registerFunction(XQ_PLATFORM_FUNCTION.data(), C_FUNCTION(xq_document_platform, Parser));
    Self->Query->registerFunction(XQ_FIELD_FUNCTION.data(), C_FUNCTION(xq_document_field, Parser));
    Self->Query->registerFunction(XQ_KEY_FUNCTION.data(), C_FUNCTION(xq_document_key, Parser));
+   Self->Query->registerFunction(XQ_TEMPLATE_CONTENT_FUNCTION.data(), C_FUNCTION(xq_document_template_content, Parser));
 
    if (Self->Query->setStatement(eval_expression) != ERR::Okay) {
       Self->Error = ERR::SetField;
