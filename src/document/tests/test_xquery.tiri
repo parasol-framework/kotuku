@@ -98,11 +98,11 @@ end
 end
 
 @Test function FixtureRuntimeScopeBindings()
-   xml_str = loadAndRead('xquery_stage2.rpl?mode=preview', 1024, 'alice')
+   xml_str = loadAndRead('xquery.rpl?mode=preview', 1024, 'alice')
 
    assert(contains(xml_str, 'PARAM-MODE-PREVIEW'), '$params must be visible in test attributes')
    assert(contains(xml_str, 'VAR-USERNAME-ALICE'), '$vars must be visible in test attributes')
-   assert(contains(xml_str, 'XQuery Stage 2 Tests / Stage2 / 1024'), '$meta and $layout must be visible in select attributes')
+   assert(contains(xml_str, 'XQuery Tests / Index / 1024'), '$meta and $layout must be visible in select attributes')
    assert(contains(xml_str, 'PARSE-alice'), '$vars must be visible in parse@select')
    assert(contains(xml_str, 'ARG-OUTER Outer Arg'), '$args must expose the outer template call arguments')
    assert(contains(xml_str, 'ARG-INNER Inner Arg'), 'Inner template call arguments must override outer $args')
@@ -165,12 +165,12 @@ end
 end
 
 @Test function BuiltInVariables()
-   xml_str = loadAndRead('xquery_stage4.rpl', 1024, nil, 'stage4document', true)
+   xml_str = loadAndRead('xquery.rpl', 1024, nil, 'stage4document', true)
 
    assert(contains(xml_str, 'OBJECT-EXISTS-TRUE'), 'kt:object-exists() must resolve known objects')
    assert(contains(xml_str, 'OBJECT-EXISTS-FALSE'), 'kt:object-exists() must report missing objects cleanly')
    assert(contains(xml_str, 'STYLE italic courier 20px red'), '$style must expose the active parser style')
-   assert(contains(xml_str, 'PAGE Stage4'), '$meta?current-page must remain available after migration')
+   assert(contains(xml_str, 'PAGE Index'), '$meta?current-page must remain available after migration')
    assert(contains(xml_str, 'LAYOUT 1024 x 768'), '$layout view dimensions must remain available after migration')
    assert(regex.new('LINE [0-9]+').test(xml_str), '$meta?line-no must expose the current line number')
 end
