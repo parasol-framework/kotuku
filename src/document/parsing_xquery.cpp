@@ -816,7 +816,7 @@ static ERR xq_prepare_query(parser *Parser, const std::string &Expression, XQEva
 // caller, but <for-each> may temporarily override them via m_xq_context_stack so relative paths evaluate against
 // the current item.
 
-static ERR xq_execute_query(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Expression,
+static ERR xq_execute_query(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Expression,
    XQEval Mode, std::string *OutString, bool *OutBoolean, XPathValue *OutValue, bool *OutHasValue)
 {
    pf::Log log(__FUNCTION__);
@@ -836,7 +836,7 @@ static ERR xq_execute_query(parser *Parser, objXML *XMLContext, XTag *ContextTag
    }
 
    objXML *effective_xml = XMLContext;
-   XTag *effective_tag = ContextTag;
+   const XTag *effective_tag = ContextTag;
    if (auto xq_context = Parser->active_xq_context()) {
       if (xq_context->xml) effective_xml = xq_context->xml;
       if (xq_context->node) effective_tag = xq_context->node;
@@ -886,7 +886,7 @@ static ERR xq_execute_query(parser *Parser, objXML *XMLContext, XTag *ContextTag
    return ERR::Okay;
 }
 
-static ERR xq_eval_helper(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Expression,
+static ERR xq_eval_helper(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Expression,
    XQEval Mode, std::string &OutString, bool &OutBoolean)
 {
    return xq_execute_query(Parser, XMLContext, ContextTag, Expression, Mode, &OutString, &OutBoolean, nullptr, nullptr);
@@ -897,7 +897,7 @@ static ERR xq_eval_helper(parser *Parser, objXML *XMLContext, XTag *ContextTag, 
 // <for-each>, and parse@select.  If the query only exposes a string value, callers still receive a string-typed
 // XPathValue.
 
-static ERR xq_eval_value_helper(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Expression,
+static ERR xq_eval_value_helper(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Expression,
    XPathValue &OutValue, std::string &OutString, bool &OutHasValue)
 {
    bool unused_boolean = false;
@@ -959,7 +959,7 @@ static void xq_append_xml_escaped(std::ostringstream &Buffer, std::string_view T
 // Serialise an XTag subtree into XML fragment form.  This is used when <data> or <parse> receives a
 // node-sequence result and needs reparsing through the document parser rather than ordinary XQuery string-value rules.
 
-static void xq_serialise_tag_fragment(XTag &Tag, std::ostringstream &Buffer)
+static void xq_serialise_tag_fragment(const XTag &Tag, std::ostringstream &Buffer)
 {
    if (Tag.Attribs.empty()) return;
 
@@ -1069,7 +1069,7 @@ static ERR xq_parse_xml_fragment(std::string_view Fragment, objXML *&OutXML, boo
 // Best-effort ownership test for XTag pointers drawn from mixed XML sources such as the original RIPL, $doc,
 // included XML, or templates.
 
-static bool xq_xml_owns_node(objXML *XML, XTag *Node)
+static bool xq_xml_owns_node(objXML *XML, const XTag *Node)
 {
    if ((not XML) or (not Node)) return false;
 
@@ -1082,7 +1082,7 @@ static bool xq_xml_owns_node(objXML *XML, XTag *Node)
 // Resolve which XML object currently owns a node so <for-each> can rebind the XQuery context against the correct
 // tree when evaluating relative paths.
 
-static objXML * xq_find_known_node_owner(parser *Parser, XTag *Node)
+static objXML * xq_find_known_node_owner(parser *Parser, const XTag *Node)
 {
    if ((not Parser) or (not Node)) return nullptr;
 
@@ -1098,7 +1098,7 @@ static objXML * xq_find_known_node_owner(parser *Parser, XTag *Node)
    return nullptr;
 }
 
-static objXML * xq_resolve_node_owner(parser *Parser, XTag *Node)
+static objXML * xq_resolve_node_owner(parser *Parser, const XTag *Node)
 {
    if (auto owner = xq_find_known_node_owner(Parser, Node)) return owner;
    return (Parser and Parser->m_xml) ? Parser->m_xml : (Parser ? Parser->m_source_xml : nullptr);
@@ -1220,7 +1220,7 @@ static void xq_restore_attribs(XTag &Tag, pf::vector<xq_attrib_change> &Changes)
    Changes.clear();
 }
 
-static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Input,
+static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Input,
    std::string &Output);
 
 static ERR xq_prepare_attribs(parser *Parser, XTag &Tag, pf::vector<xq_attrib_change> &Changes)
@@ -1261,7 +1261,7 @@ static ERR xq_prepare_attribs(parser *Parser, XTag &Tag, pf::vector<xq_attrib_ch
 // and concatenating the result with literal parts.  Follows the same escaping rules as the XQuery tokeniser so that
 // {{ and }} are preserved as literal { and }.
 
-static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Input,
+static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Input,
    std::string &Output)
 {
    pf::Log log(__FUNCTION__);
@@ -1334,7 +1334,7 @@ static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, XTag *ContextTag, c
 // XQuery integration: the test attribute is recognised as a standalone XQuery expression.  The result of the
 // expression is coerced via XQuery's effective boolean value rules (boolean(...)).
 
-static bool check_tag_conditions(parser *Parser, XTag &Tag)
+static bool check_tag_conditions(parser *Parser, const XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1367,7 +1367,7 @@ static bool check_tag_conditions(parser *Parser, XTag &Tag)
 //********************************************************************************************************************
 // Load or replace the parser-local document data scope.
 
-void parser::tag_data(XTag &Tag)
+void parser::tag_data(const XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1407,7 +1407,7 @@ void parser::tag_data(XTag &Tag)
 //********************************************************************************************************************
 // Parse a string value as XML
 
-void parser::tag_parse(XTag &Tag)
+void parser::tag_parse(const XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1475,7 +1475,7 @@ void parser::tag_parse(XTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_print(XTag &Tag)
+void parser::tag_print(const XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 

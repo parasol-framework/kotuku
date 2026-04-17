@@ -128,7 +128,7 @@ struct parser {
 
    struct xq_context_frame {
       objXML *xml = nullptr;
-      XTag *node = nullptr;
+      const XTag *node = nullptr;
    };
 
    // RAII wrapper that pushes a transient XQuery context frame for the current parse
@@ -138,7 +138,7 @@ struct parser {
       parser *owner = nullptr;
       bool active = false;
 
-      xq_context_guard(parser *Owner, objXML *XML, XTag *Node) : owner(Owner), active(true) {
+      xq_context_guard(parser *Owner, objXML *XML, const XTag *Node) : owner(Owner), active(true) {
          owner->m_xq_context_stack.push_back({ XML, Node });
       }
 
@@ -217,15 +217,15 @@ struct parser {
       return old;
    }
 
-   inline void tag_advance(XTag &);
+   inline void tag_advance(const XTag &);
    inline void tag_body(XTag &);
    inline void tag_button(XTag &);
-   inline void tag_call(XTag &);
+   inline void tag_call(const XTag &);
    inline void tag_cell(XTag &);
    inline void tag_checkbox(XTag &);
    inline void tag_combobox(XTag &);
-   inline void tag_data(XTag &);
-   inline void tag_debug(XTag &);
+   inline void tag_data(const XTag &);
+   inline void tag_debug(const XTag &);
    inline void tag_div(XTag &);
    inline void tag_editdef(XTag &);
    inline TRF  tag_for_each(XTag &, IPF &);
@@ -235,24 +235,24 @@ struct parser {
    inline void tag_image(XTag &);
    inline void tag_include(XTag &);
    inline void tag_index(XTag &);
-   inline void tag_input(XTag &);
+   inline void tag_input(const XTag &);
    inline TRF  tag_let(XTag &, IPF &);
    inline void tag_li(XTag &);
    inline void tag_link(XTag &);
    inline void tag_list(XTag &);
-   inline void tag_page(XTag &);
+   inline void tag_page(const XTag &);
    inline void tag_paragraph(XTag &);
-   inline void tag_parse(XTag &);
+   inline void tag_parse(const XTag &);
    inline void tag_pre(objXML::TAGS &);
-   inline void tag_print(XTag &);
+   inline void tag_print(const XTag &);
    inline void tag_repeat(XTag &);
    inline void tag_row(XTag &);
    inline void tag_script(XTag &);
-   inline void tag_svg(XTag &);
+   inline void tag_svg(const XTag &);
    inline void tag_table(XTag &);
    inline void tag_template(XTag &);
-   inline void tag_trigger(XTag &);
-   inline void tag_use(XTag &);
+   inline void tag_trigger(const XTag &);
+   inline void tag_use(const XTag &);
    inline bool check_para_attrib(const XMLAttrib &, bc_paragraph *, bc_font &);
    inline bool check_font_attrib(const XMLAttrib &, bc_font &);
 
@@ -1047,7 +1047,7 @@ void parser::trim_preformat(extDocument *Self)
 //********************************************************************************************************************
 // Advances the cursor.  It is only possible to advance positively on either axis.
 
-void parser::tag_advance(XTag &Tag)
+void parser::tag_advance(const XTag &Tag)
 {
    auto &adv = m_stream->emplace<bc_advance>(m_index);
 
@@ -1207,7 +1207,7 @@ void parser::tag_body(XTag &Tag)
 //
 // <call function="[script].function" arg1="" arg2="" _global=""/>
 
-void parser::tag_call(XTag &Tag)
+void parser::tag_call(const XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objScript *script = Self->DefaultScript;
@@ -1627,7 +1627,7 @@ void parser::tag_combobox(XTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_input(XTag &Tag)
+void parser::tag_input(const XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1670,7 +1670,7 @@ void parser::tag_input(XTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_debug(XTag &Tag)
+void parser::tag_debug(const XTag &Tag)
 {
    pf::Log log("DocMsg");
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
@@ -1686,7 +1686,7 @@ void parser::tag_debug(XTag &Tag)
 // This tag can only be used ONCE per document.  Potentially we could improve this by appending to the existing
 // SVG object via data feeds.
 
-void parser::tag_svg(XTag &Tag)
+void parser::tag_svg(const XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1697,25 +1697,25 @@ void parser::tag_svg(XTag &Tag)
    }
 
    objVectorViewport *target = Self->Page;
-   for (int i=1; i < std::ssize(Tag.Attribs); i++) {
-      if (iequals("placement", Tag.Attribs[i].Name)) {
-         if (iequals("foreground", Tag.Attribs[i].Value)) target = Self->Page;
-         else if (iequals("background", Tag.Attribs[i].Value)) target = Self->View;
-         Tag.Attribs.erase(Tag.Attribs.begin() + i);
+   XTag filtered_tag = Tag;
+   for (int i=1; i < std::ssize(filtered_tag.Attribs); i++) {
+      if (iequals("placement", filtered_tag.Attribs[i].Name)) {
+         if (iequals("foreground", filtered_tag.Attribs[i].Value)) target = Self->Page;
+         else if (iequals("background", filtered_tag.Attribs[i].Value)) target = Self->View;
+         filtered_tag.Attribs.erase(filtered_tag.Attribs.begin() + i);
          i--;
       }
    }
 
-   STRING xml_svg;
-   if (auto err = m_xml->serialise(Tag.ID, XMF::NIL, &xml_svg); err IS ERR::Okay) {
+   std::ostringstream buffer;
+   xq_serialise_tag_fragment(filtered_tag, buffer);
+
+   auto xml_svg = buffer.str();
+   if (not xml_svg.empty()) {
       if ((Self->SVG = objSVG::create::local({ fl::Statement(xml_svg), fl::Target(target) }))) {
-         if (target IS Self->View) { // Put the page back in front of the background objects
-            acMoveToFront(Self->Page);
-         }
+         if (target IS Self->View) acMoveToFront(Self->Page); // Put the page back in front of the background objects
       }
       else Self->Error = ERR::CreateObject;
-
-      FreeResource(xml_svg);
    }
 }
 
@@ -1727,7 +1727,7 @@ void parser::tag_svg(XTag &Tag)
 // If more sophisticated inline or float embedding is required, the <image> tag is probably more applicable to the
 // client.
 
-void parser::tag_use(XTag &Tag)
+void parser::tag_use(const XTag &Tag)
 {
    std::string id;
    for (int i = 1; i < std::ssize(Tag.Attribs); i++) {
@@ -3000,7 +3000,7 @@ void parser::tag_cell(XTag &Tag)
 //********************************************************************************************************************
 // No response is required for page tags, but we can check for validity.
 
-void parser::tag_page(XTag &Tag)
+void parser::tag_page(const XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    if (auto name = Tag.attrib("name")) {
@@ -3023,7 +3023,7 @@ void parser::tag_page(XTag &Tag)
 //********************************************************************************************************************
 // Usage: <trigger event="resize" function="script.function"/>
 
-void parser::tag_trigger(XTag &Tag)
+void parser::tag_trigger(const XTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    DRT trigger_code;
