@@ -6,11 +6,9 @@
 #                  (FastBuild optimises for compilation speed rather than runtime performance - uses -O0, faster linkers, minimal debug info)
 # Git Release:     cmake -S . -B build/release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DCMAKE_INSTALL_PREFIX=kotuku-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
 #
-# For GCC based Windows builds, -G"MinGW Makefiles" must be added to the above commands.
-#
 # A build can target a local folder by adding -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
 #
-# Build:   cmake --build build/release -j 8 -- -O
+# Build:   cmake --build build/release --parallel -- -O
 # Install: sudo cmake --install build/release
 # Test:    ctest --testdir build/release -C Release --output-on-failure
 #
@@ -69,6 +67,7 @@ endif()
 option (KOTUKU_STATIC   "Build as a set of static libraries instead of the default modular build." OFF)
 option (KOTUKU_INSTALL  "Create installation targets" ON)
 option (KOTUKU_VLOG     "Enable verbose log messages in the generated binaries" OFF)
+option (ORIGO_CONSOLE   "Build Origo as a Windows console application rather than a GUI application (Windows only)" OFF)
 if (UNIX)
    option (RUN_ANYWHERE  "Create a build that can run directly from the main folder.  Typically used if redefining CMAKE_INSTALL_PREFIX" OFF)
 else ()
@@ -598,6 +597,44 @@ if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
       set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/libjpeg.a")
    endif ()
 
+   set(LIBJPEG_TURBO_CMAKE_ARGS
+      -DENABLE_SHARED=OFF
+      -DENABLE_STATIC=ON
+      -DWITH_TURBOJPEG=ON
+      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+      -DCMAKE_INSTALL_LIBDIR=<INSTALL_DIR>/lib
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
+
+   if (WIN32)
+      unset(LIBJPEG_TURBO_NASM_COMPILER)
+      unset(LIBJPEG_TURBO_NASM_COMPILER CACHE)
+
+      if (DEFINED CMAKE_ASM_NASM_COMPILER AND EXISTS "${CMAKE_ASM_NASM_COMPILER}")
+         set(LIBJPEG_TURBO_NASM_COMPILER "${CMAKE_ASM_NASM_COMPILER}")
+      elseif (DEFINED ENV{ASM_NASM} AND EXISTS "$ENV{ASM_NASM}")
+         set(LIBJPEG_TURBO_NASM_COMPILER "$ENV{ASM_NASM}")
+      else ()
+         find_program(LIBJPEG_TURBO_NASM_COMPILER
+            NAMES nasm yasm
+            HINTS
+               "$ENV{ProgramFiles}/NASM"
+               "$ENV{ProgramW6432}/NASM"
+               "C:/Program Files/NASM"
+               "C:/Program Files (x86)/NASM"
+            PATH_SUFFIXES
+               ""
+               bin)
+      endif ()
+
+      if (LIBJPEG_TURBO_NASM_COMPILER)
+         file(TO_CMAKE_PATH "${LIBJPEG_TURBO_NASM_COMPILER}" LIBJPEG_TURBO_NASM_COMPILER)
+         list(APPEND LIBJPEG_TURBO_CMAKE_ARGS
+            -DCMAKE_ASM_NASM_COMPILER:FILEPATH=${LIBJPEG_TURBO_NASM_COMPILER})
+         message(STATUS "libjpeg-turbo NASM compiler: ${LIBJPEG_TURBO_NASM_COMPILER}")
+      endif ()
+   endif ()
+
    ExternalProject_Add(libjpeg-turbo-project
       URL https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.1.1.tar.gz
       URL_HASH SHA512=4937b63a27818cdb5087091b2d78837f7f385fd6b4d3e3fcaf4d9ad2944fed4a00020dcacb33e9c2fd4b0f9d9851fb4051ed3da86f606aca5167357262a73e89
@@ -606,13 +643,7 @@ if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
       INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
       BUILD_BYPRODUCTS ${LIBJPEG_TURBO_LIB_PATH}
       CMAKE_ARGS
-         -DENABLE_SHARED=OFF
-         -DENABLE_STATIC=ON
-         -DWITH_TURBOJPEG=ON
-         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-         -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-         -DCMAKE_INSTALL_LIBDIR=<INSTALL_DIR>/lib
-         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+         ${LIBJPEG_TURBO_CMAKE_ARGS}
       BUILD_ALWAYS FALSE
    )
 

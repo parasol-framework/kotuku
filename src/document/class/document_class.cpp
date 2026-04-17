@@ -418,15 +418,20 @@ static ERR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
             parser parse(Self, &Self->Stream);
             parse.process_page(*xml);
          }
-         else Self->Error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, Self->Stream.size(), STYLE::NIL);
+         else {
+            Self->invalidate_text_width_cache();
+            Self->Error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, Self->Stream.size(), STYLE::NIL);
+         }
 
+         auto process_error = Self->Error;
          Self->UpdatingLayout = true;
-         if (Self->initialised()) redraw(Self, true);
+         if ((Self->initialised()) and (process_error IS ERR::Okay)) redraw(Self, true);
 
          #ifdef DBG_STREAM
             print_stream(Self->Stream);
          #endif
-         return Self->Error;
+         if (process_error != ERR::Okay) return process_error;
+         else return Self->Error;
       }
       else return log.warning(ERR::CreateObject);
    }
@@ -634,8 +639,8 @@ static ERR DOCUMENT_Free(extDocument *Self)
 
    unload_doc(Self, ULD::TERMINATE);
 
+   if (Self->Query) { FreeResource(Self->Query); Self->Query = nullptr; }
    if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = nullptr; }
-
    if (Self->Page) { FreeResource(Self->Page); Self->Page = nullptr; }
    if (Self->View) { FreeResource(Self->View); Self->View = nullptr; }
 
@@ -913,6 +918,7 @@ static ERR DOCUMENT_InsertXML(extDocument *Self, doc::InsertXML *Args)
 
    if (not xml.ok()) {
       Self->UpdatingLayout = true;
+      Self->invalidate_text_width_cache();
 
       ERR error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, STYLE::NIL);
       if (error != ERR::Okay) log.warning("Insert failed for: %s", Args->XML);
@@ -961,6 +967,7 @@ static ERR DOCUMENT_InsertText(extDocument *Self, doc::InsertText *Args)
    log.traceBranch("Index: %d, Preformat: %d", Args->Index, Args->Preformat);
 
    Self->UpdatingLayout = true;
+   Self->invalidate_text_width_cache();
 
    INDEX index = Args->Index;
    if (index < 0) index = Self->Stream.size();
@@ -1240,6 +1247,30 @@ static void write_segments_xml(const std::vector<doc_segment> &Segments, INDEX S
    }
 
    if (has_segments) Out << "</segments>\n";
+}
+
+//********************************************************************************************************************
+static void write_layout_metrics_xml(extDocument *Self, std::ostringstream &Out)
+{
+   if (!Self) return;
+
+   auto &metrics = Self->LayoutMetrics;
+
+   Out << "<layout-metrics";
+   emit_attr(Out, "root-passes", int(metrics.root_passes));
+   emit_attr(Out, "do-layout-calls", int(metrics.do_layout_calls));
+   emit_attr(Out, "page-extend-restarts", int(metrics.page_extend_restarts));
+   emit_attr(Out, "page-extend-requests", int(metrics.page_extend_requests));
+   emit_attr(Out, "vertical-repasses", int(metrics.vertical_repasses));
+   emit_attr(Out, "table-wrap-restarts", int(metrics.table_wrap_restarts));
+   emit_attr(Out, "row-repasses", int(metrics.row_repasses));
+   emit_attr(Out, "cell-layouts", int(metrics.cell_layouts));
+   emit_attr(Out, "check-wordwrap-calls", int(metrics.check_wordwrap_calls));
+   emit_attr(Out, "wrap-through-clips-calls", int(metrics.wrap_through_clips_calls));
+   emit_attr(Out, "new-segment-calls", int(metrics.new_segment_calls));
+   emit_attr(Out, "segment-count-peak", int(metrics.segment_count_peak));
+   emit_attr(Out, "clip-count-peak", int(metrics.clip_count_peak));
+   Out << "/>\n";
 }
 
 //********************************************************************************************************************
@@ -1594,10 +1625,10 @@ as a RIPL binary stream, translated into plain-text (control codes are removed),
 describing the byte stream.
 
 The XML format is a linear, non-nested serialisation of the byte stream intended for inspection, diffing and tooling.
-Each byte code becomes one XML element wrapped in a `<extract>` root, followed by the requested content in a `<stream>`
-element, and text content appears inside `<text>` elements with the usual XML escaping applied.  Start/end markers
+Each byte code becomes one XML element wrapped in a `&lt;extract&gt;` root, followed by the requested content in a `&lt;stream&gt;`
+element, and text content appears inside `&lt;text&gt;` elements with the usual XML escaping applied.  Start/end markers
 such as paragraphs and font runs are emitted as sibling self-closing elements rather than nested, reflecting the
-underlying linear storage model.  A trailing `<fonts>` section lists information for the shared cached fonts.
+underlying linear storage model.  A trailing `&lt;fonts&gt;` section lists information for the shared cached fonts.
 
 No post-processing is performed to fix validity errors that may arise from an invalid data range.  For instance, if
 an opening paragraph code is not closed with a matching paragraph end point, this will remain the case in the
@@ -1666,6 +1697,7 @@ static ERR DOCUMENT_ReadContent(extDocument *Self, doc::ReadContent *Args)
       buffer << "<extract>\n<stream>\n";
       write_stream_xml(Self->Stream, Args->Start, end, buffer, has_content, expand_nested);
       write_segments_xml(Self->Segments, Args->Start, end, buffer);
+      write_layout_metrics_xml(Self, buffer);
       buffer << "</stream>\n";
       write_fonts_xml(buffer);
       buffer << "</extract>\n";
@@ -1766,6 +1798,7 @@ static ERR DOCUMENT_RemoveContent(extDocument *Self, doc::RemoveContent *Args)
    copymem(Self->Stream.data.data() + end, Self->Stream.data.data() + Args->Start, Self->Stream.data.size() - end);
    Self->Stream.data.resize(Self->Stream.data.size() - end - Args->Start);
 
+   Self->invalidate_text_width_cache();
    Self->UpdatingLayout = true;
    return ERR::Okay;
 }

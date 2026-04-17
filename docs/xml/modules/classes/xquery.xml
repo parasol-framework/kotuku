@@ -140,15 +140,18 @@ if (query.ok()) {
     <method>
       <name>Evaluate</name>
       <comment>Run an XQuery expression against an XML document.</comment>
-      <prototype>ERR xq::Evaluate(OBJECTPTR Object, objXML * XML)</prototype>
+      <prototype>ERR xq::Evaluate(OBJECTPTR Object, objXML * XML, INT Index, XEF Flags)</prototype>
       <input>
         <param type="objXML *" name="XML">Targeted XML document to query.  Can be NULL for XQuery expressions that do not require a context.</param>
+        <param type="INT" name="Index">Optional tag index that establishes the initial context for the query.</param>
+        <param type="XEF" name="Flags" lookup="XEF">Optional flags.</param>
       </input>
       <description>
 <p>Use Evaluate to run a compiled XQuery expression against an XML document.  The result of the evaluation is returned in the <fl>Result</fl> field as XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="NotFound">A search routine in this function failed.</error>
         <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -210,10 +213,12 @@ if (query.ok()) {
     <method>
       <name>Search</name>
       <comment>For node-based queries, calls a function for each matching node.</comment>
-      <prototype>ERR xq::Search(OBJECTPTR Object, objXML * XML, FUNCTION * Callback)</prototype>
+      <prototype>ERR xq::Search(OBJECTPTR Object, objXML * XML, FUNCTION * Callback, INT Index, XEF Flags)</prototype>
       <input>
         <param type="objXML *" name="XML">Target XML document to search.</param>
         <param type="FUNCTION *" name="Callback">Optional callback function to invoke for each matching node.</param>
+        <param type="INT" name="Index">Optional tag index that establishes the initial context for the query.</param>
+        <param type="XEF" name="Flags" lookup="XEF">Optional flags.</param>
       </input>
       <description>
 <p>Use the Search method to scan an XML document for tags or attributes that match a compiled XQuery expression. For every matching node, a user-defined callback function is invoked, allowing custom processing of each result.</p>
@@ -225,6 +230,7 @@ if (query.ok()) {
         <error code="Okay">At least one matching node was found and processed.</error>
         <error code="Terminate">The callback function requested termination of the search.</error>
         <error code="Search">No matching node was found.</error>
+        <error code="NotFound">The specified Index does not correspond to a valid XML tag.</error>
         <error code="Syntax">The provided query expression has syntax errors.</error>
         <error code="NullArgs">At least one required parameter was not provided.</error>
       </result>
@@ -279,6 +285,25 @@ if (query.ok()) {
       <type>STRING</type>
       <description>
 <p>Set the Path field to define the base-uri for an XQuery expression.  If left unset, the path will be computed through automated means on-the-fly, which relies  on the working directory or XML document path.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ResolveVariable</name>
+      <comment>Callback function for resolving unknown variables.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>This callback is invoked when an XQuery expression refers to a variable that has not been declared in the XQuery expression or XQuery module.  Variable resolution precedence is:</p>
+<list type="bullet">
+<li>Evaluator-local bindings</li>
+<li>
+<action>SetKey</action> string variables</li>
+<li>Declared/internal XQuery variables</li>
+<li>This callback for otherwise unresolved names</li>
+</list>
+<p>The C++ prototype is <code>ERR ResolveVariable(objXQuery *Query, std::string_view Name, XPathValue *Result, APTR Meta)</code>. Script callbacks are not supported.</p>
+<p>Return <code>ERR::Okay</code> when the variable is recognised and <code>Result</code> has been populated, <code>ERR::Search</code> when the name is unknown, or another error code to abort evaluation.</p>
       </description>
     </field>
 
@@ -340,6 +365,10 @@ if (query.ok()) {
 
   </fields>
   <types>
+    <constants lookup="XEF" comment="Options for XQuery evaluation flags.">
+      <const name="LIMIT_SCOPE">For tag specific queries, limit the scope to the specified element.</const>
+    </constants>
+
     <constants lookup="XIF" comment="Result flags for InspectFunctions().">
       <const name="ALL">Synonym for <code>AST | NAME | PARAMETERS | RETURN_TYPE | USER_DEFINED | SIGNATURE</code></const>
       <const name="AST">Include the compiled function body in the inspection result.</const>

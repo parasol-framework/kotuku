@@ -38,6 +38,13 @@ XPathEvaluator::XPathEvaluator(extXQuery *Query, extXML *XML, const XPathNode *Q
 }
 
 //********************************************************************************************************************
+
+void XPathEvaluator::set_absolute_root_node(XTag *Node)
+{
+   absolute_root_node = Node;
+}
+
+//********************************************************************************************************************
 // Prepares the evaluation context for a new query, wiring prolog metadata and module caches when present.
 
 void XPathEvaluator::initialise_query_context(const XPathNode *Root)
@@ -45,6 +52,8 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
    context.prolog = nullptr;
    context.module_cache = nullptr;
    prolog_variable_cache.clear();
+   resolved_callback_variables.clear();
+   missing_callback_variables.clear();
    variables_in_evaluation.clear();
 
    if (Root) query_root = Root;

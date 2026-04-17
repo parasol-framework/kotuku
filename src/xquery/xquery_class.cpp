@@ -267,8 +267,10 @@ static ERR XQUERY_Activate(extXQuery *Self)
    }
 
    Self->XML = nullptr;
+   Self->ConstructedNodes.clear();
    XPathEvaluator eval(Self, nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
    auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
+   if (err IS ERR::Okay) Self->ConstructedNodes = std::move(eval.constructed_nodes);
    Self->ErrorMsg = Self->ParseResult.error_msg;
    return err;
 }
@@ -291,6 +293,7 @@ static ERR XQUERY_Clear(extXQuery *Self)
    Self->ParseResult = CompiledXQuery();
    Self->ResultString.clear();
    Self->Result = XPathVal();
+   Self->ConstructedNodes.clear();
    Self->StaleBuild = true;
    return ERR::Okay;
 }
@@ -306,11 +309,14 @@ or booleans.
 
 -INPUT-
 obj(XML) XML: Targeted XML document to query.  Can be NULL for XQuery expressions that do not require a context.
+int Index: Optional tag index that establishes the initial context for the query.
+int(XEF) Flags: Optional flags.
 
 -ERRORS-
 Okay
 NullArgs
 AllocMemory
+NotFound
 
 *********************************************************************************************************************/
 
@@ -341,19 +347,40 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
    auto xml = (extXML *)Args->XML;
    Self->XML = xml;
 
+   if ((Args->Index != 0) and (not xml)) {
+      Self->ErrorMsg = "An XML object is required when Index is specified.";
+      return log.warning(ERR::NullArgs);
+   }
+
    if (xml) {
       pf::ScopedObjectLock lock(xml);
+      XTag *root_tag = nullptr;
+      Self->ConstructedNodes.clear();
 
       if (Self->Path.empty() and (xml->Path)) Self->Path = xml->Path;
+      if (Args->Index != 0) {
+         root_tag = xml->getTag(Args->Index);
+         if (not root_tag) {
+            Self->ErrorMsg = std::format("The target XML tag index %d was not found.", Args->Index);
+            return log.warning(ERR::NotFound);
+         }
+      }
 
       XPathEvaluator eval(Self, xml, Self->ParseResult.expression.get(), &Self->ParseResult);
+      if (root_tag) {
+         if ((Args->Flags & XEF::LIMIT_SCOPE) != XEF::NIL) eval.set_absolute_root_node(root_tag);
+         eval.push_context(root_tag, 1, 1);
+      }
       auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
+      if (err IS ERR::Okay) Self->ConstructedNodes = std::move(eval.constructed_nodes);
       Self->ErrorMsg = Self->ParseResult.error_msg;
       return err;
    }
    else {
+      Self->ConstructedNodes.clear();
       XPathEvaluator eval(Self, nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
       auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
+      if (err IS ERR::Okay) Self->ConstructedNodes = std::move(eval.constructed_nodes);
       Self->ErrorMsg = Self->ParseResult.error_msg;
       return err;
    }
@@ -363,6 +390,11 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
 
 static ERR XQUERY_Free(extXQuery *Self)
 {
+   if (Self->ResolveVariable.isScript()) {
+      UnsubscribeAction(Self->ResolveVariable.Context, AC::Free);
+      Self->ResolveVariable.clear();
+   }
+
    Self->~extXQuery();
    return ERR::Okay;
 }
@@ -573,6 +605,10 @@ RegisterFunction: Register a custom XQuery function.
 Use RegisterFunction to define a custom function that can be invoked within XQuery expressions.  The function
 will be associated with the specified name and can be called like any standard XQuery function.
 
+The C++ function prototype is `ERR (*XQuery, std::string_view FunctionName, const std::vector<XPathValue> &Args, XPathValue &Result, APTR Meta))`
+
+Script callbacks are not currently supported.
+
 -INPUT-
 cstr FunctionName: The name of the function to register (e.g., "custom-function").
 ptr(func) Callback: The callback function to register for FunctionName.
@@ -580,6 +616,7 @@ ptr(func) Callback: The callback function to register for FunctionName.
 -ERRORS-
 Okay
 NullArgs
+NoSupport: The provided callback is not a C function reference.
 
 -END-
 
@@ -590,7 +627,11 @@ static ERR XQUERY_RegisterFunction(extXQuery *Self, struct xq::RegisterFunction 
    pf::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
+   if ((not Args->FunctionName) or (!Args->FunctionName[0])) return log.warning(ERR::NullArgs);
+   if ((not Args->Callback) or (not Args->Callback->defined())) return log.warning(ERR::NullArgs);
+   if (not Args->Callback->isC()) return log.warning(ERR::NoSupport);
 
+   Self->RegisteredFunctions[Args->FunctionName] = *Args->Callback;
    return ERR::Okay;
 }
 
@@ -624,6 +665,8 @@ The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib,
 -INPUT-
 obj(XML) XML: Target XML document to search.
 ptr(func) Callback: Optional callback function to invoke for each matching node.
+int Index: Optional tag index that establishes the initial context for the query.
+int(XEF) Flags: Optional flags.
 
 -ERRORS-
 Okay: At least one matching node was found and processed.
@@ -631,6 +674,7 @@ NullArgs: At least one required parameter was not provided.
 Syntax: The provided query expression has syntax errors.
 Search: No matching node was found.
 Terminate: The callback function requested termination of the search.
+NotFound: The specified Index does not correspond to a valid XML tag.
 
 *********************************************************************************************************************/
 
@@ -660,16 +704,33 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
    auto xml = (extXML *)Args->XML;
    Self->XML = xml;
 
+   if ((Args->Index != 0) and (not xml)) {
+      Self->ErrorMsg = "An XML object is required when Index is specified.";
+      return log.warning(ERR::NullArgs);
+   }
+
    if (xml) {
       pf::ScopedObjectLock lock(xml);
+      XTag *root_tag = nullptr;
 
       if (Self->Path.empty() and (xml->Path)) Self->Path = xml->Path;
+      if (Args->Index != 0) {
+         root_tag = xml->getTag(Args->Index);
+         if (not root_tag) {
+            Self->ErrorMsg = std::format("The target XML tag index %d was not found.", Args->Index);
+            return log.warning(ERR::NotFound);
+         }
+      }
 
       if ((Args->Callback) and (Args->Callback->defined())) Self->Callback = *Args->Callback;
       else Self->Callback.Type = CALL::NIL;
 
       (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
       XPathEvaluator eval(Self, xml, Self->ParseResult.expression.get(), &Self->ParseResult);
+      if (root_tag) {
+         if ((Args->Flags & XEF::LIMIT_SCOPE) != XEF::NIL) eval.set_absolute_root_node(root_tag);
+         eval.push_context(root_tag, 1, 1);
+      }
       auto error = eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
       Self->ErrorMsg = Self->ParseResult.error_msg;
       return error;
@@ -854,6 +915,46 @@ static ERR SET_Path(extXQuery *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
+ResolveVariable: Callback function for resolving unknown variables.
+
+This callback is invoked when an XQuery expression refers to a variable that has not been declared in the
+XQuery expression or XQuery module.  Variable resolution precedence is:
+
+<list type="bullet">
+<li>Evaluator-local bindings</li>
+<li>#SetKey() string variables</li>
+<li>Declared/internal XQuery variables</li>
+<li>This callback for otherwise unresolved names</li>
+</list>
+
+The C++ prototype is `ERR ResolveVariable(objXQuery *Query, std::string_view Name, XPathValue *Result, APTR Meta)`.
+Script callbacks are not supported.
+
+Return `ERR::Okay` when the variable is recognised and `Result` has been populated, `ERR::Search` when the name is
+unknown, or another error code to abort evaluation.
+
+*********************************************************************************************************************/
+
+static ERR GET_ResolveVariable(extXQuery *Self, FUNCTION *Value)
+{
+   *Value = Self->ResolveVariable;
+   return ERR::Okay;
+}
+
+static ERR SET_ResolveVariable(extXQuery *Self, FUNCTION *Value)
+{
+   if (Value) {
+      if (not Value->isC()) return ERR::NoSupport;
+      Self->ResolveVariable = *Value;
+   }
+   else Self->ResolveVariable.clear();
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 Result: Returns the results of the most recently executed query.
 
 Following the successful execution of an XQuery expression, the results can be retrieved as an XPathValue object
@@ -1028,17 +1129,17 @@ static ERR GET_Variables(extXQuery *Self, pf::vector<std::string> **Value)
 #include "xquery_class_def.cpp"
 
 static const FieldArray clFields[] = {
-   // Virtual fields
-   { "ErrorMsg",     FDF_STRING|FDF_R,         GET_ErrorMsg },
-   { "FeatureFlags", FDF_INTFLAGS|FDF_R,       GET_FeatureFlags, nullptr, &clXQueryXQF },
-   { "MemoryUsage",  FDF_INT64|FDF_R,          GET_MemoryUsage },
-   { "Path",         FDF_STRING|FDF_RW,        GET_Path, SET_Path },
-   { "Result",       FDF_PTR|FDF_STRUCT|FDF_R, GET_Result, nullptr, "XPathValue" },
-   { "ResultString", FDF_STRING|FDF_R,         GET_ResultString },
-   { "ResultType",   FDF_INT|FDF_LOOKUP|FDF_R, GET_ResultType, nullptr, &clXQueryXPVT },
-   { "Statement",    FDF_STRING|FDF_RW,        GET_Statement, SET_Statement },
-   { "Functions",    FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Functions },
-   { "Variables",    FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Variables },
+   { "ErrorMsg",        FDF_VIRTUAL|FDF_STRING|FDF_R,         GET_ErrorMsg },
+   { "MemoryUsage",     FDF_VIRTUAL|FDF_INT64|FDF_R,          GET_MemoryUsage },
+   { "Path",            FDF_VIRTUAL|FDF_STRING|FDF_RW,        GET_Path, SET_Path },
+   { "Result",          FDF_VIRTUAL|FDF_PTR|FDF_STRUCT|FDF_R, GET_Result, nullptr, "XPathValue" },
+   { "ResultString",    FDF_VIRTUAL|FDF_STRING|FDF_R,         GET_ResultString },
+   { "Statement",       FDF_VIRTUAL|FDF_STRING|FDF_RW,        GET_Statement, SET_Statement },
+   { "FeatureFlags",    FDF_VIRTUAL|FDF_INTFLAGS|FDF_R,       GET_FeatureFlags, nullptr, &clXQueryXQF },
+   { "ResultType",      FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_R, GET_ResultType, nullptr, &clXQueryXPVT },
+   { "ResolveVariable", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW,      GET_ResolveVariable, SET_ResolveVariable },
+   { "Functions",       FDF_VIRTUAL|FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Functions },
+   { "Variables",       FDF_VIRTUAL|FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Variables },
    END_FIELD
 };
 

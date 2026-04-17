@@ -29,8 +29,13 @@ static const struct FieldDef clXQueryXPVT[] = {
    { nullptr, 0 }
 };
 
-FDEF maEvaluate[] = { { "XML", FD_OBJECTPTR }, { 0, 0 } };
-FDEF maSearch[] = { { "XML", FD_OBJECTPTR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
+static const struct FieldDef clXQueryXEF[] = {
+   { "LimitScope", 0x00000001 },
+   { nullptr, 0 }
+};
+
+FDEF maEvaluate[] = { { "XML", FD_OBJECTPTR }, { "Index", FD_INT }, { "Flags", FD_INT }, { 0, 0 } };
+FDEF maSearch[] = { { "XML", FD_OBJECTPTR }, { "Callback", FD_FUNCTIONPTR }, { "Index", FD_INT }, { "Flags", FD_INT }, { 0, 0 } };
 FDEF maRegisterFunction[] = { { "FunctionName", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maInspectFunctions[] = { { "Name", FD_STR }, { "ResultFlags", FD_INT }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 
