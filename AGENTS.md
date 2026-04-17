@@ -5,9 +5,9 @@ This file provides guidance to Agentic programs when working with code in this r
 ### Essential Build Commands
 
 **Configure build:**
-- `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DKOTUKU_STATIC=OFF -DENABLE_UNIT_TESTS=ON`
+- `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DKOTUKU_STATIC=OFF -DENABLE_UNIT_TESTS=ON -DORIGO_CONSOLE=ON`
 - Modular/Static builds: Use `-DKOTUKU_STATIC=OFF` for modular builds and `-DKOTUKU_STATIC=ON` for static.
-- Always use Debug builds.  The user may provide a separate Release build if needed.
+- Always use Debug builds unless the user requests otherwise.
 
 **Build and install:**
 - Build and install: `cmake --build build/agents --config Debug --parallel && cmake --install build/agents --config Debug`
@@ -56,6 +56,7 @@ When working in ephemeral cloud environments:
 4. **Display Management** (`src/display/`) - Cross-platform window management, surfaces, and input handling
 5. **Tiri Scripting** (`src/tiri/`) - An extensively modified Lua-based scripting environment built on LuaJIT
 6. **Document Engine** (`src/document/`) - RIPL text layout engine for rich document rendering
+7. **XML Support** (`src/xml/`, `src/xquery/`) - XML and XQuery functionality
 
 ### Module System
 
@@ -283,4 +284,4 @@ Lower snake-case is the preferred string format for new file names.
 
 - Always give an honest, balanced opinion in your responses
 - Encourage testing and validation of changes.  Analysis should be presented alongside evidence.
-- If you are asked to do work that relates to a plan file, update the plan at the end of the session to indicate what was achieved.
+- If you are asked to do work that relates to an existing plan file, update the plan at the end of the session to indicate what was achieved.
