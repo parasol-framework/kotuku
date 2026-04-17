@@ -1206,29 +1206,12 @@ static ERR xq_select_to_xml_fragment(parser *Parser, const XPathValue &Value, st
    return xq_value_to_xml_fragment(stored_value.value, OutXml);
 }
 
-struct xq_attrib_change {
-   bool saved = false;
-   pf::vector<XMLAttrib> original_attribs;
-};
-
-static void xq_restore_attribs(XTag &Tag, pf::vector<xq_attrib_change> &Changes)
-{
-   if ((not Changes.empty()) and Changes[0].saved) {
-      Tag.Attribs = std::move(Changes[0].original_attribs);
-   }
-
-   Changes.clear();
-}
-
 static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Input,
    std::string &Output);
 
-static ERR xq_prepare_attribs(parser *Parser, XTag &Tag, pf::vector<xq_attrib_change> &Changes)
+static ERR xq_prepare_tag(parser *Parser, const XTag &Tag, XTag &PreparedTag, const XTag *&ActiveTag)
 {
-   Changes.clear();
-   Changes.emplace_back();
-   Changes[0].saved = true;
-   Changes[0].original_attribs = Tag.Attribs;
+   ActiveTag = &Tag;
 
    if (Tag.Attribs.size() < 2) return ERR::Okay;
 
@@ -1236,24 +1219,38 @@ static ERR xq_prepare_attribs(parser *Parser, XTag &Tag, pf::vector<xq_attrib_ch
    if ((not tag_name.empty()) and (tag_name.front() IS '$')) return ERR::Okay;
    auto tag_hash = strihash(tag_name);
 
+   bool requires_prepare = false;
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       auto name = std::string_view(Tag.Attribs[i].Name);
       if ((not name.empty()) and (name.front() IS '$')) continue;
       if (name.empty()) continue;
 
-      auto &value = Tag.Attribs[i].Value;
+      if ((not is_xq_expression_attrib(tag_hash, name)) and has_avt_markers(Tag.Attribs[i].Value)) {
+         requires_prepare = true;
+         break;
+      }
+   }
+
+   if (not requires_prepare) return ERR::Okay;
+
+   PreparedTag = Tag;
+
+   for (int i=1; i < std::ssize(PreparedTag.Attribs); i++) {
+      auto name = std::string_view(PreparedTag.Attribs[i].Name);
+      if ((not name.empty()) and (name.front() IS '$')) continue;
+      if (name.empty()) continue;
+
+      auto &value = PreparedTag.Attribs[i].Value;
 
       if ((not is_xq_expression_attrib(tag_hash, name)) and has_avt_markers(value)) {
          std::string expanded;
-         if (auto err = xq_expand_avt(Parser, Parser->m_xml, &Tag, value, expanded); err != ERR::Okay) {
-            xq_restore_attribs(Tag, Changes);
-            return err;
-         }
+         if (auto err = xq_expand_avt(Parser, Parser->m_xml, &PreparedTag, value, expanded); err != ERR::Okay) return err;
 
          if (expanded != value) value = std::move(expanded);
       }
    }
 
+   ActiveTag = &PreparedTag;
    return ERR::Okay;
 }
 
