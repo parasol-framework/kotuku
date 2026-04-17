@@ -1032,7 +1032,7 @@ static void serialise_tag_fragment(const tag_view &Tag, std::ostringstream &Buff
    }
 
    if ((Tag.Flags & XTF::INSTRUCTION) != XTF::NIL) {
-      Buffer << "/>";
+      Buffer << "?>";
       return;
    }
 
