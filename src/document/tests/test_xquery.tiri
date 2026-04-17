@@ -183,6 +183,22 @@ end
    assert(contains(xml_str, 'HELLO'), 'print@select must upper-case "hello" via XQuery, got: ' .. xml_str)
 end
 
+@Test function PrintSelectStringifiesRealNodes()
+   xml_str = feedAndRead(
+      '<body/><page><data select="\'&lt;root&gt;&lt;item&gt;REAL-NODE&lt;/item&gt;&lt;/root&gt;\'"/>'
+      .. '<p><print select="$doc/item"/></p></page>')
+   assert(contains(xml_str, 'REAL-NODE'),
+      'print@select must stringify real XML nodes instead of dropping their string value, got: ' .. xml_str)
+end
+
+@Test function PrintSelectStringifiesConstructedNodes()
+   xml_str = feedAndRead('<body/><page><p><print select="element em { \'CONSTRUCTED-NODE\' }"/></p></page>')
+   assert(contains(xml_str, 'CONSTRUCTED-NODE'),
+      'print@select must stringify constructed nodes instead of dropping their string value, got: ' .. xml_str)
+   assert((#xml_str:split('<em>CONSTRUCTED-NODE</em>') - 1) is 0,
+      'print@select must not inject constructed-node markup, got: ' .. xml_str)
+end
+
 @Test function PrintSelectDocumentContext()
    xml_str = feedAndRead('<body/><page name="Ctx"><p><print select="string((/page/@name)[1])"/></p></page>')
    assert(contains(xml_str, 'Ctx'),
@@ -250,6 +266,55 @@ end
       '<body/><page name="ParseCtx"><parse select="concat(\'&lt;p&gt;\', string((/page/@name)[1]), \'&lt;/p&gt;\')"/></page>')
    assert(contains(xml_str, 'ParseCtx'),
       'parse@select must evaluate against the active XML context, got: ' .. xml_str)
+end
+
+@Test function ParseSelectRejectsNonXmlScalar()
+   err = feedExpectError('<body/><page><parse select="\'plain text\'"/></page>')
+   assert(err != ERR_Okay, 'parse@select must reject non-XML scalar results')
+end
+
+@Test function ParseSelectMixedNodeSequence()
+   xml_str = feedAndRead([[
+      <body/>
+      <page>
+         <fixture><p>PARSE-MIXED-REAL</p></fixture>
+         <parse select="(/page/fixture/p, element p {'PARSE-MIXED-CONSTRUCTED'})"/>
+      </page>
+   ]])
+
+   assert(contains(xml_str, 'PARSE-MIXED-REAL'),
+      'parse@select must serialise real XML nodes in mixed node sequences')
+   assert(contains(xml_str, 'PARSE-MIXED-CONSTRUCTED'),
+      'parse@select must serialise constructed nodes in mixed node sequences')
+end
+
+@Test function RegexMatchesInTest()
+   xml_str = feedAndRead(
+      '<body/><page>'
+      .. '<if test="matches(\'Item-42\', \'^[A-Za-z]+-[0-9]+$\')"><p>REGEX-MATCH-HIT</p></if>'
+      .. '<if test="matches(\'Item-42\', \'^[0-9]+$\')"><p>REGEX-MATCH-FAIL</p></if>'
+      .. '</page>')
+
+   assert(contains(xml_str, 'REGEX-MATCH-HIT'),
+      'if@test must allow XQuery matches() expressions')
+   assert(not contains(xml_str, 'REGEX-MATCH-FAIL'),
+      'if@test must honour false matches() results')
+end
+
+@Test function RegexReplaceInPrintSelect()
+   xml_str = feedAndRead(
+      '<body/><page><p><print select="replace(\'abc-123-def\', \'[0-9]+\', \'NUM\')"/></p></page>')
+
+   assert(contains(xml_str, 'abc-NUM-def'),
+      'print@select must allow XQuery replace() expressions, got: ' .. xml_str)
+end
+
+@Test function RegexTokenizeInPrintSelect()
+   xml_str = feedAndRead(
+      '<body/><page><p><print select="string-join(tokenize(\'alpha, beta,gamma\', \'\\s*,\\s*\'), \'|\')"/></p></page>')
+
+   assert(contains(xml_str, 'alpha|beta|gamma'),
+      'print@select must allow XQuery tokenize() expressions, got: ' .. xml_str)
 end
 
 -----------------------------------------------------------------------------------------------------------------------

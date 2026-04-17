@@ -635,6 +635,37 @@ static size_t xq_find_attrib_index(const XTag *Node, const XMLAttrib *Attrib)
    return std::numeric_limits<size_t>::max();
 }
 
+static void xq_append_node_text(XTag *Node, std::string &Output)
+{
+   if (!Node) return;
+
+   if (Node->isContent()) {
+      if ((!Node->Attribs.empty()) and Node->Attribs[0].isContent()) {
+         Output.append(Node->Attribs[0].Value);
+      }
+
+      for (auto &child : Node->Children) {
+         xq_append_node_text(&child, Output);
+      }
+
+      return;
+   }
+
+   for (auto &child : Node->Children) {
+      if (child.Attribs.empty()) continue;
+
+      if (child.Attribs[0].isContent()) Output.append(child.Attribs[0].Value);
+      else xq_append_node_text(&child, Output);
+   }
+}
+
+static std::string xq_node_string_value(XTag *Node)
+{
+   std::string value;
+   xq_append_node_text(Node, value);
+   return value;
+}
+
 // Store a runtime value into a map entry while preserving the XQuery rule that an empty
 // sequence is represented by an empty slot rather than a concrete item.
 
@@ -935,6 +966,55 @@ static ERR xq_document_object_exists(objXQuery *, std::string_view, const std::v
 static ERR xq_value_to_string(const XPathValue &Value, std::string &Result)
 {
    Result.clear();
+
+   if (Value.Type IS XPVT::NodeSet) {
+      if (xq_value_is_empty_sequence(Value)) return ERR::Okay;
+
+      if (Value.node_set_string_override.has_value()) {
+         Result = *Value.node_set_string_override;
+         return ERR::Okay;
+      }
+
+      if (!Value.node_set_string_values.empty()) {
+         if (Value.node_set_string_values.size() IS 1) {
+            Result = Value.node_set_string_values[0];
+            return ERR::Okay;
+         }
+
+         for (size_t index = 0; index < Value.node_set_string_values.size(); ++index) {
+            if (index > 0) Result.push_back(':');
+            Result += Value.node_set_string_values[index];
+         }
+         return ERR::Okay;
+      }
+
+      if (!Value.node_set_attributes.empty()) {
+         auto count = std::max(Value.node_set_attributes.size(), Value.node_set.size());
+         for (size_t index = 0; index < count; ++index) {
+            if (index > 0) Result.push_back(':');
+            if ((index < Value.node_set_attributes.size()) and Value.node_set_attributes[index]) {
+               Result += Value.node_set_attributes[index]->Value;
+            }
+            else if ((index < Value.node_set.size()) and Value.node_set[index]) {
+               Result += xq_node_string_value(Value.node_set[index]);
+            }
+         }
+         return ERR::Okay;
+      }
+
+      if (!Value.node_set.empty()) {
+         if (Value.node_set.size() IS 1) {
+            Result = xq_node_string_value(Value.node_set[0]);
+            return ERR::Okay;
+         }
+
+         for (size_t index = 0; index < Value.node_set.size(); ++index) {
+            if (index > 0) Result.push_back(':');
+            Result += xq_node_string_value(Value.node_set[index]);
+         }
+         return ERR::Okay;
+      }
+   }
 
    if (Value.Type IS XPVT::String) {
       Result = Value.StringValue;
@@ -1470,6 +1550,63 @@ static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser
 
    Result.owned_xml = xq_adopt_xml(xml);
    return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Convert a select result into plain text using XQuery string-value semantics.  This keeps print@select text-only,
+// even when the expression yields nodes.
+
+static ERR xq_stringify_select_value(const XPathValue &Value, std::string &Result)
+{
+   Result.clear();
+
+   if ((Value.Type IS XPVT::NodeSet) and xq_value_is_empty_sequence(Value)) return ERR::Okay;
+   return xq_value_to_string(Value, Result);
+}
+
+//********************************************************************************************************************
+// print@select always inserts text.  Callers may fall back to the exposed FID_ResultString when the raw value is not
+// available from the XQuery object.
+
+static ERR xq_select_to_print_text(const XPathValue &Value, std::string_view Fallback, bool HasValue,
+   std::string &OutText)
+{
+   OutText.clear();
+
+   if (HasValue) {
+      if (auto err = xq_stringify_select_value(Value, OutText); err IS ERR::Okay) return ERR::Okay;
+   }
+
+   OutText.assign(Fallback);
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// data@select and parse@select are the XML/RIPL injection surfaces.  Concrete node sequences are serialised back
+// into markup, while scalar results are only accepted via their string value.
+
+static ERR xq_select_to_xml_fragment(parser *Parser, const XPathValue &Value, std::string_view Fallback,
+   bool HasValue, std::string &OutXml)
+{
+   OutXml.clear();
+
+   if (not HasValue) {
+      OutXml.assign(Fallback);
+      return ERR::Okay;
+   }
+
+   if (Value.Type != XPVT::NodeSet) return xq_stringify_select_value(Value, OutXml);
+
+   if (xq_nodeset_has_real_attributes(Value) or xq_nodeset_has_real_composites(Value)) return ERR::InvalidData;
+
+   if (Value.node_set.empty()) {
+      if (xq_value_is_empty_sequence(Value)) return ERR::Okay;
+      return xq_stringify_select_value(Value, OutXml);
+   }
+
+   parser::xq_value_binding stored_value;
+   if (auto err = xq_make_stored_value(Parser, Value, stored_value); err != ERR::Okay) return err;
+   return xq_value_to_xml_fragment(stored_value.value, OutXml);
 }
 
 static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, XTag *ContextTag, const std::string &Input,
@@ -2427,7 +2564,7 @@ void parser::tag_call(XTag &Tag)
 // A button can have both an on and off pattern, but for our purposes we'll have one pattern and rely on the click
 // action to provide feedback that the button has been pressed.
 
-const char glButtonSVG[] = R"-(
+static const char glButtonSVG[] = R"-(
 <svg width="100%" height="100%">
   <defs>
     <linearGradient id="darkEdge" x1="0" y1="1" x2="0" y2="0" gradientUnits="objectBoundingBox">
@@ -2494,9 +2631,9 @@ void parser::tag_button(XTag &Tag)
             objVectorRectangle::create::global({
                fl::Owner(pattern_active->Scene->Viewport->UID),
                fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-               fl::Stroke("rgba(64,64,64,.5)"), fl::StrokeWidth(2.0),
+               fl::Stroke("rgb(64 64 64 / .5)"), fl::StrokeWidth(2.0),
                fl::RoundX(SCALE(0.1)),
-               fl::Fill("rgba(0,0,0,.125)")
+               fl::Fill("rgb(0 0 0 / .125)")
             });
          }
 
@@ -2517,9 +2654,9 @@ void parser::tag_button(XTag &Tag)
             objVectorRectangle::create::global({
                fl::Owner(pattern_inactive->Scene->Viewport->UID),
                fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-               fl::Stroke("rgba(0,0,0,.25)"), fl::StrokeWidth(2.0),
+               fl::Stroke("rgb(0 0 0 / .25)"), fl::StrokeWidth(2.0),
                fl::RoundX(SCALE(0.1)),
-               fl::Fill("rgba(255,255,255,.37)")
+               fl::Fill("rgb(255 255 255 / .37)")
             });
          }
 
@@ -3065,15 +3202,18 @@ void parser::tag_data(XTag &Tag)
    }
 
    std::string xml_fragment;
-   if ((has_value) and (xq_value_to_xml_fragment(value, xml_fragment) IS ERR::Okay)) {
-      // Node sequences are cloned into a dedicated XML tree for $doc.
+   err = xq_select_to_xml_fragment(this, value, result, has_value, xml_fragment);
+   if (err != ERR::Okay) {
+      log.warning("<data select> requires parseable XML/RIPL markup or a concrete XML node sequence.");
+      Self->Error = err;
+      return;
    }
-   else xml_fragment = result;
 
    objXML *new_doc = nullptr;
    err = xq_parse_xml_fragment(xml_fragment, new_doc, true);
    if (err != ERR::Okay) {
-      log.warning("<data select> requires XML content or an XML node sequence, got: %.120s", xml_fragment.c_str());
+      log.warning("<data select> requires parseable XML/RIPL markup or an XML node sequence, got: %.120s",
+         xml_fragment.c_str());
       Self->Error = err;
       return;
    }
@@ -3110,15 +3250,18 @@ void parser::tag_parse(XTag &Tag)
             }
 
             std::string xml_fragment;
-            if ((has_value) and (xq_value_to_xml_fragment(value, xml_fragment) IS ERR::Okay)) {
-               // Native node-sequence emission for Stage 6.
+            err = xq_select_to_xml_fragment(this, value, result, has_value, xml_fragment);
+            if (err != ERR::Okay) {
+               log.warning("<parse select> requires parseable XML/RIPL markup or a concrete XML node sequence.");
+               Self->Error = err;
+               return;
             }
-            else xml_fragment = result;
 
             log.traceBranch("Parsing XQuery result as XML...");
             objXML *xmlinc = nullptr;
             if (xq_parse_xml_fragment(xml_fragment, xmlinc, false) != ERR::Okay) {
-               log.warning("<parse select> produced non-parseable XML: %.120s", xml_fragment.c_str());
+               log.warning("<parse select> requires parseable XML/RIPL markup or an XML node sequence, got: %.120s",
+                  xml_fragment.c_str());
                Self->Error = ERR::Syntax;
                return;
             }
@@ -3503,12 +3646,18 @@ void parser::tag_print(XTag &Tag)
          auto name = std::string_view(Tag.Attribs[i].Name);
          if ((!name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
          if (iequals("select", name)) {
+            XPathValue value(XPVT::String);
             std::string result;
-            bool unused;
-            auto err = xq_eval_helper(this, m_xml, &Tag, Tag.Attribs[i].Value,
-               XQEval::STRING, result, unused);
+            bool has_value = false;
+            auto err = xq_eval_value_helper(this, m_xml, &Tag, Tag.Attribs[i].Value, value, result, has_value);
             if (err != ERR::Okay) {
                log.warning("<print select=\"%s\"> failed.", Tag.Attribs[i].Value.c_str());
+               Self->Error = err;
+               return;
+            }
+            err = xq_select_to_print_text(value, result, has_value, result);
+            if (err != ERR::Okay) {
+               log.warning("<print select=\"%s\"> could not be converted into text.", Tag.Attribs[i].Value.c_str());
                Self->Error = err;
                return;
             }
