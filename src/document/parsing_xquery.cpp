@@ -1033,6 +1033,10 @@ static objXML * xq_find_known_node_owner(parser *Parser, XTag *Node)
 
    if (xq_xml_owns_node(Parser->m_xml, Node)) return Parser->m_xml;
    if (xq_xml_owns_node(Parser->m_doc_xml, Node)) return Parser->m_doc_xml;
+   for (int i = std::ssize(Parser->m_doc_xml_history) - 1; i >= 0; i--) {
+      auto *xml = Parser->m_doc_xml_history[i];
+      if (xq_xml_owns_node(xml, Node)) return xml;
+   }
    if (xq_xml_owns_node(Parser->m_source_xml, Node)) return Parser->m_source_xml;
    if (xq_xml_owns_node(Parser->m_inject_xml, Node)) return Parser->m_inject_xml;
    if ((Parser->Self) and xq_xml_owns_node(Parser->Self->Templates, Node)) return Parser->Self->Templates;

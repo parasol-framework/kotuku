@@ -415,6 +415,28 @@ end
    assert(contains(xml_str, 'LET-CONSTRUCTED-HIT'), 'Constructed-node <let> bindings must survive nested if@test queries')
 end
 
+@Test function LetDocSnapshotSurvivesDataReplacement()
+   xml_str = feedAndRead([[
+      <body/>
+      <page>
+         <data select="'&lt;root&gt;&lt;item code=&quot;A&quot;&gt;&lt;name&gt;Alpha&lt;/name&gt;&lt;/item&gt;&lt;/root&gt;'"/>
+         <let name="saved" select="$doc/item">
+            <data select="'&lt;root&gt;&lt;item code=&quot;R1&quot;&gt;&lt;name&gt;Replace1&lt;/name&gt;&lt;/item&gt;&lt;/root&gt;'"/>
+            <data select="'&lt;root&gt;&lt;item code=&quot;R2&quot;&gt;&lt;name&gt;Replace2&lt;/name&gt;&lt;/item&gt;&lt;/root&gt;'"/>
+            <p><print select="concat('LET-DOC-SNAPSHOT ', string($state?saved/@code), ' ', string($state?saved/name))"/></p>
+            <if test="string($state?saved/@code) = 'A'">
+               <p>LET-DOC-SNAPSHOT-HIT</p>
+            </if>
+         </let>
+      </page>
+   ]])
+
+   assert(contains(xml_str, 'LET-DOC-SNAPSHOT A Alpha'),
+      '$state bindings selected from $doc must survive later <data select> replacements')
+   assert(contains(xml_str, 'LET-DOC-SNAPSHOT-HIT'),
+      '$state bindings selected from $doc must remain queryable after repeated <data select> replacements')
+end
+
 @Test function ForEachConstructedNodeContext()
    xml_str = feedAndRead([[
       <body/>
@@ -432,6 +454,25 @@ end
       'Constructed-node <for-each> must bind relative queries against the current constructed item')
    assert(contains(xml_str, 'FOR-EACH-ITEM B item Bravo'),
       'Constructed-node <for-each> must advance across constructed-node sequences')
+end
+
+@Test function ForEachDocContextSurvivesDataReplacement()
+   xml_str = feedAndRead([[
+      <body/>
+      <page>
+         <data select="'&lt;root&gt;&lt;item code=&quot;A&quot;&gt;&lt;name&gt;Alpha&lt;/name&gt;&lt;/item&gt;&lt;item code=&quot;B&quot;&gt;&lt;name&gt;Bravo&lt;/name&gt;&lt;/item&gt;&lt;/root&gt;'"/>
+         <for-each select="$doc/item">
+            <data select="'&lt;root&gt;&lt;item code=&quot;R1&quot;&gt;&lt;name&gt;Replace1&lt;/name&gt;&lt;/item&gt;&lt;/root&gt;'"/>
+            <data select="'&lt;root&gt;&lt;item code=&quot;R2&quot;&gt;&lt;name&gt;Replace2&lt;/name&gt;&lt;/item&gt;&lt;/root&gt;'"/>
+            <p><print value="FOR-EACH-DOC-SNAPSHOT {string(@code)} {string(name)} {$loop?index}"/></p>
+         </for-each>
+      </page>
+   ]])
+
+   assert(contains(xml_str, 'FOR-EACH-DOC-SNAPSHOT A Alpha 0'),
+      '<for-each> items selected from $doc must survive later <data select> replacements in the same iteration')
+   assert(contains(xml_str, 'FOR-EACH-DOC-SNAPSHOT B Bravo 1'),
+      '<for-each> must keep later $doc-selected items alive after earlier iterations replace $doc')
 end
 
 @Test function ForEachRejectsAtomicSequence()

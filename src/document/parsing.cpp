@@ -153,6 +153,7 @@ struct parser {
    objXML *m_xml;
    objXML *m_source_xml = nullptr;
    objXML *m_doc_xml = nullptr;
+   pf::vector<objXML *> m_doc_xml_history; // Retain replaced $doc trees until parse end so stored XQuery values stay valid.
 
    RSTREAM *m_stream;                 // Generated stream content
    std::unique_ptr<RSTREAM> m_stream_alloc;
@@ -253,6 +254,7 @@ struct parser {
    inline void tag_use(XTag &);
    inline bool check_para_attrib(const XMLAttrib &, bc_paragraph *, bc_font &);
    inline bool check_font_attrib(const XMLAttrib &, bc_font &);
+
    inline loop_frame * active_loop() {
       if (m_loop_stack.empty()) return nullptr;
       return &m_loop_stack.back();
@@ -292,10 +294,17 @@ struct parser {
    ~parser() {
       if (m_time) FreeResource(m_time);
       if (m_doc_xml) FreeResource(m_doc_xml);
+      for (auto *xml : m_doc_xml_history) {
+         if (xml) FreeResource(xml);
+      }
    }
 
    inline void replace_doc_xml(objXML *XML) {
-      if ((m_doc_xml) and (not (m_doc_xml IS XML))) FreeResource(m_doc_xml);
+      if ((m_doc_xml) and (not (m_doc_xml IS XML))) {
+         // Stored $state / <for-each> values may still point into the previous $doc tree.
+         // Keep the old XML alive until the parser is destroyed rather than invalidating those nodes mid-parse.
+         m_doc_xml_history.push_back(m_doc_xml);
+      }
       m_doc_xml = XML;
    }
 
