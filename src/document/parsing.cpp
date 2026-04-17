@@ -154,6 +154,7 @@ struct parser {
    objXML *m_source_xml = nullptr;
    objXML *m_doc_xml = nullptr;
    pf::vector<objXML *> m_doc_xml_history; // Retain replaced $doc trees until parse end so stored XQuery values stay valid.
+   ankerl::unordered_dense::map<std::string, objXQuery *> m_xq_query_cache; // Compiled XQuery cache keyed by final statement.
 
    RSTREAM *m_stream;                 // Generated stream content
    std::unique_ptr<RSTREAM> m_stream_alloc;
@@ -296,6 +297,9 @@ struct parser {
       if (m_doc_xml) FreeResource(m_doc_xml);
       for (auto *xml : m_doc_xml_history) {
          if (xml) FreeResource(xml);
+      }
+      for (auto &[statement, query] : m_xq_query_cache) {
+         if (query) FreeResource(query);
       }
    }
 

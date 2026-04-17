@@ -762,46 +762,52 @@ static ERR xq_document_template_content(objXQuery *, std::string_view, const std
 }
 
 //********************************************************************************************************************
-// Shared setup for all document-side XQuery surfaces.  The query object is cached on the document and reconfigured
-// for the current parser instance each time so the runtime variable resolver and helper functions see the active
-// page/document state.
+// Shared setup for all document-side XQuery surfaces.  Compiled XQuery objects are cached for the lifetime of the
+// current parser so repeated AVT/test/select expressions can reuse the compiled AST rather than rebuilding it on
+// every evaluation.
 
-static ERR xq_prepare_query(parser *Parser, const std::string &Expression, XQEval Mode)
+static ERR xq_prepare_query(parser *Parser, const std::string &Expression, XQEval Mode, objXQuery *&Query)
 {
    auto Self = Parser->Self;
+   Query = nullptr;
 
    auto eval_expression = xq_build_eval_expression(Expression, Mode);
 
-   if (not Self->Query) {
-      if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&Self->Query) IS ERR::Okay) {
-         if (Self->Query->init() != ERR::Okay) {
-            Self->Error = ERR::Init;
-            FreeResource(Self->Query);
-            Self->Query = nullptr;
-            return ERR::Init;
-         }
-      }
-      else {
-         Self->Error = ERR::NewObject;
-         return ERR::NewObject;
-      }
+   if (auto cached = Parser->m_xq_query_cache.find(eval_expression); cached != Parser->m_xq_query_cache.end()) {
+      Query = cached->second;
+      return ERR::Okay;
    }
 
-   Self->Query->setResolveVariable(C_FUNCTION(xq_resolve_runtime_scope, Parser));
-   Self->Query->registerFunction(XQ_OBJECT_EXISTS_FUNCTION.data(), C_FUNCTION(xq_document_object_exists, Parser));
-   Self->Query->registerFunction(XQ_OBJECT_ID_FUNCTION.data(), C_FUNCTION(xq_document_object_id, Parser));
-   Self->Query->registerFunction(XQ_SELF_ID_FUNCTION.data(), C_FUNCTION(xq_document_self_id, Parser));
-   Self->Query->registerFunction(XQ_UID_FUNCTION.data(), C_FUNCTION(xq_document_uid, Parser));
-   Self->Query->registerFunction(XQ_PLATFORM_FUNCTION.data(), C_FUNCTION(xq_document_platform, Parser));
-   Self->Query->registerFunction(XQ_FIELD_FUNCTION.data(), C_FUNCTION(xq_document_field, Parser));
-   Self->Query->registerFunction(XQ_KEY_FUNCTION.data(), C_FUNCTION(xq_document_key, Parser));
-   Self->Query->registerFunction(XQ_TEMPLATE_CONTENT_FUNCTION.data(), C_FUNCTION(xq_document_template_content, Parser));
+   objXQuery *query = nullptr;
+   if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&query) != ERR::Okay) {
+      Self->Error = ERR::NewObject;
+      return ERR::NewObject;
+   }
 
-   if (Self->Query->setStatement(eval_expression) != ERR::Okay) {
+   if (query->init() != ERR::Okay) {
+      Self->Error = ERR::Init;
+      FreeResource(query);
+      return ERR::Init;
+   }
+
+   query->setResolveVariable(C_FUNCTION(xq_resolve_runtime_scope, Parser));
+   query->registerFunction(XQ_OBJECT_EXISTS_FUNCTION.data(), C_FUNCTION(xq_document_object_exists, Parser));
+   query->registerFunction(XQ_OBJECT_ID_FUNCTION.data(), C_FUNCTION(xq_document_object_id, Parser));
+   query->registerFunction(XQ_SELF_ID_FUNCTION.data(), C_FUNCTION(xq_document_self_id, Parser));
+   query->registerFunction(XQ_UID_FUNCTION.data(), C_FUNCTION(xq_document_uid, Parser));
+   query->registerFunction(XQ_PLATFORM_FUNCTION.data(), C_FUNCTION(xq_document_platform, Parser));
+   query->registerFunction(XQ_FIELD_FUNCTION.data(), C_FUNCTION(xq_document_field, Parser));
+   query->registerFunction(XQ_KEY_FUNCTION.data(), C_FUNCTION(xq_document_key, Parser));
+   query->registerFunction(XQ_TEMPLATE_CONTENT_FUNCTION.data(), C_FUNCTION(xq_document_template_content, Parser));
+
+   if (query->setStatement(eval_expression) != ERR::Okay) {
       Self->Error = ERR::SetField;
+      FreeResource(query);
       return ERR::SetField;
    }
 
+   Parser->m_xq_query_cache.emplace(std::move(eval_expression), query);
+   Query = query;
    return ERR::Okay;
 }
 
@@ -815,6 +821,9 @@ static ERR xq_execute_query(parser *Parser, objXML *XMLContext, XTag *ContextTag
 {
    pf::Log log(__FUNCTION__);
    auto Self = Parser->Self;
+   objXQuery *query = nullptr;
+   XPathValue raw_value(XPVT::String);
+   bool have_raw_value = false;
 
    if (OutString) OutString->clear();
    if (OutBoolean) *OutBoolean = false;
@@ -822,7 +831,7 @@ static ERR xq_execute_query(parser *Parser, objXML *XMLContext, XTag *ContextTag
 
    if (Expression.empty()) return ERR::Okay;
 
-   if (auto err = xq_prepare_query(Parser, Expression, Mode); err != ERR::Okay) {
+   if (auto err = xq_prepare_query(Parser, Expression, Mode, query); err != ERR::Okay) {
       return log.warning(err);
    }
 
@@ -833,9 +842,9 @@ static ERR xq_execute_query(parser *Parser, objXML *XMLContext, XTag *ContextTag
       if (xq_context->node) effective_tag = xq_context->node;
    }
 
-   if (auto err = Self->Query->evaluate(effective_xml, effective_tag ? effective_tag->ID : 0, XEF::NIL); err != ERR::Okay) {
+   if (auto err = query->evaluate(effective_xml, effective_tag ? effective_tag->ID : 0, XEF::NIL); err != ERR::Okay) {
       CSTRING msg;
-      if (Self->Query->get(FID_ErrorMsg, msg) IS ERR::Okay) {
+      if (query->get(FID_ErrorMsg, msg) IS ERR::Okay) {
          log.warning("XQuery error evaluating \"%s\": %s", Expression.c_str(), msg ? msg : "(none)");
       }
       else log.warning("XQuery error evaluating \"%s\".", Expression.c_str());
@@ -843,17 +852,34 @@ static ERR xq_execute_query(parser *Parser, objXML *XMLContext, XTag *ContextTag
       return err;
    }
 
-   CSTRING result = nullptr;
-   if (Self->Query->get(FID_ResultString, result) IS ERR::Okay) {
-      if ((OutString) and result) OutString->assign(result);
-      if ((OutBoolean) and result and iequals("true", result)) *OutBoolean = true;
+   XPathValue *query_value = nullptr;
+   if ((query->get(FID_Result, query_value) IS ERR::Okay) and query_value) {
+      raw_value = *query_value;
+      have_raw_value = true;
+      if (OutValue) *OutValue = raw_value;
+      if (OutHasValue) *OutHasValue = true;
    }
 
-   if ((OutValue) or (OutHasValue)) {
-      XPathValue *query_value = nullptr;
-      if ((Self->Query->get(FID_Result, query_value) IS ERR::Okay) and query_value) {
-         if (OutValue) *OutValue = *query_value;
-         if (OutHasValue) *OutHasValue = true;
+   if (have_raw_value) {
+      if (OutString) {
+         (void)xq_value_to_string(raw_value, *OutString);
+      }
+
+      if (OutBoolean) {
+         if (raw_value.Type IS XPVT::Boolean) *OutBoolean = raw_value.NumberValue != 0.0;
+         else {
+            std::string boolean_text;
+            if ((xq_value_to_string(raw_value, boolean_text) IS ERR::Okay) and (iequals("true", boolean_text))) {
+               *OutBoolean = true;
+            }
+         }
+      }
+   }
+   else {
+      CSTRING result = nullptr;
+      if (query->get(FID_ResultString, result) IS ERR::Okay) {
+         if ((OutString) and result) OutString->assign(result);
+         if ((OutBoolean) and result and iequals("true", result)) *OutBoolean = true;
       }
    }
 
@@ -1084,10 +1110,11 @@ static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser
    if ((not Parser) or (Source.Type != XPVT::NodeSet)) return ERR::Okay;
 
    bool requires_owned_xml = false;
+   size_t owned_node_count = 0;
    for (auto *node : Source.node_set) {
       if (node and (not xq_find_known_node_owner(Parser, node))) {
          requires_owned_xml = true;
-         break;
+         owned_node_count++;
       }
    }
 
@@ -1097,6 +1124,7 @@ static ERR xq_make_stored_value(parser *Parser, const XPathValue &Source, parser
    if (not xml) return ERR::NewObject;
 
    xml->Tags.clear();
+   xml->Tags.reserve(owned_node_count);
    int next_id = -1;
 
    for (size_t index = 0; index < Source.node_set.size(); ++index) {
