@@ -324,7 +324,7 @@ struct parser {
    inline bool resolve_loop_alias(std::string_view Name, std::string &Value) const {
       for (int i = std::ssize(m_loop_stack) - 1; i >= 0; i--) {
          auto &frame = m_loop_stack[i];
-         if ((not frame.alias_name.empty()) and (iequals(frame.alias_name, Name))) {
+         if ((not frame.alias_name.empty()) and (frame.alias_name IS Name)) {
             Value = std::to_string(frame.index);
             return true;
          }
@@ -1916,7 +1916,7 @@ void parser::tag_head(const tag_view &Tag)
             Self->Description = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
-      else pf::Log().warning("Unknown head tag '%.*s'", int(name.size()), name);
+      else pf::Log().warning("Unknown head tag '%.*s'", int(name.size()), name.data());
    }
 }
 
