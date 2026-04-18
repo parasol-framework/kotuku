@@ -6,6 +6,8 @@
 // class prefixed with 'bc'.  Each code type has a specific purpose such as defining a new font style, paragraph,
 // hyperlink etc.  When a type is instantiated it will be assigned a UID and stored in the Codes hashmap.
 
+#include <algorithm>
+#include <cctype>
 #include <cfloat>
 #include <charconv>
 
@@ -1138,17 +1140,17 @@ void parser::tag_body(const tag_view &Tag)
 
          case HASH_margins: {
             bool rel;
-            auto str = Tag.Attribs[i].Value.c_str();
+            auto str = std::string_view(Tag.Attribs[i].Value);
 
             str = read_unit(str, Self->LeftMargin, rel);
 
-            if (*str) str = read_unit(str, Self->TopMargin, rel);
+            if (not str.empty()) str = read_unit(str, Self->TopMargin, rel);
             else Self->TopMargin = Self->LeftMargin;
 
-            if (*str) str = read_unit(str, Self->RightMargin, rel);
+            if (not str.empty()) str = read_unit(str, Self->RightMargin, rel);
             else Self->RightMargin = Self->TopMargin;
 
-            if (*str) str = read_unit(str, Self->BottomMargin, rel);
+            if (not str.empty()) str = read_unit(str, Self->BottomMargin, rel);
             else Self->BottomMargin = Self->RightMargin;
 
             if (Self->LeftMargin < 0) Self->LeftMargin = 0;
@@ -3054,18 +3056,11 @@ void parser::tag_page(const tag_view &Tag) const
 {
    pf::Log log(__FUNCTION__);
    if (auto name = Tag.attrib("name")) {
-      auto str = name->c_str();
-      while (*str) {
-         if (((*str >= 'A') and (*str <= 'Z')) or
-             ((*str >= 'a') and (*str <= 'z')) or
-             ((*str >= '0') and (*str <= '9'))) {
-            // Character is valid
-         }
-         else {
-            log.warning("Page has an invalid name of '%s'.  Character support is limited to [A-Z,a-z,0-9].", name->c_str());
-            break;
-         }
-         str++;
+      auto page_name = std::string_view(*name);
+      if (not std::ranges::all_of(page_name, [](char Character) {
+         return std::isalnum((unsigned char)Character) != 0;
+      })) {
+         log.warning("Page has an invalid name of '%s'.  Character support is limited to [A-Z,a-z,0-9].", name->c_str());
       }
    }
 }

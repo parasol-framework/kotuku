@@ -211,22 +211,26 @@ static inline void xq_map_append_number(std::shared_ptr<XPathMapStorage> &Storag
 
 static std::string xq_format_font_size(const bc_font &Style)
 {
-   char buffer[28];
+   auto append_suffix = [](double Value, std::string_view Suffix) {
+      char buffer[32];
+      auto [ptr, error] = std::to_chars(buffer, buffer + sizeof(buffer), Value, std::chars_format::general);
+      if (error != std::errc()) return std::to_string(Value) + std::string(Suffix);
+
+      std::string result(buffer, ptr);
+      result += Suffix;
+      return result;
+   };
+
    switch(Style.req_size.type) {
       case DU::PIXEL:
-         snprintf(buffer, sizeof(buffer), "%gpx", Style.req_size.value);
-         break;
+         return append_suffix(Style.req_size.value, "px");
       case DU::FONT_SIZE:
-         snprintf(buffer, sizeof(buffer), "%gem", Style.req_size.value);
-         break;
+         return append_suffix(Style.req_size.value, "em");
       case DU::SCALED:
-         snprintf(buffer, sizeof(buffer), "%g%%", Style.req_size.value * 100.0);
-         break;
+         return append_suffix(Style.req_size.value * 100.0, "%");
       default:
-         snprintf(buffer, sizeof(buffer), "%dpx", DEFAULT_FONTSIZE);
-         break;
+         return std::to_string(DEFAULT_FONTSIZE) + "px";
    }
-   return std::string(buffer);
 }
 
 static XPathValue xq_keyvalue_to_map(const KEYVALUE &Source)

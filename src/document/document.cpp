@@ -135,7 +135,7 @@ static void notify_free_event(OBJECTPTR, ACTIONID, ERR, APTR);
 static void notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
 static ERR  feedback_view(objVectorViewport *, FM);
 static void process_parameters(extDocument *, const std::string_view);
-static CSTRING read_unit(CSTRING, double &, bool &);
+static std::string_view read_unit(std::string_view, double &, bool &);
 static void redraw(extDocument *, bool);
 static ERR  report_event(extDocument *, DEF, entity *, KEYVALUE *);
 static void reset_cursor(extDocument *);

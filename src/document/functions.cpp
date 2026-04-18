@@ -139,49 +139,73 @@ static std::string write_calc(double Value, int16_t Precision)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static CSTRING read_unit(CSTRING Input, double &Output, bool &Scaled)
+static std::string_view read_unit(std::string_view Input, double &Output, bool &Scaled)
 {
-   bool isnumber = true;
-   auto v = Input;
-   while ((*v) and (unsigned(*v) <= 0x20)) v++;
-
-   auto str = v;
-   if ((*str IS '-') or (*str IS '+')) str++;
+   auto value = Input;
+   while ((not value.empty()) and (unsigned(value.front()) <= 0x20)) value.remove_prefix(1);
 
    Scaled = false;
-   if (((*str >= '0') and (*str <= '9')) or (*str IS '.')) {
-      while ((*str >= '0') and (*str <= '9')) str++;
-
-      if (*str IS '.') {
-         str++;
-         if ((*str >= '0') and (*str <= '9')) {
-            while ((*str >= '0') and (*str <= '9')) str++;
-         }
-         else isnumber = false;
-      }
-
-      double multiplier = 1.0;
-      double dpi = 96.0;
-
-      if (*str IS '%') {
-         Scaled = true;
-         multiplier = 0.01;
-         str++;
-      }
-      else if ((str[0] IS 'p') and (str[1] IS 'x')) str += 2; // Pixel.  This is the default type
-      else if ((str[0] IS 'e') and (str[1] IS 'm')) { str += 2; multiplier = 12.0 * (4.0 / 3.0); } // Current font-size
-      else if ((str[0] IS 'e') and (str[1] IS 'x')) { str += 2; multiplier = 6.0 * (4.0 / 3.0); } // Current font-size, reduced to the height of the 'x' character.
-      else if ((str[0] IS 'i') and (str[1] IS 'n')) { str += 2; multiplier = dpi; } // Inches
-      else if ((str[0] IS 'c') and (str[1] IS 'm')) { str += 2; multiplier = (1.0 / 2.56) * dpi; } // Centimetres
-      else if ((str[0] IS 'm') and (str[1] IS 'm')) { str += 2; multiplier = (1.0 / 20.56) * dpi; } // Millimetres
-      else if ((str[0] IS 'p') and (str[1] IS 't')) { str += 2; multiplier = (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
-      else if ((str[0] IS 'p') and (str[1] IS 'c')) { str += 2; multiplier = (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
-
-      Output = strtod(v, nullptr) * multiplier;
+   if (value.empty()) {
+      Output = 0;
+      return value;
    }
-   else Output = 0;
 
-   return str;
+   size_t pos = 0;
+   bool negative = false;
+   if ((value[pos] IS '-') or (value[pos] IS '+')) {
+      negative = value[pos] IS '-';
+      pos++;
+   }
+
+   auto number_start = pos;
+   while ((pos < value.size()) and (value[pos] >= '0') and (value[pos] <= '9')) pos++;
+
+   bool has_digits = pos > number_start;
+   if ((pos < value.size()) and (value[pos] IS '.')) {
+      pos++;
+      auto fraction_start = pos;
+      while ((pos < value.size()) and (value[pos] >= '0') and (value[pos] <= '9')) pos++;
+      has_digits = has_digits or (pos > fraction_start);
+   }
+
+   if (not has_digits) {
+      Output = 0;
+      return value.substr(number_start);
+   }
+
+   std::string number_text;
+   number_text.reserve((negative ? 1 : 0) + (pos - number_start) + ((value[number_start] IS '.') ? 1 : 0));
+   if (negative) number_text += '-';
+   if (value[number_start] IS '.') number_text += '0';
+   number_text.append(value.data() + number_start, pos - number_start);
+
+   auto numeric_value = 0.0;
+   auto [ptr, error] = std::from_chars(number_text.data(), number_text.data() + number_text.size(), numeric_value);
+   if (error != std::errc()) {
+      Output = 0;
+      return value.substr(pos);
+   }
+
+   double multiplier = 1.0;
+   static constexpr double dpi = 96.0;
+   auto suffix = value.substr(pos);
+
+   if (suffix.starts_with('%')) {
+      Scaled = true;
+      multiplier = 0.01;
+      suffix.remove_prefix(1);
+   }
+   else if (suffix.starts_with("px")) suffix.remove_prefix(2); // Pixel.  This is the default type
+   else if (suffix.starts_with("em")) { suffix.remove_prefix(2); multiplier = 12.0 * (4.0 / 3.0); } // Current font-size
+   else if (suffix.starts_with("ex")) { suffix.remove_prefix(2); multiplier = 6.0 * (4.0 / 3.0); } // Current font-size, reduced to the height of the 'x' character.
+   else if (suffix.starts_with("in")) { suffix.remove_prefix(2); multiplier = dpi; } // Inches
+   else if (suffix.starts_with("cm")) { suffix.remove_prefix(2); multiplier = (1.0 / 2.56) * dpi; } // Centimetres
+   else if (suffix.starts_with("mm")) { suffix.remove_prefix(2); multiplier = (1.0 / 20.56) * dpi; } // Millimetres
+   else if (suffix.starts_with("pt")) { suffix.remove_prefix(2); multiplier = (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
+   else if (suffix.starts_with("pc")) { suffix.remove_prefix(2); multiplier = (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
+
+   Output = numeric_value * multiplier;
+   return suffix;
 }
 
 //********************************************************************************************************************
@@ -1105,17 +1129,16 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
 
 void padding::parse(std::string_view Value)
 {
-   auto value_text = std::string(Value);
-   auto str = value_text.c_str();
+   auto str = Value;
    str = read_unit(str, left, left_scl);
 
-   if (*str) str = read_unit(str, top, top_scl);
+   if (not str.empty()) str = read_unit(str, top, top_scl);
    else { top = left; top_scl = left_scl; }
 
-   if (*str) str = read_unit(str, right, right_scl);
+   if (not str.empty()) str = read_unit(str, right, right_scl);
    else { right = top; right_scl = top_scl; }
 
-   if (*str) str = read_unit(str, bottom, bottom_scl);
+   if (not str.empty()) str = read_unit(str, bottom, bottom_scl);
    else { bottom = right; bottom_scl = right_scl; }
 
    if (left < 0)   left   = 0;

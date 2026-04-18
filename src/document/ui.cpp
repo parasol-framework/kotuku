@@ -158,7 +158,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, int Unico
          char string[12];
          UTF8WriteValue(Unicode, string, sizeof(string));
          Self->insertText(string, Self->CursorIndex.index, Self->CursorIndex.offset, true); // Will set UpdatingLayout to true
-         Self->CursorIndex += strlen(string); // Reposition the cursor
+         Self->CursorIndex += std::string_view(string).size(); // Reposition the cursor
 
          layout_doc_fast(Self);
 

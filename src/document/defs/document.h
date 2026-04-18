@@ -353,7 +353,10 @@ public:
 
 struct case_insensitive_map {
    bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+      return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
+         [](unsigned char Left, unsigned char Right) {
+            return std::tolower(Left) < std::tolower(Right);
+         });
    }
 };
 
