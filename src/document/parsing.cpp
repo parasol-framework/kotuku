@@ -7,6 +7,7 @@
 // hyperlink etc.  When a type is instantiated it will be assigned a UID and stored in the Codes hashmap.
 
 #include <cfloat>
+#include <charconv>
 
 static constexpr uint32_t HASH_let           = strhash("let");
 static constexpr uint32_t HASH_for_each      = strhash("for-each");
@@ -555,8 +556,8 @@ TRF parser::parse_tag(const XTag &Tag, IPF &Flags)
 
    auto resolved_tag = (active_attribs IS &Tag.Attribs) ? tag_view(Tag) : tag_view(Tag, *active_attribs);
 
-   auto tagname = resolved_tag.Attribs[0].Name;
-   if (tagname.starts_with('$')) tagname.erase(0, 1);
+   auto tagname = std::string_view(resolved_tag.Attribs[0].Name);
+   if (tagname.starts_with('$')) tagname.remove_prefix(1);
    auto tag_hash = strhash(tagname);
 
    if (Self->Templates) { // Check for templates first, as they can be used to override the default tag names.
@@ -584,7 +585,7 @@ TRF parser::parse_tag(const XTag &Tag, IPF &Flags)
          m_in_template++;
 
          pf::Log log(__FUNCTION__);
-         log.traceBranch("Executing template '%s'.", tagname.c_str());
+         log.traceBranch("Executing template '%.*s'.", int(tagname.size()), tagname.data());
 
          Self->TemplateArgs.push_back({ &Tag, active_attribs });
          auto old_xml = change_xml(Self->Templates);
@@ -615,7 +616,7 @@ TRF parser::parse_tag(const XTag &Tag, IPF &Flags)
          case HASH_pre:
          case HASH_u:
          case HASH_list:
-            log.trace("Content disabled on '%s', tag not processed.", tagname.c_str());
+            log.trace("Content disabled on '%.*s', tag not processed.", int(tagname.size()), tagname.data());
             return result;
          default:
             break;
@@ -637,7 +638,7 @@ TRF parser::parse_tag(const XTag &Tag, IPF &Flags)
       case HASH_a:
       case HASH_link:
          if (not resolved_tag.Children.empty()) tag_link(resolved_tag);
-         else log.trace("No content found in tag '%s'", tagname.c_str());
+         else log.trace("No content found in tag '%.*s'", int(tagname.size()), tagname.data());
          break;
 
       case HASH_b:
@@ -848,9 +849,9 @@ TRF parser::parse_tag(const XTag &Tag, IPF &Flags)
 
       default:
          if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
-            log.warning("Tag '%s' unsupported as an instruction or template.", tagname.c_str());
+            log.warning("Tag '%.*s' unsupported as an instruction or template.", int(tagname.size()), tagname.data());
          }
-         else log.warning("Unrecognised tag '%s' used in a content-restricted area.", tagname.c_str());
+         else log.warning("Unrecognised tag '%.*s' used in a content-restricted area.", int(tagname.size()), tagname.data());
          break;
    } // switch
 
@@ -1026,19 +1027,21 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
       case HASH_font_face:
          [[fallthrough]];
       case HASH_face: {
-         auto j = Attrib.Value.find(':');
-         if (j != std::string::npos) { // Font size follows
+         auto face = std::string_view(Attrib.Value);
+         auto size_sep = face.find(':');
+         if (size_sep != std::string_view::npos) { // Font size follows
             auto str = Attrib.Value.c_str();
-            j++;
-            Style.req_size = DUNIT(str+j);
-            j = Attrib.Value.find(':', j);
-            if (j != std::string::npos) { // Style follows
-               j++;
-               Style.style = str+j;
+            Style.req_size = DUNIT(str + size_sep + 1);
+
+            auto style_sep = face.find(':', size_sep + 1);
+            if (style_sep != std::string_view::npos) { // Style follows
+               Style.style = str + style_sep + 1;
             }
+
+            face = face.substr(0, size_sep);
          }
 
-         Style.face = Attrib.Value.substr(0, j);
+         Style.face.assign(face);
          return true;
       }
 
@@ -1254,13 +1257,15 @@ void parser::tag_call(const tag_view &Tag)
    std::string function;
    if (std::ssize(Tag.Attribs) > 1) {
       if ("function" IS Tag.Attribs[1].Name) {
-         if (auto i = Tag.Attribs[1].Value.find('.');  i != std::string::npos) {
-            auto script_name = Tag.Attribs[1].Value.substr(0, i);
+         auto function_ref = std::string_view(Tag.Attribs[1].Value);
+         if (auto i = function_ref.find('.');  i != std::string_view::npos) {
+            auto script_name = function_ref.substr(0, i);
+            auto script_name_text = std::string(script_name);
 
             OBJECTID id;
-            if (FindObject(script_name.c_str(), CLASSID::NIL, FOF::NIL, &id) IS ERR::Okay) script = (objScript *)GetObjectPtr(id);
+            if (FindObject(script_name_text.c_str(), CLASSID::NIL, FOF::NIL, &id) IS ERR::Okay) script = (objScript *)GetObjectPtr(id);
 
-            function.assign(Tag.Attribs[1].Value, i + 1);
+            function.assign(function_ref.substr(i + 1));
          }
          else function = Tag.Attribs[1].Value;
       }
@@ -2828,20 +2833,22 @@ void parser::tag_table(const tag_view &Tag)
    m_table_stack.pop();
 
    if (not columns.empty()) { // The columns value, if supplied is arranged as a CSV list of column widths
-      std::vector<std::string> list;
-      for (unsigned i=0; i < columns.size(); ) {
-         auto end = columns.find(',', i);
-         if (end IS std::string::npos) end = columns.size();
-         auto val = columns.substr(i, end-i);
-         trim(val);
-         list.push_back(val);
-         i = end + 1;
-      }
+      size_t i = 0;
+      auto remaining = std::string_view(columns);
+      for (; (i < table.columns.size()) and (not remaining.empty()); i++) {
+         auto end = remaining.find(',');
+         auto value = (end IS std::string_view::npos) ? remaining : remaining.substr(0, end);
 
-      size_t i;
-      for (i=0; (i < table.columns.size()) and (i < list.size()); i++) {
-         table.columns[i].preset_width = strtod(list[i].c_str(), nullptr);
-         if (list[i].find_first_of('%') != std::string::npos) {
+         auto start_trim = value.find_first_not_of(" \t\f\v\n\r");
+         if (start_trim IS std::string_view::npos) value = std::string_view();
+         else {
+            auto end_trim = value.find_last_not_of(" \t\f\v\n\r");
+            value = value.substr(start_trim, (end_trim - start_trim) + 1);
+         }
+
+         auto column_value = std::string(value);
+         table.columns[i].preset_width = strtod(column_value.c_str(), nullptr);
+         if (value.find('%') != std::string_view::npos) {
             table.columns[i].preset_width *= 0.01;
             table.columns[i].preset_width_rel = true;
             if ((table.columns[i].preset_width < 0.0000001) or (table.columns[i].preset_width > 1.0)) {
@@ -2849,6 +2856,9 @@ void parser::tag_table(const tag_view &Tag)
                Self->Error = ERR::InvalidDimension;
             }
          }
+
+         if (end IS std::string_view::npos) break;
+         remaining.remove_prefix(end + 1);
       }
 
       if (i < table.columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), int(table.columns.size()));
