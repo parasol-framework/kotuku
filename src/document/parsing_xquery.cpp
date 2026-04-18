@@ -17,10 +17,10 @@ static bool is_xq_expression_attrib(uint32_t TagHash, std::string_view AttribNam
    auto name = AttribName;
    if ((not name.empty()) and (name.front() IS '$')) name.remove_prefix(1);
 
-   if (iequals("test", name)) {
+   if ("test" IS name) {
       return (TagHash IS HASH_if) or (TagHash IS HASH_elseif) or (TagHash IS HASH_while);
    }
-   else if (iequals("select", name)) {
+   else if ("select" IS name) {
       return (TagHash IS HASH_print) or (TagHash IS HASH_parse) or (TagHash IS HASH_data) or
          (TagHash IS HASH_let) or (TagHash IS HASH_for_each);
    }
@@ -926,7 +926,7 @@ static const std::string * find_attrib(const tag_view &Tag, std::string_view Nam
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       auto attrib_name = std::string_view(Tag.Attribs[i].Name);
       if ((not attrib_name.empty()) and (attrib_name.front() IS '$')) attrib_name.remove_prefix(1);
-      if (iequals(attrib_name, Name)) return &Tag.Attribs[i].Value;
+      if (attrib_name IS Name) return &Tag.Attribs[i].Value;
    }
    return nullptr;
 }
@@ -1701,14 +1701,13 @@ void parser::tag_print(const tag_view &Tag)
          }
       }
 
-      auto tagname = Tag.Attribs[1].Name.c_str();
-      if (*tagname IS '$') tagname++;
+      auto tagname = std::string_view(Tag.Attribs[1].Name);
+      if (tagname.starts_with('$')) tagname.remove_prefix(1);
 
-      if (iequals("value", tagname)) {
-         insert_text(Self, m_stream, m_index, Tag.Attribs[1].Value,
-            (m_style.options & FSO::PREFORMAT) != FSO::NIL);
+      if ("value" IS tagname) {
+         insert_text(Self, m_stream, m_index, Tag.Attribs[1].Value, (m_style.options & FSO::PREFORMAT) != FSO::NIL);
       }
-      else if (iequals("src", Tag.Attribs[1].Name)) {
+      else if ("src" IS tagname) {
          // This option is only supported in unrestricted mode
          if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) {
             CacheFile *cache;
@@ -1719,6 +1718,7 @@ void parser::tag_print(const tag_view &Tag)
          }
          else log.warning("Cannot <print src.../> unless in unrestricted mode.");
       }
+      else log.warning("<print/> element does nothing");
    }
 }
 

@@ -55,14 +55,14 @@ struct tag_view {
       Source(&Tag), AttribPtr(&PreparedAttribs), ID(Tag.ID), ParentID(Tag.ParentID), LineNo(Tag.LineNo),
       Flags(Tag.Flags), NamespaceID(Tag.NamespaceID), Attribs(PreparedAttribs), Children(Tag.Children) { }
 
-   inline CSTRING name() const { return Attribs[0].Name.c_str(); }
+   inline std::string_view name() const { return std::string_view(Attribs[0].Name); }
    inline bool hasContent() const { return (!Children.empty()) and (Children[0].Attribs[0].Name.empty()); }
    inline bool isContent() const { return Attribs[0].Name.empty(); }
    inline bool isTag() const { return !Attribs[0].Name.empty(); }
 
    inline const std::string * attrib(std::string_view Name) const {
       for (unsigned a=1; a < Attribs.size(); a++) {
-         if (iequals(Attribs[a].Name, Name)) return &Attribs[a].Value;
+         if (Attribs[a].Name IS Name) return &Attribs[a].Value;
       }
       return nullptr;
    }
@@ -324,7 +324,7 @@ struct parser {
    inline bool resolve_loop_alias(std::string_view Name, std::string &Value) const {
       for (int i = std::ssize(m_loop_stack) - 1; i >= 0; i--) {
          auto &frame = m_loop_stack[i];
-         if ((not frame.alias_name.empty()) and (iequals(frame.alias_name, Name))) {
+         if ((not frame.alias_name.empty()) and (frame.alias_name IS Name)) {
             Value = std::to_string(frame.index);
             return true;
          }
@@ -400,13 +400,13 @@ void parser::process_page(objXML *pXML)
 
    XTag *page = nullptr;
    for (auto &scan : m_xml->Tags) {
-      if (not iequals("page", scan.Attribs[0].Name)) continue;
+      if (not ("page" IS scan.Attribs[0].Name)) continue;
 
       if (not page) page = &scan;
 
       if (Self->PageName.empty()) break;
       else if (auto name = scan.attrib("name")) {
-         if (iequals(Self->PageName, *name)) page = &scan;
+         if (Self->PageName IS *name) page = &scan;
       }
    }
 
@@ -565,7 +565,7 @@ TRF parser::parse_tag(const XTag &Tag, IPF &Flags)
 
          for (const XTag &scan : Self->Templates->Tags) {
             for (unsigned i=0; i < scan.Attribs.size(); i++) {
-               if (iequals("name", scan.Attribs[i].Name)) {
+               if ("name" IS scan.Attribs[i].Name) {
                   Self->TemplateIndex[strhash(scan.Attribs[i].Value)] = &scan;
                }
             }
@@ -622,11 +622,11 @@ TRF parser::parse_tag(const XTag &Tag, IPF &Flags)
       }
    }
 
-   if (iequals(tagname, "let")) {
+   if (tagname IS "let") {
       result = tag_let(resolved_tag, Flags);
       return result;
    }
-   else if (iequals(tagname, "for-each")) {
+   else if (tagname IS "for-each") {
       result = tag_for_each(resolved_tag, Flags);
       return result;
    }
@@ -969,10 +969,10 @@ bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_f
          // Vertical alignment defines the vertical position for text in cases where the line height is greater than
          // the text itself (e.g. if an image is anchored in the line).
          ALIGN align = ALIGN::NIL;
-         if (iequals("top", Attrib.Value)) align = ALIGN::TOP;
-         else if (iequals("center", Attrib.Value)) align = ALIGN::VERTICAL;
-         else if (iequals("middle", Attrib.Value)) align = ALIGN::VERTICAL; // synonym
-         else if (iequals("bottom", Attrib.Value)) align = ALIGN::BOTTOM;
+         if ("top" IS Attrib.Value) align = ALIGN::TOP;
+         else if ("center" IS Attrib.Value) align = ALIGN::VERTICAL;
+         else if ("middle" IS Attrib.Value) align = ALIGN::VERTICAL; // synonym
+         else if ("bottom" IS Attrib.Value) align = ALIGN::BOTTOM;
 
          if (align != ALIGN::NIL) {
             Style.valign &= ~(ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM);
@@ -1253,7 +1253,7 @@ void parser::tag_call(const tag_view &Tag)
 
    std::string function;
    if (std::ssize(Tag.Attribs) > 1) {
-      if (iequals("function", Tag.Attribs[1].Name)) {
+      if ("function" IS Tag.Attribs[1].Name) {
          if (auto i = Tag.Attribs[1].Value.find('.');  i != std::string::npos) {
             auto script_name = Tag.Attribs[1].Value.substr(0, i);
 
@@ -1467,8 +1467,8 @@ void parser::tag_checkbox(const tag_view &Tag)
       else if (hash IS HASH_fill)  widget.fill  = value;
       else if (hash IS HASH_width) widget.width = DUNIT(value);
       else if (hash IS HASH_label_pos) {
-         if (iequals("left", value)) widget.label_pos = 0;
-         else if (iequals("right", value)) widget.label_pos = 1;
+         if ("left" IS value) widget.label_pos = 0;
+         else if ("right" IS value) widget.label_pos = 1;
       }
       else if (hash IS HASH_value) {
          widget.alt_state = (value IS "1") or (value IS "true");
@@ -1562,8 +1562,8 @@ void parser::tag_combobox(const tag_view &Tag)
       else if (hash IS HASH_font_fill) widget.font_fill = value;
       else if (hash IS HASH_name)      widget.name = value;
       else if (hash IS HASH_label_pos) {
-         if (iequals("left", value)) widget.label_pos = 0;
-         else if (iequals("right", value)) widget.label_pos = 1;
+         if ("left" IS value) widget.label_pos = 0;
+         else if ("right" IS value) widget.label_pos = 1;
       }
       else if (hash IS HASH_width) widget.width = DUNIT(value);
       else log.warning("<combobox> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
@@ -1576,7 +1576,7 @@ void parser::tag_combobox(const tag_view &Tag)
 
    if (not Tag.Children.empty()) {
       for (auto &scan : Tag.Children) {
-         if (iequals("style", scan.name())) {
+         if ("style" IS scan.name()) {
             // Client is overriding the decorator: A custom SVG background is expected, defs and body
             // adjustments may also be provided.
             if (scan.hasContent()) {
@@ -1587,7 +1587,7 @@ void parser::tag_combobox(const tag_view &Tag)
                }
             }
          }
-         else if (iequals("option", scan.name())) {
+         else if ("option" IS scan.name()) {
             std::string value;
 
             if (not scan.Children.empty()) {
@@ -1683,8 +1683,8 @@ void parser::tag_input(const tag_view &Tag)
          case HASH_name:      widget.name = value; break;
          case HASH_secret:    if (iequals(value, "true")) widget.secret = true; break;
          case HASH_label_pos:
-            if (iequals("left", value)) widget.label_pos = 0;
-            else if (iequals("right", value)) widget.label_pos = 1;
+            if ("left" IS value) widget.label_pos = 0;
+            else if ("right" IS value) widget.label_pos = 1;
             break;
          default:
             log.warning("<input> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
@@ -1713,7 +1713,7 @@ void parser::tag_debug(const tag_view &Tag) const
 {
    pf::Log log("DocMsg");
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
-      if (iequals("msg", Tag.Attribs[i].Name)) log.warning("%s", Tag.Attribs[i].Value.c_str());
+      if ("msg" IS Tag.Attribs[i].Name) log.warning("%s", Tag.Attribs[i].Value.c_str());
    }
 }
 
@@ -1738,9 +1738,9 @@ void parser::tag_svg(const tag_view &Tag)
    objVectorViewport *target = Self->Page;
    auto filtered_attribs = Tag.Attribs;
    for (int i=1; i < std::ssize(filtered_attribs); i++) {
-      if (iequals("placement", filtered_attribs[i].Name)) {
-         if (iequals("foreground", filtered_attribs[i].Value)) target = Self->Page;
-         else if (iequals("background", filtered_attribs[i].Value)) target = Self->View;
+      if ("placement" IS filtered_attribs[i].Name) {
+         if ("foreground" IS filtered_attribs[i].Value) target = Self->Page;
+         else if ("background" IS filtered_attribs[i].Value) target = Self->View;
          filtered_attribs.erase(filtered_attribs.begin() + i);
          i--;
       }
@@ -1770,7 +1770,7 @@ void parser::tag_use(const tag_view &Tag)
 {
    std::string id;
    for (int i = 1; i < std::ssize(Tag.Attribs); i++) {
-      if (iequals("href", Tag.Attribs[i].Name)) {
+      if ("href" IS Tag.Attribs[i].Name) {
          id = Tag.Attribs[i].Value;
       }
    }
@@ -1791,17 +1791,17 @@ void parser::tag_div(const tag_view &Tag)
 
    auto new_style = m_style;
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
-      if (iequals("align", Tag.Attribs[i].Name)) {
+      if ("align" IS Tag.Attribs[i].Name) {
          auto align = FSO::NIL;
          auto valid = true;
-         if ((iequals(Tag.Attribs[i].Value, "center")) or
-             (iequals(Tag.Attribs[i].Value, "middle"))) {
+         if ((Tag.Attribs[i].Value IS "center") or
+             (Tag.Attribs[i].Value IS "middle")) {
             align = FSO::ALIGN_CENTER;
          }
-         else if (iequals(Tag.Attribs[i].Value, "right")) {
+         else if (Tag.Attribs[i].Value IS "right") {
             align = FSO::ALIGN_RIGHT;
          }
-         else if (not iequals(Tag.Attribs[i].Value, "left")) {
+         else if (not (Tag.Attribs[i].Value IS "left")) {
             log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
             valid = false;
          }
@@ -1885,36 +1885,38 @@ void parser::tag_head(const tag_view &Tag)
 
    for (auto &scan : Tag.Children) {
       // Anything allocated here needs to be freed in unload_doc()
-      if (iequals("title", scan.name())) {
+      std::string_view name = scan.name();
+      if ("title" IS name) {
          if (scan.hasContent()) {
             if (Self->Title) FreeResource(Self->Title);
             Self->Title = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
-      else if (iequals("author", scan.name())) {
+      else if ("author" IS name) {
          if (scan.hasContent()) {
             if (Self->Author) FreeResource(Self->Author);
             Self->Author = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
-      else if (iequals("copyright", scan.name())) {
+      else if ("copyright" IS name) {
          if (scan.hasContent()) {
             if (Self->Copyright) FreeResource(Self->Copyright);
             Self->Copyright = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
-      else if (iequals("keywords", scan.name())) {
+      else if ("keywords" IS name) {
          if (scan.hasContent()) {
             if (Self->Keywords) FreeResource(Self->Keywords);
             Self->Keywords = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
-      else if (iequals("description", scan.name())) {
+      else if ("description" IS name) {
          if (scan.hasContent()) {
             if (Self->Description) FreeResource(Self->Description);
             Self->Description = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
+      else pf::Log().warning("Unknown head tag '%.*s'", int(name.size()), name.data());
    }
 }
 
@@ -1926,7 +1928,7 @@ void parser::tag_include(const tag_view &Tag)
    pf::Log log(__FUNCTION__);
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
-      if (iequals("src", Tag.Attribs[i].Name)) {
+      if ("src" IS Tag.Attribs[i].Name) {
          if (auto xmlinc = objXML::create::local(fl::Path(Tag.Attribs[i].Value), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
             auto old_xml = change_xml(xmlinc);
             parse_tags(xmlinc->Tags);
@@ -1935,7 +1937,7 @@ void parser::tag_include(const tag_view &Tag)
          }
          else log.warning("Failed to include '%s'", Tag.Attribs[i].Value.c_str());
       }
-      else if (iequals("volatile", Tag.Attribs[i].Name)) {
+      else if ("volatile" IS Tag.Attribs[i].Name) {
          // Instruct the cache manager that it should always check if the source requires reloading, irrespective of the
          // amount of time that has passed since the last load.
       }
@@ -2059,10 +2061,10 @@ void parser::tag_index(const tag_view &Tag)
    uint32_t name = 0;
    bool visible = true;
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
-      if (iequals("name", Tag.Attribs[i].Name)) {
+      if ("name" IS Tag.Attribs[i].Name) {
          name = strhash(Tag.Attribs[i].Value);
       }
-      else if (iequals("hide", Tag.Attribs[i].Name)) {
+      else if ("hide" IS Tag.Attribs[i].Name) {
          visible = false;
       }
       else log.warning("<index> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
@@ -2186,28 +2188,28 @@ void parser::tag_list(const tag_view &Tag)
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       auto &name  = Tag.Attribs[i].Name;
       auto &value = Tag.Attribs[i].Value;
-      if (iequals("fill", name)) {
+      if ("fill" IS name) {
          list.fill = value;
       }
-      else if (iequals("indent", name)) {
+      else if ("indent" IS name) {
          // Affects the indenting to apply to child items.
          list.block_indent = DUNIT(value, DU::PIXEL);
       }
-      else if (iequals("v-spacing", name)) {
+      else if ("v-spacing" IS name) {
          // Affects the vertical advance from one list-item paragraph to the next.
          // Equivalent to paragraph leading, not v-spacing, which affects each line
          list.v_spacing = DUNIT(value, DU::LINE_HEIGHT);
          if (list.v_spacing.value < 0) list.v_spacing.clear();
       }
-      else if (iequals("type", name)) {
-         if (iequals("bullet", value)) {
+      else if ("type" IS name) {
+         if ("bullet" IS value) {
             list.type = bc_list::BULLET;
          }
-         else if (iequals("ordered", value)) {
+         else if ("ordered" IS value) {
             list.type = bc_list::ORDERED;
             list.item_indent.clear();
          }
-         else if (iequals("custom", value)) {
+         else if ("custom" IS value) {
             list.type = bc_list::CUSTOM;
             list.item_indent.clear();
          }
@@ -2240,7 +2242,7 @@ void parser::tag_paragraph(const tag_view &Tag)
    bc_paragraph para(m_style);
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
-      if (iequals("align", Tag.Attribs[i].Name)) {
+      if ("align" IS Tag.Attribs[i].Name) {
          auto align = FSO::NIL;
          auto valid = true;
          if ((iequals(Tag.Attribs[i].Value, "center")) or
@@ -2260,7 +2262,7 @@ void parser::tag_paragraph(const tag_view &Tag)
             para.font.options |= align;
          }
       }
-      else if (iequals("leading", Tag.Attribs[i].Name)) {
+      else if ("leading" IS Tag.Attribs[i].Name) {
          // The leading is a line height multiplier that applies to the first line in the paragraph only.
          // It is typically used for things like headers.
 
@@ -2295,7 +2297,7 @@ void parser::tag_template(const tag_view &Tag)
 
    int n;
    for (n=1; n < std::ssize(Tag.Attribs); n++) {
-      if ((iequals("name", Tag.Attribs[n].Name)) and (not Tag.Attribs[n].Value.empty())) break;
+      if (("name" IS Tag.Attribs[n].Name) and (not Tag.Attribs[n].Value.empty())) break;
    }
 
    if (n >= std::ssize(Tag.Attribs)) {
@@ -2328,7 +2330,7 @@ void parser::tag_font(const tag_view &Tag)
    bool preformat = false;
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
-      if (iequals("preformat", Tag.Attribs[i].Name)) {
+      if ("preformat" IS Tag.Attribs[i].Name) {
          new_style.options |= FSO::PREFORMAT;
          preformat = true;
          m_strip_feeds = true;
@@ -2390,14 +2392,14 @@ void parser::tag_script(const tag_view &Tag)
       if (*tagname IS '$') tagname++;
       if (*tagname IS '@') continue; // Variables are set later
 
-      if (iequals("type", tagname)) {
+      if ("type" IS tagname) {
          type = Tag.Attribs[i].Value;
       }
-      else if (iequals("persistent", tagname)) {
+      else if ("persistent" IS tagname) {
          // A script that is marked as persistent will survive refreshes
          persistent = true;
       }
-      else if (iequals("src", tagname)) {
+      else if ("src" IS tagname) {
          if (safe_file_path(Self, Tag.Attribs[i].Value)) {
             src = Tag.Attribs[i].Value;
          }
@@ -2406,7 +2408,7 @@ void parser::tag_script(const tag_view &Tag)
             return;
          }
       }
-      else if (iequals("cache-file", tagname)) {
+      else if ("cache-file" IS tagname) {
          // Currently the security risk of specifying a cache file is that you could overwrite files on the user's PC,
          // so for the time being this requires unrestricted mode.
 
@@ -2418,13 +2420,13 @@ void parser::tag_script(const tag_view &Tag)
             return;
          }
       }
-      else if (iequals("name", tagname)) {
+      else if ("name" IS tagname) {
          name = Tag.Attribs[i].Value;
       }
-      else if (iequals("default", tagname)) {
+      else if ("default" IS tagname) {
          defaultscript = true;
       }
-      else if (iequals("external", tagname)) {
+      else if ("external" IS tagname) {
          // Reference an external script as the default for function calls
          if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) {
             OBJECTID id;
@@ -2469,7 +2471,7 @@ void parser::tag_script(const tag_view &Tag)
       }
    }
 
-   if (iequals("tiri", type)) {
+   if ("tiri" IS type) {
       error = NewLocalObject(CLASSID::TIRI, &script);
    }
    else {
@@ -2573,13 +2575,13 @@ void parser::tag_li(const tag_view &Tag)
    para.item_indent = list->item_indent;
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
-      auto tagname = Tag.Attribs[i].Name.c_str();
-      if (*tagname IS '$') tagname++;
+      std::string_view tagname = Tag.Attribs[i].Name;
+      if (tagname.starts_with('$')) tagname.remove_prefix(1);
 
-      if (iequals("value", tagname)) {
+      if ("value" IS tagname) {
          para.value = Tag.Attribs[i].Value;
       }
-      else if (iequals("aggregate", tagname)) {
+      else if ("aggregate" IS tagname) {
          if (Tag.Attribs[i].Value IS "true") para.aggregate = true;
          else if (Tag.Attribs[i].Value IS "1") para.aggregate = true;
       }
@@ -2641,11 +2643,11 @@ void parser::tag_repeat(const tag_view &Tag)
    bool have_count = false;
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
-      if (iequals("start", Tag.Attribs[i].Name)) {
+      if ("start" IS Tag.Attribs[i].Name) {
          loop_start = std::stoi(Tag.Attribs[i].Value);
          if (loop_start < 0) loop_start = 0;
       }
-      else if (iequals("count", Tag.Attribs[i].Name)) {
+      else if ("count" IS Tag.Attribs[i].Name) {
          count = std::stoi(Tag.Attribs[i].Value);
          if (count < 0) {
             log.warning("Invalid count value of %d", count);
@@ -2653,20 +2655,20 @@ void parser::tag_repeat(const tag_view &Tag)
          }
          have_count = true;
       }
-      else if (iequals("end", Tag.Attribs[i].Name)) {
+      else if ("end" IS Tag.Attribs[i].Name) {
          loop_end = std::stoi(Tag.Attribs[i].Value);
          have_end = true;
       }
-      else if (iequals("step", Tag.Attribs[i].Name)) {
+      else if ("step" IS Tag.Attribs[i].Name) {
          step = std::stoi(Tag.Attribs[i].Value);
       }
-      else if (iequals("index", Tag.Attribs[i].Name)) {
+      else if ("index" IS Tag.Attribs[i].Name) {
          // If an index name is specified, the programmer will need to refer to it as [@indexname] and [%index] will
          // remain unchanged from any parent repeat loop.
 
          index_name = Tag.Attribs[i].Value;
       }
-      else if (iequals("select", Tag.Attribs[i].Name)) {
+      else if ("select" IS Tag.Attribs[i].Name) {
          log.warning("<repeat select=\"...\"> is not supported.  Use <for-each select=\"...\"> for sequence iteration.");
          Self->Error = ERR::InvalidData;
          return;
@@ -2873,11 +2875,11 @@ void parser::tag_row(const tag_view &Tag)
    bc_row escrow;
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
-      if (iequals("height", Tag.Attribs[i].Name)) {
+      if ("height" IS Tag.Attribs[i].Name) {
          escrow.min_height = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), nullptr), 0.0, 4000.0);
       }
-      else if (iequals("fill", Tag.Attribs[i].Name))   escrow.fill   = Tag.Attribs[i].Value;
-      else if (iequals("stroke", Tag.Attribs[i].Name)) escrow.stroke = Tag.Attribs[i].Value;
+      else if ("fill" IS Tag.Attribs[i].Name)   escrow.fill   = Tag.Attribs[i].Value;
+      else if ("stroke" IS Tag.Attribs[i].Name) escrow.stroke = Tag.Attribs[i].Value;
    }
 
    auto &table = m_table_stack.top();
@@ -2922,11 +2924,11 @@ void parser::tag_cell(const tag_view &Tag)
             pf::split(Tag.Attribs[i].Value, std::back_inserter(list));
 
             for (auto &v : list) {
-               if (iequals("all", v))         cell.border = CB::ALL;
-               else if (iequals("top", v))    cell.border |= CB::TOP;
-               else if (iequals("left", v))   cell.border |= CB::LEFT;
-               else if (iequals("bottom", v)) cell.border |= CB::BOTTOM;
-               else if (iequals("right", v))  cell.border |= CB::RIGHT;
+               if ("all" IS v)         cell.border = CB::ALL;
+               else if ("top" IS v)    cell.border |= CB::TOP;
+               else if ("left" IS v)   cell.border |= CB::LEFT;
+               else if ("bottom" IS v) cell.border |= CB::BOTTOM;
+               else if ("right" IS v)  cell.border |= CB::RIGHT;
             }
 
             break;
