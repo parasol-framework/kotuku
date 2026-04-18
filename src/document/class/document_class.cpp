@@ -973,7 +973,7 @@ static ERR DOCUMENT_InsertText(extDocument *Self, doc::InsertText *Args)
    if (index < 0) index = Self->Stream.size();
 
    stream_char sc(index, 0);
-   ERR error = insert_text(Self, &Self->Stream, sc, std::string(Args->Text), Args->Preformat);
+   ERR error = insert_text(Self, &Self->Stream, sc, Args->Text, Args->Preformat);
 
    #ifdef DBG_STREAM
       print_stream(Self->Stream);

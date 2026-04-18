@@ -594,10 +594,10 @@ static ERR xq_resolve_document_object(const parser *Parser, std::string_view Obj
       else ObjectID = Parser->Self->UID;
    }
    else if (ObjectName.front() IS '#') {
-      char *end = nullptr;
-      auto object_name = std::string(ObjectName.substr(1));
-      auto object_id = strtoll(object_name.c_str(), &end, 10);
-      if ((end) and (*end)) return ERR::InvalidData;
+      long long object_id = 0;
+      auto numeric_id = ObjectName.substr(1);
+      auto parsed = std::from_chars(numeric_id.data(), numeric_id.data() + numeric_id.size(), object_id);
+      if ((parsed.ec != std::errc()) or (parsed.ptr != numeric_id.data() + numeric_id.size())) return ERR::InvalidData;
       ObjectID = OBJECTID(object_id);
    }
    else {
@@ -644,9 +644,8 @@ static ERR xq_get_object_field(OBJECTID ObjectID, std::string_view FieldName, st
       if (object) ReleaseObject(object);
    });
 
-   auto field_name = std::string(FieldName);
    OBJECTPTR target = nullptr;
-   if (auto classfield = FindField(object, strihash(field_name), &target)) {
+   if (auto classfield = FindField(object, strihash(FieldName), &target)) {
       return target->get(classfield->FieldID, Result);
    }
 
@@ -767,7 +766,7 @@ static ERR xq_document_template_content(objXQuery *, std::string_view, const std
 // current parser so repeated AVT/test/select expressions can reuse the compiled AST rather than rebuilding it on
 // every evaluation.
 
-static ERR xq_prepare_query(parser *Parser, const std::string &Expression, XQEval Mode, objXQuery *&Query)
+static ERR xq_prepare_query(parser *Parser, std::string_view Expression, XQEval Mode, objXQuery *&Query)
 {
    auto Self = Parser->Self;
    Query = nullptr;
@@ -817,7 +816,7 @@ static ERR xq_prepare_query(parser *Parser, const std::string &Expression, XQEva
 // caller, but <for-each> may temporarily override them via m_xq_context_stack so relative paths evaluate against
 // the current item.
 
-static ERR xq_execute_query(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Expression,
+static ERR xq_execute_query(parser *Parser, objXML *XMLContext, const XTag *ContextTag, std::string_view Expression,
    XQEval Mode, std::string *OutString, bool *OutBoolean, XPathValue *OutValue, bool *OutHasValue)
 {
    pf::Log log(__FUNCTION__);
@@ -846,9 +845,9 @@ static ERR xq_execute_query(parser *Parser, objXML *XMLContext, const XTag *Cont
    if (auto err = query->evaluate(effective_xml, effective_tag ? effective_tag->ID : 0, XEF::NIL); err != ERR::Okay) {
       CSTRING msg;
       if (query->get(FID_ErrorMsg, msg) IS ERR::Okay) {
-         log.warning("XQuery error evaluating \"%s\": %s", Expression.c_str(), msg ? msg : "(none)");
+         log.warning("XQuery error evaluating \"%.*s\": %s", int(Expression.size()), Expression.data(), msg ? msg : "(none)");
       }
-      else log.warning("XQuery error evaluating \"%s\".", Expression.c_str());
+      else log.warning("XQuery error evaluating \"%.*s\".", int(Expression.size()), Expression.data());
       Self->Error = err;
       return err;
    }
@@ -887,7 +886,7 @@ static ERR xq_execute_query(parser *Parser, objXML *XMLContext, const XTag *Cont
    return ERR::Okay;
 }
 
-static ERR xq_eval_helper(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Expression,
+static ERR xq_eval_helper(parser *Parser, objXML *XMLContext, const XTag *ContextTag, std::string_view Expression,
    XQEval Mode, std::string &OutString, bool &OutBoolean)
 {
    return xq_execute_query(Parser, XMLContext, ContextTag, Expression, Mode, &OutString, &OutBoolean, nullptr, nullptr);
@@ -898,7 +897,7 @@ static ERR xq_eval_helper(parser *Parser, objXML *XMLContext, const XTag *Contex
 // <for-each>, and parse@select.  If the query only exposes a string value, callers still receive a string-typed
 // XPathValue.
 
-static ERR xq_eval_value_helper(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Expression,
+static ERR xq_eval_value_helper(parser *Parser, objXML *XMLContext, const XTag *ContextTag, std::string_view Expression,
    XPathValue &OutValue, std::string &OutString, bool &OutHasValue)
 {
    bool unused_boolean = false;
@@ -1360,7 +1359,7 @@ static ERR xq_select_to_xml_fragment(parser *Parser, const XPathValue &Value, st
    return xq_value_to_xml_fragment(stored_value.value, OutXml);
 }
 
-static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Input,
+static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *ContextTag, std::string_view Input,
    std::string &Output);
 
 static ERR xq_prepare_tag(parser *Parser, const XTag &Tag, pf::vector<XMLAttrib> &PreparedAttribs,
@@ -1413,7 +1412,7 @@ static ERR xq_prepare_tag(parser *Parser, const XTag &Tag, pf::vector<XMLAttrib>
 // and concatenating the result with literal parts.  Follows the same escaping rules as the XQuery tokeniser so that
 // {{ and }} are preserved as literal { and }.
 
-static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *ContextTag, const std::string &Input,
+static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *ContextTag, std::string_view Input,
    std::string &Output)
 {
    pf::Log log(__FUNCTION__);
@@ -1454,11 +1453,11 @@ static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *Context
          }
 
          if (depth != 0) {
-            log.warning("Unterminated attribute value template: %s", Input.c_str());
+            log.warning("Unterminated attribute value template: %.*s", int(Input.size()), Input.data());
             return ERR::Syntax;
          }
 
-         std::string expr = Input.substr(expr_start, scan - expr_start);
+         auto expr = Input.substr(expr_start, scan - expr_start);
          pos = scan + 1;
 
          std::string evaluated;
