@@ -55,7 +55,7 @@ struct tag_view {
       Source(&Tag), AttribPtr(&PreparedAttribs), ID(Tag.ID), ParentID(Tag.ParentID), LineNo(Tag.LineNo),
       Flags(Tag.Flags), NamespaceID(Tag.NamespaceID), Attribs(PreparedAttribs), Children(Tag.Children) { }
 
-   inline CSTRING name() const { return Attribs[0].Name.c_str(); }
+   inline std::string_view name() const { return std::string_view(Attribs[0].Name); }
    inline bool hasContent() const { return (!Children.empty()) and (Children[0].Attribs[0].Name.empty()); }
    inline bool isContent() const { return Attribs[0].Name.empty(); }
    inline bool isTag() const { return !Attribs[0].Name.empty(); }
@@ -1794,11 +1794,11 @@ void parser::tag_div(const tag_view &Tag)
       if ("align" IS Tag.Attribs[i].Name) {
          auto align = FSO::NIL;
          auto valid = true;
-         if ((iequals(Tag.Attribs[i].Value, "center")) or
-             (iequals(Tag.Attribs[i].Value, "middle"))) {
+         if ((Tag.Attribs[i].Value IS "center") or
+             (Tag.Attribs[i].Value IS "middle")) {
             align = FSO::ALIGN_CENTER;
          }
-         else if (iequals(Tag.Attribs[i].Value, "right")) {
+         else if (Tag.Attribs[i].Value IS "right") {
             align = FSO::ALIGN_RIGHT;
          }
          else if (not iequals(Tag.Attribs[i].Value, "left")) {
@@ -1885,36 +1885,38 @@ void parser::tag_head(const tag_view &Tag)
 
    for (auto &scan : Tag.Children) {
       // Anything allocated here needs to be freed in unload_doc()
-      if (iequals("title", scan.name())) {
+      std::string_view name = scan.name();
+      if ("title" IS name) {
          if (scan.hasContent()) {
             if (Self->Title) FreeResource(Self->Title);
             Self->Title = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
-      else if (iequals("author", scan.name())) {
+      else if ("author" IS name) {
          if (scan.hasContent()) {
             if (Self->Author) FreeResource(Self->Author);
             Self->Author = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
-      else if (iequals("copyright", scan.name())) {
+      else if ("copyright" IS name) {
          if (scan.hasContent()) {
             if (Self->Copyright) FreeResource(Self->Copyright);
             Self->Copyright = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
-      else if (iequals("keywords", scan.name())) {
+      else if ("keywords" IS name) {
          if (scan.hasContent()) {
             if (Self->Keywords) FreeResource(Self->Keywords);
             Self->Keywords = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
-      else if (iequals("description", scan.name())) {
+      else if ("description" IS name) {
          if (scan.hasContent()) {
             if (Self->Description) FreeResource(Self->Description);
             Self->Description = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
+      else pf::Log().warning("Unknown head tag '%.*s'", int(name.size()), name);
    }
 }
 
