@@ -187,7 +187,7 @@ static CSTRING read_unit(CSTRING Input, double &Output, bool &Scaled)
 //********************************************************************************************************************
 // Checks if the file path is safe, i.e. does not refer to an absolute file location.
 
-static int safe_file_path(extDocument *Self, const std::string &Path)
+static int safe_file_path(extDocument *Self, std::string_view Path)
 {
    if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) return true;
 
@@ -855,58 +855,58 @@ static void process_parameters(extDocument *Self, const std::string_view String)
 // Resolves function references.
 // E.g. "script.function(Args...)"; "function(Args...)"; "function()", "function", "script.function"
 
-static ERR extract_script(extDocument *Self, const std::string &Link, objScript **Script, std::string &Function, std::string &Args)
+static ERR extract_script(extDocument *Self, std::string_view Link, objScript **Script, std::string &Function, std::string &Args)
 {
    pf::Log log(__FUNCTION__);
 
    if (Script) {
       if (!(*Script = Self->DefaultScript)) {
          if (!(*Script = Self->ClientScript)) {
-            log.warning("Cannot call function '%s', no default script in document.", Link.c_str());
+            log.warning("Cannot call function '%.*s', no default script in document.", int(Link.size()), Link.data());
             return ERR::Search;
          }
       }
    }
 
-   auto pos = std::string::npos;
+   auto pos = std::string_view::npos;
    auto dot = Link.find('.');
    auto open_bracket = Link.find('(');
 
-   if (dot != std::string::npos) { // A script name is referenced
+   if (dot != std::string_view::npos) { // A script name is referenced
       pos = dot + 1;
       if (Script) {
-         std::string script_name;
-         script_name.assign(Link, 0, dot);
+         auto script_name = Link.substr(0, dot);
+         auto script_name_text = std::string(script_name);
          OBJECTID id;
-         if (FindObject(script_name.c_str(), CLASSID::SCRIPT, FOF::NIL, &id) IS ERR::Okay) {
+         if (FindObject(script_name_text.c_str(), CLASSID::SCRIPT, FOF::NIL, &id) IS ERR::Okay) {
             // Security checks
             *Script = (objScript *)GetObjectPtr(id);
             if ((Script[0]->Owner != Self) and ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL)) {
-               log.warning("Script '%s' does not belong to this document.  Request ignored due to security restrictions.", script_name.c_str());
+               log.warning("Script '%s' does not belong to this document.  Request ignored due to security restrictions.", script_name_text.c_str());
                return ERR::NoPermission;
             }
          }
          else {
-            log.warning("Unable to find '%s'", script_name.c_str());
+            log.warning("Unable to find '%s'", script_name_text.c_str());
             return ERR::Search;
          }
       }
    }
    else pos = 0;
 
-   if ((open_bracket != std::string::npos) and (open_bracket < dot)) {
-      log.warning("Malformed function reference: %s", Link.c_str());
+   if ((dot != std::string_view::npos) and (open_bracket != std::string_view::npos) and (open_bracket < dot)) {
+      log.warning("Malformed function reference: %.*s", int(Link.size()), Link.data());
       return ERR::InvalidData;
    }
 
-   if (open_bracket != std::string::npos) {
-      Function.assign(Link, pos, open_bracket-pos);
-      if (auto end_bracket = Link.find_last_of(')'); end_bracket != std::string::npos) {
-         Args.assign(Link, open_bracket + 1, end_bracket-1);
+   if (open_bracket != std::string_view::npos) {
+      Function.assign(Link.substr(pos, open_bracket - pos));
+      if (auto end_bracket = Link.find_last_of(')'); end_bracket != std::string_view::npos) {
+         Args.assign(Link.substr(open_bracket + 1, end_bracket - open_bracket - 1));
       }
-      else log.warning("Malformed function args: %s", Link.c_str());
+      else log.warning("Malformed function args: %.*s", int(Link.size()), Link.data());
    }
-   else Function.assign(Link, pos);
+   else Function.assign(Link.substr(pos));
 
    return ERR::Okay;
 }
@@ -1004,7 +1004,11 @@ void ui_link::exec(extDocument *Self)
 
             auto lk = path + origin.ref;
             auto end = lk.find_first_of("?#&");
-            if (IdentifyFile(lk.substr(0, end).c_str(), CLASSID::NIL, &class_id, &subclass_id) IS ERR::Okay) {
+            auto identify_path = std::string_view(lk);
+            if (end != std::string::npos) identify_path = identify_path.substr(0, end);
+
+            auto identify_text = std::string(identify_path);
+            if (IdentifyFile(identify_text.c_str(), CLASSID::NIL, &class_id, &subclass_id) IS ERR::Okay) {
                if (class_id IS CLASSID::DOCUMENT) {
                   Self->set(FID_Path, lk);
 
@@ -1026,16 +1030,17 @@ end:
 
 //********************************************************************************************************************
 
-static void show_bookmark(extDocument *Self, const std::string &Bookmark)
+static void show_bookmark(extDocument *Self, std::string_view Bookmark)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("%s", Bookmark.c_str());
+   log.branch("%.*s", int(Bookmark.size()), Bookmark.data());
 
    // Find the indexes for the bookmark name
 
+   auto bookmark_text = std::string(Bookmark);
    int start, end;
-   if (Self->findIndex(Bookmark.c_str(), &start, &end) IS ERR::Okay) {
+   if (Self->findIndex(bookmark_text.c_str(), &start, &end) IS ERR::Okay) {
       // Get the vertical position of the index and scroll to it
 
       auto &esc_index = Self->Stream.lookup<bc_index>(start);
@@ -1051,7 +1056,7 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
 
       acMoveToPoint(Self->Page, 0, Self->YPosition, 0, MTF::X|MTF::Y);
    }
-   else log.warning("Failed to find bookmark '%s'", Bookmark.c_str());
+   else log.warning("Failed to find bookmark '%s'", bookmark_text.c_str());
 }
 
 //********************************************************************************************************************
@@ -1098,10 +1103,10 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
 // Set padding values in clockwise order.  For percentages, the final value is calculated from the diagonal of the
 // parent.
 
-void padding::parse(const std::string &Value)
+void padding::parse(std::string_view Value)
 {
-   std::string value_str(Value);
-   auto str = value_str.c_str();
+   auto value_text = std::string(Value);
+   auto str = value_text.c_str();
    str = read_unit(str, left, left_scl);
 
    if (*str) str = read_unit(str, top, top_scl);

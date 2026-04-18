@@ -195,7 +195,7 @@ struct padding {
    padding(double pLeft, double pTop, double pRight, double pBottom) :
       left(pLeft), top(pTop), right(pRight), bottom(pBottom), configured(true) { }
 
-   void parse(const std::string &Value);
+   void parse(std::string_view Value);
 
    void scale_all() { left_scl = right_scl = top_scl = bottom_scl = true; }
 };

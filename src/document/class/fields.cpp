@@ -162,20 +162,21 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    if ((!Value) or (!*Value)) return ERR::NoData;
 
    Self->Error = ERR::Okay;
+   auto value = std::string_view(Value);
 
    std::string newpath;
-   if ((Value[0] IS '#') or (Value[0] IS '?')) {
+   if ((value[0] IS '#') or (value[0] IS '?')) {
       if (!Self->Path.empty()) {
          unsigned i;
-         if (Value[0] IS '?') for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '?'); i++);
+         if (value[0] IS '?') for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '?'); i++);
          else for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '#'); i++);
 
          newpath.assign(Self->Path, 0, i);
-         newpath.append(Value);
+         newpath.append(value);
       }
-      else newpath.assign(Value);
+      else newpath.assign(value);
    }
-   else newpath = Value;
+   else newpath.assign(value);
 
    log.branch("%s (vs %s)", newpath.c_str(), Self->Path.c_str());
 
