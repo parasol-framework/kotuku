@@ -901,12 +901,13 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       else return ERR::SystemCall;
 
       // Get the X11 file descriptor (for incoming events) and tell the Core to listen to it when the task is sleeping.
-      // The FD is currently marked as a dummy because processes aren't being woken from select() if the X11 FD already
-      // contains input events.  Dummy FD routines are always called manually prior to select().
+      // Using ALWAYS_CALL here causes X11ManagerLoop() to run on every message-loop cycle, even when there are no X11
+      // events pending.  That can keep the UI thread active indefinitely.  A READ subscription is sufficient because
+      // X11ManagerLoop() drains the queued events whenever the X11 connection becomes readable.
 
       glXFD = XConnectionNumber(XDisplay);
       fcntl(glXFD, F_SETFD, 1); // FD does not duplicate across exec()
-      RegisterFD(glXFD, RFD::READ|RFD::ALWAYS_CALL, X11ManagerLoop, nullptr);
+      RegisterFD(glXFD, RFD::READ, X11ManagerLoop, nullptr);
 
       // This function checks for DGA and also maps the video memory for us
 
