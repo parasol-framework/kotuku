@@ -251,6 +251,8 @@ void CloseCore(void)
 
    if (!glCrashStatus) {
       if (glTaskClass) { FreeResource(glTaskClass); glTaskClass = 0; }
+      // Although we haven't crashed, setting this to true enables safer shutdown behaviour in memory deallocations from this point.
+      glCrashStatus = 1;
    }
 
    if (glCodeIndex < CP_FREE_COREBASE) {
@@ -390,6 +392,14 @@ __export void Expunge(int16_t Force)
                   auto mc = (extMetaClass *)mem->second.Address;
                   if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
                      log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name.c_str(), mc->ClassName, mc->OpenCount);
+
+                     for (auto & [ id, mem ] : glPrivateMemory) {
+                        if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (mem.Object)) {
+                           if (mem.Object->classID() IS mc->ClassID) {
+                              log.warning("   Unfreed %s #%d, Owner #%d, RefCount: %d, Queue: %d", mc->ClassName, mem.Object->UID, mem.Object->ownerID(), mem.Object->RefCount.load(), mem.Object->Queue.load());
+                           }
+                        }
+                     }
                   }
                }
             }
@@ -398,23 +408,27 @@ __export void Expunge(int16_t Force)
          }
       }
 
-      // If we are shutting down, force the expunging of any stubborn modules
+      // If we are shutting down, force the expunging of any stubborn modules.  Freeing the modules in order of their
+      // original allocation (i.e. by UID) is a good heuristic for avoiding problems with modules that have circular
+      // dependencies on each other.
 
+      RootModule *sanity_check = nullptr;
+restart_forced_expunge:
       auto mod_master = glModuleList;
-      while (mod_master) {
-         auto next = mod_master->Next;
+      for (auto scan=mod_master; scan; scan=scan->Next) {
+         if (scan->UID < mod_master->UID) mod_master = scan;
+      }
+
+      if ((mod_master) and (sanity_check != mod_master)) {
          if (mod_master->Expunge) {
             pf::Log log(__FUNCTION__);
-            log.branch("Forcing the expunge of stubborn module %s.", mod_master->Name.c_str());
+            log.branch("Forcing the expunge of stubborn module %s, owned by #%d.", mod_master->Name.c_str(), mod_master->ownerID());
             mod_master->Expunge();
             mod_master->NoUnload = true; // Do not actively destroy the module code as a precaution (e.g. X11 Display module doesn't like it)
-            FreeResource(mod_master);
          }
-         else {
-            ccount++;
-            FreeResource(mod_master);
-         }
-         mod_master = next;
+         FreeResource(mod_master);
+         sanity_check = mod_master;
+         goto restart_forced_expunge;
       }
    }
 }
@@ -448,10 +462,11 @@ static void free_private_memory(void)
          if (mem.Address) {
             if (!glCrashStatus) {
                if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
-                  log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", 
-                     mem.MemoryID, mem.Size, uint32_t(mem.Object->classID()), mem.OwnerID);
+                  // Note: Class pointers are all invalid at this stage
+                  log.warning("Unfreed object #%d, Size %d, Container: #%d.",
+                     mem.MemoryID, mem.Size, mem.OwnerID);
                }
-               else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d, Locks: %d, ThreadLock: %d.", 
+               else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d, Locks: %d, ThreadLock: %d.",
                   mem.MemoryID, mem.Address, mem.Size, mem.OwnerID, mem.AccessCount, int(mem.ThreadLockID));
             }
             mem.AccessCount = 0;
