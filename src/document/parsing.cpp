@@ -548,12 +548,10 @@ void parser::process_page(objXML *pXML)
    Self->Diagnostics.clear();
 
    if (not pXML) {
-      Self->Error = ERR::NoData;
-      auto message = std::string("No XML source is available for document '") + Self->Path + "'.";
-      emit_diagnostic_log(doc_diag_severity::ERROR, message);
-      append_diagnostic(doc_diag_severity::ERROR, ERR::NoData, "doc.missing-source", std::move(message));
+      log_error((const XTag *)nullptr, ERR::NoData, "doc.missing-source", "No XML source is available for document '{}'", Self->Path);
       return;
    }
+
    m_xml = pXML;
    m_source_xml = pXML;
    m_state_values.clear();
@@ -637,11 +635,8 @@ void parser::process_page(objXML *pXML)
    }
    else {
       if (not Self->PageName.empty()) {
-         auto msg = std::string("Failed to find page '") + Self->PageName + "' in document '" + Self->Path + "'.";
-         emit_diagnostic_log(doc_diag_severity::ERROR, msg);
-         append_diagnostic(doc_diag_severity::ERROR, ERR::Search, "doc.page-not-found", msg);
-         error_dialog("Load Failed", msg);
-         Self->Error = ERR::Search;
+         log_error((const XTag *)nullptr, ERR::Search, "doc.page-not-found", "Failed to find page '{}' in document '{}'", Self->PageName, Self->Path);
+         error_dialog("Load Failed", std::string("Failed to find page '") + Self->PageName + "' in document '" + Self->Path + "'.");
       }
       else {
          // If no name was specified and there is no page to process, revert to performing a standard insert
