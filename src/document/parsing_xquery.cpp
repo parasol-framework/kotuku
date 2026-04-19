@@ -825,7 +825,7 @@ static ERR xq_execute_query(parser *Parser, objXML *XMLContext, const XTag *Cont
    XQEval Mode, std::string *OutString, bool *OutBoolean, XPathValue *OutValue, bool *OutHasValue)
 {
    pf::Log log(__FUNCTION__);
-   auto Self = Parser->Self;
+
    objXQuery *query = nullptr;
    XPathValue raw_value(XPVT::String);
    bool have_raw_value = false;

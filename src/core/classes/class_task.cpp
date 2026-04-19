@@ -614,17 +614,17 @@ TimeOut:     Can be returned if the `WAIT` flag is used.  Indicates that the pro
 static ERR TASK_Activate(extTask *Self)
 {
    pf::Log log;
-   int i, j;
+   int i;
    ERR error;
-   #ifdef _WIN32
-      std::string launchdir;
-      bool hide_output;
-      int winerror;
-   #endif
+#ifdef _WIN32
+   std::string launchdir;
+   bool hide_output;
+   int winerror;
+#endif
 #ifdef __unix__
-      int pid;
-      int8_t privileged, shell;
-      int8_t requested_shell;
+   int pid;
+   int8_t privileged, shell;
+   int8_t requested_shell;
 #endif
 
    Self->ReturnCodeSet = false;
@@ -727,7 +727,7 @@ static ERR TASK_Activate(extTask *Self)
             continue;
          }
          else if (final_buffer[i] IS '\'') {
-            for (j=i+1; final_buffer[j]; j++) {
+            for (auto j=i+1; final_buffer[j]; j++) {
                if (final_buffer[j] IS '\'') {
                   if (final_buffer[j+1] <= 0x20) {
                      final_buffer[i] = '"';

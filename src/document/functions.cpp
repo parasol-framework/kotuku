@@ -9,17 +9,6 @@ static const char glDefaultStyles[] =
 <template name=\"h5\"><p leading=\"1.0\"  font-size=\"1.2em\"><inject/></p></>\n\
 <template name=\"h6\"><p leading=\"1.0\"  font-size=\"1em\"><inject/></p></>\n";
 
-static const Field * find_field(OBJECTPTR Object, std::string_view Name, OBJECTPTR *Source) // Read-only, thread safe function.
-{
-   // Skip any special characters that are leading the field name (e.g. $, @).  Some symbols like / are used for XPath
-   // lookups, so we only want to skip reserved symbols or we risk confusion between real fields and variable fields.
-
-   unsigned i;
-   for (i=0; i < Name.size() and ((Name[i] IS '$') or (Name[i] IS '@')); i++);
-   if (i) Name.remove_prefix(i);
-   return FindField(Object, strihash(Name), Source);
-}
-
 //********************************************************************************************************************
 
 constexpr static double fast_hypot(double Width, double Height)
@@ -86,54 +75,6 @@ static void apply_border_to_path(CB Border, std::vector<PathCommand> &Seq, Float
          Seq.push_back({ .Type = PE::ClosePath });
       }
    }
-}
-
-/*********************************************************************************************************************
-
-This function can be used for performing simple calculations on numeric values and strings.  It can return a result in
-either a numeric format or in a string buffer if the calculation involves non-numeric characters.  Here are some
-examples of valid strings:
-
-<pre>
-100/50+(12*14)
-0.05 * 100 + '%'
-</pre>
-
-Currently acceptable operators are plus, minus, divide and multiply.  String references must be enclosed in single
-quotes or will be ignored.  Brackets may be used to organise the order of operations during calculation.
-
-Special operators include:
-
-<types type="Symbol">
-<type name="p">This character immediately followed with an integer allows you to change the floating-point precision of output values.</>
-<type name="f">The same as the 'p' operator except the precision is always guaranteed to be fixed at that value through the use of trailing zeros (so a fixed precision of two used to print the number '7' will give a result of '7.00'.</>
-</>
-
-*********************************************************************************************************************/
-
-static std::string write_calc(double Value, int16_t Precision)
-{
-   if (!Precision) return std::to_string(int(Value));
-
-   int64_t wholepart = int(Value);
-   auto out = std::to_string(wholepart);
-
-   double fraction = std::abs(Value) - std::abs(wholepart);
-   if ((fraction > 0) or (Precision < 0)) {
-      out += '.';
-      fraction *= 10;
-      auto px = std::abs(Precision);
-      while ((fraction > 0.00001) and (px > 0)) {
-         auto ival = int(fraction);
-         out += char(ival) + '0';
-         fraction = (fraction - ival) * 10;
-         px--;
-      }
-
-      while (px > 0) { out += '0'; px--; }
-   }
-
-   return out;
 }
 
 //********************************************************************************************************************
@@ -961,11 +902,10 @@ void ui_link::exec(extDocument *Self)
          params.emplace("href", origin.ref);
       }
 
-      for (const auto& [key, value] : origin.args) {
-         if ((key[0] IS '@') or (key[0] IS '$')) {
-            params.emplace(key.c_str()+1, value);
-         }
-         else params.emplace(key, value);
+      for (const auto & [key, value] : origin.args) {
+         auto ksv = std::string_view(key);
+         if (ksv.starts_with('@') or ksv.starts_with('$')) ksv.remove_prefix(1);
+         params.emplace(ksv, value);
       }
 
       ERR result = report_event(Self, DEF::LINK_ACTIVATED, &origin, &params);

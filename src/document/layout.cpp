@@ -799,7 +799,7 @@ void layout::lay_font()
 {
    auto &style = m_stream->lookup<bc_font>(idx);
 
-   if (m_font = style.layout_font(*this)) {
+   if ((m_font = style.layout_font(*this))) {
       apply_style(style);
 
       // Setting m_word_index ensures that the font code appears in the current segment.
@@ -831,7 +831,7 @@ void layout::lay_font_end()
 // words preserve existing wrap points.  The InitKern parameter supports cross-text word continuation where the
 // previous character affects the first glyph's kerning.  LastChar receives the last unicode codepoint in the token for
 // subsequent kerning.
-// 
+//
 // NOTE: Bear in mind that the first word in a TEXT string could be a direct continuation of a previous TEXT word.
 // This can occur if the font colour is changed mid-word for example.
 
