@@ -837,7 +837,9 @@ static ERR xq_execute_query(parser *Parser, objXML *XMLContext, const XTag *Cont
    if (Expression.empty()) return ERR::Okay;
 
    if (auto err = xq_prepare_query(Parser, Expression, Mode, query); err != ERR::Okay) {
-      return log.warning(err);
+      Parser->log_error(ContextTag, err, "doc.xquery-prepare-failed",
+         "Failed to prepare XQuery expression \"{}\".", Expression);
+      return err;
    }
 
    objXML *effective_xml = XMLContext;
@@ -1529,7 +1531,10 @@ void parser::tag_data(const tag_view &Tag)
    pf::Log log(__FUNCTION__);
 
    auto select = find_attrib(Tag, "select");
-   if (not select) return;
+   if (not select) {
+      log_warning(&Tag, "doc.data-missing-select", "<data> requires a select attribute.");
+      return;
+   }
 
    XPathValue value(XPVT::String);
    std::string result;
@@ -1661,7 +1666,15 @@ void parser::tag_parse(const tag_view &Tag)
 
             Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
          }
+         else log_error(&Tag, ERR::Syntax, "doc.parse-value-xml-parse-failed", attrib_name("value"),
+            "<parse value=\"{}\"> could not be parsed as XML/RIPL.", Tag.Attribs[1].Value);
       }
+      else log_hint(&Tag, "doc.parse-noop",
+         "<parse/> requires either a select or value attribute.");
+   }
+   else {
+      log_hint(&Tag, "doc.parse-noop",
+         "<parse/> requires either a select or value attribute.");
    }
 }
 

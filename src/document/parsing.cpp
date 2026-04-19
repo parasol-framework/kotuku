@@ -545,12 +545,17 @@ void parser::process_page(objXML *pXML)
 
    log.branch("Page: %s", Self->PageName.c_str());
 
-   if (not pXML) { Self->Error = ERR::NoData; return; }
+   Self->Diagnostics.clear();
+
+   if (not pXML) {
+      log_error((const XTag *)nullptr, ERR::NoData, "doc.missing-source", "No XML source is available for document '{}'", Self->Path);
+      return;
+   }
+
    m_xml = pXML;
    m_source_xml = pXML;
    m_state_values.clear();
    m_xq_context_stack.clear();
-   Self->Diagnostics.clear();
    Self->RuntimeUID = std::to_string(AllocateID(IDTYPE::GLOBAL));
 
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
@@ -630,9 +635,8 @@ void parser::process_page(objXML *pXML)
    }
    else {
       if (not Self->PageName.empty()) {
-         auto msg = std::string("Failed to find page '") + Self->PageName + "' in document '" + Self->Path + "'.";
-         error_dialog("Load Failed", msg);
-         Self->Error = ERR::Search;
+         log_error((const XTag *)nullptr, ERR::Search, "doc.page-not-found", "Failed to find page '{}' in document '{}'", Self->PageName, Self->Path);
+         error_dialog("Load Failed", std::string("Failed to find page '") + Self->PageName + "' in document '" + Self->Path + "'.");
       }
       else {
          // If no name was specified and there is no page to process, revert to performing a standard insert
@@ -1479,6 +1483,8 @@ void parser::tag_call(const tag_view &Tag)
 
          Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
       }
+      else log_error(&Tag, ERR::Syntax, "doc.call-result-xml-parse-failed",
+         "<call/> returned content that could not be parsed as XML/RIPL.");
       FreeResource(results);
    }
 }
@@ -2094,9 +2100,11 @@ void parser::tag_head(const tag_view &Tag)
 void parser::tag_include(const tag_view &Tag)
 {
    pf::Log log(__FUNCTION__);
+   bool found_src = false;
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       if ("src" IS Tag.Attribs[i].Name) {
+         found_src = true;
          if (auto xmlinc = objXML::create::local(fl::Path(Tag.Attribs[i].Value), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
             auto old_xml = change_xml(xmlinc);
             parse_tags(xmlinc->Tags);
@@ -2112,8 +2120,10 @@ void parser::tag_include(const tag_view &Tag)
       }
    }
 
-   log_warning(&Tag, "doc.include-missing-src",
-      "<include> directive is missing the required 'src' attribute.");
+   if (not found_src) {
+      log_warning(&Tag, "doc.include-missing-src",
+         "<include> directive is missing the required 'src' attribute.");
+   }
 }
 
 //********************************************************************************************************************
@@ -2145,17 +2155,19 @@ void parser::tag_image(const tag_view &Tag)
             {
                auto align = ALIGN::NIL;
                auto valid = true;
-            switch (strhash(value)) {
-               case HASH_left:   align = ALIGN::LEFT; break;
-               case HASH_right:  align = ALIGN::RIGHT; break;
-               case HASH_center: align = ALIGN::HORIZONTAL; break;
-               case HASH_middle: align = ALIGN::HORIZONTAL; break; // synonym
-               default:
-                  log_warning(&Tag, "doc.invalid-alignment", attrib_name(Tag.Attribs[i].Name),
-                     "Invalid alignment value '{}'.", value);
-                  valid = false;
-                  break;
-            }
+
+               switch (strhash(value)) {
+                  case HASH_left:   align = ALIGN::LEFT; break;
+                  case HASH_right:  align = ALIGN::RIGHT; break;
+                  case HASH_center: align = ALIGN::HORIZONTAL; break;
+                  case HASH_middle: align = ALIGN::HORIZONTAL; break; // synonym
+                  default:
+                     log_warning(&Tag, "doc.invalid-alignment", attrib_name(Tag.Attribs[i].Name),
+                        "Invalid alignment value '{}'.", value);
+                     valid = false;
+                     break;
+               }
+
                if (valid) {
                   img.align &= ~(ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL);
                   img.align |= align;
@@ -2168,17 +2180,19 @@ void parser::tag_image(const tag_view &Tag)
             {
                auto align = ALIGN::NIL;
                auto valid = true;
-            switch(strhash(value)) {
-               case HASH_top:    align = ALIGN::TOP; break;
-               case HASH_center: align = ALIGN::VERTICAL; break;
-               case HASH_middle: align = ALIGN::VERTICAL; break; // synonym
-               case HASH_bottom: align = ALIGN::BOTTOM; break;
-               default:
-                  log_warning(&Tag, "doc.invalid-vertical-alignment", attrib_name(Tag.Attribs[i].Name),
-                     "Invalid valign value '{}'.", value);
-                  valid = false;
-                  break;
-            }
+
+               switch(strhash(value)) {
+                  case HASH_top:    align = ALIGN::TOP; break;
+                  case HASH_center: align = ALIGN::VERTICAL; break;
+                  case HASH_middle: align = ALIGN::VERTICAL; break; // synonym
+                  case HASH_bottom: align = ALIGN::BOTTOM; break;
+                  default:
+                     log_warning(&Tag, "doc.invalid-vertical-alignment", attrib_name(Tag.Attribs[i].Name),
+                        "Invalid valign value '{}'.", value);
+                     valid = false;
+                     break;
+               }
+
                if (valid) {
                   img.align &= ~(ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM);
                   img.align |= align;
@@ -2389,7 +2403,8 @@ void parser::tag_list(const tag_view &Tag)
             list.item_indent.clear();
          }
       }
-      else log.msg("Unknown list attribute '%s'", name.c_str());
+      else log_warning(&Tag, "doc.unsupported-attribute", attrib_name(name),
+         "<list> unsupported attribute '{}'.", name);
    }
 
    auto &stream_list = m_stream->emplace(m_index, list);
@@ -2654,73 +2669,85 @@ void parser::tag_script(const tag_view &Tag)
    }
 
    if ("tiri" IS type) {
-      error = NewLocalObject(CLASSID::TIRI, &script);
+      if (error = NewLocalObject(CLASSID::TIRI, &script); error != ERR::Okay) {
+         log_error(&Tag, error, "doc.script-create-failed", "Failed to create a script object for <script type=\"{}\">.", type);
+         return;
+      }
    }
    else {
-      error = ERR::NoSupport;
-      log_warning(&Tag, "doc.unsupported-script-type", "Unsupported script type '{}'.", type);
+      log_error(&Tag, ERR::NoSupport, "doc.unsupported-script-type", "Unsupported script type '{}'.", type);
+      return;
    }
 
-   if (error IS ERR::Okay) {
-      if (not name.empty()) SetName(script, name.c_str());
+   if (not name.empty()) SetName(script, name.c_str());
 
-      if (not src.empty()) script->setPath(src);
-      else {
-         std::string content = xml::GetContent(*Tag.Source);
-         if (not content.empty()) script->setStatement(content);
+   if (not src.empty()) script->setPath(src);
+   else {
+      std::string content = xml::GetContent(*Tag.Source);
+      if (not content.empty()) script->setStatement(content);
+   }
+
+   if (not cachefile.empty()) script->setCacheFile(cachefile);
+
+   // Object references are to be limited in scope to the Document object
+
+   //script->setObjectScope(Self->Head.UID);
+
+   // Pass custom arguments in the script tag
+
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      auto tagname = std::string_view(Tag.Attribs[i].Name);
+      if (tagname.front() IS '$') tagname.remove_prefix(1);
+      if (tagname.front() IS '@') {
+         tagname.remove_prefix(1);
+         acSetKey(script, tagname.data(), Tag.Attribs[i].Value.c_str());
       }
+   }
 
-      if (not cachefile.empty()) script->setCacheFile(cachefile);
+   if (auto init_error = InitObject(script); init_error != ERR::Okay) {
+      log_error(&Tag, init_error, "doc.script-init-failed", "Failed to initialise script '{}'.", name.empty() ? type : name);
+      FreeResource(script);
+      return;
+   }
 
-      // Object references are to be limited in scope to the Document object
+   // Pass document arguments to the script
 
-      //script->setObjectScope(Self->Head.UID);
+   KEYVALUE *vs;
+   if ((script->get(FID_Variables, vs) IS ERR::Okay) and (vs) and (vs->size() > 0)) {
+      Self->Vars   = *vs;
+      Self->Params = *vs;
+   }
 
-      // Pass custom arguments in the script tag
+   if (auto err = acActivate(script); err != ERR::Okay) {
+      log_error(&Tag, err, "doc.script-activate-failed", "Failed to activate script '{}'.", name.empty() ? type : name);
+      FreeResource(script);
+      return;
+   }
 
-      for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-         auto tagname = Tag.Attribs[i].Name.c_str();
-         if (*tagname IS '$') tagname++;
-         if (*tagname IS '@') acSetKey(script, tagname+1, Tag.Attribs[i].Value.c_str());
+   Self->Resources.emplace_back(script->UID, persistent ? RTD::PERSISTENT_SCRIPT : RTD::OBJECT_UNLOAD_DELAY);
+
+   if ((not Self->DefaultScript) or (defaultscript)) {
+      log.msg("Script #%d is the default script for this document.", script->UID);
+      Self->DefaultScript = script;
+   }
+
+   // Any results returned from the script are processed as XML
+
+   CSTRING *results;
+   int size;
+   if ((script->get(FID_Results, results, size) IS ERR::Okay) and (size > 0)) {
+      auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
+      if (xmlinc) {
+         auto old_xml = change_xml(xmlinc);
+         parse_tags(xmlinc->Tags);
+         change_xml(old_xml);
+
+         // Add the created XML object to the document rather than destroying it
+
+         Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
       }
-
-      if (InitObject(script) IS ERR::Okay) {
-         // Pass document arguments to the script
-
-         KEYVALUE *vs;
-         if ((script->get(FID_Variables, vs) IS ERR::Okay) and (vs) and (vs->size() > 0)) {
-            Self->Vars   = *vs;
-            Self->Params = *vs;
-         }
-
-         if (acActivate(script) IS ERR::Okay) { // Persistent scripts survive refreshes.
-            Self->Resources.emplace_back(script->UID, persistent ? RTD::PERSISTENT_SCRIPT : RTD::OBJECT_UNLOAD_DELAY);
-
-            if ((not Self->DefaultScript) or (defaultscript)) {
-               log.msg("Script #%d is the default script for this document.", script->UID);
-               Self->DefaultScript = script;
-            }
-
-            // Any results returned from the script are processed as XML
-
-            CSTRING *results;
-            int size;
-            if ((script->get(FID_Results, results, size) IS ERR::Okay) and (size > 0)) {
-               auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
-               if (xmlinc) {
-                  auto old_xml = change_xml(xmlinc);
-                  parse_tags(xmlinc->Tags);
-                  change_xml(old_xml);
-
-                  // Add the created XML object to the document rather than destroying it
-
-                  Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
-               }
-            }
-         }
-         else FreeResource(script);
-      }
-      else FreeResource(script);
+      else log_error(&Tag, ERR::Syntax, "doc.script-result-xml-parse-failed",
+         "<script/> returned content that could not be parsed as XML/RIPL.");
    }
 }
 
@@ -3301,4 +3328,6 @@ void parser::tag_trigger(const tag_view &Tag)
       else log_warning(&Tag, "doc.trigger-script-missing", attrib_name("function"),
          "The script for '{}' is not available - check if it is declared prior to the trigger tag.", function_name);
    }
+   else log_warning(&Tag, "doc.trigger-missing-attrib",
+      "<trigger> requires both event and function attributes.");
 }
