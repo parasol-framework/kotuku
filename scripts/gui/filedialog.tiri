@@ -32,10 +32,12 @@ gui.dialog.file = function(Options)
 
    function processFeedback()
       list = self.fileview.view.selectedItems()
-      if not list?? and self.filebox then
+
+      if (#list <= 1) and self.filebox then
+         -- The filebox has priority over single list selections
          local file = self.filebox.text.string
          if file?? then
-            list:push({ filename = file })
+            list = array<table> { { filename = file } }
          end
       end
 
