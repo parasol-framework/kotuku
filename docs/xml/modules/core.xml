@@ -946,7 +946,7 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
     </input>
     <description>
 <p>The LoadFile() function loads complete files into memory and caches the content for use by other areas of the system or application.</p>
-<p>This function will first determine if the requested file has already been cached.  If this is true then the CacheFile structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated as a cache miss and the file will be loaded into a new buffer.</p>
+<p>If the requested file has already been cached, the CacheFile structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated as a cache miss and the file will be loaded into a new buffer.</p>
 <p>File content will be loaded into a readable memory buffer that is referenced by the Data field of the CacheFile structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files. Other pieces of information about the file can be derived from the CacheFile meta data.</p>
 <p>Calls to LoadFile() must be matched with a call to <function>UnloadFile</function> to decrement the cache counter. When the counter returns to zero, the file can be unloaded from the cache during the next resource collection phase.</p>
     </description>
