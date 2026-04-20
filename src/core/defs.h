@@ -27,10 +27,13 @@ using namespace std::chrono_literals;
 #endif
 
 #ifdef __unix__
+ #include <fcntl.h>
  #include <sys/un.h>
  #include <sys/socket.h>
  #include <pthread.h>
  #include <semaphore.h>
+#elif defined(_WIN32)
+ #include <fcntl.h>
 #endif
 
 #include "microsoft/windefs.h"

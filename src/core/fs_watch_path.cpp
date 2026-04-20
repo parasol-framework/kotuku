@@ -113,7 +113,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
    recursion = true;
 
    AdjustLogLevel(2);
-   log.branch("File monitoring event received (FD %d, File #%d).", FD, File->UID);
+   log.branch("File monitoring event received (FD %d, File #%d).", FD, File ? File->UID : 0);
 
    uint8_t buffer[8192];
    while (true) {
