@@ -771,7 +771,6 @@ ERR get_file_info(std::string_view Path, FileInfo *Info, int InfoSize)
 {
    pf::Log log(__FUNCTION__);
    int i;
-   ERR error;
 
    if (Path.empty() or (!Info) or (InfoSize <= 0)) return log.warning(ERR::Args);
 

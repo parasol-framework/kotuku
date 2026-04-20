@@ -981,7 +981,7 @@ gui.fileview = function(Options)
          msg(f'Monitor path "{self.path}"')
          try
             self.watch = obj.new('file', { path = self.path })
-            if self.watch.mtWatch(pathWatch, 0, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED) != ERR_Okay then
+            if self.watch.mtWatch(pathWatch, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED) != ERR_Okay then
                self.watch = nil
                local err
                err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
@@ -1737,7 +1737,7 @@ gui.fileview = function(Options)
    if not self.watch and self.path?? and self.path != ':' then
       try
          self.watch = obj.new('file', { path = self.path })
-         self.watch.mtWatch(pathWatch, 0, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED)
+         self.watch.mtWatch(pathWatch, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED)
       except ex -- Some systems don't support path watching
          self.watch = nil
          err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
