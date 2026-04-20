@@ -136,30 +136,20 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 
          if (!glInotifyLookup.contains(event->wd)) continue;
 
-         OBJECTPTR object;
-         if (AccessObject(glInotifyLookup[event->wd], 50, &object) != ERR::Okay) {
-            glInotifyLookup.erase(event->wd);
-            continue;
-         }
+         ScopedObjectLock<extFile> lock(glInotifyLookup[event->wd], 50);
+         if (not lock.granted()) continue;
 
-         auto file = (extFile *)object;
+         auto file = lock.obj;
          if ((!file->prvWatch) or (file->prvWatch->Handle != event->wd)) {
-            ReleaseObject(object);
             glInotifyLookup.erase(event->wd);
             continue;
          }
 
          if ((file->prvWatch->Flags & MFF::FOLDER) != MFF::NIL) {
-            if (!(event->mask & IN_ISDIR)) {
-               ReleaseObject(object);
-               continue;
-            }
+            if (!(event->mask & IN_ISDIR)) continue;
          }
          else if ((file->prvWatch->Flags & MFF::FILE) != MFF::NIL) {
-            if (event->mask & IN_ISDIR) {
-               ReleaseObject(object);
-               continue;
-            }
+            if (event->mask & IN_ISDIR) continue;
          }
 
          const char *path = nullptr;
@@ -184,15 +174,14 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
          ERR error = ERR::Okay;
          if (flags != MFF::NIL) {
             if (file->prvWatch->Routine.isC()) {
-               auto routine = (ERR (*)(extFile *, std::string_view, int64_t, MFF, APTR))file->prvWatch->Routine.Routine;
+               auto routine = (ERR (*)(extFile *, std::string_view, MFF, APTR))file->prvWatch->Routine.Routine;
                pf::SwitchContext context(file->prvWatch->Routine.Context);
-               error = routine(file, path, file->prvWatch->Custom, flags, file->prvWatch->Routine.Meta);
+               error = routine(file, path, flags, file->prvWatch->Routine.Meta);
             }
             else if (file->prvWatch->Routine.isScript()) {
                if (sc::Call(file->prvWatch->Routine, std::to_array<ScriptArg>({
                      { "File",   file, FD_OBJECTPTR },
                      { "Path",   path },
-                     { "Custom", file->prvWatch->Custom },
                      { "Flags",  int(flags) }
                   }), error) != ERR::Okay) error = ERR::Function;
             }
@@ -200,7 +189,6 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
          }
 
          bool ignored = (event->mask & IN_IGNORED) != 0;
-         ReleaseObject(object);
 
          if (ignored) glInotifyLookup.erase(event->wd);
          if (error IS ERR::Terminate) Action(fl::Watch::id, file, nullptr);
@@ -253,14 +241,13 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 
          if (File->prvWatch->Routine.isC()) {
             pf::SwitchContext context(File->prvWatch->Routine.Context);
-            auto routine = (ERR (*)(extFile *, std::string_view, int64_t, MFF, APTR))File->prvWatch->Routine.Routine;
-            error = routine(File, path, File->prvWatch->Custom, MFF(status), File->prvWatch->Routine.Meta);
+            auto routine = (ERR (*)(extFile *, std::string_view, MFF, APTR))File->prvWatch->Routine.Routine;
+            error = routine(File, path, MFF(status), File->prvWatch->Routine.Meta);
          }
          else if (File->prvWatch->Routine.isScript()) {
             if (sc::Call(File->prvWatch->Routine, std::to_array<ScriptArg>({
                { "File",   File, FD_OBJECTPTR },
                { "Path",   path.c_str() },
-               { "Custom", File->prvWatch->Custom },
                { "Flags",  int(status) }
             }), error) != ERR::Okay) error = ERR::Function;
          }
@@ -279,9 +266,9 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
    }
    else {
       if (File->prvWatch->Routine.isC()) {
-         auto routine = (ERR (*)(extFile *, CSTRING, int64_t, int, APTR))File->prvWatch->Routine.Routine;
+         auto routine = (ERR (*)(extFile *, CSTRING, MFF, APTR))File->prvWatch->Routine.Routine;
          pf::SwitchContext context(File->prvWatch->Routine.Context);
-         error = routine(File, File->Path.c_str(), File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
+         error = routine(File, File->Path.c_str(), MFF::NIL, File->prvWatch->Routine.Meta);
 
          if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
       }
