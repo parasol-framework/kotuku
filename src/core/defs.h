@@ -1003,6 +1003,7 @@ struct FDRecord {
 
 extern std::list<FDRecord> glFDTable;
 extern int glInotify;
+extern std::unordered_map<int, OBJECTID> glInotifyLookup;
 extern int8_t glFDProtected;
 extern std::vector<FDRecord> glRegisterFD;
 

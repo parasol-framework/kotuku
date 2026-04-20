@@ -1482,8 +1482,7 @@ static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
 #ifdef __linux__ // Initialise inotify if not done already.
    if (glInotify IS -1) {
       ERR error;
-      if ((glInotify = inotify_init()) != -1) {
-         fcntl(glInotify, F_SETFL, fcntl(glInotify, F_GETFL)|O_NONBLOCK);
+      if ((glInotify = inotify_init1(IN_NONBLOCK|IN_CLOEXEC)) != -1) {
          error = RegisterFD(glInotify, RFD::READ, (void (*)(HOSTHANDLE, APTR))path_monitor, nullptr);
       }
       else error = log.warning(ERR::SystemCall);
