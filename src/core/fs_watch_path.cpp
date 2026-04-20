@@ -265,14 +265,12 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
          }
       }
    }
-   else {
-      if (File->prvWatch->Routine.isC()) {
-         auto routine = (ERR (*)(extFile *, CSTRING, MFF, APTR))File->prvWatch->Routine.Routine;
-         pf::SwitchContext context(File->prvWatch->Routine.Context);
-         error = routine(File, File->Path.c_str(), MFF::NIL, File->prvWatch->Routine.Meta);
+   else if (File->prvWatch->Routine.isC()) {
+      auto routine = (ERR (*)(extFile *, CSTRING, MFF, APTR))File->prvWatch->Routine.Routine;
+      pf::SwitchContext context(File->prvWatch->Routine.Context);
+      error = routine(File, File->Path.c_str(), MFF::NIL, File->prvWatch->Routine.Meta);
 
-         if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
-      }
+      if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
    }
 
    if (winValidateHandle(Handle)) {
