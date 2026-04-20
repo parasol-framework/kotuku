@@ -321,33 +321,33 @@ flute_test (${MOD}_tests &quot;${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri&quot;
 <p>When the Core API loads a module for the first time, it needs an accessible way to initialise the module. In C++ this is achieved with the <code>KOTUKU_MOD()</code> macro, which creates a publicly accessible table that the Core can interact with. The parameters that can be passed to the macro are:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Parameter</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Init</td>
 <td style="text-align: left;">The initialisation routine, called when the module is loaded for the first time. Declared as <code>static ERR Init(OBJECTPTR, struct CoreBase *)</code></td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Close</td>
 <td style="text-align: left;">The close routine (optional). Called on each occasion that a client closes the module. Declared as <code>static void Close(OBJECTPTR)</code></td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Open</td>
 <td style="text-align: left;">The open routine (optional). Called on each occasion that a client opens the module. Declared as <code>static ERR Open(void)</code></td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Expunge</td>
 <td style="text-align: left;">The expunge routine. Global resources allocated by the module must be deallocated during the expunge. Declared as <code>static ERR Expunge(void)</code></td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">IDL</td>
 <td style="text-align: left;">Reference to a compiled IDL, as generated from the module&#39;s <code>.tdl</code> file</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Structures</td>
 <td style="text-align: left;">A list of <code>STRUCTS</code>, which declares public <code>struct</code> types that are available to clients of the module.<br />Example: <code>static STRUCTS glStructures = { { &quot;XMLTag&quot;, sizeof(XMLTag) } };</code></td>
 </tr>
@@ -543,77 +543,77 @@ class(&quot;XML&quot;, { src=&quot;xml.cpp&quot;, output=&quot;xml_def.c&quot; }
 <p>A field must always be associated with a type so that its size can be determined, and ensures that the Core can read and write the value correctly. Primitive types are defined using the <code>FDF</code> bit flags as seen in the following table:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">FDF Flag</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">BYTE</td>
 <td style="text-align: left;">Field is an 8-bit integer.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">WORD</td>
 <td style="text-align: left;">Field is a 16-bit integer.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">Field is a 32-bit integer.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">DOUBLE</td>
 <td style="text-align: left;">Field is a 64-bit float.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">INT64</td>
 <td style="text-align: left;">Field is a 64-bit integer.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">POINTER</td>
 <td style="text-align: left;">Field is an address pointer.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">OBJECT</td>
 <td style="text-align: left;">Field points to an object.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">OBJECTID</td>
 <td style="text-align: left;">Field refers to an object UID.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">LOCAL</td>
 <td style="text-align: left;">Field points to a local object.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">STRING</td>
 <td style="text-align: left;">Field points to a string.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">ERROR</td>
 <td style="text-align: left;">Field is an <code>ERR</code> code.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">RGB</td>
 <td style="text-align: left;">Field is a four-byte array representing R,G,B,A values.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">FUNCTION</td>
 <td style="text-align: left;">Field is an embedded <code>FUNCTION</code> value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">FUNCTIONPTR</td>
 <td style="text-align: left;">Field points to a <code>FUNCTION</code> value.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">STRUCT</td>
 <td style="text-align: left;">The field refers to a C <code>struct</code> as declared in the module&#39;s TDL, and the type arg must refer to the name of that struct. Use in conjunction with <code>POINTER</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">ARRAY</td>
 <td style="text-align: left;">Field is a pointer to an array (the base type being declared by other <code>FDF</code> flags).</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">UNIT</td>
 <td style="text-align: left;">The field type is a display unit, supported by the <code>Unit</code> type. Values are fixed by default, but can be described as scaled with the <code>FD_SCALED</code> type option.</td>
 </tr>
@@ -623,41 +623,41 @@ class(&quot;XML&quot;, { src=&quot;xml.cpp&quot;, output=&quot;xml_def.c&quot; }
 <p>Primitive field types can be augmented with the following additional flags, many of which will affect run-time behaviour. The <code>FLAGS</code> and <code>LOOKUP</code> options allow Tiri programs to use string values instead of plain constants for instance.</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">FDF Flag</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">CPP</td>
 <td style="text-align: left;">The field is a C++ variant of the declared type. <code>STRING</code> becomes <code>std::string</code>; <code>ARRAY</code> becomes <code>pf::vector&lt;&gt;</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">RESOURCE</td>
 <td style="text-align: left;">When applied in conjunction with the <code>STRUCT</code> flag, the field value will be treated as a trackable system resource that can be passed to module functions.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">SCALED</td>
 <td style="text-align: left;">The field supports scaled values, typically represented as a multiplier ranging from 0 to 1.0. For use with the <code>UNIT</code> indicator only.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">ALLOC</td>
 <td style="text-align: left;">Field is allocated on demand, and terminated with <code>FreeResource()</code>. Must be used in conjunction with a <em>get</em> function.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">FLAGS</td>
 <td style="text-align: left;">The field represents bit-flags. The type arg must refer to an array of <code>FieldDef</code> structs that define the flags.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">LOOKUP</td>
 <td style="text-align: left;">The field represents an integer value that corresponds to a name in a lookup table. The type arg must refer to an array of <code>FieldDef</code> structs that define the available lookup names.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">SYNONYM</td>
 <td style="text-align: left;">Declares the field as a synonym (an alternative name for another field). Synonyms are accessible to the client but will not appear in documentation in order to limit repetition. Can be used to maintain backwards compatibility when a field name is changed.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">SYSTEM</td>
 <td style="text-align: left;">The field exists for system use only, and will not be documented for client use. If possible, clients should be prevented from accessing the field.</td>
 </tr>
@@ -669,29 +669,29 @@ class(&quot;XML&quot;, { src=&quot;xml.cpp&quot;, output=&quot;xml_def.c&quot; }
 <p>The available permission flags are as follows:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">FDF Flag</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">READ/R</td>
 <td style="text-align: left;">Field is readable.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">WRITE/W</td>
 <td style="text-align: left;">Field is writeable.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">INIT/I</td>
 <td style="text-align: left;">Field is writeable, but only prior to initialisation.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">RW</td>
 <td style="text-align: left;">Synonym for `READ</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">RI</td>
 <td style="text-align: left;">Synonym for `READ</td>
 </tr>

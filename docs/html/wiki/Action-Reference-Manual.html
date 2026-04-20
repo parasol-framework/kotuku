@@ -277,21 +277,21 @@
 <p><code>Activate</code> causes an object to perform its &quot;native activity&quot;. Although ambiguous, the activity should be relevant to the class in question. Here are a few examples of what some existing classes do when their objects are activated:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Class</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Sound</td>
 <td style="text-align: left;">Plays audio data.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Script</td>
 <td style="text-align: left;">Runs a scripted program.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Picture</td>
 <td style="text-align: left;">Loads a source image.</td>
 </tr>
@@ -307,21 +307,21 @@
 <p>This action will clear an object of all its data. Typical use cases are the clearing of graphics and data records. Here are some examples:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Class</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">File</td>
 <td style="text-align: left;">Clears file data by reducing the file length down to 0.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Text</td>
 <td style="text-align: left;">Deletes all lines of text.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Bitmap</td>
 <td style="text-align: left;">Clears the bitmap of graphics data.</td>
 </tr>
@@ -332,14 +332,14 @@
 <p><code>ERR acClipboard(Object, OBJECTID Clipboard, CLIPMODE Mode)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Mode</td>
 <td style="text-align: left;">CLIPMODE</td>
 <td style="text-align: left;">The mode that will be used to shift data between the target object and clipboard system.</td>
@@ -350,21 +350,21 @@
 <p>Three modes are currently available for performing clip operations, as illustrated in the following table:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">CLIPMODE</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">CUT</td>
 <td style="text-align: left;">Cut (copy and delete) the currently selected data from the target object and copy it into the clipboard.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">COPY</td>
 <td style="text-align: left;">Copy the currently selected data from the target object into the clipboard.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">PASTE</td>
 <td style="text-align: left;">Paste the most recent data from the clipboard into the target object.</td>
 </tr>
@@ -379,14 +379,14 @@
 <p><code>ERR acCopyData(Object, OBJECTID Dest)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Dest</td>
 <td style="text-align: left;">OBJECTPTR</td>
 <td style="text-align: left;">The unique ID of the destination object.</td>
@@ -404,29 +404,29 @@ ERR acDataContent(Object, CSTRING Buffer)
 ERR acDataText(Object, CSTRING Buffer)</code></pre>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Object</td>
 <td style="text-align: left;">OBJECTPTR</td>
 <td style="text-align: left;">Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Datatype</td>
 <td style="text-align: left;">DATA</td>
 <td style="text-align: left;">The type of data being sent.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Buffer</td>
 <td style="text-align: left;">APTR</td>
 <td style="text-align: left;">The data being sent to the target object.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Size</td>
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">The size of the data in <code>Buffer</code>.</td>
@@ -454,19 +454,19 @@ ERR acDataText(Object, CSTRING Buffer)</code></pre>
 <p>A request for data is achieved by passing an <code>Item</code> UID and indicating up to three types of data formats that would be accepted from the source. The <code>dcRequest</code> structure for managing the request is configured as follows:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Item</td>
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">Item to retrieve from the source.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Preference</td>
 <td style="text-align: left;">DATA [4]</td>
 <td style="text-align: left;">Data preferences for the returned item(s).</td>
@@ -497,24 +497,24 @@ ERR acDataText(Object, CSTRING Buffer)</code></pre>
 <p><code>ERR acDragDrop(Object, OBJECTID Source, INT Item, DATA Datatype)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Source</td>
 <td style="text-align: left;">OBJECTPTR</td>
 <td style="text-align: left;">Refers to the object containing the source data.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Item</td>
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">An item ID, relevant to the source object.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Datatype</td>
 <td style="text-align: left;">DATA</td>
 <td style="text-align: left;">The type of data represented by the source item.</td>
@@ -561,19 +561,19 @@ ERR acDataText(Object, CSTRING Buffer)</code></pre>
 ERR acDraw(Object)</code></pre>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">X, Y</td>
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">The top-left position of the region to be drawn.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Width, Height</td>
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">The size of the region to be drawn.</td>
@@ -609,12 +609,10 @@ ERR acDraw(Object)</code></pre>
 <p><code>ERR FreeResource(Object)</code></p>
 <p>Objects are permanently removed with the <code>Free</code> action, which is achieved via a call to <code>FreeResource()</code>. If the object has one or more child objects attached to it, they will also be removed as a result of calling this action. After calling <code>Free</code>, remove any UID and pointer references to the object as a measure of bug prevention.</p>
 <p>If an exclusive lock is active at the time of calling <code>Free</code>, the object will be <em>marked for deletion</em> only. The object will not be permanently removed until the last lock is released.</p>
-<div class="note">
-<div class="title">
-<p>Note</p>
-</div>
-<p>The means of terminating an object can vary between languages. C++ uses <code>FreeResource()</code>, while in Tiri, objects are manually terminated with the <code>obj:free()</code> interface, or automatically via garbage collection. The specifics of this should be documented in your language of choice.</p>
-</div>
+<blockquote>
+<p>[!NOTE]
+The means of terminating an object can vary between languages. C++ uses <code>FreeResource()</code>, while in Tiri, objects are manually terminated with the <code>obj:free()</code> interface, or automatically via garbage collection. The specifics of this should be documented in your language of choice.</p>
+</blockquote>
 <h3 id="implementation-details-10">Implementation Details</h3>
 <p><code>Free</code> support is essential for all classes that allocate resources. It is correctly implemented by removing all resources that were created during an object&#39;s life-cycle.</p>
 <p>Sub-classes need to support this action if their code tracks resources seperately to the base class. To prevent allocations between a base-class and sub-class from being confused, the fields that reference resources should be driven to <code>NULL</code> after their termination. If your sub-class requires its own private data area for resource management, the <code>ChildPrivate</code> field is available for this purpose.</p>
@@ -627,24 +625,24 @@ ERR acDraw(Object)</code></pre>
 <p><code>ERR acGetKey(Object, STRING Key, STRING Value, INT Size)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Key</td>
 <td style="text-align: left;">STRING</td>
 <td style="text-align: left;">The name of a key value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Value</td>
 <td style="text-align: left;">STRING</td>
 <td style="text-align: left;">Pointer to a buffer space large enough to hold the retrieved value.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Size</td>
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">Indicates the byte size of the Buffer.</td>
@@ -702,14 +700,14 @@ ERR acDraw(Object)</code></pre>
 <p><code>ERR acMove(Object, DOUBLE DeltaX, DOUBLE DeltaY, DOUBLE DeltaZ)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">DeltaX, DeltaY, DeltaZ</td>
 <td style="text-align: left;">DOUBLE</td>
 <td style="text-align: left;">The number of units to move along each axis.</td>
@@ -740,19 +738,19 @@ ERR acDraw(Object)</code></pre>
 <p><code>ERR acMoveToPoint(Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">X, Y, Z</td>
 <td style="text-align: left;">DOUBLE</td>
 <td style="text-align: left;">The new position to move the object to.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Flags</td>
 <td style="text-align: left;">MTF</td>
 <td style="text-align: left;">Set the relevant <code>MTF</code> flag for each provided parameter.</td>
@@ -765,14 +763,14 @@ ERR acDraw(Object)</code></pre>
 <h2 id="newchild-">NewChild <!-- Private --></h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">NewChild</td>
 <td style="text-align: left;">OBJECTPTR</td>
 <td style="text-align: left;">Pointer to the new child.</td>
@@ -786,14 +784,14 @@ ERR acDraw(Object)</code></pre>
 <h2 id="newowner">NewOwner</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">NewOwner</td>
 <td style="text-align: left;">OBJECTPTR</td>
 <td style="text-align: left;">Pointer to the new owner.</td>
@@ -820,24 +818,24 @@ ERR acDraw(Object)</code></pre>
 <p><code>ERR acRead(Object, APTR Buffer, INT Length, INT *Result)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Buffer</td>
 <td style="text-align: left;">APTR</td>
 <td style="text-align: left;">Points a buffer that will receive the data.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Length</td>
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">The total number of bytes to read from the object. This value cannot exceed the size of the <code>Buffer</code>.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Result</td>
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">The Read action will write this parameter with the total number of bytes read into the <code>Buffer</code>.</td>
@@ -858,19 +856,19 @@ ERR acDraw(Object)</code></pre>
 <p><code>ERR acRedimension(Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">X, Y, Z</td>
 <td style="text-align: left;">DOUBLE</td>
 <td style="text-align: left;">The new position to apply to the target object.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Width, Height, Depth</td>
 <td style="text-align: left;">DOUBLE</td>
 <td style="text-align: left;">The new size of the target object.</td>
@@ -895,14 +893,14 @@ ERR acDraw(Object)</code></pre>
 <p><code>ERR acRename(Object, STRING Name)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Name</td>
 <td style="text-align: left;">STRING</td>
 <td style="text-align: left;">The new name for the object.</td>
@@ -925,14 +923,14 @@ ERR acDraw(Object)</code></pre>
 <p><code>ERR acResize(Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Width, Height, Depth</td>
 <td style="text-align: left;">DOUBLE</td>
 <td style="text-align: left;">The new size of the object.</td>
@@ -946,19 +944,19 @@ ERR acDraw(Object)</code></pre>
 <p><code>ERR acSaveImage(Object, OBJECTID Dest)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Dest</td>
 <td style="text-align: left;">OBJECTPTR</td>
 <td style="text-align: left;">Refers to an object that will receive the encoded image data.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">ClassID</td>
 <td style="text-align: left;">CLASSID</td>
 <td style="text-align: left;">The <code>Picture</code> class to use for encoding the image data.</td>
@@ -978,19 +976,19 @@ ERR acDraw(Object)</code></pre>
 <p><code>ERR acSaveToObject(Object, OBJECTID Dest, CLASSID ClassID)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Dest</td>
 <td style="text-align: left;">OBJECTPTR</td>
 <td style="text-align: left;">Refers to an object that will receive the encoded data.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">ClassID</td>
 <td style="text-align: left;">CLASSID</td>
 <td style="text-align: left;">Can refer to a sub-class that should be used when encoding the data.</td>
@@ -1010,19 +1008,19 @@ ERR acSeekEnd(Object, DOUBLE Offset)
 ERR acSeekCurrent(Object, DOUBLE Offset)</code></pre>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Offset</td>
 <td style="text-align: left;">DOUBLE</td>
 <td style="text-align: left;">The desired offset to seek to, relative to the <code>Position</code> parameter.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Position</td>
 <td style="text-align: left;">POS</td>
 <td style="text-align: left;">The position that defines the starting point for <code>Offset</code>.</td>
@@ -1042,19 +1040,19 @@ ERR acSeekCurrent(Object, DOUBLE Offset)</code></pre>
 <p><code>ERR acSetKey(Object, STRING Key, STRING Value)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Key</td>
 <td style="text-align: left;">STRING</td>
 <td style="text-align: left;">The name of the target key.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Value</td>
 <td style="text-align: left;">STRING</td>
 <td style="text-align: left;">The string value to associate with <code>Key</code>.</td>
@@ -1094,24 +1092,24 @@ ERR acSeekCurrent(Object, DOUBLE Offset)</code></pre>
 <p><code>ERR acWrite(Object, APTR Buffer, INT Length, INT Result)</code></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Buffer</td>
 <td style="text-align: left;">APTR</td>
 <td style="text-align: left;">A buffer containing the data that will be written to the object.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">Length</td>
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">The total number of bytes to write to the object.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">Result</td>
 <td style="text-align: left;">INT</td>
 <td style="text-align: left;">This parameter with be updated with the total number of bytes written from the buffer.</td>
