@@ -94,6 +94,21 @@ if (query.ok()) {
 <p>Set the Path field to define the base-uri for an XQuery expression.  If left unset, the path will be computed through automated means on-the-fly, which relies  on the working directory or XML document path.</p>
       
 </div></div></td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-ResolveVariable" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-ResolveVariable"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
+                           
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">ResolveVariable</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>Callback function for resolving unknown variables.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-ResolveVariable" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+<p>This callback is invoked when an XQuery expression refers to a variable that has not been declared in the XQuery expression or XQuery module.  Variable resolution precedence is:</p>
+<ul>
+<li>Evaluator-local bindings</li>
+<li>
+<a data-bs-toggle="tooltip" title="Set XQuery variable values." href="#ta-SetKey">SetKey()</a> string variables</li>
+<li>Declared/internal XQuery variables</li>
+<li>This callback for otherwise unresolved names</li>
+</ul>
+<p>The C++ prototype is <code>ERR ResolveVariable(objXQuery *Query, std::string_view Name, XPathValue *Result, APTR Meta)</code>. Script callbacks are not supported.</p>
+<p>Return <code>ERR::Okay</code> when the variable is recognised and <code>Result</code> has been populated, <code>ERR::Search</code> when the name is unknown, or another error code to abort evaluation.</p>
+      
+</div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Result" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Result"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Result</th><td class="col-md-1"><span class="text-nowrap">APTR</span></td><td>Returns the results of the most recently executed query.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Result" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
@@ -202,8 +217,12 @@ if (query.ok()) {
 <tr><td>Callback</td><td>The callback function to register for FunctionName.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>Use RegisterFunction to define a custom function that can be invoked within XQuery expressions.  The function will be associated with the specified name and can be called like any standard XQuery function.</p>
+<p>The C++ function prototype is <code>ERR (*XQuery, std::string_view FunctionName, const std::vector &amp;Args, XPathValue &amp;Result, APTR Meta))</code>
+<p>Script callbacks are not currently supported.</p>
+</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
+<tr><th class="col-md-1">NoSupport</th><td>The provided callback is not a C function reference.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Search" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Search</th><td id="tm-Search">For node-based queries, calls a function for each matching node.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Search" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xq::Search(OBJECTPTR Object, objXML * XML, FUNCTION * Callback, INT Index, XEF Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>XML</td><td>Target XML document to search.</td></tr>

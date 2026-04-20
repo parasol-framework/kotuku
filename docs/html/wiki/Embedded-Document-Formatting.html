@@ -286,194 +286,194 @@ double YCoord: Defines vertical placement.</code></pre>
 <p>The following table lists the base types that are recognised for declaring input and results:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">C Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">array(Type)</td>
 <td style="text-align: left;">Type []</td>
 <td style="text-align: left;">An array of <code>Type</code>. <em>Must</em> be followed by <code>arraysize</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">arraysize</td>
 <td style="text-align: left;">LONG</td>
 <td style="text-align: left;">Specifies the size of the preceding array.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">buf(Type)</td>
 <td style="text-align: left;">Type *</td>
 <td style="text-align: left;">Pointer to a buffer of <code>Type</code>. <em>Must</em> be followed by a <code>bufsize</code> or <code>structsize</code> in the next parameter.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">bufsize</td>
 <td style="text-align: left;">LONG</td>
 <td style="text-align: left;">Parameter specifies the byte-size of the preceding buffer.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">char</td>
 <td style="text-align: left;">char</td>
 <td style="text-align: left;">8 bit value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">cid</td>
 <td style="text-align: left;">CLASSID</td>
 <td style="text-align: left;">Class UID.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">cptr</td>
 <td style="text-align: left;">const void *</td>
 <td style="text-align: left;">Pointer to untyped const data.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">cstr</td>
 <td style="text-align: left;">CSTRING</td>
 <td style="text-align: left;">Pointer to an immutable C-style character string.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">double</td>
 <td style="text-align: left;">DOUBLE</td>
 <td style="text-align: left;">64 bit floating point value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">eid</td>
 <td style="text-align: left;">EVENTID</td>
 <td style="text-align: left;">Event UID.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">error</td>
 <td style="text-align: left;">ERROR</td>
 <td style="text-align: left;">Error value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">ext</td>
 <td style="text-align: left;">OBJECTPTR</td>
 <td style="text-align: left;">Pointer to an object.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fid</td>
 <td style="text-align: left;">FIELD</td>
 <td style="text-align: left;">Field UID</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">flags</td>
 <td style="text-align: left;">LONG</td>
 <td style="text-align: left;">32 bit int representing bit flags.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">FLOAT</td>
 <td style="text-align: left;">32 bit floating point value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">func</td>
 <td style="text-align: left;">FUNCTION</td>
 <td style="text-align: left;">Callback function.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fptr(Synopsis)</td>
 <td style="text-align: left;">APTR</td>
 <td style="text-align: left;">C function pointer. The <code>Synopsis</code> must start by declaring the result value (which can be void) followed by the input parameters, if any.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">hhandle</td>
 <td style="text-align: left;">HANDLE</td>
 <td style="text-align: left;">A host-specific resource handle. Could be an int or pointer, and has meaning to the host operating system only.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">int</td>
 <td style="text-align: left;">LONG</td>
 <td style="text-align: left;">32 bit value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">int(Ref)</td>
 <td style="text-align: left;">LONG</td>
 <td style="text-align: left;">32 bit value referring to a named type</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">large</td>
 <td style="text-align: left;">LARGE</td>
 <td style="text-align: left;">64 bit value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">maxint</td>
 <td style="text-align: left;">LONG (32) / LARGE (64)</td>
 <td style="text-align: left;">32 or 64 bit value depending on target CPU.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">mem</td>
 <td style="text-align: left;">MEMORYID</td>
 <td style="text-align: left;">Memory UID.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">obj</td>
 <td style="text-align: left;">OBJECTPTR</td>
 <td style="text-align: left;">Pointer to an object.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">oid</td>
 <td style="text-align: left;">OBJECTID</td>
 <td style="text-align: left;">Object UID.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">ptr</td>
 <td style="text-align: left;">APTR</td>
 <td style="text-align: left;">Pointer to an untyped data buffer.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">ptr(Type)</td>
 <td style="text-align: left;">APTR</td>
 <td style="text-align: left;">Pointer to a typed resource, where <code>Type</code> is one of those in this table.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">resource</td>
 <td style="text-align: left;">APTR</td>
 <td style="text-align: left;">Reference to a system resource.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">short</td>
 <td style="text-align: left;">WORD</td>
 <td style="text-align: left;">16 bit value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">str</td>
 <td style="text-align: left;">STRING</td>
 <td style="text-align: left;">Pointer to a C-style character string.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">struct(Name)</td>
 <td style="text-align: left;">Name</td>
 <td style="text-align: left;">Reference to a struct identified by Name.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">struct(*Name)</td>
 <td style="text-align: left;">Name *</td>
 <td style="text-align: left;">A pointer referring to a struct identified by Name.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">structsize</td>
 <td style="text-align: left;">LONG</td>
 <td style="text-align: left;">Byte-size of the preceding struct reference.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">uchar</td>
 <td style="text-align: left;">UBYTE</td>
 <td style="text-align: left;">Unsigned 8 bit value.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">uint</td>
 <td style="text-align: left;">ULONG</td>
 <td style="text-align: left;">Unsigned 32 bit value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">ushort</td>
 <td style="text-align: left;">UWORD</td>
 <td style="text-align: left;">Unsigned 16 bit value.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">void</td>
 <td style="text-align: left;">void</td>
 <td style="text-align: left;">Untyped</td>

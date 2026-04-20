@@ -5,7 +5,11 @@
 
 void fs_ignore_file(extFile *File)
 {
-   inotify_rm_watch(glInotify, File->prvWatch->Handle);
+   if ((File->prvWatch) and (File->prvWatch->Handle > 0)) {
+      glInotifyLookup.erase(File->prvWatch->Handle);
+      inotify_rm_watch(glInotify, File->prvWatch->Handle);
+      File->prvWatch->Handle = 0;
+   }
 }
 
 #elif _WIN32
@@ -52,6 +56,7 @@ ERR fs_watch_path(extFile *File)
    if (path.ends_with('/')) path.pop_back();
    if (auto handle = inotify_add_watch(glInotify, path.c_str(), nflags); handle != -1) {
       File->prvWatch->Handle = handle;
+      glInotifyLookup[handle] = File->UID;
       return ERR::Okay;
    }
    else {
@@ -102,123 +107,96 @@ ERR fs_watch_path(extFile *File)
 #ifdef __linux__
 void path_monitor(HOSTHANDLE FD, extFile *File)
 {
-#if 0
    pf::Log log(__FUNCTION__);
-   static thread_local int8_t recursion = FALSE; // Recursion avoidance is essential for correct queuing
+   static thread_local bool recursion = false; // Recursion avoidance is essential for correct queuing
    if (recursion) return;
-   recursion = TRUE;
+   recursion = true;
 
    AdjustLogLevel(2);
+   log.branch("File monitoring event received (FD %d, File #%d).", FD, File ? File->UID : 0);
 
-   log.branch("File monitoring event received (FD %d).", FD);
+   uint8_t buffer[8192];
+   while (true) {
+      auto result = read(FD, buffer, sizeof(buffer));
+      if (result <= 0) {
+         if ((result IS -1) and ((errno IS EAGAIN) or (errno IS EWOULDBLOCK))) break;
+         if ((result IS -1) and (errno IS EINTR)) continue;
+         break;
+      }
 
-   // Read and process each event in sequence
+      size_t offset = 0;
+      while (offset < size_t(result)) {
+         auto event = (struct inotify_event *)(buffer + offset);
+         offset += sizeof(struct inotify_event) + event->len;
 
-   int result, i;
-   uint8_t buffer[2048];
-   int count = 0;
-   int buffersize = 0;
-   while (((result = read(FD, buffer+buffersize, sizeof(buffer)-buffersize)) > 0) or (buffersize > 0)) {
-      if (result > 0) buffersize += result;
-
-      struct inotify_event *event = (struct inotify_event *)buffer;
-
-      log.msg("Descriptor: %d, Name: %s", event->wd, event->name);
-
-      // Use the watch descriptor to determine what user routine we are supposed to call.
-
-      for (int i=0; i < MAX_FILEMONITOR; i++) {
-         if (!glFileMonitor[i].UID) continue;
-         if (FD != glInotify) continue;
-         if (event->wd != glFileMonitor[i].Handle) continue;
-
-         // Apply the user's filtering rules, if any
-
-         if ((glFileMonitor[i].Flags & MFF::FOLDER) != MFF::NIL) {
-            if (!(event->mask & IN_ISDIR)) break;
-         }
-         else if ((glFileMonitor[i].Flags & MFF::FILE) != MFF::NIL) {
-            if (event->mask & IN_ISDIR) break;
+         if (event->mask & IN_Q_OVERFLOW) {
+            log.warning("A buffer overflow has occurred in the file monitor.");
+            continue;
          }
 
-         // If the event has a name attached, read it
+         if (!glInotifyLookup.contains(event->wd)) continue;
 
-         CSTRING path;
-         if (event->len > 0) {
+         ScopedObjectLock<extFile> lock(glInotifyLookup[event->wd], 50);
+         if (not lock.granted()) continue;
+
+         auto file = lock.obj;
+         if ((!file->prvWatch) or (file->prvWatch->Handle != event->wd)) {
+            glInotifyLookup.erase(event->wd);
+            continue;
+         }
+
+         if ((file->prvWatch->Flags & MFF::FOLDER) != MFF::NIL) {
+            if (!(event->mask & IN_ISDIR)) continue;
+         }
+         else if ((file->prvWatch->Flags & MFF::FILE) != MFF::NIL) {
+            if (event->mask & IN_ISDIR) continue;
+         }
+
+         const char *path = nullptr;
+         if ((event->len > 0) and event->name[0]) {
             path = event->name;
-
-            if (event->len > sizeof(buffer) - sizeof(struct inotify_event)) {
-               // If this is a buffer overflow attempt or system error then we won't process it.
-
-               lseek(FD, sizeof(struct inotify_event) + event->len - sizeof(buffer), SEEK_CUR);
-            }
-
-            uint8_t fnbuffer[256];
-            if ((path[0] IS '/') and (path[1] IS 0)) path = nullptr;
-            else if (((glFileMonitor[i].Flags & MFF::QUALIFY) != MFF::NIL) and (event->mask & IN_ISDIR)) {
-               int j = StrCopy(path, fnbuffer, sizeof(fnbuffer)-1);
-               fnbuffer[j++] = '/';
-               fnbuffer[j] = 0;
-               path = fnbuffer;
-            }
          }
-         else path = nullptr;
 
          MFF flags = MFF::NIL;
-         if (event->mask & IN_Q_OVERFLOW) log.warning("A buffer overflow has occurred in the file monitor.");
          if (event->mask & IN_ACCESS) flags |= MFF::READ;
          if (event->mask & IN_MODIFY) flags |= MFF::MODIFY;
          if (event->mask & IN_CREATE) flags |= MFF::CREATE;
          if (event->mask & IN_DELETE) flags |= MFF::DELETE;
          if (event->mask & IN_DELETE_SELF) flags |= MFF::DELETE|MFF::SELF;
-         if (event->mask & IN_OPEN)   flags |= MFF::OPENED;
+         if (event->mask & IN_OPEN) flags |= MFF::OPENED;
          if (event->mask & IN_ATTRIB) flags |= MFF::ATTRIB;
          if (event->mask & (IN_CLOSE_WRITE|IN_CLOSE_NOWRITE)) flags |= MFF::CLOSED;
          if (event->mask & (IN_MOVED_FROM|IN_MOVED_TO)) flags |= MFF::MOVED;
-
          if (event->mask & IN_UNMOUNT) flags |= MFF::UNMOUNT;
-
          if (event->mask & IN_ISDIR) flags |= MFF::FOLDER;
          else flags |= MFF::FILE;
 
-         ERR error;
+         ERR error = ERR::Okay;
          if (flags != MFF::NIL) {
-            if (glFileMonitor[i].Routine.isC()) {
-               ERR (*routine)(extFile *, CSTRING path, int64_t Custom, MFF Flags, APTR);
-               routine = glFileMonitor[i].Routine.Routine;
-               pf::SwitchContext context(glFileMonitor[i].Routine.Context);
-               error = routine(glFileMonitor[i].File, path, glFileMonitor[i].Custom, flags, glFileMonitor[i].Routine.Meta);
+            if (file->prvWatch->Routine.isC()) {
+               auto routine = (ERR (*)(extFile *, std::string_view, MFF, APTR))file->prvWatch->Routine.Routine;
+               pf::SwitchContext context(file->prvWatch->Routine.Context);
+               error = routine(file, path, flags, file->prvWatch->Routine.Meta);
             }
-            else if (glFileMonitor[i].Routine.isScript()) {
-               if (sc::Call(glFileMonitor[i].Routine, std::to_array<ScriptArg>({
-                     { "File",   glFileMonitor[i].File },
+            else if (file->prvWatch->Routine.isScript()) {
+               if (sc::Call(file->prvWatch->Routine, std::to_array<ScriptArg>({
+                     { "File",   file, FD_OBJECTPTR },
                      { "Path",   path },
-                     { "Custom", glFileMonitor[i].Custom },
                      { "Flags",  int(flags) }
-                  }), error)) error = ERR::Function;
+                  }), error) != ERR::Okay) error = ERR::Function;
             }
-
-            if (error IS ERR::Terminate) Action(fl::Watch::id, glFileMonitor[i].File, nullptr);
+            else error = ERR::Terminate;
          }
-         else log.warning("Flags $%.8x not recognised.", int(flags));
-         break;
-      }
 
-      int event_size = sizeof(struct inotify_event) + event->len;
+         bool ignored = (event->mask & IN_IGNORED) != 0;
 
-      if (buffersize > event_size) copymem(buffer + event_size, buffer, buffersize - event_size);
-      buffersize -= event_size;
-
-      if (++count > 50) {
-         log.warning("Excessive looping detected - bailing out.");
-         break;
+         if (ignored) glInotifyLookup.erase(event->wd);
+         if (error IS ERR::Terminate) Action(fl::Watch::id, file, nullptr);
       }
    }
 
-   recursion = FALSE;
-
+   recursion = false;
    AdjustLogLevel(-2);
-#endif
 }
 
 //********************************************************************************************************************
@@ -263,15 +241,14 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 
          if (File->prvWatch->Routine.isC()) {
             pf::SwitchContext context(File->prvWatch->Routine.Context);
-            auto routine = (ERR (*)(extFile *, CSTRING, int64_t, int, APTR))File->prvWatch->Routine.Routine;
-            error = routine(File, path.c_str(), File->prvWatch->Custom, status, File->prvWatch->Routine.Meta);
+            auto routine = (ERR (*)(extFile *, std::string_view, MFF, APTR))File->prvWatch->Routine.Routine;
+            error = routine(File, path, MFF(status), File->prvWatch->Routine.Meta);
          }
          else if (File->prvWatch->Routine.isScript()) {
             if (sc::Call(File->prvWatch->Routine, std::to_array<ScriptArg>({
                { "File",   File, FD_OBJECTPTR },
                { "Path",   path.c_str() },
-               { "Custom", File->prvWatch->Custom },
-               { "Flags",  status }
+               { "Flags",  int(status) }
             }), error) != ERR::Okay) error = ERR::Function;
          }
          else error = ERR::Terminate;
@@ -289,9 +266,9 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
    }
    else {
       if (File->prvWatch->Routine.isC()) {
-         auto routine = (ERR (*)(extFile *, CSTRING, int64_t, int, APTR))File->prvWatch->Routine.Routine;
+         auto routine = (ERR (*)(extFile *, CSTRING, MFF, APTR))File->prvWatch->Routine.Routine;
          pf::SwitchContext context(File->prvWatch->Routine.Context);
-         error = routine(File, File->Path.c_str(), File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
+         error = routine(File, File->Path.c_str(), MFF::NIL, File->prvWatch->Routine.Meta);
 
          if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
       }
@@ -311,4 +288,3 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 }
 
 #endif
-

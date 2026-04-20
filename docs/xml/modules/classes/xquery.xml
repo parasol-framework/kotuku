@@ -203,9 +203,13 @@ if (query.ok()) {
       </input>
       <description>
 <p>Use RegisterFunction to define a custom function that can be invoked within XQuery expressions.  The function will be associated with the specified name and can be called like any standard XQuery function.</p>
+<p>The C++ function prototype is <code>ERR (*XQuery, std::string_view FunctionName, const std::vector<XPathValue> &amp;Args, XPathValue &amp;Result, APTR Meta))</XPathValue></code>
+<p>Script callbacks are not currently supported.</p>
+</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="NoSupport">The provided callback is not a C function reference.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>

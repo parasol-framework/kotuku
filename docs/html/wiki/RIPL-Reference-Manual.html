@@ -257,16 +257,16 @@
 
 <h1>RIPL Reference Manual</h1>
 <h1 id="table-of-contents">Table of Contents</h1>
+<h3 id="pretext">Pretext</h3>
+<p><a href="#xquery-support">XQuery Support</a></p>
 <h3 id="conditional-elements">Conditional Elements</h3>
-<p><a href="#break">break</a> | <a href="#continue">continue</a> | <a href="#else">else</a> | <a href="#elseif">elseif</a> | <a href="#if">if</a> | <a href="#repeat">repeat</a> | <a href="#while">while</a></p>
+<p><a href="#break">break</a> | <a href="#continue">continue</a> | <a href="#else">else</a> | <a href="#elseif">elseif</a> | <a href="#for-each">for-each</a> | <a href="#if">if</a> | <a href="#repeat">repeat</a> | <a href="#while">while</a></p>
 <h3 id="data-elements">Data Elements</h3>
-<p><a href="#info">info</a></p>
-<!-- | [xml](#xml) | [xml-raw](#xml_raw) | [xml-translate](#xml_translate) -->
-
+<p><a href="#data">data</a> | <a href="#info">info</a></p>
 <h3 id="layout-elements">Layout Elements</h3>
-<p><a href="#link">a</a> | <a href="#advance">advance</a> | <a href="#body">body</a> | <a href="#br">br</a> | <a href="#div">div</a> | <a href="#footer">footer</a> | <a href="#footer">header</a> | <a href="#image">image</a> | <a href="#li">li</a> | <a href="#link">link</a> | <a href="#list">list</a> | <a href="#p">p</a> | <a href="#page">page</a> | <a href="#svg">svg</a> | <a href="#use">use</a></p>
+<p><a href="#link">a</a> | <a href="#advance">advance</a> | <a href="#body">body</a> | <a href="#br">br</a> | <a href="#div">div</a> | <a href="#footer">footer</a> | <a href="#header">header</a> | <a href="#image">image</a> | <a href="#li">li</a> | <a href="#link">link</a> | <a href="#list">list</a> | <a href="#p">p</a> | <a href="#page">page</a> | <a href="#svg">svg</a> | <a href="#use">use</a></p>
 <h3 id="programming-elements">Programming Elements</h3>
-<p><a href="#call">call</a> | <a href="#debug">debug</a> | <a href="#editdef">editdef</a> | <a href="#focus">focus</a> | <a href="#include">include</a> | <a href="#index">index</a> | <a href="#inject">inject</a> | <a href="#parse">parse</a> | <a href="#print">print</a> | <a href="#script">script</a> | <a href="#template">template</a> | <a href="#trigger">trigger</a></p>
+<p><a href="#call">call</a> | <a href="#debug">debug</a> | <a href="#editdef">editdef</a> | <a href="#focus">focus</a> | <a href="#include">include</a> | <a href="#index">index</a> | <a href="#inject">inject</a> | <a href="#let">let</a> | <a href="#parse">parse</a> | <a href="#print">print</a> | <a href="#script">script</a> | <a href="#template">template</a> | <a href="#trigger">trigger</a></p>
 <h3 id="table-elements">Table Elements</h3>
 <p><a href="#cell">cell</a> | <a href="#row">row</a> | <a href="#table">table</a> | <a href="#cell">td</a> | <a href="#row">tr</a></p>
 <h3 id="typeface-elements">Typeface Elements</h3>
@@ -274,269 +274,308 @@
 <h3 id="widget-elements">Widget Elements</h3>
 <p><a href="#button">button</a> | <a href="#checkbox">checkbox</a> | <a href="#combobox">combobox</a> | <a href="#input">input</a></p>
 <hr>
+<h1 id="pretext-1">Pretext</h1>
+<h2 id="xquery-support">XQuery Support</h2>
+<p>RIPL exposes XQuery functionality in its parser. The current implementation supports the following surfaces:</p>
+<ul>
+<li><code>if</code>, <code>elseif</code>, and <code>while</code> use <code>test=&quot;...&quot;</code>.</li>
+<li><code>data</code>, <code>for-each</code>, <code>let</code>, <code>parse</code>, and <code>print</code> use <code>select=&quot;...&quot;</code>.</li>
+<li>Most other attributes may use attribute value templates (AVTs) with <code>{...}</code> fragments. Use <code>{{</code> and <code>}}</code> to emit literal braces.</li>
+</ul>
+<p>Relative paths are evaluated against the active XML context. Inside <a href="#for-each"><code>for-each</code></a>, <code>.</code> and relative paths are rebound to the current selected item. <code>$page</code> always refers to the active source <a href="#page"><code>page</code></a>, and <code>$doc</code> refers to the parser-local data tree loaded by <a href="#data"><code>data</code></a>.</p>
+<p>The following runtime bindings are available to XQuery expressions and AVTs:</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Binding</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>$args</code></td>
+<td style="text-align: left;">map</td>
+<td style="text-align: left;">Attributes from the current template call.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>$doc</code></td>
+<td style="text-align: left;">node sequence</td>
+<td style="text-align: left;">The current parser-local data tree loaded by <a href="#data"><code>data</code></a>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>$layout</code></td>
+<td style="text-align: left;">map</td>
+<td style="text-align: left;">Layout metrics such as <code>view-width</code>, <code>view-height</code>, <code>page-width</code>, and <code>page-height</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>$loop</code></td>
+<td style="text-align: left;">map</td>
+<td style="text-align: left;">The active loop frame. Exposes <code>index</code>, <code>iteration</code>, <code>start</code>, <code>step</code>, and, when known, <code>count</code> and <code>end</code>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>$meta</code></td>
+<td style="text-align: left;">map</td>
+<td style="text-align: left;">Document metadata such as <code>title</code>, <code>author</code>, <code>description</code>, <code>copyright</code>, <code>keywords</code>, <code>path</code>, <code>line-no</code>, <code>current-page</code>, <code>next-page</code>, and <code>prev-page</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>$page</code></td>
+<td style="text-align: left;">node sequence</td>
+<td style="text-align: left;">The active source <a href="#page"><code>page</code></a> node.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>$params</code></td>
+<td style="text-align: left;">map</td>
+<td style="text-align: left;">Document parameters.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>$state</code></td>
+<td style="text-align: left;">map</td>
+<td style="text-align: left;">Lexical bindings created by <a href="#let"><code>let</code></a>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>$style</code></td>
+<td style="text-align: left;">map</td>
+<td style="text-align: left;">The current parser font style: <code>font-face</code>, <code>font-style</code>, <code>font-fill</code>, and <code>font-size</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>$vars</code></td>
+<td style="text-align: left;">map</td>
+<td style="text-align: left;">Document variables and keys.</td>
+</tr>
+</tbody>
+</table>
+<p>The following helper functions are registered automatically for document-side XQuery:</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Function</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>kt:object-exists(Name)</code></td>
+<td style="text-align: left;">Returns <code>true</code> if a named document-visible object currently exists.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>kt:object-id(Name)</code></td>
+<td style="text-align: left;">Returns the matching object&#39;s ID as a string.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>kt:self-id()</code></td>
+<td style="text-align: left;">Returns the current object ID, or the document ID when no narrower context exists.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>kt:uid()</code></td>
+<td style="text-align: left;">Returns a refresh-local generated identifier for the document.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>kt:platform()</code></td>
+<td style="text-align: left;">Returns the host platform string.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>kt:field(Object, Field)</code></td>
+<td style="text-align: left;">Returns an object field as a string value.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>kt:key(Object, Key)</code></td>
+<td style="text-align: left;">Returns an object key-value as a string (via GetKey()).</td>
+</tr>
+</tbody>
+</table>
 <h1 id="conditional-elements-1">Conditional Elements</h1>
 <h2 id="break">break</h2>
-<p>Breaks out of any <a href="#repeat"><code>repeat</code></a> or <a href="#while"><code>while</code></a> loop.</p>
+<p>Breaks out of the innermost active <a href="#repeat"><code>repeat</code></a>, <a href="#while"><code>while</code></a>, or <a href="#for-each"><code>for-each</code></a> loop.</p>
 <h2 id="continue">continue</h2>
-<p>Skips to the end of the current <a href="#repeat"><code>repeat</code></a> or <a href="#while"><code>while</code></a> loop, then re-evaluates the loop conditions before restarting.</p>
+<p>Skips the remainder of the current iteration of the innermost active <a href="#repeat"><code>repeat</code></a>, <a href="#while"><code>while</code></a>, or <a href="#for-each"><code>for-each</code></a> loop.</p>
 <h2 id="else">else</h2>
 <p>Pair with the <a href="#if"><code>if</code></a> element to execute a branch if former <a href="#if"><code>if</code></a> and <a href="#elseif"><code>elseif</code></a> branches haven&#39;t executed.</p>
-<p>The <code>else</code> element can paired with the <a href="#if"><code>if</code></a> element to execute a branch when former <a href="#if"><code>if</code></a> and <a href="#elseif"><code>elseif</code></a> branches haven&#39;t executed.</p>
 <p>If not declared in series with a previous <a href="#if"><code>if</code></a> statement, the element is ignored by the parser.</p>
 <h2 id="elseif">elseif</h2>
-<p>Pair with the <a href="#if"><code>if</code></a> element to evaluate a statement and execute a branch - but only if former <a href="#if"><code>if</code></a> and <a href="#elseif"><code>elseif</code></a> branches haven&#39;t executed.</p>
+<p>Pair with the <a href="#if"><code>if</code></a> element to evaluate an XQuery condition and execute a branch, but only if former <a href="#if"><code>if</code></a> and <a href="#elseif"><code>elseif</code></a> branches haven&#39;t executed.</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td style="text-align: left;">exists</td>
-<td style="text-align: left;">object</td>
-<td style="text-align: left;">Tests if the referenced object still exists and executes the branch if it does.</td>
-</tr>
-<tr>
-<td style="text-align: left;">isnull</td>
+<tr class="odd">
+<td style="text-align: left;">test</td>
 <td style="text-align: left;">string</td>
-<td style="text-align: left;">Tests if the value is null. The test will pass if the value is <code>0</code>, an empty string, or only containing whitespace.</td>
-</tr>
-<tr>
-<td style="text-align: left;">not</td>
-<td style="text-align: left;">boolean</td>
-<td style="text-align: left;">Reverses the result of the conditional test.</td>
-</tr>
-<tr>
-<td style="text-align: left;">notnull</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Tests if the value is not null. The test will pass if the value is a number other than <code>0</code> or has content (whitespace does not count as content).</td>
-</tr>
-<tr>
-<td style="text-align: left;">statement</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Tests the conditional statement and executes the branch if it evaluates to <code>true</code>.</td>
+<td style="text-align: left;">Evaluates an XQuery expression. The branch executes when the expression&#39;s effective boolean value is <code>true</code>.</td>
 </tr>
 </tbody>
 </table>
-<p>The <code>elseif</code> element is paired with the <a href="#if"><code>if</code></a> element to evaluate a conditional and execute its branch - but only if former <a href="#if"><code>if</code></a> and <code>elseif</code> branches haven&#39;t executed.</p>
-<p>Only one of the <code>statement</code>, <code>exists</code>, <code>isnull</code> and <code>notnull</code> attributes may be used for conditional testing. The <code>not</code> attribute can be combined with any of these to reverse the conditional result.</p>
+<p>The <code>elseif</code> element is paired with the <a href="#if"><code>if</code></a> element to evaluate a conditional and execute its branch, but only if former <a href="#if"><code>if</code></a> and <code>elseif</code> branches haven&#39;t executed.</p>
 <p>Please refer to the <a href="#if"><code>if</code></a> element for further documentation.</p>
-<h2 id="if">if</h2>
-<p>Evaluates a simple conditional statement and executes the encapsulated code if the statement is <code>true</code>.</p>
+<h2 id="for-each">for-each</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td style="text-align: left;">exists</td>
-<td style="text-align: left;">object</td>
-<td style="text-align: left;">Tests if the referenced object still exists and executes the branch if it does.</td>
-</tr>
-<tr>
-<td style="text-align: left;">isnull</td>
+<tr class="odd">
+<td style="text-align: left;">select</td>
 <td style="text-align: left;">string</td>
-<td style="text-align: left;">Tests if the value is null. The test will pass if the value is <code>0</code>, an empty string, or only containing whitespace.</td>
-</tr>
-<tr>
-<td style="text-align: left;">not</td>
-<td style="text-align: left;">boolean</td>
-<td style="text-align: left;">Reverses the result of the conditional test.</td>
-</tr>
-<tr>
-<td style="text-align: left;">notnull</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Tests if the value is not null. The test will pass if the value is a number other than <code>0</code> or has content (whitespace does not count as content).</td>
-</tr>
-<tr>
-<td style="text-align: left;">statement</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Tests the conditional statement and executes the branch if it evaluates to <code>true</code>.</td>
+<td style="text-align: left;">Required. Evaluates an XQuery expression that must resolve to a node sequence.</td>
 </tr>
 </tbody>
 </table>
-<p>The if element is used to evaluate conditional statements and then act on the result. It can be paired with the <a href="#elseif"><code>elseif</code></a> and <a href="#else"><code>else</code></a> elements to create complex decision making trees during document processing.</p>
-<p>Only one of the <code>statement</code>, <code>exists</code>, <code>isnull</code> and <code>notnull</code> attributes may be used for conditional testing. The <code>not</code> attribute can be combined with any of these to reverse the conditional result.</p>
+<p>The <code>for-each</code> element iterates over an XQuery node sequence. The <code>select</code> expression is evaluated once, then the child content is parsed once for each selected node.</p>
+<p>Inside the loop body, the current item becomes the active XQuery context item. This means that <code>.</code>, relative paths, and attribute lookups such as <code>@code</code> resolve against the current node. The active loop frame is also exposed through <code>$loop</code>, with <code>index</code> and <code>iteration</code> starting at <code>0</code>, and <code>count</code> fixed to the total number of selected items.</p>
+<p><code>for-each</code> only accepts node sequences. Atomic sequences are rejected. Both real XML nodes and constructed nodes are supported. <a href="#break"><code>break</code></a> and <a href="#continue"><code>continue</code></a> apply to the innermost active <code>for-each</code>.</p>
+<h2 id="if">if</h2>
+<p>Evaluates an XQuery condition and executes the encapsulated code if the expression is <code>true</code>.</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Attrib</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">test</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Evaluates an XQuery expression. The branch executes when the expression&#39;s effective boolean value is <code>true</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>if</code> element is used to evaluate a condition and then act on the result. It can be paired with the <a href="#elseif"><code>elseif</code></a> and <a href="#else"><code>else</code></a> elements to create complex decision trees during document processing.</p>
 <p>The following example illustrates the construction of a complete if statement and alternative branches:</p>
-<pre><code>&lt;if statement=&quot;[@hello] = World&quot;&gt;
-  &lt;debug msg=&quot;if statement executed.&quot;/&gt;
+<pre><code>&lt;if test=&quot;1 lt 2&quot;&gt;
+  &lt;debug msg=&quot;if branch executed.&quot;/&gt;
 &lt;/if&gt;
-&lt;elseif statement=&quot;[@hello] = Hello&quot;&gt;
-  &lt;debug msg=&quot;elseif statement executed.&quot;/&gt;
+&lt;elseif test=&quot;starts-with(&#39;warning&#39;, &#39;warn&#39;)&quot;&gt;
+  &lt;debug msg=&quot;elseif branch executed.&quot;/&gt;
 &lt;/elseif&gt;
 &lt;else&gt;
-  &lt;debug msg=&quot;else statement executed.&quot;/&gt;
+  &lt;debug msg=&quot;else branch executed.&quot;/&gt;
 &lt;/else&gt;</code></pre>
-<p>Currently, only simple conditional statements can be tested. Supported conditions are <code>=</code>, <code>&gt;</code>, <code>&lt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>!=</code> and <code>&lt;&gt;</code>. Complex conditionals involving parentheses and the use of <code>and</code> and <code>or</code> operators is not possible. Numbers can be tested against each other, as can strings. If more complex decision making is required in your document, we recommended that you use a script on those occasions.</p>
+<p>Full XQuery expressions are supported here, including functions such as <code>exists()</code>, <code>empty()</code>, <code>not()</code>, <code>matches()</code>, and the document helper functions listed in <a href="#xquery-support">XQuery Support</a>.</p>
 <h2 id="repeat">repeat</h2>
 <p>Repeats a section of code for a specific number of times.</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">count</td>
 <td style="text-align: left;">integer</td>
 <td style="text-align: left;">Defines a fixed number of times for the repeat loop to execute. Overrides the <code>end</code> attribute.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">end</td>
 <td style="text-align: left;">integer</td>
-<td style="text-align: left;">Defines a non-inclusive end-point at which the repeat loop must stop. Ignored if the <code>count</code> attribute has been set.</td>
+<td style="text-align: left;">Defines an exclusive end-point for the loop. Ignored if the <code>count</code> attribute has been set.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">index</td>
 <td style="text-align: left;">string</td>
-<td style="text-align: left;">Declares the name of a global variable that will store the repeat loop&#39;s index while it is processed.</td>
+<td style="text-align: left;">Declares a legacy alias name for the current repeat index while the loop is active.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">start</td>
 <td style="text-align: left;">integer</td>
 <td style="text-align: left;">A starting value for the repeat loop may be set with this attribute. The default is <code>0</code>.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">step</td>
 <td style="text-align: left;">integer</td>
-<td style="text-align: left;">Sets a stepping value other than the default of <code>1</code>. This is added to the starting index until the loop is satisfied. Can be negative for reversing the loop.</td>
+<td style="text-align: left;">Sets a stepping value other than the default inferred direction.</td>
 </tr>
 </tbody>
 </table>
-<p>The repeat element is used to repeatedly execute sections of document code for a fixed number of times. It is useful for data processing and compacting repeated areas of document content. At a minimum, the <code>count</code> or <code>end</code> attributes must be defined so that the required number of executions is known to the parser. A poorly defined repeat loop will be ignored by the parser.</p>
-<p>During execution, the parser will store an incrementing index for each pass and this can be accessed with references to <code>[%index]</code>. Sometimes this can cause referencing problems if the loop is nested within other <code>repeat</code> or <code>while</code> loops. To resolve this, set the <code>index</code> attribute with a name and the index value will now be stored in a named global variable, accessible as <code>[@your_index_name]</code>.</p>
+<p>The repeat element is used to repeatedly execute sections of document code for a fixed number of times. It is useful for data processing and compacting repeated areas of document content. At a minimum, the <code>count</code> or <code>end</code> attributes must be defined so that the required number of executions is known to the parser.</p>
+<p>During execution, the active loop frame is available through <code>$loop</code>. This exposes <code>index</code>, <code>iteration</code>, <code>start</code>, <code>step</code>, and, when known, <code>count</code> and <code>end</code>.</p>
 <p>A loop can be broken at any time with the <a href="#break"><code>break</code></a> element, and specific iterations can be skipped with <a href="#continue"><code>continue</code></a>.</p>
-<p>This simple example prints the numbers 0 through 9 to the debug log:</p>
-<pre><code>&lt;repeat count=&quot;10&quot; index=&quot;counter&quot;&gt;
-  &lt;debug msg=&quot;[@counter]&quot;/&gt;
+<p>If <code>step</code> is omitted, the parser chooses <code>1</code> for ascending loops and <code>-1</code> for descending loops. Descending loops are therefore supported. Sequence iteration is not supported in <code>repeat</code>; use <a href="#for-each"><code>for-each</code></a> for XQuery node sequences.</p>
+<p>This simple example prints the numbers 0 through 9:</p>
+<pre><code>&lt;repeat count=&quot;10&quot;&gt;
+  &lt;p&gt;&lt;print value=&quot;{$loop?index}&quot;/&gt;&lt;/p&gt;
 &lt;/repeat&gt;</code></pre>
 <h2 id="while">while</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td style="text-align: left;">exists</td>
-<td style="text-align: left;">object</td>
-<td style="text-align: left;">Tests if the object referenced in the value still exists.</td>
-</tr>
-<tr>
-<td style="text-align: left;">index</td>
+<tr class="odd">
+<td style="text-align: left;">test</td>
 <td style="text-align: left;">string</td>
-<td style="text-align: left;">Declares the name of a global variable that will store the repeat loop&#39;s index while it is processed.</td>
-</tr>
-<tr>
-<td style="text-align: left;">isnull</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Tests if the value is null. The test will pass if the value is <code>0</code>, an empty string, or only containing whitespace.</td>
-</tr>
-<tr>
-<td style="text-align: left;">not</td>
-<td style="text-align: left;">boolean</td>
-<td style="text-align: left;">Reverses the result of the conditional test.</td>
-</tr>
-<tr>
-<td style="text-align: left;">notnull</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Tests if the value is not null. The test will pass if the value is a number other than <code>0</code> or has content (whitespace does not count as content).</td>
-</tr>
-<tr>
-<td style="text-align: left;">statement</td>
-<td style="text-align: left;">integer</td>
-<td style="text-align: left;">Tests a conditional statement that must evaluate to <code>true</code>, or the loop is broken.</td>
+<td style="text-align: left;">Evaluates an XQuery expression. The loop continues while the expression&#39;s effective boolean value is <code>true</code>.</td>
 </tr>
 </tbody>
 </table>
-<p>The <code>while</code> element is used to repeatedly execute sections of document code for as long as a conditional statement is satisfied. When the statement is no longer <code>true</code>, the loop will be broken.</p>
-<p>During execution, the parser will store an incrementing index for each pass and this can be accessed with references to <code>[%index]</code>. Sometimes this can cause referencing problems if the loop is nested within other <code>repeat</code> or <code>while</code> loops. To resolve this, set the <code>index</code> attribute with a name and the index value will now be stored in a named global variable, accessible as <code>[@your_index_name]</code>.</p>
-<p>A while loop can be broken at any time with the <code>break</code> element, and portions of the code can be skipped by using <code>continue</code>.</p>
+<p>The <code>while</code> element is used to repeatedly execute sections of document code for as long as a condition is satisfied. When the condition is no longer <code>true</code>, the loop is broken.</p>
+<p>During execution, the active loop frame is available through <code>$loop</code>. <code>index</code> and <code>iteration</code> both start at <code>0</code> for the first pass. Unlike <a href="#repeat"><code>repeat</code></a>, the <code>while</code> element does not support a named <code>index</code> attribute.</p>
+<p>A while loop can be broken at any time with the <a href="#break"><code>break</code></a> element, and portions of the code can be skipped by using <a href="#continue"><code>continue</code></a>.</p>
 <h1 id="data-elements-1">Data Elements</h1>
-<h2 id="info">info</h2>
+<h2 id="data">data</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td style="text-align: left;">author</td>
+<tr class="odd">
+<td style="text-align: left;">select</td>
 <td style="text-align: left;">string</td>
-<td style="text-align: left;">The author(s) of the document.</td>
-</tr>
-<tr>
-<td style="text-align: left;">copyright</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Copyright and licensing information.</td>
-</tr>
-<tr>
-<td style="text-align: left;">description</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Custom description for the document</td>
-</tr>
-<tr>
-<td style="text-align: left;">keywords</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Relevant keywords in CSV format.</td>
-</tr>
-<tr>
-<td style="text-align: left;">title</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">The title of the document (can be displayed in the browser window).</td>
+<td style="text-align: left;">Evaluates an XQuery expression and replaces the parser-local data scope with the resulting XML/RIPL fragment or concrete XML node sequence.</td>
 </tr>
 </tbody>
 </table>
-<p>The <code>info</code> element declares meta information about the document, such as the author and copyright details.</p>
-<!--
-## xml
-
-Used to send XML data to any embedded object created by the document.  Arguments and variable references will be translated beforehand.
-
-## xml-raw
-
-As for `xml`, but does not translate arguments that appear in the data.
-
-## xml-translate
-
-As for `xml`, but peforms a full translation of the data, allowing object references and computations to be resolved.
--->
-
+<p>The <code>data</code> element loads parser-local XML data without emitting it directly into the output stream. The resulting tree becomes visible to XQuery as <code>$doc</code>.</p>
+<p>Each <code>data</code> element replaces the previous <code>$doc</code> tree; it does not append to it. The selected result must resolve to parseable XML/RIPL markup with at least one top-level tag, or to a concrete XML node sequence that can be serialised back into such markup.</p>
+<h2 id="info">info</h2>
+<p>The <code>info</code> element declares document metadata in child elements. The following elements are supported:</p>
+<p>|Element|Description|
+|:-|:-|:-|
+|author|The author(s) of the document.|
+|copyright|Copyright and licensing information.|
+|description|Custom description for the document|
+|keywords|Relevant keywords in CSV format.|
+|title|The title of the document (can be displayed in the browser window).|</p>
 <h1 id="layout-elements-1">Layout Elements</h1>
 <h2 id="a">a</h2>
 <p>This HTML compatible element is used as a short-form for defining a hyperlink. Please refer to the <a href="#link">link</a> element for further details.</p>
 <h2 id="advance">advance</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">x</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">Increases the cursor&#39;s horizontal position.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">y</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">Increases the cursor&#39;s vertical position.</td>
@@ -548,126 +587,170 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="body">body</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">clip-path</td>
 <td style="text-align: left;">uri</td>
 <td style="text-align: left;">Refer to an SVG clip definition to mask graphics outside of the clipping path.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">cursor-stroke</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">Defines an SVG stroke operation for the text cursor.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">Defines the fill operation for the background. Set to &#39;none&#39; to disable the background and make the document transparent.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">font-face</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Defines the default font face.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">font-size</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">Defines the default font size.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">font-fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">Defines the default font fill.</td>
 </tr>
-<tr>
-<td style="text-align: left;">line-height</td>
-<td style="text-align: left;">integer</td>
-<td style="text-align: left;">Defines the default line height.</td>
-</tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">link</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The default fill for hyperlinked text can be defined here. Applies to URI-based hyperlinks only.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">select-fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The default fill operation to use for a hyperlink when it has been selected (e.g. via tab key).</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">margins</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">The default size of all four page margins can be defined here. Specify four unit values in clockwise order, <code>Left Top Right Bottom</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">v-link</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The default fill operation for previously visited hyperlinks.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">width</td>
 <td style="text-align: left;">dimension</td>
-<td style="text-align: left;">Declares the width of the page, either as a fixed pixel value, or as a percentage of the available viewing area. The default is 100% of the viewing area.</td>
+<td style="text-align: left;">Declares the width of the page, either as a fixed pixel value or as a percentage of the available viewing area. <code>page-width</code> is accepted as a synonym.</td>
 </tr>
 </tbody>
 </table>
-<p>The body element defines global page body attributes.</p>
-<p>If the body contains user defined content, it will be used as a template through which page content may be displayed. For instance, one might want to create an appealing graphical frame for the borders of a page and display content within it. This could be achieved by creating a table in the body and then using an <a href="#inject"><code>inject</code></a> element in the cell where the <a href="#page"><code>page</code></a> content is to be displayed.</p>
-<p>The body is a root-level element and may not be declared inside a <a href="#page"><code>page</code></a>.</p>
+<p>The body element defines page body attributes and the default text style.</p>
+<p>If a root-level <code>body</code> contains user defined content, it will be used as a template through which page content is displayed. For instance, one might want to create a graphical frame for the borders of a page and display content within it. This can be achieved by creating a table in the body and then using an <a href="#inject"><code>inject</code></a> element in the cell where the <a href="#page"><code>page</code></a> content is to be displayed.</p>
+<p>A <code>body</code> element may also appear inside a <a href="#page"><code>page</code></a> to adjust attributes for that page while it is being processed. In that form it is not treated as a page wrapper template.</p>
 <h2 id="div">div</h2>
-<p>Use <code>div</code> to structure the document in a similar way to paragraphs. Its main difference is that it avoids the insertion of paragraph start and end points and can be used to alter the attributes of an existing paragraph for a particular section of content.</p>
+<p>Use <code>div</code> to structure the document in a similar way to paragraphs. Its main difference is that it avoids the insertion of paragraph start and end points and can be used to alter the active paragraph style for a particular section of content.</p>
 <p>Please refer to <a href="#p">p</a> for the full list of available attributes.</p>
 <h2 id="footer">footer</h2>
-<p>The footer is a special template that will be processed when the parser reaches the end of the <a href="#page"><code>page</code></a>. The footer is a root-level element that will be applied to all pages in the file. It can be manually turned off for any given page by using the <code>nofooter</code> attribute in the <code>page</code> element.</p>
+<p>The footer is a special template that is processed after the current <a href="#page"><code>page</code></a> content. The footer is a root-level element that will be applied to all pages in the file. It can be manually turned off for any given page by using the <code>no-footer</code> attribute in the <code>page</code> element.</p>
 <h2 id="header">header</h2>
-<p>The header is a special template that will be processed when the parser reaches the end of the <a href="#page"><code>page</code></a>. The header is a root-level element that will be applied to all pages in the file. It can be manually turned off for any given page by using the <code>noheader</code> attribute in the <code>page</code> element.</p>
-<h2 id="link">link</h2>
+<p>The header is a special template that is processed before the current <a href="#page"><code>page</code></a> content. The header is a root-level element that will be applied to all pages in the file. It can be manually turned off for any given page by using the <code>no-header</code> attribute in the <code>page</code> element.</p>
+<h2 id="image">image</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
+<td style="text-align: left;">align</td>
+<td style="text-align: left;">lookup</td>
+<td style="text-align: left;">Set to <code>left</code>, <code>right</code>, or <code>center</code>/<code>middle</code> to float the image horizontally.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">fill</td>
+<td style="text-align: left;">painter</td>
+<td style="text-align: left;">A painter or pattern reference to render. <code>src</code> is accepted as a synonym.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">height</td>
+<td style="text-align: left;">unit</td>
+<td style="text-align: left;">Requested height. If omitted or set to <code>0</code>, the parser auto-sizes the image.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">padding</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Outer padding in clockwise order.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">src</td>
+<td style="text-align: left;">painter</td>
+<td style="text-align: left;">A painter or pattern reference to render.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">v-align</td>
+<td style="text-align: left;">lookup</td>
+<td style="text-align: left;">For inline images, set to <code>top</code>, <code>center</code>/<code>middle</code>, or <code>bottom</code>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">width</td>
+<td style="text-align: left;">unit</td>
+<td style="text-align: left;">Requested width. If omitted or set to <code>0</code>, the parser auto-sizes the image.</td>
+</tr>
+</tbody>
+</table>
+<p>Images are inline by default. Setting <code>align</code> turns the image into a floating object positioned relative to the available page width. Inline images are treated as part of the text flow, and <code>v-align</code> controls their position when the line height exceeds the image height.</p>
+<p>The <code>image</code> element renders any named painter or pattern reference, not just bitmap images. In practice it is commonly used with resources loaded in an <a href="#svg"><code>svg</code></a> section.</p>
+<h2 id="link">link</h2>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Attrib</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The default fill operation applied to the link&#39;s text can be overridden by this attribute.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">href</td>
 <td style="text-align: left;">uri</td>
 <td style="text-align: left;">The link will load the referenced URI in-place when activated. That is if the URI refers to a RIPL page, the document will load the new page and unload the current one.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">hint</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Attaches a hint to the hyperlink. This hint may be displayed to the user when the mouse pointer rests above the hyperlink.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">on-click</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">The link will execute the referenced function when it is clicked by the user.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">on-crossing</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">The link will execute the referenced function when the mouse cursor crosses in or out of its boundary.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">on-motion</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">The link will execute the referenced function when the user moves the mouse cursor over it.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">select</td>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">The link will be selected (given the focus) when the document is displayed.</td>
@@ -677,33 +760,33 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <p>The link element defines a hyperlink that is attached to encapsulated content. The content may be in the form of text and/or visual object. When the user interacts with the hyperlink, it is activated. Hyperlinks can either activate a new URI location in-place, or execute a script function.</p>
 <p>If both the <code>href</code> and <code>on-click</code> attributes have been defined in the element, the first definition will take precedence. It is not possible to have both a function and URI attached to one hyperlink for execution.</p>
 <p>Parameters can be forwarded to a referenced function by attaching them to the link. All parameters must be listed inside the element and identified with the <code>@</code> prefix. Parameters will be passed to the function in the order in which they are given. For example: <code>&lt;link on-click=&quot;function&quot; @arg1=&quot;hello&quot; @arg2=&quot;world&quot;/&gt;</code></p>
-<p>It is also possible to set global variables when the hyperlink is activated (normally requires use of the <a href="#set"><code>set</code></a> element). To set a global variable, use an underscore as a prefix to the variable name.</p>
+<p>It is also possible to set global variables when the hyperlink is activated. To set a global variable, use an underscore as a prefix to the variable name.</p>
 <h2 id="list">list</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The fill operation to use for the bullet in bullet point lists.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">indent</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">When embedding lists, the <code>indent</code> value determines the amount of indentation the child list has from the parent.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">type</td>
 <td style="text-align: left;">lookup</td>
 <td style="text-align: left;">Defines the type of the list, which affects the style of bullet points that are used for list items. Valid types are <code>bullet</code>, <code>custom</code> and <code>ordered</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">v-spacing</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">Defines the amount of whitespace between list items. The default value is <code>1.0</code> and is used as a multiplier of the page&#39;s default line height.</td>
@@ -714,133 +797,148 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="li">li</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">aggregate</td>
 <td style="text-align: left;">bool</td>
-<td style="text-align: left;">For ordered lists only. If <code>true</code>, parent bullet values are prefixed to this one.</td>
+<td style="text-align: left;">For ordered lists only. If <code>true</code>, parent numbering prefixes are added to this item.</td>
 </tr>
-<tr>
-<td style="text-align: left;">value</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">For custom lists, specify each bullet point&#39;s custom string value here.</td>
-</tr>
-</tbody>
-</table>
-<p>The li element is used to declare a new <a href="#list"><code>list</code></a> item with encapsulated content. It&#39;s behaviour matches that of the <a href="#p"><code>p</code></a> element and inherits the same attributes. The key difference is the addition of a bullet point that precedes the item content.</p>
-<p>If the element belongs to a custom style <code>list</code>, the <code>value</code> attribute must be set with customised bullet point text. If not, the bullet point will remain empty.</p>
-<h2 id="p">p</h2>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">Attrib</th>
-<th style="text-align: left;">Type</th>
-<th style="text-align: left;">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;">align</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Determines the alignment of content within the paragraph. The default is <code>left</code>. Valid values are <code>left</code>, <code>center</code> and <code>right</code></td>
-</tr>
-<tr>
-<td style="text-align: left;">font-size</td>
-<td style="text-align: left;">unit</td>
-<td style="text-align: left;">The size of the font for this paragraph.</td>
-</tr>
-<tr>
-<td style="text-align: left;">font-face</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">The name of a font face for this paragraph.</td>
-</tr>
-<tr>
-<td style="text-align: left;">font-fill</td>
-<td style="text-align: left;">painter</td>
-<td style="text-align: left;">The fill operation to use when rendering text.</td>
-</tr>
-<tr>
-<td style="text-align: left;">font-style</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">Sets the font style to <code>bold</code>, <code>italic</code> or <code>bold italic</code>.</td>
-</tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">indent</td>
 <td style="text-align: left;">unit</td>
-<td style="text-align: left;">Indent the paragraph by this amount of whitespace.</td>
+<td style="text-align: left;">Indent the list item content.</td>
 </tr>
-<tr>
-<td style="text-align: left;">kerning</td>
-<td style="text-align: left;">unit</td>
-<td style="text-align: left;">TBA</td>
-</tr>
-<tr>
-<td style="text-align: left;">leading</td>
-<td style="text-align: left;">unit</td>
-<td style="text-align: left;">The leading ratio adjusts the amount of vertical white space that is inserted prior to the paragraph content. It has precedence over the <code>v-spacing</code> value. If no content precedes the paragraph, the <code>leading</code> value is ignored. This makes the leading ratio ideal for headlines, where no space is desirable at the top of the page, but is needed to clearly separate a headline from preceding content.</td>
-</tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">line-height</td>
 <td style="text-align: left;">unit</td>
-<td style="text-align: left;">Declares the vertical advance from one line to the next when a wordwrap occurs. Expressed as a multiplier, <code>1.0</code> is the default.</td>
+<td style="text-align: left;">Declares the line-height multiplier used when the item wraps.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">no-wrap</td>
 <td style="text-align: left;">boolean</td>
-<td style="text-align: left;">Deactivates word-wrapping.</td>
+<td style="text-align: left;">Deactivates word-wrapping for the item.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">trim</td>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">Eliminates any leading whitespace found at the start of the content.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">v-align</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><code>top</code>, <code>center</code>, <code>bottom</code></td>
 </tr>
-<tr>
-<td style="text-align: left;">v-spacing</td>
-<td style="text-align: left;">unit</td>
-<td style="text-align: left;">Adjusts the amount of vertical white space from one paragraph to the next. The value is expressed as a ratio of the <em>default</em> line height, which is specified in the <a href="#body"><code>body</code></a> element. For example, a vspacing value of <code>1.5</code> is one and a half times the standard lineheight. The default vspacing value is <code>1.0</code>.</td>
+<tr class="odd">
+<td style="text-align: left;">value</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">For custom lists, specify the bullet text here.</td>
 </tr>
 </tbody>
 </table>
-<p>Paragraphs are used to encapsulate content. Vertical whitespace is inserted before and after the paragraph to separate content between other paragraphs and visuals. The amount of whitespace is controlled by the <code>leading</code> and <code>v-spacing</code> attributes.</p>
+<p>The <code>li</code> element is used to declare a new <a href="#list"><code>list</code></a> item with encapsulated content. It behaves like a paragraph with automatic list marker handling, but it does not support the full <a href="#p"><code>p</code></a> attribute set.</p>
+<p>If the element belongs to a custom style <code>list</code>, the <code>value</code> attribute must be set with customised bullet point text. If not, the bullet point will remain empty.</p>
+<h2 id="p">p</h2>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Attrib</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">align</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Determines the alignment of content within the paragraph. The default is <code>left</code>. Valid values are <code>left</code>, <code>center</code> and <code>right</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">font-size</td>
+<td style="text-align: left;">unit</td>
+<td style="text-align: left;">The size of the font for this paragraph.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">font-face</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">The name of a font face for this paragraph.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">font-fill</td>
+<td style="text-align: left;">painter</td>
+<td style="text-align: left;">The fill operation to use when rendering text.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">font-style</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Sets the font style to <code>bold</code>, <code>italic</code> or <code>bold italic</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">indent</td>
+<td style="text-align: left;">unit</td>
+<td style="text-align: left;">Indent the paragraph by this amount of whitespace.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">kerning</td>
+<td style="text-align: left;">unit</td>
+<td style="text-align: left;">TBA</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">leading</td>
+<td style="text-align: left;">unit</td>
+<td style="text-align: left;">The leading ratio adjusts the amount of vertical white space that is inserted prior to the paragraph content. If no content precedes the paragraph, the <code>leading</code> value is ignored. This makes the leading ratio ideal for headlines, where no space is desirable at the top of the page, but is needed to clearly separate a headline from preceding content.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">line-height</td>
+<td style="text-align: left;">unit</td>
+<td style="text-align: left;">Declares the vertical advance from one line to the next when a wordwrap occurs. Expressed as a multiplier, <code>1.0</code> is the default.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">no-wrap</td>
+<td style="text-align: left;">boolean</td>
+<td style="text-align: left;">Deactivates word-wrapping.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">trim</td>
+<td style="text-align: left;">boolean</td>
+<td style="text-align: left;">Eliminates any leading whitespace found at the start of the content.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">v-align</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;"><code>top</code>, <code>center</code>, <code>bottom</code></td>
+</tr>
+</tbody>
+</table>
+<p>Paragraphs are used to encapsulate content. Vertical whitespace is controlled primarily by the paragraph&#39;s own layout behaviour and the <code>leading</code> attribute, which applies to the first line of the paragraph.</p>
 <p>If a paragraph is embedded within another paragraph element, a new line is inserted at the start of the opening element. The amount of whitespace is controlled by the newly declared paragraph.</p>
 <p>Note: The RIPL parser treats <a href="#li"><code>li</code></a> elements as paragraphs, making the two elements somewhat interchangeable when used within a <a href="#list"><code>list</code></a>.</p>
 <h2 id="page">page</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td style="text-align: left;">hidden</td>
-<td style="text-align: left;">boolean</td>
-<td style="text-align: left;">Marks the page as hidden. This will prevent <code>%nextpage</code> and <code>%prevpage</code> from recognising it.</td>
-</tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">A page name should be specified here for identification purposes.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">no-footer</td>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">Turns off the default footer if one is specified in the document.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">no-header</td>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">Turns off the default header if one is specified in the document.</td>
@@ -853,14 +951,14 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="svg">svg</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">placement</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Set to <code>foreground</code> (default) or <code>background</code> to target the inner page or viewing window respectively.</td>
@@ -877,14 +975,14 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="call">call</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">Required. Refers to the function that will be called.</td>
@@ -897,14 +995,14 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="debug">debug</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">msg</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">A message to be logged.</td>
@@ -915,72 +1013,72 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="editdef">editdef</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">edit-fonts</td>
 <td style="text-align: left;">bool</td>
 <td style="text-align: left;">If <code>true</code>, allow the font style and face information to be changed.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">edit-images</td>
 <td style="text-align: left;">bool</td>
 <td style="text-align: left;">If <code>true</code>, allow images to be edited, inserted or removed.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">edit-tables</td>
 <td style="text-align: left;">bool</td>
 <td style="text-align: left;">If <code>true</code>, allow tables to be edited, inserted or removed.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">edit-all</td>
 <td style="text-align: left;">bool</td>
 <td style="text-align: left;">If <code>true</code>, allow the user to perform all forms of editing, without restriction.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">line-breaks</td>
 <td style="text-align: left;">bool</td>
 <td style="text-align: left;">If <code>true</code>, allow the user to add line breaks with the enter key.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">max-chars</td>
 <td style="text-align: left;">integer</td>
 <td style="text-align: left;">Limit the number of characters to this value.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">A unique name for the editing area.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">on-change</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">Function to call whenever content changes.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">on-enter</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">Function to call when the user activates the editing area (gains focus).</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">on-exit</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">Function to call when the user leaves the editing area (lost focus).</td>
 </tr>
-<tr>
-<td style="text-align: left;">select-fill</td>
-<td style="text-align: left;">painter</td>
-<td style="text-align: left;">Use this fill operation when content in the editing area is selected.</td>
+<tr class="odd">
+<td style="text-align: left;">@... / _...</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Additional arguments that are stored with the edit definition.</td>
 </tr>
 </tbody>
 </table>
-<p><em>WORK IN PROGRESS</em></p>
 <p>Defines an area that the user can edit with the text cursor. For use by editable table cells only.</p>
+<p>At present, <code>edit-fonts</code>, <code>edit-images</code>, <code>edit-tables</code>, <code>edit-all</code>, and <code>select-fill</code> are accepted by the parser but are not applied by the current implementation.</p>
 <h2 id="focus">focus</h2>
 <p>This element tells the parser that the next viable element that can receive the user&#39;s focus will do so when the document is activated. This feature is commonly used as a precursor to widgets such as input boxes.</p>
 <p>Any encapsulated content is ignored.</p>
@@ -988,19 +1086,19 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="include">include</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">src</td>
 <td style="text-align: left;">uri</td>
 <td style="text-align: left;">Required. Refers to the source file for loading.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">volatile</td>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">Marks the <code>src</code> as volatile and forces the cache engine to always check if it has changed on document refreshes.</td>
@@ -1011,14 +1109,19 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="index">index</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
+<td style="text-align: left;">hide</td>
+<td style="text-align: left;">boolean</td>
+<td style="text-align: left;">If present, the indexed content is processed but marked invisible.</td>
+</tr>
+<tr class="even">
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">The name of the index.</td>
@@ -1026,90 +1129,140 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 </tbody>
 </table>
 <p>Indexes are used to create bookmarks in a page. These bookmarks can be used for quickly advancing to a specific point on the page via hyperlinks. Another usage is to mark areas in the document that your scripts need to access for content modification purposes (the <code>FindIndex()</code> method is used for this purpose).</p>
+<p>If <code>name</code> is omitted, the parser will try to derive it from the first immediate text node inside the element.</p>
 <h2 id="inject">inject</h2>
 <p>For use in templates only. Injects content from the caller into a specific area in the template.</p>
-<h2 id="parse">parse</h2>
+<h2 id="let">let</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
+<td style="text-align: left;">name</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Required. Declares the binding name that will be exposed through <code>$state</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">select</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Required. Evaluates an XQuery expression and stores the resulting value for the duration of the element&#39;s child scope.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>let</code> element creates a lexical binding that is visible only to its child content. Bindings are exposed as entries in <code>$state</code>, so <code>name=&quot;label&quot;</code> is read back as <code>$state?label</code>.</p>
+<p>Bindings may contain scalar values or preserved node sequences. Nested <code>let</code> elements may shadow earlier bindings, and the outer value is restored automatically when the nested scope ends.</p>
+<h2 id="parse">parse</h2>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Attrib</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">select</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Evaluates an XQuery expression. Node results are serialised as XML fragments and reparsed; scalar results must resolve to parseable XML/RIPL markup.</td>
+</tr>
+<tr class="even">
 <td style="text-align: left;">value</td>
 <td style="text-align: left;">string</td>
-<td style="text-align: left;">An XML compliant string value to insert into the document stream.</td>
+<td style="text-align: left;">An XML compliant string value to insert into the document stream. AVTs may be used to build this value dynamically.</td>
 </tr>
 </tbody>
 </table>
 <p>The <code>parse</code> element injects RIPL code into the document stream while it is being processed by the interpreter. This allows RIPL code to be dynamically generated or retrieved from an external source for inclusion in the document.</p>
-<p>For the insertion of plain text, please use the <a href="#print"><code>print</code></a> element.</p>
+<p>Use <code>parse</code> when you want markup or node insertion. <code>parse@select</code> is the node-aware surface: selected XML nodes are
+serialised and reparsed into the document stream. For the insertion of plain text, please use the <a href="#print"><code>print</code></a>
+element.</p>
+<p>If both <code>select</code> and <code>value</code> are present, <code>select</code> takes precedence.</p>
 <h2 id="print">print</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
+<td style="text-align: left;">select</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Evaluates an XQuery expression and inserts its string value. Node results are stringified; they are not emitted as markup.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">src</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Load plain text from a file. This is only available when the document is running in unrestricted mode.</td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;">value</td>
 <td style="text-align: left;">string</td>
-<td style="text-align: left;">String value to insert into the document stream.</td>
+<td style="text-align: left;">String value to insert into the document stream. AVTs may be used to build this value dynamically.</td>
 </tr>
 </tbody>
 </table>
 <p>The print element is used to inject raw text into the document stream during parsing. This feature is typically used to create or retrieve dynamically generated content that is not constant.</p>
-<p>For the insertion of RIPL markup, please use the <a href="#parse"><code>parse</code></a> element.</p>
+<p>Use <code>print</code> for text only. If an XQuery expression yields nodes, <code>print@select</code> inserts their string value rather than
+their markup. For the insertion of RIPL markup or node content, please use the <a href="#parse"><code>parse</code></a> element.</p>
+<p>If both <code>select</code> and <code>value</code> are present, <code>select</code> takes precedence.</p>
 <h2 id="script">script</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">cache-file</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">This attribute may be used in trusting environments only. It allows the script to specify a file path to which the compiled script will be saved. The next time that the document is processed, the pre-compiled script will be loaded in order to skip the entire compilation process.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">default</td>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">If <code>true</code>, sets this script as the default for the entire document (all function names will be directed to it unless fully qualified).</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">external</td>
 <td style="text-align: left;">object</td>
 <td style="text-align: left;">Refer to a script that already exists outside of the document, by name or UID. This attribute may be used in trusting environments only.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Defines a name for the script.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">persistent</td>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">Declares that the script is persistent. In this mode, the script will survive refreshes.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">src</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Allows script code to be loaded from an external file source.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">type</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Declares the type of scripting language that is used for the code. The default is <code>Tiri</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">@...</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Pass key/value pairs into the script before activation.</td>
 </tr>
 </tbody>
 </table>
@@ -1120,24 +1273,24 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="template">template</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">The name of the template.</td>
 </tr>
 </tbody>
 </table>
-<p>Templates provide a powerful means of creating customised elements in your documents. Any sequence of code that you frequently use should be placed into a template to keep your code as clean as possible. An additional benefit of doing this is that any modifications that you need to make to your code can now be made at a single location, rather than through the entire document. Templates are commonly used for managing document aesthetics, for instance headlines and other forms of styling are often implemented as templates. In cases where you might use CSS in HTML, you&#39;ll want to use templates in RIPL.</p>
+<p>Templates provide a powerful means of creating customised elements in your documents. Repetitive code sequences are excellent candidates for templating to write cleaner code. An additional benefit of doing this is that any modifications that you need to make to your code can now be made at a single location, rather than through the entire document. Templates are commonly used for managing document aesthetics, for instance headlines and other forms of styling are often implemented as templates. In cases where you might use CSS in HTML, you&#39;ll want to use templates in RIPL.</p>
 <p>This template example emulates HTML&#39;s H1 element.</p>
 <pre><code>&lt;template name=&quot;h1&quot;&gt;
-  &lt;p leading=&quot;2.0&quot;&gt;&lt;font face=&quot;Helvete&quot; size=&quot;18&quot; fill=&quot;#404050&quot; style=&quot;bold&quot;&gt;&lt;inject/&gt;&lt;/font&gt;
+  &lt;p leading=&quot;2.0&quot;&gt;&lt;font face=&quot;Noto Sans&quot; size=&quot;18pt&quot; fill=&quot;#404050&quot; style=&quot;bold&quot;&gt;&lt;inject/&gt;&lt;/font&gt;
 &lt;/template&gt;</code></pre>
 <p>The following code demonstrates how this template would be used:</p>
 <p><code>&lt;h1&gt;Big Headline Here&lt;/&gt;</code></p>
@@ -1146,19 +1299,19 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="trigger">trigger</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">event</td>
 <td style="text-align: left;">lookup</td>
 <td style="text-align: left;">Must refer to an event that will be monitored.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">The function that will be called when the trigger is activated.</td>
@@ -1170,59 +1323,59 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <p>The following table illustrates the events that you may monitor:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Event</th>
 <th style="text-align: left;">Parameters</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">after-layout</td>
 <td style="text-align: left;">ViewWidth, ViewHeight, PageWidth, PageHeight</td>
 <td style="text-align: left;">Executes just after the layout engine has arranged all the content on the page. It will re-execute whenever the layout needs to be re-calculated, e.g. when content is changed dynamically or the page is resized.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">before-layout</td>
 <td style="text-align: left;">ViewWidth, ViewHeight</td>
 <td style="text-align: left;">Triggers just before the layout engine is going to arrange all content on the page.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">focus</td>
 <td style="text-align: left;">N/A</td>
 <td style="text-align: left;">Triggered when the document receives the focus, i.e. the user has clicked on the document window.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">focus-lost</td>
 <td style="text-align: left;">N/A</td>
 <td style="text-align: left;">Triggered when the document loses the focus, i.e. the user has clicked away from the document window.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">leaving-page</td>
 <td style="text-align: left;">OldURI, NewURI</td>
 <td style="text-align: left;">Triggered when the document is about to move to a new page or document source.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">on-click</td>
 <td style="text-align: left;">X, Y, Type</td>
 <td style="text-align: left;">Triggered whenever the mouse pointer is clicked on the document. The coordinates are indicated in <code>X</code> and <code>Y</code>. The type of clicks are <code>LMB</code>, <code>RMB</code>, <code>MMB</code> for the three most common mouse buttons. Additonal buttons are named from <code>BUTTON4</code> onwards.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">on-motion</td>
 <td style="text-align: left;">X, Y</td>
 <td style="text-align: left;">Triggers whenever the mouse pointer moves within the document.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">on-release</td>
 <td style="text-align: left;">X, Y, Type</td>
 <td style="text-align: left;">Triggers whenever a clicked button is released over the document.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">page-processed</td>
 <td style="text-align: left;">N/A</td>
 <td style="text-align: left;">Triggers after a document page has been processed by the parser.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">refresh</td>
 <td style="text-align: left;">N/A</td>
 <td style="text-align: left;">Triggered when the document content is refreshed, whether that is automated or manually requested by the user.</td>
@@ -1233,69 +1386,69 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="cell">cell</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Event</th>
 <th style="text-align: left;">Args</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">border</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Defines the borders that will be painted for the cell. Can consist of any variation of the following values, in CSV format: <code>all</code>, <code>top</code>, <code>left</code>, <code>bottom</code>, <code>right</code>. Styling utilises the table <code>stroke-width</code> and <code>stroke</code> if the cell equivalents are not specified.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">col-span</td>
 <td style="text-align: left;">integer</td>
 <td style="text-align: left;">Allows the cell to span multiple columns. Minimum value is 1.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The fill operation to apply to the cell&#39;s background. If not defined, the cell is transparent.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">edit</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Enables user editing mode within the cell if this value refers to a named <code>editdef</code>.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">no-wrap</td>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">Disables word-wrapping if <code>true</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">on-click</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">The referenced function is called if the cell is clicked by the user.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">on-crossing</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">The referenced function is called when the mouse cursor crosses in or out of the cell boundary.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">on-motion</td>
 <td style="text-align: left;">function</td>
 <td style="text-align: left;">The referenced function is called when the user moves the mouse cursor over the cell.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">row-span</td>
 <td style="text-align: left;">integer</td>
 <td style="text-align: left;">Allows the cell to span multiple rows. Minimum value is 1.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">select</td>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">Give the cell the user focus (only valid if the cell has editing enabled).</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">stroke</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">A stroke operation to apply when drawing the <code>border</code> of the cell. Overrides the table <code>stroke</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">stroke-width</td>
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">The width of the <code>stroke</code>. Overrides the table <code>stroke-width</code>.</td>
@@ -1303,33 +1456,31 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 </tbody>
 </table>
 <p>The <code>cell</code> defines a table cell that can encapsulate content. The <code>cell</code> must be a child of a <a href="#row"><code>row</code></a> element. Each cell is processed as if it were an independent page within the table.</p>
-<div class="tip">
-<div class="title">
-<p>Tip</p>
-</div>
-<p>The <code>use</code> element can inject vector graphics into the background of table cells.</p>
-</div>
+<blockquote>
+<p>[!TIP]
+The <code>use</code> element can inject vector graphics into the background of table cells.</p>
+</blockquote>
 <h2 id="row">row</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Event</th>
 <th style="text-align: left;">Args</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The fill operation to apply to the row&#39;s background. If not defined, the row is transparent.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">height</td>
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">Minimum height of the row.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">stroke</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">A stroke operation to apply when drawing the row border.</td>
@@ -1340,74 +1491,64 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="table">table</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Event</th>
 <th style="text-align: left;">Args</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">align</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Defines the position of the table within its page area. Valid values are <code>left</code> (default), <code>center</code> and <code>right</code></td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">cell-padding</td>
 <td style="text-align: left;">unit</td>
-<td style="text-align: left;">Defines the spacing (margins) inside each cell.</td>
+<td style="text-align: left;">Defines the spacing (margins) inside each cell. <code>margins</code> is accepted as a synonym.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">collapsed</td>
 <td style="text-align: left;">bool</td>
 <td style="text-align: left;">If <code>true</code>, all spacing is disabled around the edges of the table.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">columns</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">A CSV string of column widths, measured in pixels and/or percentages. When using percentages, the total of all values must not exceed 100%. Negative numbers are an error.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The fill operation to apply to the table&#39;s background. If not defined, the table is transparent.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">h-spacing</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">Horizontal spacing between cells.</td>
 </tr>
-<tr>
-<td style="text-align: left;">padding</td>
-<td style="text-align: left;">integer</td>
-<td style="text-align: left;">This attribute is a synonym for the margins attribute.</td>
-</tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">spacing</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">Defines <code>v-spacing</code> and <code>h-spacing</code> with one value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">stroke</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">A stroke operation to apply when drawing the border of the table.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">stroke-width</td>
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">The width of the <code>stroke</code>.</td>
 </tr>
-<tr>
-<td style="text-align: left;">thin</td>
-<td style="text-align: left;">boolean</td>
-<td style="text-align: left;">Declares a thin table, which results in any horizontal spacing being removed from the left and right sides of the table. Cells along the edge will be flush against the table borders.</td>
-</tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">v-spacing</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">Vertical spacing between cells.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">width, height</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">Define minimum values for the table&#39;s width and height.</td>
@@ -1427,34 +1568,34 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="font">font</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">Defines the SVG-style fill operation to apply to font text.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">face</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">The name of a recognised font.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">preformat</td>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">Enables preformatting. In this mode, all whitespace is acknowledged by the parser and will not be automatically compacted.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">size</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">Requests a specific font point size. For fixed-size fonts, the nearest matching point size will be selected by the font server.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">style</td>
 <td style="text-align: left;">lookup</td>
 <td style="text-align: left;">Valid font styles are <code>bold</code>, <code>italic</code>, <code>bold italic</code>.</td>
@@ -1472,39 +1613,39 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="button">button</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">alt-fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The widget&#39;s alternative graphics can be customised by this fill operation, which should refer to a pattern named in an <code>svg</code> section. The alternative graphics state is activated when the button is depressed.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">cell-padding</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Set cell inner-padding values in clockwise order. If using percentages, the value is calculated from the diagonal of the parent.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The widget&#39;s graphics can be customised by this fill operation, which should refer to a pattern named in an <code>svg</code> section.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">A unique name to identify the widget.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">padding</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Set cell outer-padding values in clockwise order. If using percentages, the value is calculated from the diagonal of the parent.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">width, height</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">The minimum width and height of the widget.</td>
@@ -1516,39 +1657,39 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="checkbox">checkbox</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The widget&#39;s graphics can be customised by this fill operation, which should refer to a pattern named in an <code>svg</code> section.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">label</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Gives the widget a text label.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">label-pos</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Set to <code>left</code> or <code>right</code> to define the side that the <code>label</code> will appear on.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">A unique name to identify the widget.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">value</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Set to <code>1</code> or <code>true</code> to set the checkbox to an active state on its creation.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">width</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">The minimum width of the widget.</td>
@@ -1559,44 +1700,44 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="combobox">combobox</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The widget&#39;s graphics can be customised by this fill operation, which should refer to a pattern named in an <code>svg</code> section.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">font-fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The fill operation to use for the combobox text.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">label</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Gives the widget a text label.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">label-pos</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Set to <code>left</code> or <code>right</code> to define the side that the <code>label</code> will appear on.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">A unique name to identify the widget.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">value</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Preset the combobox text to this string value.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">width</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">The minimum width of the widget.</td>
@@ -1635,44 +1776,49 @@ As for `xml`, but peforms a full translation of the data, allowing object refere
 <h2 id="input">input</h2>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Attrib</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The widget&#39;s graphics can be customised by this fill operation, which should refer to a pattern named in an <code>svg</code> section.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">font-fill</td>
 <td style="text-align: left;">painter</td>
 <td style="text-align: left;">The fill operation to use for the input text.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">label</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Gives the widget a text label.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">label-pos</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Set to <code>left</code> or <code>right</code> to define the side that the <code>label</code> will appear on.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">A unique name to identify the widget.</td>
 </tr>
-<tr>
+<tr class="even">
+<td style="text-align: left;">secret</td>
+<td style="text-align: left;">boolean</td>
+<td style="text-align: left;">If <code>true</code>, the widget stores its value as secret input.</td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;">value</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Preset the input text to this string value.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">width</td>
 <td style="text-align: left;">unit</td>
 <td style="text-align: left;">The minimum width of the widget.</td>

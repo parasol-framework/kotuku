@@ -256,9 +256,10 @@
 <div class="docs-content" id="default-page">
 
 <h1>Windows Builds</h1>
-<p>On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment. Between the two, we recommend using Visual Studio as it produces optimised builds approximately 25 to 33 percent smaller and 10% faster than the GCC equivalent. VS Code also works, but CMake will be more awkward to configure and runtime debugging in the UI is less capable.</p>
+<p>On Windows the use of Visual Studio (MSVC) is preferred for optimal builds and debugging. VS Code also works, especially for AI development, but CMake will be more awkward to configure and runtime debugging in the UI is less capable. WSL can be used for developing commandline applications, but follow the guide for Linux Builds in that case.</p>
+<p>Claude and ChatGPT are very capable in building Kōtuku and customising it. A &quot;build project&quot; chat request from the root folder is sufficient if your environmnent has all the necessary tools pre-installed.</p>
 <h2 id="visual-studio">Visual Studio</h2>
-<p>If you opt to install the full <a href="https://visualstudio.microsoft.com/vs/features/cplusplus/">Visual Studio C++</a> suite from Microsoft, it will do most of the heavy lifting for you. Open the kotuku folder from VS and it will auto-detect Kōtuku&#39;s CMake files. We recommend adding <code>--parallel</code> to the cmake &quot;Build command arguments&quot; input box for faster builds.</p>
+<p>If you opt to install the full <a href="https://visualstudio.microsoft.com/vs/features/cplusplus/">Visual Studio C++</a> suite from Microsoft, it will do most of the heavy lifting for you. Open the <code>kotuku</code> folder from VS and it will auto-detect Kōtuku&#39;s CMake files. We recommend adding <code>--parallel</code> to the cmake &quot;Build command arguments&quot; input box for fast builds. Sequential builds are otherwise extremely slow.</p>
 <p>Once built, VS can run Tiri scripts using the <code>origo.exe</code> program. The <code>.vs/launch.vs.json</code> file manages launch configuration, and a working example is included below.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;version&quot;</span><span class="fu">:</span> <span class="st">&quot;0.2.1&quot;</span><span class="fu">,</span> <span class="dt">&quot;defaults&quot;</span><span class="fu">:</span> <span class="fu">{},</span></span>
@@ -278,7 +279,10 @@
 <p>To compile a release build, run <code>cmake --build visual-studio --parallel --config Release</code>.</p>
 <p>To install a release build to the local folder, run <code>cmake --install visual-studio --config Release</code>.</p>
 <p>Debug builds are created by switching from <code>--config Release</code> to <code>--config Debug</code> in the above.</p>
+<h2 id="nasm">NASM</h2>
+<p>The libjpeg-turbo library benefits from the installation of the nasm compiler if it is available (but will still work otherwise). To install nasm from Powershell, run <code>winget install NASM.NASM</code>.</p>
 <h2 id="gcc-msys--mingw">GCC (MSYS &amp; MinGW)</h2>
+<p><strong>DEPRECATED: Due to reliability issues in the MSYS2 and MinGW build environment, the use of GCC is no longer supported. The following instructions can be followed if you have no other choice for integrating Kōtuku with another project, but the final binary may contain hidden faults.</strong></p>
 <p>MSYS2 and MinGW are required for a GCC based Windows build. Please note that the default MSYS2 release of GCC is not supported. The MinGW toolchain must be installed as indicated below.</p>
 <ul>
 <li>Download the <a href="https://www.msys2.org/">MSYS2 archive</a> and install to <code>C:\msys64</code>.</li>

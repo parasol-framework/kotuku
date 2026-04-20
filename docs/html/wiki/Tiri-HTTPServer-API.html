@@ -275,74 +275,74 @@
 <p>Valid options to use when defining the server configuration are as follows:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Description</th>
 <th style="text-align: left;">Default</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">folder</td>
 <td style="text-align: left;"><strong>REQUIRED.</strong> The folder containing HTML pages and static files to serve</td>
 <td style="text-align: left;">none</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">port</td>
 <td style="text-align: left;">The port number to listen on</td>
 <td style="text-align: left;">8080</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">bind</td>
 <td style="text-align: left;">Bind to specific IP address (e.g., &#39;127.0.0.1&#39; for localhost only)</td>
 <td style="text-align: left;">all interfaces</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">verbose</td>
 <td style="text-align: left;">Enable verbose logging (true/false)</td>
 <td style="text-align: left;">false</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">timeout</td>
 <td style="text-align: left;">Request timeout in seconds (1-300)</td>
 <td style="text-align: left;">30</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">autoIndex</td>
 <td style="text-align: left;">Enable automatic directory listing (true/false)</td>
 <td style="text-align: left;">true</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">maxRequestSize</td>
 <td style="text-align: left;">Maximum request size in bytes</td>
 <td style="text-align: left;">65536</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">fileChunkSize</td>
 <td style="text-align: left;">File streaming chunk size in bytes</td>
 <td style="text-align: left;">65536</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">rateLimit</td>
 <td style="text-align: left;">Maximum requests per minute per IP (0-1000, 0 = disabled)</td>
 <td style="text-align: left;">100</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">rateLimitWindow</td>
 <td style="text-align: left;">Rate limit window in seconds</td>
 <td style="text-align: left;">60</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">enableCSP</td>
 <td style="text-align: left;">Enable Content-Security-Policy headers (true/false)</td>
 <td style="text-align: left;">true</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">routes</td>
 <td style="text-align: left;">Array of route configurations for declarative routing setup</td>
 <td style="text-align: left;">none</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">middleware</td>
 <td style="text-align: left;">Array of global middleware functions to apply to all routes</td>
 <td style="text-align: left;">none</td>
@@ -622,49 +622,49 @@ Each route in the <code>routes</code> array must contain:</p>
 <p>Route callbacks receive an enhanced request object with the following properties:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Property</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">method</td>
 <td style="text-align: left;">HTTP method (GET, POST, etc.)</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">path</td>
 <td style="text-align: left;">Full request path</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">fullPath</td>
 <td style="text-align: left;">Complete URL path including query string</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">query</td>
 <td style="text-align: left;">Query string parameters as table</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">params</td>
 <td style="text-align: left;">Route parameters extracted from URL pattern</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">headers</td>
 <td style="text-align: left;">Request headers as table (lowercase keys)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">cookies</td>
 <td style="text-align: left;">Parsed cookies as table</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">body</td>
 <td style="text-align: left;">Raw request body string (for POST/PUT/PATCH requests)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">parsedBody</td>
 <td style="text-align: left;">Parsed request body (JSON or form data)</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">ip</td>
 <td style="text-align: left;">Client IP address string (available in middleware and route handlers)</td>
 </tr>

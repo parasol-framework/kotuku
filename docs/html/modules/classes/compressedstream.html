@@ -247,8 +247,7 @@
 <tr><th>RDF::VIRTUAL</th><td>Path is to a virtual device.</td></tr>
 <tr><th>RDF::VOLUME</th><td>Feedback only - indicates a volume.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2026</div></div>
-<div class="docs-content" style="display:none;" id="RES"><h1>RES Type</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>RES::CORE_IDL</th><td>Refers to the Core module's compressed IDL string.</td></tr>
-<tr><th>RES::CPU_SPEED</th><td>The average top-speed of all CPU cores in Mhz.</td></tr>
+<div class="docs-content" style="display:none;" id="RES"><h1>RES Type</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>RES::CPU_SPEED</th><td>The average top-speed of all CPU cores in Mhz.</td></tr>
 <tr><th>RES::FREE_MEMORY</th><td>The total amount of free memory.</td></tr>
 <tr><th>RES::FREE_SWAP</th><td>The total amount of free swap memory.</td></tr>
 <tr><th>RES::JNI_ENV</th><td>Return the current JNI environment string.</td></tr>
@@ -257,12 +256,9 @@
 <tr><th>RES::LOG_LEVEL</th><td>The current level of log detail (larger numbers indicate more detail).</td></tr>
 <tr><th>RES::MAIN_THREAD</th><td>Read-only, returns <code>true</code> if called from the main thread.</td></tr>
 <tr><th>RES::MEMORY_USAGE</th><td>The total amount of memory used by the current process, in bytes.</td></tr>
-<tr><th>RES::OPEN_INFO</th><td>Pointer to the OpenInfo structure originally used to initialise the system.</td></tr>
 <tr><th>RES::PRIVILEGED</th><td>This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</td></tr>
 <tr><th>RES::PRIVILEGED_USER</th><td>If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</td></tr>
 <tr><th>RES::PROCESS_STATE</th><td>Life-cycle stage of the running process</td></tr>
-<tr><th>RES::RELEASE_BUILD</th><td>Returns true if the runtime is a release build.</td></tr>
-<tr><th>RES::STATIC_BUILD</th><td>Returns true if the runtime is a statically linked build.</td></tr>
 <tr><th>RES::THREAD_ID</th><td>Return the ID of the current thread.</td></tr>
 <tr><th>RES::TOTAL_MEMORY</th><td>The total amount of installed memory.</td></tr>
 <tr><th>RES::TOTAL_SHARED_MEMORY</th><td>The total amount of shared memory in use (system wide).</td></tr>
@@ -348,8 +344,12 @@
 <div class="docs-content" style="display:none;" id="struct-ObjectSignal"><h1>ObjectSignal Structure</h1><p class="lead">Required in calls to WaitForObjects().</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Object</th><td><span class="text-nowrap">OBJECTPTR</span></td><td>Reference to an object to monitor.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="struct-SystemState"><h1>SystemState Structure</h1><p class="lead">Returned by the GetSystemState() function.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Platform</th><td><span class="text-nowrap">CSTRING</span></td><td>String-based field indicating the user's platform.  Currently returns <code>Native</code>, <code>Windows</code>, <code>OSX</code> or <code>Linux</code>.</td></tr>
+<tr><th>IDL</th><td><span class="text-nowrap">CSTRING</span></td><td>The Core module's compressed IDL string</td></tr>
+<tr><th>OpenInfo</th><td><span class="text-nowrap">const struct OpenInfo *</span></td><td>The OpenInfo structure originally used to initialise the system</td></tr>
 <tr><th>ConsoleFD</th><td><span class="text-nowrap">HOSTHANDLE</span></td><td>Internal</td></tr>
 <tr><th>Stage</th><td><span class="text-nowrap">INT</span></td><td>The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</td></tr>
+<tr><th>ReleaseBuild</th><td><span class="text-nowrap">INT</span></td><td><code>1</code> = Release build, <code>0</code> = Debug build</td></tr>
+<tr><th>StaticBuild</th><td><span class="text-nowrap">INT</span></td><td><code>1</code> = Static build, <code>0</code> = Dynamic build</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2026</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

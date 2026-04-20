@@ -27,10 +27,13 @@ using namespace std::chrono_literals;
 #endif
 
 #ifdef __unix__
+ #include <fcntl.h>
  #include <sys/un.h>
  #include <sys/socket.h>
  #include <pthread.h>
  #include <semaphore.h>
+#elif defined(_WIN32)
+ #include <fcntl.h>
 #endif
 
 #include "microsoft/windefs.h"
@@ -141,7 +144,6 @@ struct THREADID : strong_typedef<THREADID, int> { // Internal thread ID, unrelat
 };
 
 struct rkWatchPath {
-   int64_t    Custom;    // User's custom data pointer or value
    HOSTHANDLE Handle;    // The handle for the file being monitored, can be a special reference for virtual paths
    FUNCTION   Routine;   // Routine to call on event trigger
    MFF        Flags;     // Event mask (original flags supplied to Watch)
@@ -1003,6 +1005,7 @@ struct FDRecord {
 
 extern std::list<FDRecord> glFDTable;
 extern int glInotify;
+extern std::unordered_map<int, OBJECTID> glInotifyLookup;
 extern int8_t glFDProtected;
 extern std::vector<FDRecord> glRegisterFD;
 

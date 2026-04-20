@@ -740,7 +740,7 @@ gui.fileview = function(Options)
       if sort then self.view.sort() end
    end
 
-   function pathWatch(MonitoredFile, Path, Custom, Flags)
+   function pathWatch(MonitoredFile, Path, Flags)
       if self.inRefresh then return end
 
       if Flags is 0 then -- No flags means a change has occurred but the host is unable to tell us what happened.

@@ -26,13 +26,14 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
    pf::Log log("X11Mgr");
    XEvent xevent;
    XEvent last_motion;
+   bool processed_events = false;
    last_motion.xany.window = 0;
 
    if (!XDisplay) return;
 
    while (XPending(XDisplay)) {
+      processed_events = true;
       XNextEvent(XDisplay, &xevent);
-      //log.trace("Event %d", xevent.type);
       if ((xevent.type != MotionNotify) and (last_motion.xany.window)) {
          // Buffered MotionNotify event detected, process it now
          process_movement(last_motion.xany.window, last_motion.xmotion.x_root, last_motion.xmotion.y_root);
@@ -164,11 +165,14 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
    }
 
    if (last_motion.xany.window) {
+      processed_events = true;
       process_movement(last_motion.xany.window, last_motion.xmotion.x_root, last_motion.xmotion.y_root);
    }
 
-   XFlush(XDisplay);
-   if (XDisplay) XSync(XDisplay, False);
+   if (processed_events) {
+      XFlush(XDisplay);
+      if (XDisplay) XSync(XDisplay, False);
+   }
 }
 
 //********************************************************************************************************************
@@ -692,4 +696,3 @@ void process_movement(Window Window, int X, int Y)
       ReleaseObject(pointer);
    }
 }
-

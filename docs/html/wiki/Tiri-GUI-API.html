@@ -264,41 +264,41 @@
 <p>When imported, <code>gui</code> initialises these publicly accessible fields:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Field</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>theme</code></td>
 <td>The default theme name, read from <code>user:config/style.cfg</code> when available.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>palette</code></td>
 <td>The selected palette family name.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>paletteTheme</code></td>
 <td>Either <code>light</code> or <code>dark</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>style</code></td>
 <td>Refers to the default theme, initialised from <code>gui.themes[gui.theme]</code>. Prefer <code>gui.getTheme()</code> for the active theme.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>fonts</code></td>
 <td>Shared font presets used by the GUI modules.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>iconThemes</code></td>
 <td>Named presets for styling icons.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>sizing</code></td>
 <td>Sizing recommendations for the layout of widgets and pages.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>interface</code></td>
 <td>Base interface settings such as default font size and icon size.</td>
 </tr>
@@ -355,41 +355,41 @@
 <p>Each light or dark palette entry must contain these CSS colour fields:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Field</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>bkgd</code></td>
 <td>The standard background colour for large amounts of text (documents &amp; code). In a light theme it should be near-white.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>inverse</code></td>
 <td>The inverse light value of <code>bkgd</code> (or must contrast significantly). Useful for heavy contrast against bkgd, e.g. stroking menu borders.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>prime</code></td>
 <td>Prime (primary) should have a strong chroma and is used for drawing attention, like for highlighting and selection.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>contrast</code></td>
 <td>Complements <code>prime</code> and should be of a strongly contrasting hue.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>neutral</code></td>
 <td>Default background colour for undefined areas (e.g. window background).</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>mid</code></td>
 <td>Separates an area from <code>bkgd</code> without drawing attention. E.g. scrollbar and slider tracks.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>text</code></td>
 <td>Default colour for text drawn over <code>bkgd</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>altText</code></td>
 <td>The default colour for text drawn over &#39;prime&#39; when highlighted or selected. Can be same as &#39;text&#39;</td>
 </tr>
@@ -436,21 +436,21 @@
 <p><code>gui.fonts</code> provides shared font presets for common GUI roles: <code>default</code>, <code>window</code>, <code>button</code>, <code>filesys</code>, <code>icon</code>, <code>menu</code>, <code>page</code>, <code>titlebar</code>, <code>small</code>, <code>large</code>, <code>input</code>, <code>widget</code>, <code>label</code>. Each preset can define the following field values:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Field</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>face</code></td>
 <td>The font family name. Multiple families separated by commas is permitted.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>style</code></td>
 <td>The font style, e.g. <code>Medium</code>, <code>Italic</code>, <code>Bold</code>, <code>Bold Italic</code>.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>size</code></td>
 <td>The font size in pixels. May also be a percentage string,</td>
 </tr>
@@ -489,8 +489,8 @@
 <h3 id="guiforvector">gui.forVector()</h3>
 <p><code>gui.forVector(Vector, Function)</code></p>
 <p>Walks a vector tree depth-first, visiting the supplied vector, then its children and siblings. <code>Function</code> is called as:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="va">gui</span><span class="op">.</span>forVector<span class="op">(</span><span class="va">viewport</span><span class="op">,</span> <span class="kw">function</span><span class="op">(</span><span class="va">Vector</span><span class="op">)</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="va">Vector</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb8"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="va">gui</span><span class="op">.</span>forVector<span class="op">(</span><span class="va">viewport</span><span class="op">,</span> <span class="kw">function</span><span class="op">(</span><span class="cn">V</span><span class="va">ector</span><span class="op">)</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="cn">V</span><span class="va">ector</span><span class="op">)</span></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span><span class="op">)</span></span></code></pre></div>
 <h3 id="guiapplyfill">gui.applyFill()</h3>
 <p><code>gui.applyFill(Vector, Fill)</code></p>
