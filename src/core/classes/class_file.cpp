@@ -99,7 +99,7 @@ in a file.
 #include <kotuku/main.h>
 
 #ifdef __linux__
-extern "C" void path_monitor(HOSTHANDLE, OBJECTPTR);
+extern void path_monitor(HOSTHANDLE, OBJECTPTR);
 #endif
 
 static ERR FILE_Init(extFile *);
