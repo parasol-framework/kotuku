@@ -981,7 +981,7 @@ gui.fileview = function(Options)
          msg(f'Monitor path "{self.path}"')
          try
             self.watch = obj.new('file', { path = self.path })
-            if self.watch.mtWatch(pathWatch, 0, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED) != ERR_Okay then
+            if self.watch.mtWatch(pathWatch, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED) != ERR_Okay then
                self.watch = nil
                local err
                err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
@@ -1254,7 +1254,7 @@ gui.fileview = function(Options)
    -- If the source has slow read access, system messages are processsed at regular intervals.
    -- See also incrementalRefresh()
 
-   function refreshFiles()
+   function refreshFiles():bool
       msg('refreshFiles() ' .. (self.path ?? 'ROOT') .. ' [Limited Logging]')
 
       self._file_table = { }
@@ -1263,35 +1263,34 @@ gui.fileview = function(Options)
       flags     = RDF_READ_ALL|RDF_TAGS
       if self.hideFiles then flags = flags & bit.bxor(RDF_FILE) end
       err, dir_info = mSys.OpenDir(self.path ?? ':', flags)
-      if err is ERR_Okay then
-         mSys.AdjustLogLevel(1)
+      if err != ERR_Okay then return false end
 
-            items = { }
-            while mSys.ScanDir(dir_info) is ERR_Okay do
-               if self.path != orig_path then -- Sanity check in case the user changes the path
-                  mSys.AdjustLogLevel(-1)
-                  return true
-               end
-
-               item = createFileItem(self, dir_info.info)
-               if item then table.insert(items, item) end
-
-               current_time = mSys.PreciseTime()
-               if current_time - msg_time > 20000 then
-                  if #items > 1 then
-                     self.view.addItems(items)
-                     items = { }
-                  end
-                  msg_time = current_time
-                  processing.sleep(0)
-               end
-            end
-
-            if #items > 0 then self.view.addItems(items) end
-
+      mSys.AdjustLogLevel(1)
+      defer()
          mSys.AdjustLogLevel(-1)
       end
 
+      items = array<table> { }
+      while mSys.ScanDir(dir_info) is ERR_Okay do
+         if self.path != orig_path then -- Sanity check in case the user changes the path
+            return true
+         end
+
+         item = createFileItem(self, dir_info.info)
+         if item then items:push(item) end
+
+         current_time = mSys.PreciseTime()
+         if current_time - msg_time > 20000 then
+            if #items > 1 then
+               self.view.addItems(items)
+               items = array<table> { }
+            end
+            msg_time = current_time
+            processing.sleep(0)
+         end
+      end
+
+      if #items > 0 then self.view.addItems(items) end
       return false
    end
 
@@ -1738,7 +1737,7 @@ gui.fileview = function(Options)
    if not self.watch and self.path?? and self.path != ':' then
       try
          self.watch = obj.new('file', { path = self.path })
-         self.watch.mtWatch(pathWatch, 0, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED)
+         self.watch.mtWatch(pathWatch, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED)
       except ex -- Some systems don't support path watching
          self.watch = nil
          err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)

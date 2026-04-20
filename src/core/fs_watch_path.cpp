@@ -36,8 +36,6 @@ void fs_ignore_file(extFile *File)
 
 //********************************************************************************************************************
 
-extern "C" void path_monitor(HOSTHANDLE, extFile *);
-
 #ifdef __linux__
 
 ERR fs_watch_path(extFile *File)
@@ -103,9 +101,10 @@ ERR fs_watch_path(extFile *File)
 #endif
 
 //********************************************************************************************************************
+// Incoming file notification events pass through here.
 
 #ifdef __linux__
-void path_monitor(HOSTHANDLE FD, extFile *File)
+void path_monitor(HOSTHANDLE FD, OBJECTPTR)
 {
    pf::Log log(__FUNCTION__);
    static thread_local bool recursion = false; // Recursion avoidance is essential for correct queuing
@@ -113,7 +112,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
    recursion = true;
 
    AdjustLogLevel(2);
-   log.branch("File monitoring event received (FD %d, File #%d).", FD, File ? File->UID : 0);
+   log.branch("File monitoring event received (FD %d).", FD);
 
    uint8_t buffer[8192];
    while (true) {
@@ -264,14 +263,12 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
          }
       }
    }
-   else {
-      if (File->prvWatch->Routine.isC()) {
-         auto routine = (ERR (*)(extFile *, CSTRING, MFF, APTR))File->prvWatch->Routine.Routine;
-         pf::SwitchContext context(File->prvWatch->Routine.Context);
-         error = routine(File, File->Path.c_str(), MFF::NIL, File->prvWatch->Routine.Meta);
+   else if (File->prvWatch->Routine.isC()) {
+      auto routine = (ERR (*)(extFile *, CSTRING, MFF, APTR))File->prvWatch->Routine.Routine;
+      pf::SwitchContext context(File->prvWatch->Routine.Context);
+      error = routine(File, File->Path.c_str(), MFF::NIL, File->prvWatch->Routine.Meta);
 
-         if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
-      }
+      if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
    }
 
    if (winValidateHandle(Handle)) {

@@ -98,7 +98,9 @@ in a file.
 
 #include <kotuku/main.h>
 
-extern "C" void path_monitor(HOSTHANDLE, extFile *);
+#ifdef __linux__
+extern void path_monitor(HOSTHANDLE, OBJECTPTR);
+#endif
 
 static ERR FILE_Init(extFile *);
 static ERR FILE_Watch(extFile *, struct fl::Watch *);
@@ -1478,6 +1480,7 @@ static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
    if ((not Args) or (not Args->Callback) or (Args->Flags IS MFF::NIL)) return ERR::Okay;
 
 #ifdef __linux__ // Initialise inotify if not done already.
+
    if (glInotify IS -1) {
       ERR error;
       if ((glInotify = inotify_init1(IN_NONBLOCK|IN_CLOEXEC)) != -1) {

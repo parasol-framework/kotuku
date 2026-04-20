@@ -2634,7 +2634,7 @@ struct SetDate { int Year; int Month; int Day; int Hour; int Minute; int Second;
 struct ReadLine { STRING Result; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct BufferContent { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Next { objFile * File; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Watch { FUNCTION * Callback; int64_t Custom; MFF Flags; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Watch { FUNCTION * Callback; MFF Flags; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -2760,8 +2760,8 @@ class objFile : public Object {
       if (File) *File = args.File;
       return(error);
    }
-   inline ERR watch(FUNCTION Callback, int64_t Custom, MFF Flags) noexcept {
-      struct fl::Watch args = { &Callback, Custom, Flags };
+   inline ERR watch(FUNCTION Callback, MFF Flags) noexcept {
+      struct fl::Watch args = { &Callback, Flags };
       return(Action(AC(-10), this, &args));
    }
 

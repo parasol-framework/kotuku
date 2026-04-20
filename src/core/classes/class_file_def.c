@@ -26,7 +26,7 @@ FDEF maCopy[] = { { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } }
 FDEF maSetDate[] = { { "Year", FD_INT }, { "Month", FD_INT }, { "Day", FD_INT }, { "Hour", FD_INT }, { "Minute", FD_INT }, { "Second", FD_INT }, { "Type", FD_INT }, { 0, 0 } };
 FDEF maReadLine[] = { { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maNext[] = { { "File", FD_OBJECTPTR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
-FDEF maWatch[] = { { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_INT64 }, { "Flags", FD_INT }, { 0, 0 } };
+FDEF maWatch[] = { { "Callback", FD_FUNCTIONPTR }, { "Flags", FD_INT }, { 0, 0 } };
 
 static const struct MethodEntry clFileMethods[] = {
    { AC(-1), (APTR)FILE_StartStream, "StartStream", maStartStream, sizeof(struct fl::StartStream) },

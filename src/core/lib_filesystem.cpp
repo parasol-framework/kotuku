@@ -71,7 +71,7 @@ typedef int HANDLE;
   #define S_IRUSR _S_IREAD
   #define S_IWUSR _S_IWRITE
   #ifndef _S_ISTYPE
-   #define _S_ISTYPE(mode, mask)  (((mode) & _S_IFMT) == (mask))
+   #define _S_ISTYPE(mode, mask)  (((mode) & _S_IFMT) IS (mask))
    #define S_ISREG(mode) _S_ISTYPE((mode), _S_IFREG)
    #define S_ISDIR(mode) _S_ISTYPE((mode), _S_IFDIR)
   #endif
@@ -771,7 +771,6 @@ ERR get_file_info(std::string_view Path, FileInfo *Info, int InfoSize)
 {
    pf::Log log(__FUNCTION__);
    int i;
-   ERR error;
 
    if (Path.empty() or (!Info) or (InfoSize <= 0)) return log.warning(ERR::Args);
 
@@ -789,11 +788,11 @@ ERR get_file_info(std::string_view Path, FileInfo *Info, int InfoSize)
       int pos = i;
       glNameBuffer[i] = 0;
 
-      error = ERR::Okay;
+      auto error = ERR::Okay;
 
       if (auto lock = std::unique_lock{glmVolumes, 4s}) {
          if (glVolumes.contains(glNameBuffer)) {
-            if (glVolumes[glNameBuffer]["Hidden"] == "Yes") Info->Flags |= RDF::HIDDEN;
+            if (glVolumes[glNameBuffer]["Hidden"] IS "Yes") Info->Flags |= RDF::HIDDEN;
          }
       }
       else error = ERR::LockFailed;
@@ -815,7 +814,7 @@ ERR get_file_info(std::string_view Path, FileInfo *Info, int InfoSize)
    log.traceBranch("%s", Path.data());
 
    std::string path;
-   if ((error = ResolvePath(Path, RSF::NIL, &path)) IS ERR::Okay) {
+   if (auto error = ResolvePath(Path, RSF::NIL, &path); error IS ERR::Okay) {
       auto vfs = get_fs(path);
 
       if (vfs->GetInfo) {
@@ -826,9 +825,10 @@ ERR get_file_info(std::string_view Path, FileInfo *Info, int InfoSize)
          }
       }
       else log.warning(ERR::NoSupport);
-   }
 
-   return error;
+      return error;
+   }
+   else return error;
 }
 
 /*********************************************************************************************************************
@@ -839,9 +839,9 @@ LoadFile: Loads files into a local cache for fast file processing.
 The LoadFile() function loads complete files into memory and caches the content for use by other areas of the system
 or application.
 
-This function will first determine if the requested file has already been cached.  If this is true then the !CacheFile
-structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated
-as a cache miss and the file will be loaded into a new buffer.
+If the requested file has already been cached, the !CacheFile structure is returned immediately.  Note that if the
+file was previously cached but then modified, this will be treated as a cache miss and the file will be loaded into
+a new buffer.
 
 File content will be loaded into a readable memory buffer that is referenced by the Data field of the
 !CacheFile structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files.
@@ -889,7 +889,6 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
       CacheFileIndex index(path, timestamp, file_size);
 
       if (glCache.contains(index)) {
-
          *((extCacheFile **)Cache) = &glCache[index];
          if ((Flags & LDF::CHECK_EXISTS) IS LDF::NIL) glCache[index].Locks++;
          return ERR::Okay;
@@ -1278,9 +1277,9 @@ ERR findfile(std::string &Path)
       if (!S_ISDIR(info.st_mode)) return ERR::Okay;
    }
 
-   auto len = Path.find_last_of(":/\\");
+   auto len    = Path.find_last_of(":/\\");
    auto folder = (len IS std::string::npos) ? "" : Path.substr(0, len);
-   auto name = (len IS std::string::npos) ? std::string_view(Path) : std::string_view(Path.c_str() + len + 1);
+   auto name   = (len IS std::string::npos) ? std::string_view(Path) : std::string_view(Path.c_str() + len + 1);
 
    // Scan the files at the Path to find a similar filename (ignore the filename extension).
 
@@ -1958,6 +1957,7 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
             }
 
             AdjustLogLevel(1);
+
                error = CreateFolder(Dest.c_str(), (glDefaultPermissions != PERMIT::NIL) ? glDefaultPermissions : file->Permissions);
 #ifdef __unix__
                if (vdest->is_default()) {
@@ -1965,6 +1965,7 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
                }
 #endif
                if (error IS ERR::FileExists) error = ERR::Okay;
+
             AdjustLogLevel(-1);
 
             // Copy everything under the folder to the destination
