@@ -36,8 +36,6 @@ void fs_ignore_file(extFile *File)
 
 //********************************************************************************************************************
 
-extern "C" void path_monitor(HOSTHANDLE, extFile *);
-
 #ifdef __linux__
 
 ERR fs_watch_path(extFile *File)
