@@ -218,15 +218,15 @@ static void path_monitor(HOSTHANDLE Handle, extFile *File)
 
    ERR error;
    if (File->prvWatch->Handle) {
-      std::string path;
+      constexpr size_t path_buffer_size = 2048;
+      std::array<char, path_buffer_size> path { };
       int status;
 
       // Keep in mind that the state of the File object might change during the loop due to the code in the user's callback.
       // Validate resources before each iteration to prevent crashes
 
-      path.resize(256);
       while ((File->prvWatch) and (File->prvWatch->Handle IS Handle)) {
-         ERR read_result = winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path.data(), path.size(), &status);
+         ERR read_result = winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path.data(), int(path.size()), &status);
          if (read_result != ERR::Okay) {
             // If we get an error other than NothingDone, stop monitoring
             if (read_result != ERR::NothingDone) {
@@ -236,19 +236,21 @@ static void path_monitor(HOSTHANDLE Handle, extFile *File)
             break; // NothingDone -> no more events
          }
 
+         std::string_view event_path(path.data());
+
          if ((File->prvWatch->Flags & MFF::DEEP) IS MFF::NIL) { // Ignore if path is in a sub-folder and the deep option is not enabled.
-            if (path.find('\\') != std::string::npos) continue;
+            if (event_path.find('\\') != std::string_view::npos) continue;
          }
 
          if (File->prvWatch->Routine.isC()) {
             pf::SwitchContext context(File->prvWatch->Routine.Context);
             auto routine = (ERR (*)(extFile *, std::string_view, MFF, APTR))File->prvWatch->Routine.Routine;
-            error = routine(File, path, MFF(status), File->prvWatch->Routine.Meta);
+            error = routine(File, event_path, MFF(status), File->prvWatch->Routine.Meta);
          }
          else if (File->prvWatch->Routine.isScript()) {
             if (sc::Call(File->prvWatch->Routine, std::to_array<ScriptArg>({
                { "File",   File, FD_OBJECTPTR },
-               { "Path",   path.c_str() },
+               { "Path",   path.data() },
                { "Flags",  int(status) }
             }), error) != ERR::Okay) error = ERR::Function;
          }
