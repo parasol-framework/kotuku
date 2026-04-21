@@ -1653,9 +1653,33 @@ extern "C" void winFindCloseChangeNotification(HANDLE Handle)
 
 //********************************************************************************************************************
 
+static DWORD win_get_watch_notify_buffer_size(void)
+{
+   return DWORD(sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD));
+}
+
+//********************************************************************************************************************
+
+static ERR win_rearm_watch_request(HANDLE Handle, OVERLAPPED *Ovlap, FILE_NOTIFY_INFORMATION *Fni, BOOL WatchFolders, DWORD WatchFlags)
+{
+   memset(Ovlap, 0, sizeof(OVERLAPPED));
+   memset(Fni, 0, win_get_watch_notify_buffer_size());
+
+   DWORD empty;
+   if (!ReadDirectoryChangesW(Handle, Fni, win_get_watch_notify_buffer_size(), WatchFolders, WatchFlags, &empty, Ovlap, nullptr)) {
+      auto error = GetLastError();
+      if (error IS ERROR_ACCESS_DENIED) return ERR::NoPermission;
+      else return ERR::SystemCall;
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
 extern "C" int winGetWatchBufferSize(void)
 {
-   return sizeof(OVERLAPPED) + sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH;
+   return sizeof(OVERLAPPED) + win_get_watch_notify_buffer_size();
 }
 
 //********************************************************************************************************************
@@ -1782,8 +1806,7 @@ extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *H
       memset(WatchBuffer, 0, sizeof(OVERLAPPED));
       auto ovlap = (OVERLAPPED *)WatchBuffer;
       auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
-
-      const DWORD buffer_size = sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD);
+      const DWORD buffer_size = win_get_watch_notify_buffer_size();
 
       BOOL watch_folders = (is_folder and (Flags & MFF_DEEP)) ? TRUE : FALSE;
 
@@ -1814,11 +1837,16 @@ extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *H
 
 extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, char *PathOutput, int PathSize, int *Status)
 {
+   if ((!Handle) or (!WatchBuffer) or (!PathOutput) or (PathSize < 2) or (!Status)) return ERR::Args;
+
    DWORD bytes_out = 0;
    auto ovlap = (OVERLAPPED *)WatchBuffer;
    auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
    DWORD watch_flags = NotifyFlags & (~WATCH_NOTIFY_SUBTREE);
    BOOL watch_folders = (NotifyFlags & WATCH_NOTIFY_SUBTREE) ? TRUE : FALSE;
+   const DWORD buffer_size = win_get_watch_notify_buffer_size();
+   const DWORD header_size = FIELD_OFFSET(FILE_NOTIFY_INFORMATION, FileName);
+   const DWORD max_filename_bytes = buffer_size - header_size;
 
    *Status = 0;
    PathOutput[0] = '\0';
@@ -1828,28 +1856,34 @@ extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, 
       if (error IS ERROR_IO_INCOMPLETE or error IS ERROR_IO_PENDING) {
          return ERR::NothingDone;
       }
+      else if (error IS ERROR_NOTIFY_ENUM_DIR) {
+         auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+         if (rearm_error != ERR::Okay) return rearm_error;
+         return ERR::NothingDone;
+      }
       else return ERR::SystemCall;
    }
 
    // Validate we received enough data for at least the header
-   if (bytes_out < sizeof(FILE_NOTIFY_INFORMATION)) return ERR::NothingDone;
+   if (bytes_out < header_size) {
+      auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+      if (rearm_error != ERR::Okay) return rearm_error;
+      return ERR::NothingDone;
+   }
 
    // Buffer corruption detection - validate the FILE_NOTIFY_INFORMATION structure
-   if (!fni->Action or fni->FileNameLength > (MAX_PATH * sizeof(WCHAR))) {
-      // Clear the buffer and re-subscribe to recover from corruption
-      memset(fni, 0, bytes_out);
-      memset(WatchBuffer, 0, sizeof(OVERLAPPED));
-
-      DWORD empty;
-      const DWORD buffer_size = sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD);
-      ReadDirectoryChangesW(Handle, fni, buffer_size, watch_folders, watch_flags, &empty, ovlap, nullptr);
+   if ((!fni->Action) or (fni->FileNameLength > max_filename_bytes)) {
+      auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+      if (rearm_error != ERR::Okay) return rearm_error;
       return ERR::NothingDone;
    }
 
    // Validate buffer bounds before accessing filename
-   DWORD required_size = sizeof(FILE_NOTIFY_INFORMATION) + fni->FileNameLength;
+   DWORD required_size = header_size + fni->FileNameLength;
    if (required_size > bytes_out) {
-      return ERR::BufferOverflow;
+      auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+      if (rearm_error != ERR::Okay) return rearm_error;
+      return ERR::NothingDone;
    }
 
    // Process the first notification in the buffer
@@ -1859,9 +1893,9 @@ extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, 
       // Convert Unicode filename to UTF-8 with proper error handling
       int result = WideCharToMultiByte(CP_UTF8, 0, fni->FileName, filename_length_chars, PathOutput, PathSize - 1, nullptr, nullptr);
       if (result <= 0 or result >= PathSize) {
-         // Conversion failed or output too large
-         PathOutput[0] = 0;
-         return ERR::StringFormat;
+         auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+         if (rearm_error != ERR::Okay) return rearm_error;
+         return ERR::NothingDone;
       }
       PathOutput[result] = 0;  // Null terminate
    }
@@ -1890,14 +1924,8 @@ extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, 
       }
    }
    else { // No more notifications, clear the buffer and re-subscribe
-      memset(fni, 0, bytes_out);
-      memset(WatchBuffer, 0, sizeof(OVERLAPPED));
-
-      DWORD empty;
-      const DWORD buffer_size = sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD);
-      if (!ReadDirectoryChangesW(Handle, fni, buffer_size, watch_folders, watch_flags, &empty, ovlap, nullptr)) {
-         return ERR::SystemCall;
-      }
+      auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+      if (rearm_error != ERR::Okay) return rearm_error;
    }
 
    return (action != 0) ? ERR::Okay : ERR::NothingDone;

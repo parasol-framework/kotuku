@@ -4,7 +4,7 @@ Tests for file functions
 
 glPath = 'kotuku:'
 
-rx_path = regex.new([[([^:\/]+)\/-$]])
+rx_path = regex.new([[[^:\/]+[:\/](.*)]])
 
 @BeforeAll function init()
    global glRawPath = 'temp:test.out'
@@ -166,8 +166,7 @@ end
 
    out = obj.new('file', { src=watchFile, flags=FL_NEW|FL_WRITE })
    out.acWrite('XYZ', 3)
-   out = nil
-   processing.collect()
+   out.free()
 
    -- Pump the message queue so inotify / ReadDirectoryChangesW events are delivered.
    for i=0,20 do
@@ -191,7 +190,7 @@ end
    end
 
    assert(created, 'Expected at least one MFF_CREATE event for ' .. watchFile)
-   return f'Received {#events} file system event(s).'
+   logOutput(f'Received {#events} file system event(s).')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
