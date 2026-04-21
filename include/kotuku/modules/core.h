@@ -1355,6 +1355,15 @@ struct DateTime {
    int8_t  Minute;     // Minute 0 to 59
    int8_t  Second;     // Second 0 to 59
    int8_t  TimeZone;   // TimeZone -13 to +13
+   inline void clear() {
+      Year      = 0;
+      Month     = 0;
+      Day       = 0;
+      Hour      = 0;
+      Minute    = 0;
+      Second    = 0;
+      TimeZone  = 0;
+   }
 };
 
 struct HSV {

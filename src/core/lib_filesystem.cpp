@@ -799,48 +799,63 @@ ERR GetFileInfo(const std::string_view &Path, FileInfo *Info, int InfoSize)
    if (Path.ends_with(':')) {
       const virtual_drive *vfs = get_fs(Path);
 
-      Info->Flags = RDF::VOLUME;
+      Info->Size        = 0;
+      Info->TimeStamp   = 0;
+      Info->Next        = nullptr;
+      Info->Permissions = PERMIT::NIL;
+      Info->UserID      = 0;
+      Info->GroupID     = 0;
+      Info->Tags        = nullptr;
+      Info->Flags       = RDF::VOLUME;
+      Info->Created.clear();
+      Info->Modified.clear();
 
       if (auto pos = Path.find(':'); pos != std::string::npos) Info->Name = Path.substr(0, pos);
       else Info->Name = Path;
 
-      auto error = ERR::Okay;
-
-      if (auto lock = std::unique_lock{glmVolumes, 4s}) {
+      if (auto lock = std::unique_lock{glmVolumes, 1s}) {
          if (glVolumes.contains(Info->Name)) {
             if (glVolumes[Info->Name]["Hidden"] IS "Yes") Info->Flags |= RDF::HIDDEN;
          }
       }
-      else error = ERR::LockFailed;
 
       Info->Name += ':';
 
       if (vfs->is_virtual()) {
          Info->Flags |= RDF::VIRTUAL;
-         if (vfs->GetInfo) error = vfs->GetInfo(Path, Info, InfoSize);
+         if (vfs->GetInfo) return vfs->GetInfo(Path, Info, InfoSize);
+         return ERR::Okay;
       }
-
-      return error;
+      else return ERR::Okay;
    }
+   else {
+      log.traceBranch("%.*s", int(Path.size()), Path.data());
 
-   log.traceBranch("%.*s", int(Path.size()), Path.data());
+      std::string path;
+      if (auto error = ResolvePath(Path, RSF::NIL, &path); error IS ERR::Okay) {
+         auto vfs = get_fs(path);
 
-   std::string path;
-   if (auto error = ResolvePath(Path, RSF::NIL, &path); error IS ERR::Okay) {
-      auto vfs = get_fs(path);
+         if (not vfs->GetInfo) return log.warning(ERR::NoSupport);
 
-      if (vfs->GetInfo) {
-         if (vfs->is_virtual()) Info->Flags |= RDF::VIRTUAL;
+         Info->Size        = 0;
+         Info->TimeStamp   = 0;
+         Info->Next        = nullptr;
+         Info->Permissions = PERMIT::NIL;
+         Info->UserID      = 0;
+         Info->GroupID     = 0;
+         Info->Tags        = nullptr;
+         Info->Flags       = (vfs->is_virtual()) ? RDF::VIRTUAL : RDF::NIL;
+         Info->Created.clear();
+         Info->Modified.clear();
 
          if ((error = vfs->GetInfo(path, Info, InfoSize)) IS ERR::Okay) {
             Info->TimeStamp = calc_timestamp(&Info->Modified);
          }
-      }
-      else log.warning(ERR::NoSupport);
 
-      return error;
+         return error;
+      }
+      else return error;
    }
-   else return error;
 }
 
 /*********************************************************************************************************************
