@@ -8,7 +8,7 @@
     <module>Core</module>
     <comment>Enables access to the file system.</comment>
     <version>1.2</version>
-    <id>7c96cb25</id>
+    <id>4ca5c5b3</id>
     <idstring>FILE</idstring>
     <category>System</category>
     <copyright>Paul Manias 1996-2026</copyright>

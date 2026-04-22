@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Applies a Gaussian blur effect to an input source.</comment>
     <version>1</version>
-    <id>f45d03b8</id>
+    <id>36f3b651</id>
     <idstring>BLURFX</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

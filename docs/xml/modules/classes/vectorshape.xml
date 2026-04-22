@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Extends the Vector class with support for the Superformula algorithm.</comment>
     <version>1</version>
-    <id>890ce369</id>
+    <id>9409870a</id>
     <idstring>VECTORSHAPE</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

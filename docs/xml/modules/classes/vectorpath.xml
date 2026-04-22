@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Extends the Vector class with support for generating custom paths.</comment>
     <version>1</version>
-    <id>51b8d205</id>
+    <id>ecf78098</id>
     <idstring>VECTORPATH</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

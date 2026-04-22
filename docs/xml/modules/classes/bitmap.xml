@@ -8,7 +8,7 @@
     <module>Display</module>
     <comment>Manages bitmap graphics and provides drawing functionality.</comment>
     <version>2</version>
-    <id>f42617e2</id>
+    <id>ff557b59</id>
     <idstring>BITMAP</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2003-2026</copyright>

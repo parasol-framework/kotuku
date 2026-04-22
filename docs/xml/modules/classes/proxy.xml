@@ -8,7 +8,7 @@
     <module>Network</module>
     <comment>Manages user settings for proxy servers.</comment>
     <version>1</version>
-    <id>102a23e7</id>
+    <id>8dcea850</id>
     <idstring>PROXY</idstring>
     <category>Network</category>
     <copyright>Paul Manias © 2005-2026</copyright>

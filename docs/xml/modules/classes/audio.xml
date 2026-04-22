@@ -8,7 +8,7 @@
     <module>Audio</module>
     <comment>Supports a machine's audio hardware and provides a client-server audio management service.</comment>
     <version>1</version>
-    <id>0f1c28b7</id>
+    <id>eb1aa922</id>
     <idstring>AUDIO</idstring>
     <category>Audio</category>
     <copyright>Paul Manias © 2002-2026</copyright>

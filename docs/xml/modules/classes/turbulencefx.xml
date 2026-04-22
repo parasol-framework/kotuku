@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>A filter effect that utilises the Perlin turbulence function.</comment>
     <version>1</version>
-    <id>45df4e3c</id>
+    <id>f7852711</id>
     <idstring>TURBULENCEFX</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

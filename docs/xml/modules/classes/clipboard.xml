@@ -8,7 +8,7 @@
     <module>Display</module>
     <comment>The Clipboard class manages cut, copy and paste between applications.</comment>
     <version>1</version>
-    <id>4912a9b5</id>
+    <id>b5bbe3e7</id>
     <idstring>CLIPBOARD</idstring>
     <category>IO</category>
     <copyright>Paul Manias © 2003-2026</copyright>

@@ -220,8 +220,8 @@ class objClientSocket : public Object {
    // Customised field setting
 
    inline ERR setState(const NTC Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_State, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -279,62 +279,62 @@ class objProxy : public Object {
    // Customised field setting
 
    template <class T> inline ERR setNetworkFilter(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_NetworkFilter, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setGatewayFilter(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_GatewayFilter, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setUsername(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Username, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPassword(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Password, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setProxyName(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ProxyName, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setServer(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Server, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setPort(const int Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Port, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setServerPort(const int Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ServerPort, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setEnabled(const int Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Enabled, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setRecord(const int Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Record, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -397,8 +397,8 @@ class objNetLookup : public Object {
    }
 
    inline ERR setCallback(FUNCTION Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Callback, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -544,32 +544,32 @@ class objNetSocket : public Object {
    }
 
    template <class T> inline ERR setAddress(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Address, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSSLCertificate(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_SSLCertificate, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSSLPrivateKey(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_SSLPrivateKey, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSSLKeyPassword(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_SSLKeyPassword, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERR setState(const NTC Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_State, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -619,26 +619,26 @@ class objNetSocket : public Object {
    }
 
    inline ERR setHandle(APTR Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Handle, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
    inline ERR setFeedback(FUNCTION Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Feedback, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Incoming, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setOutgoing(FUNCTION Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Outgoing, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

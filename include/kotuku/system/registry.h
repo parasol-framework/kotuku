@@ -13,7 +13,7 @@ enum class CLASSID : uint32_t {
    REGION = 0x471e889aUL,
    PCX = 0x79dd2460UL,
    FILE = 0x4ca5c5b3UL,
-   MP3 = 0xa6ea5dd6UL,
+   MP3 = 0xd961bed4UL,
    TASK = 0x56332d91UL,
    FILEOBJECT = 0xe2cab578UL,
    METACLASS = 0x883d1872UL,

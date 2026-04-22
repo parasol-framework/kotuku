@@ -8,7 +8,7 @@
     <module>Network</module>
     <comment>Resolve network IP addresses and names using Domain Name Servers.</comment>
     <version>1</version>
-    <id>1af615e6</id>
+    <id>e6f0a23c</id>
     <idstring>NETLOOKUP</idstring>
     <category>Network</category>
     <copyright>Paul Manias © 2005-2026</copyright>

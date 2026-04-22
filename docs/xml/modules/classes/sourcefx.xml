@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Renders a source vector in the effect pipeline.</comment>
     <version>1</version>
-    <id>16f8c294</id>
+    <id>04f3ecaf</id>
     <idstring>SOURCEFX</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

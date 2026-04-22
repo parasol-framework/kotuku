@@ -1009,7 +1009,8 @@
 #define FID_Server 0x3c62153aLL
 #define FID_ServerPort 0xa81d9eb1LL
 #define FID_Enabled 0x9ff42404LL
+#define FID_SID 0x74bf1ffaLL
 #define FID_SSLCertificate 0x0bb0ce34LL
 #define FID_SSLPrivateKey 0x5734bfb2LL
 #define FID_SSLKeyPassword 0x23ce0c86LL
-#define FID_SID 0x1LL
+

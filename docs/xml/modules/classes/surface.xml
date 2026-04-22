@@ -8,7 +8,7 @@
     <module>Display</module>
     <comment>Manages the display and positioning of 2-Dimensional rendered graphics.</comment>
     <version>1</version>
-    <id>b15cfb8e</id>
+    <id>c6a69b5c</id>
     <idstring>SURFACE</idstring>
     <category>GUI</category>
     <copyright>Paul Manias © 2003-2026</copyright>

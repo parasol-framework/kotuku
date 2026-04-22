@@ -8,7 +8,7 @@
     <module>Display</module>
     <comment>Manages the video display and graphics hardware.</comment>
     <version>1</version>
-    <id>12cd479b</id>
+    <id>39413236</id>
     <idstring>DISPLAY</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2003-2026</copyright>

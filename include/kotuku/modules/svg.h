@@ -77,26 +77,26 @@ class objSVG : public Object {
    // Customised field setting
 
    inline ERR setTarget(OBJECTPTR Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Target, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08000501, Value, 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Path, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setTitle(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Title, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Statement, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -111,20 +111,20 @@ class objSVG : public Object {
    }
 
    inline ERR setFrameRate(const int Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_FrameRate, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setColour(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Colour, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setFrameCallback(const FUNCTION Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_FrameCallback, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

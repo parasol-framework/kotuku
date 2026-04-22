@@ -8,7 +8,7 @@
     <module>Network</module>
     <comment>Represents a single client IP address.</comment>
     <version>1</version>
-    <id>05bdfa0b</id>
+    <id>34852165</id>
     <idstring>NETCLIENT</idstring>
     <category>Network</category>
     <copyright>Paul Manias © 2005-2026</copyright>

@@ -9,7 +9,7 @@
     <comment>Provides document display and editing facilities.</comment>
     <fileExtension>*.rpl|*.ripple|*.ripl</fileExtension>
     <version>1</version>
-    <id>155c3464</id>
+    <id>9989342d</id>
     <idstring>DOCUMENT</idstring>
     <category>GUI</category>
     <copyright>Paul Manias © 2005-2026</copyright>

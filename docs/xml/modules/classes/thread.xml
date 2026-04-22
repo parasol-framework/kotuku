@@ -8,7 +8,7 @@
     <module>Core</module>
     <comment>Threads are created and managed by the Thread class.</comment>
     <version>1</version>
-    <id>1e0f9fdd</id>
+    <id>45e1cfb8</id>
     <idstring>THREAD</idstring>
     <category>System</category>
     <copyright>Paul Manias 1996-2026</copyright>

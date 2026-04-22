@@ -9,7 +9,7 @@
     <comment>Acts as a proxy for decompressing and compressing data streams between objects.</comment>
     <fileDescription>GZip File</fileDescription>
     <version>1</version>
-    <id>2144cb86</id>
+    <id>6e56d1fb</id>
     <idstring>COMPRESSEDSTREAM</idstring>
     <category>Data</category>
     <copyright>Paul Manias 1996-2026</copyright>

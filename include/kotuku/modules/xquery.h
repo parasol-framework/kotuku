@@ -188,20 +188,20 @@ class objXQuery : public Object {
    // Customised field setting
 
    template <class T> inline ERR setPath(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Path, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Statement, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setResolveVariable(const FUNCTION Value) noexcept {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ResolveVariable, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
