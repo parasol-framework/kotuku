@@ -395,25 +395,25 @@ class objXML : public Object {
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setDocType(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPublic(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSystem(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -430,13 +430,13 @@ class objXML : public Object {
 
    inline ERR setReadOnly(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08800320, to_cstring(Value), 1);
    }
 

@@ -8,7 +8,7 @@
     <module>Network</module>
     <comment>Represents a single socket connection to a client IP address.</comment>
     <version>1</version>
-    <id>a14972ed</id>
+    <id>84601faf</id>
     <idstring>CLIENTSOCKET</idstring>
     <category>Network</category>
     <copyright>Paul Manias © 2005-2026</copyright>

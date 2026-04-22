@@ -740,7 +740,7 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
   <function>
     <name>GenCRC32</name>
     <category>System</category>
-    <comment>Generates 32-bit CRC checksum values.</comment>
+    <comment>Generates 32-bit IEEE 802.3 CRC checksum values.</comment>
     <prototype>UINT GenCRC32(UINT CRC, APTR Data, UINT Length)</prototype>
     <input>
       <param type="UINT" name="CRC">If streaming data to this function, this value must reflect the most recently returned CRC integer.  Otherwise set to zero.</param>
@@ -749,6 +749,7 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
     </input>
     <description>
 <p>This function is used internally for the generation of 32-bit CRC checksums compatible with IEEE 802.3.  It is made available to clients to generate CRC values over any length of buffer space.  This function may be called repeatedly by feeding it CRC values in a cycle, making it ideal for processing streamed data.</p>
+<p>Note that string hashes in Kotuku use CRC-32C, which is incompatible with this function.</p>
     </description>
     <result type="UINT">Returns the computed 32 bit CRC value for the given data.</result>
   </function>

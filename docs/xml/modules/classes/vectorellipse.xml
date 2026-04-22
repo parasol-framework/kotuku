@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Extends the Vector class with support for elliptical path generation.</comment>
     <version>1</version>
-    <id>d43c2686</id>
+    <id>0da60cee</id>
     <idstring>VECTORELLIPSE</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

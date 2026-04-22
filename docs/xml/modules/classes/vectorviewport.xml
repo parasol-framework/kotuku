@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Provides support for viewport definitions within a vector tree.</comment>
     <version>1</version>
-    <id>15da8fb8</id>
+    <id>ff7ae18b</id>
     <idstring>VECTORVIEWPORT</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

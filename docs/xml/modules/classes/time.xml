@@ -8,7 +8,7 @@
     <module>Core</module>
     <comment>Simplifies the management of date/time information.</comment>
     <version>1</version>
-    <id>7c9e7894</id>
+    <id>0904cf78</id>
     <idstring>TIME</idstring>
     <category>System</category>
     <copyright>Paul Manias 1996-2026</copyright>

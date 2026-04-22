@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>A filter effect that plots the probability distribution of a quantum wave function.</comment>
     <version>1</version>
-    <id>1069903c</id>
+    <id>37b24361</id>
     <idstring>WAVEFUNCTIONFX</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

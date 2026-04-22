@@ -159,11 +159,13 @@ CSTRING GetErrorMsg(ERR Code)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GenCRC32: Generates 32-bit CRC checksum values.
+GenCRC32: Generates 32-bit IEEE 802.3 CRC checksum values.
 
 This function is used internally for the generation of 32-bit CRC checksums compatible with IEEE 802.3.  It is made
 available to clients to generate CRC values over any length of buffer space.  This function may be called repeatedly
 by feeding it CRC values in a cycle, making it ideal for processing streamed data.
+
+Note that string hashes in Kotuku use CRC-32C, which is incompatible with this function.
 
 -INPUT-
 uint CRC: If streaming data to this function, this value must reflect the most recently returned CRC integer.  Otherwise set to zero.

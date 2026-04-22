@@ -8,7 +8,7 @@
     <module>Core</module>
     <comment>The Script class defines a common interface for script execution.</comment>
     <version>1</version>
-    <id>1b600fba</id>
+    <id>d44abc36</id>
     <idstring>SCRIPT</idstring>
     <category>Data</category>
     <copyright>Paul Manias 1996-2026</copyright>

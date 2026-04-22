@@ -8,7 +8,7 @@
     <module>Network</module>
     <comment>Manages network connections via TCP/IP sockets.</comment>
     <version>1</version>
-    <id>2b439bb5</id>
+    <id>b58a423b</id>
     <idstring>NETSOCKET</idstring>
     <category>Network</category>
     <copyright>Paul Manias © 2005-2026</copyright>

@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Renders a bitmap image in the effect pipeline.</comment>
     <version>1</version>
-    <id>9bba5446</id>
+    <id>1208408a</id>
     <idstring>IMAGEFX</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

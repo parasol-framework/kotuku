@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Clips are used to define complex clipping regions for vectors.</comment>
     <version>1</version>
-    <id>51b1de80</id>
+    <id>0101e40f</id>
     <idstring>VECTORCLIP</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

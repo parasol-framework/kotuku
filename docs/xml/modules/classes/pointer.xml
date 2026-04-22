@@ -8,7 +8,7 @@
     <module>Display</module>
     <comment>Interface for mouse cursor support.</comment>
     <version>1</version>
-    <id>bbd12926</id>
+    <id>177166ee</id>
     <idstring>POINTER</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2003-2026</copyright>

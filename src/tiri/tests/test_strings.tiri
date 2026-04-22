@@ -367,7 +367,7 @@ end
 
    -- Empty string
    emptyHash = string.hash("")
-   assert(emptyHash != 0, "Empty string hash should not be 0, got " .. emptyHash)
+   assert(emptyHash is 0, "Empty string hash should be 0, got " .. emptyHash)
 
    -- Same string should produce same hash
    consistent1 = string.hash("test")

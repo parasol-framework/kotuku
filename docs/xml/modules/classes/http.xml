@@ -8,7 +8,7 @@
     <module>HTTP</module>
     <comment>Provides a complete working implementation of HTTP.</comment>
     <version>1</version>
-    <id>7c9813c5</id>
+    <id>8ab62046</id>
     <idstring>HTTP</idstring>
     <category>Network</category>
     <copyright>Paul Manias © 2005-2026</copyright>

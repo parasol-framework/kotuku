@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Provides support for the filling and stroking of vectors with bitmap images.</comment>
     <version>1</version>
-    <id>885aab1b</id>
+    <id>4da1919f</id>
     <idstring>VECTORIMAGE</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

@@ -78,25 +78,25 @@ class objSVG : public Object {
 
    inline ERR setTarget(OBJECTPTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08000501, Value, 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setTitle(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -112,19 +112,19 @@ class objSVG : public Object {
 
    inline ERR setFrameRate(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setColour(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setFrameCallback(const FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[8];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

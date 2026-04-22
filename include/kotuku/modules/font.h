@@ -117,7 +117,7 @@ class objFont : public Object {
 
    inline ERR setPoint(const double Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -133,25 +133,25 @@ class objFont : public Object {
 
    template <class T> inline ERR setString(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setStyle(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setFace(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
@@ -172,7 +172,7 @@ class objFont : public Object {
 
    inline ERR setFlags(const FTF Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -251,19 +251,19 @@ class objFont : public Object {
 
    inline ERR setBold(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setItalic(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setOpacity(const double Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 

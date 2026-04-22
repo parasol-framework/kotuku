@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>An abstract class for supporting vector graphics objects and functionality.</comment>
     <version>1</version>
-    <id>227baf98</id>
+    <id>a0b8f38a</id>
     <idstring>VECTOR</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>
@@ -603,7 +603,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the existing object name and automatically assigned ID's for identifiers.</p>
+<p>The SID field is provided for SVG support.  Use the existing object name and UID for identification in all other circumstances.</p>
       </description>
     </field>
 

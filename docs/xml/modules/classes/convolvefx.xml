@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Applies a matrix convolution filter effect.</comment>
     <version>1</version>
-    <id>522bdc4f</id>
+    <id>aee06992</id>
     <idstring>CONVOLVEFX</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>
