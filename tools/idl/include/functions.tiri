@@ -320,30 +320,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- TDL function
 
-local crc32c_table = { }
-
-local i = 0
-while i <= 255 do
-   local crc = i
-   local j = 0
-   while j < 8 do
-      if (crc & 1) != 0 then
-         crc = (crc >> 1) ^ 0x82f63b78
-      else
-         crc = crc >> 1
-      end
-      j++
-   end
-   crc32c_table[i] = crc
-   i++
-end
-
 global function calcFieldHash(String:str):num
-   local crc = 0xffffffff
-   local k = 0
+   out = array<char>
+   k = 0
    while (k < #String) and (String[k] >= 'A') and (String[k] <= 'Z') do
-      local byte = String[k]:lower():byte()
-      crc = (crc >> 8) ^ crc32c_table[(crc ^ byte) & 0xff]
+      out:push(String[k]:lower():byte())
       k++
       if k >= #String then break end
       if not ((k + 1 >= #String) or ((String[k+1] >= 'A') and (String[k+1] <= 'Z'))) then
@@ -352,11 +333,11 @@ global function calcFieldHash(String:str):num
    end
 
    while k < #String do
-      local byte = String[k]:byte()
-      crc = (crc >> 8) ^ crc32c_table[(crc ^ byte) & 0xff]
+      out:push(String[k]:byte())
       k++
    end
-   return crc ^ 0xffffffff
+
+   return out:getString():hash(true)
 end
 
 global function fieldHash(Prefix:str, Format:str, ...)
