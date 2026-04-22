@@ -254,7 +254,7 @@ static void string_size(extFont *Font, CSTRING String, int Chars, int Wrap, int 
          if (*String IS ' ') x += Font->prvChar[' '].Advance * Font->GlyphSpacing;
          else if (*String IS '\t') {
             tabwidth = (Font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
-            if (tabwidth) x += pf::roundup(x, tabwidth);
+            if (tabwidth) x += pf::roundup<int>(x, tabwidth);
          }
          else if (*String IS '\n') {
             if (lastword > longest) longest = lastword;
@@ -579,7 +579,7 @@ int StringWidth(objFont *Font, CSTRING String, int Chars)
       }
       else if (*str IS '\t') {
          int16_t tabwidth = (font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
-         if (tabwidth) len = pf::roundup(len, tabwidth);
+         if (tabwidth) len = pf::roundup<int>(len, tabwidth);
          str++;
          Chars--;
          whitespace = 0;
