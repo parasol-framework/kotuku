@@ -855,7 +855,7 @@ static ERR draw_bitmap_font(extFont *Self)
       }
       else if (*str IS '\t') {
          int16_t tabwidth = (Self->prvChar['o'].Advance * Self->GlyphSpacing) * Self->TabSize;
-         if (tabwidth) dxcoord = Self->X + pf::roundup<int>(dxcoord - Self->X, tabwidth);
+         if (tabwidth) dxcoord = Self->X + tab_advance<int>(dxcoord - Self->X, tabwidth);
          str++;
       }
       else {
