@@ -87,7 +87,7 @@ void apply_transition_xy(extVectorTransition *Self, double Index, double *X, dou
       // Interpolate between transforms.
 
       int left, right;
-      for (left=0; (left < Self->TotalStops) and (Index < Self->Stops[left].Offset); left++);
+      for (left=Self->TotalStops-1; (left > 0) and (Index < Self->Stops[left].Offset); left--);
       for (right=left+1; (right < Self->TotalStops) and (Self->Stops[right].Offset < Index); right++);
 
       if ((left < right) and (right < Self->TotalStops)) {
@@ -233,4 +233,3 @@ ERR init_transition(void) // The transition is a definition type for creating tr
 
    return clVectorTransition ? ERR::Okay : ERR::AddClass;
 }
-

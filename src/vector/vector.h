@@ -1243,9 +1243,9 @@ static int get_utf8(const std::string_view &Value, uint32_t &Unicode, std::size_
    }
 
    for (int i=1; i < len; ++i) {
-      if ((Value[i] & 0xc0) != 0x80) code = -1;
+      if ((Value[Index + i] & 0xc0) != 0x80) code = -1;
       code <<= 6;
-      code |= Value[i] & 0x3f;
+      code |= Value[Index + i] & 0x3f;
    }
 
    if (code IS -1) {

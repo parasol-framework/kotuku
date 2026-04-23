@@ -120,7 +120,7 @@ GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS Col
          for (i=0; i < i1; i++) table[i] = begin;
       }
 
-      if (i1 <= i2) {
+      if (i1 < i2) {
          for (i=i1; i <= i2; i++) {
             double j = (double)(i - i1) / (double)(i2-i1);
             if (ColourSpace IS VCS::LINEAR_RGB) {
@@ -129,6 +129,7 @@ GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS Col
             else table[i] = begin.gradient(end, j);
          }
       }
+      else if (i1 IS i2) table[i1] = end;
 
       if ((stop IS std::ssize(Stops)-2) and (i2 < 255)) {
          for (i=i2; i <= 255; i++) table[i] = end;
