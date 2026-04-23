@@ -241,8 +241,8 @@ struct blend_dodge {
 
          int d1a  = 0xff - M[A];
          int s1a  = 0xff - S[A];
-         int drsa = mG * S[A];
-         int dgsa = mB * S[A];
+         int drsa = mR * S[A];
+         int dgsa = mG * S[A];
          int dbsa = mB * S[A];
          int srda = sR * M[A];
          int sgda = sG * M[A];
