@@ -94,6 +94,8 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    const int mix_height = mixBmp->Clip.Bottom - mixBmp->Clip.Top;
    const int in_width   = inBmp->Clip.Right   - inBmp->Clip.Left;
    const int in_height  = inBmp->Clip.Bottom  - inBmp->Clip.Top;
+   const int draw_width = (mix_width < width) ? mix_width : width;
+   const int draw_height = (mix_height < height) ? mix_height : height;
 
    auto &client = Self->Filter->ClientVector;
    const double c_width  = client->Bounds.width();
@@ -122,10 +124,10 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    //log.warning("X Channel: %d, Y Channel: %d; Scale: %.2f / %.2f -> %.2f,%.2f; WH: %dx%d", Self->XChannel, Self->YChannel, Self->Scale, scale_against, sx, sy, width, height);
 
    static const double HALF8BIT = 255.0 * 0.5;
-   for (int y=0; y < height; y++) {
+   for (int y=0; y < draw_height; y++) {
       auto m = mix;
       auto d = (uint32_t *)dest;
-      for (int x=0; x < width; x++, m += mixBmp->BytesPerPixel, d++) {
+      for (int x=0; x < draw_width; x++, m += mixBmp->BytesPerPixel, d++) {
          auto dx = m[x_type];
          auto dy = m[y_type];
          // TODO: SVG recommends using interpolation between pixels rather than the dropping the fractional part

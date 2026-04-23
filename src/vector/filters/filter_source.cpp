@@ -270,7 +270,7 @@ static ERR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
 {
    pf::Log log;
 
-   if ((!Self->Filter) or (!Self->Filter->Scene)) log.warning(ERR::UndefinedField);
+   if ((!Self->Filter) or (!Self->Filter->Scene)) return log.warning(ERR::UndefinedField);
 
    if (Self->Source) {
       UnsubscribeAction(Self->Source, AC::Free);

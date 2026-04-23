@@ -38,6 +38,7 @@ struct target {
 };
 
 static ERR get_source_bitmap(extVectorFilter *, objBitmap **, VSF, objFilterEffect *, bool);
+static ERR get_banked_bitmap(extVectorFilter *, objBitmap **);
 
 //********************************************************************************************************************
 // Universal function for rendering a filter's Bitmap to the target region.
@@ -395,8 +396,14 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    if (Self->SourceGraphic->Clip.Right  > Self->SourceGraphic->Width)  Self->SourceGraphic->Clip.Right  = Self->SourceGraphic->Width;
 
    // These non-fatal clipping checks will trigger if vector bounds lie outside of the visible/drawable area.
-   if (Self->SourceGraphic->Clip.Top >= Self->SourceGraphic->Clip.Bottom) return nullptr;
-   if (Self->SourceGraphic->Clip.Left >= Self->SourceGraphic->Clip.Right) return nullptr;
+   if (Self->SourceGraphic->Clip.Top >= Self->SourceGraphic->Clip.Bottom) {
+      Self->SourceScene->Viewport->Child = save_child;
+      return nullptr;
+   }
+   if (Self->SourceGraphic->Clip.Left >= Self->SourceGraphic->Clip.Right) {
+      Self->SourceScene->Viewport->Child = save_child;
+      return nullptr;
+   }
 
    auto const save_vector = Self->ClientVector->Next; // Switch off the Next pointer to prevent processing of siblings.
    Self->ClientVector->Next = nullptr;
@@ -558,7 +565,10 @@ ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector 
          e->Target = out;
       }
 
-      acDraw(e);
+      if (auto error = acDraw(e); error != ERR::Okay) {
+         Self->ActiveEffect = nullptr;
+         return error;
+      }
    }
    Self->ActiveEffect = nullptr;
 
@@ -963,4 +973,3 @@ ERR init_filter(void)
 
    return clVectorFilter ? ERR::Okay : ERR::AddClass;
 }
-

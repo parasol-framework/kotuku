@@ -194,9 +194,9 @@ struct blend_darken {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         uint8_t d1a = 0xff - D[A];
+         uint8_t d1a = 0xff - M[A];
          uint8_t s1a = 0xff - S[A];
-         uint8_t da  = D[A];
+         uint8_t da  = M[A];
 
          D[R] = glLinearRGB.invert((agg::sd_min(sR * da, mR * S[A]) + sR * d1a + mR * s1a + 0xff) >> 8);
          D[G] = glLinearRGB.invert((agg::sd_min(sG * da, mG * S[A]) + sG * d1a + mG * s1a + 0xff) >> 8);
@@ -217,7 +217,7 @@ struct blend_lighten {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         uint8_t d1a = 0xff - D[A];
+         uint8_t d1a = 0xff - M[A];
          uint8_t s1a = 0xff - S[A];
 
          D[R] = glLinearRGB.invert((agg::sd_max(sR * M[A], mR * S[A]) + sR * d1a + mR * s1a + 0xff) >> 8);
@@ -336,7 +336,7 @@ struct blend_burn {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         const uint8_t d1a = 0xff - D[A];
+         const uint8_t d1a = 0xff - M[A];
          const uint8_t s1a = 0xff - S[A];
          const int drsa = mR * S[A];
          const int dgsa = mG * S[A];
@@ -374,7 +374,7 @@ struct blend_hard_light {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         uint8_t d1a  = 0xff - D[A];
+         uint8_t d1a  = 0xff - M[A];
          uint8_t s1a  = 0xff - S[A];
          uint8_t sada = S[A] * M[A];
 
@@ -402,10 +402,10 @@ struct blend_soft_light {
          auto sG = glLinearRGB.convert(S[G]);
          auto sB = glLinearRGB.convert(S[B]);
 
-         double xr = double(glLinearRGB.convert(D[R])) / 0xff;
-         double xg = double(glLinearRGB.convert(D[G])) / 0xff;
-         double xb = double(glLinearRGB.convert(D[B])) / 0xff;
-         double da = double(D[A] ? D[A] : 1) / 0xff;
+         double xr = double(glLinearRGB.convert(M[R])) / 0xff;
+         double xg = double(glLinearRGB.convert(M[G])) / 0xff;
+         double xb = double(glLinearRGB.convert(M[B])) / 0xff;
+         double da = double(M[A] ? M[A] : 1) / 0xff;
 
          if(2*sR < S[A])     xr = xr*(S[A] + (1 - xr/da)*(2*sR - S[A])) + sR*(1 - da) + xr*(1 - S[A]);
          else if(8*xr <= da) xr = xr*(S[A] + (1 - xr/da)*(2*sR - S[A])*(3 - 8*xr/da)) + sR*(1 - da) + xr*(1 - S[A]);
@@ -422,7 +422,7 @@ struct blend_soft_light {
          D[R] = glLinearRGB.invert(agg::uround(xr * 0xff));
          D[G] = glLinearRGB.invert(agg::uround(xg * 0xff));
          D[B] = glLinearRGB.invert(agg::uround(xb * 0xff));
-         D[A] = (uint8_t)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
@@ -457,7 +457,7 @@ struct blend_exclusion {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         const uint8_t d1a = 0xff - D[A];
+         const uint8_t d1a = 0xff - M[A];
          const uint8_t s1a = 0xff - S[A];
          D[R] = glLinearRGB.invert((sR*M[A] + mR*S[A] - 2*sR*mR + sR*d1a + mR*s1a + 0xff) >> 8);
          D[G] = glLinearRGB.invert((sG*M[A] + mG*S[A] - 2*sG*mG + sG*d1a + mG*s1a + 0xff) >> 8);
@@ -474,14 +474,14 @@ struct blend_plus {
          auto sG = glLinearRGB.convert(S[G]);
          auto sB = glLinearRGB.convert(S[B]);
 
-         const uint8_t xr = glLinearRGB.convert(D[R]) + sR;
-         const uint8_t xg = glLinearRGB.convert(D[G]) + sG;
-         const uint8_t xb = glLinearRGB.convert(D[B]) + sB;
-         const uint8_t xa = D[A] + S[A];
-         D[R] = glLinearRGB.invert((xr > 0xff) ? (uint8_t)0xff : xr);
-         D[G] = glLinearRGB.invert((xg > 0xff) ? (uint8_t)0xff : xg);
-         D[B] = glLinearRGB.invert((xb > 0xff) ? (uint8_t)0xff : xb);
-         D[A] = (xa > 0xff) ? (uint8_t)0xff : xa;
+         const int xr = glLinearRGB.convert(M[R]) + sR;
+         const int xg = glLinearRGB.convert(M[G]) + sG;
+         const int xb = glLinearRGB.convert(M[B]) + sB;
+         const int xa = M[A] + S[A];
+         D[R] = glLinearRGB.invert((xr > 0xff) ? 0xff : xr);
+         D[G] = glLinearRGB.invert((xg > 0xff) ? 0xff : xg);
+         D[B] = glLinearRGB.invert((xb > 0xff) ? 0xff : xb);
+         D[A] = (xa > 0xff) ? 0xff : xa;
       }
    }
 };
@@ -493,13 +493,13 @@ struct blend_minus {
          auto sG = glLinearRGB.convert(S[G]);
          auto sB = glLinearRGB.convert(S[B]);
 
-         const uint8_t xr = glLinearRGB.convert(D[R]) - sR;
-         const uint8_t xg = glLinearRGB.convert(D[G]) - sG;
-         const uint8_t xb = glLinearRGB.convert(D[B]) - sB;
-         D[R] = glLinearRGB.invert((xr > 0xff) ? 0 : xr);
-         D[G] = glLinearRGB.invert((xg > 0xff) ? 0 : xg);
-         D[B] = glLinearRGB.invert((xb > 0xff) ? 0 : xb);
-         D[A] = (uint8_t)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
+         const int xr = glLinearRGB.convert(M[R]) - sR;
+         const int xg = glLinearRGB.convert(M[G]) - sG;
+         const int xb = glLinearRGB.convert(M[B]) - sB;
+         D[R] = glLinearRGB.invert((xr < 0) ? 0 : xr);
+         D[G] = glLinearRGB.invert((xg < 0) ? 0 : xg);
+         D[B] = glLinearRGB.invert((xb < 0) ? 0 : xb);
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
          //D[A] = (UBYTE)(0xff - (((0xff - S[A]) * (0xff - D[A]) + 0xff) >> 8));
       }
    }

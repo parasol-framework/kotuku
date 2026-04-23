@@ -499,6 +499,8 @@ void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const 
       if (Type IS LT::DIFFUSE) {
          point3 stl = read_light_delta(0, y, m[4]);
          diffuse_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+         if (Width <= 1) continue;
+
          dptr += bpp;
 
          for (int x=1; x < Width-1; ++x) {
