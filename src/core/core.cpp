@@ -503,7 +503,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
 #ifndef KOTUKU_STATIC
    if ((Info->Flags & OPF::SCAN_MODULES) IS OPF::NIL) {
-      ERR error;
+      ERR error = ERR::Okay;
       auto file = objFile::create { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
 
       if (file.ok()) {

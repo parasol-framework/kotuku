@@ -332,6 +332,7 @@ static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
 
    if (!Args->Size) { // If no size is provided, we simply copy the provided pointer.
       Self->Data = Args->Data;
+      Self->DataSize = 0;
       return ERR::Okay;
    }
    else if (AllocMemory(Args->Size, MEM::DATA, &Self->Data, nullptr) IS ERR::Okay) {

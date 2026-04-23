@@ -525,7 +525,7 @@ ERR ScanMessages(int *Handle, MSGID Type, APTR Buffer, int BufferSize)
             else copymem(it->getBuffer(), ((int8_t *)Buffer) + sizeof(Message), it->Size);
          }
 
-         *Handle = index + 1;
+         *Handle = int(std::distance(glQueue.begin(), it)) + 1;
          return ERR::Okay;
       }
    }
