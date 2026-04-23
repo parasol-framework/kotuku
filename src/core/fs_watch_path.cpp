@@ -6,7 +6,10 @@
 void fs_ignore_file(extFile *File)
 {
    if ((File->prvWatch) and (File->prvWatch->Handle > 0)) {
-      glInotifyLookup.erase(File->prvWatch->Handle);
+      {
+         std::lock_guard<std::mutex> lock(glmInotifyLookup);
+         glInotifyLookup.erase(File->prvWatch->Handle);
+      }
       inotify_rm_watch(glInotify, File->prvWatch->Handle);
       File->prvWatch->Handle = 0;
    }
@@ -54,7 +57,10 @@ ERR fs_watch_path(extFile *File)
    if (path.ends_with('/')) path.pop_back();
    if (auto handle = inotify_add_watch(glInotify, path.c_str(), nflags); handle != -1) {
       File->prvWatch->Handle = handle;
-      glInotifyLookup[handle] = File->UID;
+      {
+         std::lock_guard<std::mutex> lock(glmInotifyLookup);
+         glInotifyLookup[handle] = File->UID;
+      }
       return ERR::Okay;
    }
    else {
@@ -135,14 +141,22 @@ void path_monitor(HOSTHANDLE FD, OBJECTPTR)
             continue;
          }
 
-         if (!glInotifyLookup.contains(event->wd)) continue;
+         OBJECTID file_id = 0;
+         {
+            std::lock_guard<std::mutex> lookup_lock(glmInotifyLookup);
+            if (auto it = glInotifyLookup.find(event->wd); it != glInotifyLookup.end()) file_id = it->second;
+         }
+         if (!file_id) continue;
 
-         ScopedObjectLock<extFile> lock(glInotifyLookup[event->wd], 50);
+         ScopedObjectLock<extFile> lock(file_id, 50);
          if (not lock.granted()) continue;
 
          auto file = lock.obj;
          if ((!file->prvWatch) or (file->prvWatch->Handle != event->wd)) {
-            glInotifyLookup.erase(event->wd);
+            std::lock_guard<std::mutex> lookup_lock(glmInotifyLookup);
+            if (auto it = glInotifyLookup.find(event->wd); (it != glInotifyLookup.end()) and (it->second IS file_id)) {
+               glInotifyLookup.erase(it);
+            }
             continue;
          }
 
@@ -191,7 +205,12 @@ void path_monitor(HOSTHANDLE FD, OBJECTPTR)
 
          bool ignored = (event->mask & IN_IGNORED) != 0;
 
-         if (ignored) glInotifyLookup.erase(event->wd);
+         if (ignored) {
+            std::lock_guard<std::mutex> lookup_lock(glmInotifyLookup);
+            if (auto it = glInotifyLookup.find(event->wd); (it != glInotifyLookup.end()) and (it->second IS file_id)) {
+               glInotifyLookup.erase(it);
+            }
+         }
          if (error IS ERR::Terminate) Action(fl::Watch::id, file, nullptr);
       }
    }

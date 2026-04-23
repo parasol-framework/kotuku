@@ -1008,6 +1008,7 @@ extern std::list<FDRecord> glFDTable;
 
 #ifdef __linux__
 extern int glInotify;
+extern std::mutex glmInotifyLookup;
 extern std::unordered_map<int, OBJECTID> glInotifyLookup;
 #endif
 

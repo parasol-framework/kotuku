@@ -82,6 +82,7 @@ std::unordered_map<int, std::shared_ptr<ThreadRecord>> glThreadRegistry;
 std::list<CoreTimer> glTimers; // Locked with glmTimer.  std::list maintains stable pointers to elements.
 std::list<FDRecord> glFDTable;
 #ifdef __linux__
+std::mutex glmInotifyLookup;
 std::unordered_map<int, OBJECTID> glInotifyLookup;
 #endif
 
