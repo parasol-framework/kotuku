@@ -868,7 +868,7 @@ namespace agg
             int j;
             int pivot;
 
-            if (len > quick_sort_threshold) [[likely]] 
+            if (len > quick_sort_threshold) [[likely]]
             {
                 // we use base + len/2 as the pivot
                 pivot = base + len / 2;

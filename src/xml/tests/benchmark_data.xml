@@ -1,0 +1,511 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog name="Performance Test Catalog" version="1.0" xmlns:meta="http://example.com/meta">
+   <meta:info created="2024-01-01" generator="benchmark-suite"/>
+
+   <categories>
+      <category name="electronics" id="cat-1" priority="high">
+         <description>Electronic devices and accessories</description>
+         <products>
+            <product id="prod-1" name="Ultra Pro Laptop" price="1299.99" instock="true" discontinued="false">
+               <description>High-performance device</description>
+               <specs>
+                  <cpu>Intel i7</cpu>
+                  <ram>16GB</ram>
+                  <storage>512GB SSD</storage>
+               </specs>
+               <reviews count="127">
+                  <review rating="5">Excellent laptop</review>
+                  <review rating="4">Good value</review>
+               </reviews>
+            </product>
+            <product id="prod-2" name="Pro Gaming Mouse" price="89.99" instock="true" discontinued="false">
+               <description>Professional gaming mouse with RGB lighting</description>
+               <specs>
+                  <dpi>12000</dpi>
+                  <buttons>8</buttons>
+               </specs>
+               <reviews count="89">
+                  <review rating="5">Perfect for gaming</review>
+                  <review rating="5">Great precision</review>
+               </reviews>
+            </product>
+            <product id="prod-3" name="Wireless Headphones" price="199.99" instock="false" discontinued="false">
+               <description>Premium wireless headphones with noise cancellation</description>
+               <specs>
+                  <battery>30 hours</battery>
+                  <wireless>Bluetooth 5.0</wireless>
+               </specs>
+               <reviews count="203">
+                  <review rating="4">Good sound quality</review>
+                  <review rating="5">Excellent noise cancellation</review>
+               </reviews>
+            </product>
+            <product id="prod-4" name="Mechanical Keyboard" price="149.99" instock="true" discontinued="false">
+               <description>Professional mechanical keyboard with backlight</description>
+               <specs>
+                  <switches>Cherry MX Blue</switches>
+                  <backlight>RGB</backlight>
+               </specs>
+               <reviews count="156">
+                  <review rating="5">Amazing typing experience</review>
+                  <review rating="4">A bit loud</review>
+               </reviews>
+            </product>
+            <product id="prod-5" name="4K Monitor" price="449.99" instock="true" discontinued="false">
+               <description>27-inch 4K IPS monitor</description>
+               <specs>
+                  <size>27 inches</size>
+                  <resolution>3840x2160</resolution>
+                  <panel>IPS</panel>
+               </specs>
+               <reviews count="78">
+                  <review rating="5">Crystal clear display</review>
+                  <review rating="4">Great for work</review>
+               </reviews>
+            </product>
+            <product id="prod-6" name="Webcam HD" price="79.99" instock="true" discontinued="false">
+               <description>1080p HD webcam with autofocus</description>
+               <specs>
+                  <resolution>1920x1080</resolution>
+                  <fps>30</fps>
+               </specs>
+               <reviews count="45">
+                  <review rating="4">Good image quality</review>
+                  <review rating="3">Average microphone</review>
+               </reviews>
+            </product>
+            <product id="prod-7" name="USB Hub" price="29.99" instock="true" discontinued="false">
+               <description>7-port USB 3.0 hub</description>
+               <specs>
+                  <ports>7</ports>
+                  <speed>USB 3.0</speed>
+               </specs>
+               <reviews count="112">
+                  <review rating="4">Works as expected</review>
+                  <review rating="5">Great build quality</review>
+               </reviews>
+            </product>
+            <product id="prod-8" name="External SSD" price="299.99" instock="false" discontinued="false">
+               <description>1TB portable SSD with USB-C</description>
+               <specs>
+                  <capacity>1TB</capacity>
+                  <interface>USB-C</interface>
+                  <speed>540 MB/s</speed>
+               </specs>
+               <reviews count="234">
+                  <review rating="5">Very fast</review>
+                  <review rating="5">Compact design</review>
+               </reviews>
+            </product>
+            <product id="prod-9" name="Graphics Tablet" price="129.99" instock="true" discontinued="false">
+               <description>Digital drawing tablet with pressure sensitivity</description>
+               <specs>
+                  <size>10x6 inches</size>
+                  <levels>8192</levels>
+               </specs>
+               <reviews count="67">
+                  <review rating="4">Good for beginners</review>
+                  <review rating="5">Great pressure sensitivity</review>
+               </reviews>
+            </product>
+            <product id="prod-10" name="Power Bank" price="39.99" instock="true" discontinued="false">
+               <description>20000mAh portable power bank</description>
+               <specs>
+                  <capacity>20000mAh</capacity>
+                  <ports>2x USB-A, 1x USB-C</ports>
+               </specs>
+               <reviews count="189">
+                  <review rating="4">Long lasting</review>
+                  <review rating="4">Multiple charging options</review>
+               </reviews>
+            </product>
+            <product id="prod-11" name="Bluetooth Speaker" price="69.99" instock="true" discontinued="false">
+               <description>Waterproof portable speaker</description>
+               <specs>
+                  <battery>12 hours</battery>
+                  <waterproof>IPX7</waterproof>
+               </specs>
+               <reviews count="143">
+                  <review rating="4">Good sound</review>
+                  <review rating="5">Perfect for outdoors</review>
+               </reviews>
+            </product>
+            <product id="prod-12" name="Smartphone Stand" price="19.99" instock="true" discontinued="false">
+               <description>Adjustable phone stand for desk</description>
+               <specs>
+                  <material>Aluminum</material>
+                  <adjustable>Yes</adjustable>
+               </specs>
+               <reviews count="87">
+                  <review rating="5">Sturdy and adjustable</review>
+                  <review rating="4">Great value</review>
+               </reviews>
+            </product>
+         </products>
+      </category>
+
+      <category name="clothing" id="cat-2" priority="medium">
+         <description>Fashion and apparel</description>
+         <products>
+            <product id="prod-13" name="Premium T-Shirt" price="29.99" instock="true" discontinued="false">
+               <description>100% organic cotton t-shirt</description>
+               <specs>
+                  <material>Organic Cotton</material>
+                  <sizes>S,M,L,XL</sizes>
+               </specs>
+               <reviews count="256">
+                  <review rating="5">Very comfortable</review>
+                  <review rating="4">Good quality</review>
+               </reviews>
+            </product>
+            <product id="prod-14" name="Designer Jeans" price="89.99" instock="true" discontinued="false">
+               <description>Slim fit designer jeans</description>
+               <specs>
+                  <material>98% Cotton, 2% Elastane</material>
+                  <fit>Slim</fit>
+               </specs>
+               <reviews count="178">
+                  <review rating="4">Great fit</review>
+                  <review rating="5">Excellent quality</review>
+               </reviews>
+            </product>
+            <product id="prod-15" name="Winter Jacket" price="159.99" instock="false" discontinued="false">
+               <description>Water-resistant winter jacket</description>
+               <specs>
+                  <material>Polyester</material>
+                  <waterproof>Yes</waterproof>
+               </specs>
+               <reviews count="92">
+                  <review rating="5">Keeps you warm</review>
+                  <review rating="4">Good protection</review>
+               </reviews>
+            </product>
+            <product id="prod-16" name="Running Shoes" price="119.99" instock="true" discontinued="false">
+               <description>Lightweight running shoes</description>
+               <specs>
+                  <material>Mesh upper</material>
+                  <sole>Rubber</sole>
+               </specs>
+               <reviews count="312">
+                  <review rating="5">Very comfortable</review>
+                  <review rating="4">Good for long runs</review>
+               </reviews>
+            </product>
+            <product id="prod-17" name="Baseball Cap" price="24.99" instock="true" discontinued="false">
+               <description>Adjustable baseball cap</description>
+               <specs>
+                  <material>Cotton</material>
+                  <adjustable>Yes</adjustable>
+               </specs>
+               <reviews count="134">
+                  <review rating="4">Good fit</review>
+                  <review rating="4">Nice design</review>
+               </reviews>
+            </product>
+            <product id="prod-18" name="Leather Belt" price="49.99" instock="true" discontinued="false">
+               <description>Genuine leather belt</description>
+               <specs>
+                  <material>Genuine Leather</material>
+                  <width>1.5 inches</width>
+               </specs>
+               <reviews count="167">
+                  <review rating="5">Excellent quality</review>
+                  <review rating="4">Classic design</review>
+               </reviews>
+            </product>
+            <product id="prod-19" name="Wool Sweater" price="79.99" instock="false" discontinued="false">
+               <description>Pure wool knit sweater</description>
+               <specs>
+                  <material>100% Wool</material>
+                  <care>Dry clean only</care>
+               </specs>
+               <reviews count="89">
+                  <review rating="5">Very warm</review>
+                  <review rating="4">Nice texture</review>
+               </reviews>
+            </product>
+            <product id="prod-20" name="Dress Shirt" price="59.99" instock="true" discontinued="false">
+               <description>Professional dress shirt</description>
+               <specs>
+                  <material>Cotton</material>
+                  <collar>Spread</collar>
+               </specs>
+               <reviews count="203">
+                  <review rating="4">Good for office</review>
+                  <review rating="5">Perfect fit</review>
+               </reviews>
+            </product>
+         </products>
+      </category>
+
+      <category name="books" id="cat-3" priority="low">
+         <description>Books and literature</description>
+         <products>
+            <product id="prod-21" name="Programming Guide" price="49.99" instock="true" discontinued="false">
+               <description>Complete guide to programming</description>
+               <specs>
+                  <pages>450</pages>
+                  <format>Paperback</format>
+               </specs>
+               <reviews count="189">
+                  <review rating="5">Very informative</review>
+                  <review rating="4">Good for beginners</review>
+               </reviews>
+            </product>
+            <product id="prod-22" name="Science Fiction Novel" price="14.99" instock="true" discontinued="false">
+               <description>Award-winning sci-fi novel</description>
+               <specs>
+                  <pages>320</pages>
+                  <format>Paperback</format>
+               </specs>
+               <reviews count="567">
+                  <review rating="5">Amazing story</review>
+                  <review rating="5">Couldn't put it down</review>
+               </reviews>
+            </product>
+            <product id="prod-23" name="Cookbook Collection" price="39.99" instock="true" discontinued="false">
+               <description>Collection of international recipes</description>
+               <specs>
+                  <pages>280</pages>
+                  <format>Hardcover</format>
+               </specs>
+               <reviews count="234">
+                  <review rating="4">Great recipes</review>
+                  <review rating="5">Beautiful pictures</review>
+               </reviews>
+            </product>
+            <product id="prod-24" name="History Textbook" price="89.99" instock="false" discontinued="false">
+               <description>Comprehensive world history</description>
+               <specs>
+                  <pages>680</pages>
+                  <format>Hardcover</format>
+               </specs>
+               <reviews count="78">
+                  <review rating="4">Very detailed</review>
+                  <review rating="3">A bit dry</review>
+               </reviews>
+            </product>
+            <product id="prod-25" name="Poetry Anthology" price="24.99" instock="true" discontinued="false">
+               <description>Modern poetry collection</description>
+               <specs>
+                  <pages>190</pages>
+                  <format>Paperback</format>
+               </specs>
+               <reviews count="145">
+                  <review rating="5">Beautiful poetry</review>
+                  <review rating="4">Great selection</review>
+               </reviews>
+            </product>
+         </products>
+      </category>
+
+      <category name="home-garden" id="cat-4" priority="medium">
+         <description>Home and garden supplies</description>
+         <products>
+            <product id="prod-26" name="Plant Pot Set" price="34.99" instock="true" discontinued="false">
+               <description>Set of 5 ceramic plant pots</description>
+               <specs>
+                  <material>Ceramic</material>
+                  <count>5</count>
+               </specs>
+               <reviews count="167">
+                  <review rating="4">Nice design</review>
+                  <review rating="5">Good quality</review>
+               </reviews>
+            </product>
+            <product id="prod-27" name="Garden Tools Set" price="79.99" instock="true" discontinued="false">
+               <description>Complete garden tool set</description>
+               <specs>
+                  <tools>Spade, rake, hoe, pruner</tools>
+                  <material>Steel</material>
+               </specs>
+               <reviews count="123">
+                  <review rating="5">Durable tools</review>
+                  <review rating="4">Good value set</review>
+               </reviews>
+            </product>
+            <product id="prod-28" name="Outdoor Cushions" price="59.99" instock="false" discontinued="false">
+               <description>Weather-resistant outdoor cushions</description>
+               <specs>
+                  <material>Polyester</material>
+                  <count>4</count>
+               </specs>
+               <reviews count="89">
+                  <review rating="4">Comfortable</review>
+                  <review rating="4">Weather resistant</review>
+               </reviews>
+            </product>
+            <product id="prod-29" name="Solar Lights" price="44.99" instock="true" discontinued="false">
+               <description>Solar pathway lights set</description>
+               <specs>
+                  <count>6</count>
+                  <battery>Solar charged</battery>
+               </specs>
+               <reviews count="201">
+                  <review rating="4">Good illumination</review>
+                  <review rating="5">Easy to install</review>
+               </reviews>
+            </product>
+            <product id="prod-30" name="Watering Can" price="19.99" instock="true" discontinued="false">
+               <description>2-gallon watering can</description>
+               <specs>
+                  <capacity>2 gallons</capacity>
+                  <material>Galvanized steel</material>
+               </specs>
+               <reviews count="156">
+                  <review rating="5">Well made</review>
+                  <review rating="4">Perfect size</review>
+               </reviews>
+            </product>
+         </products>
+      </category>
+
+      <category name="sports" id="cat-5" priority="high">
+         <description>Sports and fitness equipment</description>
+         <products>
+            <product id="prod-31" name="Tennis Racket" price="129.99" instock="true" discontinued="false">
+               <description>Professional tennis racket</description>
+               <specs>
+                  <weight>300g</weight>
+                  <string>Pre-strung</string>
+               </specs>
+               <reviews count="145">
+                  <review rating="5">Great control</review>
+                  <review rating="4">Good power</review>
+               </reviews>
+            </product>
+            <product id="prod-32" name="Yoga Mat" price="39.99" instock="true" discontinued="false">
+               <description>Non-slip yoga mat</description>
+               <specs>
+                  <thickness>6mm</thickness>
+                  <material>TPE</material>
+               </specs>
+               <reviews count="287">
+                  <review rating="5">Excellent grip</review>
+                  <review rating="4">Good cushioning</review>
+               </reviews>
+            </product>
+            <product id="prod-33" name="Dumbbells Set" price="199.99" instock="false" discontinued="false">
+               <description>Adjustable dumbbells set</description>
+               <specs>
+                  <weight>10-50 lbs each</weight>
+                  <adjustable>Yes</adjustable>
+               </specs>
+               <reviews count="98">
+                  <review rating="5">Space saving</review>
+                  <review rating="4">Good quality</review>
+               </reviews>
+            </product>
+            <product id="prod-34" name="Basketball" price="29.99" instock="true" discontinued="false">
+               <description>Official size basketball</description>
+               <specs>
+                  <size>Official</size>
+                  <material>Leather</material>
+               </specs>
+               <reviews count="176">
+                  <review rating="4">Good bounce</review>
+                  <review rating="5">Durable</review>
+               </reviews>
+            </product>
+            <product id="prod-35" name="Swimming Goggles" price="19.99" instock="true" discontinued="false">
+               <description>Anti-fog swimming goggles</description>
+               <specs>
+                  <lens>Anti-fog</lens>
+                  <strap>Adjustable</strap>
+               </specs>
+               <reviews count="234">
+                  <review rating="4">Clear vision</review>
+                  <review rating="5">Comfortable fit</review>
+               </reviews>
+            </product>
+         </products>
+      </category>
+   </categories>
+
+   <suppliers>
+      <supplier id="sup-1" name="TechCorp" country="USA">
+         <contact email="orders@techcorp.com" phone="+1-555-0123"/>
+         <products>prod-1,prod-2,prod-4,prod-5,prod-6,prod-7,prod-8,prod-9,prod-10,prod-11,prod-12</products>
+      </supplier>
+      <supplier id="sup-2" name="FashionPlus" country="Italy">
+         <contact email="info@fashionplus.com" phone="+39-06-12345"/>
+         <products>prod-13,prod-14,prod-15,prod-16,prod-17,prod-18,prod-19,prod-20</products>
+      </supplier>
+      <supplier id="sup-3" name="BookWorld" country="UK">
+         <contact email="sales@bookworld.co.uk" phone="+44-20-1234567"/>
+         <products>prod-21,prod-22,prod-23,prod-24,prod-25</products>
+      </supplier>
+      <supplier id="sup-4" name="GreenThumb" country="Canada">
+         <contact email="orders@greenthumb.ca" phone="+1-416-555-0199"/>
+         <products>prod-26,prod-27,prod-28,prod-29,prod-30</products>
+      </supplier>
+      <supplier id="sup-5" name="SportMax" country="Germany">
+         <contact email="bestellung@sportmax.de" phone="+49-30-12345678"/>
+         <products>prod-31,prod-32,prod-33,prod-34,prod-35</products>
+      </supplier>
+   </suppliers>
+
+   <inventory>
+      <warehouse id="wh-1" location="New York" capacity="10000">
+         <stock>
+            <item product="prod-1" quantity="25"/>
+            <item product="prod-2" quantity="150"/>
+            <item product="prod-4" quantity="80"/>
+            <item product="prod-5" quantity="45"/>
+            <item product="prod-13" quantity="200"/>
+            <item product="prod-14" quantity="120"/>
+            <item product="prod-21" quantity="300"/>
+            <item product="prod-22" quantity="180"/>
+         </stock>
+      </warehouse>
+      <warehouse id="wh-2" location="Los Angeles" capacity="8000">
+         <stock>
+            <item product="prod-6" quantity="95"/>
+            <item product="prod-7" quantity="220"/>
+            <item product="prod-16" quantity="75"/>
+            <item product="prod-17" quantity="165"/>
+            <item product="prod-26" quantity="140"/>
+            <item product="prod-31" quantity="60"/>
+            <item product="prod-32" quantity="185"/>
+         </stock>
+      </warehouse>
+   </inventory>
+
+   <orders>
+      <order id="ord-1" date="2024-01-15" customer="C001" status="shipped">
+         <items>
+            <item product="prod-1" quantity="1" price="1299.99"/>
+            <item product="prod-2" quantity="1" price="89.99"/>
+         </items>
+         <total>1389.98</total>
+      </order>
+      <order id="ord-2" date="2024-01-16" customer="C002" status="processing">
+         <items>
+            <item product="prod-13" quantity="2" price="29.99"/>
+            <item product="prod-14" quantity="1" price="89.99"/>
+         </items>
+         <total>149.97</total>
+      </order>
+      <order id="ord-3" date="2024-01-17" customer="C003" status="delivered">
+         <items>
+            <item product="prod-21" quantity="3" price="49.99"/>
+         </items>
+         <total>149.97</total>
+      </order>
+   </orders>
+
+   <!-- Additional test elements for namespace and comment testing -->
+   <!-- This is a comment node for testing -->
+   <?xml-stylesheet type="text/xsl" href="catalog.xsl"?>
+
+   <metadata>
+      <created>2024-01-01T00:00:00Z</created>
+      <modified>2024-01-20T15:30:00Z</modified>
+      <version>1.0</version>
+      <statistics>
+         <total-products>35</total-products>
+         <total-categories>5</total-categories>
+         <total-suppliers>5</total-suppliers>
+      </statistics>
+   </metadata>
+</catalog>

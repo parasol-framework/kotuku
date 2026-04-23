@@ -3,7 +3,7 @@ static void free_private_memory(void);
 
 //********************************************************************************************************************
 
-static void free_classes(void) 
+static void free_classes(void)
 {
    #ifdef __ANDROID__
    if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = 0; }
@@ -53,8 +53,8 @@ static void remove_schedulers(void)
 
 //********************************************************************************************************************
 // Remove orphaned object locks
-   
-static void remove_object_locks(void) 
+
+static void remove_object_locks(void)
 {
    pf::Log log(__FUNCTION__);
 
@@ -91,7 +91,7 @@ void CloseCore(void)
    // Critical variables are re-calculated for the close process - this will 'repair' any possible damage that may have
    // been caused to our internal data.
 
-   tlContext = &glTopContext;
+   tlContext.resize(1);
    tlDepth   = 0;
 
    if (glClassFile) { FreeResource(glClassFile); glClassFile = nullptr; }
@@ -119,7 +119,7 @@ void CloseCore(void)
                SendMessage(MSGID::QUIT, MSF::NIL, nullptr, 0);
             #endif
 
-            WaitTime(0, -100000);
+            WaitTime(-0.1); // Wait 0.1 seconds without processing messages
          }
       #endif
    }
@@ -144,7 +144,7 @@ void CloseCore(void)
          it++;
       }
 
-      WaitTime(0, -100000);
+      WaitTime(-0.1); // Wait 0.1 seconds without processing messages
    }
 
    // If the time-to-die has elapsed and sub-tasks are still in the system, send kill messages to force them out.
@@ -157,7 +157,7 @@ void CloseCore(void)
                kill(task.ProcessID, SIGTERM);
             }
          }
-         WaitTime(0, -200000);
+         WaitTime(-0.2); // Wait 0.2 seconds without processing messages
          glTasks.clear();
       }
    #endif
@@ -172,6 +172,7 @@ void CloseCore(void)
    }
 
    stop_async_actions();
+   deregister_thread(); // Remove main thread from the thread registry
 
    if ((glCurrentTask) or (glProcessID)) remove_process_waitlocks();
 
@@ -208,7 +209,13 @@ void CloseCore(void)
 
          free_file_cache();
 
-         if (glInotify != -1) { close(glInotify); glInotify = -1; }
+         #ifdef __linux__
+            if (glInotify != -1) {
+               RegisterFD(glInotify, RFD::REMOVE|RFD::READ, nullptr, nullptr);
+               close(glInotify);
+               glInotify = -1;
+            }
+         #endif
       }
 
       Expunge(true); // Third and final expunge.  Forcibly unloads modules.
@@ -228,7 +235,7 @@ void CloseCore(void)
 
       if (!glCrashStatus) {
          for (auto &fd : glFDTable) {
-            log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)fd.FD, fd.Routine, fd.Data, int(fd.Flags));
+            log.warning("FD %" PRId64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (int64_t)fd.FD, fd.Routine, fd.Data, int(fd.Flags));
          }
       }
    }
@@ -250,6 +257,8 @@ void CloseCore(void)
 
    if (!glCrashStatus) {
       if (glTaskClass) { FreeResource(glTaskClass); glTaskClass = 0; }
+      // Although we haven't crashed, setting this to true enables safer shutdown behaviour in memory deallocations from this point.
+      glCrashStatus = 1;
    }
 
    if (glCodeIndex < CP_FREE_COREBASE) {
@@ -339,17 +348,17 @@ __export void Expunge(int16_t Force)
                   if (auto error = mod_master->Expunge(); error IS ERR::Okay) {
                      ccount++;
                      if (FreeResource(mod_master) != ERR::Okay) {
-                        log.warning("RootModule data is corrupt");
+                        log.warning("RootModule is corrupt");
                         mod_count = ccount; // Break the loop because the chain links are broken.
                         break;
                      }
                   }
-                  else if (error != ERR::DoNotExpunge) log.msg("Module \"%s\" does not want to be flushed.",mod_master->Name.c_str());
+                  else if (error != ERR::DoNotExpunge) log.msg("Module \"%s\" rejected expunge request.",mod_master->Name.c_str());
                }
                else {
                   ccount++;
                   if (FreeResource(mod_master) != ERR::Okay) {
-                     log.warning("RootModule data is corrupt");
+                     log.warning("RootModule is corrupt");
                      mod_count = ccount; // Break the loop because the chain links are broken.
                      break;
                   }
@@ -389,6 +398,14 @@ __export void Expunge(int16_t Force)
                   auto mc = (extMetaClass *)mem->second.Address;
                   if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
                      log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name.c_str(), mc->ClassName, mc->OpenCount);
+
+                     for (auto & [ id, mem ] : glPrivateMemory) {
+                        if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (mem.Object)) {
+                           if (mem.Object->classID() IS mc->ClassID) {
+                              log.warning("   Unfreed %s #%d, Owner #%d, RefCount: %d, Queue: %d", mc->ClassName, mem.Object->UID, mem.Object->ownerID(), mem.Object->RefCount.load(), mem.Object->Queue.load());
+                           }
+                        }
+                     }
                   }
                }
             }
@@ -397,23 +414,27 @@ __export void Expunge(int16_t Force)
          }
       }
 
-      // If we are shutting down, force the expunging of any stubborn modules
+      // If we are shutting down, force the expunging of any stubborn modules.  Freeing the modules in order of their
+      // original allocation (i.e. by UID) is a good heuristic for avoiding problems with modules that have circular
+      // dependencies on each other.
 
+      RootModule *sanity_check = nullptr;
+restart_forced_expunge:
       auto mod_master = glModuleList;
-      while (mod_master) {
-         auto next = mod_master->Next;
+      for (auto scan=mod_master; scan; scan=scan->Next) {
+         if (scan->UID < mod_master->UID) mod_master = scan;
+      }
+
+      if ((mod_master) and (sanity_check != mod_master)) {
          if (mod_master->Expunge) {
             pf::Log log(__FUNCTION__);
-            log.branch("Forcing the expunge of stubborn module %s.", mod_master->Name.c_str());
+            log.branch("Forcing the expunge of stubborn module %s, owned by #%d.", mod_master->Name.c_str(), mod_master->ownerID());
             mod_master->Expunge();
             mod_master->NoUnload = true; // Do not actively destroy the module code as a precaution (e.g. X11 Display module doesn't like it)
-            FreeResource(mod_master);
          }
-         else {
-            ccount++;
-            FreeResource(mod_master);
-         }
-         mod_master = next;
+         FreeResource(mod_master);
+         sanity_check = mod_master;
+         goto restart_forced_expunge;
       }
    }
 }
@@ -425,7 +446,7 @@ static void free_private_memory(void)
    pf::Log log("Shutdown");
 
    log.branch("Checking for orphaned memory allocations...");
-   
+
    int count = 0;
 
    if (auto lock = std::unique_lock{glmMemory}) {
@@ -447,9 +468,12 @@ static void free_private_memory(void)
          if (mem.Address) {
             if (!glCrashStatus) {
                if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
-                  log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, uint32_t(mem.Object->classID()), mem.OwnerID);
+                  // Note: Class pointers are all invalid at this stage
+                  log.warning("Unfreed object #%d, Size %d, Container: #%d.",
+                     mem.MemoryID, mem.Size, mem.OwnerID);
                }
-               else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d, Locks: %d, ThreadLock: %d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID, mem.AccessCount, int(mem.ThreadLockID));
+               else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d, Locks: %d, ThreadLock: %d.",
+                  mem.MemoryID, mem.Address, mem.Size, mem.OwnerID, mem.AccessCount, int(mem.ThreadLockID));
             }
             mem.AccessCount = 0;
             FreeResource(mem.Address);

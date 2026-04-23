@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -93,9 +93,9 @@ For optimal results, choose the appropriate interface based on application requi
  #endif
 #endif
 
-#include <parasol/main.h>
-#include <parasol/modules/audio.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/audio.h>
+#include <kotuku/strings.hpp>
 #include <sstream>
 #include <algorithm>
 
@@ -108,7 +108,7 @@ static ERR MODOpen(OBJECTPTR);
 JUMPTABLE_CORE
 static OBJECTPTR glAudioModule = nullptr;
 static OBJECTPTR clAudio = 0;
-static ankerl::unordered_dense::map<OBJECTID, LONG> glSoundChannels;
+static ankerl::unordered_dense::map<OBJECTID, int> glSoundChannels;
 class extAudio;
 
 ERR add_audio_class(void);
@@ -116,9 +116,9 @@ ERR add_sound_class(void);
 void free_audio_class(void);
 void free_sound_class(void);
 
-extern "C" void end_of_stream(OBJECTPTR, LONG);
+extern "C" void end_of_stream(OBJECTPTR, int);
 
-static void audio_stopped_event(extAudio &, LONG);
+static void audio_stopped_event(extAudio &, int);
 static ERR set_channel_volume(extAudio *, struct AudioChannel *);
 static void load_config(extAudio *);
 static ERR init_audio(extAudio *);
@@ -139,7 +139,7 @@ extern "C" void dsCloseDevice(void);
 #ifdef ALSA_ENABLED
 static void free_alsa(extAudio *);
 
-static const WORD glAlsaConvert[6] = {
+static const int16_t glAlsaConvert[6] = {
    SND_MIXER_SCHN_FRONT_LEFT,   // Conversion table must follow the CHN_ order
    SND_MIXER_SCHN_FRONT_RIGHT,
    SND_MIXER_SCHN_FRONT_CENTER,
@@ -216,5 +216,5 @@ static STRUCTS glStructures = {
    { "AudioLoop", sizeof(AudioLoop) }
 };
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+KOTUKU_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_audio_module() { return &ModHeader; }

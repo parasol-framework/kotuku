@@ -8,8 +8,11 @@ set_module_defaults (${MOD} "Jpeg")
 
 target_sources (${MOD} PRIVATE "jpeg.cpp")
 
-add_dependencies (${MOD} libjpeg-turbo)
-
-target_link_libraries (${MOD} PRIVATE libjpeg-turbo ${MATH_LINK})
-
-target_include_directories (${MOD} PRIVATE ${LIBJPEG_TURBO_INCLUDE_DIRS})
+# Only link to libjpeg-turbo if it was built (when JPEG and Picture support is enabled)
+if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
+   add_dependencies (${MOD} libjpeg-turbo)
+   target_link_libraries (${MOD} PRIVATE libjpeg-turbo ${MATH_LINK})
+   target_include_directories (${MOD} PRIVATE ${LIBJPEG_TURBO_INCLUDE_DIRS})
+else()
+   target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
+endif()

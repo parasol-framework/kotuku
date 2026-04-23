@@ -5,17 +5,17 @@
 #define FIXED_DPI 96 // FreeType measurements are based on this DPI.
 
 struct FontCharacter {
-   WORD  Width;
-   WORD  Advance;
-   UWORD Offset;
-   UWORD OutlineOffset;
+   int16_t  Width;
+   int16_t  Advance;
+   uint16_t Offset;
+   uint16_t OutlineOffset;
 };
 
 class font_cache { // Represents a font face.  Stored in glCache
 public:
    std::string Path; // Path to the font source
    FT_Face Face;     // Truetype font face
-   LONG    Usage;    // Counter for usage of the typeface
+   int    Usage;    // Counter for usage of the typeface
 
    font_cache(std::string pPath, FT_Face pFace) : Path(pPath), Face(pFace), Usage(0) { }
 

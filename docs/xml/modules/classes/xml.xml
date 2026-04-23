@@ -6,27 +6,31 @@
     <name>XML</name>
     <type>class</type>
     <module>XML</module>
-    <comment>Provides XML data management services for parsing, manipulation and serialisation.</comment>
+    <comment>Provides an interface for the management of structured data.</comment>
     <fileExtension>*.xml</fileExtension>
     <fileDescription>Extendable Markup Language (XML)</fileDescription>
     <version>1</version>
-    <id>0b88bfd6</id>
+    <id>6293d85f</id>
     <idstring>XML</idstring>
     <category>Data</category>
-    <copyright>Paul Manias © 2001-2025</copyright>
+    <copyright>Paul Manias © 2001-2026</copyright>
     <description>
-<p>The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures. It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to accommodate various XML formats.  The class includes comprehensive support for XPath queries, content manipulation and document validation.</p>
+<p>The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures. It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 and XQuery 1.0 queries, content manipulation and document validation.</p>
+<p>The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In this way, the class not only provides XML support but also serves as Kotuku's general-purpose structured data handler.  It also makes it trivial to convert between different structured data formats, and benefit from the cross-application use of features, such as applying XPath 2.0 queries on data originating from YAML.</p>
 <header>Data Loading and Parsing</header>
 <p>XML documents can be loaded into an XML object through multiple mechanisms:</p>
 <p>The <fl>Path</fl> field allows loading from file system sources, with automatic parsing upon initialisation.  The class supports <function module="Core">LoadFile</function> caching for frequently accessed files, improving performance for repeated operations.</p>
 <p>The <fl>Statement</fl> field enables direct parsing of XML strings, supporting dynamic content processing and in-memory document construction.</p>
 <p>The <fl>Source</fl> field provides object-based input, allowing XML data to be sourced from any object supporting the Read action.</p>
-<p>For batch processing scenarios, the Path or Statement fields can be reset post-initialisation, causing the XML object to automatically rebuild itself.  This approach optimises memory usage by reusing existing object instances rather than creating new ones.</p>
+<p>For batch processing scenarios, the <fl>Path</fl> or <fl>Statement</fl> fields can be changed post-initialisation, causing the XML object to clear old data and parse the new.  This approach optimises memory usage by reusing existing object instances rather than creating new ones.</p>
 <header>Document Structure and Access</header>
-<p>Successfully parsed XML data is accessible through the <fl>Tags</fl> field, which contains a hierarchical array of <st>XMLTag</st> structures.  Each XMLTag represents a complete XML element including its attributes, content and child elements. The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.</p>
-<p>C++ developers benefit from direct access to the Tags field, represented as <code>pf::vector&lt;XMLTag&gt;</code>.  This provides efficient iteration and element access with standard STL semantics.  However, direct modification of the Tags array is discouraged as it can destabilise internal object state - developers should use the provided methods for safe manipulation.</p></description>
+<p>Successfully parsed XML data is accessible through the <fl>Tags</fl> field, which contains a hierarchical array of <st>XTag</st> structures.  Each XTag represents a complete XML element including its attributes, content and child elements. The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.</p>
+<p>C++ developers benefit from direct access to the Tags field, represented as <code>pf::vector&lt;XTag&gt;</code>.  This provides efficient iteration and element access with standard STL semantics.  Altering tag attributes is permitted and methods to do so are provided in the C++ header for <code>objXML</code> and <code>XTag</code>, with additional functions in the <code>xml</code> namespace. Check the header for details.</p>
+<p>Tiri developers need to be aware that reading the <fl>Tags</fl> field generates a copy of the entire tag structure - it should therefore be read only as needed and cached until the XML object is modified.</p>
+<header>Not Supported</header>
+<p>DTD processing and validation is intentionally not supported.  While the class can parse DOCTYPE declarations, it does not load or  validate against external DTDs as this is now a legacy technology.  Use XML Schema (XSD) for validation instead.</p></description>
     <source>
-      <file>xml.cpp</file>
+      <file>xml_class.cpp</file>
     </source>
   </info>
 
@@ -55,12 +59,17 @@
 <p>The action accepts data in XML or plain text format and automatically performs parsing and integration.  When the object contains no existing content, the provided data becomes the complete document structure.  If the object already contains parsed XML, the new data is parsed separately and appended to the existing tag hierarchy.</p>
 <p>If the provided data contains malformed XML or cannot be parsed according to the current validation settings, the action will return appropriate error codes without modifying the existing document structure.  This ensures that partial parsing failures do not corrupt previously loaded content.</p>
 <p>Attempts to feed data into a read-only XML object will be rejected to maintain document integrity.</p>
+<p>Example:</p>
+<code>
+local xml = obj.new('xml')
+local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
+</code>
       </description>
     </action>
 
     <action>
       <name>GetKey</name>
-      <comment>Retrieves data from an xml object.</comment>
+      <comment>Deprecated.  Use the Evaluate() method instead.</comment>
       <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
@@ -68,20 +77,7 @@
         <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
       <description>
-<p>The XML class uses key-values for the execution of XPath queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate the majority of uses for this query language and a number of special instructions that we support:</p>
-<types type="Path">
-<type name="/menu/submenu">Return the content of the submenu tag whose parent is the first menu.</type>
-<type name="xpath:/menu[2]/submenu">Return the content of the submenu tag whose parent is the third menu.</type>
-<type name="count:/menu">Return a count of all menu tags at the root level.</type>
-<type name="xml:/menu/window/@title">Return the value of the title attribute from the window tag.</type>
-<type name="content:/menu/window(@title='foo')">Return the content of the window tag which has title <code>foo</code>.</type>
-<type name="extract:/menu/window(@title='bar')">Extract all XML from the window tag which has title <code>bar</code>.</type>
-<type name="extract:/menu//window(=apple)">Extract all XML from the first window tag found anywhere inside <code>&lt;menu&gt;</code> that contains content <code>apple</code>.</type>
-<type name="exists:/menu/@title">Return <code>1</code> if a menu with a title attribute can be matched, otherwise <code>0</code>.</type>
-<type name="contentexists:/menu">Return <code>1</code> if if the immediate child tags of the XPath contain text (white space is ignored).</type>
-<type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</type>
-</types>
-<p>The <code>xpath</code>, <code>xml</code> and <code>/</code> prefixes are all identical in identifying the start of an xpath.  The <code>content</code> prefix is used to specifically extract the content of the tag that matches the xpath.  Square brackets and round brackets may be used interchangeably for lookups and filtering clauses.</p>
+<p>Deprecated.  Use the Evaluate() method instead.</p>
       </description>
     </action>
 
@@ -125,19 +121,20 @@
 
   <methods>
     <method>
-      <name>Count</name>
-      <comment>Count all tags that match a given XPath expression.</comment>
-      <prototype>ERR xml::Count(OBJECTPTR Object, CSTRING XPath, INT * Result)</prototype>
+      <name>Evaluate</name>
+      <comment>Run an XQuery expression against the XML data.</comment>
+      <prototype>ERR xml::Evaluate(OBJECTPTR Object, CSTRING Statement, CSTRING * Result)</prototype>
       <input>
-        <param type="CSTRING" name="XPath">A valid XPath expression string defining the elements to count.  The expression must conform to XPath 1.0 syntax with Parasol extensions.</param>
-        <param type="INT *" name="Result">Pointer to an integer variable that will receive the total count of matching tags.</param>
+        <param type="CSTRING" name="Statement">An XQuery expression to evaluate.</param>
+        <param type="CSTRING *" name="Result">An allocated string from the evaluation is returned here.</param>
       </input>
       <description>
-<p>This method will count all tags that match a given <code>XPath</code> and return the value in the <code>Result</code> parameter.  It is optimised for performance and does not modify the XML structure in any way.  It is safe to call concurrently from multiple threads.</p>
+<p>The Evaluate method allows the execution of XPath 2.0+ and XQuery 1.0+ expressions against the data contained within the XML object.  This is a lazy execution method that compiles and evaluates the provided expression in a single step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the Compile and Evaluate functions in the XPath module.</p>
       </description>
       <result>
-        <error code="Okay">The count operation completed successfully.</error>
-        <error code="NullArgs">Either the XPath parameter or Result parameter was NULL.</error>
+        <error code="Okay">Operation successful.</error>
+        <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -160,36 +157,11 @@
     </method>
 
     <method>
-      <name>FindTag</name>
-      <comment>Searches for XML elements using XPath expressions with optional callback processing.</comment>
-      <prototype>ERR xml::FindTag(OBJECTPTR Object, CSTRING XPath, FUNCTION * Callback, INT * Result)</prototype>
-      <input>
-        <param type="CSTRING" name="XPath">A valid XPath expression string conforming to XPath 1.0 syntax with Parasol extensions.  Must not be NULL or empty.</param>
-        <param type="FUNCTION *" name="Callback">Optional pointer to a callback function for processing multiple matches.</param>
-        <param type="INT *" name="Result">Pointer to an integer that will receive the unique ID of the first matching tag.  Only valid when no callback is provided.</param>
-      </input>
-      <description>
-<p>The FindTag method provides the primary mechanism for locating XML elements within the document structure using XPath 1.0 compatible expressions.  The method supports both single-result queries and comprehensive tree traversal with callback-based processing for complex operations.</p>
-<p>The method supports comprehensive XPath syntax including absolute paths, attribute matching, content matching (a Parasol extension), wildcarding, deep scanning with double-slash notation, indexed access and complex expressions with multiple criteria.</p>
-<p>When no callback function is provided, FindTag returns the first matching element and terminates the search immediately.  This is optimal for simple queries where only the first occurrence is required.</p>
-<p>When a callback function is specified, FindTag continues searching through the entire document structure, calling the provided function for each matching element.  This enables comprehensive processing of all matching elements in a single traversal.</p>
-<p>The C++ prototype for the callback function is <code>ERR Function(*XML, XMLTag &amp;Tag, CSTRING Attrib)</code>.</p>
-<p>The callback should return <code>ERR::Okay</code> to continue processing, or <code>ERR::Terminate</code> to halt the search immediately.  All other error codes are ignored to maintain search robustness.</p>
-      </description>
-      <result>
-        <error code="Okay">A matching tag was found (or callback processing completed successfully).</error>
-        <error code="Search">No matching tag could be found for the specified XPath expression.</error>
-        <error code="NoData">The XML document contains no data to search.</error>
-        <error code="NullArgs">The XPath parameter was NULL or the Result parameter was NULL when no callback was provided.</error>
-      </result>
-    </method>
-
-    <method>
       <name>GetAttrib</name>
       <comment>Retrieves the value of a specific XML attribute from a tagged element.</comment>
       <prototype>ERR xml::GetAttrib(OBJECTPTR Object, INT Index, CSTRING Attrib, CSTRING * Value)</prototype>
       <input>
-        <param type="INT" name="Index">The unique identifier of the XML tag to search.  This must correspond to a valid tag ID as returned by methods such as <method>FindTag</method>.</param>
+        <param type="INT" name="Index">The unique identifier of the XML tag to search.  This must correspond to a valid tag ID as returned by methods such as <method>Search</method>.</param>
         <param type="CSTRING" name="Attrib">The name of the attribute to retrieve (case insensitive).  If NULL or empty, the element's tag name is returned instead.</param>
         <param type="CSTRING *" name="Value">Pointer to a string pointer that will receive the attribute value.  Set to NULL if the specified attribute does not exist.</param>
       </input>
@@ -244,15 +216,69 @@
     </method>
 
     <method>
-      <name>GetTag</name>
-      <comment>Returns a pointer to the <st>XMLTag</st> structure for a given tag index.</comment>
-      <prototype>ERR xml::GetTag(OBJECTPTR Object, INT Index, struct XMLTag ** Result)</prototype>
+      <name>GetEntity</name>
+      <comment>Retrieves the value of a parsed entity declaration.</comment>
+      <prototype>ERR xml::GetEntity(OBJECTPTR Object, CSTRING Name, CSTRING * Value)</prototype>
       <input>
-        <param type="INT" name="Index">The index of the tag that is being retrieved.</param>
-        <param type="struct XMLTag **" name="Result">The <st>XMLTag</st> is returned in this parameter.</param>
+        <param type="CSTRING" name="Name">The name of the entity to retrieve.  This must correspond to a parsed entity declaration.</param>
+        <param type="CSTRING *" name="Value">Receives the resolved entity value on success.  The returned pointer remains valid while the XML object exists.</param>
       </input>
       <description>
-<p>This method will return the <st>XMLTag</st> structure for a given tag <code>Index</code>.  The <code>Index</code> is checked to ensure it is valid prior to retrieval, and an <code>ERR::OutOfRange</code> error will be returned if it is invalid.</p>
+<p>This method returns the expanded value associated with a general entity parsed from the document's DOCTYPE declaration. Entity names are case-sensitive and must match exactly as declared.</p>
+      </description>
+      <result>
+        <error code="Okay">The entity was found and its value returned.</error>
+        <error code="Search">No matching entity could be found for the specified name.</error>
+        <error code="NullArgs">Either the Name or Value parameter was NULL.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>GetNamespaceURI</name>
+      <comment>Retrieve the namespace URI for a given namespace UID.</comment>
+      <prototype>ERR xml::GetNamespaceURI(OBJECTPTR Object, UINT NamespaceID, CSTRING * Result)</prototype>
+      <input>
+        <param type="UINT" name="NamespaceID">The UID of the namespace.</param>
+        <param type="CSTRING *" name="Result">Pointer to a string pointer that will receive the namespace URI.</param>
+      </input>
+      <description>
+<p>This method retrieves the original namespace URI string for a given namespace UID.</p>
+      </description>
+      <result>
+        <error code="Okay">The namespace URI was successfully retrieved.</error>
+        <error code="Search">No namespace found for the specified UID.</error>
+        <error code="NullArgs">Required arguments were not specified correctly.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>GetNotation</name>
+      <comment>Retrieves information about a parsed notation declaration.</comment>
+      <prototype>ERR xml::GetNotation(OBJECTPTR Object, CSTRING Name, CSTRING * Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Name">The notation name to look up.</param>
+        <param type="CSTRING *" name="Value">Receives the notation descriptor on success.</param>
+      </input>
+      <description>
+<p>Returns the system or public identifier captured for a notation declaration inside the document type definition.  If both public and system identifiers were provided they are returned as a single string separated by a single space.</p>
+      </description>
+      <result>
+        <error code="Okay">The notation was found and its descriptor returned.</error>
+        <error code="Search">No matching notation could be found for the specified name.</error>
+        <error code="NullArgs">Either the Name or Value parameter was NULL.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>GetTag</name>
+      <comment>Returns a pointer to the <st>XTag</st> structure for a given tag index.</comment>
+      <prototype>ERR xml::GetTag(OBJECTPTR Object, INT Index, struct XTag ** Result)</prototype>
+      <input>
+        <param type="INT" name="Index">The index of the tag that is being retrieved.</param>
+        <param type="struct XTag **" name="Result">The <st>XTag</st> is returned in this parameter.</param>
+      </input>
+      <description>
+<p>This method will return the <st>XTag</st> structure for a given tag <code>Index</code>.  The <code>Index</code> is checked to ensure it is valid prior to retrieval, and an <code>ERR::OutOfRange</code> error will be returned if it is invalid.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -278,6 +304,7 @@
       <result>
         <error code="Okay">The content was successfully inserted and a new content node was created.</error>
         <error code="NotFound">The target Index does not correspond to a valid XML element.</error>
+        <error code="Args">The Where parameter specifies an invalid insertion position.</error>
         <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
         <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
@@ -298,10 +325,11 @@
       </description>
       <result>
         <error code="Okay">The statement was added successfully.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="OutOfRange">A value is outside of the valid range.</error>
+        <error code="NotFound">The target Index does not correspond to a valid XML element.</error>
+        <error code="Args">The Where parameter specifies an invalid insertion position.</error>
+        <error code="NoData">The provided XML statement parsed to an empty result.</error>
         <error code="ReadOnly">Changes to the XML data are not permitted.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
     </method>
 
@@ -319,9 +347,28 @@
 <p>The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid <code>XPath</code> location string.  An insertion point relative to the <code>XPath</code> target must be specified in the <code>Where</code> parameter.  The new tags can be inserted as a child of the target by using an Insert value of <code>XMI::CHILD</code> or <code>XMI::CHILD_END</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       </description>
       <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Search">The <code>XPath</code> could not be resolved.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">The XML statement was successfully inserted at the specified XPath location.</error>
+        <error code="Search">The XPath could not be resolved to a valid location.</error>
+        <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>LoadSchema</name>
+      <comment>Load an XML Schema definition to enable schema-aware validation.</comment>
+      <prototype>ERR xml::LoadSchema(OBJECTPTR Object, CSTRING Path)</prototype>
+      <input>
+        <param type="CSTRING" name="Path">File system path to the XML Schema (XSD) document.</param>
+      </input>
+      <description>
+<p>This method parses an XML Schema document and attaches its schema context to the current XML object.  Once loaded, schema metadata is available for validation and XQuery evaluation routines that utilise schema-aware behaviour.</p>
+      </description>
+      <result>
+        <error code="Okay">Schema was successfully loaded and parsed.</error>
+        <error code="NoData">The schema document did not contain any parsable definitions.</error>
+        <error code="CreateObject">The file in Path could not be processed as XML content.</error>
+        <error code="NullArgs">The Path argument was not provided.</error>
       </result>
     </method>
 
@@ -331,7 +378,7 @@
       <prototype>ERR xml::MoveTags(OBJECTPTR Object, INT Index, INT Total, INT DestIndex, XMI Where)</prototype>
       <input>
         <param type="INT" name="Index">Index of the source tag to be moved.</param>
-        <param type="INT" name="Total">The total number of sibling tags to be moved from the source index.  Minimum value of 1.</param>
+        <param type="INT" name="Total">The total number of sibling tags (including the targeted tag) to be moved from the source index.  Minimum value of 1.</param>
         <param type="INT" name="DestIndex">The destination tag index.  If the index exceeds the total number of tags, the value will be automatically limited to the last tag index.</param>
         <param type="XMI" name="Where" lookup="XMI">Use <code>PREV</code> or <code>NEXT</code> to insert behind or ahead of the target tag.  Use <code>CHILD</code> for a child insert.</param>
       </input>
@@ -341,9 +388,29 @@
       </description>
       <result>
         <error code="Okay">Tags were moved successfully.</error>
-        <error code="NotFound">A search routine in this function failed.</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="NotFound">Either the source or destination tag index does not exist.</error>
+        <error code="Args">Invalid parameter values were provided.</error>
+        <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
+        <error code="SanityCheckFailed">An internal consistency check failed during the move operation.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>RegisterNamespace</name>
+      <comment>Register a namespace URI and return its UID.</comment>
+      <prototype>ERR xml::RegisterNamespace(OBJECTPTR Object, CSTRING URI, UINT * Result)</prototype>
+      <input>
+        <param type="CSTRING" name="URI">The namespace URI to register. Must not be NULL or empty.</param>
+        <param type="UINT *" name="Result">Pointer to an integer that will receive the UID for the namespace URI.</param>
+      </input>
+      <description>
+<p>This method registers a namespace URI and returns a UID that can be used to identify the namespace efficiently throughout the XML document.</p>
+      </description>
+      <result>
+        <error code="Okay">The namespace was successfully registered.</error>
+        <error code="Failed">The URI was empty or invalid.</error>
+        <error code="NullArgs">Required arguments were not specified correctly.</error>
       </result>
     </method>
 
@@ -358,13 +425,13 @@
       <description>
 <p>The RemoveTag method is used to remove one or more tags from an XML structure.  Child tags will automatically be discarded as a consequence of using this method, in order to maintain a valid XML structure.</p>
 <p>This method is capable of deleting multiple tags if the <code>Total</code> parameter is set to a value greater than 1.  Each consecutive tag and its children following the targeted tag will be removed from the XML structure until the count is exhausted. This is useful for mass delete operations.</p>
-<p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
+<p>Note: Removing tags will destabilise all cached address pointers that have been acquired from the XML object.</p>
       </description>
       <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="OutOfRange">A value is outside of the valid range.</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">The tag(s) were successfully removed.</error>
+        <error code="NotFound">The specified tag Index does not exist in the XML structure.</error>
+        <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
     </method>
 
@@ -374,7 +441,7 @@
       <prototype>ERR xml::RemoveXPath(OBJECTPTR Object, CSTRING XPath, INT Limit)</prototype>
       <input>
         <param type="CSTRING" name="XPath">An XML path string.</param>
-        <param type="INT" name="Limit">The maximum number of matching tags that should be deleted.  A value of one or less will remove only the indicated tag and its children.  The total may exceed the number of tags actually available, in which case all matching tags up to the end of the tree will be affected.</param>
+        <param type="INT" name="Limit">The maximum number of matching tags to delete.  A value of one or zero will remove only the indicated tag and its children.  A value of -1 removes all matching tags.</param>
       </input>
       <description>
 <p>The RemoveXPath method is used to remove one or more tags from an XML structure.  Child tags will automatically be discarded as a consequence of using this method, in order to maintain a valid XML structure.</p>
@@ -383,9 +450,61 @@
 <p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
       </description>
       <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">The matching tag(s) or attribute(s) were successfully removed.</error>
+        <error code="NoData">The XML document contains no data to process.</error>
+        <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>ResolvePrefix</name>
+      <comment>Resolve a namespace prefix to the UID of its namespace URI within a tag's scope.</comment>
+      <prototype>ERR xml::ResolvePrefix(OBJECTPTR Object, CSTRING Prefix, INT TagID, UINT * Result)</prototype>
+      <input>
+        <param type="CSTRING" name="Prefix">The namespace prefix to resolve. Use empty string for default namespace.</param>
+        <param type="INT" name="TagID">The tag ID defining the starting scope for namespace resolution.</param>
+        <param type="UINT *" name="Result">Pointer to an integer that will receive the resolved namespace hash.</param>
+      </input>
+      <description>
+<p>This method resolves a namespace prefix to its corresponding URI by examining namespace declarations within the specified tag's hierarchical scope. The resolution process:</p>
+<list type="ordered">
+<li>Walks up the tag hierarchy from the specified tag to the root.</li>
+<li>Examines xmlns:prefix and xmlns attributes in each tag to find the declaration.</li>
+<li>Returns the UID of the first matching namespace URI found.</li>
+</list>
+<p>This approach correctly handles nested namespace scopes and prefix redefinitions.</p>
+      </description>
+      <result>
+        <error code="Okay">The prefix was successfully resolved.</error>
+        <error code="NotFound">The specified tag was not found.</error>
+        <error code="Search">The prefix could not be resolved in any accessible scope.</error>
+        <error code="NullArgs">Required arguments were not specified correctly.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Search</name>
+      <comment>Searches for XML elements using XPath and XQuery expressions with optional callback processing.</comment>
+      <prototype>ERR xml::Search(OBJECTPTR Object, CSTRING Expression, FUNCTION * Callback, INT * Result)</prototype>
+      <input>
+        <param type="CSTRING" name="Expression">A valid XQuery expression.</param>
+        <param type="FUNCTION *" name="Callback">Optional pointer to a callback function for processing multiple matches.</param>
+        <param type="INT *" name="Result">UID of the first matching tag.  Only valid when Callback is undefined.</param>
+      </input>
+      <description>
+<p>The Search method provides the primary mechanism for locating XML elements within the document structure using XPath and XQuery expressions.  The method supports both single-result queries and comprehensive tree traversal with callback-based processing for complex operations.</p>
+<p>When no callback function is provided, Search returns the first matching element and terminates the search immediately.  This is optimal for simple queries where only the first occurrence is required.</p>
+<p>When a callback function is specified, Search continues searching through the entire document structure, calling the provided function for each matching element.  This enables comprehensive processing of all matching elements in a single traversal.</p>
+<p>The C++ prototype for Callback is <code>ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)</code>.</p>
+<p>The callback should return <code>ERR::Okay</code> to continue processing, or <code>ERR::Terminate</code> to halt the search immediately. All other error codes are ignored to maintain search robustness.</p>
+<p>Note: If an error occurs, check the <fl>ErrorMsg</fl> field for a custom error message containing further details.</p>
+      </description>
+      <result>
+        <error code="Okay">A matching tag was found (or callback processing completed successfully).</error>
+        <error code="Search">No matching tag could be found for the specified expression.</error>
+        <error code="NoData">The XML document contains no data to search.</error>
+        <error code="NullArgs">The Expression was NULL or the Result parameter was NULL when no callback was provided.</error>
       </result>
     </method>
 
@@ -403,10 +522,11 @@
 <p>The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data is no longer required.</p>
       </description>
       <result>
-        <error code="Okay">The XML string was retrieved.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="Okay">The XML string was successfully serialised.</error>
+        <error code="NotFound">The specified tag Index does not exist in the XML structure.</error>
         <error code="NoData">No information has been loaded into the XML object.</error>
-        <error code="AllocMemory">Failed to allocate an XML string for the result.</error>
+        <error code="AllocMemory">Failed to allocate memory for the XML string result.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
     </method>
 
@@ -436,6 +556,24 @@
     </method>
 
     <method>
+      <name>SetTagNamespace</name>
+      <comment>Set the namespace for a specific XML tag.</comment>
+      <prototype>ERR xml::SetTagNamespace(OBJECTPTR Object, INT TagID, INT NamespaceID)</prototype>
+      <input>
+        <param type="INT" name="TagID">The unique identifier of the XML tag.</param>
+        <param type="INT" name="NamespaceID">The UID of the namespace to assign.</param>
+      </input>
+      <description>
+<p>This method assigns a namespace to an XML tag using the namespace's UID.</p>
+      </description>
+      <result>
+        <error code="Okay">The namespace was successfully assigned to the tag.</error>
+        <error code="NotFound">The specified tag was not found.</error>
+        <error code="NullArgs">Required arguments were not specified correctly.</error>
+      </result>
+    </method>
+
+    <method>
       <name>Sort</name>
       <comment>Sorts XML tags to your specifications.</comment>
       <prototype>ERR xml::Sort(OBJECTPTR Object, CSTRING XPath, CSTRING Sort, XSF Flags)</prototype>
@@ -450,16 +588,48 @@
       </description>
       <result>
         <error code="Okay">The XML object was successfully sorted.</error>
-        <error code="Search">The provided <code>XPath</code> failed to locate a tag.</error>
-        <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Search">The provided XPath failed to locate a tag.</error>
+        <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>ValidateDocument</name>
+      <comment>Validate the XML document against the currently loaded schema.</comment>
+      <prototype>ERR xml::ValidateDocument(OBJECTPTR Object)</prototype>
+      <description>
+<p>This method performs structural and simple type validation of the document using the loaded XML Schema.  The Result parameter returns <code>1</code> when the document conforms to the schema, otherwise <code>0</code>.</p>
+      </description>
+      <result>
+        <error code="Okay">Validation completed successfully.</error>
+        <error code="Search">The schema does not define the root element present in the document.</error>
+        <error code="NoData">The XML document does not contain any parsed tags.</error>
+        <error code="NoSupport">No schema has been loaded for this XML object.</error>
+        <error code="NullArgs">The Result parameter was not supplied.</error>
       </result>
     </method>
 
   </methods>
 
   <fields>
+    <field>
+      <name>DocType</name>
+      <comment>Root element name from DOCTYPE declaration</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
+      <name>ErrorMsg</name>
+      <comment>A textual description of the last parse error.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+      <description>
+<p>This field may provide a textual description of the last parse error that occurred, in conjunction with the most recently received error code.  Issues parsing malformed XPath expressions may also be reported here.</p>
+      </description>
+    </field>
+
     <field>
       <name>Flags</name>
       <comment>Controls XML parsing behaviour and processing options.</comment>
@@ -488,7 +658,15 @@
       <description>
 <p>XML documents can be loaded from the file system by specifying a file path in this field.  If set post-initialisation, all currently loaded data will be cleared and the file will be parsed automatically.</p>
 <p>The XML class supports <function module="Core">LoadFile</function>, so an XML file can be pre-cached by the program if it is frequently used during a program's life cycle.</p>
+<p>In the case where a <fl>Statement</fl> has been defined, setting the Path with a folder reference may be necessary to establish the base path for relative references in XQuery statements (e.g. for importing XQuery modules).</p>
       </description>
+    </field>
+
+    <field>
+      <name>PublicID</name>
+      <comment>Public identifier for external DTD</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
     </field>
 
     <field>
@@ -513,17 +691,6 @@
     </field>
 
     <field>
-      <name>Start</name>
-      <comment>Set a starting cursor to affect the starting point for some XML operations.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>When using any XML function that creates an XML string (e.g. SaveToObject), the XML object will include the entire XML tree by default.  Defining the Start value will restrict processing to a specific tag and its children.</p>
-<p>The Start field currently affects the <action>SaveToObject</action> action and the <fl>Statement</fl> field.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Statement</name>
       <comment>XML data is processed through this field.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -531,8 +698,16 @@
       <description>
 <p>Set the Statement field to parse an XML formatted data string through the object.  If this field is set after initialisation then the XML object will clear any existing data first.</p>
 <p>Be aware that setting this field with an invalid statement will result in an empty XML object.</p>
-<p>Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the statement unless a predefined starting position is set by the <fl>Start</fl> field.  The string result is an allocation that must be freed.</p>
+<p>Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the statement.  The string result is an allocation that must be freed.</p>
+<p>If the statement is an XQuery expression with base-uri references, the <fl>Path</fl> field should be set to establish the base path for relative references.</p>
       </description>
+    </field>
+
+    <field>
+      <name>SystemID</name>
+      <comment>System identifier for external DTD</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
     </field>
 
     <field>
@@ -541,28 +716,32 @@
       <access read="G">Get</access>
       <type>STRUCT []</type>
       <description>
-<p>The Tags field exposes the complete XML document structure as a hierarchical array of <st>XMLTag</st> structures.  This field becomes available after successful XML parsing and provides the primary interface for reading XML content programmatically.</p>
-<p>Each <st>XMLTag</st> will have at least one attribute set in the <code>Attribs</code> array.  The first attribute will either reflect the tag name or a content string if the <code>Name</code> is undefined.  The <code>Children</code> array provides access to all child elements.</p>
+<p>The Tags field exposes the complete XML document structure as a hierarchical array of <st>XTag</st> structures.  This field becomes available after successful XML parsing and provides the primary interface for reading XML content programmatically.</p>
+<p>Each <st>XTag</st> will have at least one attribute set in the <code>Attribs</code> array.  The first attribute will either reflect the tag name or a content string if the <code>Name</code> is undefined.  The <code>Children</code> array provides access to all child elements.</p>
 <p>Direct read access to the Tags hierarchy is safe and efficient for traversing the document structure.  However, modifications should be performed using the XML object's methods (<method>InsertXML</method>, <method>SetAttrib</method>, <method>RemoveTag</method>, etc.) to maintain internal consistency and trigger appropriate cache invalidation.</p>
+<p>NOTE: Tiri will copy this field on read, caching the value is therefore recommended.</p>
       </description>
     </field>
 
   </fields>
   <types>
     <constants lookup="XMF" comment="Standard flags for the XML class.">
+      <const name="HAS_SCHEMA">Automatically defined when a schema has been loaded into the XML object.</const>
       <const name="INCLUDE_COMMENTS">By default, comments are stripped when parsing XML input unless this flag is specified.</const>
       <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (<action>GetXMLString</action> only)</const>
-      <const name="INCLUDE_WHITESPACE">By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.</const>
+      <const name="INCLUDE_WHITESPACE">By default the XML parser will skip content between tags when they contain pure whitespace.  Setting this flag will retain all whitespace.</const>
       <const name="INDENT">Indent the output of serialised XML to improve readability.</const>
       <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
       <const name="LOG_ALL">Print extra log messages.</const>
+      <const name="NAMESPACE_AWARE">Enable namespace processing during parsing.</const>
       <const name="NEW">Creates an empty XML object on initialisation - if the <fl>Path</fl> field has been set, the source file will not be loaded.</const>
       <const name="NO_ESCAPE">Turns off escape code conversion.</const>
       <const name="OMIT_TAGS">Prevents tags from being output when the XML is serialised (output content only).</const>
-      <const name="PARSE_ENTITY">Entity references in the DTD will be parsed automatically.</const>
+      <const name="PARSE_ENTITY">Enables parsing of DOCTYPE entities.</const>
       <const name="PARSE_HTML">Automatically parse HTML escape codes.</const>
       <const name="READABLE">Indent the output of serialised XML to improve readability.</const>
-      <const name="STRIP_CDATA">Do not echo <code>CDATA</code> sections.  Note that this option is used as a parameter, not an object flag.</const>
+      <const name="STANDALONE">Automatically defined when the XML declaration specifies standalone="yes".</const>
+      <const name="STRIP_CDATA">Do not serialise <code>CDATA</code> sections.  Note that this option is used as a parameter, not an object flag.</const>
       <const name="STRIP_CONTENT">Strip all content from incoming XML data.</const>
       <const name="STRIP_HEADERS">XML headers found in the source data will not be included in the parsed results.</const>
       <const name="WELL_FORMED">By default, the XML class will accept badly structured XML data.  This flag requires that XML statements must be well-formed (tags must balance) or an <code>ERR::BadData</code> error will be returned during processing.</const>
@@ -581,6 +760,18 @@
       <const name="UPDATE_ONLY">SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  <code>ERR::Search</code> is returned if the attribute cannot be found.</const>
     </constants>
 
+    <constants lookup="XPVT" comment="Type descriptors for XPathValue">
+      <const name="Array"/>
+      <const name="Boolean"/>
+      <const name="Date"/>
+      <const name="DateTime"/>
+      <const name="Map"/>
+      <const name="NodeSet"/>
+      <const name="Number"/>
+      <const name="String"/>
+      <const name="Time"/>
+    </constants>
+
     <constants lookup="XSF" comment="Options for the Sort method.">
       <const name="CHECK_SORT">Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the <code>Attrib</code> field.</const>
       <const name="DESC">Sort in descending order.</const>
@@ -593,13 +784,21 @@
       <field name="Value" type="std::string">Value of the attribute</field>
     </struct>
 
-    <struct name="XMLTag" typeName="XMLTAG">
-      <field name="ID" type="INT">Unique ID assigned to the tag on creation</field>
-      <field name="ParentID" type="INT">Unique ID of the parent tag</field>
+    <struct name="XPathValue" typeName="XPATHVALUE">
+      <field name="Type" type="XPVT" lookup="XPVT">Identifies the type of value stored</field>
+      <field name="NumberValue" type="DOUBLE">Defined if the type is Number or Boolean</field>
+      <field name="StringValue" type="std::string">Defined if the type is String</field>
+    </struct>
+
+    <struct name="XTag" typeName="XTAG">
+      <field name="ID" type="INT">Globally unique ID assigned to the tag on creation.</field>
+      <field name="ParentID" type="INT">UID of the parent tag</field>
       <field name="LineNo" type="INT">Line number on which this tag was encountered</field>
       <field name="Flags" type="XTF" lookup="XTF">Optional flags</field>
+      <field name="NamespaceID" type="UINT">Hash of namespace URI or 0 for no namespace</field>
+      <field name="Reserved" type="INT">Private</field>
       <field name="Attribs" type="pf::vector&lt;XMLAttrib&gt;">Array of attributes for this tag</field>
-      <field name="Children" type="pf::vector&lt;XMLTag&gt;">Array of child tags</field>
+      <field name="Children" type="pf::vector&lt;XTag&gt;">Array of child tags</field>
     </struct>
 
   </structs>

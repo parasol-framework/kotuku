@@ -16,7 +16,7 @@ class extOffsetFX : public extFilterEffect {
    static constexpr CSTRING CLASS_NAME = "OffsetFX";
    using create = pf::Create<extOffsetFX>;
 
-   LONG XOffset, YOffset;
+   int XOffset, YOffset;
 };
 
 //********************************************************************************************************************
@@ -24,13 +24,13 @@ class extOffsetFX : public extFilterEffect {
 static ERR OFFSETFX_Draw(extOffsetFX *Self, struct acDraw *Args)
 {
    objBitmap *inBmp;
-   LONG dx = F2T((DOUBLE)Self->XOffset * Self->Filter->ClientVector->Transform.sx);
-   LONG dy = F2T((DOUBLE)Self->YOffset * Self->Filter->ClientVector->Transform.sy);
+   int dx = int((double)Self->XOffset * Self->Filter->ClientVector->Transform.sx);
+   int dy = int((double)Self->YOffset * Self->Filter->ClientVector->Transform.sy);
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
       gfx::CopyArea(inBmp, Self->Target, BAF::NIL, 0, 0, inBmp->Width, inBmp->Height, dx, dy);
       return ERR::Okay;
    }
-   else return ERR::Failed;
+   else return ERR::NoData;
 }
 
 /*********************************************************************************************************************
@@ -42,13 +42,13 @@ The `(XOffset, YOffset)` field values define the offset of the input source with
 
 *********************************************************************************************************************/
 
-static ERR OFFSETFX_GET_XOffset(extOffsetFX *Self, LONG *Value)
+static ERR OFFSETFX_GET_XOffset(extOffsetFX *Self, int *Value)
 {
    *Value = Self->XOffset;
    return ERR::Okay;
 }
 
-static ERR OFFSETFX_SET_XOffset(extOffsetFX *Self, LONG Value)
+static ERR OFFSETFX_SET_XOffset(extOffsetFX *Self, int Value)
 {
    Self->XOffset = Value;
    return ERR::Okay;
@@ -63,13 +63,13 @@ The `(XOffset, YOffset)` field values define the offset of the input source with
 
 *********************************************************************************************************************/
 
-static ERR OFFSETFX_GET_YOffset(extOffsetFX *Self, LONG *Value)
+static ERR OFFSETFX_GET_YOffset(extOffsetFX *Self, int *Value)
 {
    *Value = Self->YOffset;
    return ERR::Okay;
 }
 
-static ERR OFFSETFX_SET_YOffset(extOffsetFX *Self, LONG Value)
+static ERR OFFSETFX_SET_YOffset(extOffsetFX *Self, int Value)
 {
    Self->YOffset = Value;
    return ERR::Okay;

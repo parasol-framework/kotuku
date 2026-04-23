@@ -19,7 +19,7 @@ namespace agg
       int y = sl.y();
       unsigned num_spans = sl.num_spans();
       typename Scanline::const_iterator span = sl.begin();
-      
+
       while (true) {
          int x = span->x;
          if (span->len > 0) ren.blend_solid_hspan(x, y, (unsigned)span->len, color, span->covers);
@@ -133,7 +133,7 @@ namespace agg
       }
    }
 
-   template<class BaseRenderer, class SpanAllocator, class SpanGenerator> 
+   template<class BaseRenderer, class SpanAllocator, class SpanGenerator>
    class renderer_scanline_aa {
    public:
       typedef BaseRenderer  base_ren_type;
@@ -297,9 +297,9 @@ namespace agg
         }
     }
 
-   // render_scanlines_compound assumes logically correct compound shapes and flat geometry, like Flash data streams 
-   // provide. To flatten the geometry on demand use render_scanlines_compound_layered. It has the same set of 
-   // arguments except for ScanlineBin that is not used there.  The reason to do so is that render_scanlines_compound 
+   // render_scanlines_compound assumes logically correct compound shapes and flat geometry, like Flash data streams
+   // provide. To flatten the geometry on demand use render_scanlines_compound_layered. It has the same set of
+   // arguments except for ScanlineBin that is not used there.  The reason to do so is that render_scanlines_compound
    // works about 20% faster in average, and most of all, it does not perform any operations inside the holes in the shape.
 
     template<class Rasterizer, class ScanlineAA, class ScanlineBin, class BaseRenderer, class SpanAllocator, class StyleHandler>

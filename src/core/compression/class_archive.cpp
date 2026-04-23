@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -22,7 +22,7 @@ objCompression::create::untracked(
 </pre>
 
 With the Compression object in place, opening files within the archive only requires the correct path
-reference.  The format is `archive:ArchiveName/path/to/file.ext` and the Fluid example below illustrates:
+reference.  The format is `archive:ArchiveName/path/to/file.ext` and the Tiri example below illustrates:
 
 `obj.new('file', { path='archive:myfiles/readme.txt', flags='!READ' })`
 
@@ -32,17 +32,17 @@ reference.  The format is `archive:ArchiveName/path/to/file.ext` and the Fluid e
 
 using namespace pf;
 
-constexpr LONG LEN_ARCHIVE = 8; // "archive:" length
+constexpr int LEN_ARCHIVE = 8; // "archive:" length
 
 struct prvFileArchive {
    ZipFile  Info;
    z_stream Stream;
    extFile  *FileStream;
    extCompression *Archive;
-   UBYTE    InputBuffer[SIZE_COMPRESSION_BUFFER];
-   UBYTE    OutputBuffer[SIZE_COMPRESSION_BUFFER];
-   UBYTE    *ReadPtr;      // Current position within OutputBuffer
-   LONG     InputLength;
+   uint8_t    InputBuffer[SIZE_COMPRESSION_BUFFER];
+   uint8_t    OutputBuffer[SIZE_COMPRESSION_BUFFER];
+   uint8_t    *ReadPtr;      // Current position within OutputBuffer
+   int     InputLength;
    bool     Inflating;
    bool     InvalidState; // Set to true if the archive is corrupt.
 };
@@ -51,11 +51,11 @@ struct ArchiveDriver {
    std::list<ZipFile>::iterator Index;
 };
 
-static ankerl::unordered_dense::map<ULONG, extCompression *> glArchives;
+static ankerl::unordered_dense::map<uint32_t, extCompression *> glArchives;
 
 static ERR close_folder(DirInfo *);
 static ERR open_folder(DirInfo *);
-static ERR get_info(std::string_view, FileInfo *, LONG);
+static ERR get_info(std::string_view, FileInfo *, int);
 static ERR scan_folder(DirInfo *);
 static ERR test_path(std::string &, RSF, LOC *);
 
@@ -68,7 +68,7 @@ static void reset_state(extFile *Self)
    if (prv->Inflating) { inflateEnd(&prv->Stream); prv->Inflating = false; }
 
    prv->Stream.avail_in = 0;
-   prv->ReadPtr = NULL;
+   prv->ReadPtr = nullptr;
    Self->Position = 0;
 }
 
@@ -82,11 +82,11 @@ static ERR seek_to_item(extFile *Self)
    auto &item = prv->Info;
 
    acSeekStart(prv->FileStream, item.Offset + HEAD_EXTRALEN);
-   prv->ReadPtr = NULL;
+   prv->ReadPtr = nullptr;
 
-   UWORD extra_len;
+   uint16_t extra_len;
    if (fl::ReadLE(prv->FileStream, &extra_len) != ERR::Okay) return ERR::Read;
-   ULONG stream_start = item.Offset + HEAD_LENGTH + item.NameLen + extra_len;
+   uint32_t stream_start = item.Offset + HEAD_LENGTH + item.NameLen + extra_len;
    if (acSeekStart(prv->FileStream, stream_start) != ERR::Okay) return ERR::Seek;
 
    if (item.CompressedSize > 0) {
@@ -145,7 +145,7 @@ static extCompression * find_archive(std::string_view Path, std::string &FilePat
    }
 
    log.warning("No match for path '%s'", Path.data());
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -181,7 +181,7 @@ static ERR ARCHIVE_Free(extFile *Self)
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv) {
-      if (prv->FileStream) { FreeResource(prv->FileStream); prv->FileStream = NULL; }
+      if (prv->FileStream) { FreeResource(prv->FileStream); prv->FileStream = nullptr; }
       if (prv->Inflating)  { inflateEnd(&prv->Stream); prv->Inflating = false; }
       prv->~prvFileArchive();
    }
@@ -202,7 +202,7 @@ static ERR ARCHIVE_Init(extFile *Self)
    if ((Self->Flags & (FL::NEW|FL::WRITE)) != FL::NIL) return log.warning(ERR::ReadOnly);
 
    ERR error = ERR::Search;
-   if (AllocMemory(sizeof(prvFileArchive), MEM::DATA, &Self->ChildPrivate, NULL) IS ERR::Okay) {
+   if (AllocMemory(sizeof(prvFileArchive), MEM::DATA, &Self->ChildPrivate, nullptr) IS ERR::Okay) {
       auto prv = (prvFileArchive *)Self->ChildPrivate;
       new (prv) prvFileArchive;
 
@@ -220,7 +220,7 @@ static ERR ARCHIVE_Init(extFile *Self)
 
             auto it = prv->Archive->Files.begin();
             for (; it != prv->Archive->Files.end(); it++) {
-               if (file_path == it->Name) break;
+               if (file_path IS it->Name) break;
             }
 
             if ((it IS prv->Archive->Files.end()) and ((Self->Flags & FL::APPROXIMATE) != FL::NIL)) {
@@ -242,7 +242,7 @@ static ERR ARCHIVE_Init(extFile *Self)
       if (error != ERR::Okay) {
          prv->~prvFileArchive();
          FreeResource(Self->ChildPrivate);
-         Self->ChildPrivate = NULL;
+         Self->ChildPrivate = nullptr;
       }
    }
    else error = ERR::AllocMemory;
@@ -294,7 +294,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
    Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
-   else if (Args->Length == 0) return ERR::Okay;
+   else if (Args->Length IS 0) return ERR::Okay;
    else if (Args->Length < 0) return ERR::OutOfRange;
 
    auto prv = (prvFileArchive *)Self->ChildPrivate;
@@ -316,7 +316,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
       if ((prv->Inflating) and (!prv->Stream.avail_in)) { // Initial setup
          struct acRead read = {
             .Buffer = prv->InputBuffer,
-            .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
+            .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (int)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
          };
 
          if (Action(AC::Read, prv->FileStream, &read) != ERR::Okay) return ERR::Read;
@@ -332,8 +332,8 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
 
       while (true) {
          // Output any buffered data to the client first
-         if (prv->ReadPtr < (UBYTE *)prv->Stream.next_out) {
-            LONG len = (LONG)(prv->Stream.next_out - (Bytef *)prv->ReadPtr);
+         if (prv->ReadPtr < (uint8_t *)prv->Stream.next_out) {
+            int len = (int)(prv->Stream.next_out - (Bytef *)prv->ReadPtr);
             if (len > Args->Length) len = Args->Length;
             copymem(prv->ReadPtr, (char *)Args->Buffer + Args->Result, len);
             prv->ReadPtr   += len;
@@ -352,7 +352,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
          prv->Stream.next_out  = prv->OutputBuffer;
          prv->Stream.avail_out = SIZE_COMPRESSION_BUFFER;
 
-         LONG result = inflate(&prv->Stream, (prv->Stream.avail_in) ? Z_SYNC_FLUSH : Z_FINISH);
+         int result = inflate(&prv->Stream, (prv->Stream.avail_in) ? Z_SYNC_FLUSH : Z_FINISH);
 
          prv->ReadPtr = prv->OutputBuffer;
 
@@ -392,13 +392,13 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
 static ERR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
 {
    Log log;
-   LARGE pos;
+   int64_t pos;
 
-   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, LONG(Args->Position));
+   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, int(Args->Position));
 
-   if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
-   else if (Args->Position IS SEEK::END) pos = Self->Size - F2T(Args->Offset);
-   else if (Args->Position IS SEEK::CURRENT) pos = Self->Position + F2T(Args->Offset);
+   if (Args->Position IS SEEK::START) pos = int(Args->Offset);
+   else if (Args->Position IS SEEK::END) pos = Self->Size - int(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT) pos = Self->Position + int(Args->Offset);
    else return log.warning(ERR::Args);
 
    if (pos < 0) return log.warning(ERR::OutOfRange);
@@ -410,9 +410,9 @@ static ERR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
       if (error != ERR::Okay) return log.warning(error);
    }
 
-   UBYTE buffer[2048];
+   uint8_t buffer[2048];
    while (Self->Position < pos) {
-      struct acRead read = { .Buffer = buffer, .Length = (LONG)(pos - Self->Position) };
+      struct acRead read = { .Buffer = buffer, .Length = (int)(pos - Self->Position) };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
       if (Action(AC::Read, Self, &read) != ERR::Okay) return ERR::Decompression;
    }
@@ -430,7 +430,7 @@ static ERR ARCHIVE_Write(extFile *Self, struct acWrite *Args)
 
 //********************************************************************************************************************
 
-static ERR ARCHIVE_GET_Size(extFile *Self, LARGE *Value)
+static ERR ARCHIVE_GET_Size(extFile *Self, int64_t *Value)
 {
    if (auto prv = (prvFileArchive *)Self->ChildPrivate) {
       *Value = prv->Info.OriginalSize;
@@ -441,7 +441,7 @@ static ERR ARCHIVE_GET_Size(extFile *Self, LARGE *Value)
 
 //********************************************************************************************************************
 
-static ERR ARCHIVE_GET_Timestamp(extFile *Self, LARGE *Value)
+static ERR ARCHIVE_GET_Timestamp(extFile *Self, int64_t *Value)
 {
    if (auto prv = (prvFileArchive *)Self->ChildPrivate) {
       if (prv->Info.TimeStamp) {
@@ -450,11 +450,11 @@ static ERR ARCHIVE_GET_Timestamp(extFile *Self, LARGE *Value)
       }
       else {
          DateTime datetime = {
-            .Year   = WORD(prv->Info.Year),
-            .Month  = BYTE(prv->Info.Month),
-            .Day    = BYTE(prv->Info.Day),
-            .Hour   = BYTE(prv->Info.Hour),
-            .Minute = BYTE(prv->Info.Minute),
+            .Year   = int16_t(prv->Info.Year),
+            .Month  = int8_t(prv->Info.Month),
+            .Day    = int8_t(prv->Info.Day),
+            .Hour   = int8_t(prv->Info.Hour),
+            .Minute = int8_t(prv->Info.Minute),
             .Second = 0
          };
 
@@ -475,6 +475,7 @@ static ERR open_folder(DirInfo *Dir)
    Dir->prvTotal = 0;
    Dir->prvHandle = find_archive(Dir->prvResolvedPath, file_path);
    if (!Dir->prvHandle) return ERR::DoesNotExist;
+   new (Dir->Driver) ArchiveDriver;
    return ERR::Okay;
 }
 
@@ -491,7 +492,7 @@ static ERR scan_folder(DirInfo *Dir)
    auto sep = name.find_first_of("/\\");
    if (sep != std::string::npos) sep++;
 
-   log.traceBranch("Path: \"%s\", Flags: $%.8x", name.data(), LONG(Dir->prvFlags));
+   log.traceBranch("Path: \"%s\", Flags: $%.8x", name.data(), int(Dir->prvFlags));
 
    std::string path(name.data() + sep);
 
@@ -518,7 +519,7 @@ static ERR scan_folder(DirInfo *Dir)
       // Is this item in a sub-folder?  If so, ignore it.
 
       {
-         LONG i;
+         int i;
          for (i=path.size(); (zf.Name[i]) and (zf.Name[i] != '/') and (zf.Name[i] != '\\'); i++);
          if (zf.Name[i]) continue;
       }
@@ -547,9 +548,7 @@ static ERR scan_folder(DirInfo *Dir)
 
          Dir->Info->Flags |= RDF::FILE;
          auto offset = zf.Name.find_last_of("/\\");
-         if (offset IS std::string::npos) offset = 0;
-         else offset++;
-         strcopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME);
+         Dir->Info->Name.assign(zf.Name, (offset IS std::string::npos) ? 0 : offset + 1, std::string::npos);
 
          ((ArchiveDriver *)Dir->Driver)->Index = it;
          Dir->prvTotal++;
@@ -560,13 +559,9 @@ static ERR scan_folder(DirInfo *Dir)
          Dir->Info->Flags |= RDF::FOLDER;
 
          auto offset = zf.Name.find_last_of("/\\");
-         if (offset IS std::string::npos) offset = 0;
-         LONG i = strcopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME-2);
+         Dir->Info->Name.assign(zf.Name, (offset IS std::string::npos) ? 0 : offset, std::string::npos);
 
-         if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
-            Dir->Info->Name[i++] = '/';
-            Dir->Info->Name[i++] = 0;
-         }
+         if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) Dir->Info->Name += '/';
 
          if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
             Dir->Info->Flags |= RDF::PERMISSIONS;
@@ -586,12 +581,13 @@ static ERR scan_folder(DirInfo *Dir)
 
 static ERR close_folder(DirInfo *Dir)
 {
+   ((ArchiveDriver *)Dir->Driver)->~ArchiveDriver();
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
+static ERR get_info(std::string_view Path, FileInfo *Info, int InfoSize)
 {
    Log log(__FUNCTION__);
 
@@ -618,15 +614,14 @@ static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
    auto i = Path.find_last_of("/\\:");
    if (i != std::string::npos) i++;
    if (Path.size()-i+1 > MAX_FILENAME) return ERR::BufferOverflow;
-   i = strcopy(Path.data() + i, Info->Name, Path.size()-i);
+   Info->Name.assign(Path, i, std::string::npos);
 
-   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) Info->Name[i++] = '/';
+   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) Info->Name += '/';
 
-   Info->Name[i] = 0;
    Info->Permissions = item->Permissions;
    Info->UserID      = item->UserID;
    Info->GroupID     = item->GroupID;
-   Info->Tags        = NULL;
+   Info->Tags        = nullptr;
    return ERR::Okay;
 }
 
@@ -685,11 +680,11 @@ static const ActionArray clArchiveActions[] = {
    { AC::Read,     ARCHIVE_Read },
    { AC::Seek,     ARCHIVE_Seek },
    { AC::Write,    ARCHIVE_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const MethodEntry clArchiveMethods[] = {
-   { AC::NIL, NULL, NULL, NULL, 0 }
+   { AC::NIL, nullptr, nullptr, nullptr, 0 }
 };
 
 static const struct FieldArray clArchiveFields[] = {

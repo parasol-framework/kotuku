@@ -1,97 +1,556 @@
-
 //********************************************************************************************************************
-// Output an XML string with escape characters.
+// XML Module Functions and Utilities
+//
+// Provides string utilities, character classification, and helper functions for the XML module.  These functions
+// support XML serialisation, attribute value escaping, content formatting, and general-purpose string operations
+// used throughout the XML processing pipeline.
+//
+// Key functionality:
+//   - XML character escaping and attribute value formatting
+//   - String utilities for XML content manipulation
+//   - Character classification for XML syntax validation
+//   - URI handling and encoding utilities
+//
+// This module ensures consistent XML output formatting and provides the building blocks for safe XML generation.
 
-template <class T> void output_attribvalue(T &&String, std::ostringstream &Output)
+#include <ankerl/unordered_dense.h>
+#include <format>
+#include <vector>
+#include <utility>
+
+#include "unescape.h"
+#include "uri_utils.h"
+
+static void output_attribvalue(std::string_view String, std::ostringstream &Output)
 {
-   CSTRING str = to_cstring(String);
-   for (auto j=0; str[j]; j++) {
-      switch (str[j]) {
-         case '&':  Output << "&amp;"; break;
-         case '<':  Output << "&lt;"; break;
-         case '>':  Output << "&gt;"; break;
-         case '"':  Output << "&quot;"; break;
-         default:   Output << str[j]; break;
+   size_t last_pos = 0;
+   for (size_t i = 0; i < String.size(); ++i) {
+      auto escape = xml_escape_table[static_cast<unsigned char>(String[i])];
+      if (escape) {
+         // Output any unescaped characters before this one
+         if (i > last_pos) {
+            Output.write(String.data() + last_pos, i - last_pos);
+         }
+         Output << escape;
+         last_pos = i + 1;
       }
+   }
+   // Output any remaining unescaped characters
+   if (last_pos < String.size()) {
+      Output.write(String.data() + last_pos, String.size() - last_pos);
    }
 }
 
-//********************************************************************************************************************
-
-// TODO: Support processing of ENTITY declarations in the doctype.
-
-static void parse_doctype(extXML *Self, CSTRING Input)
+inline void assign_string(STRING &Target, const std::string_view Value)
 {
+   if (Target) { FreeResource(Target); Target = nullptr; }
+   if (not Value.empty()) Target = pf::strclone(Value);
+}
 
+static bool ci_keyword(std::string_view &view, std::string_view keyword) noexcept
+{
+   if (keyword.empty() or view.size() < keyword.size()) return false;
+
+   for (size_t i = 0; i < keyword.size(); ++i) {
+      if (to_lower(view[i]) != to_lower(keyword[i])) return false;
+   }
+
+   // Check that we're not matching a partial name
+   if ((view.size() > keyword.size()) and
+       is_name_char(view[keyword.size()]) and
+       (view[keyword.size()] != '[')) return false;
+
+   view.remove_prefix(keyword.size());
+   return true;
+}
+
+static bool ci_keyword(ParseState &State, std::string_view keyword) noexcept
+{
+   auto view = State.cursor;
+   if (ci_keyword(view, keyword)) {
+      State.next(keyword.size());
+      return true;
+   }
+   return false;
+}
+
+static std::string_view read_name(std::string_view &view) noexcept
+{
+   if (view.empty() or not is_name_start(view.front())) {
+      return std::string_view();
+   }
+
+   size_t length = 1;
+   while ((length < view.size()) and is_name_char(view[length])) {
+      length++;
+   }
+
+   auto result = view.substr(0, length);
+   view.remove_prefix(length);
+   return result;
+}
+
+static void expand_entity_references(extXML *Self, std::string &Value,
+   ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack);
+
+static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::string &Value,
+   bool Parameter, ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto &stack = Parameter ? ParameterStack : EntityStack;
+   if (stack.contains(Name)) return log.warning(ERR::Loop);
+
+   auto &table = Parameter ? Self->ParameterEntities : Self->Entities;
+   auto *result = find_in_map(table, Name);
+   if (not result) return ERR::Search;
+
+   stack.insert(Name);
+
+   Value = *result;
+   expand_entity_references(Self, Value, EntityStack, ParameterStack);
+
+   stack.erase(Name);
+   return ERR::Okay;
+}
+
+static void expand_entity_references(extXML *Self, std::string &Value,
+   ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
+{
+   if (Value.empty()) return;
+
+   // Scan for entities first to avoid allocation if none present
+
+   bool has_entities = false;
+   for (size_t i = 0; i < Value.size(); ++i) {
+      if ((Value[i] IS '%' or Value[i] IS '&') and (i + 1 < Value.size())) {
+         has_entities = true;
+         break;
+      }
+   }
+
+   if (not has_entities) return;
+
+   std::string output;
+   output.reserve(Value.size() * 2); // Pre-allocate larger buffer to reduce reallocations
+
+   std::string_view view(Value);
+
+   while (not view.empty()) {
+      auto ch = view.front();
+
+      if ((ch IS '%' or ch IS '&') and view.size() > 1) {
+         if ((ch IS '&') and (view[1] IS '#')) {
+            auto terminator = view.find(';');
+            if (!(terminator IS std::string_view::npos)) {
+               char unichar[6];
+               size_t ulen = 0;
+               if (decode_numeric_reference(view.data(), terminator + 1, unichar, ulen)) {
+                  output.append(unichar, ulen);
+                  view.remove_prefix(terminator + 1);
+                  continue;
+               }
+            }
+         }
+         bool is_parameter = (ch IS '%');
+         view.remove_prefix(1); // Skip the % or &
+
+         // Find the name end using string_view operations
+         size_t name_length = 0;
+         while (name_length < view.size() and is_name_char(view[name_length])) {
+            name_length++;
+         }
+
+         if ((name_length > 0) and (name_length < view.size()) and (view[name_length] IS ';')) {
+            auto name_view = view.substr(0, name_length);
+            std::string resolved;
+
+            // Only create string if resolution succeeds to avoid unnecessary allocation
+            if (resolve_entity_internal(Self, std::string(name_view), resolved, is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
+               output.append(resolved);
+            }
+            else { // Reconstruct the original entity reference
+               output.push_back(is_parameter ? '%' : '&');
+               output.append(name_view);
+               output.push_back(';');
+            }
+
+            view.remove_prefix(name_length + 1); // Skip name + ';'
+            continue;
+         }
+         else { // Not a valid entity reference, backtrack
+            output.push_back(is_parameter ? '%' : '&');
+         }
+      }
+      else {
+         output.push_back(ch);
+         view.remove_prefix(1);
+      }
+   }
+
+   Value = std::move(output);
+}
+
+ERR extXML::resolveEntity(const std::string &Name, std::string &Value, bool Parameter)
+{
+   ankerl::unordered_dense::set<std::string> entity_stack;
+   ankerl::unordered_dense::set<std::string> parameter_stack;
+   return resolve_entity_internal(this, Name, Value, Parameter, entity_stack, parameter_stack);
+}
+
+static bool read_quoted(extXML *Self, ParseState &State, std::string &Result,
+   ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
+{
+   if (State.done()) return false;
+
+   auto quote = State.current();
+   if ((quote != '"') and (quote != '\'')) return false;
+
+   State.next();
+
+   std::string buffer;
+   buffer.reserve(State.cursor.size());
+
+   while (not State.done()) {
+      auto ch = State.current();
+
+      if (ch IS quote) {
+         State.next();
+         Result.swap(buffer);
+         return true;
+      }
+
+      if ((ch IS '%' or ch IS '&') and (State.cursor.size() > 1)) {
+         if ((ch IS '&') and (State.cursor[1] IS '#')) {
+            auto terminator = State.cursor.find(';');
+            if (!(terminator IS std::string_view::npos)) {
+               char unichar[6];
+               size_t ulen = 0;
+               if (decode_numeric_reference(State.cursor.data(), terminator + 1, unichar, ulen)) {
+                  buffer.append(unichar, ulen);
+                  State.next(terminator + 1);
+                  continue;
+               }
+            }
+         }
+         bool is_parameter = (ch IS '%');
+         State.next(); // Skip the % or &
+
+         size_t name_length = 0;
+         while ((name_length < State.cursor.size()) and is_name_char(State.cursor[name_length])) {
+            name_length++;
+         }
+
+         if ((name_length > 0) and
+             (name_length < State.cursor.size()) and
+             (State.cursor[name_length] IS ';')) {
+
+            std::string name(State.cursor.data(), name_length);
+            std::string resolved;
+
+            if (resolve_entity_internal(Self, name, resolved, is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
+               buffer += resolved;
+            }
+            else {
+               buffer.push_back(is_parameter ? '%' : '&');
+               buffer += name;
+               buffer.push_back(';');
+            }
+
+            State.next(name_length + 1); // Skip name + ';'
+            continue;
+         }
+         else {
+            buffer.push_back(is_parameter ? '%' : '&');
+            continue;
+         }
+      }
+
+      if (ch IS '\n') Self->LineNo++;
+      buffer.push_back(ch);
+      State.next();
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+// Support for !DOCTYPE parsing.  Note: DTD and !ATTLIST is not to be implemented as it is surpassed by XML Schema.
+
+static void parse_doctype(extXML *Self, ParseState &State)
+{
+   State.skipWhitespace(Self->LineNo);
+
+   auto view = State.cursor;
+   auto type_view = read_name(view);
+   if (type_view.empty()) return;
+
+   assign_string(Self->DocType, type_view);
+   if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
+   if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
+   Self->Entities.clear();
+   Self->ParameterEntities.clear();
+   Self->Notations.clear();
+
+   bool standalone = ((Self->Flags & XMF::STANDALONE) != XMF::NIL);
+
+   State.next(type_view.size());
+   State.skipWhitespace(Self->LineNo);
+
+   ankerl::unordered_dense::set<std::string> entity_stack;
+   ankerl::unordered_dense::set<std::string> parameter_stack;
+
+   if (ci_keyword(State, "PUBLIC")) {
+      State.skipWhitespace(Self->LineNo);
+      std::string public_id;
+      if (read_quoted(Self, State, public_id, entity_stack, parameter_stack)) {
+         if (not standalone) assign_string(Self->PublicID, public_id);
+      }
+      State.skipWhitespace(Self->LineNo);
+      std::string system_id;
+      if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) {
+         if (not standalone) assign_string(Self->SystemID, system_id);
+      }
+   }
+   else if (ci_keyword(State, "SYSTEM")) {
+      State.skipWhitespace(Self->LineNo);
+      std::string system_id;
+      if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) {
+         if (not standalone) assign_string(Self->SystemID, system_id);
+      }
+   }
+
+   State.skipWhitespace(Self->LineNo);
+
+   if (State.current() IS '[') {
+      State.next();
+
+      while (not State.done()) {
+         State.skipWhitespace(Self->LineNo);
+         if (State.done()) break;
+         if (State.current() IS ']') { State.next(); break; }
+
+         if ((State.current() IS '<') and (State.cursor.size() > 1) and (State.cursor[1] IS '!')) {
+            State.next(2);
+
+            if (ci_keyword(State, "ENTITY")) {
+               State.skipWhitespace(Self->LineNo);
+               bool parameter = false;
+               if (State.current() IS '%') {
+                  parameter = true;
+                  State.next();
+                  State.skipWhitespace(Self->LineNo);
+               }
+
+               auto name_view = State.cursor;
+               auto entity_name = read_name(name_view);
+               if (entity_name.empty()) {
+                  State.skipTo('>', Self->LineNo);
+                  if (State.current() IS '>') State.next();
+                  continue;
+               }
+
+               std::string name(entity_name);
+               State.next(entity_name.size());
+               State.skipWhitespace(Self->LineNo);
+
+               if (ci_keyword(State, "SYSTEM")) {
+                  State.skipWhitespace(Self->LineNo);
+                  std::string system;
+                  if (read_quoted(Self, State, system, entity_stack, parameter_stack)) {
+                     if (not standalone) {
+                        if (parameter) Self->ParameterEntities[name] = system;
+                        else Self->Entities[name] = system;
+                     }
+                  }
+               }
+               else {
+                  std::string value;
+                  if ((State.current() IS '"') or (State.current() IS '\'')) {
+                     if (read_quoted(Self, State, value, entity_stack, parameter_stack)) {
+                        if (parameter) Self->ParameterEntities[name] = value;
+                        else Self->Entities[name] = value;
+                     }
+                  }
+               }
+
+               State.skipTo('>', Self->LineNo);
+               if (State.current() IS '>') State.next();
+            }
+            else if (ci_keyword(State, "NOTATION")) {
+               State.skipWhitespace(Self->LineNo);
+               auto name_view = State.cursor;
+               auto notation_name = read_name(name_view);
+               if (notation_name.empty()) {
+                  State.skipTo('>', Self->LineNo);
+                  if (State.current() IS '>') State.next();
+                  continue;
+               }
+
+               std::string name(notation_name);
+               State.next(notation_name.size());
+               State.skipWhitespace(Self->LineNo);
+
+               std::string notation_value;
+               if (ci_keyword(State, "PUBLIC")) {
+                  State.skipWhitespace(Self->LineNo);
+                  std::string public_id;
+                  std::string system_id;
+                  if (read_quoted(Self, State, public_id, entity_stack, parameter_stack)) {
+                     State.skipWhitespace(Self->LineNo);
+                     if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) {
+                        notation_value = std::format("{} {}", public_id, system_id);
+                     }
+                     else notation_value = public_id;
+                  }
+               }
+               else if (ci_keyword(State, "SYSTEM")) {
+                  State.skipWhitespace(Self->LineNo);
+                  read_quoted(Self, State, notation_value, entity_stack, parameter_stack);
+               }
+
+               if ((not notation_value.empty()) and (not standalone)) Self->Notations[name] = notation_value;
+
+               State.skipTo('>', Self->LineNo);
+               if (State.current() IS '>') State.next();
+            }
+            else {
+               State.skipTo('>', Self->LineNo);
+               if (State.current() IS '>') State.next();
+            }
+         }
+         else {
+            if (State.current() IS '\n') Self->LineNo++;
+            State.next();
+         }
+      }
+   }
+
+   State.skipWhitespace(Self->LineNo);
 }
 
 //********************************************************************************************************************
 // Extract content and add it to the end of Tags
 
-static ERR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
+static void extract_content(extXML *Self, TAGS &Tags, ParseState &State)
 {
-   pf::Log log(__FUNCTION__);
-
-   // Skip whitespace - this will tell us if there is content or not.  If we do find some content, reset the marker to
-   // the start of the content area because leading spaces may be important for content processing (e.g. for <pre> tags)
-
-   CSTRING str = State.Pos;
-   if ((Self->Flags & XMF::INCLUDE_WHITESPACE) IS XMF::NIL) {
-      while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-      if (*str != '<') str = State.Pos;
-   }
-
-   // If the STRIP_CONTENT flag is set, skip over the content and return a NODATA error code.
-
    if ((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) {
-      while ((*str) and (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
-      State.Pos = str;
-      return ERR::NoData;
+      State.skipTo('<', Self->LineNo);
+      return;
    }
 
-   for (LONG i=0; (str[i]) and (str[i] != '<'); i++) {
-      if (str[i] IS '\r') continue;
-      // Content detected
+   if ((Self->Flags & XMF::INCLUDE_WHITESPACE) IS XMF::NIL) {
+      // Skip initial whitespace to find content.  We only drop content strings when they are pure whitespace.
 
-      std::ostringstream buffer;
-      while ((*str) and (*str != '<')) {
-         if (*str IS '\n') Self->LineNo++;
-         if (*str != '\r') buffer << *str++;
-         else str++;
+      auto original = State.cursor;
+      auto ch = State.skipWhitespace(Self->LineNo); // Find first non-whitespace character
+
+      // If we found content (not '<'), reset to original position to preserve leading whitespace
+      if ((not State.done()) and (ch != '<')) State.cursor = original;
+   }
+
+   if ((not State.done()) and (State.current() != '<')) {
+      auto content = State;
+      State.skipTo('<', Self->LineNo);
+
+      std::string str;
+      str.reserve(std::max(size_t(State - content), size_t(64))); // Reserve at least 64 bytes
+
+      auto end_ptr = State.cursor.data();
+      auto ptr = content.cursor.data();
+
+      while (ptr < end_ptr) {
+         char ch = *ptr++;
+         if (ch == '\n') ++Self->LineNo;
+         if (ch != '\r') str.push_back(ch);
       }
-      Tags.emplace_back(XMLTag(glTagID++, 0, { { "", buffer.str() } }));
-      State.Pos = str;
-      return ERR::Okay;
-   }
 
-   State.Pos = str;
-   return ERR::NoData;
+      auto &content_tag = Tags.emplace_back(XTag(glTagID++, 0, { { "", std::move(str) } }));
+      Self->BaseURIMap[content_tag.ID] = State.CurrentBase;
+   }
 }
 
 //********************************************************************************************************************
 // Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
 
-static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
+class NamespaceScopeGuard {
+   private:
+   struct PrefixEntry {
+      std::string Prefix;
+      bool Restore;
+      uint32_t PreviousValue;
+   };
+
+   ParseState &state;
+   uint32_t default_namespace;
+   std::vector<PrefixEntry> entries;
+
+   public:
+   explicit NamespaceScopeGuard(ParseState &StateRef)
+      : state(StateRef), default_namespace(StateRef.DefaultNamespace)
+   {
+   }
+
+   ~NamespaceScopeGuard()
+   {
+      for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
+         if (it->Restore) {
+            state.PrefixMap[it->Prefix] = it->PreviousValue;
+         }
+         else {
+            state.PrefixMap.erase(it->Prefix);
+         }
+      }
+      state.DefaultNamespace = default_namespace;
+   }
+
+   void registerInsertion(const std::string &Prefix, bool Inserted, uint32_t PreviousValue = 0)
+   {
+      entries.push_back(PrefixEntry{Prefix, not Inserted, PreviousValue});
+   }
+};
+
+class BaseScopeGuard {
+   private:
+   ParseState &state;
+   std::string previous_base;
+
+   public:
+   explicit BaseScopeGuard(ParseState &StateRef)
+      : state(StateRef), previous_base(StateRef.CurrentBase)
+   {
+   }
+
+   ~BaseScopeGuard()
+   {
+      state.CurrentBase = previous_base;
+   }
+};
+
+static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 {
    enum { RAW_NONE=0, RAW_CDATA, RAW_NDATA };
 
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("%.30s", State.Pos);
+   log.traceBranch("%.*s", int(State.cursor.size()), State.cursor.data());
 
-   if (State.Pos[0] != '<') {
+   NamespaceScopeGuard namespace_guard(State);
+   BaseScopeGuard base_guard(State);
+
+   if (State.current() != '<') {
       log.warning("Malformed XML statement detected.");
       return ERR::InvalidData;
    }
 
-   CSTRING str = State.Pos + 1;
+   State.next(); // Skip '<'
 
-   if ((Self->Flags & XMF::INCLUDE_COMMENTS) IS XMF::NIL) {
-      // Comments will be stripped - check if this is a comment and skip it if this is the case.
-      if ((str[0] IS '!') and (str[1] IS '-') and (str[2] IS '-')) {
-         LONG i;
-         if ((i = pf::strsearch("-->", str)) != -1) {
-            State.Pos = str + i + 3;
+   auto line_no = Self->LineNo;
+
+   if (State.startsWith("!--")) {
+      if ((Self->Flags & XMF::INCLUDE_COMMENTS) IS XMF::NIL) {
+         if (auto i = State.cursor.find("-->"); i != State.cursor.npos) {
+            State.next(i + 3);
             return ERR::NothingDone;
          }
          else {
@@ -99,198 +558,317 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
             return ERR::InvalidData;
          }
       }
+
+      State.next(3);
+      auto comment = State;
+      comment.skipTo("-->", Self->LineNo);
+
+      if (comment.done()) {
+         log.warning("Detected malformed comment (missing --> terminator).");
+         return ERR::InvalidData;
+      }
+
+      std::string comment_text(State.cursor.data(), comment - State);
+      auto &comment_tag = Tags.emplace_back(XTag(glTagID++, line_no, { { "", comment_text } }));
+      comment_tag.Flags |= XTF::COMMENT;
+      Self->BaseURIMap[comment_tag.ID] = State.CurrentBase;
+      State = comment;
+      State.next(3);
+      return ERR::Okay;
    }
 
-   auto line_no = Self->LineNo;
-   BYTE raw_content;
+   line_no = Self->LineNo;
+   int8_t raw_content;
 
-   if (!strncmp("![CDATA[", str, 8)) { raw_content = RAW_CDATA; str += 8; }
-   else if (!strncmp("![NDATA[", str, 8)) { raw_content = RAW_NDATA; str += 8; }
+   if (State.startsWith("![CDATA[")) { raw_content = RAW_CDATA; State.next(8); }
+   else if (State.startsWith("![NDATA[")) { raw_content = RAW_NDATA; State.next(8); }
    else raw_content = RAW_NONE;
 
    if (raw_content) {
-      LONG len;
-
       // CDATA handler
 
+      auto content = State; // Save start of content
       if (raw_content IS RAW_CDATA) {
-         for (len=0; str[len]; len++) {
-            if ((str[len] IS ']') and (str[len+1] IS ']') and (str[len+2] IS '>')) break;
-            else if (str[len] IS '\n') Self->LineNo++;
-         }
+         State.skipTo("]]>", Self->LineNo);
       }
       else if (raw_content IS RAW_NDATA) {
-         UWORD nest = 1;
-         for (len=0; str[len]; len++) {
-            if ((str[len] IS '<') and (str[len+1] IS '!') and (str[len+2] IS '[') and
-                ((str[len+3] IS 'N') or (str[len+3] IS 'C')) and (str[len+4] IS 'D') and (str[len+5] IS 'A') and (str[len+6] IS 'T') and (str[len+7] IS 'A')  and (str[len+8] IS '[')) {
-               nest++;
-               len += 7;
-            }
-            else if ((str[len] IS ']') and (str[len+1] IS ']') and (str[len+2] IS '>')) {
+         int nest = 1;
+         while (not State.done()) {
+            if (State.startsWith("]]>")) {
                nest--;
-               if (!nest) break;
+               if (not nest) break;
             }
-            else if (str[len] IS '\n') Self->LineNo++;
+            else if ((State.startsWith("![CDATA[")) or (State.startsWith("![NDATA[")))  {
+               nest++;
+               State.next(8);
+            }
+            else if (State.current() IS '\n') Self->LineNo++;
          }
       }
 
-      // CDATA counts as content and therefore can be stripped out
+      // CDATA counts as content and therefore can be stripped out if desired
 
-      if (((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) or (!len)) {
-         State.Pos = str + len + 3;
+      if (((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) or (State - content IS 0)) {
+         State.next(3);
          return ERR::NothingDone;
       }
 
-      if (!str[len]) {
+      if (State.done()) {
          log.warning("Malformed XML:  A CDATA section is missing its closing string.");
          return ERR::InvalidData;
       }
 
       // CDATA sections are assimilated into the parent tag as content
 
-      auto &cdata_tag = Tags.emplace_back(XMLTag(glTagID++, line_no, {
-         { "", std::string(str, len) }
+      auto &cdata_tag = Tags.emplace_back(XTag(glTagID++, line_no, {
+         { "", std::string(content.cursor.data(), State - content) }
       }));
       cdata_tag.Flags |= XTF::CDATA;
-      State.Pos = str + len + 3;
+      Self->BaseURIMap[cdata_tag.ID] = State.CurrentBase;
+      State.next(3); // Skip "]]>"
       return ERR::Okay;
    }
 
-   if ((State.Pos[1] IS '?') or (State.Pos[1] IS '!')) {
+   if (State.startsWith("!DOCTYPE")) {
+      State.next(8);
+
       if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) {
-         if (pf::startswith("!DOCTYPE", State.Pos+1)) parse_doctype(Self, State.Pos+7);
+         parse_doctype(Self, State);
+      }
+      else {
+         int depth = 0;
+         while (not State.done()) {
+            char ch = State.current();
+            if (ch IS '[') depth++;
+            else if ((ch IS ']') and depth) depth--;
+            else if ((ch IS '>') and (depth IS 0)) break;
+            if (ch IS '\n') Self->LineNo++;
+            State.next();
+         }
       }
 
+      if (State.current() IS '>') State.next();
+      return ERR::NothingDone;
+   }
+
+   if ((State.current() IS '?') or (State.current() IS '!')) {
       if ((Self->Flags & XMF::STRIP_HEADERS) != XMF::NIL) {
-         if (*str IS '>') str++;
-         State.Pos = str;
+         State.skipTo('>', Self->LineNo);
+         if (State.current() IS '>') State.next();
          return ERR::NothingDone;
       }
    }
 
    State.Balance++;
 
-   auto &tag = Tags.emplace_back(XMLTag(glTagID++, line_no));
+   auto &tag = Tags.emplace_back(XTag(glTagID++, line_no));
+   std::string node_base = State.CurrentBase;
+   std::string inherited_base = State.CurrentBase;
+
+   if (State.current() IS '?') tag.Flags |= XTF::INSTRUCTION; // Detect <?xml ?> style instruction elements.
+   else if ((State.current() IS '!') and (State.cursor.size() > 1) and (State.cursor[1] >= 'A') and (State.cursor[1] <= 'Z')) tag.Flags |= XTF::NOTATION;
+
+   bool xml_instruction = ((tag.Flags & XTF::INSTRUCTION) != XTF::NIL);
+   bool is_xml_declaration = false;
 
    // Extract all attributes within the tag
+   tag.Attribs.reserve(8); // Reserve space for typical attribute count
 
-   str = State.Pos+1;
-   if (*str IS '?') tag.Flags |= XTF::INSTRUCTION; // Detect <?xml ?> style instruction elements.
-   else if ((*str IS '!') and (str[1] >= 'A') and (str[1] <= 'Z')) tag.Flags |= XTF::NOTATION;
+   State.skipWhitespace(Self->LineNo);
+   while ((not State.done()) and (State.current() != '>')) {
+      if (State.startsWith("/>")) break; // Termination checks
+      if (State.startsWith("?>")) break;
 
-   while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-   while ((*str) and (*str != '>')) {
-      if ((str[0] IS '/') and (str[1] IS '>')) break; // Termination checks
-      if ((str[0] IS '?') and (str[1] IS '>')) break;
+      if (State.current() IS '=') return log.warning(ERR::InvalidData);
 
-      if (*str IS '=') return log.warning(ERR::InvalidData);
+      std::string_view name;
 
-      // Extract the name of the attribute
-
-      std::string name;
-
-      if (*str IS '"'); // Quoted notation attributes are parsed as content values
+      if (State.current() IS '"') {
+         // Quoted notation attributes are parsed as content values
+      }
       else {
-         LONG s = 0;
-         while ((str[s] > 0x20) and (str[s] != '>') and (str[s] != '=')) {
-            if ((str[s] IS '/') and (str[s+1] IS '>')) break;
-            if ((str[s] IS '?') and (str[s+1] IS '>')) break;
-            s++;
+         size_t length = 0;
+         while ((length < State.cursor.size()) and (State.cursor[length] > 0x20) and (State.cursor[length] != '>') and (State.cursor[length] != '=')) {
+            if ((State.cursor[length] IS '/') and (length + 1 < State.cursor.size()) and (State.cursor[length+1] IS '>')) break;
+            if ((State.cursor[length] IS '?') and (length + 1 < State.cursor.size()) and (State.cursor[length+1] IS '>')) break;
+            length++;
          }
-         name.assign(str, s);
-         str += s;
+         name = State.cursor.substr(0, length);
+         State.next(length);
       }
 
-      // Extract the attributes value
+      State.skipWhitespace(Self->LineNo);
 
-      while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+      std::string name_string(name);
+      bool has_value = false;
+      std::string value_string;
 
-      if (*str IS '=') {
-         str++;
-         while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-         std::ostringstream buffer;
-         if (*str IS '"') {
-            str++;
-            while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; buffer << *str++; }
-            if (*str IS '"') str++;
+      if (State.current() IS '=') {
+         State.next();
+         State.skipWhitespace(Self->LineNo);
+
+         std::string val;
+         val.reserve(64); // Reserve space for typical attribute value
+
+         if (State.current() IS '"') {
+            State.next();
+            auto value_start = State.cursor.data();
+            while ((not State.done()) and (State.current() != '"')) {
+               if (State.current() IS '\n') Self->LineNo++;
+               State.next();
+            }
+            val.assign(value_start, State.cursor.data() - value_start);
+            if (State.current() IS '"') State.next();
          }
-         else if (*str IS '\'') {
-            str++;
-            while ((*str) and (*str != '\'')) { if (*str IS '\n') Self->LineNo++; buffer << *str++; }
-            if (*str IS '\'') str++;
+         else if (State.current() IS '\'') {
+            State.next();
+            auto value_start = State.cursor.data();
+            while ((not State.done()) and (State.current() != '\'')) {
+               if (State.current() IS '\n') Self->LineNo++;
+               State.next();
+            }
+            val.assign(value_start, State.cursor.data() - value_start);
+            if (State.current() IS '\'') State.next();
          }
          else {
-            while ((*str > 0x20) and (*str != '>')) {
-               if ((str[0] IS '/') and (str[1] IS '>')) break;
-               buffer << *str++;
+            auto value_start = State.cursor.data();
+            while ((not State.done()) and (State.current() > 0x20) and (State.current() != '>')) {
+               if ((State.current() IS '/') and (State.cursor.size() > 1) and (State.cursor[1] IS '>')) break;
+               if ((State.current() IS '?') and (State.cursor.size() > 1) and (State.cursor[1] IS '>')) break;
+               State.next();
+            }
+            val.assign(value_start, State.cursor.data() - value_start);
+         }
+
+         value_string = val;
+         has_value = true;
+         tag.Attribs.emplace_back(name_string, val);
+
+         if ((Self->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+            if (name.starts_with("xmlns")) {
+               auto ns_hash = Self->registerNamespace(val);
+
+               if (name IS "xmlns") {
+                  State.DefaultNamespace = ns_hash;
+               }
+               else if ((name.size() > 6) and (name[5] IS ':')) {
+                  std::string prefix(name.substr(6));
+                  Self->Prefixes[prefix] = ns_hash;
+                  auto result = State.PrefixMap.try_emplace(prefix, ns_hash);
+                  if (result.second) {
+                     namespace_guard.registerInsertion(prefix, true);
+                  }
+                  else {
+                     auto &existing = result.first->second;
+                     auto previous = existing;
+                     namespace_guard.registerInsertion(prefix, false, previous);
+                     existing = ns_hash;
+                  }
+               }
             }
          }
-
-         tag.Attribs.emplace_back(name, buffer.str());
       }
-      else if ((name.empty()) and (*str IS '"')) { // Detect notation value with no name
-         str++;
-         LONG s;
-         for (s=0; (str[s]) and (str[s] != '"'); s++) {
-            if (str[s] IS '\n') Self->LineNo++;
+      else if ((name.empty()) and (State.current() IS '"')) {
+         State.next();
+         auto value_state = State;
+         while ((not State.done()) and (State.current() != '"')) {
+            if (State.current() IS '\n') Self->LineNo++;
+            State.next();
          }
-         tag.Attribs.emplace_back(name, std::string(str, s));
-         str += s;
-         if (*str IS '"') str++;
+         tag.Attribs.emplace_back(name_string, std::string(value_state.cursor.data(), State - value_state));
+         if (State.current() IS '"') State.next();
       }
-      else tag.Attribs.emplace_back(name, ""); // Either the tag name or an attribute with no value.
+      else tag.Attribs.emplace_back(name_string, std::string{});
 
-      while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+      if (has_value and pf::iequals(name_string, "xml:base")) {
+         std::string resolved;
+
+         if (value_string.empty()) {
+            resolved = inherited_base;
+         }
+         else if (inherited_base.empty()) {
+            resolved = value_string;
+         }
+         else {
+            resolved = xml::uri::resolve_relative_uri(value_string, inherited_base);
+         }
+
+         resolved = xml::uri::normalise_uri_separators(std::move(resolved));
+         node_base = resolved;
+         State.CurrentBase = resolved;
+         inherited_base = resolved;
+     }
+
+      if (xml_instruction) {
+         if (tag.Attribs.size() IS 1) {
+            is_xml_declaration = pf::iequals(tag.Attribs[0].Name, "?xml");
+         }
+         else if (is_xml_declaration and has_value and pf::iequals(name_string, "standalone")) {
+            if (pf::iequals(value_string, "yes")) Self->Flags |= XMF::STANDALONE;
+            else Self->Flags &= ~XMF::STANDALONE;
+         }
+      }
+
+      State.skipWhitespace(Self->LineNo);
    }
+
+   Self->BaseURIMap[tag.ID] = node_base;
 
    if (tag.Attribs.empty()) {
       log.warning("No attributes parsed for tag at line %d", Self->LineNo);
       return ERR::Syntax;
    }
 
-   State.Pos = str;
+   // Resolve prefixed tag names to namespace IDs
 
-   if ((*State.Pos IS '>') and (!tag.Attribs.empty()) and
+   if ((Self->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+      if (not tag.Attribs[0].Name.empty()) {
+         auto &tag_name = tag.Attribs[0].Name;
+         if (auto colon = tag_name.find(':'); colon != std::string::npos) {
+            std::string prefix = tag_name.substr(0, colon);
+            if (auto it = State.PrefixMap.find(prefix); it != State.PrefixMap.end()) {
+               tag.NamespaceID = it->second;
+            }
+         }
+         else if (State.DefaultNamespace) { // Apply default namespace if no prefix
+            tag.NamespaceID = State.DefaultNamespace;
+         }
+      }
+   }
+
+   if ((State.current() IS '>') and (not tag.Attribs.empty()) and
        (tag.Attribs[0].Name[0] != '!') and (tag.Attribs[0].Name[0] != '?')) {
       // We reached the end of an open tag.  Extract the content within it and handle any child tags.
 
-      State.Pos++;
-      ERR error = extract_content(Self, Tags.back().Children, State);
+      State.next();
+      extract_content(Self, Tags.back().Children, State);
 
-      if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
+      // Each cycle of the loop needs to start with an open tag
 
-      while ((State.Pos[0] IS '<') and (State.Pos[1] != '/')) {
-         error = extract_tag(Self, Tags.back().Children, State);
+      while ((not State.done()) and (State.current() IS '<') and
+             (State.cursor.size() > 1) and (State.cursor[1] != '/')) {
+         auto error = parse_tag(Self, Tags.back().Children, State);
 
-         if (error IS ERR::NothingDone) {
-            // Extract any additional content trapped between tags
-
-            error = extract_content(Self, Tags.back().Children, State);
-
-            if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
+         if (error IS ERR::NothingDone) { // Extract any additional content trapped between tags
+            extract_content(Self, Tags.back().Children, State);
          }
-         else if (error IS ERR::Okay) {
-            // Extract any new content caught in-between tags
-
-            error = extract_content(Self, Tags.back().Children, State);
-
-            if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
+         else if (error IS ERR::Okay) { // Extract any new content caught in-between tags
+            extract_content(Self, Tags.back().Children, State);
          }
          else return ERR::Failed;
       }
 
       // There should be a closing tag - skip past it
 
-      if ((State.Pos[0] IS '<') and (State.Pos[1] IS '/')) {
+      if (State.cursor.starts_with("</")) {
          State.Balance--;
-         while ((*State.Pos) and (*State.Pos != '>')) { if (*State.Pos IS '\n') Self->LineNo++; State.Pos++; }
+         while ((not State.done()) and (State.current() != '>')) { if (State.current() IS '\n') Self->LineNo++; State.next(); }
       }
 
-      if (*State.Pos IS '>') State.Pos++;
+      if (State.current() IS '>') State.next();
    }
    else {
-      if ((State.Pos[0] IS '/') and (State.Pos[1] IS '>')) State.Pos += 2;
+      if (State.cursor.starts_with("/>")) State.next(2);
       State.Balance--;
    }
 
@@ -298,38 +876,59 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 }
 
 //********************************************************************************************************************
-// Convert a text string into XML tags.
+// Parse a text string into XML tags.
 
-static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
+static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
 {
    pf::Log log(__FUNCTION__);
 
-   // Extract the tag information.  This loop will extract the top-level tags.  The extract_tag() function is recursive
-   // to extract the child tags.
-
-   log.trace("Extracting tag information with extract_tag()");
-
-   ParseState state;
-   CSTRING str;
-   for (str=Text; (*str) and (*str != '<'); str++) if (*str IS '\n') Self->LineNo++;
-   state.Pos = str;
-   while ((state.Pos[0] IS '<') and (state.Pos[1] != '/')) {
-      ERR error = extract_tag(Self, Tags, state);
-
-      if ((error != ERR::Okay) and (error != ERR::NothingDone)) {
-         log.warning("XML parsing aborted.");
-         return ERR::InvalidData;
-      }
-
-      // Skip content/whitespace to get to the next tag
-      str = state.Pos;
-      while ((*str) and (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
-      state.Pos = str;
-
-      if (error IS ERR::NothingDone) continue;
+   if (&Tags IS &Self->Tags) {
+      if (Self->DocType)  { FreeResource(Self->DocType); Self->DocType = nullptr; }
+      if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
+      if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
+      Self->Entities.clear();
+      Self->ParameterEntities.clear();
+      Self->Notations.clear();
+      Self->BaseURIMap.clear();
+      Self->Flags &= ~XMF::STANDALONE;
    }
 
-   // If the WELL_FORMED flag has been used, check that the tags balance.  If they don't then return ERR::InvalidData.
+   // Extract the tag information.  This loop will extract the top-level tags.  The parse_tag() function is recursive
+   // to extract the child tags.
+
+   log.msg(VLF::BRANCH|VLF::DETAIL, "Parsing %" PRId64 " bytes...", Text.size());
+
+   // Estimate tag count and reserve space (heuristic: 1 tag per 100 characters)
+   Tags.reserve(std::max(size_t(Text.size() / 100), size_t(16)));
+
+   ParseState state(Text);
+
+   if (Self->Path) state.CurrentBase = xml::uri::normalise_uri_separators(std::string(Self->Path));
+   else state.CurrentBase.clear();
+
+   state.skipTo('<', Self->LineNo); // Skip any leading whitespace or content
+   if (state.done()) {
+      Self->ParseError = log.warning(ERR::InvalidData);
+      return Self->ParseError;
+   }
+
+   // Each cycle of the loop needs to start with an open tag
+
+   while ((not state.done()) and (state.current() IS '<') and
+          (state.cursor.size() > 1) and (state.cursor[1] != '/')) {
+      ERR error = parse_tag(Self, Tags, state);
+
+      if ((error != ERR::Okay) and (error != ERR::NothingDone)) {
+         return log.warning(error);
+      }
+
+      // Skip content/whitespace to get to the next tag.  NB: We are working on the basis that
+      // we are at the root level of the document and Kotuku permits multiple root tags.
+
+      state.skipTo('<', Self->LineNo);
+   }
+
+   // If the WELL_FORMED flag is used, the tags must balance.
 
    if ((Self->Flags & XMF::WELL_FORMED) != XMF::NIL) {
       if (state.Balance != 0) return log.warning(ERR::UnbalancedXML);
@@ -349,30 +948,32 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 //********************************************************************************************************************
 // Serialise XML data into string form.
 
-static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
+static void serialise_xml(XTag &Tag, std::ostringstream &Buffer, XMF Flags)
 {
    if (Tag.Attribs[0].isContent()) {
-      if (!Tag.Attribs[0].Value.empty()) {
+      if (not Tag.Attribs[0].Value.empty()) {
          if ((Tag.Flags & XTF::CDATA) != XTF::NIL) {
             if ((Flags & XMF::STRIP_CDATA) IS XMF::NIL) Buffer << "<![CDATA[";
             Buffer << Tag.Attribs[0].Value;
             if ((Flags & XMF::STRIP_CDATA) IS XMF::NIL) Buffer << "]]>";
          }
          else {
-            auto &str = Tag.Attribs[0].Value;
-            for (auto j=0; str[j]; j++) {
-               switch (str[j]) {
-                  case '&': Buffer << "&amp;"; break;
-                  case '<': Buffer << "&lt;"; break;
-                  case '>': Buffer << "&gt;"; break;
-                  default:  Buffer << str[j]; break;
+            // Use lookup table for efficient escaping (matching output_attribvalue)
+            const auto &str = Tag.Attribs[0].Value;
+            size_t last_pos = 0;
+            for (size_t j = 0; j < str.size(); ++j) {
+               if (auto escape = xml_escape_table[uint8_t(str[j])]; escape) {
+                  if (j > last_pos) Buffer.write(str.data() + last_pos, j - last_pos);
+                  Buffer << escape;
+                  last_pos = j + 1;
                }
             }
+            if (last_pos < str.size()) Buffer.write(str.data() + last_pos, str.size() - last_pos);
          }
       }
    }
    else if ((Flags & XMF::OMIT_TAGS) != XMF::NIL) {
-      if (!Tag.Children.empty()) {
+      if (not Tag.Children.empty()) {
          for (auto &child : Tag.Children) {
             serialise_xml(child, Buffer, Flags);
          }
@@ -385,10 +986,10 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
       bool insert_space = false;
       for (auto &scan : Tag.Attribs) {
          if (insert_space) Buffer << ' ';
-         if (!scan.Name.empty()) output_attribvalue(scan.Name, Buffer);
+         if (not scan.Name.empty()) output_attribvalue(scan.Name, Buffer);
 
-         if (!scan.Value.empty()) {
-            if (!scan.Name.empty()) Buffer << '=';
+         if (not scan.Value.empty()) {
+            if (not scan.Name.empty()) Buffer << '=';
             Buffer << '"';
             output_attribvalue(scan.Value, Buffer);
             Buffer << '"';
@@ -404,9 +1005,9 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
          Buffer << '>';
          if ((Flags & XMF::READABLE) != XMF::NIL) Buffer << '\n';
       }
-      else if (!Tag.Children.empty()) {
+      else if (not Tag.Children.empty()) {
          Buffer << '>';
-         if (!Tag.Children[0].Attribs[0].isContent()) Buffer << '\n';
+         if (not Tag.Children[0].Attribs[0].isContent()) Buffer << '\n';
 
          for (auto &child : Tag.Children) {
             serialise_xml(child, Buffer, Flags);
@@ -425,59 +1026,6 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
 }
 
 //********************************************************************************************************************
-#if 0
-static void sift_down(ListSort **lookup, LONG Index, LONG heapsize)
-{
-   LONG largest = Index;
-   do {
-      Index = largest;
-      LONG left	= (Index << 1) + 1;
-      LONG right	= left + 1;
-
-      if (left < heapsize){
-         if (str_sort(lookup[largest]->String, lookup[left]->String) > 0) largest = left;
-
-         if (right < heapsize) {
-            if (str_sort(lookup[largest]->String, lookup[right]->String) > 0) largest = right;
-         }
-      }
-
-      if (largest != Index) {
-         ListSort *temp = lookup[Index];
-         lookup[Index] = lookup[largest];
-         lookup[largest] = temp;
-      }
-   } while (largest != Index);
-}
-#endif
-//********************************************************************************************************************
-#if 0
-static void sift_up(ListSort **lookup, LONG i, LONG heapsize)
-{
-   LONG largest = i;
-   do {
-      i = largest;
-      LONG left	= (i << 1) + 1;
-      LONG right	= left + 1;
-
-      if (left < heapsize){
-         if (str_sort(lookup[largest]->String, lookup[left]->String) < 0) largest = left;
-
-         if (right < heapsize) {
-            if (str_sort(lookup[largest]->String, lookup[right]->String) < 0) largest = right;
-         }
-      }
-
-      if (largest != i) {
-         ListSort *temp = lookup[i];
-         lookup[i] = lookup[largest];
-         lookup[largest] = temp;
-      }
-   } while (largest != i);
-}
-#endif
-
-//********************************************************************************************************************
 
 static ERR parse_source(extXML *Self)
 {
@@ -493,65 +1041,45 @@ static ERR parse_source(extXML *Self)
    // call to LoadFile(), which can lead our use of LoadFile() to being quite effective.
 
    if (Self->Source) {
-      char *buffer;
-      LARGE size = 64 * 1024;
-      if (AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-         LONG pos = 0;
-         Self->ParseError = ERR::Okay;
-         acSeekStart(Self->Source, 0);
-         while (1) {
-            LONG result;
-            if (acRead(Self->Source, buffer+pos, size-pos, &result) != ERR::Okay) {
-               Self->ParseError = ERR::Read;
-               break;
-            }
-            else if (result <= 0) break;
+      constexpr size_t initial_size = 64 * 1024;
+      constexpr size_t growth_threshold = 1024;
 
-            pos += result;
-            if (pos >= size-1024) {
-               if (ReallocMemory(buffer, (size * 2) + 1, (APTR *)&buffer, NULL) != ERR::Okay) {
-                  Self->ParseError = ERR::ReallocMemory;
-                  break;
-               }
-               size = size * 2;
-            }
+      std::string buffer;
+      buffer.reserve(initial_size);
+      Self->ParseError = ERR::Okay;
+      acSeekStart(Self->Source, 0);
+
+      while (true) {
+         // Ensure we have space for the next read
+         size_t current_size = buffer.size();
+         if (buffer.capacity() - current_size < growth_threshold) {
+            buffer.reserve(buffer.capacity() * 2);
          }
 
-         if (Self->ParseError IS ERR::Okay) {
-            buffer[pos] = 0;
-            Self->ParseError = txt_to_xml(Self, Self->Tags, buffer);
+         // Read directly into the buffer
+         buffer.resize(current_size + growth_threshold);
+         int result;
+         if (acRead(Self->Source, buffer.data() + current_size, growth_threshold, &result) != ERR::Okay) {
+            Self->ParseError = ERR::Read;
+            break;
+         }
+         else if (result <= 0) {
+            buffer.resize(current_size); // Trim unused space
+            break;
          }
 
-         FreeResource(buffer);
+         buffer.resize(current_size + result); // Adjust to actual read size
       }
-      else Self->ParseError = ERR::AllocMemory;
+
+      if (Self->ParseError IS ERR::Okay) {
+         Self->ParseError = txt_to_xml(Self, Self->Tags, std::string_view(buffer));
+      }
    }
    else if (LoadFile(Self->Path, LDF::NIL, &filecache) IS ERR::Okay) {
-      Self->ParseError = txt_to_xml(Self, Self->Tags, (CSTRING)filecache->Data);
+      Self->ParseError = txt_to_xml(Self, Self->Tags, std::string_view((char *)filecache->Data, filecache->Size));
       UnloadFile(filecache);
    }
    else Self->ParseError = ERR::File;
 
    return Self->ParseError;
-}
-
-//********************************************************************************************************************
-// Extracts immediate content, does not recurse into child tags.
-
-static ERR get_content(extXML *Self, XMLTag &Tag, STRING Buffer, LONG Size)
-{
-   Buffer[0] = 0;
-   if (!Tag.Children.empty()) {
-      LONG j = 0;
-      for (auto &scan : Tag.Children) {
-         if (scan.Attribs.empty()) continue; // Sanity check (there should always be at least 1 attribute)
-
-         if (scan.Attribs[0].isContent()) {
-            j += pf::strcopy(scan.Attribs[0].Value, Buffer+j, Size-j);
-            if (j >= Size) return ERR::BufferOverflow;
-         }
-      }
-   }
-
-   return ERR::Okay;
 }

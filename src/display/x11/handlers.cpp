@@ -1,5 +1,5 @@
 
-void process_movement(Window Window, LONG X, LONG Y);
+void process_movement(Window Window, int X, int Y);
 
 static inline OBJECTID get_display(Window Window)
 {
@@ -11,7 +11,7 @@ static inline OBJECTID get_display(Window Window)
    if (!XDisplay) return 0;
 
    if (XGetWindowProperty(XDisplay, Window, atomSurfaceID, 0, 1, False, AnyPropertyType, &atom, &format, &nitems,
-         &nbytes, (UBYTE **)&data) IS Success) {
+         &nbytes, (uint8_t **)&data) IS Success) {
       display_id = data[0];
       XFree(data);
       return display_id;
@@ -26,13 +26,14 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
    pf::Log log("X11Mgr");
    XEvent xevent;
    XEvent last_motion;
+   bool processed_events = false;
    last_motion.xany.window = 0;
 
    if (!XDisplay) return;
 
    while (XPending(XDisplay)) {
+      processed_events = true;
       XNextEvent(XDisplay, &xevent);
-      //log.trace("Event %d", xevent.type);
       if ((xevent.type != MotionNotify) and (last_motion.xany.window)) {
          // Buffered MotionNotify event detected, process it now
          process_movement(last_motion.xany.window, last_motion.xmotion.x_root, last_motion.xmotion.y_root);
@@ -164,11 +165,14 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
    }
 
    if (last_motion.xany.window) {
+      processed_events = true;
       process_movement(last_motion.xany.window, last_motion.xmotion.x_root, last_motion.xmotion.y_root);
    }
 
-   XFlush(XDisplay);
-   if (XDisplay) XSync(XDisplay, False);
+   if (processed_events) {
+      XFlush(XDisplay);
+      if (XDisplay) XSync(XDisplay, False);
+   }
 }
 
 //********************************************************************************************************************
@@ -186,7 +190,7 @@ void handle_button_press(XEvent *xevent)
             .Type      = JET::WHEEL
          };
 
-         acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
+         acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT, &input, sizeof(input));
       }
       else {
          struct dcDeviceInput input;
@@ -206,10 +210,10 @@ void handle_button_press(XEvent *xevent)
          }
 
          if (input.Type != JET::NIL) {
-            input.Flags = glInputType[LONG(input.Type)].Flags;
+            input.Flags = glInputType[int(input.Type)].Flags;
             input.Timestamp = PreciseTime();
 
-            acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
+            acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT, &input, sizeof(input));
          }
       }
 
@@ -235,7 +239,7 @@ void handle_button_release(XEvent *xevent)
       else if (xevent->xbutton.button IS 2) input.Type  = JET::BUTTON_3;
       else if (xevent->xbutton.button IS 3) input.Type  = JET::BUTTON_2;
 
-      if (input.Type != JET::NIL) acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
+      if (input.Type != JET::NIL) acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT, &input, sizeof(input));
       ReleaseObject(pointer);
    }
 
@@ -259,10 +263,10 @@ void handle_configure_notify(XConfigureEvent *xevent)
 {
    pf::Log log(__FUNCTION__);
 
-   LONG x = xevent->x;
-   LONG y = xevent->y;
-   LONG width = xevent->width;
-   LONG height = xevent->height;
+   int x = xevent->x;
+   int y = xevent->y;
+   int width = xevent->width;
+   int height = xevent->height;
 
    XEvent event;
    while (XCheckTypedWindowEvent(XDisplay, xevent->window, ConfigureNotify, &event) IS True) {
@@ -276,7 +280,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
 
    FUNCTION feedback;
    OBJECTID display_id;
-   LONG absx, absy;
+   int absx, absy;
    if ((display_id = get_display(xevent->window))) {
       if (ScopedObjectLock<extDisplay> display(display_id, 3000); display.granted()) {
          Window childwin;
@@ -294,7 +298,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
          feedback = display->ResizeFeedback;
       }
       else {
-         log.warning("Failed to get display ID for window %u.", (ULONG)xevent->window);
+         log.warning("Failed to get display ID for window %u.", (uint32_t)xevent->window);
          return;
       }
    }
@@ -326,7 +330,7 @@ void handle_exposure(XExposeEvent *event)
       struct drw::ExposeToDisplay region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF::CHILDREN };
       QueueAction(drw::ExposeToDisplay::id, surface_id, &region); // Redraw everything
    }
-   else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);
+   else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (uint32_t)event->window);
 }
 
 //********************************************************************************************************************
@@ -528,7 +532,7 @@ KEY xkeysym_to_pkey(KeySym KSym)
 void handle_key_press(XEvent *xevent)
 {
    pf::Log log(__FUNCTION__);
-   ULONG unicode = 0;
+   uint32_t unicode = 0;
    KeySym mod_sym; // A KeySym is an encoding of a symbol on the cap of a key.  See X11/keysym.h
    static XComposeStatus glXComposeStatus = { 0, 0 };
    char buffer[12];
@@ -536,7 +540,7 @@ void handle_key_press(XEvent *xevent)
    if ((out = XLookupString(&xevent->xkey, buffer, sizeof(buffer)-1, &mod_sym, &glXComposeStatus)) > 0) {
       if (buffer[0] >= 0x20) {
          buffer[out] = 0;
-         unicode = UTF8ReadValue(buffer, NULL);
+         unicode = UTF8ReadValue(buffer, nullptr);
       }
    }
    else if ((mod_sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0, xevent->xkey.state & ShiftMask ? 1 : 0)) != NoSymbol) {
@@ -554,13 +558,13 @@ void handle_key_press(XEvent *xevent)
    auto flags = KQ::PRESSED;
 
    if (xevent->xkey.state & LockMask) flags |= KQ::CAPS_LOCK;
-   if (((LONG(value) >= LONG(KEY::NP_0)) and (LONG(value) <= LONG(KEY::NP_DIVIDE))) or (value IS KEY::NP_ENTER)) {
+   if (((int(value) >= int(KEY::NP_0)) and (int(value) <= int(KEY::NP_DIVIDE))) or (value IS KEY::NP_ENTER)) {
       flags |= KQ::NUM_PAD;
    }
 
-   if ((value != KEY::NIL) and (LONG(value) < std::ssize(KeyHeld))) {
-      if (KeyHeld[LONG(value)]) flags |= KQ::REPEAT;
-      else KeyHeld[LONG(value)] = 1;
+   if ((value != KEY::NIL) and (int(value) < std::ssize(KeyHeld))) {
+      if (KeyHeld[int(value)]) flags |= KQ::REPEAT;
+      else KeyHeld[int(value)] = 1;
 
       if (value IS KEY::L_COMMAND)      glKeyFlags |= KQ::L_COMMAND;
       else if (value IS KEY::R_COMMAND) glKeyFlags |= KQ::R_COMMAND;
@@ -578,7 +582,7 @@ void handle_key_press(XEvent *xevent)
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
          .Code       = value,
-         .Unicode    = (LONG)unicode
+         .Unicode    = (int)unicode
       };
       BroadcastEvent(&key, sizeof(key));
    }
@@ -607,14 +611,14 @@ void handle_key_release(XEvent *xevent)
 
    // A KeySym is an encoding of a symbol on the cap of a key.  See X11/keysym.h
 
-   ULONG unicode = 0;
+   uint32_t unicode = 0;
    KeySym mod_sym;
    static XComposeStatus glXComposeStatus = { 0, 0 };
    char buf[12];
    int out;
    if ((out = XLookupString(&xevent->xkey, buf, sizeof(buf)-1, &mod_sym, &glXComposeStatus)) > 0) {
       buf[out] = 0;
-      unicode = UTF8ReadValue(buf, NULL);
+      unicode = UTF8ReadValue(buf, nullptr);
    }
    else if ((mod_sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0, xevent->xkey.state & ShiftMask ? 1 : 0)) != NoSymbol) {
    }
@@ -628,8 +632,8 @@ void handle_key_release(XEvent *xevent)
    auto value = xkeysym_to_pkey(sym);
    auto flags = KQ::RELEASED;
 
-   if ((value != KEY::NIL) and (LONG(value) < std::ssize(KeyHeld))) {
-      KeyHeld[LONG(value)] = 0;
+   if ((value != KEY::NIL) and (int(value) < std::ssize(KeyHeld))) {
+      KeyHeld[int(value)] = 0;
 
       if (value IS KEY::L_COMMAND)      glKeyFlags &= ~KQ::L_COMMAND;
       else if (value IS KEY::R_COMMAND) glKeyFlags &= ~KQ::R_COMMAND;
@@ -647,7 +651,7 @@ void handle_key_release(XEvent *xevent)
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
          .Code       = value,
-         .Unicode    = (LONG)unicode
+         .Unicode    = (int)unicode
       };
       BroadcastEvent(&key, sizeof(key));
    }
@@ -662,7 +666,7 @@ void handle_enter_notify(XCrossingEvent *xevent)
 
 //********************************************************************************************************************
 
-void process_movement(Window Window, LONG X, LONG Y)
+void process_movement(Window Window, int X, int Y)
 {
    if (auto pointer = gfx::AccessPointer()) {
       // Refer to the Pointer class to see how this works
@@ -678,7 +682,7 @@ void process_movement(Window Window, LONG X, LONG Y)
 
       struct acDataFeed feed;
       struct dcDeviceInput input;
-      feed.Object   = NULL;
+      feed.Object   = nullptr;
       feed.Datatype = DATA::DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
@@ -692,4 +696,3 @@ void process_movement(Window Window, LONG X, LONG Y)
       ReleaseObject(pointer);
    }
 }
-

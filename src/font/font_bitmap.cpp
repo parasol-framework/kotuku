@@ -4,59 +4,59 @@
 */
 
 struct winFont {
-   LONG Offset, Size, Point;
+   int Offset, Size, Point;
 };
 
 struct winmz_header_fields {
-   UWORD magic;
-   UBYTE data[29 * 2];
-   ULONG lfanew;
+   uint16_t magic;
+   uint8_t data[29 * 2];
+   uint32_t lfanew;
 };
 
 struct winne_header_fields {
-   UWORD magic;
-   UBYTE data[34];
-   UWORD resource_tab_offset;
-   UWORD rname_tab_offset;
+   uint16_t magic;
+   uint8_t data[34];
+   uint16_t resource_tab_offset;
+   uint16_t rname_tab_offset;
 };
 
 PACK(struct winfnt_header_fields {
-   UWORD version;
-   ULONG file_size;
+   uint16_t version;
+   uint32_t file_size;
    char copyright[60];
-   UWORD file_type;
-   UWORD nominal_point_size;     // Point size
-   UWORD vertical_resolution;
-   UWORD horizontal_resolution;
-   UWORD ascent;                 // The amount of pixels above the base-line
-   UWORD internal_leading;       // top leading pixels
-   UWORD external_leading;       // gutter
-   BYTE  italic;                 // TRUE if font is italic
-   BYTE  underline;              // TRUE if font is underlined
-   BYTE  strike_out;             // TRUE if font is striked-out
-   UWORD weight;                 // Indicates font boldness
-   BYTE  charset;
-   UWORD pixel_width;
-   UWORD pixel_height;
-   BYTE  pitch_and_family;
-   UWORD avg_width;
-   UWORD max_width;
-   UBYTE first_char;
-   UBYTE last_char;
-   UBYTE default_char;
-   UBYTE break_char;
-   UWORD bytes_per_row;
-   ULONG device_offset;
-   ULONG face_name_offset;
-   ULONG bits_pointer;
-   ULONG bits_offset;
-   BYTE  reserved;
-   ULONG flags;
-   UWORD A_space;
-   UWORD B_space;
-   UWORD C_space;
-   UWORD color_table_offset;
-   BYTE  reservedend[4];
+   uint16_t file_type;
+   uint16_t nominal_point_size;     // Point size
+   uint16_t vertical_resolution;
+   uint16_t horizontal_resolution;
+   uint16_t ascent;                 // The amount of pixels above the base-line
+   uint16_t internal_leading;       // top leading pixels
+   uint16_t external_leading;       // gutter
+   int8_t  italic;                 // TRUE if font is italic
+   int8_t  underline;              // TRUE if font is underlined
+   int8_t  strike_out;             // TRUE if font is striked-out
+   uint16_t weight;                 // Indicates font boldness
+   int8_t  charset;
+   uint16_t pixel_width;
+   uint16_t pixel_height;
+   int8_t  pitch_and_family;
+   uint16_t avg_width;
+   uint16_t max_width;
+   uint8_t first_char;
+   uint8_t last_char;
+   uint8_t default_char;
+   uint8_t break_char;
+   uint16_t bytes_per_row;
+   uint32_t device_offset;
+   uint32_t face_name_offset;
+   uint32_t bits_pointer;
+   uint32_t bits_offset;
+   int8_t  reserved;
+   uint32_t flags;
+   uint16_t A_space;
+   uint16_t B_space;
+   uint16_t C_space;
+   uint16_t color_table_offset;
+   int8_t  reservedend[4];
 });
 
 #define ID_WINMZ  0x5A4D
@@ -67,14 +67,14 @@ PACK(struct winfnt_header_fields {
 
 class BitmapCache {
 private:
-   UBYTE *mOutline;
+   uint8_t *mOutline;
 
 public:
-   UBYTE *mData;
+   uint8_t *mData;
    winfnt_header_fields Header;
    FontCharacter Chars[256];
    std::string Path;
-   WORD OpenCount;
+   int16_t OpenCount;
    FTF StyleFlags;
    ERR Result;
 
@@ -83,8 +83,8 @@ public:
 
       log.branch("Caching font %s : %d : %s", pPath, pFace.nominal_point_size, pStyle);
 
-      mData     = NULL;
-      mOutline  = NULL;
+      mData     = nullptr;
+      mOutline  = nullptr;
       OpenCount = 0;
       Result    = ERR::Okay;
       Header    = pFace;
@@ -102,10 +102,10 @@ public:
 
       clearmem(Chars, sizeof(Chars));
       if (pFace.version IS 0x300) {
-         LONG j = pFace.first_char;
-         for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
-            UWORD width;
-            ULONG offset;
+         int j = pFace.first_char;
+         for (int i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
+            uint16_t width;
+            uint32_t offset;
 
             if (fl::ReadLE(pFile, &width) != ERR::Okay) break;
             if (fl::ReadLE(pFile, &offset) != ERR::Okay) break;
@@ -117,9 +117,9 @@ public:
          }
       }
       else {
-         LONG j = pFace.first_char;
-         for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
-            UWORD width, offset;
+         int j = pFace.first_char;
+         for (int i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
+            uint16_t width, offset;
             if (fl::ReadLE(pFile, &width) != ERR::Okay) break;
             if (fl::ReadLE(pFile, &offset) != ERR::Okay) break;
             Chars[j].Width   = width;
@@ -129,28 +129,28 @@ public:
          }
       }
 
-      LONG size = pFace.file_size - pFace.bits_offset;
+      int size = pFace.file_size - pFace.bits_offset;
 
       if (AllocMemory(size, MEM::UNTRACKED, &mData) IS ERR::Okay) {
-         LONG result;
+         int result;
          pFile->seek(pWinFont.Offset + pFace.bits_offset, SEEK::START);
 
          if ((pFile->read(mData, size, &result) IS ERR::Okay) and (result IS size)) {
             // Convert the graphics format for wide characters from column-first format to row-first format.
 
-            for (WORD i=0; i < 256; i++) {
+            for (int16_t i=0; i < 256; i++) {
                if (!Chars[i].Width) continue;
 
-               LONG sz = ((Chars[i].Width+7)>>3) * pFace.pixel_height;
+               int sz = ((Chars[i].Width+7)>>3) * pFace.pixel_height;
                if (Chars[i].Width > 8) {
-                  auto buffer = std::make_unique<UBYTE[]>(sz);
+                  auto buffer = std::make_unique<uint8_t[]>(sz);
                   clearmem(buffer.get(), sz);
 
-                  UBYTE *gfx = mData + Chars[i].Offset;
-                  LONG bytewidth = (Chars[i].Width + 7)>>3;
-                  LONG pos = 0;
-                  for (LONG k=0; k < pFace.pixel_height; k++) {
-                     for (LONG j=0; j < bytewidth; j++) {
+                  uint8_t *gfx = mData + Chars[i].Offset;
+                  int bytewidth = (Chars[i].Width + 7)>>3;
+                  int pos = 0;
+                  for (int k=0; k < pFace.pixel_height; k++) {
+                     for (int j=0; j < bytewidth; j++) {
                         buffer[pos++] = gfx[k + (j * pFace.pixel_height)];
                      }
                   }
@@ -166,25 +166,25 @@ public:
       if (((StyleFlags & FTF::BOLD) != FTF::NIL) and (Header.weight < 600)) {
          log.msg("Converting base font graphics data to bold.");
 
-         LONG size = 0;
-         for (LONG i=0; i < 256; i++) {
+         int size = 0;
+         for (int i=0; i < 256; i++) {
             if (Chars[i].Width) size += Header.pixel_height * ((Chars[i].Width+8)>>3);
          }
 
-         UBYTE *buffer;
+         uint8_t *buffer;
          if (AllocMemory(size, MEM::UNTRACKED, &buffer) IS ERR::Okay) {
-            LONG pos = 0;
-            for (LONG i=0; i < 256; i++) {
+            int pos = 0;
+            for (int i=0; i < 256; i++) {
                if (Chars[i].Width) {
-                  UBYTE *gfx = mData + Chars[i].Offset;
+                  uint8_t *gfx = mData + Chars[i].Offset;
                   Chars[i].Offset = pos;
 
                   // Copy character graphic to the buffer and embolden it
 
-                  LONG oldwidth = (Chars[i].Width+7)>>3;
-                  LONG newwidth = (Chars[i].Width+8)>>3;
-                  for (LONG y=0; y < Header.pixel_height; y++) {
-                     for (LONG xb=0; xb < oldwidth; xb++) {
+                  int oldwidth = (Chars[i].Width+7)>>3;
+                  int newwidth = (Chars[i].Width+8)>>3;
+                  for (int y=0; y < Header.pixel_height; y++) {
+                     for (int xb=0; xb < oldwidth; xb++) {
                         buffer[pos+xb] |= gfx[xb]|(gfx[xb]>>1);
                         if ((xb < newwidth) and (gfx[xb] & 0x01)) buffer[pos+xb+1] |= 0x80;
                      }
@@ -207,28 +207,28 @@ public:
       if (((StyleFlags & FTF::ITALIC) != FTF::NIL) and (!Header.italic)) {
          log.msg("Converting base font graphics data to italic.");
 
-         LONG size = 0;
-         LONG extra = Header.pixel_height>>2;
+         int size = 0;
+         int extra = Header.pixel_height>>2;
 
-         for (LONG i=0; i < 256; i++) {
+         for (int i=0; i < 256; i++) {
             if (Chars[i].Width) size += Header.pixel_height * ((Chars[i].Width+7+extra)>>3);
          }
 
-         UBYTE *buffer;
+         uint8_t *buffer;
          if (AllocMemory(size, MEM::UNTRACKED, &buffer) IS ERR::Okay) {
-            LONG pos = 0;
-            for (LONG i=0; i < 256; i++) {
+            int pos = 0;
+            for (int i=0; i < 256; i++) {
                if (Chars[i].Width) {
-                  UBYTE *gfx = mData + Chars[i].Offset;
+                  uint8_t *gfx = mData + Chars[i].Offset;
                   Chars[i].Offset = pos;
 
-                  LONG oldwidth = (Chars[i].Width+7)>>3;
-                  LONG newwidth = (Chars[i].Width+7+extra)>>3;
-                  LONG italic = Header.pixel_height;
-                  UBYTE *dest = buffer + pos;
-                  for (LONG y=0; y < Header.pixel_height; y++) {
-                     LONG dx = italic>>2;
-                     for (LONG sx=0; sx < Chars[i].Width; sx++) {
+                  int oldwidth = (Chars[i].Width+7)>>3;
+                  int newwidth = (Chars[i].Width+7+extra)>>3;
+                  int italic = Header.pixel_height;
+                  uint8_t *dest = buffer + pos;
+                  for (int y=0; y < Header.pixel_height; y++) {
+                     int dx = italic>>2;
+                     for (int sx=0; sx < Chars[i].Width; sx++) {
                         if (gfx[sx>>3] & (0x80>>(sx & 0x07))) {
                            dest[dx>>3] |= (0x80>>(dx & 0x07));
                         }
@@ -252,33 +252,33 @@ public:
       }
    }
 
-   UBYTE * get_outline()
+   uint8_t * get_outline()
    {
       if (mOutline) return mOutline;
 
-      LONG size = 0;
-      for (WORD i=0; i < 256; i++) {
+      int size = 0;
+      for (int16_t i=0; i < 256; i++) {
          if (Chars[i].Width) size += (Header.pixel_height+2) * ((Chars[i].Width+9)>>3);
       }
 
-      UBYTE *buffer;
-      if (AllocMemory(size, MEM::UNTRACKED, &buffer) != ERR::Okay) return NULL;
+      uint8_t *buffer;
+      if (AllocMemory(size, MEM::UNTRACKED, &buffer) != ERR::Okay) return nullptr;
 
-      LONG pos = 0;
-      for (WORD i=0; i < 256; i++) {
+      int pos = 0;
+      for (int16_t i=0; i < 256; i++) {
          if (Chars[i].Width) {
             auto gfx = mData + Chars[i].Offset;
             Chars[i].OutlineOffset = pos;
 
-            LONG oldwidth = (Chars[i].Width+7)>>3;
-            LONG newwidth = (Chars[i].Width+9)>>3;
+            int oldwidth = (Chars[i].Width+7)>>3;
+            int newwidth = (Chars[i].Width+9)>>3;
 
             auto dest = buffer + pos;
 
             dest += newwidth; // Start ahead of line 0
-            for (LONG sy=0; sy < Header.pixel_height; sy++) {
-               LONG dx = 1;
-               for (LONG sx=0; sx < Chars[i].Width; sx++) {
+            for (int sy=0; sy < Header.pixel_height; sy++) {
+               int dx = 1;
+               for (int sx=0; sx < Chars[i].Width; sx++) {
                   if (gfx[sx>>3] & (0x80>>(sx & 0x07))) {
                      if ((sx >= Chars[i].Width-1) or (!(gfx[(sx+1)>>3] & (0x80>>((sx+1) & 0x07))))) dest[(dx+1)>>3] |= (0x80>>((dx+1) & 0x07));
                      if ((sx IS 0) or (!(gfx[(sx-1)>>3] & (0x80>>((sx-1) & 0x07))))) dest[(dx-1)>>3] |= (0x80>>((dx-1) & 0x07));
@@ -303,15 +303,15 @@ public:
    ~BitmapCache() {
       if (OpenCount) {
          pf::Log log(__FUNCTION__);
-         log.warning("Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, LONG(StyleFlags), OpenCount);
+         log.warning("Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, int(StyleFlags), OpenCount);
       }
-      if (mData) { FreeResource(mData); mData = NULL; }
-      if (mOutline) { FreeResource(mOutline); mOutline = NULL; }
+      if (mData) { FreeResource(mData); mData = nullptr; }
+      if (mOutline) { FreeResource(mOutline); mOutline = nullptr; }
    }
 };
 
 static std::list<BitmapCache> glBitmapCache;
-static APTR glCacheTimer = NULL;
+static APTR glCacheTimer = nullptr;
 
 //********************************************************************************************************************
 // Assumes a cache lock is held on being called.
@@ -335,12 +335,12 @@ static BitmapCache * check_bitmap_cache(extFont *Self, FTF Style)
       }
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
 
-ERR bitmap_cache_cleaner(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
+ERR bitmap_cache_cleaner(OBJECTPTR Subscriber, int64_t Elapsed, int64_t CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 
@@ -351,6 +351,6 @@ ERR bitmap_cache_cleaner(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
       if (!it->OpenCount) it = glBitmapCache.erase(it);
       else it++;
    }
-   glCacheTimer = NULL;
+   glCacheTimer = nullptr;
    return ERR::Terminate;
 }

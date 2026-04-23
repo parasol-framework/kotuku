@@ -9,7 +9,7 @@ drivers have been initialised or the indicated TimeOut has expired.
 #include "device_enum.h"
 #endif
 
-static ERR sndWaitDrivers(LONG TimeOut)
+static ERR sndWaitDrivers(int TimeOut)
 {
 #ifdef ALSA_ENABLED
    // Use the unified device enumeration to wait for drivers

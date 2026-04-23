@@ -8,13 +8,13 @@
     <module>Vector</module>
     <comment>Constructs filter pipelines that alter rendered vector graphics.</comment>
     <version>1</version>
-    <id>8c6e727e</id>
+    <id>c28d095f</id>
     <idstring>VECTORFILTER</idstring>
     <category>Graphics</category>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>The VectorFilter class allows post-effect filters to be applied to vectors as they are being rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard. Once created, a filter can be utilised by vector objects through their <class name="Vector" field="Filter">Vector.Filter</class> field.  By way of example in SVG:</p>
-<pre>&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#EffectPipeline)"/&gt;
+<pre>&lt;circle cx=&quot;160&quot; cy=&quot;50&quot; r=&quot;40&quot; fill=&quot;#f00&quot; filter=&quot;url(#EffectPipeline)&quot;/&gt;
 </pre>
 <p>Filter pipelines are constructed from effects based on the <class name="FilterEffect">FilterEffect</class> class, such as <class name="CompositeFX">CompositeFX</class> and <class name="FloodFX">FloodFX</class>. Construct a new pipeline by creating effect objects and placing them under the ownership of the VectorFilter that will be supporting them.  The VectorFilter will detect the filter objects and they will be processed in the order in which they are added.  It is most optimal to create each pipeline in advance, and a new VectorFilter object should be created for each pipeline as necessary.</p>
 <p>It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing. If this is an issue, consider pre-rendering the filter effects in advance and caching the results in memory or files.</p>

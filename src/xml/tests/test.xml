@@ -11,7 +11,23 @@
     </classes>
   </info>
 
-  <function>
+   <!-- Combination of XPath reserved words in the document -->
+   <reservedwords>
+      <and or="not"/>
+      <ascending descending="true">import module group by</ascending>
+      <default return="0">content<if>do this</if><else>do that</else></default>
+      <return where="condition"/>
+      <for in="sequence">
+         <let order="ascending">
+            <group by="category"/>
+         </let>
+      </for>
+      <satisfies some="true" every="false"/>
+      <cast as="string"/>
+      <import module="test"/>
+   </reservedwords>
+   
+   <function>
     <name>CharWidth</name>
     <comment>Returns the width of a character.</comment>
     <prototype>LONG fntCharWidth(struct rkFont * Font, ULONG Char, ULONG KChar, LONG * Kerning)</prototype>

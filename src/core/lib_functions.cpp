@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+The source code for Kōtuku is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
@@ -35,6 +35,15 @@ Name: System
  #include <string.h> // Required for memmove()
 #endif
 
+#if defined(__ARM_FEATURE_CRC32)
+ #ifdef _MSC_VER
+  #include <intrin.h>
+ #else
+  #include <arm_acle.h>
+ #endif
+ #define PF_HAS_HW_CRC32 1
+#endif
+
 #ifdef __ANDROID__
  #include <android/log.h>
 #endif
@@ -44,6 +53,34 @@ Name: System
 #include "defs.h"
 
 using namespace pf;
+
+//********************************************************************************************************************
+
+thread_local std::shared_ptr<ThreadRecord> tlThreadRecord;
+
+//********************************************************************************************************************
+// Remove the calling thread from the global thread registry.  Safe to call even if the thread was never registered.
+
+void deregister_thread(void)
+{
+   tlThreadRecord.reset();
+   auto tid = get_thread_id();
+   std::lock_guard lock(glmThreadRegistry);
+   glThreadRegistry.erase(int(tid));
+}
+
+//********************************************************************************************************************
+// Return the ThreadRecord for the calling thread (pointer guaranteed).
+
+std::shared_ptr<ThreadRecord> get_thread_record(void)
+{
+   if (not tlThreadRecord) {
+      auto tid = get_thread_id();
+      std::lock_guard lock(glmThreadRegistry);
+      if (auto it = glThreadRegistry.find(int(tid)); it != glThreadRegistry.end()) tlThreadRecord = it->second;
+   }
+   return tlThreadRecord;
+}
 
 /*********************************************************************************************************************
 
@@ -131,14 +168,16 @@ CSTRING GetErrorMsg(ERR Code)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GenCRC32: Generates 32-bit CRC checksum values.
+GenCRC32: Generates 32-bit IEEE 802.3 CRC checksum values.
 
-This function is used internally for the generation of 32-bit CRC checksums.  You may use it for your own purposes to
-generate CRC values over a length of buffer space.  This function may be called repeatedly by feeding it previous
-CRC values, making it ideal for processing streamed data.
+This function is used internally for the generation of 32-bit CRC checksums compatible with IEEE 802.3.  It is made
+available to clients to generate CRC values over any length of buffer space.  This function may be called repeatedly
+by feeding it CRC values in a cycle, making it ideal for processing streamed data.
+
+Note that string hashes in Kotuku use CRC-32C, which is incompatible with this function.
 
 -INPUT-
-uint CRC: If streaming data to this function, this value should reflect the most recently returned CRC integer.  Otherwise set to zero.
+uint CRC: If streaming data to this function, this value must reflect the most recently returned CRC integer.  Otherwise set to zero.
 ptr Data: The data to generate a CRC value for.
 uint Length: The length of the `Data` buffer.
 
@@ -148,86 +187,164 @@ uint: Returns the computed 32 bit CRC value for the given data.
 
 *********************************************************************************************************************/
 
-static const uint32_t crc_table[256] = {
-  0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
-  0x706af48fL, 0xe963a535L, 0x9e6495a3L, 0x0edb8832L, 0x79dcb8a4L,
-  0xe0d5e91eL, 0x97d2d988L, 0x09b64c2bL, 0x7eb17cbdL, 0xe7b82d07L,
-  0x90bf1d91L, 0x1db71064L, 0x6ab020f2L, 0xf3b97148L, 0x84be41deL,
-  0x1adad47dL, 0x6ddde4ebL, 0xf4d4b551L, 0x83d385c7L, 0x136c9856L,
-  0x646ba8c0L, 0xfd62f97aL, 0x8a65c9ecL, 0x14015c4fL, 0x63066cd9L,
-  0xfa0f3d63L, 0x8d080df5L, 0x3b6e20c8L, 0x4c69105eL, 0xd56041e4L,
-  0xa2677172L, 0x3c03e4d1L, 0x4b04d447L, 0xd20d85fdL, 0xa50ab56bL,
-  0x35b5a8faL, 0x42b2986cL, 0xdbbbc9d6L, 0xacbcf940L, 0x32d86ce3L,
-  0x45df5c75L, 0xdcd60dcfL, 0xabd13d59L, 0x26d930acL, 0x51de003aL,
-  0xc8d75180L, 0xbfd06116L, 0x21b4f4b5L, 0x56b3c423L, 0xcfba9599L,
-  0xb8bda50fL, 0x2802b89eL, 0x5f058808L, 0xc60cd9b2L, 0xb10be924L,
-  0x2f6f7c87L, 0x58684c11L, 0xc1611dabL, 0xb6662d3dL, 0x76dc4190L,
-  0x01db7106L, 0x98d220bcL, 0xefd5102aL, 0x71b18589L, 0x06b6b51fL,
-  0x9fbfe4a5L, 0xe8b8d433L, 0x7807c9a2L, 0x0f00f934L, 0x9609a88eL,
-  0xe10e9818L, 0x7f6a0dbbL, 0x086d3d2dL, 0x91646c97L, 0xe6635c01L,
-  0x6b6b51f4L, 0x1c6c6162L, 0x856530d8L, 0xf262004eL, 0x6c0695edL,
-  0x1b01a57bL, 0x8208f4c1L, 0xf50fc457L, 0x65b0d9c6L, 0x12b7e950L,
-  0x8bbeb8eaL, 0xfcb9887cL, 0x62dd1ddfL, 0x15da2d49L, 0x8cd37cf3L,
-  0xfbd44c65L, 0x4db26158L, 0x3ab551ceL, 0xa3bc0074L, 0xd4bb30e2L,
-  0x4adfa541L, 0x3dd895d7L, 0xa4d1c46dL, 0xd3d6f4fbL, 0x4369e96aL,
-  0x346ed9fcL, 0xad678846L, 0xda60b8d0L, 0x44042d73L, 0x33031de5L,
-  0xaa0a4c5fL, 0xdd0d7cc9L, 0x5005713cL, 0x270241aaL, 0xbe0b1010L,
-  0xc90c2086L, 0x5768b525L, 0x206f85b3L, 0xb966d409L, 0xce61e49fL,
-  0x5edef90eL, 0x29d9c998L, 0xb0d09822L, 0xc7d7a8b4L, 0x59b33d17L,
-  0x2eb40d81L, 0xb7bd5c3bL, 0xc0ba6cadL, 0xedb88320L, 0x9abfb3b6L,
-  0x03b6e20cL, 0x74b1d29aL, 0xead54739L, 0x9dd277afL, 0x04db2615L,
-  0x73dc1683L, 0xe3630b12L, 0x94643b84L, 0x0d6d6a3eL, 0x7a6a5aa8L,
-  0xe40ecf0bL, 0x9309ff9dL, 0x0a00ae27L, 0x7d079eb1L, 0xf00f9344L,
-  0x8708a3d2L, 0x1e01f268L, 0x6906c2feL, 0xf762575dL, 0x806567cbL,
-  0x196c3671L, 0x6e6b06e7L, 0xfed41b76L, 0x89d32be0L, 0x10da7a5aL,
-  0x67dd4accL, 0xf9b9df6fL, 0x8ebeeff9L, 0x17b7be43L, 0x60b08ed5L,
-  0xd6d6a3e8L, 0xa1d1937eL, 0x38d8c2c4L, 0x4fdff252L, 0xd1bb67f1L,
-  0xa6bc5767L, 0x3fb506ddL, 0x48b2364bL, 0xd80d2bdaL, 0xaf0a1b4cL,
-  0x36034af6L, 0x41047a60L, 0xdf60efc3L, 0xa867df55L, 0x316e8eefL,
-  0x4669be79L, 0xcb61b38cL, 0xbc66831aL, 0x256fd2a0L, 0x5268e236L,
-  0xcc0c7795L, 0xbb0b4703L, 0x220216b9L, 0x5505262fL, 0xc5ba3bbeL,
-  0xb2bd0b28L, 0x2bb45a92L, 0x5cb36a04L, 0xc2d7ffa7L, 0xb5d0cf31L,
-  0x2cd99e8bL, 0x5bdeae1dL, 0x9b64c2b0L, 0xec63f226L, 0x756aa39cL,
-  0x026d930aL, 0x9c0906a9L, 0xeb0e363fL, 0x72076785L, 0x05005713L,
-  0x95bf4a82L, 0xe2b87a14L, 0x7bb12baeL, 0x0cb61b38L, 0x92d28e9bL,
-  0xe5d5be0dL, 0x7cdcefb7L, 0x0bdbdf21L, 0x86d3d2d4L, 0xf1d4e242L,
-  0x68ddb3f8L, 0x1fda836eL, 0x81be16cdL, 0xf6b9265bL, 0x6fb077e1L,
-  0x18b74777L, 0x88085ae6L, 0xff0f6a70L, 0x66063bcaL, 0x11010b5cL,
-  0x8f659effL, 0xf862ae69L, 0x616bffd3L, 0x166ccf45L, 0xa00ae278L,
-  0xd70dd2eeL, 0x4e048354L, 0x3903b3c2L, 0xa7672661L, 0xd06016f7L,
-  0x4969474dL, 0x3e6e77dbL, 0xaed16a4aL, 0xd9d65adcL, 0x40df0b66L,
-  0x37d83bf0L, 0xa9bcae53L, 0xdebb9ec5L, 0x47b2cf7fL, 0x30b5ffe9L,
-  0xbdbdf21cL, 0xcabac28aL, 0x53b39330L, 0x24b4a3a6L, 0xbad03605L,
-  0xcdd70693L, 0x54de5729L, 0x23d967bfL, 0xb3667a2eL, 0xc4614ab8L,
-  0x5d681b02L, 0x2a6f2b94L, 0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL,
-  0x2d02ef8dL
+// Slice-by-8 lookup tables for maximum performance
+// Tables 1-7 are computed at runtime for slice-by-8 algorithm
+
+alignas(64) static constexpr uint32_t crc_table_0[256] = {
+   0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
+   0x706af48fL, 0xe963a535L, 0x9e6495a3L, 0x0edb8832L, 0x79dcb8a4L,
+   0xe0d5e91eL, 0x97d2d988L, 0x09b64c2bL, 0x7eb17cbdL, 0xe7b82d07L,
+   0x90bf1d91L, 0x1db71064L, 0x6ab020f2L, 0xf3b97148L, 0x84be41deL,
+   0x1adad47dL, 0x6ddde4ebL, 0xf4d4b551L, 0x83d385c7L, 0x136c9856L,
+   0x646ba8c0L, 0xfd62f97aL, 0x8a65c9ecL, 0x14015c4fL, 0x63066cd9L,
+   0xfa0f3d63L, 0x8d080df5L, 0x3b6e20c8L, 0x4c69105eL, 0xd56041e4L,
+   0xa2677172L, 0x3c03e4d1L, 0x4b04d447L, 0xd20d85fdL, 0xa50ab56bL,
+   0x35b5a8faL, 0x42b2986cL, 0xdbbbc9d6L, 0xacbcf940L, 0x32d86ce3L,
+   0x45df5c75L, 0xdcd60dcfL, 0xabd13d59L, 0x26d930acL, 0x51de003aL,
+   0xc8d75180L, 0xbfd06116L, 0x21b4f4b5L, 0x56b3c423L, 0xcfba9599L,
+   0xb8bda50fL, 0x2802b89eL, 0x5f058808L, 0xc60cd9b2L, 0xb10be924L,
+   0x2f6f7c87L, 0x58684c11L, 0xc1611dabL, 0xb6662d3dL, 0x76dc4190L,
+   0x01db7106L, 0x98d220bcL, 0xefd5102aL, 0x71b18589L, 0x06b6b51fL,
+   0x9fbfe4a5L, 0xe8b8d433L, 0x7807c9a2L, 0x0f00f934L, 0x9609a88eL,
+   0xe10e9818L, 0x7f6a0dbbL, 0x086d3d2dL, 0x91646c97L, 0xe6635c01L,
+   0x6b6b51f4L, 0x1c6c6162L, 0x856530d8L, 0xf262004eL, 0x6c0695edL,
+   0x1b01a57bL, 0x8208f4c1L, 0xf50fc457L, 0x65b0d9c6L, 0x12b7e950L,
+   0x8bbeb8eaL, 0xfcb9887cL, 0x62dd1ddfL, 0x15da2d49L, 0x8cd37cf3L,
+   0xfbd44c65L, 0x4db26158L, 0x3ab551ceL, 0xa3bc0074L, 0xd4bb30e2L,
+   0x4adfa541L, 0x3dd895d7L, 0xa4d1c46dL, 0xd3d6f4fbL, 0x4369e96aL,
+   0x346ed9fcL, 0xad678846L, 0xda60b8d0L, 0x44042d73L, 0x33031de5L,
+   0xaa0a4c5fL, 0xdd0d7cc9L, 0x5005713cL, 0x270241aaL, 0xbe0b1010L,
+   0xc90c2086L, 0x5768b525L, 0x206f85b3L, 0xb966d409L, 0xce61e49fL,
+   0x5edef90eL, 0x29d9c998L, 0xb0d09822L, 0xc7d7a8b4L, 0x59b33d17L,
+   0x2eb40d81L, 0xb7bd5c3bL, 0xc0ba6cadL, 0xedb88320L, 0x9abfb3b6L,
+   0x03b6e20cL, 0x74b1d29aL, 0xead54739L, 0x9dd277afL, 0x04db2615L,
+   0x73dc1683L, 0xe3630b12L, 0x94643b84L, 0x0d6d6a3eL, 0x7a6a5aa8L,
+   0xe40ecf0bL, 0x9309ff9dL, 0x0a00ae27L, 0x7d079eb1L, 0xf00f9344L,
+   0x8708a3d2L, 0x1e01f268L, 0x6906c2feL, 0xf762575dL, 0x806567cbL,
+   0x196c3671L, 0x6e6b06e7L, 0xfed41b76L, 0x89d32be0L, 0x10da7a5aL,
+   0x67dd4accL, 0xf9b9df6fL, 0x8ebeeff9L, 0x17b7be43L, 0x60b08ed5L,
+   0xd6d6a3e8L, 0xa1d1937eL, 0x38d8c2c4L, 0x4fdff252L, 0xd1bb67f1L,
+   0xa6bc5767L, 0x3fb506ddL, 0x48b2364bL, 0xd80d2bdaL, 0xaf0a1b4cL,
+   0x36034af6L, 0x41047a60L, 0xdf60efc3L, 0xa867df55L, 0x316e8eefL,
+   0x4669be79L, 0xcb61b38cL, 0xbc66831aL, 0x256fd2a0L, 0x5268e236L,
+   0xcc0c7795L, 0xbb0b4703L, 0x220216b9L, 0x5505262fL, 0xc5ba3bbeL,
+   0xb2bd0b28L, 0x2bb45a92L, 0x5cb36a04L, 0xc2d7ffa7L, 0xb5d0cf31L,
+   0x2cd99e8bL, 0x5bdeae1dL, 0x9b64c2b0L, 0xec63f226L, 0x756aa39cL,
+   0x026d930aL, 0x9c0906a9L, 0xeb0e363fL, 0x72076785L, 0x05005713L,
+   0x95bf4a82L, 0xe2b87a14L, 0x7bb12baeL, 0x0cb61b38L, 0x92d28e9bL,
+   0xe5d5be0dL, 0x7cdcefb7L, 0x0bdbdf21L, 0x86d3d2d4L, 0xf1d4e242L,
+   0x68ddb3f8L, 0x1fda836eL, 0x81be16cdL, 0xf6b9265bL, 0x6fb077e1L,
+   0x18b74777L, 0x88085ae6L, 0xff0f6a70L, 0x66063bcaL, 0x11010b5cL,
+   0x8f659effL, 0xf862ae69L, 0x616bffd3L, 0x166ccf45L, 0xa00ae278L,
+   0xd70dd2eeL, 0x4e048354L, 0x3903b3c2L, 0xa7672661L, 0xd06016f7L,
+   0x4969474dL, 0x3e6e77dbL, 0xaed16a4aL, 0xd9d65adcL, 0x40df0b66L,
+   0x37d83bf0L, 0xa9bcae53L, 0xdebb9ec5L, 0x47b2cf7fL, 0x30b5ffe9L,
+   0xbdbdf21cL, 0xcabac28aL, 0x53b39330L, 0x24b4a3a6L, 0xbad03605L,
+   0xcdd70693L, 0x54de5729L, 0x23d967bfL, 0xb3667a2eL, 0xc4614ab8L,
+   0x5d681b02L, 0x2a6f2b94L, 0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL,
+   0x2d02ef8dL
 };
 
-uint32_t GenCRC32(uint32_t crc, APTR Data, uint32_t len)
+alignas(64) static uint32_t crc_table[8][256];
+static std::once_flag glCRCInit;
+
+static void init_crc32_tables(void)
 {
-   if (!Data) return 0;
+   std::call_once(glCRCInit, []() {
+      // Copy table 0
+      std::copy(std::begin(crc_table_0), std::end(crc_table_0), crc_table[0]);
 
-   auto buf = (BYTE *)Data;
-   crc = crc ^ 0xffffffff;
-   while (len >= 8) {
-      crc = crc_table[((int)crc ^ (buf[0])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((int)crc ^ (buf[1])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((int)crc ^ (buf[2])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((int)crc ^ (buf[3])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((int)crc ^ (buf[4])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((int)crc ^ (buf[5])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((int)crc ^ (buf[6])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((int)crc ^ (buf[7])) & 0xff] ^ (crc >> 8);
-      buf += 8;
-      len -= 8;
+      // Generate tables 1-7
+      for (int i = 1; i < 8; i++) {
+         for (int j = 0; j < 256; j++) {
+            crc_table[i][j] = crc_table[i-1][j] >> 8 ^ crc_table[0][crc_table[i-1][j] & 0xff];
+         }
+      }
+   });
+}
+
+static uint32_t gen_crc32_slice_by_8(uint32_t CRC, const uint8_t *Data, uint32_t Length)
+{
+   init_crc32_tables();
+
+   while (Length >= 8) {
+      uint32_t one;
+      uint32_t two;
+      memcpy(&one, Data, sizeof(one));
+      memcpy(&two, Data + 4, sizeof(two));
+      one ^= CRC;
+
+      CRC = crc_table[7][(one      ) & 0xff] ^
+            crc_table[6][(one >>  8) & 0xff] ^
+            crc_table[5][(one >> 16) & 0xff] ^
+            crc_table[4][(one >> 24) & 0xff] ^
+            crc_table[3][(two      ) & 0xff] ^
+            crc_table[2][(two >>  8) & 0xff] ^
+            crc_table[1][(two >> 16) & 0xff] ^
+            crc_table[0][(two >> 24) & 0xff];
+
+      Data += 8;
+      Length -= 8;
    }
 
-   while (len > 0) {
-      crc = crc_table[((int)crc ^ *buf++) & 0xff] ^ (crc >> 8);
-      len--;
+   while (Length > 0) {
+      CRC = crc_table[0][(CRC ^ *Data++) & 0xff] ^ (CRC >> 8);
+      Length--;
    }
 
-   return crc ^ 0xffffffff;
+   return CRC;
+}
+
+#ifdef PF_HAS_HW_CRC32
+static uint32_t gen_crc32_hardware(uint32_t CRC, const uint8_t *Data, uint32_t Length)
+{
+   while (Length >= sizeof(uint64_t)) {
+      uint64_t chunk;
+      memcpy(&chunk, Data, sizeof(chunk));
+      CRC = __crc32d(CRC, chunk);
+      Data += sizeof(chunk);
+      Length -= sizeof(chunk);
+   }
+
+   while (Length >= sizeof(uint32_t)) {
+      uint32_t chunk;
+      memcpy(&chunk, Data, sizeof(chunk));
+      CRC = __crc32w(CRC, chunk);
+      Data += sizeof(chunk);
+      Length -= sizeof(chunk);
+   }
+
+   while (Length >= sizeof(uint16_t)) {
+      uint16_t chunk;
+      memcpy(&chunk, Data, sizeof(chunk));
+      CRC = __crc32h(CRC, chunk);
+      Data += sizeof(chunk);
+      Length -= sizeof(chunk);
+   }
+
+   while (Length > 0) {
+      CRC = __crc32b(CRC, *Data++);
+      Length--;
+   }
+
+   return CRC;
+}
+#endif
+
+uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length)
+{
+   if (not Data) return 0;
+
+   auto data = (const uint8_t *)Data;
+   CRC = ~CRC;
+
+   #ifdef PF_HAS_HW_CRC32
+      CRC = gen_crc32_hardware(CRC, data, Length);
+   #else
+      CRC = gen_crc32_slice_by_8(CRC, data, Length);
+   #endif
+
+   return ~CRC;
 }
 
 /*********************************************************************************************************************
@@ -235,8 +352,8 @@ uint32_t GenCRC32(uint32_t crc, APTR Data, uint32_t len)
 -FUNCTION-
 GetResource: Retrieves miscellaneous resource identifiers.
 
-The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the
-Resource identifier for the full list of available resource codes and their meaning.
+The GetResource() function is used to retrieve miscellaneous resource and state information from the system
+core.  Refer to the Resource identifier for the full list of available resource codes and their meaning.
 
 C++ developers should use the `GetResourcePtr()` macro if a resource identifier is known to return a pointer.
 
@@ -254,55 +371,45 @@ int64_t GetResource(RES Resource)
 #ifdef __linux__
    struct sysinfo sys;
 #endif
-   extern char glIDL[];
 
    switch(Resource) {
       case RES::PRIVILEGED:      return glPrivileged;
       case RES::LOG_LEVEL:       return glLogLevel;
       case RES::PROCESS_STATE:   return MAXINT(glTaskState);
-      case RES::MAX_PROCESSES:   return MAX_TASKS;
       case RES::LOG_DEPTH:       return tlDepth;
-      case RES::OPEN_INFO:       return (MAXINT)glOpenInfo;
       case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
       case RES::THREAD_ID:       return int(get_thread_id());
-      case RES::CORE_IDL:        return (MAXINT)glIDL;
-      case RES::DISPLAY_DRIVER:  if (!glDisplayDriver.empty()) return (MAXINT)glDisplayDriver.c_str(); else return 0;
+      case RES::DISPLAY_DRIVER:  if (not glDisplayDriver.empty()) return (MAXINT)glDisplayDriver.c_str(); else return 0;
+      case RES::MAIN_THREAD:     return tlMainThread ? true : false;
 
       case RES::MEMORY_USAGE: {
          #ifdef __linux__
             struct rusage usage;
-            if (!getrusage(RUSAGE_SELF, &usage)) {
+            if (not getrusage(RUSAGE_SELF, &usage)) {
                // Return the maximum resident set size in bytes.
                return (int64_t)usage.ru_maxrss * 1024LL; // Convert to bytes
             }
             else return -1; // Error retrieving resource usage
          #elif _WIN32
             return winGetProcessMemoryUsage(glProcessID);
-         #else 
+         #else
             return -1;
          #endif
       }
-
-      case RES::STATIC_BUILD:
-         #ifdef PARASOL_STATIC
-            return 1;
-         #else
-            return 0;
-         #endif
 
 #ifdef __linux__
       // NB: This value is not cached.  Although unlikely, it is feasible that the total amount of physical RAM could
       // change during runtime.
 
       case RES::TOTAL_MEMORY: {
-         if (!sysinfo(&sys)) return (int64_t)sys.totalram * (int64_t)sys.mem_unit;
+         if (not sysinfo(&sys)) return (int64_t)sys.totalram * (int64_t)sys.mem_unit;
          else return -1;
       }
 
       case RES::FREE_MEMORY: {
    #if 0
          // Unfortunately sysinfo() does not report on cached ram, which can be significant
-         if (!sysinfo(&sys)) return (int64_t)(sys.freeram + sys.bufferram) * (int64_t)sys.mem_unit; // Buffer RAM is considered as 'free'
+         if (not sysinfo(&sys)) return (int64_t)(sys.freeram + sys.bufferram) * (int64_t)sys.mem_unit; // Buffer RAM is considered as 'free'
    #else
          char str[2048];
          int result;
@@ -324,15 +431,15 @@ int64_t GetResource(RES Resource)
       }
 
       case RES::TOTAL_SHARED_MEMORY:
-         if (!sysinfo(&sys)) return (int64_t)sys.sharedram * (int64_t)sys.mem_unit;
+         if (not sysinfo(&sys)) return (int64_t)sys.sharedram * (int64_t)sys.mem_unit;
          else return -1;
 
       case RES::TOTAL_SWAP:
-         if (!sysinfo(&sys)) return (int64_t)sys.totalswap * (int64_t)sys.mem_unit;
+         if (not sysinfo(&sys)) return (int64_t)sys.totalswap * (int64_t)sys.mem_unit;
          else return -1;
 
       case RES::FREE_SWAP:
-         if (!sysinfo(&sys)) return (int64_t)sys.freeswap * (int64_t)sys.mem_unit;
+         if (not sysinfo(&sys)) return (int64_t)sys.freeswap * (int64_t)sys.mem_unit;
          else return -1;
 
       case RES::CPU_SPEED: {
@@ -345,7 +452,9 @@ int64_t GetResource(RES Resource)
 
          if (file.ok()) {
             while ((line = file->readLine())) {
-               if (startswith("cpu Mhz", line)) cpu_mhz = strtol(line, nullptr, 0);
+               if (startswith("cpu MHz", line)) {
+                  if (auto value = strchr(line, ':')) cpu_mhz = int(strtod(value + 1, nullptr));
+               }
             }
          }
 
@@ -379,7 +488,8 @@ const SystemState * GetSystemState(void)
    static bool initialised = false;
    static SystemState state;
 
-   if (!initialised) {
+   if (not initialised) {
+      // Initialise constants that won't change
       initialised = true;
 
       state.ConsoleFD = glConsoleFD;
@@ -392,6 +502,23 @@ const SystemState * GetSystemState(void)
       #else
          state.Platform = "Unknown";
       #endif
+
+      #ifdef KOTUKU_RELEASE_BUILD
+         state.ReleaseBuild = 1;
+      #else
+         state.ReleaseBuild = 0;
+      #endif
+
+      #ifdef KOTUKU_STATIC
+         state.StaticBuild = 1;
+      #else
+         state.StaticBuild = 0;
+      #endif
+
+      extern char glIDL[];
+      state.IDL = glIDL;
+
+      state.OpenInfo = &glOpenInfo;
    }
 
    state.Stage = glSystemState;
@@ -415,16 +542,9 @@ large: Returns the system time in microseconds.  Could return zero in the extrem
 
 int64_t PreciseTime(void)
 {
-#ifdef __unix__
-   struct timespec time;
-
-   if (!clock_gettime(CLOCK_MONOTONIC, &time)) {
-      return ((int64_t)time.tv_sec * 1000000LL) + ((int64_t)time.tv_nsec / 1000LL);
-   }
-   else return 0;
-#else
-   return winGetTickCount(); // NB: This timer does start from the boot time, but can be adjusted - therefore is not 100% on monotonic status
-#endif
+   auto now = std::chrono::steady_clock::now();
+   auto duration = now.time_since_epoch();
+   return std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
 }
 
 /*********************************************************************************************************************
@@ -447,7 +567,7 @@ combining the read/write flags with `RFD::REMOVE`.
 
 The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX
 compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking
-restrictions do not apply, except to sockets.
+restrictions are not imposed.
 
 Call the `DeregisterFD()` macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.
 
@@ -511,12 +631,12 @@ ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
       }
    }
 
-   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, int(Flags));
+   log.function("FD: %" PRId64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, int(Flags));
 
 #ifdef _WIN32
    // Nothing to do for Win32
 #else
-   if ((!Routine) and (FD > 0)) fcntl(FD, F_SETFL, fcntl(FD, F_GETFL) | O_NONBLOCK); // Ensure that the FD is non-blocking
+   if ((not Routine) and (FD > 0)) fcntl(FD, F_SETFL, fcntl(FD, F_GETFL) | O_NONBLOCK); // Ensure that the FD is non-blocking
 #endif
 
    glFDTable.emplace_back(FD, Routine, Data, Flags);
@@ -552,7 +672,7 @@ ERR SetResourcePath(RP PathType, CSTRING Path)
       case RP::ROOT_PATH:
          if (Path) {
             glRootPath = Path;
-            if ((glRootPath.back() != '/') and (glRootPath.back() != '\\')) {
+            if ((!glRootPath.empty()) and (glRootPath.back() != '/') and (glRootPath.back() != '\\')) {
                #ifdef _WIN32
                   glRootPath.push_back('\\');
                #else
@@ -565,7 +685,7 @@ ERR SetResourcePath(RP PathType, CSTRING Path)
       case RP::SYSTEM_PATH:
          if (Path) {
             glSystemPath = Path;
-            if ((glSystemPath.back() != '/') and (glSystemPath.back() != '\\')) {
+            if ((!glSystemPath.empty()) and (glSystemPath.back() != '/') and (glSystemPath.back() != '\\')) {
                #ifdef _WIN32
                   glSystemPath.push_back('\\');
                #else
@@ -578,7 +698,7 @@ ERR SetResourcePath(RP PathType, CSTRING Path)
       case RP::MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
             glModulePath = Path;
-            if ((glModulePath.back() != '/') and (glModulePath.back() != '\\')) {
+            if ((!glModulePath.empty()) and (glModulePath.back() != '/') and (glModulePath.back() != '\\')) {
                #ifdef _WIN32
                   glModulePath += '\\';
                #else
@@ -622,7 +742,7 @@ int64_t SetResource(RES Resource, int64_t Value)
    pf::Log log(__FUNCTION__);
 
 #ifdef __unix__
-   static WORD privileged = 0;
+   static int16_t privileged = 0;
 #endif
 
    int64_t oldvalue = 0;
@@ -660,7 +780,7 @@ int64_t SetResource(RES Resource, int64_t Value)
 
          if (Value) { // Enable admin privileges
             oldvalue = int64_t(ERR::Okay);
-            if (!privileged) {
+            if (not privileged) {
                if (glUID) {
                   if (glUID != glEUID) {
                      seteuid(glEUID);
@@ -679,7 +799,7 @@ int64_t SetResource(RES Resource, int64_t Value)
             // Disable admin privileges
             if (privileged > 0) {
                privileged--;
-               if (!privileged) {
+               if (not privileged) {
                   if (glUID != glEUID) seteuid(glUID);
                }
             }
@@ -690,7 +810,7 @@ int64_t SetResource(RES Resource, int64_t Value)
          break;
 
       default:
-         log.warning("Unrecognised resource ID: %d, Value: %" PF64, int(Resource), (long long)Value);
+         log.warning("Unrecognised resource ID: %d, Value: %" PRId64, int(Resource), (int64_t)Value);
    }
 
    return oldvalue;
@@ -707,14 +827,14 @@ A callback function must be provided that follows this prototype: `ERR Function(
 
 The `Elapsed` parameter is the total number of microseconds that have elapsed since the last call.  The `CurrentTime`
 parameter is set to the ~PreciseTime() value just prior to the `Callback` being called.  The callback function
-can return `ERR::Terminate` at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks
+can return `ERR::Terminate` at any time to cancel the subscription.  All other error codes are ignored.  Tiri callbacks
 should call `check(ERR::Terminate)` to perform the equivalent of this behaviour.
 
 To change the interval, call ~UpdateTimer() with the new value.  To release a timer subscription, call
-~UpdateTimer() with the resulting SubscriptionID and an Interval of zero.
+~UpdateTimer() with the resulting `Subscription` handle and an `Interval` of zero.
 
 Timer management is provisioned by the ~ProcessMessages() function.  Failure to regularly process incoming
-messages will lead to unreliable timer cycles.  It should be noted that the smaller the Interval that has been used,
+messages will lead to unreliable timer cycles.  It should be noted that the smaller the `Interval` that has been used,
 the more imperative regular message checking becomes.  Prolonged processing inside a timer routine can also impact on
 other timer subscriptions that are waiting to be processed.
 
@@ -733,20 +853,20 @@ SystemLocked:
 
 *********************************************************************************************************************/
 
-ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
+ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Interval) or (!Callback)) return log.warning(ERR::NullArgs);
+   if ((not Interval) or (not Callback)) return log.warning(ERR::NullArgs);
    if (Interval < 0) return log.warning(ERR::Args);
 
-   auto subscriber = tlContext->object();
+   auto subscriber = tlContext.back().obj;
    if (subscriber->collecting()) return log.warning(ERR::InvalidState);
 
    if (Callback->Type IS CALL::SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Interval: %.3fs", Interval);
    else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Callback: %p, Interval: %.3fs", Callback->Routine, Interval);
 
-   if (auto lock = std::unique_lock{glmTimer, 200ms}) {
+   if (auto lock = std::unique_lock{glmTimer, 1000ms}) {
       auto usInterval = int64_t(Interval * 1000000.0); // Scale the interval to microseconds
       if (usInterval <= 40000) {
          // TODO: Rapid timers should be synchronised with other existing timers to limit the number of
@@ -769,7 +889,7 @@ ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
       // For resource tracking purposes it is important for us to keep a record of the subscription so that
       // we don't treat the object address as valid when it's been removed from the system.
 
-      subscriber->Flags |= NF::TIMER_SUB;
+      subscriber->setFlag(NF::TIMER_SUB);
       if (Subscription) *Subscription = &*it;
       return ERR::Okay;
    }
@@ -796,15 +916,15 @@ Search:
 
 *********************************************************************************************************************/
 
-ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
+ERR UpdateTimer(APTR Subscription, double Interval)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Subscription) return log.warning(ERR::NullArgs);
+   if (not Subscription) return log.warning(ERR::NullArgs);
 
    log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
-   if (auto lock = std::unique_lock{glmTimer, 200ms}) {
+   if (auto lock = std::unique_lock{glmTimer, 1000ms}) {
       auto timer = (CoreTimer *)Subscription;
       if (Interval < 0) {
          // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
@@ -826,17 +946,20 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
             return log.warning(ERR::AlreadyLocked);
          }
 
-         lock.release();
-
-         if (timer->Routine.isScript()) {
-            ((objScript *)timer->Routine.Context)->derefProcedure(timer->Routine);
-         }
+         FUNCTION script_routine;
+         if (timer->Routine.isScript()) script_routine = timer->Routine;
 
          for (auto it=glTimers.begin(); it != glTimers.end(); it++) {
             if (timer IS &(*it)) {
                glTimers.erase(it);
                break;
             }
+         }
+
+         lock.unlock();
+
+         if (script_routine.isScript()) {
+            ((objScript *)script_routine.Context)->derefProcedure(script_routine);
          }
 
          return ERR::Okay;
@@ -848,62 +971,128 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
 /*********************************************************************************************************************
 
 -FUNCTION-
-WaitTime: Waits for a specified amount of seconds and/or microseconds.
+WaitTime: Waits for a specified amount of seconds.
 
-This function waits for a period of time as specified by the `Seconds` and `MicroSeconds` parameters.  While waiting,
+This function waits for a period of time as specified by the `Seconds` parameter.  While waiting,
 your process will continue to process incoming messages in order to prevent the process' message queue from
 developing a back-log.
 
 WaitTime() can return earlier than the indicated timeout if a message handler returns `ERR::Terminate`, or if a
 `MSGID::QUIT` message is sent to the task's message queue.
 
+For non-main threads, the sleep can be interrupted by another thread calling ~WakeThread().
+
+NOTE: If the thread is in a stopping state, e.g. from ~WakeThread(), this function will return
+immediately.
+
 -INPUT-
-int Seconds:      The number of seconds to wait for.
-int MicroSeconds: The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - `1/1000000`.  The value cannot exceed `999999`.
+double Seconds: The number of seconds to wait for.  Fractional values are supported for sub-second precision.
+
+-ERRORS-
+Okay:
+Cancelled: The thread has been requested to stop and cannot pause.
 
 -END-
 
 *********************************************************************************************************************/
 
-void WaitTime(int Seconds, int MicroSeconds)
+ERR WaitTime(double Seconds)
 {
-   bool process_msg;
+   // Determine message processing mode (negative seconds disable message processing)
+   bool process_msg = tlMainThread and (Seconds >= 0.0);
 
-   if (!tlMainThread) {
-      process_msg = false; // Child threads never process messages.
-      if (Seconds < 0) Seconds = -Seconds;
-      if (MicroSeconds < 0) MicroSeconds = -MicroSeconds;
-    }
-   else {
-      // If the Seconds or MicroSeconds arguments are negative, turn off the ProcessMessages() support.
-      process_msg = true;
-      if (Seconds < 0) { Seconds = -Seconds; process_msg = false; }
-      if (MicroSeconds < 0) { MicroSeconds = -MicroSeconds; process_msg = false; }
-   }
+   if (Seconds < 0.0) Seconds = -Seconds;
 
-   while (MicroSeconds >= 1000000) {
-      MicroSeconds -= 1000000;
-      Seconds++;
+   // Convert to microseconds with high precision
+   auto total_microseconds = int64_t(Seconds * 1000000.0);
+
+   if (total_microseconds <= 0) return ERR::Okay; // Nothing to wait for
+
+   auto record = get_thread_record();
+
+   {
+      if (record->state.load(std::memory_order_acquire) IS TSTATE::STOPPING) return ERR::Cancelled;
+      record->state.store(TSTATE::PAUSED, std::memory_order_release);
    }
 
    if (process_msg) {
-      int64_t current = PreciseTime() / 1000LL;
-      int64_t end = current + (Seconds * 1000) + (MicroSeconds / 1000);
+      auto end_time = PreciseTime() + total_microseconds;
+      int64_t current_time;
+
       do {
-         if (ProcessMessages(PMF::NIL, end - current) IS ERR::Terminate) break;
-         current = (PreciseTime() / 1000LL);
-      } while (current < end);
+         current_time = PreciseTime();
+         if (current_time >= end_time) break;
+
+         // Convert remaining time to milliseconds for ProcessMessages
+         auto remaining_ms = (end_time - current_time) / 1000LL;
+         if (ProcessMessages(PMF::NIL, remaining_ms) IS ERR::Terminate) break;
+      } while (true);
    }
    else {
-      #ifdef __unix__
-         struct timespec nano;
-         nano.tv_sec  = Seconds;
-         nano.tv_nsec = MicroSeconds * 100;
-         while (nanosleep(&nano, &nano) == -1) continue;
-      #elif _WIN32
-         winSleep((Seconds * 1000) + (MicroSeconds / 1000));
-      #else
-         #warn Platform needs support for WaitTime()
-      #endif
+      std::unique_lock lock(record->mutex);
+      record->cv.wait_for(lock, std::chrono::microseconds(total_microseconds),
+         [&] { return record->interrupted.load(std::memory_order_acquire); });
+      record->interrupted.store(false, std::memory_order_release);
    }
+
+   auto error = ERR::Okay;
+   auto expected = TSTATE::PAUSED;
+   if (not record->state.compare_exchange_strong(expected, TSTATE::RUNNING, std::memory_order_acq_rel)) {
+      error = ERR::Cancelled; // State was changed to STOPPING by WakeThread()
+   }
+
+   return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+WakeThread: Interrupt a sleeping thread.
+
+Call WakeThread() to interrupt a thread that is blocked in ~WaitTime() or similar, where supported.  The target
+thread will return from as soon as it is able to acquire its internal lock.  If the target thread is not currently
+sleeping, a pending interrupt is recorded so that its next sleep cycle will return immediately.
+
+If `Stop` is set to true then the target thread will be put into a stopping state.  This will cause all future
+sleep attempts in the target thread to be cancelled.
+
+-INPUT-
+int Thread: The target thread's unique ID, as returned by `GetResource(RES::THREAD_ID)`.
+int Stop: If `true`, the target thread will be put into a stopping state.
+
+-ERRORS-
+Okay: The thread was successfully interrupted.
+Search: No thread with the given ID was found in the registry.
+
+-END-
+
+*********************************************************************************************************************/
+
+ERR WakeThread(int Thread, int Stop)
+{
+   std::shared_ptr<ThreadRecord> record;
+
+   {
+      std::lock_guard lock(glmThreadRegistry);
+      auto it = glThreadRegistry.find(Thread);
+      if (it IS glThreadRegistry.end()) return ERR::Search;
+      record = it->second;
+   }
+
+   bool paused;
+   {
+      // Lock required to prevent missed wake-ups: the target thread could transition to PAUSED
+      // and enter cv.wait() between our flag write and notify call.
+      std::lock_guard lock(record->mutex);
+      paused = (record->state.load(std::memory_order_acquire) IS TSTATE::PAUSED);
+      record->interrupted.store(true, std::memory_order_release);
+      if (Stop) record->state.store(TSTATE::STOPPING, std::memory_order_release);
+   }
+
+   if (paused) {
+      record->cv.notify_one();
+      cvObjects.notify_all();   // Wake threads blocked in LockObject()
+      cvResources.notify_all(); // Wake threads blocked in AccessMemory()
+   }
+   return ERR::Okay;
 }

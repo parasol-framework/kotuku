@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -44,12 +44,12 @@ ScintillaSearch: Provides search functionality for use on Scintilla objects.
 #include "Editor.h"
 #include "ScintillaBase.h"
 
-#include <parasol/main.h>
-#include <parasol/modules/display.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/strings.hpp>
 
-#include "scintillaparasol.h"
-#include <parasol/modules/scintilla.h>
+#include "scintillakotuku.h"
+#include <kotuku/modules/scintilla.h>
 
 #define SCICALL     ((extScintilla *)(Self->Scintilla))->API->SendScintilla
 
@@ -79,11 +79,11 @@ Search: The string sequence was not found.
 static ERR SEARCH_Find(objScintillaSearch *Self, struct ss::Find *Args)
 {
    pf::Log log;
-   LONG start, end, pos, startLine, endLine, i, targstart, targend;
+   int start, end, pos, startLine, endLine, i, targstart, targend;
 
    if (!Self->Text) return log.warning(ERR::FieldNotSet);
 
-   log.msg("Text: '%.10s'... From: %d, Flags: $%.8x", Self->Text, Args->Pos, LONG(Self->Flags));
+   log.msg("Text: '%.10s'... From: %d, Flags: $%.8x", Self->Text, Args->Pos, int(Self->Flags));
 
    auto flags = (((Args->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
                  (((Args->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
@@ -215,14 +215,14 @@ static ERR SEARCH_Next(objScintillaSearch *Self, struct ss::Next *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   log.branch("Text: '%.10s', Flags: $%.8x, Section %d to %d", Self->Text, LONG(Self->Flags), Self->Start, Self->End);
+   log.branch("Text: '%.10s', Flags: $%.8x, Section %d to %d", Self->Text, int(Self->Flags), Self->Start, Self->End);
 
-   LONG flags = (((Self->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
+   int flags = (((Self->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
                 (((Self->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
 
    SCICALL(SCI_SETSEARCHFLAGS, flags);
 
-   LONG start, end, i;
+   int start, end, i;
    if ((Self->Flags & STF::SCAN_SELECTION) != STF::NIL) {
       if ((Self->Flags & STF::BACKWARDS) != STF::NIL) {
          start = SCICALL(SCI_GETCURRENTPOS);
@@ -248,7 +248,7 @@ static ERR SEARCH_Next(objScintillaSearch *Self, struct ss::Next *Args)
 
    SCICALL(SCI_SETTARGETSTART, start);
    SCICALL(SCI_SETTARGETEND, end);
-   LONG pos = SCICALL(SCI_SEARCHINTARGET, strlen(Self->Text), (char *)Self->Text);
+   int pos = SCICALL(SCI_SEARCHINTARGET, strlen(Self->Text), (char *)Self->Text);
 
    // If not found and wraparound is wanted, try again
 
@@ -276,10 +276,10 @@ static ERR SEARCH_Next(objScintillaSearch *Self, struct ss::Next *Args)
 
    if (pos IS -1) return ERR::Search;
 
-   LONG targstart = SCICALL(SCI_GETTARGETSTART);
-   LONG targend   = SCICALL(SCI_GETTARGETEND);
-   LONG startLine = SCICALL(SCI_LINEFROMPOSITION,targstart);
-   LONG endLine   = SCICALL(SCI_LINEFROMPOSITION,targend);
+   int targstart = SCICALL(SCI_GETTARGETSTART);
+   int targend   = SCICALL(SCI_GETTARGETEND);
+   int startLine = SCICALL(SCI_LINEFROMPOSITION,targstart);
+   int endLine   = SCICALL(SCI_LINEFROMPOSITION,targend);
 
    for (i=startLine; i <= endLine; ++i) {
       SCICALL(SCI_ENSUREVISIBLEENFORCEPOLICY,i);

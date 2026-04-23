@@ -1,0 +1,158 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="module.xsl"?>
+
+<book>
+  <info>
+    <name>Regex</name>
+    <type>module</type>
+    <comment>Provides support for regular expression pattern matching and text processing.</comment>
+    <version>1</version>
+    <copyright>Paul Manias © 2025-2026</copyright>
+    <description>
+<p>The Regex module provides ECMAScript-compatible regex functionality with Unicode support. It offers efficient pattern compilation, flexible matching modes, and text manipulation capabilities including search, replace, and split operations.</p>
+<p>Key features include:</p>
+<list type="bullet">
+<li>ECMAScript (JavaScript) regex syntax.</li>
+<li>Full Unicode support including character classes and properties.</li>
+<li>Case-insensitive and multiline matching options.</li>
+<li>Reusable compiled patterns for optimal performance.</li>
+<li>Callback-based result processing for custom handling.</li>
+</list>
+<p>Note: Tiri scripts are expected to use the built-in regex functions for better integration as opposed to this module.</p></description>
+  </info>
+
+  <function>
+    <name>Compile</name>
+    <comment>Compiles a regex pattern and returns a regex object.</comment>
+    <prototype>ERR rx::Compile(const std::string_view &amp; Pattern, REGEX Flags, std::string * ErrorMsg, struct Regex ** Result)</prototype>
+    <input>
+      <param type="const std::string_view &amp;" name="Pattern">A regex pattern string.</param>
+      <param type="REGEX" name="Flags" lookup="REGEX">Optional flags.</param>
+      <param type="std::string *" name="ErrorMsg">Optional reference for storing custom error messages.</param>
+      <param type="struct Regex **" name="Result">Pointer to store the created regex object.</param>
+    </input>
+    <description>
+<p>Use Compile() to compile a regex pattern into a regex object that can be used for matching and searching.  The compiled regex object can be reused for multiple match or search operations, improving performance.  It must be removed with ~Core:FreeResource() when no longer needed to avoid memory leaks.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
+      <error code="Syntax">Invalid syntax detected.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetCaptureIndex</name>
+    <comment>Retrieves capture indices for a named group.</comment>
+    <prototype>ERR rx::GetCaptureIndex(struct Regex * Regex, const std::string_view &amp; Name, pf::vector&lt;int&gt; * Indices)</prototype>
+    <input>
+      <param type="struct Regex *" name="Regex">The compiled regex object.</param>
+      <param type="const std::string_view &amp;" name="Name">The capture group name to resolve.</param>
+      <param type="pf::vector&lt;int&gt; *" name="Indices">Receives the resulting capture indices.</param>
+    </input>
+    <description>
+<p>Use GetCaptureIndex() to resolve the numeric capture indices associated with a named capture group. ECMAScript allows multiple groups to share the same name; this function therefore returns every index that matches the provided name. If no capture groups match the provided name, <code>ERR::Search</code> is returned.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">The name was resolved and Indices populated.</error>
+      <error code="Search">The provided name does not exist within the regex.</error>
+      <error code="NullArgs">One or more required arguments were null.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>Replace</name>
+    <comment>Replaces occurrences of the regex pattern in the input text with a specified replacement string.</comment>
+    <prototype>ERR rx::Replace(struct Regex * Regex, const std::string_view &amp; Text, const std::string_view &amp; Replacement, std::string * Output, RMATCH Flags)</prototype>
+    <input>
+      <param type="struct Regex *" name="Regex">The compiled regex object.</param>
+      <param type="const std::string_view &amp;" name="Text">The input text to perform replacements on.</param>
+      <param type="const std::string_view &amp;" name="Replacement">The replacement string, which can include back-references like <code>\1</code>, <code>\2</code>, etc.</param>
+      <param type="std::string *" name="Output">Receives the resulting string after replacements.</param>
+      <param type="RMATCH" name="Flags" lookup="RMATCH">Optional flags to modify the replacement behavior.</param>
+    </input>
+    <description>
+<p>Call Replace() to perform regex-based replacements in a given text. The function takes a compiled regex object, the input text, a replacement string, and optional flags to modify the replacement behavior. The replacement string can include back-references like <code>\1</code>, <code>\2</code>, etc., to refer to captured groups from the regex match.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Successful execution, does not necessarily mean replacements were made.</error>
+      <error code="NullArgs">One or more required input arguments were null.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>Search</name>
+    <comment>Performs regex matching.</comment>
+    <prototype>ERR rx::Search(struct Regex * Regex, const std::string_view &amp; Text, RMATCH Flags, FUNCTION * Callback)</prototype>
+    <input>
+      <param type="struct Regex *" name="Regex">The compiled regex object.</param>
+      <param type="const std::string_view &amp;" name="Text">The input text to perform matching on.</param>
+      <param type="RMATCH" name="Flags" lookup="RMATCH">Optional flags to modify the matching behavior.</param>
+      <param type="FUNCTION *" name="Callback">Receives the match results.</param>
+    </input>
+    <description>
+<p>Call Search() to search for a regex pattern in a given text. The function takes a compiled regex object, the input text, optional flags to modify the matching behavior, and a callback function to process the match results. For each match that is found, the callback function is invoked with details about the match.</p>
+<p>The C++ prototype for the Callback function is:</p>
+<pre>ERR callback(int Index, std::vector&lt;std::string_view&gt; &amp;Capture, size_t MatchStart, size_t MatchEnd, APTR Meta);
+</pre>
+<p>Note the inclusion of the <code>Index</code> parameter, which indicates the match number (starting from 0). The <code>MatchStart</code> and <code>MatchEnd</code> parameters provide explicit byte offsets into the input text for the matched region.</p>
+<p>The Capture vector is always normalised so that its size matches the total number of capturing groups defined by the pattern (including the full match at index 0). Optional groups that did not match are provided as empty <code>std::string_view</code> instances, ensuring consistent indexing across matches.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">At least one match was found and processed.</error>
+      <error code="Search">No matches were found.</error>
+      <error code="NullArgs">One or more required input arguments were null.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>Split</name>
+    <comment>Split a string into tokens, using a regex pattern to denote the delimiter.</comment>
+    <prototype>ERR rx::Split(struct Regex * Regex, const std::string_view &amp; Text, pf::vector&lt;std::string&gt; * Output, RMATCH Flags)</prototype>
+    <input>
+      <param type="struct Regex *" name="Regex">The compiled regex object.</param>
+      <param type="const std::string_view &amp;" name="Text">The input text to split.</param>
+      <param type="pf::vector&lt;std::string&gt; *" name="Output">Receives the resulting string tokens.</param>
+      <param type="RMATCH" name="Flags" lookup="RMATCH">Optional flags to modify the splitting behavior.</param>
+    </input>
+    <description>
+<p>Call Split() to divide a string into multiple tokens based on a regex pattern that defines the delimiters. The function takes a compiled regex object, the input text, and optional flags to modify the splitting behavior.</p>
+<p>The resulting tokens are stored in the provided output array.</p>
+<p>If no matches are found, the entire input text is returned as a single token.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">The string was successfully split into tokens. If no matches are found, the entire input text is returned as a single token.</error>
+      <error code="NullArgs">One or more required input arguments were null.</error>
+    </result>
+  </function>
+
+  <types>
+    <constants lookup="REGEX" comment="Optional flags for the Regex functions.">
+      <const name="DOT_ALL"><code>.</code> matches newlines.</const>
+      <const name="ICASE">Ignore case.</const>
+      <const name="MULTILINE"><code>^</code> and <code>$</code> match line boundaries.</const>
+    </constants>
+
+    <constants lookup="RMATCH">
+      <const name="CONTINUOUS">Requires the match to start at the beginning of the sequence (anchored matching).</const>
+      <const name="NOT_BEGIN_OF_LINE">Treats the first character in the sequence as NOT being at the beginning of a line, preventing <code>^</code> from matching at that position.</const>
+      <const name="NOT_BEGIN_OF_WORD">Treats the first character in the sequence as NOT being at the beginning of a word, affecting <code>\b</code> word boundary matching.</const>
+      <const name="NOT_END_OF_LINE">Treats the last character in the sequence as NOT being at the end of a line, preventing <code>$</code> from matching at that position.</const>
+      <const name="NOT_END_OF_WORD">Treats the last character in the sequence as NOT being at the end of a word, affecting <code>\b</code> word boundary matching.</const>
+      <const name="NOT_NULL">Prevents the regex engine from matching zero-length (empty) sequences.</const>
+      <const name="PREV_AVAILABLE">Indicates that a valid character exists before the first position in the sequence, enabling proper look-behind and boundary assertions.</const>
+      <const name="REPLACE_FIRST_ONLY">In Replace(), replaces only the first match and leaves subsequent matches unchanged.</const>
+      <const name="REPLACE_NO_COPY">In Replace(), prevents copying non-matched portions of the input to the output.</const>
+      <const name="WHOLE">Implicit <code>^...$</code> around the pattern.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="Regex" comment="Compiled regex structure.">
+      <field name="Pattern" type="std::string">Original pattern string</field>
+      <field name="Flags" type="REGEX" lookup="REGEX">Compilation flags</field>
+    </struct>
+
+  </structs>
+</book>

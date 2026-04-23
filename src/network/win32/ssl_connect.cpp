@@ -176,7 +176,7 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
       if (status == SEC_E_OK) {
          auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
          if (stream_status != SEC_E_OK) {
-            SSL->last_security_status = stream_status;            
+            SSL->last_security_status = stream_status;
             return SSL_ERROR_FAILED;
          }
       }

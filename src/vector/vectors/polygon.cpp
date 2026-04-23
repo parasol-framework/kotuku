@@ -21,7 +21,7 @@ TODO: Add a SetPoint(DOUBLE X, DOUBLE Y) method for modifying existing points.
 
 *********************************************************************************************************************/
 
-constexpr LONG MAX_POINTS = 1024 * 16; // Maximum of 16k points per polygon object.
+constexpr int MAX_POINTS = 1024 * 16; // Maximum of 16k points per polygon object.
 
 static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
 {
@@ -163,8 +163,8 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
    // The provided (X,Y) coordinates will be treated as the polygon's new central position.
 
    if ((Args->Flags & MTF::X) != MTF::NIL) {
-      DOUBLE center_x = Self->Bounds.width() * 0.5;
-      DOUBLE x_change = Args->X - center_x;
+      double center_x = Self->Bounds.width() * 0.5;
+      double x_change = Args->X - center_x;
       for (unsigned i=0; i < Self->Points.size(); i++) {
          Self->Points[i].X += x_change;
          Self->Points[i].XScaled = ((Args->Flags & MTF::RELATIVE) != MTF::NIL);
@@ -174,8 +174,8 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
    }
 
    if ((Args->Flags & MTF::Y) != MTF::NIL) {
-      DOUBLE center_y = Self->Bounds.height() * 0.5;
-      DOUBLE y_change = Args->Y - center_y;
+      double center_y = Self->Bounds.height() * 0.5;
+      double y_change = Args->Y - center_y;
       for (unsigned i=0; i < Self->Points.size(); i++) Self->Points[i].Y += y_change;
       Self->Bounds.top += y_change;
       Self->Bounds.bottom += y_change;
@@ -237,13 +237,13 @@ the default.  If `false`, the polygon will not be closed, which results in the e
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_Closed(extVectorPoly *Self, LONG *Value)
+static ERR POLY_GET_Closed(extVectorPoly *Self, int *Value)
 {
    *Value = Self->Closed;
    return ERR::Okay;
 }
 
-static ERR POLY_SET_Closed(extVectorPoly *Self, LONG Value)
+static ERR POLY_SET_Closed(extVectorPoly *Self, int Value)
 {
    if (Value) Self->Closed = true;
    else Self->Closed = false;
@@ -263,13 +263,13 @@ operations.
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_PathLength(extVectorPoly *Self, LONG *Value)
+static ERR POLY_GET_PathLength(extVectorPoly *Self, int *Value)
 {
    *Value = Self->PathLength;
    return ERR::Okay;
 }
 
-static ERR POLY_SET_PathLength(extVectorPoly *Self, LONG Value)
+static ERR POLY_SET_PathLength(extVectorPoly *Self, int Value)
 {
    if (Value >= 0) {
       Self->PathLength = Value;
@@ -289,14 +289,14 @@ points is required for the shape to be valid.  The !VectorPoint structure consis
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_PointsArray(extVectorPoly *Self, VectorPoint **Value, LONG *Elements)
+static ERR POLY_GET_PointsArray(extVectorPoly *Self, VectorPoint **Value, int *Elements)
 {
    *Value = Self->Points.data();
    *Elements = Self->Points.size();
    return ERR::Okay;
 }
 
-static ERR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG Elements)
+static ERR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, int Elements)
 {
    if (Elements >= 2) {
       Self->Points.clear();
@@ -335,7 +335,7 @@ TotalPoints is a read-only field value that reflects the total number of coordin
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_TotalPoints(extVectorPoly *Self, LONG *Value)
+static ERR POLY_GET_TotalPoints(extVectorPoly *Self, int *Value)
 {
    *Value = Self->Points.size();
    return ERR::Okay;
@@ -454,14 +454,14 @@ static const ActionArray clPolygonActions[] = {
    { AC::MoveToPoint, POLYGON_MoveToPoint },
    //{ AC::Redimension, POLYGON_Redimension },
    { AC::Resize,      POLYGON_Resize },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const FieldArray clPolygonFields[] = {
    { "Closed",      FDF_VIRTUAL|FDF_INT|FD_RW,                 POLY_GET_Closed, POLY_SET_Closed },
    { "PathLength",  FDF_VIRTUAL|FDF_INT|FDF_RW,                POLY_GET_PathLength, POLY_SET_PathLength },
    { "PointsArray", FDF_VIRTUAL|FDF_ARRAY|FDF_POINTER|FDF_RW,   POLY_GET_PointsArray, POLY_SET_PointsArray },
-   { "Points",      FDF_VIRTUAL|FDF_STRING|FDF_W,               NULL, POLY_SET_Points },
+   { "Points",      FDF_VIRTUAL|FDF_STRING|FDF_W,               nullptr, POLY_SET_Points },
    { "TotalPoints", FDF_VIRTUAL|FDF_INT|FDF_R,                 POLY_GET_TotalPoints },
    { "X1",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_X1, POLY_SET_X1 },
    { "Y1",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_Y1, POLY_SET_Y1 },

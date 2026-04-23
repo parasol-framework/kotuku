@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -23,13 +23,13 @@ FileAssets: For Android systems only.  The FileAssets sub-class provides access 
 
 #define VER_FileAssets 1.0
 
-static OBJECTPTR glAssetClass = NULL;
+static OBJECTPTR glAssetClass = nullptr;
 
 extern CoreBase *CoreBase;
-static AAssetManager *glAssetManager = NULL;
+static AAssetManager *glAssetManager = nullptr;
 static bool glAssetManagerFree = false;
 
-connst LONG LEN_ASSETS = 7; // "assets:" length
+connst int LEN_ASSETS = 7; // "assets:" length
 
 static ERR ASSET_Delete(objFile *, APTR);
 static ERR ASSET_Free(objFile *, APTR);
@@ -41,7 +41,7 @@ static ERR ASSET_Seek(objFile *, struct acSeek *);
 static ERR ASSET_Write(objFile *, struct acWrite *);
 
 static ERR GET_Permissions(objFile *, APTR *);
-static ERR GET_Size(objFile *, LARGE *);
+static ERR GET_Size(objFile *, int64_t *);
 
 static ERR SET_Permissions(objFile *, APTR);
 
@@ -59,7 +59,7 @@ static const ActionArray clActions[] = {
    { AC::Rename, ASSET_Rename },
    { AC::Seek,   ASSET_Seek },
    { AC::Write,  ASSET_Write },
-   { 0, NULL }
+   { 0, nullptr }
 };
 
 struct prvFileAsset {
@@ -69,17 +69,17 @@ struct prvFileAsset {
 };
 
 static const MethodEntry clMethods[] = {
-   { asset::FileDelete::id, ASSET_Delete, "Delete", NULL, 0 },
-   { asset::FileMove::id,   ASSET_Move, "Move", NULL, 0 },
-   { 0, NULL, NULL, NULL, 0 }
+   { asset::FileDelete::id, ASSET_Delete, "Delete", nullptr, 0 },
+   { asset::FileMove::id,   ASSET_Move, "Move", nullptr, 0 },
+   { 0, nullptr, nullptr, nullptr, 0 }
 };
 
 static ERR close_dir(DirInfo *);
 static ERR open_dir(DirInfo *);
-static ERR get_info(std::string_view, FileInfo *, LONG);
-static ERR read_dir(CSTRING, DirInfo **, LONG);
+static ERR get_info(std::string_view, FileInfo *, int);
+static ERR read_dir(CSTRING, DirInfo **, int);
 static ERR scan_dir(DirInfo *);
-static ERR test_path(std::string &, LONG *);
+static ERR test_path(std::string &, int *);
 static AAssetManager * get_asset_manager(void);
 
 //********************************************************************************************************************
@@ -89,7 +89,7 @@ ERR add_asset_class(void)
    pf::Log log(__FUNCTION__);
    OpenInfo *openinfo;
    CSTRING classname;
-   LONG i;
+   int i;
 
    log.branch();
 
@@ -98,7 +98,7 @@ ERR add_asset_class(void)
       return ERR::InvalidState;
    }
 
-   classname = NULL;
+   classname = nullptr;
    if ((openinfo->Flags & OPF_OPTIONS) and (openinfo->Options)) {
       for (i=0; openinfo->Options[i].Tag != TAGEND; i++) {
          switch (openinfo->Options[i].Tag) {
@@ -178,7 +178,7 @@ void free_asset_class(void)
 
    VirtualAssign("assets", VAS_DEREGISTER, TAGEND);
 
-   if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = NULL; }
+   if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = nullptr; }
 }
 
 //********************************************************************************************************************
@@ -212,8 +212,8 @@ static ERR ASSET_Init(objFile *Self)
 
    // Allocate private structure
 
-   if (!AllocMemory(sizeof(prvFileAsset), Self->memflags(), &Self->ChildPrivate, NULL)) {
-      LONG len;
+   if (!AllocMemory(sizeof(prvFileAsset), Self->memflags(), &Self->ChildPrivate, nullptr)) {
+      int len;
       for (len=0; Self->Path[len]; len++);
 
       if (Self->Path[len-1] IS ':') {
@@ -222,7 +222,7 @@ static ERR ASSET_Init(objFile *Self)
       else if (Self->Path[len-1] IS '/') {
          // Check that the folder exists.
 
-         UBYTE dirpath[len];
+         uint8_t dirpath[len];
 
          StrCopy(Self->Path+LEN_ASSETS, dirpath);
 
@@ -236,7 +236,7 @@ static ERR ASSET_Init(objFile *Self)
          }
          else {
             FreeResource(Self->ChildPrivate);
-            Self->ChildPrivate = NULL;
+            Self->ChildPrivate = nullptr;
             return ERR::DoesNotExist;
          }
       }
@@ -254,7 +254,7 @@ static ERR ASSET_Init(objFile *Self)
          }
 
          FreeResource(Self->ChildPrivate);
-         Self->ChildPrivate = NULL;
+         Self->ChildPrivate = nullptr;
          return ERR::InvalidState;
       }
    }
@@ -284,7 +284,7 @@ static ERR ASSET_Read(objFile *Self, struct acRead *Args)
       if (Args->Result IS -1) {
          log.msg("Failed to read %d bytes from the file.", Args->Length);
          Args->Result = 0;
-         return ERR::Failed;
+         return ERR::Read;
       }
 
       // Return ERR::Okay even though not all data was read, because this was not due to a failure.
@@ -311,7 +311,7 @@ static ERR ASSET_Rename(objFile *Self, struct acRename *Args)
 static ERR ASSET_Seek(objFile *Self, struct acSeek *Args)
 {
    prvFileAsset *prv;
-   LONG method;
+   int method;
 
    if (!(prv = Self->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
 
@@ -351,7 +351,7 @@ static ERR SET_Permissions(objFile *Self, APTR Value)
 
 //********************************************************************************************************************
 
-static ERR GET_Size(objFile *Self, LARGE *Value)
+static ERR GET_Size(objFile *Self, int64_t *Value)
 {
    prvFileAsset *prv;
 
@@ -372,7 +372,7 @@ static ERR open_dir(DirInfo *Dir)
 {
    pf::Log log(__FUNCTION__);
    AAssetManager *mgr;
-   LONG len;
+   int len;
 
    log.traceBranch("%s", Dir->prvResolvedPath.c_str());
 
@@ -417,7 +417,7 @@ static ERR scan_dir(DirInfo *Dir)
             Dir->Info->Flags |= RDF::FILE;
             if ((Dir->prvFlags & RDF::SIZE) != RDF::NIL) Dir->Info->Size = AAsset_getLength(asset);
             AAsset_close(asset);
-            StrCopy(filename, Dir->Info->Name, MAX_FILENAME);
+            Dir->Info->Name = filename;
 
             Dir->prvIndex++;
             Dir->prvTotal++;
@@ -431,7 +431,7 @@ static ERR scan_dir(DirInfo *Dir)
             Dir->Info->Flags |= RDF::FOLDER;
             AAssetDir_close(dir);
 
-            StrCopy(filename, Dir->Info->Name, MAX_FILENAME);
+            Dir->Info->Name = filename;
 
             Dir->prvIndex++;
             Dir->prvTotal++;
@@ -453,7 +453,7 @@ static ERR close_dir(DirInfo *Dir)
 
    if (Dir->prvHandle) {
       AAssetDir_close(Dir->prvHandle);
-      Dir->prvHandle = NULL;
+      Dir->prvHandle = nullptr;
    }
 
    return ERR::Okay;
@@ -461,11 +461,11 @@ static ERR close_dir(DirInfo *Dir)
 
 //********************************************************************************************************************
 
-static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
+static ERR get_info(std::string_view Path, FileInfo *Info, int InfoSize)
 {
    pf::Log log(__FUNCTION__);
-   BYTE dir;
-   LONG i, len;
+   int8_t dir;
+   int i, len;
 
    // We need to open the file in order to retrieve its size.
 
@@ -507,33 +507,30 @@ static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
    i = len;
    if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) i--;
    while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
-   i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
+   Info->Name.assign(Path, i, std::string::npos);
 
    if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
-      if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';
-      else if (Info->Name[i-1] != '/') {
-         Info->Name[i++] = '/';
-         Info->Name[i] = 0;
-      }
+      if (Info->Name.ends_with('\\')) Info->Name[Info->Name.size() - 1] = '/';
+      else if (not Info->Name.ends_with('/')) Info->Name += '/';
    }
 
    Info->Permissions = 0;
    Info->UserID      = 0;
    Info->GroupID     = 0;
-   Info->Tags        = NULL;
+   Info->Tags        = nullptr;
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Test an assets: location.
 
-static ERR test_path(std::string &Path, LONG Flags, LOC *Type)
+static ERR test_path(std::string &Path, int Flags, LOC *Type)
 {
    pf::Log log(__FUNCTION__);
    AAssetManager *mgr;
    AAsset *asset;
    AAssetDir *dir;
-   LONG len;
+   int len;
 
    log.traceBranch("%s", Path);
 
@@ -581,12 +578,12 @@ static ERR test_path(std::string &Path, LONG Flags, LOC *Type)
 // Read the entire folder in one function call.
 
 #if 0
-static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
+static ERR read_dir(CSTRING Path, DirInfo **Result, int Flags)
 {
    DirInfo *dirinfo;
    AAssetDir *dir;
    AAssetManager *mgr;
-   LONG len;
+   int len;
 
    log.traceBranch("Path: %s, Flags: $%.8x", Path, Flags);
 
@@ -610,25 +607,25 @@ static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
       return ERR::InvalidPath;
    }
 
-   if (AllocMemory(sizeof(DirInfo), MEM::DATA, &dirinfo, NULL)) {
+   if (AllocMemory(sizeof(DirInfo), MEM::DATA, &dirinfo, nullptr)) {
       AAssetDir_close(dir);
       return ERR::AllocMemory;
    }
 
    const char *filename;
    FileInfo *entry, *current;
-   UBYTE assetpath[300];
-   LONG i;
+   uint8_t assetpath[300];
+   int i;
 
    // Read folder structure
 
-   current = NULL;
+   current = nullptr;
    dirinfo->Total = 0;
    ERR error = ERR::Okay;
-   LONG insert = StrCopy(Path+LEN_ASSETS, assetpath, sizeof(assetpath)-2);
+   int insert = StrCopy(Path+LEN_ASSETS, assetpath, sizeof(assetpath)-2);
    if (assetpath[insert-1] != '/') assetpath[insert++] = '/';
    while ((filename = AAssetDir_getNextFileName(dir)) and (!error)) {
-      entry = NULL;
+      entry = nullptr;
 
       StrCopy(filename, assetpath+insert, sizeof(assetpath)-insert-1);
       if (insert >= sizeof(assetpath)-1) {
@@ -639,8 +636,8 @@ static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
       AAsset *asset;
       if ((asset = AAssetManager_open(mgr, assetpath, AASSET_MODE_UNKNOWN))) {
          if ((Flags & RDF::FILE) != RDF::NIL) {
-            LONG size = sizeof(FileInfo) + strlen(filename) + 2;
-            if (!AllocMemory(size, MEM::DATA, &entry, NULL)) {
+            int size = sizeof(FileInfo) + strlen(filename) + 2;
+            if (!AllocMemory(size, MEM::DATA, &entry, nullptr)) {
                entry->Flags = RDF::FILE;
 
                if (Flags & RDF::PERMISSIONS) {
@@ -669,8 +666,8 @@ static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
          AAsset_close(asset);
       }
       else if ((Flags & RDF::FOLDER) != RDF::NIL) {
-         LONG size = sizeof(FileInfo) + strlen(filename) + 2;
-         if (!AllocMemory(size, MEM::DATA, &entry, NULL)) {
+         int size = sizeof(FileInfo) + strlen(filename) + 2;
+         if (!AllocMemory(size, MEM::DATA, &entry, nullptr)) {
             entry->Flags = RDF::FOLDER;
 
             if ((Flags & RDF::PERMISSIONS) != RDF::NIL) {
@@ -710,7 +707,7 @@ static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
          list = next;
       }
 
-      if (Result) *Result = NULL;
+      if (Result) *Result = nullptr;
       FreeResource(dirinfo);
       return error;
    }

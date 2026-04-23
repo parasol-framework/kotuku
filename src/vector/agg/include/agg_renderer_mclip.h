@@ -2,8 +2,8 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
@@ -16,7 +16,7 @@
 
 namespace agg
 {
-    template<class PixelFormat> 
+    template<class PixelFormat>
     class renderer_mclip {
     public:
         typedef PixelFormat pixfmt_type;
@@ -31,7 +31,7 @@ namespace agg
             m_ren.attach(pixf);
             reset_clipping(true);
         }
-          
+
         const pixfmt_type& ren() const { return m_ren.ren();  }
         pixfmt_type& ren() { return m_ren.ren();  }
 
@@ -58,13 +58,13 @@ namespace agg
            }
         }
 
-        bool next_clip_box() { 
+        bool next_clip_box() {
             if (++m_curr_cb < m_clip.size()) {
                 const rect_i& cb = m_clip[m_curr_cb];
                 m_ren.clip_box_naked(cb.x1, cb.y1, cb.x2, cb.y2);
                 return true;
             }
-            return false; 
+            return false;
         }
 
         void reset_clipping(bool visibility) {
@@ -73,9 +73,9 @@ namespace agg
             m_curr_cb = 0;
             m_bounds = m_ren.clip_box();
         }
-        
+
         void add_clip_box(int x1, int y1, int x2, int y2) {
-            rect_i cb(x1, y1, x2, y2); 
+            rect_i cb(x1, y1, x2, y2);
             cb.normalize();
             if (cb.clip(rect_i(0, 0, width() - 1, height() - 1))) {
                 m_clip.add(cb);
@@ -87,7 +87,7 @@ namespace agg
         }
 
         void clear(const color_type& c) { m_ren.clear(c); }
-          
+
         void copy_pixel(int x, int y, const color_type& c) {
             first_clip_box();
             do {
@@ -231,7 +231,7 @@ namespace agg
             while(next_clip_box());
         }
 
-        
+
     private:
         renderer_mclip(const renderer_mclip<PixelFormat>&);
         const renderer_mclip<PixelFormat> & operator = (const renderer_mclip<PixelFormat>&);

@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+The source code for Kōtuku is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
@@ -13,8 +13,8 @@ Name: Events
 
 #include "defs.h"
 
-static const std::array<CSTRING, LONG(EVG::END)> glEventGroups = {
-   NULL,
+static constexpr std::array<CSTRING, int(EVG::END)> glEventGroups = {
+   nullptr,
    "filesystem",
    "network",
    "system",
@@ -34,22 +34,22 @@ struct eventsub {
    struct eventsub *Next, *Prev;
    EVENTID  EventID;
    EVENTID  EventMask;
-   void     (*Callback)(APTR Info, LONG Size, APTR Meta);
+   void     (*Callback)(APTR Info, int Size, APTR Meta);
    APTR     CallbackMeta;
    EVG      Group;
-   UBYTE    Called;
+   uint8_t    Called;
    OBJECTID ContextID;
 
    inline CSTRING groupName() {
-      return glEventGroups[UBYTE(Group)];
+      return glEventGroups[uint8_t(Group)];
    }
 };
 
-static struct eventsub *glEventList = NULL;
-static UBYTE glCallSignal = 0;
+static struct eventsub *glEventList = nullptr;
+static uint8_t glCallSignal = 0;
 static bool glEventListAltered = false;
 
-static ankerl::unordered_dense::map<ULONG, std::string> glEventNames;
+static ankerl::unordered_dense::map<uint32_t, std::string> glEventNames;
 
 //********************************************************************************************************************
 
@@ -67,7 +67,7 @@ void free_events(void)
       event = next;
    }
 
-   glEventList = NULL;
+   glEventList = nullptr;
 }
 
 /*********************************************************************************************************************
@@ -95,18 +95,18 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR BroadcastEvent(APTR Event, LONG EventSize)
+ERR BroadcastEvent(APTR Event, int EventSize)
 {
    pf::Log log(__FUNCTION__);
 
    if ((!Event) or ((size_t)EventSize < sizeof(pf::Event))) return ERR::NullArgs;
 
-   LONG groupmask = 1<<((((pf::Event *)Event)->EventID>>56) & 0xff);
+   int groupmask = 1<<((((pf::Event *)Event)->EventID>>56) & 0xff);
 
    if (glEventMask & groupmask) {
       log.trace("Broadcasting event $%.8x%.8x",
-         (ULONG)(((pf::Event *)Event)->EventID>>32 & 0xffffffff),
-         (ULONG)(((pf::Event *)Event)->EventID));
+         (uint32_t)(((pf::Event *)Event)->EventID>>32 & 0xffffffff),
+         (uint32_t)(((pf::Event *)Event)->EventID));
       SendMessage(MSGID::EVENT, MSF::NIL, Event, EventSize);
    }
 
@@ -147,18 +147,26 @@ int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
 
    if (Group IS EVG::NIL) return 0;
 
-   auto hash_subgroup = strhash(SubGroup) & 0x00ffffff;
-   auto hash_event = strhash(Event);
+   auto hash_subgroup = 0u;
+   auto hash_event = 0u;
+   auto subgroup_name = SubGroup;
+   auto event_name = Event;
 
-   int64_t event_id = int64_t(UBYTE(Group))<<56;
+   if (SubGroup) hash_subgroup = strhash(SubGroup) & 0x00ffffff;
+   else subgroup_name = "*";
+
+   if (Event) hash_event = strhash(Event);
+   else event_name = "*";
+
+   int64_t event_id = int64_t(uint8_t(Group))<<56;
    if ((SubGroup) and (SubGroup[0] != '*')) event_id |= int64_t(hash_subgroup)<<32;
    if ((Event) and (Event[0] != '*')) event_id |= hash_event;
 
-   glEventNames[hash_subgroup] = SubGroup;
-   glEventNames[hash_event]    = Event;
+   if (SubGroup) glEventNames[hash_subgroup] = SubGroup;
+   if (Event) glEventNames[hash_event] = Event;
 
    log.traceBranch("Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x",
-      LONG(Group), SubGroup, Event, ULONG(event_id>>32), ULONG(event_id));
+      int(Group), subgroup_name, event_name, uint32_t(event_id>>32), uint32_t(event_id));
 
    return event_id;
 }
@@ -197,9 +205,9 @@ ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
 
    if (!Callback->isC()) return ERR::Args; // Currently only StdC callbacks are accepted.
 
-   auto gid = EVG(UBYTE(EventID>>56));
+   auto gid = EVG(uint8_t(EventID>>56));
 
-   if ((LONG(gid) < 1) or (LONG(gid) >= LONG(EVG::END))) {
+   if ((int(gid) < 1) or (int(gid) >= int(EVG::END))) {
       return log.warning(ERR::Args);
    }
 
@@ -210,21 +218,21 @@ ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
 
       OBJECTPTR context = CurrentContext();
       event->EventID   = EventID;
-      event->Callback  = (void (*)(APTR, LONG, APTR))Callback->Routine;
+      event->Callback  = (void (*)(APTR, int, APTR))Callback->Routine;
       event->CallbackMeta = Callback->Meta;
       event->Group     = gid;
       event->ContextID = context->UID;
       event->Next      = glEventList;
-      event->Prev      = NULL;
+      event->Prev      = nullptr;
       event->EventMask = mask;
 
       if (glEventList) glEventList->Prev = event;
       glEventList = event;
 
-      glEventMask |= 1<<UBYTE(event->Group);
+      glEventMask |= 1<<uint8_t(event->Group);
 
-      auto it_subgroup = glEventNames.find(ULONG(EventID>>32) & 0x00ffffff);
-      auto it_name = glEventNames.find(ULONG(EventID));
+      auto it_subgroup = glEventNames.find(uint32_t(EventID>>32) & 0x00ffffff);
+      auto it_name = glEventNames.find(uint32_t(EventID));
       if ((it_subgroup != glEventNames.end()) and (it_name != glEventNames.end())) {
          log.function("Handle: %p, Mask: $%.8x, %s.%s.%s",
             event, glEventMask, event->groupName(), it_subgroup->second.c_str(), it_name->second.c_str());
@@ -260,8 +268,8 @@ void UnsubscribeEvent(APTR Handle)
    if (!glEventList) return; // All events have already been freed (i.e. Core is closing)
 
    auto event = (eventsub *)Handle;
-   auto it_subgroup = glEventNames.find(ULONG(event->EventID>>32) & 0x00ffffff);
-   auto it_name = glEventNames.find(ULONG(event->EventID));
+   auto it_subgroup = glEventNames.find(uint32_t(event->EventID>>32) & 0x00ffffff);
+   auto it_name = glEventNames.find(uint32_t(event->EventID));
 
    if ((it_subgroup != glEventNames.end()) and (it_name != glEventNames.end())) {
       log.function("Handle: %p, %s.%s.%s", event, event->groupName(), it_subgroup->second.c_str(), it_name->second.c_str());
@@ -280,7 +288,7 @@ void UnsubscribeEvent(APTR Handle)
       if (scan->Group IS event->Group) break;
       scan = scan->Next;
    }
-   if (!scan) glEventMask = glEventMask & (~(1<<UBYTE(event->Group)));
+   if (!scan) glEventMask = glEventMask & (~(1<<uint8_t(event->Group)));
 
    free(event);
 
@@ -290,7 +298,7 @@ void UnsubscribeEvent(APTR Handle)
 //********************************************************************************************************************
 // ProcessMessages() will call this function whenever a MSGID::EVENT message is received.
 
-ERR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERR msg_event(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -298,8 +306,8 @@ ERR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 
    pf::Event *event_msg = (pf::Event *)Message;
 
-   log.msg(VLF::DETAIL|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((event_msg->EventID>>32)& 0xffffffff),
-      (LONG)(event_msg->EventID & 0xffffffff));
+   log.msg(VLF::DETAIL|VLF::BRANCH, "Event $%.8x%8x has been received.", (int)((event_msg->EventID>>32)& 0xffffffff),
+      (int)(event_msg->EventID & 0xffffffff));
 
    struct eventsub *event;
    glCallSignal++;

@@ -9,11 +9,11 @@ Guy Eric Schalnat.
 -MODULE-
 Backstage: Provides a REST backend for interacting with the process over the network.
 
-Backstage provides a REST backend for users and applications to interact with a Parasol program while it is running.
+Backstage provides a REST backend for users and applications to interact with a Kōtuku program while it is running.
 The module does not expose any API functionality, and is instead enabled by the user by specifying
 `--backstage [port]` on the commandline.  If the command is omitted then backstage will do nothing.
 
-The REST API and documentation on how to use Backstage is documented in the Parasol Wiki.
+The REST API and documentation on how to use Backstage is documented in the Kotuku Wiki.
 
 -END-
 
@@ -21,14 +21,14 @@ The REST API and documentation on how to use Backstage is documented in the Para
 
 #define PRV_BACKSTAGE
 
-#include <parasol/main.h>
-#include <parasol/modules/backstage.h>
-#include <parasol/modules/network.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/backstage.h>
+#include <kotuku/modules/network.h>
+#include <kotuku/strings.hpp>
 
 using namespace pf;
 
-static OBJECTPTR modNetwork = NULL;
+static OBJECTPTR modNetwork = nullptr;
 
 JUMPTABLE_CORE
 JUMPTABLE_NETWORK
@@ -49,23 +49,24 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Parse commandline arguments to confirm if the user wants to enable Backstage.
 
-   auto info = (OpenInfo *)GetResourcePtr(RES::OPEN_INFO);
-   for (int i=0; i < info->ArgCount; i++) {
-      if (pf::iequals(info->Args[i], "--backstage")) {
-         if (i + 1 < info->ArgCount) {
-            int port = atoi(info->Args[i + 1]);
-            if (port > 0) {
-               init_backstage(port);
-               break;
+   if (auto state = GetSystemState()) {
+      for (int i=0; i < state->OpenInfo->ArgCount; i++) {
+         if (pf::iequals(state->OpenInfo->Args[i], "--backstage")) {
+      	   if (i + 1 < state->OpenInfo->ArgCount) {
+      		   int port = atoi(state->OpenInfo->Args[i + 1]);
+      		   if (port > 0) {
+      		      init_backstage(port);
+      		      break;
+      	      }
+               else {
+                  log.warning("Invalid port number %d specified for --backstage.", port);
+                  return ERR::InvalidValue;
+               }
             }
             else {
-               log.warning("Invalid port number %d specified for --backstage.", port);
-               return ERR::InvalidValue;
+               log.warning("No port specified for --backstage.");
+               return ERR::Failed;
             }
-         }
-         else {
-            log.warning("No port specified for --backstage.");
-            return ERR::Failed;
          }
       }
    }
@@ -77,7 +78,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (modNetwork) { FreeResource(modNetwork); modNetwork = NULL; }
+   if (modNetwork) { FreeResource(modNetwork); modNetwork = nullptr; }
    return ERR::Okay;
 }
 
@@ -126,6 +127,6 @@ ERR init_backstage(int Port)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_backstage_module() { return &ModHeader; }
 

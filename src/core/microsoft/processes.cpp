@@ -1,6 +1,12 @@
 
 static void assign_group(HANDLE Process);
 
+static uint64_t unique_pipe_id(void)
+{
+   static std::atomic_uint64_t glPipeID = 0;
+   return ++glPipeID;
+}
+
 extern "C" void deregister_process_pipes(APTR Self, HANDLE ProcessHandle);
 extern "C" void register_process_pipes(APTR Self, HANDLE ProcessHandle);
 extern "C" void task_register_stdout(APTR Task, HANDLE Handle);
@@ -49,7 +55,7 @@ static void assign_group(HANDLE Process)
 
       // Create the job object
 
-      if (!(job = CreateJobObject(NULL, NULL))) {
+      if (!(job = CreateJobObject(nullptr, nullptr))) {
          // Failure
          return;
       }
@@ -88,7 +94,7 @@ extern "C" void winResetStdOut(struct winprocess *Process, char *Buffer, DWORD *
    Buffer[0] = Process->OutBuffer[0];
 
    DWORD avail = 0; // Check if there is data available on the pipe
-   if (PeekNamedPipe(Process->PipeOut.Read, NULL, 0, NULL, &avail, NULL)) {
+   if (PeekNamedPipe(Process->PipeOut.Read, nullptr, 0, nullptr, &avail, nullptr)) {
       if (!avail) {
          *Size = 1;
          return;
@@ -122,7 +128,7 @@ extern "C" void winResetStdErr(struct winprocess *Process, char *Buffer, DWORD *
    Buffer[0] = Process->ErrBuffer[0]; // A byte is always read into this buffer due to the overlapped ReadFile() call
 
    DWORD avail = 0;  // Check if there is more data available on the pipe and read it
-   if (PeekNamedPipe(Process->PipeErr.Read, NULL, 0, NULL, &avail, NULL)) {
+   if (PeekNamedPipe(Process->PipeErr.Read, nullptr, 0, nullptr, &avail, nullptr)) {
       if (!avail) {
          MSG("Nothing more available on the pipe.");
          *Size = 1;
@@ -148,8 +154,8 @@ extern "C" void winResetStdErr(struct winprocess *Process, char *Buffer, DWORD *
 
 //********************************************************************************************************************
 
-extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir, BYTE Group, BYTE InternalRedirect,
-   struct winprocess **ProcessResult, char HideWindow, char *RedirectStdOut, char *RedirectStdErr, LONG *ProcessID)
+extern "C" int winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir, int8_t Group, int8_t InternalRedirect,
+   struct winprocess **ProcessResult, char HideWindow, char *RedirectStdOut, char *RedirectStdErr, int *ProcessID)
 {
    SECURITY_ATTRIBUTES sa;
 
@@ -175,8 +181,17 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
 
    auto process = (struct winprocess *)calloc(1, sizeof(struct winprocess));
    if (InternalRedirect) {
+      auto pipe_id = unique_pipe_id();
+      char stdout_pipe[128];
+      char stderr_pipe[128];
+
+      snprintf(stdout_pipe, sizeof(stdout_pipe), "\\\\.\\pipe\\ktout-%lu-%llu",
+         GetCurrentProcessId(), (unsigned long long)pipe_id);
+      snprintf(stderr_pipe, sizeof(stderr_pipe), "\\\\.\\pipe\\kterr-%lu-%llu",
+         GetCurrentProcessId(), (unsigned long long)pipe_id);
+
       sa.nLength = sizeof(sa);
-      sa.lpSecurityDescriptor = NULL;
+      sa.lpSecurityDescriptor = nullptr;
       sa.bInheritHandle = TRUE;
 
       start.dwFlags |= STARTF_USESTDHANDLES;
@@ -184,14 +199,14 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
       // STDOUT
       if (InternalRedirect & TSTD_OUT) {
          HANDLE newhd;
-         if ((process->PipeOut.Read = CreateNamedPipe("\\\\.\\pipe\\rkout", PIPE_ACCESS_INBOUND|FILE_FLAG_OVERLAPPED, PIPE_READMODE_BYTE, 1, 4096, 4096, 1000, &sa)) != INVALID_HANDLE_VALUE) {
-            if ((process->PipeOut.Write = CreateFile("\\\\.\\pipe\\rkout", FILE_WRITE_DATA|SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)) != INVALID_HANDLE_VALUE) {
+         if ((process->PipeOut.Read = CreateNamedPipe(stdout_pipe, PIPE_ACCESS_INBOUND|FILE_FLAG_OVERLAPPED, PIPE_READMODE_BYTE, 1, 4096, 4096, 1000, &sa)) != INVALID_HANDLE_VALUE) {
+            if ((process->PipeOut.Write = CreateFile(stdout_pipe, FILE_WRITE_DATA|SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)) != INVALID_HANDLE_VALUE) {
                if (DuplicateHandle(GetCurrentProcess(), process->PipeOut.Read, GetCurrentProcess(), &newhd, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
                   CloseHandle(process->PipeOut.Read);
                   process->PipeOut.Read = newhd;
                   start.hStdOutput = process->PipeOut.Write; // The child process will be writing to stdout
 
-                  if ((process->StdOutEvent = CreateEvent(NULL, TRUE, TRUE, NULL))) {
+                  if ((process->StdOutEvent = CreateEvent(nullptr, TRUE, TRUE, nullptr))) {
                      process->OutOverlap.hEvent     = process->StdOutEvent;
                      process->OutOverlap.Offset     = 0;
                      process->OutOverlap.OffsetHigh = 0;
@@ -207,20 +222,20 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
             }
             else { MSG("CreateFile() failed.\n"); winerror = GetLastError(); }
          }
-         else { MSG("CreateNamedPipe(rkout) failed.\n"); winerror = GetLastError(); }
+         else { MSG("CreateNamedPipe(%s) failed.\n", stdout_pipe); winerror = GetLastError(); }
       }
 
       if ((InternalRedirect & TSTD_ERR) and (!winerror)) {
          // STDERR
          HANDLE newhd;
-         if ((process->PipeErr.Read = CreateNamedPipe("\\\\.\\pipe\\rkerr", PIPE_ACCESS_INBOUND|FILE_FLAG_OVERLAPPED, PIPE_READMODE_BYTE, 1, 4096, 4096, 1000, &sa)) != INVALID_HANDLE_VALUE) {
-            if ((process->PipeErr.Write = CreateFile("\\\\.\\pipe\\rkerr", FILE_WRITE_DATA|SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)) != INVALID_HANDLE_VALUE) {
+         if ((process->PipeErr.Read = CreateNamedPipe(stderr_pipe, PIPE_ACCESS_INBOUND|FILE_FLAG_OVERLAPPED, PIPE_READMODE_BYTE, 1, 4096, 4096, 1000, &sa)) != INVALID_HANDLE_VALUE) {
+            if ((process->PipeErr.Write = CreateFile(stderr_pipe, FILE_WRITE_DATA|SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)) != INVALID_HANDLE_VALUE) {
                if (DuplicateHandle(GetCurrentProcess(), process->PipeErr.Read, GetCurrentProcess(), &newhd, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
                   CloseHandle(process->PipeErr.Read);
                   process->PipeErr.Read = newhd;
                   start.hStdError  = process->PipeErr.Write; // The child process will be writing to stderr
 
-                  if ((process->StdErrEvent = CreateEvent(NULL, TRUE, TRUE, NULL))) {
+                  if ((process->StdErrEvent = CreateEvent(nullptr, TRUE, TRUE, nullptr))) {
                      process->ErrOverlap.hEvent     = process->StdErrEvent;
                      process->ErrOverlap.Offset     = 0;
                      process->ErrOverlap.OffsetHigh = 0;
@@ -236,7 +251,7 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
             }
             else { MSG("CreateFile() failed.\n"); winerror = GetLastError(); }
          }
-         else { MSG("CreateNamedPipe(rkerr) failed.\n"); winerror = GetLastError(); }
+         else { MSG("CreateNamedPipe(%s) failed.\n", stderr_pipe); winerror = GetLastError(); }
       }
 
       // STDIN.  Some programs get upset if an FD for stdin isn't present, so provide
@@ -252,7 +267,7 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
             process->PipeIn.Write = 0;
          }
       }
-      else { MSG("CreateNamedPipe(rkin) failed.\n"); winerror = GetLastError(); }
+      else { MSG("CreateNamedPipe(ktin) failed.\n"); winerror = GetLastError(); }
 
       if (!winerror) {
          // Event handling for incoming data
@@ -276,7 +291,7 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
 
       if (!pid) {
          winFreeProcess(process);
-         process = NULL;
+         process = nullptr;
       }
    }
    else {
@@ -294,10 +309,10 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
          start.dwFlags |= STARTF_USESTDHANDLES;
 
          sa.nLength              = sizeof(SECURITY_ATTRIBUTES);
-         sa.lpSecurityDescriptor = NULL;
+         sa.lpSecurityDescriptor = nullptr;
          sa.bInheritHandle       = TRUE;
 
-         start.hStdOutput = CreateFile(RedirectStdOut, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+         start.hStdOutput = CreateFile(RedirectStdOut, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
          inherit = TRUE;
       }
 
@@ -309,9 +324,9 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
             start.dwFlags |= STARTF_USESTDHANDLES;
 
             sa.nLength              = sizeof(SECURITY_ATTRIBUTES);
-            sa.lpSecurityDescriptor = NULL;
+            sa.lpSecurityDescriptor = nullptr;
             sa.bInheritHandle       = TRUE;
-            start.hStdError = CreateFile(RedirectStdErr, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            start.hStdError = CreateFile(RedirectStdErr, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
             inherit = TRUE;
          }
       }
@@ -330,6 +345,7 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
          if (Group) assign_group(info.hProcess);
 
          ResumeThread(info.hThread); // Required as process was created with CREATE_SUSPENDED
+         CloseHandle(info.hThread);
       }
       else winerror = GetLastError();
 
@@ -338,7 +354,7 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
 
       if (!pid) {
          winFreeProcess(process);
-         process = NULL;
+         process = nullptr;
       }
    }
 
@@ -370,19 +386,19 @@ extern "C" ERR winGetExitCodeProcess(struct winprocess *Process, LPDWORD Code)
 
 //********************************************************************************************************************
 
-extern "C" LONG winWriteStd(struct winprocess *Platform, APTR Buffer, DWORD Size)
+extern "C" int winWriteStd(struct winprocess *Platform, APTR Buffer, DWORD Size)
 {
    if (!Buffer) {
       // Close the process' stdin FD
       if (Platform->PipeIn.Write) CloseHandle(Platform->PipeIn.Write);
       if (Platform->PipeIn.Read) CloseHandle(Platform->PipeIn.Read);
-      Platform->PipeIn.Write = NULL;
-      Platform->PipeIn.Read = NULL;
+      Platform->PipeIn.Write = nullptr;
+      Platform->PipeIn.Read = nullptr;
       return 0;
    }
 
    DWORD result;
-   if (WriteFile(Platform->PipeIn.Write, Buffer, Size, &result, NULL)) {
+   if (WriteFile(Platform->PipeIn.Write, Buffer, Size, &result, nullptr)) {
       return 0;
    }
    else return GetLastError();
@@ -392,7 +408,7 @@ extern "C" LONG winWriteStd(struct winprocess *Platform, APTR Buffer, DWORD Size
 // Designed for reading from stdin/out/err pipes.  Returns -1 on general error, -2 if the pipe is broken, e.g. child
 // process is dead.
 
-extern "C" LONG winReadStd(struct winprocess *Platform, LONG Type, APTR Buffer, DWORD *Size)
+extern "C" int winReadStd(struct winprocess *Platform, int Type, APTR Buffer, DWORD *Size)
 {
    if (!Platform) {
       MSG("winReadStd() No Platform parameter specified.\n");
@@ -418,7 +434,7 @@ extern "C" LONG winReadStd(struct winprocess *Platform, LONG Type, APTR Buffer, 
    }
 
    DWORD avail = 0;
-   if (!PeekNamedPipe(FD, NULL, 0, NULL, &avail, NULL)) {
+   if (!PeekNamedPipe(FD, nullptr, 0, nullptr, &avail, nullptr)) {
       MSG("winReadStd() PeekNamedPipe() failed.\n");
       if (GetLastError() == ERROR_BROKEN_PIPE) return -2;
       else return -1;
@@ -451,7 +467,7 @@ extern "C" LONG winReadStd(struct winprocess *Platform, LONG Type, APTR Buffer, 
 
 //********************************************************************************************************************
 
-extern "C" HANDLE winCreateThread(LPTHREAD_START_ROUTINE Function, APTR Arg, LONG StackSize, DWORD *ID)
+extern "C" HANDLE winCreateThread(LPTHREAD_START_ROUTINE Function, APTR Arg, int StackSize, DWORD *ID)
 {
    HANDLE handle;
 
@@ -460,4 +476,3 @@ extern "C" HANDLE winCreateThread(LPTHREAD_START_ROUTINE Function, APTR Arg, LON
    }
    else return 0;
 }
-

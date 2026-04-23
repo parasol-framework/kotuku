@@ -116,14 +116,14 @@ SSL_ERROR_CODE ssl_read(SSL_HANDLE SSL, void *Buffer, int BufferSize, int* Bytes
                      break;
                   }
                }
-               
+
                if (extra_bytes > 0) {
                   SSL->recv_buffer.compact(SSL->recv_buffer.size() - extra_bytes);
                }
                else {
                   SSL->recv_buffer.reset();
                }
-               
+
                set_error_status(SSL, status);
                return SSL_ERROR_FAILED;
             }

@@ -8,10 +8,10 @@
     <module>HTTP</module>
     <comment>Provides a complete working implementation of HTTP.</comment>
     <version>1</version>
-    <id>7c9813c5</id>
+    <id>8ab62046</id>
     <idstring>HTTP</idstring>
     <category>Network</category>
-    <copyright>Paul Manias © 2005-2025</copyright>
+    <copyright>Paul Manias © 2005-2026</copyright>
     <description>
 <p>The HTTP class provides a way of interacting with servers that support the HTTP protocol.  Supported HTTP methods include <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>DELETE</code>, <code>COPY</code>, <code>MOVE</code>, <code>MKCOL</code> and more.  The following features are included:</p>
 <list type="bullet">
@@ -29,7 +29,7 @@
 <header>Receiving Content</header>
 <p>There are three possible methods for content download.  This first example downloads content to a temporary file for further processing:</p>
 <pre>http = obj.new('http', {
-   src        = 'http://www.parasol.ws/index.html',
+   src        = 'http://www.kotuku.dev/index.html',
    method     = 'get',
    outputFile = 'temp:index.html',
    stateChanged = function(HTTP, State)
@@ -42,7 +42,7 @@ http.acActivate()
 <p>This example uses data feeds to push the downloaded data to another object in text format:</p>
 <pre>doc = obj.new('scintilla')
 http = obj.new('http', {
-   src        = 'http://www.parasol.ws/index.html',
+   src        = 'http://www.kotuku.dev/index.html',
    method     = 'get',
    datatype   = 'text',
    objectMode = 'DATA_FEED',
@@ -58,38 +58,43 @@ http.acActivate()
 <p>Secure sockets are supported and can be enabled by setting the <fl>Port</fl> to 443 prior to connection, or by using <code>https://</code> in URI strings.  Methods of communication remain unchanged when using SSL, as encrypted communication is handled transparently.</p></description>
     <source>
       <file>http.cpp</file>
+      <file>http_fields.cpp</file>
     </source>
   </info>
 
   <actions>
     <action>
       <name>Activate</name>
-      <comment>Executes an HTTP method.</comment>
+      <comment>Sends an HTTP request to the host.</comment>
       <prototype>ERR acActivate(*Object)</prototype>
       <description>
-<p>This action starts an HTTP operation against a target server.  Based on the desired <fl>Method</fl>, an HTTP request will be sent to the target server and the action will immediately return whilst the HTTP object will wait for a response from the server.  If the server fails to respond within the time period indicated by the <fl>ConnectTimeout</fl>, the HTTP object will be deactivated (for further details, refer to the <action>Deactivate</action> action).</p>
-<p>Successful interpretation of the HTTP request at the server will result in a response being received, followed by file data (if applicable). The HTTP response code will be stored in the <fl>Status</fl> field.  The HTTP object will automatically parse the response data and store the received values in the HTTP object as variable fields.  It is possible to be alerted to the complete receipt of a response by listening to the <fl>CurrentState</fl> field, or waiting for the Deactivate action to kick in.</p>
-<p>Following a response, incoming data can be managed in a number of ways. It may be streamed to an object referenced by the <fl>OutputObject</fl> field through data feeds.  It can be written to the target object if the <fl>ObjectMode</fl> is set to <code>READ_WRITE</code>.  Finally it can be received through C style callbacks if the <fl>Incoming</fl> field is set.</p>
+<p>This action sends an HTTP request to the targeted <fl>Host</fl>.  Based on the desired <fl>Method</fl>, an HTTP request will be sent to the host and the action will return whilst the HTTP object waits for a response from the server.  If the host fails to respond within the time period indicated by the <fl>ConnectTimeout</fl>, the HTTP object will be deactivated and the <fl>CurrentState</fl> set to <code>TERMINATED</code>.</p>
+<p>Successful parsing of the HTTP request at the host will result in a response being received, followed by content data (if applicable). The HTTP response code will be stored in the <fl>Status</fl> field.  The response will be parsed automatically with the header strings stored as key-values.  To receive notice of the parsed response, hook into the <fl>StateChanged</fl> callback.</p>
+<p>Incoming HTTP content can be managed in the following ways: It may be streamed to an object referenced by the <fl>OutputObject</fl> field through data feeds.  It can be written to the target object if the <fl>ObjectMode</fl> is set to <code>READ_WRITE</code>.  Or it can be received through the <fl>Incoming</fl> callback.</p>
 <p>On completion of an HTTP request, the <action>Deactivate</action> action is called, regardless of the level of success.</p>
       </description>
       <result>
         <error code="Okay">The HTTP get operation was successfully started.</error>
         <error code="Failed">The HTTP get operation failed immediately for an unspecified reason.</error>
         <error code="File">Failed to create a target file if the OutputFile field was set.</error>
+        <error code="NoData">Input file is empty or has no data for POST/PUT operations.</error>
         <error code="Write">Failed to write data to the HTTP <class name="NetSocket">NetSocket</class>.</error>
+        <error code="FieldNotSet">Required fields are not set (e.g. destination for COPY/MOVE methods, or data source for POST/PUT methods).</error>
         <error code="CreateObject">Failed to create a <class name="NetSocket">NetSocket</class> object.</error>
+        <error code="NotInitialised">The HTTP object has not been initialised.</error>
         <error code="HostNotFound">DNS resolution of the domain name in the URI failed.</error>
+        <error code="ConnectionRefused">The connection to the server was refused.</error>
+        <error code="Recursion">Function was called recursively.</error>
       </result>
     </action>
 
     <action>
       <name>Deactivate</name>
-      <comment>Cancels the current download.  Can also signal the end to a download if subscribed.</comment>
+      <comment>Ends the current HTTP request.</comment>
       <prototype>ERR acDeactivate(*Object)</prototype>
       <description>
-<p>Following the completion of an HTTP request, the Deactivate() action will be called internally to signal an end to the process.  By listening to the Deactivate action(), you are given the opportunity to respond to the end of an HTTP request.</p>
-<p>If child objects are initialised to the HTTP object, they will be activated automatically.  This feature is provided to assist scripted usage of the HTTP object.</p>
-<p>Active HTTP requests can be manually cancelled by calling the Deactivate() action at any time.</p>
+<p>Following the completion of an HTTP request, the Deactivate() action will be called internally to signal an end to the process.  Subscribing to Deactivate() is an effective means of responding to the end of a single HTTP request.</p>
+<p>Active HTTP requests can be manually cancelled by calling Deactivate() at any time.  Deactivation does not necessarily result in closure of the socket.</p>
       </description>
     </action>
 
@@ -106,7 +111,7 @@ http.acActivate()
 
     <action>
       <name>SetKey</name>
-      <comment>Options to pass in the HTTP method header can be set as key-values.</comment>
+      <comment>Options for the HTTP header can be set as key-values.</comment>
       <prototype>ERR acSetKey(*Object, CSTRING Key, CSTRING Value)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of the target key.</param>
@@ -140,13 +145,6 @@ http.acActivate()
     </field>
 
     <field>
-      <name>ClientData</name>
-      <comment>This unused field value can be used for storing private data.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>APTR</type>
-    </field>
-
-    <field>
       <name>ConnectTimeout</name>
       <comment>The initial connection timeout value, measured in seconds.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -163,7 +161,7 @@ http.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type>INT64</type>
       <description>
-<p>HTTP servers will return a ContentLength value in their response headers when retrieving information.  This value is defined here once the response header is processed.  The ContentLength may be set to <code>-1</code> if the content is being streamed from the server.</p>
+<p>HTTP servers will return a <code>content-length</code> value in their response headers when retrieving information.  This value is defined here once the response header is processed.  The ContentLength may be set to <code>-1</code> if the content is being streamed from the server.</p>
 <p>Note that if posting data to a server with an <fl>InputFile</fl> or <fl>InputObject</fl> as the source, the <fl>Size</fl> field will have priority and override any existing value in ContentLength.  In all other cases the ContentLength can be set directly and a setting of <code>-1</code> can be used for streaming.</p>
       </description>
     </field>
@@ -220,7 +218,8 @@ http.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type>ERR</type>
       <description>
-<p>On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful then the value will be zero (<code>ERR::Okay</code>). It should be noted that certain error codes may not necessarily indicate failure - for instance, an <code>ERR::TimeOut</code> error may be received on termination of streamed content.  For genuine HTTP error codes, see the <fl>Status</fl> field.</p>
+<p>On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful then the value will <code>ERR::Okay</code>. It should be noted that certain error codes may not necessarily indicate a comms failure - for instance, an <code>ERR::TimeOut</code> error may be received on termination of streamed content; while <code>ERR::NotAuthorised</code> is a credentials issue.</p>
+<p>The recommended process for error checking is: 1. Check if the <fl>CurrentState</fl> is <code>COMPLETED</code> or <code>TERMINATED</code>; 2. Check the <fl>Status</fl> field for zero; 3. Check the <fl>Error</fl> field for the error code.</p>
       </description>
     </field>
 
@@ -250,18 +249,18 @@ http.acActivate()
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the callback routine is <code>ERR Function(*HTTP, APTR Data, int Length)</code>.</p>
-<p>If an error code of <code>ERR::Terminate</code> is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
+<p>Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the callback routine is <code>ERR Function(*HTTP, APTR Data, INT Length)</code>.  For scripts the format is <code>Function(HTTP, Array)</code>.</p>
+<p>If an error code of <code>ERR::Terminate</code> is returned or raised by the callback routine, the currently executing HTTP request will be cancelled.</p>
       </description>
     </field>
 
     <field>
       <name>Index</name>
-      <comment>Indicates download progress in terms of bytes received.</comment>
+      <comment>Indicates the total bytes received during content transfer.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT64</type>
       <description>
-<p>If an HTTP <code>GET</code> request is executed, the Index field will reflect the number of bytes that have been received. This field is updated continuously until either the download is complete or cancelled.</p>
+<p>If an HTTP <code>GET</code> request is executed, the Index field will reflect the number of bytes that have been received. This field is updated continuously until all content is received or the process is cancelled.</p>
 <p>The Index value will always start from zero when downloading, even in resume mode.</p>
 <p>The Index field can be monitored for changes so that progress during send and receive transmissions can be tracked.</p>
       </description>
@@ -302,7 +301,7 @@ http.acActivate()
 
     <field>
       <name>Method</name>
-      <comment>The HTTP instruction to execute is defined here (defaults to <code>GET</code>).</comment>
+      <comment>The HTTP instruction to execute (defaults to <code>GET</code>).</comment>
       <access read="R" write="S">Read/Set</access>
       <type lookup="HTM">HTM</type>
       <description>
@@ -329,8 +328,8 @@ http.acActivate()
       <description>
 <p>Outgoing data can be sent procedurally by setting this field with a callback routine.</p>
 <p>In C++ the function prototype is <code>ERR Function(*HTTP, std::vector&lt;uint8_t&gt; &amp;Buffer, APTR Meta)</code>. Write content to the <code>Buffer</code> and the final size will determine the amount of data sent to the server. Alternatively use the Write() action, although this will be less efficient.</p>
-<p>For scripting languages like Fluid, the function prototype is <code>function(HTTP)</code>.  Use the Write() action to send data to the server.</p>
-<p>If an error code of <code>ERR::Terminate</code> is returned by the callback routine, any remaining data will be sent and the transfer will be treated as having completed successfully.  Use <code>ERR::TimeOut</code> if data cannot be returned in a reasonable time frame.  All other error codes apart from <code>ERR::Okay</code> indicate failure.</p>
+<p>For scripting languages the function prototype is <code>function(HTTP)</code>.  Use the Write() action to send data to the server.</p>
+<p>If an error code of <code>ERR::Terminate</code> is returned or raised by the callback routine, any remaining data will be sent and the transfer will be treated as having completed successfully.  Use <code>ERR::TimeOut</code> if data cannot be returned in a reasonable time frame.  All other error codes apart from <code>ERR::Okay</code> indicate failure.</p>
       </description>
     </field>
 
@@ -361,7 +360,7 @@ http.acActivate()
       <access write="S">Set</access>
       <type>STRING</type>
       <description>
-<p>A password may be preset if authorisation is required against the HTTP server for access to a particular resource. Note that if authorisation is required and no username and password has been preset, the HTTP object will automatically present a dialog box to the user to request the relevant information.</p>
+<p>A password may be preset if authorisation is required against the HTTP server for access to a resource. Note that if authorisation is required and no username and password has been preset, the HTTP object may present a dialog box to the user to request the relevant information.</p>
 <p>A <code>401</code> status code is returned in the event of an authorisation failure.</p>
       </description>
     </field>
@@ -379,27 +378,27 @@ http.acActivate()
 
     <field>
       <name>Port</name>
-      <comment>The HTTP port to use when targeting a server.</comment>
+      <comment>The HTTP port to use when targeting a host.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>The Port to target at the HTTP server is defined here.  The default for HTTP requests is port <code>80</code>.  To change the port number, set the <fl>Location</fl>.</p>
+<p>The Port to target at the HTTP host is defined here and defaults to <code>80</code>.</p>
       </description>
     </field>
 
     <field>
       <name>ProxyPort</name>
-      <comment>The port to use when communicating with the proxy server.</comment>
+      <comment>The port to use when communicating with a proxy server.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>If the ProxyServer field has been set, the ProxyPort must be set to the port number used by the proxy server for all requests.  By default the ProxyPort is set to <code>8080</code> which is commonly used for proxy communications.</p>
+<p>If a <fl>ProxyServer</fl> has been set, the ProxyPort must define the proxy communication port number.  The default value is <code>8080</code>.</p>
       </description>
     </field>
 
     <field>
       <name>ProxyServer</name>
-      <comment>The targeted HTTP server is specified here, either by name or IP address.</comment>
+      <comment>Route the HTTP request through the proxy server defined here.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
@@ -423,8 +422,7 @@ http.acActivate()
       <access read="G">Get</access>
       <type>INT8 []</type>
       <description>
-<p>If the <code>RECV_BUFFER</code> flag is set, all content received from the HTTP server will be stored in a managed buffer that is referred to by this field.  This field can be read at any time.  It will be set to <code>NULL</code> if no data has been received. The buffer address and all content is reset whenever the HTTP object is activated.</p>
-<p>The buffer is null-terminated if you wish to use it as a string.</p>
+<p>If the <code>RECV_BUFFER</code> flag is set, all content received from the HTTP server will be stored in a managed buffer that is referred to by this field.  This field can be read at any time.  The buffer content is reset whenever the HTTP object is activated.</p>
       </description>
     </field>
 
@@ -434,13 +432,13 @@ http.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type>INT64</type>
       <description>
-<p>Prior to the execution of a <code>POST</code> command it is recommended that you set the Size field to explicitly define the length of the data transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of the transfer by reading the size from the source file or object.</p>
+<p>Prior to the execution of a <code>POST</code> command, it is recommended that the Size field is set to the length of the data transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of the transfer by reading the size from the source file or object.</p>
       </description>
     </field>
 
     <field>
       <name>StateChanged</name>
-      <comment>A callback routine can be defined here for monitoring changes to the HTTP state.</comment>
+      <comment>This callback reports changes to the HTTP state.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
@@ -455,6 +453,8 @@ http.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type lookup="HTS">HTS</type>
       <description>
+<p>The Status value is only valid on completion of an HTTP request.  A value of <code>200</code> indicates that the request was successful.  Other values indicate either redirection or an error condition.  For a full list of HTTP status codes, see https://www.w3.org/Protocols/rfc2616/rfc</p>
+<p>If the Status value is <code>NIL</code> on completion, the request has failed without a valid response being received from the server.  Refer to the <fl>Error</fl> field for more information.</p>
 <types lookup="HTS"/>
       </description>
     </field>
@@ -465,7 +465,7 @@ http.acActivate()
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
-<p>This field describe the <code>user-agent</code> value that will be sent in HTTP requests.  The default value is <code>Parasol Client</code>.</p>
+<p>This field describes the <code>user-agent</code> value that will be sent in HTTP requests.  The default value is <code>Kotuku Client</code>.</p>
       </description>
     </field>
 
@@ -501,7 +501,6 @@ http.acActivate()
     <constants lookup="HTF" comment="HTTP flags">
       <const name="DEBUG_SOCKET">Log all HTTP headers and data that goes out through the socket.  This should only be used when sending plain-text data.</const>
       <const name="DISABLE_SERVER_VERIFY">Disable SSL server certificate verification (use with caution).</const>
-      <const name="LOG_ALL">Print extra log messages during HTTP processing.</const>
       <const name="MESSAGE">When activating child objects, send delayed messages to postpone execution rather than making direct calls.</const>
       <const name="MOVED">Read-only.  Indicates that the HTTP source was moved (<code>HTS::MOVED_PERMANENTLY</code>).</const>
       <const name="NO_DIALOG">Turn off the username/password dialog.</const>

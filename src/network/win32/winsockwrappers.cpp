@@ -13,13 +13,14 @@ struct IPAddress {
       char Data[16];  // Bytes 0-3 are IPv4 bytes.  In host byte order
       unsigned int Data32[4];
    };
-   int Type;     // IPADDR_V4 or IPADDR_V6
+   int Type;  // IPADDR_V4 or IPADDR_V6
+   int Port;  // Port number in host byte order (UDP only)
 };
 
 #define IPADDR_V4 0
 #define IPADDR_V6 1
 
-#include <parasol/system/errors.h>
+#include <kotuku/system/errors.h>
 
 #include "winsockwrappers.h"
 
@@ -55,7 +56,7 @@ public:
 
 static std::recursive_mutex csNetLookup;
 static ankerl::unordered_dense::map<WSW_SOCKET, socket_info> glNetLookup;
-static char glSocketsDisabled = false;
+static char glSocketsDisabled = 0; // Thread-safe, only the main thread modifies this
 static HWND glNetWindow = 0;
 static char glNetClassInit = false;
 static char glWinsockInitialised = false;
@@ -293,7 +294,7 @@ ERR win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 }
 
 //********************************************************************************************************************
-// If win_closesocket() is going to be called from a thread, deregister the socket ahead of time because you're 
+// If win_closesocket() is going to be called from a thread, deregister the socket ahead of time because you're
 // otherwise likely to get calls to that socket going through the Win32 message queue and causing a segfault.
 
 void win_deregister_socket(WSW_SOCKET SocketHandle)
@@ -304,7 +305,7 @@ void win_deregister_socket(WSW_SOCKET SocketHandle)
    // Cancel all pending async events for SocketHandle
    // This prevents stale events from being delivered to new sockets that reuse the handle
    WSAAsyncSelect(SocketHandle, glNetWindow, 0, 0);
-   
+
    // Process pending Windows messages for this socket to clear the queue
    // NB: closesocket() does not perform this task in spite of MSDN implying it does.
 
@@ -316,7 +317,7 @@ void win_deregister_socket(WSW_SOCKET SocketHandle)
       }
       else other_messages.push_back(msg);
    }
-   
+
    for (const auto &saved_msg : other_messages) {
       PostMessage(glNetWindow, saved_msg.message, saved_msg.wParam, saved_msg.lParam);
    }
@@ -390,7 +391,7 @@ int win_getsockname(WSW_SOCKET S, struct sockaddr *Name, int *NameLen)
 
 //********************************************************************************************************************
 
-unsigned long win_inet_addr(const char *Str)
+uint32_t win_inet_addr(const char *Str)
 {
    return inet_addr(Str);
 }
@@ -398,7 +399,7 @@ unsigned long win_inet_addr(const char *Str)
 //********************************************************************************************************************
 // IPv4
 
-char * win_inet_ntoa(unsigned long Addr)
+char * win_inet_ntoa(uint32_t Addr)
 {
    struct in_addr addr;
    addr.s_addr = Addr;
@@ -452,6 +453,141 @@ template <class T> ERR WIN_APPEND(WSW_SOCKET SocketHandle, std::vector<uint8_t> 
 
 // Explicit template instantiations
 template ERR WIN_APPEND<size_t>(WSW_SOCKET, std::vector<uint8_t> &, size_t, size_t &);
+
+//********************************************************************************************************************
+
+ERR WIN_SENDTO(WSW_SOCKET Socket, const void *Buffer, size_t *Length, const struct sockaddr *To, int ToLen)
+{
+   if (!*Length) return ERR::Okay;
+   auto result = sendto(Socket, reinterpret_cast<const char *>(Buffer), *Length, 0, To, ToLen);
+   if (result >= 0) {
+      *Length = result;
+      return ERR::Okay;
+   }
+   else {
+      *Length = 0;
+      switch (WSAGetLastError()) {
+         case WSAEWOULDBLOCK:
+         case WSAEALREADY:
+            return ERR::BufferOverflow;
+         case WSAEINPROGRESS:
+            return ERR::Busy;
+         default:
+            return convert_error();
+      }
+   }
+}
+
+//********************************************************************************************************************
+
+ERR WIN_RECVFROM(WSW_SOCKET Socket, void *Buffer, size_t BufferSize, size_t *BytesRead, struct sockaddr *From, int *FromLen)
+{
+   *BytesRead = 0;
+   if (!BufferSize) return ERR::Okay;
+
+   auto result = recvfrom(Socket, reinterpret_cast<char *>(Buffer), BufferSize, 0, From, FromLen);
+   if (result > 0) {
+      *BytesRead = result;
+      return ERR::Okay;
+   }
+   else if (result IS 0) {
+      return ERR::Disconnected;
+   }
+   else if (WSAGetLastError() IS WSAEWOULDBLOCK) {
+      return ERR::Okay;
+   }
+   else {
+      return convert_error();
+   }
+}
+
+//********************************************************************************************************************
+
+ERR win_enable_broadcast(WSW_SOCKET Socket)
+{
+   BOOL broadcast = TRUE;
+   if (setsockopt(Socket, SOL_SOCKET, SO_BROADCAST, (char*)&broadcast, sizeof(broadcast)) != 0) {
+      return convert_error();
+   }
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+ERR win_set_multicast_ttl(WSW_SOCKET Socket, int TTL, bool IPv6)
+{
+   if (IPv6) {
+      DWORD ttl = TTL;
+      if (setsockopt(Socket, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (char*)&ttl, sizeof(ttl)) != 0) {
+         return convert_error();
+      }
+   }
+   else {
+      DWORD ttl = TTL;
+      if (setsockopt(Socket, IPPROTO_IP, IP_MULTICAST_TTL, (char*)&ttl, sizeof(ttl)) != 0) {
+         return convert_error();
+      }
+   }
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+ERR win_join_multicast_group(WSW_SOCKET Socket, const char *Group, bool IPv6)
+{
+   if (IPv6) {
+      struct ipv6_mreq mreq6;
+      if (win_inet_pton(AF_INET6, Group, &mreq6.ipv6mr_multiaddr) != 1) {
+         return ERR::Args;
+      }
+      mreq6.ipv6mr_interface = 0; // Use default interface
+
+      if (setsockopt(Socket, IPPROTO_IPV6, IPV6_JOIN_GROUP, (char*)&mreq6, sizeof(mreq6)) != 0) {
+         return convert_error();
+      }
+   }
+   else {
+      struct ip_mreq mreq;
+      if (win_inet_pton(AF_INET, Group, &mreq.imr_multiaddr) != 1) {
+         return ERR::Args;
+      }
+      mreq.imr_interface.s_addr = INADDR_ANY; // Use default interface
+
+      if (setsockopt(Socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) != 0) {
+         return convert_error();
+      }
+   }
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+ERR win_leave_multicast_group(WSW_SOCKET Socket, const char *Group, bool IPv6)
+{
+   if (IPv6) {
+      struct ipv6_mreq mreq6;
+      if (win_inet_pton(AF_INET6, Group, &mreq6.ipv6mr_multiaddr) != 1) {
+         return ERR::Args;
+      }
+      mreq6.ipv6mr_interface = 0; // Use default interface
+
+      if (setsockopt(Socket, IPPROTO_IPV6, IPV6_LEAVE_GROUP, (char*)&mreq6, sizeof(mreq6)) != 0) {
+         return convert_error();
+      }
+   }
+   else {
+      struct ip_mreq mreq;
+      if (win_inet_pton(AF_INET, Group, &mreq.imr_multiaddr) != 1) {
+         return ERR::Args;
+      }
+      mreq.imr_interface.s_addr = INADDR_ANY; // Use default interface
+
+      if (setsockopt(Socket, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) != 0) {
+         return convert_error();
+      }
+   }
+   return ERR::Okay;
+}
 
 //********************************************************************************************************************
 
@@ -513,12 +649,12 @@ int GetSockOptError(WSW_SOCKET S, char *Result, int *OptLen)
 
 //********************************************************************************************************************
 
-unsigned long win_htonl(unsigned long X)
+uint32_t win_htonl(uint32_t X)
 {
    return htonl(X);
 }
 
-unsigned long win_ntohl(unsigned long X)
+uint32_t win_ntohl(uint32_t X)
 {
    return ntohl(X);
 }
@@ -599,11 +735,14 @@ int ShutdownWinsock()
 //********************************************************************************************************************
 // IPv6 wrapper functions for Windows with fall-back to IPv4 if IPv6 is not supported or fails.
 
-WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6)
+WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6, bool UDP)
 {
    IPV6 = false;
+   int socket_type = UDP ? SOCK_DGRAM : SOCK_STREAM;
+   int protocol = UDP ? IPPROTO_UDP : IPPROTO_TCP;
+
    // Try to create IPv6 dual-stack socket first
-   auto handle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+   auto handle = socket(AF_INET6, socket_type, protocol);
    if (handle != INVALID_SOCKET) {
       // Set dual-stack mode (disable IPv6-only mode to accept IPv4 connections)
       DWORD v6only = 0;
@@ -611,14 +750,17 @@ WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6)
          // Log warning but continue - some systems may not support dual-stack
       }
 
-      // Enable TCP_NODELAY by default for better responsiveness
-      DWORD nodelay = 1;
-      setsockopt(handle, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
+      // Enable TCP_NODELAY by default for better responsiveness (TCP only)
+      if (!UDP) {
+         DWORD nodelay = 1;
+         setsockopt(handle, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
+      }
 
       u_long non_blocking = 1;
       ioctlsocket(handle, FIONBIO, &non_blocking);
 
-      int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
+      int flags = FD_CLOSE;
+      if (!UDP) flags |= FD_ACCEPT|FD_CONNECT;
       if (Read) flags |= FD_READ;
       if (Write) flags |= FD_WRITE;
       if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
@@ -630,14 +772,17 @@ WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6)
       return sock;
    }
    else { // Fall back to IPv4-only socket
-      if (auto handle = socket(PF_INET, SOCK_STREAM, 0); handle != INVALID_SOCKET) {
-         // Enable TCP_NODELAY by default for better responsiveness
-         DWORD nodelay = 1;
-         setsockopt(handle, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
+      if (auto handle = socket(PF_INET, socket_type, protocol); handle != INVALID_SOCKET) {
+         // Enable TCP_NODELAY by default for better responsiveness (TCP only)
+         if (!UDP) {
+            DWORD nodelay = 1;
+            setsockopt(handle, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
+         }
 
          u_long non_blocking = 1;
          ioctlsocket(handle, FIONBIO, &non_blocking);
-         int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
+         int flags = FD_CLOSE;
+         if (!UDP) flags |= FD_ACCEPT|FD_CONNECT;
          if (Read) flags |= FD_READ;
          if (Write) flags |= FD_WRITE;
          if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
@@ -652,42 +797,14 @@ WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6)
 }
 
 //********************************************************************************************************************
-// Use Windows Winsock2 inet_pton if available (Windows Vista+)
-// For older systems, provide basic IPv6 parsing
 
 int win_inet_pton(int af, const char *src, void *dst)
 {
    if (af IS AF_INET6) {
-      // Basic IPv6 parsing for common formats
-      if (strcmp(src, "::1") IS 0) { // IPv6 loopback
-         memset(dst, 0, 16);
-         ((unsigned char*)dst)[15] = 1;
-         return 1;
-      }
-      else if (strcmp(src, "::") IS 0) { // IPv6 any address
-         memset(dst, 0, 16);
-         return 1;
-      }
-      else if (strncmp(src, "::ffff:", 7) IS 0) { // IPv4-mapped IPv6 address
-         memset(dst, 0, 10);
-         ((unsigned char*)dst)[10] = 0xff;
-         ((unsigned char*)dst)[11] = 0xff;
-
-         // Parse the IPv4 part
-         unsigned long ipv4 = inet_addr(src + 7);
-         if (ipv4 != INADDR_NONE) {
-            memcpy(((unsigned char*)dst) + 12, &ipv4, 4);
-            return 1;
-         }
-      }
-      else { // Try to use Windows inet_pton if available
-         static auto inet_pton_func = (int (WINAPI*)(int, const char*, void*))GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
-         if (inet_pton_func) return inet_pton_func(af, src, dst);
-         return 0;
-      }
+      return inet_pton(af, src, dst);
    }
    else if (af IS AF_INET) { // Use standard IPv4 parsing
-      unsigned long result = inet_addr(src);
+      uint32_t result = inet_addr(src);
       if (result != INADDR_NONE) {
          memcpy(dst, &result, 4);
          return 1;
@@ -703,43 +820,7 @@ const char *win_inet_ntop(int af, const void *src, char *dst, size_t size)
 {
    if (af IS AF_INET6) {
       if (size < 46) return nullptr; // Need at least 46 bytes for full IPv6 address
-
-      const unsigned char *bytes = (const unsigned char*)src;
-
-      // Check for special addresses
-      static unsigned char loopback[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
-      static unsigned char any[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
-      if (memcmp(src, loopback, 16) IS 0) {
-         strcpy(dst, "::1");
-         return dst;
-      }
-      else if (memcmp(src, any, 16) IS 0) {
-         strcpy(dst, "::");
-         return dst;
-      }
-      else if (bytes[10] IS 0xff and bytes[11] IS 0xff) {
-         // IPv4-mapped IPv6
-         struct in_addr ipv4_addr;
-         memcpy(&ipv4_addr, bytes + 12, 4);
-         _snprintf(dst, size, "::ffff:%s", inet_ntoa(ipv4_addr));
-         return dst;
-      }
-      else {
-         // Try to use Windows inet_ntop if available
-         static auto inet_ntop_func = (const char* (WINAPI*)(int, const void*, char*, size_t))
-            GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
-         if (inet_ntop_func) {
-            return inet_ntop_func(af, src, dst, size);
-         }
-
-         // Fallback: format as full hex representation
-         _snprintf(dst, size,
-            "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
-         return dst;
-      }
+      return inet_ntop(af, src, dst, size);
    }
    else if (af IS AF_INET) {
       if (size < 16) return nullptr; // Need at least 16 bytes for IPv4

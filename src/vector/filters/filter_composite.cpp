@@ -3,8 +3,8 @@
 -CLASS-
 CompositeFX: Composite two sources together with a mixing algorithm.
 
-This filter combines the @FilterEffect.Input and @FilterEffect.Mix sources using either one of the Porter-Duff 
-compositing operations, or a colour blending algorithm.  The Input has priority and will be placed in the foreground 
+This filter combines the @FilterEffect.Input and @FilterEffect.Mix sources using either one of the Porter-Duff
+compositing operations, or a colour blending algorithm.  The Input has priority and will be placed in the foreground
 for ordered operations such as `ATOP` and `OVER`.
 
 -END-
@@ -17,26 +17,26 @@ class extCompositeFX : public extFilterEffect {
    static constexpr CSTRING CLASS_NAME = "CompositeFX";
    using create = pf::Create<extCompositeFX>;
 
-   DOUBLE K1, K2, K3, K4; // For the arithmetic operator
+   double K1, K2, K3, K4; // For the arithmetic operator
    OP Operator; // OP constant
 
    template <class CompositeOp>
-   void doMix(objBitmap *InBitmap, objBitmap *MixBitmap, UBYTE *Dest, UBYTE *In, UBYTE *Mix) {
-      const UBYTE A = Target->ColourFormat->AlphaPos>>3;
-      const UBYTE R = Target->ColourFormat->RedPos>>3;
-      const UBYTE G = Target->ColourFormat->GreenPos>>3;
-      const UBYTE B = Target->ColourFormat->BluePos>>3;
+   void doMix(objBitmap *InBitmap, objBitmap *MixBitmap, uint8_t *Dest, uint8_t *In, uint8_t *Mix) {
+      const uint8_t A = Target->ColourFormat->AlphaPos>>3;
+      const uint8_t R = Target->ColourFormat->RedPos>>3;
+      const uint8_t G = Target->ColourFormat->GreenPos>>3;
+      const uint8_t B = Target->ColourFormat->BluePos>>3;
 
-      LONG height = Target->Clip.Bottom - Target->Clip.Top;
-      LONG width  = Target->Clip.Right - Target->Clip.Left;
+      int height = Target->Clip.Bottom - Target->Clip.Top;
+      int width  = Target->Clip.Right - Target->Clip.Left;
       if (InBitmap->Clip.Right - InBitmap->Clip.Left < width) width = InBitmap->Clip.Right - InBitmap->Clip.Left;
       if (InBitmap->Clip.Bottom - InBitmap->Clip.Top < height) height = InBitmap->Clip.Bottom - InBitmap->Clip.Top;
 
-      for (LONG y=0; y < height; y++) {
+      for (int y=0; y < height; y++) {
          auto dp = Dest;
          auto sp = In;
          auto mp = Mix;
-         for (LONG x=0; x < width; x++) {
+         for (int x=0; x < width; x++) {
             CompositeOp::blend(dp, sp, mp, A, R, G, B);
             dp += 4;
             sp += 4;
@@ -57,14 +57,14 @@ class extCompositeFX : public extFilterEffect {
 // D = Dest; S = Source; M = Mix (equates to Dest as a pixel source)
 
 struct composite_over {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if (!M[A]) ((ULONG *)D)[0] = ((ULONG *)S)[0];
-      else if (!S[A]) ((ULONG *)D)[0] = ((ULONG *)M)[0];
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
+      if (!M[A]) ((uint32_t *)D)[0] = ((uint32_t *)S)[0];
+      else if (!S[A]) ((uint32_t *)D)[0] = ((uint32_t *)M)[0];
       else {
-         const ULONG dA = S[A] + M[A] - ((S[A] * M[A] + 0xff)>>8);
-         const ULONG sA = S[A] + (S[A] >> 7); // 0..255 -> 0..256
-         const ULONG cA = 256 - sA;
-         const ULONG mA = M[A] + (M[A] >> 7); // 0..255 -> 0..256
+         const uint32_t dA = S[A] + M[A] - ((S[A] * M[A] + 0xff)>>8);
+         const uint32_t sA = S[A] + (S[A] >> 7); // 0..255 -> 0..256
+         const uint32_t cA = 256 - sA;
+         const uint32_t mA = M[A] + (M[A] >> 7); // 0..255 -> 0..256
 
          D[R] = glLinearRGB.invert(((glLinearRGB.convert(S[R]) * sA + ((glLinearRGB.convert(M[R]) * mA * cA)>>8))>>8) * 255 / dA);
          D[G] = glLinearRGB.invert(((glLinearRGB.convert(S[G]) * sA + ((glLinearRGB.convert(M[G]) * mA * cA)>>8))>>8) * 255 / dA);
@@ -75,8 +75,8 @@ struct composite_over {
 };
 
 struct composite_in {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if (M[A] IS 255) ((ULONG *)D)[0] = ((ULONG *)S)[0];
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
+      if (M[A] IS 255) ((uint32_t *)D)[0] = ((uint32_t *)S)[0];
       else {
          D[R] = S[R];
          D[G] = S[G];
@@ -87,8 +87,8 @@ struct composite_in {
 };
 
 struct composite_out {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if (!M[A]) ((ULONG *)D)[0] = ((ULONG *)S)[0];
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
+      if (!M[A]) ((uint32_t *)D)[0] = ((uint32_t *)S)[0];
       else {
          D[R] = S[R];
          D[G] = S[G];
@@ -102,7 +102,7 @@ struct composite_out {
 // output.  S alpha is ignored except for blending with M.
 
 struct composite_atop {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if (auto m_alpha = M[A]) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -112,8 +112,8 @@ struct composite_atop {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         const UBYTE sA  = S[A];
-         const UBYTE scA = 0xff - sA;
+         const uint8_t sA  = S[A];
+         const uint8_t scA = 0xff - sA;
 
          D[R] = glLinearRGB.invert(((sR * sA) + (mR * scA) + 0xff)>>8);
          D[G] = glLinearRGB.invert(((sG * sA) + (mG * scA) + 0xff)>>8);
@@ -124,7 +124,7 @@ struct composite_atop {
 };
 
 struct composite_xor {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       auto sR = glLinearRGB.convert(S[R]);
       auto sG = glLinearRGB.convert(S[G]);
       auto sB = glLinearRGB.convert(S[B]);
@@ -133,8 +133,8 @@ struct composite_xor {
       auto mG = glLinearRGB.convert(M[G]);
       auto mB = glLinearRGB.convert(M[B]);
 
-      const UBYTE s1a = 0xff - S[A];
-      const UBYTE d1a = 0xff - M[A];
+      const uint8_t s1a = 0xff - S[A];
+      const uint8_t d1a = 0xff - M[A];
       D[R] = glLinearRGB.invert(((mR * s1a) + (sR * d1a) + 0xff) >> 8);
       D[G] = glLinearRGB.invert(((mG * s1a) + (sG * d1a) + 0xff) >> 8);
       D[B] = glLinearRGB.invert(((mB * s1a) + (sB * d1a) + 0xff) >> 8);
@@ -146,7 +146,7 @@ struct composite_xor {
 // Blending algorithms, refer to https://en.wikipedia.org/wiki/Blend_modes
 
 struct blend_screen {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       auto sR = glLinearRGB.convert(S[R]);
       auto sG = glLinearRGB.convert(S[G]);
       auto sB = glLinearRGB.convert(S[B]);
@@ -158,12 +158,12 @@ struct blend_screen {
       D[R] = glLinearRGB.invert(sR + mR - ((sR * mR + 0Xff) >> 8));
       D[G] = glLinearRGB.invert(sG + mG - ((sG * mG + 0Xff) >> 8));
       D[B] = glLinearRGB.invert(sB + mB - ((sB * mB + 0Xff) >> 8));
-      D[A] = UBYTE(S[A] + M[A] - ((S[A] * M[A] + 0Xff) >> 8));
+      D[A] = uint8_t(S[A] + M[A] - ((S[A] * M[A] + 0Xff) >> 8));
    }
 };
 
 struct blend_multiply {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -173,18 +173,18 @@ struct blend_multiply {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         const UBYTE s1a = 0xff - S[A];
-         const UBYTE d1a = 0xff - M[A];
+         const uint8_t s1a = 0xff - S[A];
+         const uint8_t d1a = 0xff - M[A];
          D[R] = glLinearRGB.invert((sR * mR + (sR * d1a) + (mR * s1a) + 0xff) >> 8);
          D[G] = glLinearRGB.invert((sG * mG + (sG * d1a) + (mG * s1a) + 0xff) >> 8);
          D[B] = glLinearRGB.invert((sB * mB + (sB * d1a) + (mB * s1a) + 0xff) >> 8);
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_darken {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -194,20 +194,20 @@ struct blend_darken {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         UBYTE d1a = 0xff - D[A];
-         UBYTE s1a = 0xff - S[A];
-         UBYTE da  = D[A];
+         uint8_t d1a = 0xff - D[A];
+         uint8_t s1a = 0xff - S[A];
+         uint8_t da  = D[A];
 
          D[R] = glLinearRGB.invert((agg::sd_min(sR * da, mR * S[A]) + sR * d1a + mR * s1a + 0xff) >> 8);
          D[G] = glLinearRGB.invert((agg::sd_min(sG * da, mG * S[A]) + sG * d1a + mG * s1a + 0xff) >> 8);
          D[B] = glLinearRGB.invert((agg::sd_min(sB * da, mB * S[A]) + sB * d1a + mB * s1a + 0xff) >> 8);
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_lighten {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -217,19 +217,19 @@ struct blend_lighten {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         UBYTE d1a = 0xff - D[A];
-         UBYTE s1a = 0xff - S[A];
+         uint8_t d1a = 0xff - D[A];
+         uint8_t s1a = 0xff - S[A];
 
          D[R] = glLinearRGB.invert((agg::sd_max(sR * M[A], mR * S[A]) + sR * d1a + mR * s1a + 0xff) >> 8);
          D[G] = glLinearRGB.invert((agg::sd_max(sG * M[A], mG * S[A]) + sG * d1a + mG * s1a + 0xff) >> 8);
          D[B] = glLinearRGB.invert((agg::sd_max(sB * M[A], mB * S[A]) + sB * d1a + mB * s1a + 0xff) >> 8);
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_dodge {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -239,15 +239,15 @@ struct blend_dodge {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         LONG d1a  = 0xff - M[A];
-         LONG s1a  = 0xff - S[A];
-         LONG drsa = mG * S[A];
-         LONG dgsa = mB * S[A];
-         LONG dbsa = mB * S[A];
-         LONG srda = sR * M[A];
-         LONG sgda = sG * M[A];
-         LONG sbda = sB * M[A];
-         LONG sada = S[A] * M[A];
+         int d1a  = 0xff - M[A];
+         int s1a  = 0xff - S[A];
+         int drsa = mG * S[A];
+         int dgsa = mB * S[A];
+         int dbsa = mB * S[A];
+         int srda = sR * M[A];
+         int sgda = sG * M[A];
+         int sbda = sB * M[A];
+         int sada = S[A] * M[A];
 
          D[R] = glLinearRGB.invert((srda + drsa >= sada) ?
              (sada + sR * d1a + mR * s1a + 0xff) >> 8 :
@@ -261,13 +261,13 @@ struct blend_dodge {
              (sada + sB * d1a + mB * s1a + 0xff) >> 8 :
              dbsa / (0xff - (sB << 8) / S[A]) + ((sB * d1a + mB * s1a + 0xff) >> 8));
 
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_contrast {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       auto sR = glLinearRGB.convert(S[R]);
       auto sG = glLinearRGB.convert(S[G]);
       auto sB = glLinearRGB.convert(S[B]);
@@ -276,12 +276,12 @@ struct blend_contrast {
       auto mG = glLinearRGB.convert(M[G]);
       auto mB = glLinearRGB.convert(M[B]);
 
-      LONG d2a = M[A] >> 1;
-      UBYTE s2a = S[A] >> 1;
+      int d2a = M[A] >> 1;
+      uint8_t s2a = S[A] >> 1;
 
-      auto r = LONG((((mR - d2a) * int((sR - s2a)*2 + 0xff)) >> 8) + d2a);
-      auto g = LONG((((mG - d2a) * int((sG - s2a)*2 + 0xff)) >> 8) + d2a);
-      auto b = LONG((((mB - d2a) * int((sB - s2a)*2 + 0xff)) >> 8) + d2a);
+      auto r = int((((mR - d2a) * int((sR - s2a)*2 + 0xff)) >> 8) + d2a);
+      auto g = int((((mG - d2a) * int((sG - s2a)*2 + 0xff)) >> 8) + d2a);
+      auto b = int((((mB - d2a) * int((sB - s2a)*2 + 0xff)) >> 8) + d2a);
 
       r = (r < 0) ? 0 : r;
       g = (g < 0) ? 0 : g;
@@ -294,7 +294,7 @@ struct blend_contrast {
 };
 
 struct blend_overlay {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -304,9 +304,9 @@ struct blend_overlay {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         UBYTE d1a = 0xff - M[A];
-         UBYTE s1a = 0xff - S[A];
-         UBYTE sada = S[A] * M[A];
+         uint8_t d1a = 0xff - M[A];
+         uint8_t s1a = 0xff - S[A];
+         uint8_t sada = S[A] * M[A];
 
          D[R] = glLinearRGB.invert(((2*mR < M[A]) ?
              2*sR*mR + sR*d1a + mR*s1a :
@@ -320,13 +320,13 @@ struct blend_overlay {
              2*sB*mB + sB*d1a + mB*s1a :
              sada - 2*(M[A] - mB)*(S[A] - sB) + sB*d1a + mB*s1a + 0xff) >> 8);
 
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_burn {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -336,15 +336,15 @@ struct blend_burn {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         const UBYTE d1a = 0xff - D[A];
-         const UBYTE s1a = 0xff - S[A];
-         const LONG drsa = mR * S[A];
-         const LONG dgsa = mG * S[A];
-         const LONG dbsa = mB * S[A];
-         const LONG srda = sR * M[A];
-         const LONG sgda = sG * M[A];
-         const LONG sbda = sB * M[A];
-         const LONG sada = S[A] * M[A];
+         const uint8_t d1a = 0xff - D[A];
+         const uint8_t s1a = 0xff - S[A];
+         const int drsa = mR * S[A];
+         const int dgsa = mG * S[A];
+         const int dbsa = mB * S[A];
+         const int srda = sR * M[A];
+         const int sgda = sG * M[A];
+         const int sbda = sB * M[A];
+         const int sada = S[A] * M[A];
 
          D[R] = glLinearRGB.invert(((srda + drsa <= sada) ?
              sR * d1a + mR * s1a :
@@ -358,13 +358,13 @@ struct blend_burn {
              sB * d1a + mB * s1a :
              S[A] * (sbda + dbsa - sada) / sB + sB * d1a + mB * s1a + 0xff) >> 8);
 
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_hard_light {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -374,9 +374,9 @@ struct blend_hard_light {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         UBYTE d1a  = 0xff - D[A];
-         UBYTE s1a  = 0xff - S[A];
-         UBYTE sada = S[A] * M[A];
+         uint8_t d1a  = 0xff - D[A];
+         uint8_t s1a  = 0xff - S[A];
+         uint8_t sada = S[A] * M[A];
 
          D[R] = glLinearRGB.invert(((2*sR < S[A]) ?
              2*sR*mR + sR*d1a + mR*s1a :
@@ -390,13 +390,13 @@ struct blend_hard_light {
              2*sB*mB + sB*d1a + mB*s1a :
              sada - 2*(M[A] - mB)*(S[A] - sB) + sB*d1a + mB*s1a + 0xff) >> 8);
 
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_soft_light {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -422,13 +422,13 @@ struct blend_soft_light {
          D[R] = glLinearRGB.invert(agg::uround(xr * 0xff));
          D[G] = glLinearRGB.invert(agg::uround(xg * 0xff));
          D[B] = glLinearRGB.invert(agg::uround(xb * 0xff));
-         D[A] = (UBYTE)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_difference {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -441,13 +441,13 @@ struct blend_difference {
          D[R] = glLinearRGB.invert(sR + mR - ((2 * agg::sd_min(sR*M[A], mR*S[A]) + 0xff) >> 8));
          D[G] = glLinearRGB.invert(sG + mG - ((2 * agg::sd_min(sG*M[A], mG*S[A]) + 0xff) >> 8));
          D[B] = glLinearRGB.invert(sB + mB - ((2 * agg::sd_min(sB*M[A], mB*S[A]) + 0xff) >> 8));
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_exclusion {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -457,75 +457,75 @@ struct blend_exclusion {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         const UBYTE d1a = 0xff - D[A];
-         const UBYTE s1a = 0xff - S[A];
+         const uint8_t d1a = 0xff - D[A];
+         const uint8_t s1a = 0xff - S[A];
          D[R] = glLinearRGB.invert((sR*M[A] + mR*S[A] - 2*sR*mR + sR*d1a + mR*s1a + 0xff) >> 8);
          D[G] = glLinearRGB.invert((sG*M[A] + mG*S[A] - 2*sG*mG + sG*d1a + mG*s1a + 0xff) >> 8);
          D[B] = glLinearRGB.invert((sB*M[A] + mB*S[A] - 2*sB*mB + sB*d1a + mB*s1a + 0xff) >> 8);
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_plus {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
          auto sB = glLinearRGB.convert(S[B]);
 
-         const UBYTE xr = glLinearRGB.convert(D[R]) + sR;
-         const UBYTE xg = glLinearRGB.convert(D[G]) + sG;
-         const UBYTE xb = glLinearRGB.convert(D[B]) + sB;
-         const UBYTE xa = D[A] + S[A];
-         D[R] = glLinearRGB.invert((xr > 0xff) ? (UBYTE)0xff : xr);
-         D[G] = glLinearRGB.invert((xg > 0xff) ? (UBYTE)0xff : xg);
-         D[B] = glLinearRGB.invert((xb > 0xff) ? (UBYTE)0xff : xb);
-         D[A] = (xa > 0xff) ? (UBYTE)0xff : xa;
+         const uint8_t xr = glLinearRGB.convert(D[R]) + sR;
+         const uint8_t xg = glLinearRGB.convert(D[G]) + sG;
+         const uint8_t xb = glLinearRGB.convert(D[B]) + sB;
+         const uint8_t xa = D[A] + S[A];
+         D[R] = glLinearRGB.invert((xr > 0xff) ? (uint8_t)0xff : xr);
+         D[G] = glLinearRGB.invert((xg > 0xff) ? (uint8_t)0xff : xg);
+         D[B] = glLinearRGB.invert((xb > 0xff) ? (uint8_t)0xff : xb);
+         D[A] = (xa > 0xff) ? (uint8_t)0xff : xa;
       }
    }
 };
 
 struct blend_minus {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
          auto sB = glLinearRGB.convert(S[B]);
 
-         const UBYTE xr = glLinearRGB.convert(D[R]) - sR;
-         const UBYTE xg = glLinearRGB.convert(D[G]) - sG;
-         const UBYTE xb = glLinearRGB.convert(D[B]) - sB;
+         const uint8_t xr = glLinearRGB.convert(D[R]) - sR;
+         const uint8_t xg = glLinearRGB.convert(D[G]) - sG;
+         const uint8_t xb = glLinearRGB.convert(D[B]) - sB;
          D[R] = glLinearRGB.invert((xr > 0xff) ? 0 : xr);
          D[G] = glLinearRGB.invert((xg > 0xff) ? 0 : xg);
          D[B] = glLinearRGB.invert((xb > 0xff) ? 0 : xb);
-         D[A] = (UBYTE)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
          //D[A] = (UBYTE)(0xff - (((0xff - S[A]) * (0xff - D[A]) + 0xff) >> 8));
       }
    }
 };
 
 struct blend_invert {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if ((S[A]) or (M[A])) {
          auto dR = glLinearRGB.convert(D[R]);
          auto dG = glLinearRGB.convert(D[G]);
          auto dB = glLinearRGB.convert(D[B]);
 
-         const UBYTE xr = ((M[A] - dR) * S[A] + 0xff) >> 8;
-         const UBYTE xg = ((M[A] - dG) * S[A] + 0xff) >> 8;
-         const UBYTE xb = ((M[A] - dB) * S[A] + 0xff) >> 8;
-         const UBYTE s1a = 0xff - S[A];
+         const uint8_t xr = ((M[A] - dR) * S[A] + 0xff) >> 8;
+         const uint8_t xg = ((M[A] - dG) * S[A] + 0xff) >> 8;
+         const uint8_t xb = ((M[A] - dB) * S[A] + 0xff) >> 8;
+         const uint8_t s1a = 0xff - S[A];
          D[R] = glLinearRGB.invert(xr + ((dR * s1a + 0xff) >> 8));
          D[G] = glLinearRGB.invert(xg + ((dG * s1a + 0xff) >> 8));
          D[B] = glLinearRGB.invert(xb + ((dB * s1a + 0xff) >> 8));
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_invert_rgb {
-   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(uint8_t *D, uint8_t *S, uint8_t *M, uint8_t A, uint8_t R, uint8_t G, uint8_t B) {
       if (S[A]) {
          auto sR = glLinearRGB.convert(S[R]);
          auto sG = glLinearRGB.convert(S[G]);
@@ -535,14 +535,14 @@ struct blend_invert_rgb {
          auto dG = glLinearRGB.convert(D[G]);
          auto dB = glLinearRGB.convert(D[B]);
 
-         UBYTE xr = ((M[A] - dR) * sR + 0xff) >> 8;
-         UBYTE xg = ((M[A] - dG) * sG + 0xff) >> 8;
-         UBYTE xb = ((M[A] - dB) * sB + 0xff) >> 8;
-         UBYTE s1a = 0xff - S[A];
+         uint8_t xr = ((M[A] - dR) * sR + 0xff) >> 8;
+         uint8_t xg = ((M[A] - dG) * sG + 0xff) >> 8;
+         uint8_t xb = ((M[A] - dB) * sB + 0xff) >> 8;
+         uint8_t s1a = 0xff - S[A];
          D[R] = glLinearRGB.invert(xr + ((dR * s1a + 0xff) >> 8));
          D[G] = glLinearRGB.invert(xg + ((dG * s1a + 0xff) >> 8));
          D[B] = glLinearRGB.invert(xb + ((dB * s1a + 0xff) >> 8));
-         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+         D[A] = (uint8_t)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
@@ -557,19 +557,19 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
 {
    pf::Log log;
 
-   if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
+   if (Self->Target->BytesPerPixel != 4) return ERR::InvalidState;
 
    objBitmap *inBmp;
 
-   UBYTE *dest = Self->Target->Data + (Self->Target->Clip.Left * 4) + (Self->Target->Clip.Top * Self->Target->LineWidth);
+   uint8_t *dest = Self->Target->Data + (Self->Target->Clip.Left * 4) + (Self->Target->Clip.Top * Self->Target->LineWidth);
 
    switch (Self->Operator) {
       case OP::OVER: {
          if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
             if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
-               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               uint8_t *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               uint8_t *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                Self->doMix<composite_over>(inBmp, mixBmp, dest, in, mix);
             }
          }
@@ -580,8 +580,8 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
          if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
             if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
-               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               uint8_t *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               uint8_t *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                Self->doMix<composite_in>(inBmp, mixBmp, dest, in, mix);
             }
          }
@@ -592,8 +592,8 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
          if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
             if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
-               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               uint8_t *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               uint8_t *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                Self->doMix<composite_out>(inBmp, mixBmp, dest, in, mix);
             }
          }
@@ -604,8 +604,8 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
          if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
             if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
-               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               uint8_t *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               uint8_t *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                Self->doMix<composite_atop>(inBmp, mixBmp, dest, in, mix);
             }
          }
@@ -616,8 +616,8 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
          if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
             if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
-               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               uint8_t *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               uint8_t *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                Self->doMix<composite_xor>(inBmp, mixBmp, dest, in, mix);
             }
          }
@@ -627,47 +627,47 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
       case OP::ARITHMETIC: {
          if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
-            LONG height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
-            LONG width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
+            int height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+            int width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
             if (inBmp->Clip.Right - inBmp->Clip.Left < width) width = inBmp->Clip.Right - inBmp->Clip.Left;
             if (inBmp->Clip.Bottom - inBmp->Clip.Top < height) height = inBmp->Clip.Bottom - inBmp->Clip.Top;
 
-            const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
-            const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
-            const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
-            const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
+            const uint8_t A = Self->Target->ColourFormat->AlphaPos>>3;
+            const uint8_t R = Self->Target->ColourFormat->RedPos>>3;
+            const uint8_t G = Self->Target->ColourFormat->GreenPos>>3;
+            const uint8_t B = Self->Target->ColourFormat->BluePos>>3;
 
             if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
-               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
-               for (LONG y=0; y < height; y++) {
+               uint8_t *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               uint8_t *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               for (int y=0; y < height; y++) {
                   auto dp = dest;
                   auto sp = in;
                   auto mp = mix;
-                  for (LONG x=0; x < width; x++) {
+                  for (int x=0; x < width; x++) {
                      if ((mp[A]) or (sp[A])) {
                         // Scale RGB to 0 - 1.0 and premultiply the values.
                         #define SCALE (1.0 / 255.0)
                         #define DESCALE 255.0
-                        const DOUBLE sA = DOUBLE(sp[A]) * SCALE;
-                        const DOUBLE sR = DOUBLE(glLinearRGB.convert(sp[R])) * SCALE * sA;
-                        const DOUBLE sG = DOUBLE(glLinearRGB.convert(sp[G])) * SCALE * sA;
-                        const DOUBLE sB = DOUBLE(glLinearRGB.convert(sp[B])) * SCALE * sA;
+                        const double sA = double(sp[A]) * SCALE;
+                        const double sR = double(glLinearRGB.convert(sp[R])) * SCALE * sA;
+                        const double sG = double(glLinearRGB.convert(sp[G])) * SCALE * sA;
+                        const double sB = double(glLinearRGB.convert(sp[B])) * SCALE * sA;
 
-                        const DOUBLE mA = DOUBLE(mp[A]) * SCALE;
-                        const DOUBLE mR = DOUBLE(glLinearRGB.convert(mp[R])) * SCALE * mA;
-                        const DOUBLE mG = DOUBLE(glLinearRGB.convert(mp[G])) * SCALE * mA;
-                        const DOUBLE mB = DOUBLE(glLinearRGB.convert(mp[B])) * SCALE * mA;
+                        const double mA = double(mp[A]) * SCALE;
+                        const double mR = double(glLinearRGB.convert(mp[R])) * SCALE * mA;
+                        const double mG = double(glLinearRGB.convert(mp[G])) * SCALE * mA;
+                        const double mB = double(glLinearRGB.convert(mp[B])) * SCALE * mA;
 
-                        DOUBLE dA = (Self->K1 * sA * mA) + (Self->K2 * sA) + (Self->K3 * mA) + Self->K4;
+                        double dA = (Self->K1 * sA * mA) + (Self->K2 * sA) + (Self->K3 * mA) + Self->K4;
 
                         if (dA > 0.0) {
                            if (dA > 1.0) dA = 1.0;
 
-                           DOUBLE demul = 1.0 / dA;
-                           LONG dr = F2T(((Self->K1 * sR * mR) + (Self->K2 * sR) + (Self->K3 * mR) + Self->K4) * demul * DESCALE);
-                           LONG dg = F2T(((Self->K1 * sG * mG) + (Self->K2 * sG) + (Self->K3 * mG) + Self->K4) * demul * DESCALE);
-                           LONG db = F2T(((Self->K1 * sB * mB) + (Self->K2 * sB) + (Self->K3 * mB) + Self->K4) * demul * DESCALE);
+                           double demul = 1.0 / dA;
+                           int dr = int(((Self->K1 * sR * mR) + (Self->K2 * sR) + (Self->K3 * mR) + Self->K4) * demul * DESCALE);
+                           int dg = int(((Self->K1 * sG * mG) + (Self->K2 * sG) + (Self->K3 * mG) + Self->K4) * demul * DESCALE);
+                           int db = int(((Self->K1 * sB * mB) + (Self->K2 * sB) + (Self->K3 * mB) + Self->K4) * demul * DESCALE);
 
                            if (dr > 0xff) dp[R] = 0xff;
                            else if (dr < 0) dp[R] = 0;
@@ -681,7 +681,7 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
                            else if (db < 0) dp[B] = 0;
                            else dp[B] = glLinearRGB.invert(db);
 
-                           dp[A] = F2T(dA * DESCALE);
+                           dp[A] = int(dA * DESCALE);
                         }
                      }
 
@@ -702,8 +702,8 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
          if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, true) IS ERR::Okay) {
             objBitmap *mixBmp;
             if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, true) IS ERR::Okay) {
-               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               uint8_t *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               uint8_t *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                #pragma GCC diagnostic ignored "-Wswitch"
                switch(Self->Operator) {
                   case OP::MULTIPLY:    Self->doMix<blend_multiply>(inBmp, mixBmp, dest, in, mix); break;
@@ -765,13 +765,13 @@ K1: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERR COMPOSITEFX_GET_K1(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K1(extCompositeFX *Self, double *Value)
 {
    *Value = Self->K1;
    return ERR::Okay;
 }
 
-static ERR COMPOSITEFX_SET_K1(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K1(extCompositeFX *Self, double Value)
 {
    Self->K1 = Value;
    return ERR::Okay;
@@ -784,13 +784,13 @@ K2: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERR COMPOSITEFX_GET_K2(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K2(extCompositeFX *Self, double *Value)
 {
    *Value = Self->K2;
    return ERR::Okay;
 }
 
-static ERR COMPOSITEFX_SET_K2(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K2(extCompositeFX *Self, double Value)
 {
    Self->K2 = Value;
    return ERR::Okay;
@@ -803,13 +803,13 @@ K3: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERR COMPOSITEFX_GET_K3(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K3(extCompositeFX *Self, double *Value)
 {
    *Value = Self->K3;
    return ERR::Okay;
 }
 
-static ERR COMPOSITEFX_SET_K3(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K3(extCompositeFX *Self, double Value)
 {
    Self->K3 = Value;
    return ERR::Okay;
@@ -822,13 +822,13 @@ K4: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERR COMPOSITEFX_GET_K4(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K4(extCompositeFX *Self, double *Value)
 {
    *Value = Self->K4;
    return ERR::Okay;
 }
 
-static ERR COMPOSITEFX_SET_K4(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K4(extCompositeFX *Self, double Value)
 {
    Self->K4 = Value;
    return ERR::Okay;
@@ -898,7 +898,7 @@ static const FieldDef clCompositeOperator[] = {
    { "Minus",      OP::MINUS },
    { "Subtract",   OP::SUBTRACT },
    { "Overlay",    OP::OVERLAY },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clCompositeFXFields[] = {

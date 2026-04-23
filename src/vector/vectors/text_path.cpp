@@ -16,9 +16,9 @@
 //
 // REQUIREMENT: The caller must have acquired a lock on glFontMutex.
 
-freetype_font::glyph & freetype_font::ft_point::get_glyph(ULONG Unicode)
+freetype_font::glyph & freetype_font::ft_point::get_glyph(uint32_t Unicode)
 {
-   DOUBLE x1, y1, x2, y2, x3, y3;
+   double x1, y1, x2, y2, x3, y3;
 
    if (glyphs.contains(Unicode)) return glyphs[Unicode];
 
@@ -45,9 +45,9 @@ freetype_font::glyph & freetype_font::ft_point::get_glyph(ULONG Unicode)
 
    const FT_Outline &outline = font->face->glyph->outline;
 
-   LONG first = 0; // index of first point in contour
-   for (LONG n=0; n < outline.n_contours; n++) {
-      LONG last = outline.contours[n];  // index of last point in contour
+   int first = 0; // index of first point in contour
+   for (int n=0; n < outline.n_contours; n++) {
+      int last = outline.contours[n];  // index of last point in contour
       FT_Vector *limit = outline.points + last;
 
       FT_Vector v_start = outline.points[first];
@@ -206,17 +206,17 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
    }
 
    auto morph = Vector->Morph;
-   DOUBLE start_x, start_y, end_vx, end_vy;
-   DOUBLE path_scale = 1.0;
+   double start_x, start_y, end_vx, end_vy;
+   double path_scale = 1.0;
    if (morph) {
       if ((Vector->MorphFlags & VMF::STRETCH) != VMF::NIL) {
          // In stretch mode, the standard morphing algorithm is used (see gen_vector_path())
-         morph = NULL;
+         morph = nullptr;
       }
       else {
          if (morph->dirty()) gen_vector_path(morph); // Regenerate the target path if necessary
 
-         if (!morph->BasePath.total_vertices()) morph = NULL;
+         if (!morph->BasePath.total_vertices()) morph = nullptr;
          else {
             morph->BasePath.rewind(0);
             morph->BasePath.vertex(0, &start_x, &start_y);
@@ -232,12 +232,12 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
 
    // Compute the string length in characters if a transition is being applied
 
-   LONG total_chars = 0;
+   int total_chars = 0;
    if (Vector->Transition) {
       for (auto const &line : Vector->txLines) {
          for (auto lstr=line.c_str(); *lstr; ) {
-            LONG char_len;
-            ULONG unicode = UTF8ReadValue(lstr, &char_len);
+            int char_len;
+            uint32_t unicode = UTF8ReadValue(lstr, &char_len);
             lstr += char_len;
             if (unicode <= 0x20) continue;
             else if (!unicode) break;
@@ -270,18 +270,18 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
          scale_char.translate(0, -Vector->txFontSize * path_scale);
       }
 
-      LONG char_index = 0;
-      LONG cmd = -1;
-      LONG prev_glyph_index = 0;
-      DOUBLE dist = 0; // Distance to next vertex
-      DOUBLE angle = 0;
+      int char_index = 0;
+      int cmd = -1;
+      int prev_glyph_index = 0;
+      double dist = 0; // Distance to next vertex
+      double angle = 0;
       for (auto &line : Vector->txLines) {
          line.chars.clear();
          auto wrap_state = WS_NO_WORD;
 
-         LONG char_len;
+         int char_len;
          for (auto str=line.c_str(); *str; ) {
-            ULONG unicode = UTF8ReadValue(str, &char_len);
+            uint32_t unicode = UTF8ReadValue(str, &char_len);
             str += char_len;
 
             if (unicode <= 0x20) wrap_state = WS_NO_WORD;
@@ -293,25 +293,25 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
             agg::trans_affine transform(scale_char); // The initial transform scales the char to the path.
 
             if (Vector->Transition) { // Apply any special transitions to transform early.
-               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
+               apply_transition(Vector->Transition, double(char_index) / double(total_chars), transform);
             }
 
             auto &glyph = pt.get_glyph(unicode);
 
-            DOUBLE kx, ky;
+            double kx, ky;
             get_kerning_xy(pt.font->face, glyph.glyph_index, prev_glyph_index, kx, ky);
             start_x += kx;
 
-            DOUBLE char_width = glyph.adv_x * std::abs(transform.sx); //transform.scale();
+            double char_width = glyph.adv_x * std::abs(transform.sx); //transform.scale();
 
             // Compute end_vx,end_vy (the last vertex to use for angle computation) and store the distance from start_x,start_y to end_vx,end_vy in dist.
             if (char_width > dist) {
                while (cmd != agg::path_cmd_stop) {
-                  DOUBLE current_x, current_y;
+                  double current_x, current_y;
                   cmd = morph->BasePath.vertex(&current_x, &current_y);
                   if (agg::is_vertex(cmd)) {
-                     const DOUBLE x = (current_x - end_vx), y = (current_y - end_vy);
-                     const DOUBLE vertex_dist = sqrt((x * x) + (y * y));
+                     const double x = (current_x - end_vx), y = (current_y - end_vy);
+                     const double vertex_dist = sqrt((x * x) + (y * y));
                      dist += vertex_dist;
 
                      //log.trace("%c char_width: %.2f, VXY: %.2f %.2f, next: %.2f %.2f, dist: %.2f", current_char, char_width, start_x, start_y, end_vx, end_vy, dist);
@@ -327,13 +327,13 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
             // At this stage we can say that start_x,start_y is the bottom left corner of the character and end_vx,end_vy is
             // the bottom right corner.
 
-            DOUBLE tx = start_x, ty = start_y;
+            double tx = start_x, ty = start_y;
 
             if (cmd != agg::path_cmd_stop) { // Advance (start_x,start_y) to the next point on the morph path.
                angle = std::atan2(end_vy - start_y, end_vx - start_x);
 
-               DOUBLE x = end_vx - start_x, y = end_vy - start_y;
-               DOUBLE d = std::sqrt(x * x + y * y);
+               double x = end_vx - start_x, y = end_vy - start_y;
+               double d = std::sqrt(x * x + y * y);
                start_x += x / d * char_width;
                start_y += y / d * char_width;
 
@@ -362,10 +362,10 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
       Vector->txWidth = start_x;
    }
    else {
-      DOUBLE dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
-      DOUBLE longest_line_width = 0;
-      LONG prev_glyph_index = 0;
-      LONG char_index = 0;
+      double dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
+      double longest_line_width = 0;
+      int prev_glyph_index = 0;
+      int char_index = 0;
 
       for (auto &line : Vector->txLines) {
          line.chars.clear();
@@ -374,8 +374,8 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
             calc_caret_position(line, Vector->txFontSize);
          }
          else for (auto str=line.c_str(); *str; ) {
-            LONG char_len;
-            LONG unicode = UTF8ReadValue(str, &char_len);
+            int char_len;
+            int unicode = UTF8ReadValue(str, &char_len);
 
             if (unicode <= 0x20) { wrap_state = WS_NO_WORD; prev_glyph_index = 0; }
             else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
@@ -388,15 +388,15 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
             agg::trans_affine transform;
 
             if (Vector->Transition) { // Apply any special transitions to the transform.
-               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
+               apply_transition(Vector->Transition, double(char_index) / double(total_chars), transform);
             }
 
             // Determine if this is a new word that would wrap if drawn.
             // TODO: Wrapping information should be cached for speeding up subsequent redraws.
 
             if ((wrap_state IS WS_NEW_WORD) and (Vector->txInlineSize)) {
-               LONG word_length = 0;
-               for (LONG c=0; (str[c]) and (str[c] > 0x20); ) {
+               int word_length = 0;
+               for (int c=0; (str[c]) and (str[c] > 0x20); ) {
                   for (++c; ((str[c] & 0xc0) IS 0x80); c++);
                   word_length++;
                }
@@ -413,11 +413,11 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
 
             auto &glyph = pt.get_glyph(unicode);
 
-            DOUBLE kx, ky;
+            double kx, ky;
             get_kerning_xy(pt.font->face, glyph.glyph_index, prev_glyph_index, kx, ky);
             dx += kx;
 
-            DOUBLE char_width = glyph.adv_x * std::abs(transform.sx); // transform.scale();
+            double char_width = glyph.adv_x * std::abs(transform.sx); // transform.scale();
 
             transform.translate(dx, dy);
             agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(glyph.path, transform);
@@ -450,7 +450,7 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
 
    // Text paths are always oriented around (0,0) and are transformed later
 
-   Vector->Bounds = { 0.0, DOUBLE(-pt.ascent), Vector->txWidth, 1.0 };
+   Vector->Bounds = { 0.0, double(-pt.ascent), Vector->txWidth, 1.0 };
    if (Vector->txLines.size() > 1) Vector->Bounds.bottom += (Vector->txLines.size() - 1) * pt.line_spacing;
 
    // If debugging the above boundary calculation, use this for verification of the true values (bear in

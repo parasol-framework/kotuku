@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -35,7 +35,7 @@ To clarify the terminology used in this documentation, please note the definitio
 
 <list type="bullet">
 <li>'Point' determines the size of a font.  The value is relative only to other point sizes of the same font face, i.e. two faces at the same point size are not necessarily the same height.</li>
-<li>'Height' represents the 'vertical bearing' or point of the font, expressed as a pixel value.  The height does not cover for any leading at the top of the font, or the gutter space used for the tails on characters like 'g' and 'y'.</li>
+<li>'Height' represents the 'vertical bearing' or point of the font, expressed as a pixel value.  The height does not cover any leading at the top of the font, or the gutter space used for the tails on characters like 'g' and 'y'.</li>
 <li>'Gutter' is the amount of space that a character can descend below the base line.  Characters like 'g' and 'y' are examples of characters that utilise the gutter space.  The gutter is also sometimes known as the 'external leading' or 'descent' of a character.</li>
 <li>'LineSpacing' is the recommended pixel distance between each line that is printed with the font.</li>
 <li>'Glyph' refers to a single font character.</li>
@@ -49,7 +49,7 @@ class is not integrated with the display's vector scene graph.
 *********************************************************************************************************************/
 
 static BitmapCache * check_bitmap_cache(extFont *, FTF);
-static ERR SET_Point(extFont *Self, DOUBLE);
+static ERR SET_Point(extFont *Self, double);
 static ERR SET_Style(extFont *, CSTRING);
 
 /*********************************************************************************************************************
@@ -100,7 +100,7 @@ static ERR FONT_Free(extFont *Self)
 static ERR FONT_Init(extFont *Self)
 {
    pf::Log log;
-   LONG diff;
+   int diff;
    FTF style;
    ERR error;
    FMETA meta = FMETA::NIL;
@@ -147,22 +147,22 @@ static ERR FONT_Init(extFont *Self)
 
             winne_header_fields ne_header;
             if ((file->read(&ne_header, sizeof(ne_header)) IS ERR::Okay) and (ne_header.magic IS ID_WINNE)) {
-               ULONG res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
+               uint32_t res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
                file->seek(res_offset, SEEK::START);
 
                // Count the number of fonts in the file
 
-               WORD size_shift = 0;
-               UWORD font_count = 0;
-               LONG font_offset = 0;
+               int16_t size_shift = 0;
+               uint16_t font_count = 0;
+               int font_offset = 0;
                fl::ReadLE(*file, &size_shift);
 
-               WORD type_id;
+               int16_t type_id;
                for ((error = fl::ReadLE(*file, &type_id)); (error IS ERR::Okay) and (type_id); error = fl::ReadLE(*file, &type_id)) {
-                  WORD count = 0;
+                  int16_t count = 0;
                   fl::ReadLE(*file, &count);
 
-                  if ((UWORD)type_id IS 0x8008) {
+                  if ((uint16_t)type_id IS 0x8008) {
                      font_count  = count;
                      file->get(FID_Position, font_offset);
                      font_offset += 4;
@@ -182,8 +182,8 @@ static ERR FONT_Init(extFont *Self)
 
                auto fonts = std::make_unique<winFont[]>(font_count);
 
-               for (LONG i=0; i < font_count; i++) {
-                  UWORD offset, size;
+               for (int i=0; i < font_count; i++) {
+                  uint16_t offset, size;
                   fl::ReadLE(*file, &offset);
                   fl::ReadLE(*file, &size);
                   fonts[i].Offset = offset<<size_shift;
@@ -191,11 +191,11 @@ static ERR FONT_Init(extFont *Self)
                   file->seek(8, SEEK::CURRENT);
                }
 
-               LONG abs = 0x7fff;
-               LONG wfi = 0;
+               int abs = 0x7fff;
+               int wfi = 0;
                winfnt_header_fields face;
-               for (LONG i=0; i < font_count; i++) {
-                  file->seek((DOUBLE)fonts[i].Offset, SEEK::START);
+               for (int i=0; i < font_count; i++) {
+                  file->seek((double)fonts[i].Offset, SEEK::START);
 
                   winfnt_header_fields header;
                   if (file->read(&header, sizeof(header)) IS ERR::Okay) {
@@ -332,7 +332,7 @@ convenience - we recommend that you set the Style field for determining font sty
 
 *********************************************************************************************************************/
 
-static ERR GET_Bold(extFont *Self, LONG *Value)
+static ERR GET_Bold(extFont *Self, int *Value)
 {
    if ((Self->Flags & FTF::BOLD) != FTF::NIL) *Value = TRUE;
    else if (pf::strisearch("bold", Self->prvStyle) != -1) *Value = TRUE;
@@ -340,7 +340,7 @@ static ERR GET_Bold(extFont *Self, LONG *Value)
    return ERR::Okay;
 }
 
-static ERR SET_Bold(extFont *Self, LONG Value)
+static ERR SET_Bold(extFont *Self, int Value)
 {
    if (Self->initialised()) {
       // If the font is initialised, setting the bold style is implicit
@@ -401,14 +401,14 @@ static ERR SET_Face(extFont *Self, STRING Value)
          strcopy(final_name, Self->prvFace, std::ssize(Self->prvFace));
       }
 
-      LONG i, j;
+      int i, j;
       for (i=0; Value[i] and Value[i] != ':'; i++);
       if (!Value[i]) return ERR::Okay;
 
       // Extract the point size
 
       Value += i;
-      DOUBLE pt = strtod(Value, &Value);
+      double pt = strtod(Value, &Value);
       SET_Point(Self, pt);
 
       i = 0;
@@ -483,7 +483,7 @@ convenience only - we recommend that you set the #Style field for determining fo
 
 *********************************************************************************************************************/
 
-static ERR GET_Italic(extFont *Self, LONG *Value)
+static ERR GET_Italic(extFont *Self, int *Value)
 {
    if ((Self->Flags & FTF::ITALIC) != FTF::NIL) *Value = TRUE;
    else if (pf::strisearch("italic", Self->prvStyle) != -1) *Value = TRUE;
@@ -491,7 +491,7 @@ static ERR GET_Italic(extFont *Self, LONG *Value)
    return ERR::Okay;
 }
 
-static ERR SET_Italic(extFont *Self, LONG Value)
+static ERR SET_Italic(extFont *Self, int Value)
 {
    if (Self->initialised()) {
       // If the font is initialised, setting the italic style is implicit
@@ -516,7 +516,7 @@ this will be taken into account in the resulting figure.
 
 *********************************************************************************************************************/
 
-static ERR GET_LineCount(extFont *Self, LONG *Value)
+static ERR GET_LineCount(extFont *Self, int *Value)
 {
    if (!Self->prvLineCount) calc_lines(Self);
    *Value = Self->prvLineCount;
@@ -575,17 +575,17 @@ Please note that the use of translucency will always have an impact on the time 
 
 *********************************************************************************************************************/
 
-static ERR GET_Opacity(extFont *Self, DOUBLE *Value)
+static ERR GET_Opacity(extFont *Self, double *Value)
 {
    *Value = (Self->Colour.Alpha * 100)>>8;
    return ERR::Okay;
 }
 
-static ERR SET_Opacity(extFont *Self, DOUBLE Value)
+static ERR SET_Opacity(extFont *Self, double Value)
 {
    if (Value >= 100) Self->Colour.Alpha = 255;
    else if (Value <= 0) Self->Colour.Alpha = 0;
-   else Self->Colour.Alpha = F2T(Value * (255.0 / 100.0));
+   else Self->Colour.Alpha = int(Value * (255.0 / 100.0));
    return ERR::Okay;
 }
 
@@ -609,13 +609,13 @@ drop the font to point 8.
 
 *********************************************************************************************************************/
 
-static ERR GET_Point(extFont *Self, DOUBLE *Value)
+static ERR GET_Point(extFont *Self, double *Value)
 {
    *Value = Self->Point;
    return ERR::Okay;
 }
 
-static ERR SET_Point(extFont *Self, DOUBLE Value)
+static ERR SET_Point(extFont *Self, double Value)
 {
    if (Value < 1) Value = 1;
    Self->Point = Value;
@@ -645,7 +645,7 @@ static ERR SET_String(extFont *Self, CSTRING Value)
    Self->prvLineCountCR = 1; // Line count (carriage returns only)
 
    if ((Value) and (*Value)) {
-      LONG i;
+      int i;
       for (i=0; Value[i]; i++) if (Value[i] IS '\n') Self->prvLineCountCR++;
 
       Self->prvBuffer.assign(Value);
@@ -701,7 +701,7 @@ this to work, or a width of zero will be returned.
 
 *********************************************************************************************************************/
 
-static ERR GET_Width(extFont *Self, LONG *Value)
+static ERR GET_Width(extFont *Self, int *Value)
 {
    if (!Self->String) {
       *Value = 0;
@@ -710,9 +710,9 @@ static ERR GET_Width(extFont *Self, LONG *Value)
 
    if ((!Self->prvStrWidth) or ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) or (Self->WrapEdge)){
       if (Self->WrapEdge > 0) {
-         string_size(Self, Self->String, FSS_ALL, Self->WrapEdge - Self->X, &Self->prvStrWidth, NULL);
+         string_size(Self, Self->String, FSS_ALL, Self->WrapEdge - Self->X, &Self->prvStrWidth, nullptr);
       }
-      else string_size(Self, Self->String, FSS_ALL, 0, &Self->prvStrWidth, NULL);
+      else string_size(Self, Self->String, FSS_ALL, 0, &Self->prvStrWidth, nullptr);
    }
 
    *Value = Self->prvStrWidth;
@@ -749,12 +749,12 @@ the string will be drawn.
 
 *********************************************************************************************************************/
 
-static ERR GET_YOffset(extFont *Self, LONG *Value)
+static ERR GET_YOffset(extFont *Self, int *Value)
 {
    if (Self->prvLineCount < 1) calc_lines(Self);
 
    if ((Self->Align & ALIGN::VERTICAL) != ALIGN::NIL) {
-      LONG offset = (Self->AlignHeight - (Self->Height + (Self->LineSpacing * (Self->prvLineCount-1))))>>1;
+      int offset = (Self->AlignHeight - (Self->Height + (Self->LineSpacing * (Self->prvLineCount-1))))>>1;
       offset += (Self->LineSpacing - Self->MaxHeight)>>1; // Adjust for spacing between each individual line
       *Value = offset;
    }
@@ -773,12 +773,12 @@ static ERR draw_bitmap_font(extFont *Self)
    pf::Log log(__FUNCTION__);
    objBitmap *bitmap;
    RGB8 rgb;
-   static const UBYTE table[] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
-   UBYTE *xdata, *data;
-   LONG linewidth, offset, charclip, wrapindex, charlen;
-   ULONG unicode, ocolour;
-   WORD startx, xpos, ex, ey, sx, sy, xinc;
-   WORD bytewidth, alpha, charwidth;
+   static const uint8_t table[] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
+   uint8_t *xdata, *data;
+   int linewidth, offset, charclip, wrapindex, charlen;
+   uint32_t unicode, ocolour;
+   int16_t startx, xpos, ex, ey, sx, sy, xinc;
+   int16_t bytewidth, alpha, charwidth;
    bool draw_line;
    #define CHECK_LINE_CLIP(font,y,bmp) if (((y)-1 < (bmp)->Clip.Bottom) and ((y) + (font)->prvBitmapHeight + 1 > (bmp)->Clip.Top)) draw_line = true; else draw_line = false;
 
@@ -790,8 +790,8 @@ static ERR draw_bitmap_font(extFont *Self)
 
    ERR error = ERR::Okay;
    STRING str = Self->String;
-   LONG dxcoord = Self->X;
-   LONG dycoord = Self->Y;
+   int dxcoord = Self->X;
+   int dycoord = Self->Y;
 
    if (!Self->AlignWidth)  Self->AlignWidth  = bitmap->Width;
    if (!Self->AlignHeight) Self->AlignHeight = bitmap->Height;
@@ -815,8 +815,8 @@ static ERR draw_bitmap_font(extFont *Self)
       else dxcoord = Self->X + Self->AlignWidth - linewidth;
    }
 
-   ULONG colour  = bitmap->getColour(Self->Colour);
-   ULONG ucolour = bitmap->getColour(Self->Underline);
+   uint32_t colour  = bitmap->getColour(Self->Colour);
+   uint32_t ucolour = bitmap->getColour(Self->Underline);
 
    if (Self->Outline.Alpha > 0) {
       Self->BmpCache->get_outline();
@@ -828,7 +828,7 @@ static ERR draw_bitmap_font(extFont *Self)
 
    if (acLock(bitmap) != ERR::Okay) return log.warning(ERR::Lock);
 
-   WORD dx = 0, dy = 0;
+   int16_t dx = 0, dy = 0;
    startx = dxcoord;
    CHECK_LINE_CLIP(Self, dycoord, bitmap);
    while (*str) {
@@ -854,8 +854,8 @@ static ERR draw_bitmap_font(extFont *Self)
          CHECK_LINE_CLIP(Self, dycoord, bitmap);
       }
       else if (*str IS '\t') {
-         WORD tabwidth = (Self->prvChar['o'].Advance * Self->GlyphSpacing) * Self->TabSize;
-         if (tabwidth) dxcoord = Self->X + pf::roundup(dxcoord - Self->X, tabwidth);
+         int16_t tabwidth = (Self->prvChar['o'].Advance * Self->GlyphSpacing) * Self->TabSize;
+         if (tabwidth) dxcoord = Self->X + tab_advance<int>(dxcoord - Self->X, tabwidth);
          str++;
       }
       else {
@@ -994,7 +994,7 @@ static ERR draw_bitmap_font(extFont *Self)
             }
             else {
                if (bitmap->BytesPerPixel IS 4) {
-                  auto dest = (ULONG *)(bitmap->Data + (sx<<2) + (sy * bitmap->LineWidth));
+                  auto dest = (uint32_t *)(bitmap->Data + (sx<<2) + (sy * bitmap->LineWidth));
                   for (dy=sy; dy < ey; dy++) {
                      xpos = xinc & 0x07;
                      xdata = data + (xinc>>3);
@@ -1005,12 +1005,12 @@ static ERR draw_bitmap_font(extFont *Self)
                            xdata++;
                         }
                      }
-                     dest = (ULONG *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     dest = (uint32_t *)(((uint8_t *)dest) + bitmap->LineWidth);
                      data += bytewidth;
                   }
                }
                else if (bitmap->BytesPerPixel IS 2) {
-                  auto dest = (UWORD *)(bitmap->Data + (sx<<1) + (sy * bitmap->LineWidth));
+                  auto dest = (uint16_t *)(bitmap->Data + (sx<<1) + (sy * bitmap->LineWidth));
                   for (dy=sy; dy < ey; dy++) {
                      xpos = xinc & 0x07;
                      xdata = data + (xinc>>3);
@@ -1021,7 +1021,7 @@ static ERR draw_bitmap_font(extFont *Self)
                            xdata++;
                         }
                      }
-                     dest = (UWORD *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     dest = (uint16_t *)(((uint8_t *)dest) + bitmap->LineWidth);
                      data += bytewidth;
                   }
                }
@@ -1031,18 +1031,18 @@ static ERR draw_bitmap_font(extFont *Self)
                      else colour = 255;
                   }
 
-                  auto dest = (UBYTE *)(bitmap->Data + sx + (sy * bitmap->LineWidth));
+                  auto dest = (uint8_t *)(bitmap->Data + sx + (sy * bitmap->LineWidth));
                   for (dy=sy; dy < ey; dy++) {
                      xpos = xinc & 0x07;
                      xdata = data + (xinc>>3);
                      for (dx=0; dx < ex-sx; dx++) {
-                        if (*xdata & table[xpos++]) dest[dx] = (UBYTE)colour;
+                        if (*xdata & table[xpos++]) dest[dx] = (uint8_t)colour;
                         if (xpos > 7) {
                            xpos = 0;
                            xdata++;
                         }
                      }
-                     dest = (UBYTE *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     dest = (uint8_t *)(((uint8_t *)dest) + bitmap->LineWidth);
                      data += bytewidth;
                   }
                }
@@ -1092,21 +1092,21 @@ static const FieldDef AlignFlags[] = {
    { "Bottom",     ALIGN::BOTTOM     }, { "Top",      ALIGN::TOP },
    { "Horizontal", ALIGN::HORIZONTAL }, { "Vertical", ALIGN::VERTICAL },
    { "Center",     ALIGN::CENTER     }, { "Middle",   ALIGN::MIDDLE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clFontFields[] = {
    { "Point",        FDF_DOUBLE|FDF_RW, GET_Point, SET_Point },
    { "GlyphSpacing", FDF_DOUBLE|FDF_RW },
-   { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, NULL, CLASSID::BITMAP },
-   { "String",       FDF_STRING|FDF_RW, NULL, SET_String },
-   { "Path",         FDF_STRING|FDF_RW, NULL, SET_Path },
-   { "Style",        FDF_STRING|FDF_RI, NULL, SET_Style },
-   { "Face",         FDF_STRING|FDF_RI, NULL, SET_Face },
+   { "Bitmap",       FDF_OBJECT|FDF_RW, nullptr, nullptr, CLASSID::BITMAP },
+   { "String",       FDF_STRING|FDF_RW, nullptr, SET_String },
+   { "Path",         FDF_STRING|FDF_RW, nullptr, SET_Path },
+   { "Style",        FDF_STRING|FDF_RI, nullptr, SET_Style },
+   { "Face",         FDF_STRING|FDF_RI, nullptr, SET_Face },
    { "Outline",      FDF_RGB|FDF_RW },
    { "Underline",    FDF_RGB|FDF_RW },
    { "Colour",       FDF_RGB|FDF_RW },
-   { "Flags",        FDF_INTFLAGS|FDF_RW, NULL, SET_Flags, clFontFlags },
+   { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, SET_Flags, clFontFlags },
    { "Gutter",       FDF_INT|FDF_RI },
    { "LineSpacing",  FDF_INT|FDF_RW },
    { "X",            FDF_INT|FDF_RW },
@@ -1117,7 +1117,7 @@ static const FieldArray clFontFields[] = {
    { "Height",       FDF_INT|FDF_RI },
    { "Leading",      FDF_INT|FDF_R },
    { "MaxHeight",    FDF_INT|FDF_RI },
-   { "Align",        FDF_INTFLAGS|FDF_RW, NULL, NULL, AlignFlags },
+   { "Align",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, AlignFlags },
    { "AlignWidth",   FDF_INT|FDF_RW },
    { "AlignHeight",  FDF_INT|FDF_RW },
    { "Ascent",       FDF_INT|FDF_R },
@@ -1127,7 +1127,7 @@ static const FieldArray clFontFields[] = {
    { "Bold",         FDF_VIRTUAL|FDF_INT|FDF_RW, GET_Bold, SET_Bold },
    { "Italic",       FDF_VIRTUAL|FDF_INT|FDF_RW, GET_Italic, SET_Italic },
    { "LineCount",    FDF_VIRTUAL|FDF_INT|FDF_R, GET_LineCount },
-   { "Location",     FDF_VIRTUAL|FDF_STRING|FDF_SYNONYM|FDF_RW, NULL, SET_Path },
+   { "Location",     FDF_VIRTUAL|FDF_STRING|FDF_SYNONYM|FDF_RW, nullptr, SET_Path },
    { "Opacity",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, GET_Opacity, SET_Opacity },
    { "Width",        FDF_VIRTUAL|FDF_INT|FDF_R, GET_Width },
    { "YOffset",      FDF_VIRTUAL|FDF_INT|FDF_R, GET_YOffset },

@@ -26,7 +26,7 @@ set (DISPLAY_DEFS # Full paths are required for add_custom_command() dependencie
    "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_surface/surface_def.c")
 
-if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output from the FDL file
+if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output from the TDL file
    add_custom_command (OUTPUT
       ${DISPLAY_DEFS}
       "${DOCS}/modules/classes/bitmap.xml"
@@ -35,12 +35,12 @@ if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output
       "${DOCS}/modules/classes/display.xml"
       "${DOCS}/modules/classes/pointer.xml"
       "${DOCS}/modules/classes/surface.xml"
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${MOD}.fdl" "sdk=${PROJECT_SOURCE_DIR}"
+      COMMAND ${ORIGO_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${MOD}.tdl" "sdk=${PROJECT_SOURCE_DIR}"
               "output-proto=prototypes.h" "output-defs=module_def.c" "files={" ${FUNCTIONS} "lib_surfaces.cpp" "}"
-      COMMAND ${PARASOL_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${MOD}.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
+      COMMAND ${ORIGO_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${MOD}.tdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
               "sdk=${PROJECT_SOURCE_DIR}" "format=c"
       DEPENDS
-         "${MOD}.fdl"
+         "${MOD}.tdl"
          ${FUNCTIONS}
          "lib_surfaces.cpp"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -50,19 +50,10 @@ if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output
    add_custom_target (display_defs DEPENDS ${DISPLAY_DEFS}
       "${INCLUDE_OUTPUT}/modules/display.h"
       "${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
-      "${CMAKE_CURRENT_SOURCE_DIR}/display.fdl")
+      "${CMAKE_CURRENT_SOURCE_DIR}/display.tdl")
 
    add_dependencies (build_headers display_defs)
 endif ()
-
-link_directories("/usr/X11R6/lib" "/usr/lib")
-
-   CHECK_C_SOURCE_COMPILES ("
-#include <X11/extensions/Xrandr.h>
-int main() {
-   return 0;
-}"
-   XRANDR_INSTALLED)
 
    CHECK_C_SOURCE_COMPILES ("
 #include <X11/Xlib.h>
@@ -72,15 +63,20 @@ int main() {
 }"
    XDGA_INSTALLED)
 
-if (XRANDR_INSTALLED)
-   add_definitions ("-DXRANDR_ENABLED")
-endif ()
-
-if (XDGA_INSTALLED)
-   add_definitions ("-DXDGA_ENABLED")
-endif ()
-
 add_library (${MOD})
+
+if (X11_FOUND)
+   target_compile_definitions (${MOD} PRIVATE "X11_ENABLED")
+   if (X11_Xrandr_FOUND)
+      target_compile_definitions (${MOD} PRIVATE "XRANDR_ENABLED")
+   else ()
+      message (STATUS "XRandR headers unavailable; building without XRandR support")
+   endif ()
+
+   if (XDGA_INSTALLED)
+      target_compile_definitions (${MOD} PRIVATE "XDGA_ENABLED")
+   endif ()
+endif ()
 
 set_module_defaults (${MOD} "Gfx")
 
@@ -93,21 +89,32 @@ target_link_libraries (${MOD} PUBLIC linear_rgb)
 if (WIN32)
    target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid xinput ${MATH_LINK})
    target_sources (${MOD} PRIVATE ${FUNCTIONS} "win32/windows.cpp" "win32/clipboard.c" ${CLASSES})
-   add_compile_definitions ("WIN_DRAGDROP")
+   target_compile_definitions (${MOD} PRIVATE "WIN_DRAGDROP")
 elseif (ANDROID)
    # Android uses OpenGL.  A separate driver library is compiled for this purpose.
    add_library (display-gles1 SHARED)
    target_sources (display-gles1 PRIVATE ${FUNCTIONS} "android/android.cpp" ${CLASSES})
-   add_compile_definitions ("_GLES_" "_GLES1_")
+   target_compile_definitions (display-gles1 PRIVATE "_GLES_" "_GLES1_")
    target_link_libraries (display-gles1 PRIVATE ${MATH_LINK} android EGL GLESv1_CM)
    # GL2 Link: -ljnigraphics -lEGL -lGLESv2 -DGLES2
    # GL3 Link: -ljnigraphics -lEGL -lGLESv3 -DGLES3
 else ()
-   # X11
-   # Apt package requirements: libxrandr-dev libxxf86vm-dev libxxf86dga-dev
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-strict-overflow")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
+
    target_sources (${MOD} PRIVATE ${FUNCTIONS} ${CLASSES})
-   target_link_libraries (${MOD} PRIVATE ${MATH_LINK} Xrender Xrandr Xext X11) # x11/libXxf86dga.a
-   add_compile_definitions ("__X11DGA__" "__xwindows__")
+
+   set (DISPLAY_PRIVATE_LIBS ${MATH_LINK})
+
+   if (X11_FOUND)
+      # Apt package requirements: libxrandr-dev libxxf86vm-dev libxxf86dga-dev
+
+      list (APPEND DISPLAY_PRIVATE_LIBS Xrender Xext X11)
+      if (X11_Xrandr_FOUND)
+         list (APPEND DISPLAY_PRIVATE_LIBS Xrandr)
+      endif ()
+      target_link_libraries (${MOD} PRIVATE ${DISPLAY_PRIVATE_LIBS}) # x11/libXxf86dga.a
+
+      target_compile_definitions (${MOD} PRIVATE "__X11DGA__" "__xwindows__")
+   endif ()
 endif ()

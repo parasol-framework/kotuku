@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -31,9 +31,11 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
  #include <sys/resource.h>
 #endif
 
-#include <parasol/main.h>
-#include <parasol/modules/network.h>
-#include <parasol/strings.hpp>
+#include <string.h>
+
+#include <kotuku/main.h>
+#include <kotuku/modules/network.h>
+#include <kotuku/strings.hpp>
 
 #ifndef DISABLE_SSL
   #ifdef _WIN32
@@ -51,13 +53,15 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
   #endif
 #endif
 
-#include <unordered_set>
 #include <stack>
 #include <mutex>
+#include <shared_mutex>
 #include <span>
 #include <cstring>
 #include <thread>
 #include <optional>
+
+//********************************************************************************************************************
 
 std::mutex glmThreads;
 std::unordered_set<std::shared_ptr<std::jthread>> glThreads;
@@ -89,13 +93,7 @@ enum class SHS : uint8_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(SHS)
 
-#ifdef __linux__
-typedef int SOCKET_HANDLE;
-#elif _WIN32
-typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET for now to avoid including winsock.h
-#else
-#error "No support for this platform"
-#endif
+//********************************************************************************************************************
 
 #ifdef _WIN32
    #define INADDR_NONE 0xffffffff
@@ -104,8 +102,8 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    #define SOCK_DGRAM 2
 
    struct  hostent {
-      char	 *h_name;
-      char	 **h_aliases;
+      char	*h_name;
+      char	**h_aliases;
       short h_addrtype;
       short h_length;
       char  **h_addr_list;
@@ -115,7 +113,7 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    struct in_addr {
       union {
          struct { uint8_t s_b1,s_b2,s_b3,s_b4; } S_un_b;
-         struct { UWORD s_w1,s_w2; } S_un_w;
+         struct { uint16_t s_w1,s_w2; } S_un_w;
          uint32_t S_addr;
       } S_un;
    #define s_addr  S_un.S_addr
@@ -127,30 +125,30 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    };
 
    struct sockaddr_in {
-      short  sin_family;
-      UWORD  sin_port;
+      short    sin_family;
+      uint16_t sin_port;
       struct in_addr sin_addr;
       char   sin_zero[8];
    };
 
    struct addrinfo {
-     int             ai_flags;
-     int             ai_family;
-     int             ai_socktype;
-     int             ai_protocol;
-     size_t          ai_addrlen;
-     char            *ai_canonname;
+     int    ai_flags;
+     int    ai_family;
+     int    ai_socktype;
+     int    ai_protocol;
+     size_t ai_addrlen;
+     char   *ai_canonname;
      struct sockaddr *ai_addr;
      struct addrinfo *ai_next;
    };
 
    struct in6_addr {
-      unsigned char   s6_addr[16];   // IPv6 address
+      uint8_t s6_addr[16];   // IPv6 address
    };
 
    struct sockaddr_in6 {
       short sin6_family;
-      UWORD sin6_port;
+      uint16_t sin6_port;
       uint32_t sin6_flowinfo;
       struct in6_addr sin6_addr;
       uint32_t sin6_scope_id;
@@ -226,7 +224,33 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
       close(Handle);
    }
 
+// For Linux, create a simple wrapper that behaves like an int but with methods
+class SocketHandle {
+private:
+   int socket_val;
+public:
+   SocketHandle() : socket_val(-1) {}
+   SocketHandle(int sock) : socket_val(sock) {}
+
+   operator int() const { return socket_val; }
+   operator bool() const { return socket_val != -1; }
+
+   int int_value() const { return socket_val; }
+   int hosthandle() const { return socket_val; }
+   int socket() const { return socket_val; }
+
+   bool is_valid() const { return socket_val != -1; }
+   bool is_invalid() const { return socket_val == -1; }
+
+   bool operator==(const SocketHandle& other) const { return socket_val == other.socket_val; }
+   bool operator!=(const SocketHandle& other) const { return socket_val != other.socket_val; }
+   bool operator==(int sock) const { return socket_val == sock; }
+   bool operator!=(int sock) const { return socket_val != sock; }
+
+   SocketHandle& operator=(int sock) { socket_val = sock; return *this; }
+};
 #elif _WIN32
+   #include "win32/winsockwrappers.h"
 
    #include <string.h>
 
@@ -240,14 +264,11 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
       int getaddrinfo(const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res);
       void freeaddrinfo(struct addrinfo *res);
    }
-
-#else
-   #error "No support for this platform"
 #endif
 
 class extClientSocket : public objClientSocket {
    public:
-   SOCKET_HANDLE Handle = NOHANDLE;
+   SocketHandle Handle;
    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
    uint8_t OutgoingRecursion;  // Recursion manager
    uint8_t InUse;       // Recursion manager
@@ -265,9 +286,11 @@ class extClientSocket : public objClientSocket {
    #endif
 };
 
+//********************************************************************************************************************
+
 class extNetSocket : public objNetSocket {
    public:
-   SOCKET_HANDLE Handle = NOHANDLE;   // Handle of the socket
+   SocketHandle Handle;   // Handle of the socket
    FUNCTION Outgoing;
    FUNCTION Incoming;
    FUNCTION Feedback;
@@ -282,6 +305,7 @@ class extNetSocket : public objNetSocket {
    uint8_t IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
    uint8_t OutgoingRecursion;
    uint8_t ErrorCountdown = 8;    // Counts down on each error, disconnect occurs at zero.
+   TIMER   TimerHandle = 0;       // Timer subscription handle for timeout
    #ifdef _WIN32
       int16_t WinRecursion; // For win32_netresponse()
    #endif
@@ -365,7 +389,7 @@ typedef ankerl::unordered_dense::map<std::string, DNSEntry, CaseInsensitiveHash,
 
 //********************************************************************************************************************
 
-static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
+static void CLOSESOCKET_THREADED(SocketHandle Handle)
 {
 #ifdef _WIN32
    win_deregister_socket(Handle);
@@ -389,9 +413,51 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
 
    std::lock_guard<std::mutex> lock(glmThreads);
    auto thread_ptr = std::make_shared<std::jthread>();
-   *thread_ptr = std::jthread([] (int Handle) { CLOSESOCKET(Handle); }, Handle);
+   *thread_ptr = std::jthread([] (SocketHandle Handle) { CLOSESOCKET(Handle); }, Handle);
    glThreads.insert(thread_ptr);
    // Don't detach, threads need to be joinable for proper cleanup
+}
+
+//********************************************************************************************************************
+
+inline void setIPV4(IPAddress &IP, uint32_t IPV4HostOrder, uint16_t Port) {
+   IP.Type = IPADDR::V4;
+   IP.Port = Port;
+   IP.Data[0] = IPV4HostOrder;
+   IP.Data[1] = IP.Data[2] = IP.Data[3] = 0;
+}
+
+inline void setIPV6(IPAddress &IP, uint8_t *Address, uint16_t Port) {
+   IP.Type = IPADDR::V6;
+   IP.Port = Port;
+   pf::copymem(Address, &IP.Data, 16);
+}
+
+//********************************************************************************************************************
+// Unified IP address conversion functions to eliminate platform-specific duplication
+
+static uint32_t unified_inet_addr(CSTRING Str) {
+#ifdef __linux__
+   return inet_addr(Str);
+#elif _WIN32
+   return win_inet_addr(Str);
+#endif
+}
+
+static int unified_inet_pton(int af, CSTRING src, void *dst) {
+#ifdef __linux__
+   return inet_pton(af, src, dst);
+#elif _WIN32
+   return win_inet_pton(af, src, dst);
+#endif
+}
+
+static CSTRING unified_inet_ntop(int af, const void *src, char *dst, size_t size) {
+#ifdef __linux__
+   return inet_ntop(af, src, dst, size);
+#elif _WIN32
+   return win_inet_ntop(af, src, dst, size);
+#endif
 }
 
 //********************************************************************************************************************
@@ -401,8 +467,11 @@ static OBJECTPTR clProxy = nullptr;
 static OBJECTPTR clNetSocket = nullptr;
 static OBJECTPTR clClientSocket = nullptr;
 static OBJECTPTR clNetClient = nullptr;
-static HOSTMAP glHosts;
-static HOSTMAP glAddresses;
+static OBJECTPTR glNetworkModule = nullptr;
+static HOSTMAP glHosts; // Protected by glHostsMutex
+static HOSTMAP glAddresses; // Protected by glAddressesMutex
+static std::shared_mutex glHostsMutex;
+static std::shared_mutex glAddressesMutex;
 static MSGID glResolveNameMsgID = MSGID::NIL;
 static MSGID glResolveAddrMsgID = MSGID::NIL;
 static std::string glCertPath;
@@ -419,10 +488,10 @@ static std::string glCertPath;
 
 //********************************************************************************************************************
 
-static void netsocket_incoming(SOCKET_HANDLE, extNetSocket *);
-static int8_t check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
+
+static void cleanup_proxy_config(void);
 
 static ERR init_netclient(void);
 static ERR init_netsocket(void);
@@ -440,6 +509,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    pf::Log log;
 
    CoreBase = argCoreBase;
+
+   argModule->get(FID_Root, glNetworkModule);
 
    if (init_netclient() != ERR::Okay) return ERR::AddClass;
    if (init_netsocket() != ERR::Okay) return ERR::AddClass;
@@ -500,6 +571,8 @@ static ERR MODOpen(OBJECTPTR Module)
 static ERR MODExpunge(void)
 {
    pf::Log log;
+
+   cleanup_proxy_config();
 
 #ifdef _WIN32
    SetResourcePtr(RES::NET_PROCESSING, nullptr);
@@ -580,25 +653,14 @@ CSTRING AddressToStr(IPAddress *Address)
    if (!Address) return nullptr;
 
    if (Address->Type IS IPADDR::V6) {
-      #ifdef __linux__
-         char ipv6_str[INET6_ADDRSTRLEN];
-         struct in6_addr addr;
-         pf::copymem(Address->Data, &addr.s6_addr, 16);
-
-         if (inet_ntop(AF_INET6, &addr, ipv6_str, INET6_ADDRSTRLEN)) {
-            return pf::strclone(ipv6_str);
-         }
-      #elif _WIN32
-         // Windows IPv6 string conversion using wrapper function
-         char ipv6_str[46];
-         const char *result = win_inet_ntop(AF_INET6, Address->Data, ipv6_str, sizeof(ipv6_str));
-         if (result) return pf::strclone(result);
-      #endif
+      char ipv6_str[46]; // 46 bytes is sufficient for both platforms
+      const char *result = unified_inet_ntop(AF_INET6, Address->Data, ipv6_str, sizeof(ipv6_str));
+      if (result) return pf::strclone(result);
       return nullptr;
    }
    else if (Address->Type IS IPADDR::V4) {
       struct in_addr addr;
-      addr.s_addr = net::HostToLong(Address->Data[0]);
+      addr.s_addr = htonl(Address->Data[0]);
 
       STRING result;
       #ifdef __linux__
@@ -646,44 +708,60 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
 {
    if ((!Str) or (!Address)) return ERR::NullArgs;
 
-   pf::clearmem(Address, sizeof(IPAddress));
+   // Handle special cases
+   if (pf::iequals(Str, "localhost") or pf::iequals(Str, "127.0.0.1")) {
+      Address->Type = IPADDR::V4;
+      Address->Data[0] = 0x7f000001; // 127.0.0.1
+      Address->Data[1] = Address->Data[2] = Address->Data[3] = 0;
+      return ERR::Okay;
+   }
+   else if (pf::iequals(Str, "::1")) {
+      Address->Type = IPADDR::V6;
+      pf::clearmem(&Address->Data, sizeof(Address->Data));
+      ((uint8_t*)Address->Data)[15] = 1; // ::1 in byte format
+      return ERR::Okay;
+   }
+   else if (pf::iequals(Str, "::")) {
+      // Bind to all interfaces (IPv6)
+      Address->Type = IPADDR::V6;
+      pf::clearmem(&Address->Data, sizeof(Address->Data));
+      return ERR::Okay;
+   }
+   else if (pf::iequals(Str, "0.0.0.0") or pf::iequals(Str, "*") or pf::iequals(Str, "")) {
+      // Bind to all interfaces
+      Address->Type = IPADDR::V4;
+      pf::clearmem(&Address->Data, sizeof(Address->Data));
+      return ERR::Okay;
+   }
+   else if (pf::iequals(Str, "255.255.255.255")) {
+      // Needed to prevent confusion with INADDR_NONE
+      Address->Type = IPADDR::V4;
+      Address->Data[0] = 0xffffffff;
+      Address->Data[1] = Address->Data[2] = Address->Data[3] = 0;
+      return ERR::Okay;
+   }
 
    // Try IPv6 first (contains colons)
    if (strchr(Str, ':')) {
-      #ifdef __linux__
-         struct in6_addr ipv6_addr;
-         if (inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
-            pf::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
-            Address->Type = IPADDR::V6;
-            return ERR::Okay;
-         }
-      #elif _WIN32
-         // Windows IPv6 parsing using wrapper function
-         struct in6_addr ipv6_addr;
-         if (win_inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
-            pf::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
-            Address->Type = IPADDR::V6;
-            return ERR::Okay;
-         }
-         return ERR::Failed;
-      #endif
+      struct in6_addr ipv6_addr;
+      if (unified_inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
+         pf::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
+         Address->Type = IPADDR::V6;
+         return ERR::Okay;
+      }
+      return ERR::Failed;
    }
 
    // IPv4
-   #ifdef __linux__
-      uint32_t result = inet_addr(Str);
-   #elif _WIN32
-      uint32_t result = win_inet_addr(Str);
-   #endif
+   uint32_t result = unified_inet_addr(Str);
 
    if (result IS INADDR_NONE) return ERR::Failed;
 
-   Address->Data[0] = net::LongToHost(result);
+   Address->Type = IPADDR::V4;
+   Address->Data[0] = ntohl(result);
    Address->Data[1] = 0;
    Address->Data[2] = 0;
    Address->Data[3] = 0;
-   Address->Type = IPADDR::V4;
-
    return ERR::Okay;
 }
 
@@ -704,7 +782,7 @@ uint: The word in network byte order
 
 uint32_t HostToShort(uint32_t Value)
 {
-   return (uint32_t)htons((UWORD)Value);
+   return (uint32_t)htons((uint16_t)Value);
 }
 
 /*********************************************************************************************************************
@@ -744,7 +822,7 @@ uint: The Value in host byte order
 
 uint32_t ShortToHost(uint32_t Value)
 {
-   return (uint32_t)ntohs((UWORD)Value);
+   return (uint32_t)ntohs((uint16_t)Value);
 }
 
 /*********************************************************************************************************************
@@ -772,7 +850,7 @@ uint32_t LongToHost(uint32_t Value)
 -FUNCTION-
 SetSSL: Alters SSL settings on an initialised NetSocket object.
 
-Use the SetSSL() function to adjust the SSL capabilities of a NetSocket object.  The following commands are currently 
+Use the SetSSL() function to adjust the SSL capabilities of a NetSocket object.  The following commands are currently
 available:
 
 <list type="bullet">
@@ -801,7 +879,7 @@ NoSupport: SSL support is disabled in this build.
 
 ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
 {
-#ifndef DISABLE_SSL   
+#ifndef DISABLE_SSL
    pf::Log log(__FUNCTION__);
    log.traceBranch("Command: %s = %s", Command, Value ? Value : "NULL");
 
@@ -893,7 +971,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
                case SSL_ERROR_WANT_READ:
                   log.trace("Handshake requested by server.");
                   Self->HandshakeStatus = SHS::READ;
-                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<extNetSocket>), Self);
+                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, ssl_handshake_read_netsocket, Self);
                   return ERR::Okay;
 
                case SSL_ERROR_SYSCALL:
@@ -942,16 +1020,6 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 
 //********************************************************************************************************************
 
-static int8_t check_machine_name(CSTRING HostName)
-{
-   for (LONG i=0; HostName[i]; i++) { // Check if it's a machine name
-      if (HostName[i] IS '.') return FALSE;
-   }
-   return TRUE;
-}
-
-//********************************************************************************************************************
-
 #include "netsocket/netsocket.cpp"
 #include "clientsocket/clientsocket.cpp"
 #include "class_proxy.cpp"
@@ -966,9 +1034,5 @@ static STRUCTS glStructures = {
    { "NetQueue",  sizeof(NetQueue) }
 };
 
-PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+KOTUKU_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_network_module() { return &ModHeader; }
-
-/*********************************************************************************************************************
-                                                     BACKTRACE IT
-*********************************************************************************************************************/

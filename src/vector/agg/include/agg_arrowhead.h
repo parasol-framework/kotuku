@@ -2,13 +2,13 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
 //
-// Simple arrowhead/arrowtail generator 
+// Simple arrowhead/arrowtail generator
 //
 //----------------------------------------------------------------------------
 #ifndef AGG_ARROWHEAD_INCLUDED
@@ -21,7 +21,7 @@ namespace agg
 
     //===============================================================arrowhead
     //
-    // See implementation agg_arrowhead.cpp 
+    // See implementation agg_arrowhead.cpp
     //
     class arrowhead
     {

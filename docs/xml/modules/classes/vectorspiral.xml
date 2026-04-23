@@ -8,10 +8,10 @@
     <module>Vector</module>
     <comment>Extends the Vector class with support for spiral path generation.</comment>
     <version>1</version>
-    <id>ab3e8003</id>
+    <id>a86a1429</id>
     <idstring>VECTORSPIRAL</idstring>
     <category>Graphics</category>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>The VectorSpiral class generates spiral paths that extend from a central point.</p></description>
     <source>

@@ -19,16 +19,16 @@ using namespace pf;
 struct sockaddr_un * get_socket_path(int ProcessID, socklen_t *Size)
 {
    // OSX doesn't support anonymous sockets, so we use /tmp instead.
-   static THREADVAR struct sockaddr_un tlSocket;
+   static thread_local struct sockaddr_un tlSocket;
    tlSocket.sun_family = AF_UNIX;
-   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/parasol.%d", ProcessID) + 1;
+   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/kotuku.%d", ProcessID) + 1;
    return &tlSocket;
 }
 #elif __unix__
 struct sockaddr_un * get_socket_path(int ProcessID, socklen_t *Size)
 {
-   static THREADVAR struct sockaddr_un tlSocket;
-   static THREADVAR bool init = false;
+   static thread_local struct sockaddr_un tlSocket;
+   static thread_local bool init = false;
 
    if (!init) {
       tlSocket.sun_family = AF_UNIX;
@@ -195,7 +195,7 @@ ERR copy_args(const FunctionField *Args, int ArgsSize, int8_t *Parameters, std::
          else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) { // Pointer to large/double
             pos += sizeof(int64_t);
          }
-         else if (Args[i+1].Type & FD_PTRSIZE) {          
+         else if (Args[i+1].Type & FD_PTRSIZE) {
             if (int memsize = ((int *)(Parameters + pos + sizeof(APTR)))[0]; memsize > 0) {
                size += memsize;
             }
@@ -208,11 +208,11 @@ ERR copy_args(const FunctionField *Args, int ArgsSize, int8_t *Parameters, std::
       else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) pos += sizeof(int64_t);
       else pos += sizeof(int);
    }
-      
+
    Buffer.reserve(size); // Ensures that the buffer space remains stable when extended.
    Buffer.resize(ArgsSize);
    copymem(Parameters, Buffer.data(), ArgsSize);
-   
+
    pos = 0;
    for (int i=0; Args[i].Name; i++) {
       APTR param = Buffer.data() + pos;
@@ -226,7 +226,7 @@ ERR copy_args(const FunctionField *Args, int ArgsSize, int8_t *Parameters, std::
                copymem(str->c_str(), insert, str->length() + 1);
             }
             else ((STRING *)param)[0] = nullptr;
-            pos += sizeof(std::string);
+            pos += sizeof(APTR);
          }
          else {
             auto insert = (STRING)(Buffer.data() + Buffer.size());
@@ -234,7 +234,7 @@ ERR copy_args(const FunctionField *Args, int ArgsSize, int8_t *Parameters, std::
                auto len = strlen(str);
                Buffer.resize(Buffer.size() + len + 1);
                ((STRING *)param)[0] = insert;
-               copymem(str, Buffer.data() + Buffer.size(), len + 1);
+               copymem(str, insert, len + 1);
             }
             else ((STRING *)param)[0] = nullptr;
             pos += sizeof(STRING);

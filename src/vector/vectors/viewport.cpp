@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -29,8 +29,8 @@ NOTE: Refer to gen_vector_path() for the code that manages viewport dimensions i
 
 static ERR drag_callback(extVectorViewport *Viewport, const InputEvent *Events)
 {
-   static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
-   static DOUBLE glDragOriginX = 0, glDragOriginY = 0;
+   static double glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
+   static double glDragOriginX = 0, glDragOriginY = 0;
 
    gen_vector_tree(Viewport);
 
@@ -43,12 +43,12 @@ static ERR drag_callback(extVectorViewport *Viewport, const InputEvent *Events)
                event = event->Next;
             }
 
-            DOUBLE x = glDragOriginX + (event->AbsX - glAnchorX);
-            DOUBLE y = glDragOriginY + (event->AbsY - glAnchorY);
+            double x = glDragOriginX + (event->AbsX - glAnchorX);
+            double y = glDragOriginY + (event->AbsY - glAnchorY);
 
             if (Viewport->vpDragCallback.isC()) {
                pf::SwitchContext context(Viewport->vpDragCallback.Context);
-               auto routine = (void (*)(extVectorViewport *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR Meta))Viewport->vpDragCallback.Routine;
+               auto routine = (void (*)(extVectorViewport *, double, double, double, double, APTR Meta))Viewport->vpDragCallback.Routine;
                routine(Viewport, x, y, glDragOriginX, glDragOriginY, Viewport->vpDragCallback.Meta);
             }
             else if (Viewport->vpDragCallback.isScript()) {
@@ -112,13 +112,13 @@ static ERR VECTORVIEWPORT_Free(extVectorViewport *Self)
       Self->subscribeInput(JTYPE::NIL, C_FUNCTION(drag_callback));
    }
 
-   if (Self->vpBuffer) { 
+   if (Self->vpBuffer) {
       if (Self->vpBufferData) {
          FreeResource(Self->vpBufferData);
          Self->vpBufferData = nullptr;
       }
-      FreeResource(Self->vpBuffer); 
-      Self->vpBuffer = nullptr; 
+      FreeResource(Self->vpBuffer);
+      Self->vpBuffer = nullptr;
       if (Self->Scene) ((extVectorScene *)Self->Scene)->BufferCount--;
    }
 
@@ -253,7 +253,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_AbsX(extVectorViewport *Self, LONG &Value)
+static ERR VIEW_GET_AbsX(extVectorViewport *Self, int &Value)
 {
    gen_vector_tree(Self);
 
@@ -271,7 +271,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_AbsY(extVectorViewport *Self, LONG &Value)
+static ERR VIEW_GET_AbsY(extVectorViewport *Self, int &Value)
 {
    gen_vector_tree(Self);
 
@@ -322,23 +322,23 @@ Buffered: Set to true if the viewport should buffer its content.
 Viewport buffering is enabled by setting this field to `true` prior to initialisation.  A @Bitmap buffer will be
 created at the first drawing operation, and is available for the client to read from the #Buffer field.
 
-Potential reasons for enabling viewport buffering include: 1. Allows the client to read the rendered graphics 
+Potential reasons for enabling viewport buffering include: 1. Allows the client to read the rendered graphics
 directly from the #Buffer; 2. Overall rendering will be faster if the content of the viewport rarely changes; 3. The
 use of multiple buffers can improve threaded rendering.
 
 Buffering comes at a cost of using extra memory, and rendering may be less efficient if the buffered content
-changes frequently (e.g. is animated).  Buffering also enforces overflow (clipping) restrictions, equivalent to 
+changes frequently (e.g. is animated).  Buffering also enforces overflow (clipping) restrictions, equivalent to
 #Overflow being permanently set to `HIDDEN`.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_Buffered(extVectorViewport *Self, LONG &Value)
+static ERR VIEW_GET_Buffered(extVectorViewport *Self, int &Value)
 {
    Value = Self->vpBuffered;
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_Buffered(extVectorViewport *Self, LONG Value)
+static ERR VIEW_SET_Buffered(extVectorViewport *Self, int Value)
 {
    Self->vpBuffered = Value;
    return ERR::Okay;
@@ -404,7 +404,7 @@ static ERR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
       }
 
       if (Self->subscribeInput(JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(drag_callback)) != ERR::Okay) {
-         return ERR::Failed;
+         return ERR::Function;
       }
 
       Self->vpDragCallback = *Value;
@@ -429,7 +429,7 @@ The fixed value is always returned when retrieving the height.
 
 static ERR VIEW_GET_Height(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE val;
+   double val;
 
    gen_vector_tree(Self);
 
@@ -446,7 +446,7 @@ static ERR VIEW_GET_Height(extVectorViewport *Self, Unit &Value)
       else val = Self->vpTargetHeight * Self->Scene->PageHeight;
    }
    else if (dmf::hasAnyYOffset(Self->vpDimensions)) {
-      DOUBLE y, parent_height;
+      double y, parent_height;
 
       if (dmf::hasScaledY(Self->vpDimensions)) y = Self->vpTargetY * Self->ParentView->vpFixedHeight;
       else y = Self->vpTargetY;
@@ -561,13 +561,13 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_ViewHeight(extVectorViewport *Self, DOUBLE &Value)
+static ERR VIEW_GET_ViewHeight(extVectorViewport *Self, double &Value)
 {
    Value = Self->vpViewHeight;
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_ViewHeight(extVectorViewport *Self, DOUBLE Value)
+static ERR VIEW_SET_ViewHeight(extVectorViewport *Self, double Value)
 {
    if (Value > 0.0) {
       Self->vpViewHeight = Value;
@@ -587,13 +587,13 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_ViewX(extVectorViewport *Self, DOUBLE &Value)
+static ERR VIEW_GET_ViewX(extVectorViewport *Self, double &Value)
 {
    Value = Self->vpViewX;
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_ViewX(extVectorViewport *Self, DOUBLE Value)
+static ERR VIEW_SET_ViewX(extVectorViewport *Self, double Value)
 {
    Self->vpViewX = Value;
    mark_dirty((extVector *)Self, RC::DIRTY);
@@ -610,13 +610,13 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_ViewWidth(extVectorViewport *Self, DOUBLE &Value)
+static ERR VIEW_GET_ViewWidth(extVectorViewport *Self, double &Value)
 {
    Value = Self->vpViewWidth;
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_ViewWidth(extVectorViewport *Self, DOUBLE Value)
+static ERR VIEW_SET_ViewWidth(extVectorViewport *Self, double Value)
 {
    if (Value > 0.0) {
       Self->vpViewWidth = Value;
@@ -636,13 +636,13 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_ViewY(extVectorViewport *Self, DOUBLE &Value)
+static ERR VIEW_GET_ViewY(extVectorViewport *Self, double &Value)
 {
    Value = Self->vpViewY;
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_ViewY(extVectorViewport *Self, DOUBLE Value)
+static ERR VIEW_SET_ViewY(extVectorViewport *Self, double Value)
 {
    Self->vpViewY = Value;
    mark_dirty((extVector *)Self, RC::DIRTY);
@@ -660,7 +660,7 @@ full coverage.
 
 static ERR VIEW_GET_Width(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE val;
+   double val;
 
    gen_vector_tree(Self);
 
@@ -677,7 +677,7 @@ static ERR VIEW_GET_Width(extVectorViewport *Self, Unit &Value)
       else val = Self->vpTargetWidth * Self->Scene->PageWidth;
    }
    else if (dmf::hasAnyXOffset(Self->vpDimensions)) {
-      DOUBLE x, parent_width;
+      double x, parent_width;
 
       if (dmf::hasScaledX(Self->vpDimensions)) x = Self->vpTargetX * Self->ParentView->vpFixedWidth;
       else x = Self->vpTargetX;
@@ -721,7 +721,7 @@ width.
 
 static ERR VIEW_GET_X(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE width, value;
+   double width, value;
 
    gen_vector_tree(Self);
 
@@ -766,8 +766,8 @@ parent's width.
 
 static ERR VIEW_GET_XOffset(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE width;
-   DOUBLE value = 0;
+   double width;
+   double value = 0;
 
    gen_vector_tree(Self);
 
@@ -813,7 +813,7 @@ height.
 
 static ERR VIEW_GET_Y(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE value, height;
+   double value, height;
 
    gen_vector_tree(Self);
 
@@ -859,8 +859,8 @@ height.
 
 static ERR VIEW_GET_YOffset(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE height;
-   DOUBLE value = 0;
+   double height;
+   double value = 0;
 
    gen_vector_tree(Self);
 

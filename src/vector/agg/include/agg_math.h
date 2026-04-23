@@ -2,12 +2,12 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
-// Bessel function (besj) was adapted for use in AGG library by Andy Wilk 
+// Bessel function (besj) was adapted for use in AGG library by Andy Wilk
 // Contact: castor.vulgaris@gmail.com
 //----------------------------------------------------------------------------
 
@@ -52,10 +52,10 @@ namespace agg {
         const double dx = x2 - x1;
         const double dy = y2 - y1;
         const double dist_sq = dx * dx + dy * dy;
-        
+
         // Fast path for zero distance
         if (dist_sq == 0.0) [[unlikely]] return 0.0;
-        
+
         return std::sqrt(dist_sq);
     }
 
@@ -71,11 +71,11 @@ namespace agg {
         const double dx = x2 - x1;
         const double dy = y2 - y1;
         const double len_sq = dx * dx + dy * dy;
-        
+
         if (len_sq < vertex_dist_epsilon * vertex_dist_epsilon) [[unlikely]] {
             return calc_distance(x1, y1, x, y);
         }
-        
+
         const double inv_len = 1.0 / std::sqrt(len_sq);
         return ((x - x2) * dy - (y - y2) * dx) * inv_len;
     }
@@ -126,12 +126,12 @@ namespace agg {
         const double dy1 = y2 - y1;
         const double dx2 = x4 - x3;
         const double dy2 = y4 - y3;
-        return ((x3 - x2) * dy1 - (y3 - y2) * dx1 < 0.0) != 
+        return ((x3 - x2) * dy1 - (y3 - y2) * dx1 < 0.0) !=
                ((x4 - x2) * dy1 - (y4 - y2) * dx1 < 0.0) and
                ((x1 - x4) * dy2 - (y1 - y4) * dx2 < 0.0) !=
                ((x2 - x4) * dy2 - (y2 - y4) * dx2 < 0.0);
 
-        // It's is more expensive but more flexible 
+        // It's is more expensive but more flexible
         // in terms of boundary conditions.
         //--------------------
         //double den  = (x2-x1) * (y4-y3) - (y2-y1) * (x4-x3);
@@ -148,12 +148,12 @@ namespace agg {
         const double dx = x2 - x1;
         const double dy = y2 - y1;
         const double len_sq = dx * dx + dy * dy;
-        
+
         if (len_sq < 1e-20) [[unlikely]] {
             *x = *y = 0.0;
             return;
         }
-        
+
         const double inv_len = thickness / std::sqrt(len_sq);
         *x =  dy * inv_len;
         *y = -dx * inv_len;
@@ -162,11 +162,11 @@ namespace agg {
     inline void dilate_triangle(double x1, double y1, double x2, double y2, double x3, double y3, double *x, double* y, double d) noexcept
     {
         double dx1=0.0;
-        double dy1=0.0; 
+        double dy1=0.0;
         double dx2=0.0;
-        double dy2=0.0; 
+        double dy2=0.0;
         double dx3=0.0;
-        double dy3=0.0; 
+        double dy3=0.0;
         const double loc = cross_product(x1, y1, x2, y2, x3, y3);
         if (std::abs(loc) > intersection_epsilon) {
             if (cross_product(x1, y1, x2, y2, x3, y3) > 0.0) d = -d;
@@ -196,7 +196,7 @@ namespace agg {
     constexpr auto calc_polygon_area(const Storage& st) noexcept -> double {
         const auto size = st.size();
         if (size < 3) return 0.0;
-        
+
         double sum = 0.0;
         double prev_x = st[0].x;
         double prev_y = st[0].y;
@@ -211,7 +211,7 @@ namespace agg {
             prev_x = curr_x;
             prev_y = curr_y;
         }
-        
+
         // Close the polygon
         sum += prev_x * first_y - prev_y * first_x;
         return sum * 0.5;
@@ -229,8 +229,8 @@ namespace agg {
     AGG_INLINE unsigned fast_sqrt(unsigned val)
     {
     #if defined(_M_IX86) and defined(_MSC_VER) and !defined(AGG_NO_ASM)
-        //For Ix86 family processors this assembler code is used. 
-        //The key command here is bsr - determination the number of the most 
+        //For Ix86 family processors this assembler code is used.
+        //The key command here is bsr - determination the number of the most
         //significant bit of the value. For other processors
         //(and maybe compilers) the pure C "#else" section is used.
         __asm
@@ -261,7 +261,7 @@ namespace agg {
 
         // The following piece of code is just an emulation of the
         // Ix86 assembler command "bsr" (see above). However on old
-        // Intels (like Intel MMX 233MHz) this code is about twice 
+        // Intels (like Intel MMX 233MHz) this code is about twice
         // faster (sic!) then just one "bsr". On PIII and PIV the
         // bsr is optimized quite well.
 
@@ -332,20 +332,20 @@ namespace agg {
         if (m1 > m2) {
             m2 = m1;
         }
-    
+
         // Apply recurrence down from curent max order
-        for(;;) 
+        for(;;)
         {
             double c3 = 0;
             double c2 = 1E-30;
             double c4 = 0;
             int m8 = 1;
-            if (m2 / 2 * 2 == m2) 
+            if (m2 / 2 * 2 == m2)
             {
                 m8 = -1;
             }
             int imax = m2 - 2;
-            for (int i = 1; i <= imax; i++) 
+            for (int i = 1; i <= imax; i++)
             {
                 double c6 = 2 * (m2 - i) * c2 / x - c3;
                 c3 = c2;

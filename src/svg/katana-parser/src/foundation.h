@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 #include "katana.h"
-    
+
 struct KatanaInternalParser;
 
 /**
@@ -69,7 +69,7 @@ void katana_string_prepend_characters(struct KatanaInternalParser* parser, const
 const char* katana_string_to_characters(struct KatanaInternalParser * parser, const KatanaParserString* str);
 // Transforms a KatanaParserString to characters with a char prepended at the start of the KatanaParserString.
 const char* katana_string_to_characters_with_prefix_char(struct KatanaInternalParser * parser, const KatanaParserString* str, const char prefix);
-    
+
 // Appends a string onto the end of the KatanaParserString.
 void katana_string_append_string(struct KatanaInternalParser* parser, KatanaParserString* str, KatanaParserString* output);
 // Returns a bool value that indicates whether a given string matches the beginning characters of the receiver.
@@ -84,7 +84,7 @@ typedef struct {
 } KatanaParserNumber;
 
 /**
- *  Array 
+ *  Array
  */
 // Initializes a new KatanaArray with the specified initial capacity.
 void katana_array_init(struct KatanaInternalParser* parser, size_t initial_capacity,
@@ -120,7 +120,7 @@ void* katana_array_remove_at(struct KatanaInternalParser* parser, int index, Kat
  */
 void* katana_parser_allocate(struct KatanaInternalParser* parser, size_t size);
 void katana_parser_deallocate(struct KatanaInternalParser* parser, void* ptr);
-    
+
 #ifdef __cplusplus
 }
 #endif

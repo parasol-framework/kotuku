@@ -822,7 +822,7 @@ void SciTEBase::SaveToPDF(FilePath saveName) {
 		PDFRender() {
 			pageStarted = false;
 			pageCount = 0;
-			style = NULL;
+			style = nullptr;
 			buffer = new char[250];
 			segStyle = new char[100];
 		}

@@ -230,7 +230,7 @@ namespace agg
             return uround(fabs(atan2(double(y), double(x))) * double(d) / pi);
         }
     };
-    
+
     template<class GradientF> class gradient_clip_adaptor {
     public:
         gradient_clip_adaptor(const GradientF& gradient) : m_gradient(&gradient) {}

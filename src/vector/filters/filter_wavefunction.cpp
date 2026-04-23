@@ -4,13 +4,13 @@
 WaveFunctionFX: A filter effect that plots the probability distribution of a quantum wave function.
 
 This filter effect uses a quantum wave function algorithm to generate a plot of electron probability density.
-Ignoring its scientific value, the formula can be exploited for its aesthetic qualities.  It can be 
+Ignoring its scientific value, the formula can be exploited for its aesthetic qualities.  It can be
 used as an alternative to the radial gradient for generating more interesting shapes for example.
 
 The rendering of the wave function is controlled by its parameters #N, #L and #M.  A #Scale is also provided to deal
 with situations where the generated plot would otherwise be too large for its bounds.
 
-The parameter values are clamped according to the rules `N &gt;= 1`, `0 &lt;= L &lt; N`, `0 &lt;= M &lt;= L`.  
+The parameter values are clamped according to the rules `N &gt;= 1`, `0 &lt;= L &lt; N`, `0 &lt;= M &lt;= L`.
 Check that the values are assigned and clamped correctly if the wave function is not rendering as expected.
 
 -END-
@@ -103,12 +103,12 @@ static ERR WAVEFUNCTIONFX_Draw(extWaveFunctionFX *Self, struct acDraw *Args)
          fl::BitsPerPixel(32),
          fl::Flags(BMF::ALPHA_CHANNEL),
          fl::BlendMode(BLM::SRGB),
-         fl::ColourSpace(CS::SRGB)))) return ERR::CreateObject;     
+         fl::ColourSpace(CS::SRGB)))) return ERR::CreateObject;
    }
    else if (Self->Bitmap->Width != resolution) Self->Bitmap->resize(resolution, resolution);
 
    // The wave function is symmetrical on all four corners, so the top-left quadrant is duplicated to the others.
-   
+
    if ((Self->Dirty) or (resolution>>1 != std::ssize(Self->psi))) Self->compute_wavefunction(resolution);
 
    for (int y = 0; y < half_res; ++y) {
@@ -118,7 +118,7 @@ static ERR WAVEFUNCTIONFX_Draw(extWaveFunctionFX *Self, struct acDraw *Args)
       auto bottom_right = (uint32_t *)(bottom + (((half_res<<1) - 1)));
 
       for (int x = 0; x < half_res; ++x, top++, bottom++, top_right--, bottom_right--) {
-         uint8_t grey = F2T(Self->psi[x][y] / Self->Max * 255.0);
+         uint8_t grey = int(Self->psi[x][y] / Self->Max * 255.0);
          uint32_t col;
          if (Self->Colours) {
             auto &rgb = Self->Colours->table[grey];
@@ -133,7 +133,7 @@ static ERR WAVEFUNCTIONFX_Draw(extWaveFunctionFX *Self, struct acDraw *Args)
       }
    }
 
-   render_to_filter(Self, Self->Bitmap, Self->AspectRatio, Self->Filter->Scene->SampleMethod);   
+   render_to_filter(Self, Self->Bitmap, Self->AspectRatio, Self->Filter->Scene->SampleMethod);
 
    return ERR::Okay;
 }
@@ -200,7 +200,7 @@ static ERR WAVEFUNCTIONFX_SET_AspectRatio(extWaveFunctionFX *Self, ARF Value)
 ColourMap: Assigns a pre-defined colourmap to the wave function.
 
 An alternative to defining colour #Stops in a wave function is available in the form of named colourmaps.
-Declaring a colourmap in this field will automatically populate the wave function's gradient with the colours defined 
+Declaring a colourmap in this field will automatically populate the wave function's gradient with the colours defined
 in the map.
 
 We currently support the following established colourmaps from the matplotlib and seaborn projects: `cmap:crest`,
@@ -312,9 +312,9 @@ Resolution: The pixel resolution of the internally rendered wave function.
 By default the resolution of the wave function will match the smallest dimension of the filter target region, which
 gives the best looking result at the cost of performance.
 
-Setting the Resolution field will instead fix the resolution to that size permanently, and the final result will be 
+Setting the Resolution field will instead fix the resolution to that size permanently, and the final result will be
 scaled to fit the target region.  This can give a considerable performance increase, especially when the filter is
-redrawn it will not be necessary to redraw the wave function if its parameters are constant. 
+redrawn it will not be necessary to redraw the wave function if its parameters are constant.
 
 *********************************************************************************************************************/
 
@@ -362,7 +362,7 @@ static ERR WAVEFUNCTIONFX_SET_Scale(extWaveFunctionFX *Self, double Value)
 -FIELD-
 Stops: Defines the colours to use for the wave function.
 
-The colours that will be used for drawing a wave function can be defined by the Stops array.  At least two stops are 
+The colours that will be used for drawing a wave function can be defined by the Stops array.  At least two stops are
 required to define a start and end point for interpolating the gradient colours.
 
 If no stops are defined, the wave function will be drawn in greyscale.

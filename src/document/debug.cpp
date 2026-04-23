@@ -1,9 +1,9 @@
 
 //********************************************************************************************************************
 
-static std::string printable(RSTREAM &, stream_char, ULONG = 60) __attribute__ ((unused));
+static std::string printable(RSTREAM &, stream_char, uint32_t = 60) __attribute__ ((unused));
 
-static std::string printable(RSTREAM &Stream, stream_char Start, ULONG Length)
+static std::string printable(RSTREAM &Stream, stream_char Start, uint32_t Length)
 {
    std::string result;
    result.reserve(Length);
@@ -95,7 +95,7 @@ static void print_segments(extDocument *Self)
          else if (code IS SCODE::PARAGRAPH_END) {
             out << "[E:PE]\n";
          }
-         else out << "[E:" <<  strCodes[LONG(code)] << "]";
+         else out << "[E:" <<  strCodes[int(code)] << "]";
          i.next_code();
       }
 

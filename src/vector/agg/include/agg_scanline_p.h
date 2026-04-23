@@ -1,8 +1,8 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software is granted provided this copyright notice 
-// appears in all copies.  This software is provided "as is" without express or implied warranty, and with no 
+// Permission to copy, use, modify, sell and distribute this software is granted provided this copyright notice
+// appears in all copies.  This software is provided "as is" without express or implied warranty, and with no
 // claim as to its suitability for any purpose.
 //
 // This is a general purpose scanline container with *packed* spans.  It is best used in conjunction with cover

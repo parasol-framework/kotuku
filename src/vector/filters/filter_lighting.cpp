@@ -259,9 +259,9 @@ inline void extLightingFX::diffuse_light(const point3 &Normal, const point3 &STL
 {
    double scale = std::clamp((Constant * Normal.dot(STL)) * 255.0, 0.0, 255.0);
 
-   Output[R] = glLinearRGB.invert(F2T(Colour.Red * scale));
-   Output[G] = glLinearRGB.invert(F2T(Colour.Green * scale));
-   Output[B] = glLinearRGB.invert(F2T(Colour.Blue * scale));
+   Output[R] = glLinearRGB.invert(int(Colour.Red * scale));
+   Output[G] = glLinearRGB.invert(int(Colour.Green * scale));
+   Output[B] = glLinearRGB.invert(int(Colour.Blue * scale));
    Output[A] = 255;
 }
 
@@ -273,9 +273,9 @@ inline void extLightingFX::specular_light(const point3 &Normal, const point3 &ST
 
    double scale = std::clamp((Constant * std::pow(Normal.dot(halfDir), SpecularExponent)) * 255.0, 0.0, 255.0);
 
-   const uint8_t r = F2T(Colour.Red * scale);
-   const uint8_t g = F2T(Colour.Green * scale);
-   const uint8_t b = F2T(Colour.Blue * scale);
+   const uint8_t r = int(Colour.Red * scale);
+   const uint8_t g = int(Colour.Green * scale);
+   const uint8_t b = int(Colour.Blue * scale);
 
    Output[R] = glLinearRGB.invert(r);
    Output[G] = glLinearRGB.invert(g);
@@ -312,10 +312,10 @@ void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, cons
       const uint8_t *row0 = (y IS 0) ? input_row : input_row - Bitmap->LineWidth;
       const uint8_t *row1 = input_row;
       const uint8_t *row2 = (y IS Height-1) ? input_row : input_row + Bitmap->LineWidth;
-      
+
       auto dptr = dest_row;
       std::array<uint8_t, 9> m;
-      
+
       // Initialize matrix for first pixel
       m[1] = row0[A]; row0 += bpp;
       m[2] = row0[A]; row0 += bpp;
@@ -323,12 +323,12 @@ void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, cons
       m[5] = row1[A]; row1 += bpp;
       m[7] = row2[A]; row2 += bpp;
       m[8] = row2[A]; row2 += bpp;
-      
+
       if (Type IS LT::DIFFUSE) {
          // Process left edge pixel
          diffuse_light(leftNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
          dptr += bpp;
-         
+
          for (int x=1; x < Width - 1; ++x) {
             shiftMatrixLeft(m);
             m[2] = row0[A]; row0 += bpp;
@@ -337,17 +337,17 @@ void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, cons
             diffuse_light(interiorNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
             dptr += bpp;
          }
-         
+
          // Process right edge pixel
          if (Width > 1) {
             shiftMatrixLeft(m);
             diffuse_light(rightNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
          }
-      } 
+      }
       else { // SPECULAR
          specular_light(leftNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
          dptr += bpp;
-         
+
          for (int x=1; x < Width - 1; ++x) {
             shiftMatrixLeft(m);
             m[2] = row0[A]; row0 += bpp;
@@ -356,7 +356,7 @@ void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, cons
             specular_light(interiorNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
             dptr += bpp;
          }
-         
+
          if (Width > 1) {
             shiftMatrixLeft(m);
             specular_light(rightNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
@@ -375,21 +375,21 @@ void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, co
    const uint8_t A = Target->ColourFormat->AlphaPos>>3;
    const auto bpp = Bitmap->BytesPerPixel;
    const auto map_height = spot_height * (1.0 / 255.0); // Normalise the map height to 0 - 1.0
-   
+
    auto input_base = (uint8_t *)(Bitmap->Data + (Bitmap->Clip.Left * bpp) + (Bitmap->Clip.Top * Bitmap->LineWidth));
    auto dest_base = (uint8_t *)(Target->Data + (Target->Clip.Left * bpp) + (Target->Clip.Top * Target->LineWidth));
-   
+
    // Compute the light direction vector based on the light source position and the alpha value of the pixel.
    auto read_light_delta = [&Light, spot_height](double X, double Y, uint8_t alpha_val) -> point3 {
       point3 direction(Light.x - X, Light.y - Y, Light.z - (double(alpha_val) * (1.0 / 255.0) * spot_height));
       direction.normalise();
       return direction;
    };
-   
+
    for (int y=StartY; y < EndY; ++y) {
       uint8_t *input_row = input_base + y * Bitmap->LineWidth;
       uint8_t *dest_row = dest_base + y * Target->LineWidth;
-      
+
       // Prefetch the next few rows while processing current row
       if (y + 2 < std::min(Height, EndY)) prefetchNextRow(input_base + (y + 2) * Bitmap->LineWidth, Width, Bitmap->BytesPerPixel);
       if (y + 3 < std::min(Height, EndY)) prefetchNextRow(input_base + (y + 3) * Bitmap->LineWidth, Width, Bitmap->BytesPerPixel);
@@ -397,22 +397,22 @@ void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, co
       const uint8_t *row0 = (y IS 0) ? input_row : input_row - Bitmap->LineWidth;
       const uint8_t *row1 = input_row;
       const uint8_t *row2 = (y IS Height-1) ? input_row : input_row + Bitmap->LineWidth;
-      
+
       auto dptr = dest_row;
       std::array<uint8_t, 9> m;
-      
+
       m[1] = row0[A]; row0 += bpp;
       m[2] = row0[A]; row0 += bpp;
       m[4] = row1[A]; row1 += bpp;
       m[5] = row1[A]; row1 += bpp;
       m[7] = row2[A]; row2 += bpp;
       m[8] = row2[A]; row2 += bpp;
-      
+
       if (Type IS LT::DIFFUSE) {
          point3 stl = read_light_delta(0, y, m[4]);
          diffuse_light(leftNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
          dptr += bpp;
-         
+
          for (int x=1; x < Width - 1; ++x) {
             shiftMatrixLeft(m);
             m[2] = row0[A]; row0 += bpp;
@@ -422,18 +422,18 @@ void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, co
             diffuse_light(interiorNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
             dptr += bpp;
          }
-         
+
          if (Width > 1) {
             shiftMatrixLeft(m);
             stl = read_light_delta(Width-1, y, m[4]);
             diffuse_light(rightNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
          }
-      } 
+      }
       else { // SPECULAR
          point3 stl = read_light_delta(0, y, m[4]);
          specular_light(leftNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
          dptr += bpp;
-         
+
          for (int x=1; x < Width - 1; ++x) {
             shiftMatrixLeft(m);
             m[2] = row0[A]; row0 += bpp;
@@ -443,7 +443,7 @@ void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, co
             specular_light(interiorNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
             dptr += bpp;
          }
-         
+
          if (Width > 1) {
             shiftMatrixLeft(m);
             stl = read_light_delta(Width-1, y, m[4]);
@@ -463,21 +463,21 @@ void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const 
    const uint8_t A = Target->ColourFormat->AlphaPos>>3;
    const auto bpp = Bitmap->BytesPerPixel;
    const auto map_height = spot_height * (1.0 / 255.0); // Normalise the map height to 0 - 1.0
-   
+
    auto input_base = (uint8_t *)(Bitmap->Data + (Bitmap->Clip.Left * bpp) + (Bitmap->Clip.Top * Bitmap->LineWidth));
    auto dest_base = (uint8_t *)(Target->Data + (Target->Clip.Left * bpp) + (Target->Clip.Top * Target->LineWidth));
-   
+
    // Compute the light direction vector based on the light source position and the alpha value of the pixel.
    auto read_light_delta = [&Light, spot_height](double X, double Y, uint8_t alpha_val) -> point3 {
       point3 direction(Light.x - X, Light.y - Y, Light.z - (double(alpha_val) * (1.0 / 255.0) * spot_height));
       direction.normalise();
       return direction;
    };
-   
+
    for (int y=StartY; y < EndY; ++y) {
       uint8_t *input_row = input_base + y * Bitmap->LineWidth;
       uint8_t *dest_row = dest_base + y * Target->LineWidth;
-      
+
       // Prefetch the next few rows while processing current row
       if (y + 2 < std::min(height, EndY)) prefetchNextRow(input_base + (y + 2) * Bitmap->LineWidth, Width, Bitmap->BytesPerPixel);
       if (y + 3 < std::min(height, EndY)) prefetchNextRow(input_base + (y + 3) * Bitmap->LineWidth, Width, Bitmap->BytesPerPixel);
@@ -485,17 +485,17 @@ void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const 
       const uint8_t *row0 = (y IS 0) ? input_row : input_row - Bitmap->LineWidth;
       const uint8_t *row1 = input_row;
       const uint8_t *row2 = (y IS height-1) ? input_row : input_row + Bitmap->LineWidth;
-      
+
       auto dptr = dest_row;
       std::array<uint8_t, 9> m;
-      
+
       m[1] = row0[A]; row0 += bpp;
       m[2] = row0[A]; row0 += bpp;
       m[4] = row1[A]; row1 += bpp;
       m[5] = row1[A]; row1 += bpp;
       m[7] = row2[A]; row2 += bpp;
       m[8] = row2[A]; row2 += bpp;
-      
+
       if (Type IS LT::DIFFUSE) {
          point3 stl = read_light_delta(0, y, m[4]);
          diffuse_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
@@ -514,12 +514,12 @@ void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const 
          shiftMatrixLeft(m);
          stl = read_light_delta(Width-1, y, m[4]);
          diffuse_light(rightNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
-      } 
+      }
       else { // SPECULAR
          point3 stl = read_light_delta(0, y, m[4]);
          specular_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
          dptr += bpp;
-         
+
          for (int x=1; x < Width - 1; ++x) {
             shiftMatrixLeft(m);
             m[2] = row0[A]; row0 += bpp;
@@ -529,7 +529,7 @@ void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const 
             specular_light(interiorNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
             dptr += bpp;
          }
-         
+
          if (Width > 1) {
             shiftMatrixLeft(m);
             stl = read_light_delta(Width-1, y, m[4]);
@@ -603,7 +603,7 @@ void extLightingFX::draw()
          ConeScale = 1.0 / AA_THRESHOLD;
       }
    }
-   
+
    lt.x -= Target->Clip.Left; // Re-orient the light source coordinates to (0,0)
    lt.y -= Target->Clip.Top;
 
@@ -619,27 +619,27 @@ void extLightingFX::draw()
    int height = Target->Clip.Bottom - Target->Clip.Top;
    if (bmp->Clip.Right - bmp->Clip.Left < width) width = bmp->Clip.Right - bmp->Clip.Left;
    if (bmp->Clip.Bottom - bmp->Clip.Top < height) height = bmp->Clip.Bottom - bmp->Clip.Top;
-   
+
    const double spot_height = MapHeight * scale;
-   
+
    const int num_threads = std::min(std::thread::hardware_concurrency(), static_cast<unsigned int>(height));
    const int min_rows_per_chunk = 4; // Minimum work per thread to avoid overhead
    const int chunk_size = std::max(min_rows_per_chunk, height / num_threads);
    const int num_chunks = (height + chunk_size - 1) / chunk_size;
-   
+
    BS::thread_pool pool(num_threads);
 
    for (int chunk=0; chunk < num_chunks; ++chunk) {
       const int start_y = chunk * chunk_size;
       const int end_y = std::min(start_y + chunk_size, height);
-      
+
       pool.detach_task([&, start_row = start_y, end_row = end_y]() {
          if (LightSource IS LS::DISTANT) {
             render_distant(start_row, end_row, bmp, lt, spot_height, width, height);
-         } 
+         }
          else if (LightSource IS LS::SPOT) {
             render_spotlight(start_row, end_row, bmp, lt, spot_height, width, height);
-         } 
+         }
          else if (LightSource IS LS::POINT) {
             render_point(start_row, end_row, bmp, lt, spot_height, width, height);
          }

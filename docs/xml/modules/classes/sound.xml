@@ -10,10 +10,10 @@
     <fileExtension>*.wav|*.wave|*.snd</fileExtension>
     <fileDescription>Sound Sample</fileDescription>
     <version>1</version>
-    <id>105ee06e</id>
+    <id>825a6b79</id>
     <idstring>SOUND</idstring>
     <category>Audio</category>
-    <copyright>Paul Manias © 2002-2025</copyright>
+    <copyright>Paul Manias © 2002-2026</copyright>
     <description>
 <p>The Sound class provides a comprehensive, user-friendly interface for audio sample playback that abstracts the complexities of audio hardware management whilst delivering professional-quality results.  Designed as the primary interface for general-purpose audio operations, the Sound class automatically handles resource allocation, format detection, hardware abstraction, and intelligent streaming decisions to provide optimal performance across diverse system configurations.</p>
 <p>The Sound class implements robust file format support with automatic detection and validation:</p>
@@ -310,7 +310,7 @@ proc.sleep()  -- Wait for completion
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is <code>-1.0</code> to force play through the left speaker and the maximum value is <code>1.0</code> for the right speaker.</p>
+<p>The Pan field adjusts the &quot;horizontal position&quot; of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is <code>-1.0</code> to force play through the left speaker and the maximum value is <code>1.0</code> for the right speaker.</p>
       </description>
     </field>
 

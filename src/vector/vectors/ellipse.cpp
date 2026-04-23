@@ -15,18 +15,18 @@ class extVectorEllipse : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorEllipse";
    using create = pf::Create<extVectorEllipse>;
 
-   DOUBLE eCX, eCY;
-   DOUBLE eRadiusX, eRadiusY;
+   double eCX, eCY;
+   double eRadiusX, eRadiusY;
    DMF eDimensions;
-   LONG eVertices;
+   int eVertices;
 };
 
 //********************************************************************************************************************
 
 static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
 {
-   DOUBLE cx = Vector->eCX, cy = Vector->eCY;
-   DOUBLE rx = Vector->eRadiusX, ry = Vector->eRadiusY;
+   double cx = Vector->eCX, cy = Vector->eCY;
+   double rx = Vector->eRadiusX, ry = Vector->eRadiusY;
 
    if (dmf::has(Vector->eDimensions, DMF::SCALED_CENTER_X|DMF::SCALED_CENTER_Y|DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y)) {
       auto view_width = get_parent_width(Vector);
@@ -59,25 +59,25 @@ static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
    Path.arc_to(rx, ry, 0, 0, 1, cx, cy-ry);
    Path.close_polygon();
 #else
-   ULONG vertices;
+   uint32_t vertices;
    if (Vector->eVertices >= 3) vertices = Vector->eVertices;
    else {
       // Calculate the number of vertices needed for a smooth result, based on the final scale of the ellipse
       // when parent views are taken into consideration.
       auto scale = Vector->Transform.scale();
-      DOUBLE ra = (fabs(rx * scale) + fabs(ry * scale)) * 0.5;
-      DOUBLE da = acos(ra / (ra + 0.125 / scale)) * 2.0;
+      double ra = (fabs(rx * scale) + fabs(ry * scale)) * 0.5;
+      double da = acos(ra / (ra + 0.125 / scale)) * 2.0;
       vertices = agg::uround(2.0 * agg::pi / da);
       if (vertices < 3) vertices = 3; // Because you need at least 3 vertices to create a shape.
    }
 
    // TODO: Using co/sine lookup tables would speed up this loop.
 
-   for (ULONG v=0; v < vertices; v++) {
-      DOUBLE angle = DOUBLE(v) / DOUBLE(vertices) * 2.0 * agg::pi;
+   for (uint32_t v=0; v < vertices; v++) {
+      double angle = double(v) / double(vertices) * 2.0 * agg::pi;
       //if (m_cw) angle = 2.0 * agg::pi - angle;
-      DOUBLE x = cx + cos(angle) * rx;
-      DOUBLE y = cy + sin(angle) * ry;
+      double x = cx + cos(angle) * rx;
+      double y = cy + sin(angle) * ry;
       if (v == 0) Path.move_to(x, y);
       else Path.line_to(x, y);
    }
@@ -314,13 +314,13 @@ Please note that this feature is not part of the SVG standard.
 
 *********************************************************************************************************************/
 
-static ERR ELLIPSE_GET_Vertices(extVectorEllipse *Self, LONG *Value)
+static ERR ELLIPSE_GET_Vertices(extVectorEllipse *Self, int *Value)
 {
    *Value = Self->eVertices;
    return ERR::Okay;
 }
 
-static ERR ELLIPSE_SET_Vertices(extVectorEllipse *Self, LONG Value)
+static ERR ELLIPSE_SET_Vertices(extVectorEllipse *Self, int Value)
 {
    if (((Value >= 3) and (Value < 4096)) or (!Value)) {
       Self->eVertices = Value;
@@ -362,7 +362,7 @@ static const FieldDef clEllipseDimensions[] = {
    { "ScaledRadiusY", DMF::SCALED_RADIUS_Y },
    { "ScaledCenterX", DMF::SCALED_CENTER_X },
    { "ScaledCenterY", DMF::SCALED_CENTER_Y },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clEllipseFields[] = {
@@ -390,7 +390,7 @@ static const ActionArray clEllipseActions[] = {
    { AC::MoveToPoint,   ELLIPSE_MoveToPoint },
    //{ AC::Redimension, ELLIPSE_Redimension },
    //{ AC::Resize,      ELLIPSE_Resize },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static ERR init_ellipse(void)

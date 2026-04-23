@@ -8,10 +8,10 @@
     <module>Vector</module>
     <comment>Enables the application of lighting effects.</comment>
     <version>1</version>
-    <id>1b9352d9</id>
+    <id>1025452f</id>
     <idstring>LIGHTINGFX</idstring>
     <category>Graphics</category>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>The lighting effect class applies a diffuse or specular lighting effect to the alpha channel of an input bitmap, which functions as a bump map.  The output is an RGBA representation of the light effect.  If no light <fl>Colour</fl> is specified by the client then the output will be in grey scale.</p>
 <p>For diffuse lighting, the resulting RGBA image is computed as follows:</p>
@@ -35,7 +35,7 @@ Sa = max(Sr, Sg, Sb)
 <p>where</p>
 <pre>ks = Specular lighting constant
 N  = Surface normal unit vector, a function of x and y
-H  = "Halfway" unit vector between eye unit vector and light unit vector
+H  = &quot;Halfway&quot; unit vector between eye unit vector and light unit vector
 
 Lr,Lg,Lb = RGB components of light
 </pre>

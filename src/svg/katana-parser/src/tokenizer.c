@@ -53,11 +53,11 @@ static char * katana_token_string(int tok);
 int katana_tokenize(KATANASTYPE* lval , KATANALTYPE* loc, yyscan_t scanner, KatanaParser* parser, int tok)
 {
     char* origin_text = katanaget_text(scanner);
-    
+
     yy_size_t len = 0;
-    
+
     char* text = katana_normalize_text(&len, origin_text, katanaget_leng(scanner), tok);
-    
+
 #ifdef KATANA_FELX_DEBUG
 #if KATANA_FELX_DEBUG
     if ( tok == KATANA_CSS_WHITESPACE ) {
@@ -78,10 +78,10 @@ int katana_tokenize(KATANASTYPE* lval , KATANALTYPE* loc, yyscan_t scanner, Kata
         case KATANA_CSS_STRING:
         case KATANA_CSS_IDENT:
         case KATANA_CSS_NTH:
-            
+
         case KATANA_CSS_HEX:
         case KATANA_CSS_IDSEL:
-            
+
         case KATANA_CSS_DIMEN:
         case KATANA_CSS_INVALIDDIMEN:
         case KATANA_CSS_URI:
@@ -100,7 +100,7 @@ int katana_tokenize(KATANASTYPE* lval , KATANALTYPE* loc, yyscan_t scanner, Kata
             lval->string.length = length;
         }
             break;
-            
+
         case KATANA_CSS_IMPORT_SYM:
         case KATANA_CSS_PAGE_SYM:
         case KATANA_CSS_MEDIA_SYM:
@@ -157,7 +157,7 @@ int katana_tokenize(KATANASTYPE* lval , KATANALTYPE* loc, yyscan_t scanner, Kata
         default:
             break;
     }
-    
+
     return tok;
 }
 
@@ -206,7 +206,7 @@ static inline char* katana_normalize_text(yy_size_t* length, char *origin_text, 
         default:
             break;
     }
-    
+
     *length = l;
     return start;
 }
@@ -218,7 +218,7 @@ double katana_characters_to_double(const char* data, size_t length, bool* ok)
             *ok = false;
         return 0.0;
     }
-    
+
     char* bytes = malloc(sizeof(char) * (length + 1));
     for (unsigned i = 0; i < length; ++i)
         bytes[i] = data[i] < 0x7F ? data[i] : '?';

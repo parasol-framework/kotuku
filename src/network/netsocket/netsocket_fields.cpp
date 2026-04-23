@@ -105,7 +105,7 @@ Flags: Optional flags.
 Incoming: Callback that is triggered when the socket receives data.
 
 The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The
-function prototype for C++ is `ERR Incoming(*NetSocket, APTR Meta)`.  For Fluid use `function Incoming(NetSocket)`.
+function prototype for C++ is `ERR Incoming(*NetSocket, APTR Meta)`.  For Tiri use `function Incoming(NetSocket)`.
 
 The `NetSocket` parameter refers to the NetSocket object.  `Meta` is optional userdata from the `FUNCTION`.
 
@@ -141,6 +141,43 @@ static ERR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+MaxPacketSize: Maximum UDP packet size for sending and receiving data.
+
+This field sets the maximum size in bytes for UDP packets when sending or receiving data.  It only applies to UDP
+sockets and is ignored for TCP connections.  The default value is 65507 bytes, which is the maximum payload size
+for UDP packets (65535 - 8 bytes UDP header - 20 bytes IP header).
+
+If you attempt to send a packet larger than MaxPacketSize, a warning will be logged and the operation may fail.
+When receiving data, packets larger than this size will be truncated.
+
+-FIELD-
+MsgLimit: Limits the size of incoming and outgoing data packets.
+
+This field limits the size of incoming and outgoing message queues (each socket connection receives two queues assigned
+to both incoming and outgoing messages).  The size is defined in bytes.  Sending or receiving messages that overflow
+the queue results in the connection being terminated with an error.
+
+The default setting is 1 megabyte.
+
+-FIELD-
+MulticastTTL: Time-to-live (hop limit) for multicast packets.
+
+This field sets the time-to-live (TTL) value for multicast packets sent from UDP sockets.  The TTL determines how
+many network hops (routers) a multicast packet can traverse before being discarded.  This helps prevent multicast
+traffic from flooding the network indefinitely.
+
+The default TTL is 1, which restricts multicast to the local network segment.  Higher values allow multicast packets
+to traverse more network boundaries:
+
+<list type="bullet">
+<li>1: Local network segment only</li>
+<li>32: Within the local site</li>
+<li>64: Within the local region</li>
+<li>128: Within the local continent</li>
+<li>255: Unrestricted (global)</li>
+</list>
+
+-FIELD-
 Outgoing: Callback that is triggered when a socket is ready to send data.
 
 The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data.
@@ -170,11 +207,11 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
    if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Context, AC::Free, C_FUNCTION(notify_free_outgoing));
 
    if (Self->initialised()) {
-      if ((Self->Handle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {
+      if ((Self->Handle.is_valid()) and (Self->State IS NTC::CONNECTED)) {
          // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
+            RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
          #elif _WIN32
             win_socketstate(Self->Handle, std::nullopt, true);
          #endif
@@ -186,15 +223,6 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-MsgLimit: Limits the size of incoming and outgoing data packets.
-
-This field limits the size of incoming and outgoing message queues (each socket connection receives two queues assigned
-to both incoming and outgoing messages).  The size is defined in bytes.  Sending or receiving messages that overflow
-the queue results in the connection being terminated with an error.
-
-The default setting is 1 megabyte.
 
 -FIELD-
 OutQueueSize: The number of bytes on the socket's outgoing queue.
@@ -210,7 +238,7 @@ static ERR GET_OutQueueSize(extNetSocket *Self, int *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Port: The port number to use for initiating a connection.
+Port: The port number to use for connections.
 
 -FIELD-
 Handle: Platform specific reference to the network socket handle.
@@ -219,7 +247,7 @@ Handle: Platform specific reference to the network socket handle.
 
 static ERR GET_Handle(extNetSocket *Self, APTR *Value)
 {
-   *Value = (APTR)(MAXINT)Self->Handle;
+   *Value = (APTR)(MAXINT)Self->Handle.socket();
    return ERR::Okay;
 }
 
@@ -228,7 +256,7 @@ static ERR SET_Handle(extNetSocket *Self, APTR Value)
    // The user can set Handle prior to initialisation in order to create a NetSocket object that is linked to a
    // socket created from outside the core platform code base.
 
-   Self->Handle = (SOCKET_HANDLE)(MAXINT)Value;
+   Self->Handle = SocketHandle(int((MAXINT)Value));
    Self->ExternalSocket = true;
    return ERR::Okay;
 }
@@ -425,7 +453,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
       if ((Self->State IS NTC::CONNECTED) and ((!Self->WriteQueue.Buffer.empty()) or (Self->Outgoing.defined()))) {
          log.msg("Sending queued data to server on connection.");
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
+            RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
          #elif _WIN32
             win_socketstate(Self->Handle, std::nullopt, true);
          #endif

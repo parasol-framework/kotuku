@@ -4,7 +4,7 @@
 Audio: Supports a machine's audio hardware and provides a client-server audio management service.
 
 The Audio class provides a comprehensive audio service that works across multiple platforms and follows a client-server
-design model. It serves as the foundation for all audio operations in the Parasol framework, managing hardware resources,
+design model. It serves as the foundation for all audio operations in Kōtuku framework, managing hardware resources,
 sample mixing, and output buffering.
 
 The Audio class supports 8/16/32 bit output in stereo or mono configurations, with advanced features including oversampling
@@ -31,7 +31,7 @@ static ERR init_audio(extAudio *Self)
    Self->Stereo       = true;
    Self->MasterVolume = Self->Volumes[0].Channels[0];
    Self->Volumes[0].Flags |= VCF::MONO;
-   for (LONG i=1; i < std::ssize(Self->Volumes[0].Channels); i++) Self->Volumes[0].Channels[i] = -1;
+   for (int i=1; i < std::ssize(Self->Volumes[0].Channels); i++) Self->Volumes[0].Channels[i] = -1;
    if ((Self->Volumes[0].Flags & VCF::MUTE) != VCF::NIL) Self->Mute = true;
    else Self->Mute = false;
 
@@ -39,14 +39,14 @@ static ERR init_audio(extAudio *Self)
 }
 #endif
 
-inline DOUBLE extAudio::MixerLag() {
+inline double extAudio::MixerLag() {
    if (!mixerLag) {
       pf::Log log(__FUNCTION__);
       #ifdef _WIN32
          // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
-         mixerLag = MIX_INTERVAL + (DOUBLE(MixElements>>1) / DOUBLE(OutputRate));
+         mixerLag = MIX_INTERVAL + (double(MixElements>>1) / double(OutputRate));
       #elif ALSA_ENABLED
-         mixerLag = MIX_INTERVAL + (AudioBufferSize / DriverBitSize) / DOUBLE(OutputRate);
+         mixerLag = MIX_INTERVAL + (AudioBufferSize / DriverBitSize) / double(OutputRate);
       #endif
       log.trace("Mixer lag: %.2f", mixerLag);
    }
@@ -72,7 +72,7 @@ inline void extAudio::finish(AudioChannel &Channel, bool Notify) {
 }
 
 //********************************************************************************************************************
-// The individual mixing functions and function pointer arrays have been replaced by the 
+// The individual mixing functions and function pointer arrays have been replaced by the
 // consolidated AudioMixer::dispatch_mix() function in mixer_dispatch.cpp
 
 /*********************************************************************************************************************
@@ -117,18 +117,18 @@ static ERR AUDIO_Activate(extAudio *Self)
 
    // Calculate one mixing element size for the hardware driver (not our floating point mixer).
 
-   if (Self->BitDepth IS 16) Self->DriverBitSize = sizeof(WORD);
+   if (Self->BitDepth IS 16) Self->DriverBitSize = sizeof(int16_t);
    else if (Self->BitDepth IS 24) Self->DriverBitSize = 3;
-   else if (Self->BitDepth IS 32) Self->DriverBitSize = sizeof(FLOAT);
-   else Self->DriverBitSize = sizeof(BYTE);
+   else if (Self->BitDepth IS 32) Self->DriverBitSize = sizeof(float);
+   else Self->DriverBitSize = sizeof(int8_t);
 
    if (Self->Stereo) Self->DriverBitSize *= 2;
 
    // Allocate a floating-point mixing buffer
 
-   const LONG mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
+   const int mixbitsize = Self->Stereo ? sizeof(float) * 2 : sizeof(float);
 
-   Self->MixBufferSize = BYTELEN((F2T((mixbitsize * Self->OutputRate) * (MIX_INTERVAL * 1.5)) + 15) & (~15));
+   Self->MixBufferSize = BYTELEN((int((mixbitsize * Self->OutputRate) * (MIX_INTERVAL * 1.5)) + 15) & (~15));
    Self->MixElements   = SAMPLE(Self->MixBufferSize / mixbitsize);
 
    if (AllocMemory(Self->MixBufferSize, MEM::DATA, &Self->MixBuffer) IS ERR::Okay) {
@@ -139,12 +139,12 @@ static ERR AUDIO_Activate(extAudio *Self)
 
       #ifdef _WIN32
          WAVEFORMATEX wave = {
-            .Format            = WORD((Self->BitDepth IS 32) ? WAVE_FLOAT : WAVE_RAW),
-            .Channels          = WORD(Self->Stereo ? 2 : 1),
+            .Format            = int16_t((Self->BitDepth IS 32) ? WAVE_FLOAT : WAVE_RAW),
+            .Channels          = int16_t(Self->Stereo ? 2 : 1),
             .Frequency         = 44100,
             .AvgBytesPerSecond = 44100 * Self->DriverBitSize,
             .BlockAlign        = Self->DriverBitSize,
-            .BitsPerSample     = WORD(Self->BitDepth),
+            .BitsPerSample     = int16_t(Self->BitDepth),
             .ExtraLength       = 0
          };
 
@@ -231,7 +231,7 @@ ERR AUDIO_AddSample(extAudio *Self, struct snd::AddSample *Args)
 
    // Find an unused sample block.  If there is none, increase the size of the sample management area.
 
-   LONG idx;
+   int idx;
    for (idx=1; idx < std::ssize(Self->Samples); idx++) {
       if (!Self->Samples[idx].Data) break;
    }
@@ -333,7 +333,7 @@ AllocMemory: Failed to allocate the stream buffer.
 
 *********************************************************************************************************************/
 
-static const LONG MAX_STREAM_BUFFER = 16 * 1024; // Max stream buffer length in bytes
+static const int MAX_STREAM_BUFFER = 16 * 1024; // Max stream buffer length in bytes
 
 static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
 {
@@ -346,7 +346,7 @@ static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
 
    // Find an unused sample block.  If there is none, increase the size of the sample management area.
 
-   LONG idx;
+   int idx;
    for (idx=1; idx < std::ssize(Self->Samples); idx++) {
       if (!Self->Samples[idx].Data) break;
    }
@@ -355,7 +355,7 @@ static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
 
    auto shift = sample_shift(Args->SampleFormat);
 
-   LONG buffer_len;
+   int buffer_len;
    if (Args->SampleLength > 0) {
       buffer_len = Args->SampleLength / 2;
       if (buffer_len > MAX_STREAM_BUFFER) buffer_len = MAX_STREAM_BUFFER;
@@ -426,7 +426,7 @@ static ERR AUDIO_Beep(extAudio *Self, struct snd::Beep *Args)
 
 #ifdef __linux__
    if (auto console = GetResource(RES::CONSOLE_FD); console != -1) {
-      ioctl(console, KDMKTONE, ((1193190 / Args->Pitch) & 0xffff) | ((ULONG)Args->Duration << 16));
+      ioctl(console, KDMKTONE, ((1193190 / Args->Pitch) & 0xffff) | ((uint32_t)Args->Duration << 16));
       return ERR::Okay;
    }
 #elif _WIN32
@@ -467,7 +467,7 @@ static ERR AUDIO_CloseChannels(extAudio *Self, struct snd::CloseChannels *Args)
 
    log.branch("Handle: $%.8x", Args->Handle);
 
-   LONG index = Args->Handle>>16;
+   int index = Args->Handle>>16;
    if ((index < 0) or (index >= std::ssize(Self->Sets))) log.warning(ERR::Args);
 
    Self->Sets[index].clear(); // We can't erase because that would mess up other channel handles.
@@ -512,6 +512,8 @@ static ERR AUDIO_Free(extAudio *Self)
    if ((Self->Flags & ADF::AUTO_SAVE) != ADF::NIL) Self->saveSettings();
 
    if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = nullptr; }
+
+   glSoundChannels.erase(Self->UID);
 
    acDeactivate(Self);
 
@@ -571,15 +573,15 @@ static ERR AUDIO_NewObject(extAudio *Self)
 #ifdef __linux__
    Self->Volumes.resize(2);
    Self->Volumes[0].Name = "Master";
-   for (LONG i=0; i < std::ssize(Self->Volumes[0].Channels); i++) Self->Volumes[0].Channels[i] = 1.0;
+   for (int i=0; i < std::ssize(Self->Volumes[0].Channels); i++) Self->Volumes[0].Channels[i] = 1.0;
 
    Self->Volumes[1].Name = "PCM";
-   for (LONG i=0; i < std::ssize(Self->Volumes[1].Channels); i++) Self->Volumes[1].Channels[i] = 1.0;
+   for (int i=0; i < std::ssize(Self->Volumes[1].Channels); i++) Self->Volumes[1].Channels[i] = 1.0;
 #else
    Self->Volumes.resize(1);
    Self->Volumes[0].Name = "Master";
    Self->Volumes[0].Channels[0] = 1.0;
-   for (LONG i=1; i < std::ssize(Self->Volumes[0].Channels); i++) Self->Volumes[0].Channels[i] = -1;
+   for (int i=1; i < std::ssize(Self->Volumes[0].Channels); i++) Self->Volumes[0].Channels[i] = -1;
 #endif
 
    load_config(Self);
@@ -635,7 +637,7 @@ static ERR AUDIO_OpenChannels(extAudio *Self, struct snd::OpenChannels *Args)
 
    // Bear in mind that the +1 is for channel set 0 being a dummy entry.
 
-   LONG index = std::ssize(Self->Sets) + 1;
+   int index = std::ssize(Self->Sets) + 1;
    Self->Sets.resize(index+1);
 
    Self->Sets[index].Channel.resize(Args->Total);
@@ -731,7 +733,7 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       else config->write("AUDIO", "Device", "default");
 
       if ((!Self->Volumes.empty()) and ((Self->Flags & ADF::SYSTEM_WIDE) != ADF::NIL)) {
-         for (LONG i=0; i < std::ssize(Self->Volumes); i++) {
+         for (int i=0; i < std::ssize(Self->Volumes); i++) {
             std::ostringstream out;
             if ((Self->Volumes[i].Flags & VCF::MUTE) != VCF::NIL) out << "1,[";
             else out << "0,[";
@@ -739,7 +741,7 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
             if ((Self->Volumes[i].Flags & VCF::MONO) != VCF::NIL) {
                out << Self->Volumes[i].Channels[0];
             }
-            else for (LONG c=0; c < std::ssize(Self->Volumes[i].Channels); c++) {
+            else for (int c=0; c < std::ssize(Self->Volumes[i].Channels); c++) {
                if (c > 0) out << ',';
                out << Self->Volumes[i].Channels[c];
             }
@@ -753,10 +755,10 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
    snd_mixer_selem_id_t *sid;
    snd_mixer_elem_t *elem;
-   LONG left, right;
-   LONG pmin, pmax;
-   LONG mute;
-   LONG i;
+   int left, right;
+   int pmin, pmax;
+   int mute;
+   int i;
 
    snd_mixer_selem_id_alloca(&sid);
    snd_mixer_selem_id_set_index(sid, 0);
@@ -782,8 +784,8 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       if (pmin >= pmax) continue;
 
       std::ostringstream out;
-      auto fleft = (DOUBLE)left / (DOUBLE)(pmax - pmin);
-      auto fright = (DOUBLE)right / (DOUBLE)(pmax - pmin);
+      auto fleft = (double)left / (double)(pmax - pmin);
+      auto fright = (double)right / (double)(pmax - pmin);
       out << fleft << ',' << fright << ',' << mute ? 0 : 1;
 
       config->write("MIXER", Self->Volumes[i].Name, out.str());
@@ -890,7 +892,7 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
 
 #ifdef ALSA_ENABLED
 
-   LONG index;
+   int index;
    snd_mixer_selem_id_t *sid;
    snd_mixer_elem_t *elem;
    long pmin, pmax;
@@ -909,11 +911,11 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
          if (iequals(Args->Name, Self->Volumes[index].Name)) break;
       }
 
-      if (index IS (LONG)Self->Volumes.size()) return ERR::Search;
+      if (index IS (int)Self->Volumes.size()) return ERR::Search;
    }
    else {
       index = Args->Index;
-      if ((index < 0) or (index >= (LONG)Self->Volumes.size())) return ERR::OutOfRange;
+      if ((index < 0) or (index >= (int)Self->Volumes.size())) return ERR::OutOfRange;
    }
 
    if (iequals("Master", Self->Volumes[index].Name)) {
@@ -933,7 +935,7 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
 
    // Apply the volume
 
-   log.branch("%s: %.2f, Flags: $%.8x", Self->Volumes[index].Name.c_str(), Args->Volume, (LONG)Args->Flags);
+   log.branch("%s: %.2f, Flags: $%.8x", Self->Volumes[index].Name.c_str(), Args->Volume, (int)Args->Flags);
 
    snd_mixer_selem_id_alloca(&sid);
    snd_mixer_selem_id_set_index(sid,0);
@@ -951,9 +953,9 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
 
       pmax = pmax - 1; // -1 because the absolute maximum tends to produce distortion...
 
-      DOUBLE vol = Args->Volume;
+      double vol = Args->Volume;
       if (vol > 1.0) vol = 1.0;
-      LONG lvol = F2T(DOUBLE(pmin) + (DOUBLE(pmax - pmin) * vol));
+      int lvol = int(double(pmin) + (double(pmax - pmin) * vol));
 
       if ((Self->Volumes[index].Flags & VCF::CAPTURE) != VCF::NIL) {
          snd_mixer_selem_set_capture_volume_all(elem, lvol);
@@ -965,13 +967,13 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
       }
       else {
          if (Args->Channel IS -1) {
-            for (LONG channel=0; channel < (LONG)Self->Volumes[index].Channels.size(); channel++) {
+            for (int channel=0; channel < (int)Self->Volumes[index].Channels.size(); channel++) {
                if (Self->Volumes[index].Channels[channel] >= 0) {
                   Self->Volumes[index].Channels[channel] = vol;
                }
             }
          }
-         else if ((Args->Channel >= 0) and (Args->Channel < LONG(Self->Volumes[index].Channels.size()))) {
+         else if ((Args->Channel >= 0) and (Args->Channel < int(Self->Volumes[index].Channels.size()))) {
             Self->Volumes[index].Channels[Args->Channel] = vol;
          }
       }
@@ -979,12 +981,12 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
 
    if ((Args->Flags & SVF::UNMUTE) != SVF::NIL) {
       if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
-         for (LONG chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
+         for (int chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
             snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)chn, 1);
          }
       }
       else if (snd_mixer_selem_has_playback_switch(elem)) {
-         for (LONG chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
+         for (int chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
             snd_mixer_selem_set_playback_switch(elem, (snd_mixer_selem_channel_id_t)chn, 1);
          }
       }
@@ -992,12 +994,12 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
    }
    else if ((Args->Flags & SVF::MUTE) != SVF::NIL) {
       if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
-         for (LONG chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
+         for (int chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
             snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)chn, 0);
          }
       }
       else if (snd_mixer_selem_has_playback_switch(elem)) {
-         for (LONG chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
+         for (int chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
             snd_mixer_selem_set_playback_switch(elem, (snd_mixer_selem_channel_id_t)chn, 0);
          }
       }
@@ -1011,7 +1013,7 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
 
 #else
 
-   LONG index;
+   int index;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {
@@ -1022,15 +1024,15 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
    // Determine what mixer we are going to adjust
 
    if (Args->Name) {
-      for (index=0; index < (LONG)Self->Volumes.size(); index++) {
+      for (index=0; index < (int)Self->Volumes.size(); index++) {
          if (iequals(Args->Name, Self->Volumes[index].Name)) break;
       }
 
-      if (index IS (LONG)Self->Volumes.size()) return ERR::Search;
+      if (index IS (int)Self->Volumes.size()) return ERR::Search;
    }
    else {
       index = Args->Index;
-      if ((index < 0) or (index >= (LONG)Self->Volumes.size())) return ERR::OutOfRange;
+      if ((index < 0) or (index >= (int)Self->Volumes.size())) return ERR::OutOfRange;
    }
 
    if (iequals("Master", Self->Volumes[index].Name)) {
@@ -1050,7 +1052,7 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
 
    // Apply the volume
 
-   log.branch("%s: %.2f, Flags: $%.8x", Self->Volumes[index].Name.c_str(), Args->Volume, (LONG)Args->Flags);
+   log.branch("%s: %.2f, Flags: $%.8x", Self->Volumes[index].Name.c_str(), Args->Volume, (int)Args->Flags);
 
    if ((Args->Volume >= 0) and (Args->Volume <= 1.0)) {
       if ((Self->Volumes[index].Flags & VCF::MONO) != VCF::NIL) {
@@ -1058,13 +1060,13 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
       }
       else {
          if (Args->Channel IS -1) {
-            for (LONG channel=0; channel < (LONG)Self->Volumes[0].Channels.size(); channel++) {
+            for (int channel=0; channel < (int)Self->Volumes[0].Channels.size(); channel++) {
                if (Self->Volumes[index].Channels[channel] >= 0) {
                   Self->Volumes[index].Channels[channel] = Args->Volume;
                }
             }
          }
-         else if ((Args->Channel >= 0) and (Args->Channel < LONG(Self->Volumes[index].Channels.size()))) {
+         else if ((Args->Channel >= 0) and (Args->Channel < int(Self->Volumes[index].Channels.size()))) {
             Self->Volumes[index].Channels[Args->Channel] = Args->Volume;
          }
       }
@@ -1092,7 +1094,7 @@ being the recommended value for CD quality playback.
 
 *********************************************************************************************************************/
 
-static ERR SET_BitDepth(extAudio *Self, LONG Value)
+static ERR SET_BitDepth(extAudio *Self, int Value)
 {
    if (Value IS 16) Self->BitDepth = 16;
    else if (Value IS 8) Self->BitDepth = 8;
@@ -1160,13 +1162,13 @@ a value between `0` and `1.0`.
 
 *********************************************************************************************************************/
 
-static ERR GET_MasterVolume(extAudio *Self, DOUBLE *Value)
+static ERR GET_MasterVolume(extAudio *Self, double *Value)
 {
    *Value = Self->MasterVolume;
    return ERR::Okay;
 }
 
-static ERR SET_MasterVolume(extAudio *Self, DOUBLE Value)
+static ERR SET_MasterVolume(extAudio *Self, double Value)
 {
    if (Value < 0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
@@ -1184,7 +1186,7 @@ in seconds and will differ between platforms and user configurations.
 
 *********************************************************************************************************************/
 
-static ERR GET_MixerLag(extAudio *Self, DOUBLE *Value)
+static ERR GET_MixerLag(extAudio *Self, double *Value)
 {
    *Value = Self->MixerLag();
    return ERR::Okay;
@@ -1200,10 +1202,10 @@ field to `false`.  Muting does not disable the audio system, which is achieved b
 
 *********************************************************************************************************************/
 
-static ERR GET_Mute(extAudio *Self, LONG *Value)
+static ERR GET_Mute(extAudio *Self, int *Value)
 {
    *Value = FALSE;
-   for (LONG i=0; i < std::ssize(Self->Volumes); i++) {
+   for (int i=0; i < std::ssize(Self->Volumes); i++) {
       if (iequals("Master", Self->Volumes[i].Name)) {
          if ((Self->Volumes[i].Flags & VCF::MUTE) != VCF::NIL) *Value = TRUE;
          break;
@@ -1212,7 +1214,7 @@ static ERR GET_Mute(extAudio *Self, LONG *Value)
    return ERR::Okay;
 }
 
-static ERR SET_Mute(extAudio *Self, LONG Value)
+static ERR SET_Mute(extAudio *Self, int Value)
 {
    return Self->setVolume(0, "Master", Value ? SVF::MUTE : SVF::UNMUTE, -1, -1);
 }
@@ -1229,7 +1231,7 @@ The OutputRate can only be set prior to initialisation, further attempts to set 
 
 *********************************************************************************************************************/
 
-static ERR SET_OutputRate(extAudio *Self, LONG Value)
+static ERR SET_OutputRate(extAudio *Self, int Value)
 {
    if (Value < 0) return ERR::OutOfRange;
    else if (Value > 44100) Self->OutputRate = 44100;
@@ -1260,7 +1262,7 @@ audio consumption. More periods provide greater buffering security at the cost o
 
 *********************************************************************************************************************/
 
-static ERR SET_Periods(extAudio *Self, LONG Value)
+static ERR SET_Periods(extAudio *Self, int Value)
 {
    Self->Periods = Value;
    if (Self->Periods < 2) Self->Periods = 2;
@@ -1300,7 +1302,7 @@ sequential periods, providing time for processing whilst maintaining continuous 
 
 *********************************************************************************************************************/
 
-static ERR SET_PeriodSize(extAudio *Self, LONG Value)
+static ERR SET_PeriodSize(extAudio *Self, int Value)
 {
    Self->PeriodSize = Value;
    if (Self->PeriodSize < 1024) Self->PeriodSize = 1024;
@@ -1330,7 +1332,7 @@ Setting the Quality value automatically adjusts the following processing flags:
 
 *********************************************************************************************************************/
 
-static ERR SET_Quality(extAudio *Self, LONG Value)
+static ERR SET_Quality(extAudio *Self, int Value)
 {
    Self->Quality = Value;
 
@@ -1353,14 +1355,14 @@ Stereo: Set to `true` for stereo output and `false` for mono output.
 
 *********************************************************************************************************************/
 
-static ERR GET_Stereo(extAudio *Self, LONG *Value)
+static ERR GET_Stereo(extAudio *Self, int *Value)
 {
    if ((Self->Flags & ADF::STEREO) != ADF::NIL) *Value = TRUE;
    else *Value = FALSE;
    return ERR::Okay;
 }
 
-static ERR SET_Stereo(extAudio *Self, LONG Value)
+static ERR SET_Stereo(extAudio *Self, int Value)
 {
    if (Value IS TRUE) Self->Flags |= ADF::STEREO;
    else Self->Flags &= ~ADF::STEREO;
@@ -1383,7 +1385,7 @@ static void load_config(extAudio *Self)
       config->read("AUDIO", "Quality", Self->Quality);
       config->read("AUDIO", "BitDepth", Self->BitDepth);
 
-      LONG value;
+      int value;
       if (config->read("AUDIO", "Periods", value) IS ERR::Okay) SET_Periods(Self, value);
       if (config->read("AUDIO", "PeriodSize", value) IS ERR::Okay) SET_PeriodSize(Self, value);
       if (config->read("AUDIO", "Device", Self->Device) != ERR::Okay) Self->Device = "default";
@@ -1406,7 +1408,7 @@ static void load_config(extAudio *Self)
                Self->Volumes.clear();
                Self->Volumes.resize(keys.size());
 
-               LONG j = 0;
+               int j = 0;
                for (auto& [k, v] : keys) {
                   Self->Volumes[j].Name = k;
 
@@ -1415,7 +1417,7 @@ static void load_config(extAudio *Self)
                   while ((*str) and (*str != ',')) str++;
                   if (*str IS ',') str++;
 
-                  LONG channel = 0;
+                  int channel = 0;
                   if (*str IS '[') { // Read channel volumes
                      str++;
                      while ((*str) and (*str != ']')) {
@@ -1426,7 +1428,7 @@ static void load_config(extAudio *Self)
                      }
                   }
 
-                  while (channel < (LONG)Self->Volumes[j].Channels.size()) {
+                  while (channel < (int)Self->Volumes[j].Channels.size()) {
                      Self->Volumes[j].Channels[channel] = 0.75;
                      channel++;
                   }

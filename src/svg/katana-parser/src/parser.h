@@ -30,12 +30,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 #define KATANA_FELX_DEBUG            0
 #define KATANA_BISON_DEBUG           0
 #define KATANA_PARSER_DEBUG          0
 #define KATANA_PARSER_LOG_ENABLE     0
-    
+
 
 struct KatanaInternalOutput;
 struct KatanaInternalOptions;
@@ -55,25 +55,25 @@ extern const KatanaOptions kKatanaDefaultOptions;
 typedef struct KatanaInternalParser {
     // Settings for this parse run.
     const struct KatanaInternalOptions* options;
-    
+
     // Output for the parse.
     struct KatanaInternalOutput* output;
-    
+
     // The flex tokenizer info
     yyscan_t* scanner;
-    
+
     // The floating declarations
     KatanaArray* parsed_declarations;
 #if KATANA_PARSER_DEBUG
     // The floating selectors
     KatanaArray* parsed_selectors;
 #endif // #if KATANA_PARSER_DEBUG
-    
+
     KatanaSourcePosition* position;
     KatanaParserString default_namespace;
-    
+
 } KatanaParser;
-    
+
 
 KatanaArray* katana_new_array(KatanaParser* parser);
 
@@ -180,7 +180,7 @@ bool katana_parse_attribute_match_type(KatanaParser* parser, KatanaAttributeMatc
 
 bool katana_selector_is_simple(KatanaParser* parser, KatanaSelector* selector);
 void katana_selector_extract_pseudo_type(KatanaSelector* selector);
-    
+
 
 void katana_add_rule(KatanaParser* parser, KatanaRule* rule);
 
@@ -196,7 +196,7 @@ void katana_start_rule_body(KatanaParser* parser);
 bool katana_string_is_function(KatanaParserString* string);
 void katana_string_clear(KatanaParser* parser, KatanaParserString* string);
 
-    
+
 void katana_parse_internal_rule(KatanaParser* parser, KatanaRule* e);
 void katana_parse_internal_keyframe_rule(KatanaParser* parser, KatanaKeyframe* e);
 void katana_parse_internal_keyframe_key_list(KatanaParser* parser, KatanaArray* e);
@@ -204,7 +204,7 @@ void katana_parse_internal_value(KatanaParser* parser, KatanaArray* e);
 void katana_parse_internal_media_list(KatanaParser* parser, KatanaArray* e);
 void katana_parse_internal_declaration_list(KatanaParser* parser, bool e);
 void katana_parse_internal_selector(KatanaParser* parser, KatanaArray* e);
-    
+
 
 // Bison error
 void katanaerror(KATANALTYPE* yyloc, void* scanner, KatanaParser * parser, char*);
@@ -221,12 +221,12 @@ void katana_parser_report_error(KatanaParser* parser, KatanaSourcePosition* pos,
 
 // print
 void katana_print(const char * format, ...);
-    
+
 void katana_print_stylesheet(KatanaParser* parser, KatanaStylesheet* sheet);
 void katana_print_rule(KatanaParser* parser, KatanaRule* rule);
 void katana_print_font_face_rule(KatanaParser* parser, KatanaFontFaceRule* rule);
 void katana_print_import_rule(KatanaParser* parser, KatanaImportRule* rule);
-    
+
 void katana_print_media_query_exp(KatanaParser* parser, KatanaMediaQueryExp* exp);
 void katana_print_media_query(KatanaParser* parser, KatanaMediaQuery* query);
 void katana_print_media_list(KatanaParser* parser, KatanaArray* medias);

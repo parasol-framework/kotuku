@@ -1,9 +1,9 @@
 
-agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma(2.2);
+agg::gamma_lut<uint8_t, uint16_t, 8, 12> glGamma(2.2);
 double glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
-static HSV rgb_to_hsl(FRGB Colour) __attribute__((unused));
-static FRGB hsl_to_rgb(HSV Colour) __attribute__((unused));
+[[maybe_unused]] static HSV rgb_to_hsl(FRGB Colour);
+[[maybe_unused]] static FRGB hsl_to_rgb(HSV Colour);
 static void read_numseq_zero(CSTRING &, std::initializer_list<double *>);
 
 //********************************************************************************************************************
@@ -126,10 +126,10 @@ static void update_dpi(void)
 //********************************************************************************************************************
 // Read a string-based series of vector commands and add them to Path.
 //
-// SVG position on error handling: Unrecognized contents within a path data stream (i.e., contents that are not part 
-// of the path data grammar) is an error.  The general rule for error handling in path data is that the SVG user agent 
-// shall render a ‘path’ element up to (but not including) the path command containing the first error in the path 
-// data specification. This will provide a visual clue to the user or developer about where the error might be in the 
+// SVG position on error handling: Unrecognized contents within a path data stream (i.e., contents that are not part
+// of the path data grammar) is an error.  The general rule for error handling in path data is that the SVG user agent
+// shall render a ‘path’ element up to (but not including) the path command containing the first error in the path
+// data specification. This will provide a visual clue to the user or developer about where the error might be in the
 // path data specification.
 
 ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
@@ -139,7 +139,7 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
    PathCommand path;
 
    int max_cmds = 8192; // Maximum commands per path - this acts as a safety net in case the parser gets stuck.
-   UBYTE cmd = 0;
+   uint8_t cmd = 0;
    while (*Value) {
       if (std::isalpha(*Value)) cmd = *Value++;
       else if (std::isdigit(*Value) or (*Value IS '-') or (*Value IS '+') or (*Value IS '.')); // Use the previous command
@@ -206,10 +206,10 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
          case 'A': case 'a': { // Arc
             double largearc, sweep;
             read_numseq_zero(Value, { &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y });
-            path.LargeArc = F2T(largearc);
-            path.Sweep = F2T(sweep);
-            if ((path.LargeArc != 1) and (path.LargeArc != 0)) return ERR::Failed;
-            if ((path.Sweep != 1) and (path.Sweep != 0)) return ERR::Failed;
+            path.LargeArc = int(largearc);
+            path.Sweep = int(sweep);
+            if ((path.LargeArc != 1) and (path.LargeArc != 0)) return ERR::InvalidValue;
+            if ((path.Sweep != 1) and (path.Sweep != 0)) return ERR::InvalidValue;
             if (cmd IS 'A') path.Type = PE::Arc;
             else path.Type = PE::ArcRel;
             break;
@@ -230,7 +230,7 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
          default: {
             log.warning("Invalid path command '%c'", *Value);
-            return ERR::Failed;
+            return ERR::InvalidValue;
          }
       }
 
@@ -242,7 +242,7 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
       Path.push_back(path);
    }
 
-   return (Path.size() >= 2) ? ERR::Okay : ERR::Failed;
+   return (Path.size() >= 2) ? ERR::Okay : ERR::InvalidData;
 }
 
 //********************************************************************************************************************
@@ -485,7 +485,7 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, 
                FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = resolved.data() };
                if (FT_Open_Face(glFTLibrary, &openargs, 0, &ftface)) {
                   Log.warning("Fatal error in attempting to load font \"%s\".", resolved.c_str());
-                  return ERR::Failed;
+                  return ERR::File;
                }
 
                freetype_font::METRIC_TABLE metrics;
@@ -505,10 +505,10 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, 
                                     // Decode UTF16 Big Endian
                                     char buffer[100];
                                     int out = 0;
-                                    auto str = (UWORD *)sft_name.string;
-                                    UWORD prev_unicode = 0;
+                                    auto str = (uint16_t *)sft_name.string;
+                                    uint16_t prev_unicode = 0;
                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
-                                       UWORD unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
+                                       uint16_t unicode = (str[i]>>8) | (uint8_t(str[i])<<8);
                                        if ((unicode >= 'A') and (unicode <= 'Z')) {
                                           if ((i > 0) and (prev_unicode >= 'a') and (prev_unicode <= 'z')) {
                                              buffer[out++] = ' ';

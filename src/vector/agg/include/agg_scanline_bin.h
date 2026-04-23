@@ -1,13 +1,13 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
-// This is binary scaline container which supports the interface 
-// used in the rasterizer::render(). See description of agg_scanline_u8 
+// This is binary scaline container which supports the interface
+// used in the rasterizer::render(). See description of agg_scanline_u8
 // for details.
 
 #ifndef AGG_SCANLINE_BIN_INCLUDED
@@ -62,8 +62,8 @@ namespace agg
             add_span(x, len, 0);
         }
 
-        void finalize(int y)  { 
-            m_y = y; 
+        void finalize(int y)  {
+            m_y = y;
         }
 
         void reset_spans() {
@@ -138,8 +138,8 @@ namespace agg
             add_span(x, len, 0);
         }
 
-        void finalize(int y) { 
-            m_y = y; 
+        void finalize(int y) {
+            m_y = y;
         }
 
         void reset_spans() {

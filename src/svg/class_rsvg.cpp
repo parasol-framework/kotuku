@@ -41,7 +41,7 @@ static ERR RSVG_Activate(extPicture *Self)
 static ERR RSVG_Free(extPicture *Self)
 {
    if (auto prv = (prvSVG *)Self->ChildPrivate) {
-      if (prv->SVG) { FreeResource(prv->SVG); prv->SVG = NULL; }
+      if (prv->SVG) { FreeResource(prv->SVG); prv->SVG = nullptr; }
    }
    return ERR::Okay;
 }
@@ -206,7 +206,7 @@ static const ActionArray clActions[] = {
    { AC::Init,     RSVG_Init },
    { AC::Query,    RSVG_Query },
    { AC::Resize,   RSVG_Resize },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 //********************************************************************************************************************

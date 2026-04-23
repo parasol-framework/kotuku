@@ -342,7 +342,7 @@ namespace agg
                     // Simple collinear case, 1---2---3---4 we can leave just two endpoints
                     return;
                 }
-                
+
                 if (d2 <= 0) d2 = calc_sq_distance(x2, y2, x1, y1);
                 else if (d2 >= 1) d2 = calc_sq_distance(x2, y2, x4, y4);
                 else d2 = calc_sq_distance(x2, y2, x1 + d2*dx, y1 + d2*dy);

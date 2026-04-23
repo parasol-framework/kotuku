@@ -7,8 +7,8 @@ class SurfacePan : public Scintilla::Surface
    int penx;
    int peny;
    objBitmap *bitmap;
-   BYTE own_bitmap:1; /* True if this object owns the bitmap, and will free it */
-   LONG pencol;
+   int8_t own_bitmap:1; /* True if this object owns the bitmap, and will free it */
+   int pencol;
    Scintilla::PRectangle cliprect;
 
 public:
@@ -64,7 +64,7 @@ private:
 SurfacePan::SurfacePan()
 :  cliprect(0,0,0,0)
 {
-   bitmap = NULL;
+   bitmap = nullptr;
    own_bitmap = FALSE;
    penx   = 0;
    peny   = 0;
@@ -78,12 +78,12 @@ SurfacePan::~SurfacePan()
 
 void SurfacePan::Release()
 {
-   if ((bitmap) and (own_bitmap)) { FreeResource(bitmap); bitmap = NULL; }
+   if ((bitmap) and (own_bitmap)) { FreeResource(bitmap); bitmap = nullptr; }
 }
 
 bool SurfacePan::Initialised()
 {
-   return bitmap != NULL;
+   return bitmap != nullptr;
 }
 
 void SurfacePan::Init(Scintilla::WindowID WinID)
@@ -129,9 +129,9 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
 
 /****************************************************************************/
 
-INLINE ULONG to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& colour)
+inline uint32_t to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& colour)
 {
-   ULONG col32 = colour.AsLong();
+   uint32_t col32 = colour.AsLong();
    return bitmap->packPixel(SCIRED(col32), SCIGREEN(col32), SCIBLUE(col32), 255);
 }
 
@@ -206,7 +206,7 @@ void SurfacePan::Polygon(Scintilla::Point *pts, int npts, Scintilla::ColourAlloc
 
       //ULONG col = to_pan_col(bitmap, fore);
 
-      LONG i;
+      int i;
       for (i=0; i<npts-1; ++i) {
          //gfx::DrawLine(bitmap, pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, col);
       }
@@ -220,8 +220,8 @@ void SurfacePan::RectangleDraw(Scintilla::PRectangle rc, Scintilla::ColourAlloca
    if (bitmap) {
       BitmapClipper clipper(bitmap, cliprect);
 
-      ULONG bk32 = to_pan_col(bitmap, back);
-      ULONG fr32 = to_pan_col(bitmap, fore);
+      uint32_t bk32 = to_pan_col(bitmap, back);
+      uint32_t fr32 = to_pan_col(bitmap, fore);
 
       DBGDRAW("panRectangleDraw()","#%.8x, #%.8x", bk32, fr32);
 
@@ -235,7 +235,7 @@ void SurfacePan::RectangleDraw(Scintilla::PRectangle rc, Scintilla::ColourAlloca
 void SurfacePan::FillRectangle(Scintilla::PRectangle rc, Scintilla::ColourAllocated back)
 {
    if (bitmap) {
-      ULONG colour;
+      uint32_t colour;
 
       BitmapClipper clipper(bitmap, cliprect);
       colour = to_pan_col(bitmap, back);
@@ -309,7 +309,7 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 void SurfacePan::DrawTextBase(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase, const char *String, int len, Scintilla::ColourAllocated fore)
 {
    pf::Log log(__FUNCTION__);
-   ULONG col32;
+   uint32_t col32;
 
    std::string nstr(String, len);
 
@@ -363,7 +363,7 @@ void SurfacePan::DrawTextClipped(Scintilla::PRectangle rc, Scintilla::Font &font
 void SurfacePan::DrawTextTransparent(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase,
    const char *s, int len, Scintilla::ColourAllocated fore)
 {
-   LONG i;
+   int i;
 
    for (i=0; i < len; i++) {
       if (s[i] != ' ') {
@@ -378,16 +378,16 @@ void SurfacePan::DrawTextTransparent(Scintilla::PRectangle rc, Scintilla::Font &
 void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int len, int *positions)
 {
    objFont *font = (objFont *)GetFont(font_);
-   ULONG unicode;
-   UBYTE *str;
-   LONG i, charpos, copy;
+   uint32_t unicode;
+   uint8_t *str;
+   int i, charpos, copy;
 
-   str = (UBYTE *)string;
+   str = (uint8_t *)string;
    if (font) {
       charpos = 0;
       for (i=0; i < len; ) {
          if (font->FixedWidth) {
-            if ((UBYTE)(str[i]) < 128) copy = 1;
+            if ((uint8_t)(str[i]) < 128) copy = 1;
             else if ((str[i] & 0xe0) IS 0xc0) copy = 2;
             else if ((str[i] & 0xf0) IS 0xe0) copy = 3;
             else if ((str[i] & 0xf8) IS 0xf0) copy = 4;
@@ -400,7 +400,7 @@ void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int l
          else {
             if (str[i] < 128) {
                unicode = str[i];
-               if ((UBYTE)(str[i]) < 128) copy = 1;
+               if ((uint8_t)(str[i]) < 128) copy = 1;
                else if ((str[i] & 0xe0) IS 0xc0) copy = 2;
                else if ((str[i] & 0xf0) IS 0xe0) copy = 3;
                else if ((str[i] & 0xf8) IS 0xf0) copy = 4;

@@ -7,7 +7,7 @@
 
 static const double DEG2RAD = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
 static const double RAD2DEG = 57.295779513082320876798154814105;
-static const LONG MAX_VALUES = 8;
+static const int MAX_VALUES = 8;
 
 //********************************************************************************************************************
 
@@ -55,18 +55,18 @@ struct ROTATE {
       return *this;
    }
 
-   constexpr ROTATE & operator += (const DOUBLE &Angle) {
+   constexpr ROTATE & operator += (const double &Angle) {
       angle += Angle;
       return *this;
    }
 
-   constexpr ROTATE & operator *= (const DOUBLE &Angle) {
+   constexpr ROTATE & operator *= (const double &Angle) {
       angle *= Angle;
       return *this;
    }
 };
 
-constexpr ROTATE operator * (const ROTATE &lhs, const DOUBLE &Num) {
+constexpr ROTATE operator * (const ROTATE &lhs, const double &Num) {
    return ROTATE { lhs.angle * Num, lhs.cx, lhs.cy };
 }
 
@@ -86,7 +86,7 @@ template <class T = double> double dist(const pf::POINT<T> &A, const pf::POINT<T
 
 class anim_base {
 private:
-   ULONG _hash_id = 0;
+   uint32_t _hash_id = 0;
 
 public:
    struct spline_point {
@@ -96,8 +96,8 @@ public:
       spline_point(pf::POINT<float> pPoint, float pAngle) : point(pPoint), angle(pAngle) { }
    };
 
-   typedef std::vector<float> DISTANCES;
-   typedef std::vector<spline_point> SPLINE_POINTS;
+   using DISTANCES = std::vector<float>;
+   using SPLINE_POINTS = std::vector<spline_point>;
 
    class spline_path {
    public:
@@ -131,8 +131,8 @@ public:
    double seek = 0;            // Current seek position, between 0 - 1.0
    double total_dist = 0;      // Total distance between all value nodes
    OBJECTID target_vector = 0;
-   LONG   repeat_count = 0; // Repetition count.  Anything < 0 means infinite.
-   LONG   repeat_index = 0; // Current index within the repeat cycle.
+   int   repeat_count = 0; // Repetition count.  Anything < 0 means infinite.
+   int   repeat_index = 0; // Current index within the repeat cycle.
    CMODE  calc_mode    = CMODE::LINEAR;
    RST    restart      = RST::ALWAYS;
    ATT    attrib_type  = ATT::AUTO;
@@ -158,7 +158,7 @@ public:
    void activate(bool);
    void stop(double);
 
-   ULONG hash_id() {
+   uint32_t hash_id() {
       _hash_id = strihash(id);
       return _hash_id;
    }
@@ -229,9 +229,9 @@ public:
 
 class anim_value : public anim_base {
 public:
-   XMLTag *tag = nullptr;
+   XTag *tag = nullptr;
 
-   anim_value(extSVG *pSVG, OBJECTID pTarget, XMLTag *pTag) : anim_base(pSVG, pTarget), tag(pTag) { }
+   anim_value(extSVG *pSVG, OBJECTID pTarget, XTag *pTag) : anim_base(pSVG, pTarget), tag(pTag) { }
    void perform();
    void set_value(objVector &Vector);
 };

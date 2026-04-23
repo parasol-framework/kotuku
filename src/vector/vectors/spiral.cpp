@@ -242,13 +242,13 @@ length.
 
 *********************************************************************************************************************/
 
-static ERR SPIRAL_GET_PathLength(extVectorSpiral *Self, LONG *Value)
+static ERR SPIRAL_GET_PathLength(extVectorSpiral *Self, int *Value)
 {
    *Value = Self->PathLength;
    return ERR::Okay;
 }
 
-static ERR SPIRAL_SET_PathLength(extVectorSpiral *Self, LONG Value)
+static ERR SPIRAL_SET_PathLength(extVectorSpiral *Self, int Value)
 {
    if (Value >= 0) {
       Self->PathLength = Value;
@@ -334,7 +334,7 @@ static ERR SPIRAL_SET_Width(extVectorSpiral *Self, Unit &Value)
 
 static const ActionArray clVectorSpiralActions[] = {
    { AC::NewObject, SPIRAL_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const FieldArray clVectorSpiralFields[] = {

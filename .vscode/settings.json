@@ -1,7 +1,7 @@
 {
   "files.associations":{
-    "*.fdl": "lua",
-    "*.fluid": "lua",
+    "*.tdl": "lua",
+    "*.tiri": "lua",
     "bitset": "cpp",
     "algorithm": "cpp",
     "format": "cpp",
@@ -74,6 +74,22 @@
     "cfenv": "cpp",
     "cinttypes": "cpp",
     "typeinfo": "cpp",
-    "variant": "cpp"
-  }
+    "variant": "cpp",
+    "queue": "cpp",
+    "stack": "cpp",
+    "xhash": "cpp",
+    "xstring": "cpp",
+    "xtree": "cpp",
+    "xutility": "cpp"
+  },
+  "C_Cpp.intelliSenseEngine": "default",
+  "C_Cpp.errorSquiggles": "enabled",
+  "C_Cpp.autocomplete": "default",
+  "C_Cpp.suggestSnippets": true,
+  "C_Cpp.enhancedColorization": "enabled",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/agents/compile_commands.json",
+  "cmake.configureOnOpen": true,
+  "cmake.buildDirectory": "${workspaceFolder}/build/agents",
+  "workbench.editor.enablePreview": false
 }

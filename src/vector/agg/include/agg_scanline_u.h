@@ -1,39 +1,39 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software is granted provided this copyright notice 
-// appears in all copies.  This software is provided "as is" without express or implied warranty, and with no 
+// Permission to copy, use, modify, sell and distribute this software is granted provided this copyright notice
+// appears in all copies.  This software is provided "as is" without express or implied warranty, and with no
 // claim as to its suitability for any purpose.
 //
 // This is a general purpose scanline container with *packed* spans.  It is best used in conjunction with cover
 // values that mostly continuous.  See description of scanline_u8 for details.
-// 
+//
 //********************************************************************************************************************
 //
-// One of the key concepts in AGG is the scanline. The scanline is a container that consist of a number of horizontal 
-// spans that can carry Anti-Aliasing information. The scanline renderer decomposes provided scanline into a number 
-// of spans and in simple cases (like solid fill) calls basic renderer. In more complex cases it can call span 
+// One of the key concepts in AGG is the scanline. The scanline is a container that consist of a number of horizontal
+// spans that can carry Anti-Aliasing information. The scanline renderer decomposes provided scanline into a number
+// of spans and in simple cases (like solid fill) calls basic renderer. In more complex cases it can call span
 // generator.
 //
 // Unpacked scanline container class
 // =================================
-// This class is used to transfer data from a scanline rasterizer to the rendering buffer. It's organized very simple. 
-// The class stores information of horizontal spans to render it into a pixel-map buffer.  Each span has staring X, 
-// length, and an array of bytes that determine the cover-values for each pixel. 
-// 
-// Before using this class you should know the minimal and maximal pixel coordinates of your scanline. The protocol 
+// This class is used to transfer data from a scanline rasterizer to the rendering buffer. It's organized very simple.
+// The class stores information of horizontal spans to render it into a pixel-map buffer.  Each span has staring X,
+// length, and an array of bytes that determine the cover-values for each pixel.
+//
+// Before using this class you should know the minimal and maximal pixel coordinates of your scanline. The protocol
 // of using is:
-// 
+//
 // 1. reset(min_x, max_x)
-// 2. add_cell() / add_span() - accumulate scanline. 
+// 2. add_cell() / add_span() - accumulate scanline.
 //    When forming one scanline the next X coordinate must be always greater
 //    than the last stored one, i.e. it works only with ordered coordinates.
 // 3. Call finalize(y) and render the scanline.
 // 3. Call reset_spans() to prepare for the new scanline.
 // 4. Rendering:
-// 
-// Scanline provides an iterator class that allows you to extract the spans and the cover values for each pixel. Be 
-// aware that clipping has not been done yet, so you should perform it yourself.  Use scanline_u8::iterator to render 
+//
+// Scanline provides an iterator class that allows you to extract the spans and the cover values for each pixel. Be
+// aware that clipping has not been done yet, so you should perform it yourself.  Use scanline_u8::iterator to render
 // spans:
 //
 // int y = sl.y(); // Y-coordinate of the scanline
@@ -43,7 +43,7 @@
 // ************************************
 //
 // scanline_u8::const_iterator span = sl.begin();
-// 
+//
 // unsigned char* row = m_rbuf->row(y); // The the address of the beginning of the current row
 // unsigned num_spans = sl.num_spans(); // Number of spans. It's guaranteed that num_spans is always greater than 0.
 //
@@ -57,17 +57,17 @@
 //     ...you have x, covers, and pix_count..
 //     **************************************
 //
-//     unsigned char* dst = row + x;  // Calculate the start address of the row.  In this case we assume a simple 
+//     unsigned char* dst = row + x;  // Calculate the start address of the row.  In this case we assume a simple
 //                                    // grayscale image 1-byte per pixel.
 //     do {
-//         *dst++ = *covers++;        // Hypothetical rendering. 
+//         *dst++ = *covers++;        // Hypothetical rendering.
 //     } while(--num_pix);
 //     ++span;
 // } while(--num_spans);  // num_spans cannot be 0, so this loop is quite safe
 //
-// The question is: why should we accumulate the whole scanline when we could render just separate spans when they're 
-// ready? That's because using the scanline is generally faster. When is consists of more than one span the 
-// conditions for the processor cache system are better, because switching between two different areas of memory 
+// The question is: why should we accumulate the whole scanline when we could render just separate spans when they're
+// ready? That's because using the scanline is generally faster. When is consists of more than one span the
+// conditions for the processor cache system are better, because switching between two different areas of memory
 // (that can be very large) occurs less frequently.
 
 #ifndef AGG_SCANLINE_U_INCLUDED
@@ -158,7 +158,7 @@ public:
    }
 
    inline void finalize(int y) {
-      m_y = y; 
+      m_y = y;
    }
 
    inline void reset_spans() {
@@ -186,7 +186,7 @@ private:
 // The scanline container with alpha-masking.  It is viable to initialise with a NULL mask, in which case behaviour
 // will revert to the non-masked default without a performance penalty.
 
-template<class AlphaMask> 
+template<class AlphaMask>
 class scanline_u8_am : public scanline_u8 {
 public:
    typedef scanline_u8 base_type;

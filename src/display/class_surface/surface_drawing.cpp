@@ -1,5 +1,5 @@
 
-void copy_bkgd(const SURFACELIST &, int, int, int, ClipRectangle &, extBitmap *, extBitmap *, WORD, bool);
+void copy_bkgd(const SURFACELIST &, int, int, int, ClipRectangle &, extBitmap *, extBitmap *, int16_t, bool);
 
 ERR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, int index, int X, int Y, int Width, int Height, EXF Flags)
 {
@@ -322,7 +322,7 @@ ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
+   uint8_t msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
    int msgindex = 0;
    while (ScanMessages(&msgindex, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
@@ -340,8 +340,8 @@ ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
                action->SendArgs = FALSE;
             }
             else {
-               DOUBLE right  = msgdraw->X + msgdraw->Width;
-               DOUBLE bottom = msgdraw->Y + msgdraw->Height;
+               double right  = msgdraw->X + msgdraw->Width;
+               double bottom = msgdraw->Y + msgdraw->Height;
 
                if (x < msgdraw->X) msgdraw->X = x;
                if (y < msgdraw->Y) msgdraw->Y = y;
@@ -396,7 +396,7 @@ static ERR SURFACE_ExposeToDisplay(extSurface *Self, struct drw::ExposeToDisplay
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
+   uint8_t msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
    int msgindex = 0;
    while (ScanMessages(&msgindex, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
@@ -492,7 +492,7 @@ static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drw::InvalidateRegi
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
    int msgindex = 0;
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
+   uint8_t msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
    while (ScanMessages(&msgindex, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
       if ((action->ActionID IS drw::InvalidateRegion::id) and (action->ObjectID IS Self->UID)) {
@@ -503,8 +503,8 @@ static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drw::InvalidateRegi
                action->SendArgs = FALSE;
             }
             else {
-               DOUBLE right  = msginvalid->X + msginvalid->Width;
-               DOUBLE bottom = msginvalid->Y + msginvalid->Height;
+               double right  = msginvalid->X + msginvalid->Width;
+               double bottom = msginvalid->Y + msginvalid->Height;
 
                if (Args->X < msginvalid->X) msginvalid->X = Args->X;
                if (Args->Y < msginvalid->Y) msginvalid->Y = Args->Y;
@@ -638,7 +638,7 @@ void move_layer(extSurface *Self, int X, int Y)
 */
 
 void prepare_background(extSurface *Self, const SURFACELIST &List, int Index, extBitmap *DestBitmap,
-   const ClipRectangle &clip, BYTE Stage)
+   const ClipRectangle &clip, int8_t Stage)
 {
    pf::Log log("prepare_bkgd");
 
@@ -723,7 +723,7 @@ void prepare_background(extSurface *Self, const SURFACELIST &List, int Index, ex
 // Coordinates are absolute.
 
 void copy_bkgd(const SURFACELIST &List, int Index, int End, int Master, ClipRectangle &Area,
-   extBitmap *DestBitmap, extBitmap *SrcBitmap, WORD Opacity, bool Pervasive)
+   extBitmap *DestBitmap, extBitmap *SrcBitmap, int16_t Opacity, bool Pervasive)
 {
    pf::Log log(__FUNCTION__);
 

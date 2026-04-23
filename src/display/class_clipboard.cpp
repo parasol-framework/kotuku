@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -17,7 +17,7 @@ If historical buffering is enabled with the `CPF::HISTORY_BUFFER` option then th
 the clipboard and store copied data in the local `clipboard:` file cache.  This results in additional overhead to
 clipboard management.
 
-On Linux the clipboard is localised and data is shared between Parasol applications only.
+On Linux the clipboard is localised and data is shared between Kōtuku applications only.
 
 Multiple clipboard objects can be created, but they will share the same group of clipped data for the logged-in user.
 
@@ -29,13 +29,12 @@ there is a fixed limit to the clip count and the oldest members are automaticall
 *********************************************************************************************************************/
 
 #include "defs.h"
-#include <regex>
 
 #ifdef _WIN32
 using namespace display;
 #endif
 
-#define MAX_CLIPS 10 // Maximum number of clips stored in the historical buffer
+constexpr int MAX_CLIPS = 10; // Maximum number of clips stored in the historical buffer
 
 static const FieldDef glDatatypes[] = {
    { "data",   CLIPTYPE::DATA },
@@ -78,15 +77,18 @@ void clean_clipboard(void)
    if (OpenDir("clipboard:", RDF::FILE|RDF::DATE, &dir) IS ERR::Okay) {
       LocalResource free_dir(dir);
 
-      while (ScanDir(dir) IS ERR::Okay) {
-         const std::regex txt_regex("^\\d+(?:_text|_image|_file|_object)\\d*\\.\\d{3}$");
-         if (std::regex_match(dir->Info->Name, txt_regex)) {
-            if (dir->Info->TimeStamp < yesterday) {
-               std::string path("clipboard:");
-               path.append(dir->Info->Name);
-               DeleteFile(path.c_str(), nullptr);
+      Regex *compiled;
+      if (rx::Compile("^\\d+(?:_text|_image|_file|_object)\\d*\\.\\d{3}$", REGEX::NIL, nullptr, &compiled) IS ERR::Okay) {
+         while (ScanDir(dir) IS ERR::Okay) {
+            if (rx::Match(compiled, dir->Info->Name, RMATCH::NIL, nullptr) IS ERR::Okay) {
+               if (dir->Info->TimeStamp < yesterday) {
+                  std::string path("clipboard:");
+                  path.append(dir->Info->Name);
+                  DeleteFile(path.c_str(), nullptr);
+               }
             }
          }
+         FreeResource(compiled);
       }
    }
 }
@@ -145,7 +147,7 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
             int len = UTF8CharLength(src);
             if (len IS 1) codepoint = *src;
             else codepoint = UTF8ReadValue(src, nullptr);
-            
+
             if (codepoint < 0x10000) {
                dest.push_back(static_cast<char16_t>(codepoint));
             }
@@ -198,7 +200,7 @@ static ERR add_text_to_host(objClipboard *Self, CSTRING String, int Length = 0x7
    }
    utf16[i] = 0;
 
-   auto error = (ERR)winAddClip(LONG(CLIPTYPE::TEXT), utf16.data(), utf16.size() * sizeof(uint16_t), false);
+   auto error = (ERR)winAddClip(int(CLIPTYPE::TEXT), utf16.data(), utf16.size() * sizeof(uint16_t), false);
    if (error != ERR::Okay) log.warning(error);
    return error;
 #else
@@ -765,21 +767,21 @@ extern "C" void report_windows_hdrop(const char *Data, int CutOperation, char Wi
 
    std::vector<ClipItem> items;
    if (WideChar) { // Widechar -> UTF-8
-      auto sdata = reinterpret_cast<const char16_t*>(Data);  
-      while (*sdata) {  
+      auto sdata = reinterpret_cast<const char16_t*>(Data);
+      while (*sdata) {
          // Convert UTF-16 to UTF-8 manually
          std::string utf8_path;
          const char16_t *src = sdata;
          while (*src) {
             uint32_t codepoint = *src++;
-            
+
             // Handle surrogate pairs
             if (codepoint >= 0xD800 and codepoint <= 0xDBFF) {
                if (*src >= 0xDC00 and *src <= 0xDFFF) {
                   codepoint = 0x10000 + ((codepoint & 0x3FF) << 10) + (*src++ & 0x3FF);
                }
             }
-            
+
             // Convert to UTF-8
             if (codepoint < 0x80) {
                utf8_path.push_back(static_cast<char>(codepoint));
@@ -801,7 +803,7 @@ extern "C" void report_windows_hdrop(const char *Data, int CutOperation, char Wi
             }
          }
          items.emplace_back(utf8_path);
-         sdata += std::char_traits<char16_t>::length(sdata) + 1; // Next file path  
+         sdata += std::char_traits<char16_t>::length(sdata) + 1; // Next file path
       }
    }
    else { // UTF-8

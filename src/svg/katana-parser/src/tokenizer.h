@@ -37,5 +37,5 @@ int katana_tokenize(KATANASTYPE* lval , KATANALTYPE* loc, yyscan_t scanner, Kata
 #ifdef __cplusplus
 }
 #endif
-    
+
 #endif /* defined(__Katana__tokenizer__) */

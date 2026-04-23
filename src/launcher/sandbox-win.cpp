@@ -14,10 +14,10 @@
 #include <string>
 
 #ifndef PLATFORM_CONFIG_H
-#include <parasol/config.h>
+#include <kotuku/config.h>
 #endif
 
-#include <parasol/system/errors.h>
+#include <kotuku/system/errors.h>
 
 #include "common.h"
 
@@ -25,14 +25,14 @@ IntegrityLevel get_integrity_level();
 static const char * GetIntegrityLevelString(IntegrityLevel integrity_level);
 
 #ifdef __GNUC__
-static LONG str_copy(const char *String, char *Dest, int Length) __attribute__((unused));
-static ERR set_low_file(LPCWSTR pwszFileName) __attribute__((unused));
+[[maybe_unused]] static int str_copy(const char *String, char *Dest, int Length);
+[[maybe_unused]] static ERR set_low_file(LPCWSTR pwszFileName);
 #endif
 
-static LONG str_copy(const char *String, char *Dest, int Length)
+static int str_copy(const char *String, char *Dest, int Length)
 {
    if (Length < 0) return(0);
-   LONG i = 0;
+   int i = 0;
    if ((String) and (Dest)) {
       while ((i < Length) and (*String)) {
          Dest[i++] = *String++;
@@ -49,19 +49,19 @@ static int get_command_line_args(char ** *argv)
 {
    int argc = 0;
    auto wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
-   if (!wargv) { *argv = NULL; return 0; }
+   if (!wargv) { *argv = nullptr; return 0; }
 
    // Calculate total space for UTF-8 strings
    int n = 0;
-   for (int i=0; i < argc; i++) n += WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, NULL, 0, NULL, NULL) + 1;
+   for (int i=0; i < argc; i++) n += WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, nullptr, 0, nullptr, nullptr) + 1;
 
    *argv = (char **)malloc((argc + 1) * sizeof(char *) + n);
    auto arg = (char *)&((*argv)[argc + 1]);
    for (int i=0; i < argc; i++) {
       (*argv)[i] = arg;
-      arg += WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, arg, n, NULL, NULL) + 1;
+      arg += WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, arg, n, nullptr, nullptr) + 1;
    }
-   (*argv)[argc] = NULL;
+   (*argv)[argc] = nullptr;
    return argc;
 }
 
@@ -78,7 +78,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 
 int get_exe(char *Buffer, int Size)
 {
-   return(GetModuleFileName(NULL, Buffer, Size));
+   return(GetModuleFileName(nullptr, Buffer, Size));
 }
 
 //********************************************************************************************************************
@@ -94,10 +94,10 @@ static const char * GetIntegrityLevelString(IntegrityLevel integrity_level)
       case INTEGRITY_LEVEL_BELOW_LOW:  return "S-1-16-2048";
       case INTEGRITY_LEVEL_UNTRUSTED:  return "S-1-16-0";
       case INTEGRITY_LEVEL_UNKNOWN:
-      case INTEGRITY_LEVEL_LAST:       return NULL;
+      case INTEGRITY_LEVEL_LAST:       return nullptr;
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -112,7 +112,7 @@ IntegrityLevel get_integrity_level(void)
    if (OpenProcessToken(hProcess, TOKEN_QUERY | TOKEN_QUERY_SOURCE, &hToken)) {
       // Get the Integrity level.
       DWORD dwLengthNeeded;
-      if (!GetTokenInformation(hToken, TokenIntegrityLevel, NULL, 0, &dwLengthNeeded)) {
+      if (!GetTokenInformation(hToken, TokenIntegrityLevel, nullptr, 0, &dwLengthNeeded)) {
          DWORD dwError = GetLastError();
          if (dwError == ERROR_INSUFFICIENT_BUFFER) {
             PTOKEN_MANDATORY_LABEL pTIL;
@@ -143,12 +143,12 @@ IntegrityLevel get_integrity_level(void)
 //********************************************************************************************************************
 // Execute a process at low priority.
 
-ERR create_low_process(std::string_view ExePath, BYTE SharedOutput)
+ERR create_low_process(std::string_view ExePath, int8_t SharedOutput)
 {
    ERR result = ERR::Failed;
-   HANDLE hToken = NULL;
-   HANDLE hNewToken = NULL;
-   PSID pIntegritySid = NULL;
+   HANDLE hToken = nullptr;
+   HANDLE hNewToken = nullptr;
+   PSID pIntegritySid = nullptr;
    PROCESS_INFORMATION proc_info;
    STARTUPINFOEX startup_info;
 
@@ -163,7 +163,7 @@ ERR create_low_process(std::string_view ExePath, BYTE SharedOutput)
    }
 
    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_DUPLICATE | TOKEN_ADJUST_DEFAULT | TOKEN_QUERY | TOKEN_ASSIGN_PRIMARY, &hToken)) goto exit;
-   if (!DuplicateTokenEx(hToken, 0, NULL, SecurityImpersonation, TokenPrimary, &hNewToken)) goto exit;
+   if (!DuplicateTokenEx(hToken, 0, nullptr, SecurityImpersonation, TokenPrimary, &hNewToken)) goto exit;
    if (!ConvertStringSidToSid(GetIntegrityLevelString(INTEGRITY_LEVEL_LOW), &pIntegritySid)) goto exit;
 
    {
@@ -181,14 +181,14 @@ ERR create_low_process(std::string_view ExePath, BYTE SharedOutput)
    // Create the new process at Low integrity
 
    if (CreateProcessAsUser(hNewToken,
-         NULL,
+         nullptr,
          (LPSTR)ExePath.data(), // Command line
-         NULL, // Process attributes
-         NULL, // Thread attributes
+         nullptr, // Process attributes
+         nullptr, // Thread attributes
          (SharedOutput) ? TRUE : FALSE, // Inherit handles
          EXTENDED_STARTUPINFO_PRESENT,
-         NULL, // Environment
-         NULL, // Directory
+         nullptr, // Environment
+         nullptr, // Directory
          (LPSTARTUPINFO)&startup_info,
          &proc_info)) {
 
@@ -203,11 +203,11 @@ ERR create_low_process(std::string_view ExePath, BYTE SharedOutput)
    }
 
 exit:
-   if (proc_info.hProcess != NULL) CloseHandle(proc_info.hProcess);
-   if (proc_info.hThread != NULL) CloseHandle(proc_info.hThread);
+   if (proc_info.hProcess != nullptr) CloseHandle(proc_info.hProcess);
+   if (proc_info.hThread != nullptr) CloseHandle(proc_info.hThread);
    LocalFree(pIntegritySid);
-   if (hNewToken != NULL) CloseHandle(hNewToken);
-   if (hToken != NULL) CloseHandle(hToken);
+   if (hNewToken != nullptr) CloseHandle(hNewToken);
+   if (hToken != nullptr) CloseHandle(hToken);
    return result;
 }
 
@@ -219,14 +219,14 @@ exit:
 
 static ERR set_low_file(LPCWSTR pwszFileName)
 {
-   PSECURITY_DESCRIPTOR pSD = NULL;
-   if (ConvertStringSecurityDescriptorToSecurityDescriptorW(L"S:(ML;;NW;;;LW)", SDDL_REVISION_1, &pSD, NULL)) {
-      PACL pSacl = NULL; // not allocated
+   PSECURITY_DESCRIPTOR pSD = nullptr;
+   if (ConvertStringSecurityDescriptorToSecurityDescriptorW(L"S:(ML;;NW;;;LW)", SDDL_REVISION_1, &pSD, nullptr)) {
+      PACL pSacl = nullptr; // not allocated
       BOOL fSaclPresent = FALSE;
       BOOL fSaclDefaulted = FALSE;
       if (GetSecurityDescriptorSacl(pSD, &fSaclPresent, &pSacl, &fSaclDefaulted)) {
          // Note that psidOwner, psidGroup, and pDacl are all NULL and set the new LABEL_SECURITY_INFORMATION
-         SetNamedSecurityInfoW((LPWSTR) pwszFileName, SE_FILE_OBJECT, LABEL_SECURITY_INFORMATION, NULL, NULL, NULL, pSacl);
+         SetNamedSecurityInfoW((LPWSTR) pwszFileName, SE_FILE_OBJECT, LABEL_SECURITY_INFORMATION, nullptr, nullptr, nullptr, pSacl);
       }
       LocalFree(pSD);
       return(ERR::Okay);

@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -22,7 +22,7 @@ class extFloodFX : public extFilterEffect {
 
    FRGB   Colour;
    RGB8   ColourRGB; // A cached conversion of the FRGB value
-   DOUBLE Opacity;
+   double Opacity;
 };
 
 //********************************************************************************************************************
@@ -49,7 +49,7 @@ static ERR FLOODFX_Draw(extFloodFX *Self, struct acDraw *Args)
    // linear RGB space when blending.  This is indicated in the formal test results, but
    // W3C documentation has no mention of it.
 
-   const auto col = agg::rgba8(Self->ColourRGB, F2T(Self->Colour.Alpha * Self->Opacity * 255.0));
+   const auto col = agg::rgba8(Self->ColourRGB, int(Self->Colour.Alpha * Self->Opacity * 255.0));
 
    agg::rasterizer_scanline_aa<> raster;
    agg::renderer_base<agg::pixfmt_psl> renderBase;
@@ -85,14 +85,14 @@ The colour is complemented by the #Opacity field.
 
 *********************************************************************************************************************/
 
-static ERR FLOODFX_GET_Colour(extFloodFX *Self, FLOAT **Value, LONG *Elements)
+static ERR FLOODFX_GET_Colour(extFloodFX *Self, float **Value, int *Elements)
 {
-   *Value = (FLOAT *)&Self->Colour;
+   *Value = (float *)&Self->Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR FLOODFX_SET_Colour(extFloodFX *Self, FLOAT *Value, LONG Elements)
+static ERR FLOODFX_SET_Colour(extFloodFX *Self, float *Value, int Elements)
 {
    pf::Log log;
    if (Value) {
@@ -102,10 +102,10 @@ static ERR FLOODFX_SET_Colour(extFloodFX *Self, FLOAT *Value, LONG Elements)
          Self->Colour.Blue  = Value[2];
          Self->Colour.Alpha = (Elements >= 4) ? Value[3] : 1.0;
 
-         Self->ColourRGB.Red   = F2T(Self->Colour.Red * 255.0);
-         Self->ColourRGB.Green = F2T(Self->Colour.Green * 255.0);
-         Self->ColourRGB.Blue  = F2T(Self->Colour.Blue * 255.0);
-         Self->ColourRGB.Alpha = F2T(Self->Colour.Alpha * 255.0);
+         Self->ColourRGB.Red   = int(Self->Colour.Red * 255.0);
+         Self->ColourRGB.Green = int(Self->Colour.Green * 255.0);
+         Self->ColourRGB.Blue  = int(Self->Colour.Blue * 255.0);
+         Self->ColourRGB.Alpha = int(Self->Colour.Alpha * 255.0);
       }
       else return log.warning(ERR::InvalidValue);
    }
@@ -120,13 +120,13 @@ Opacity: Modifies the opacity of the flood colour.
 
 *********************************************************************************************************************/
 
-static ERR FLOODFX_GET_Opacity(extFloodFX *Self, DOUBLE *Value)
+static ERR FLOODFX_GET_Opacity(extFloodFX *Self, double *Value)
 {
    *Value = Self->Opacity;
    return ERR::Okay;
 }
 
-static ERR FLOODFX_SET_Opacity(extFloodFX *Self, DOUBLE Value)
+static ERR FLOODFX_SET_Opacity(extFloodFX *Self, double Value)
 {
    pf::Log log;
    if ((Value >= 0.0) and (Value <= 1.0)) {

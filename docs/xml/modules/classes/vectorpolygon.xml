@@ -8,10 +8,10 @@
     <module>Vector</module>
     <comment>Extends the Vector class with support for generating polygons.</comment>
     <version>1</version>
-    <id>2a04dc00</id>
+    <id>f046848b</id>
     <idstring>VECTORPOLYGON</idstring>
     <category>Graphics</category>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>The VectorPolygon class provides support for three different types of vector:</p>
 <list type="ordered">

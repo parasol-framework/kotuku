@@ -1,8 +1,8 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
@@ -48,7 +48,7 @@ bool bounding_rect(VertexSource& vs, GetId& gi, unsigned start, unsigned num, V*
    return (*x1 <= *x2) and (*y1 <= *y2);
 }
 
-template<class VertexSource, class V> 
+template<class VertexSource, class V>
 bool bounding_rect_single(VertexSource& vs, unsigned path_id, V* x1, V* y1, V* x2, V* y2)
 {
    double x, y;

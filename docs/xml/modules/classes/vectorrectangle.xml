@@ -8,10 +8,10 @@
     <module>Vector</module>
     <comment>Extends the Vector class with support for generating rectangles.</comment>
     <version>1</version>
-    <id>ac2f506d</id>
+    <id>62e3f082</id>
     <idstring>VECTORRECTANGLE</idstring>
     <category>Graphics</category>
-    <copyright>Paul Manias © 2010-2025</copyright>
+    <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>VectorRectangle extends the <class name="Vector">Vector</class> class with the ability to generate rectangular paths.</p></description>
     <source>

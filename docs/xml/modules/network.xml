@@ -8,7 +8,7 @@
     <version>1</version>
     <status>stable</status>
     <prefix>net</prefix>
-    <copyright>Paul Manias © 2005-2025</copyright>
+    <copyright>Paul Manias © 2005-2026</copyright>
     <classes>
       <class>ClientSocket</class>
       <class>NetClient</class>
@@ -121,7 +121,7 @@
     <description>
 <p>Converts an IPv4 or an IPv6 address in string format to an <st>IPAddress</st> structure.  The <code>String</code> must be of form <code>1.2.3.4</code> (IPv4) or <code>2001:db8::1</code> (IPv6).  IPv6 addresses are automatically detected by the presence of colons.</p>
 <pre>struct IPAddress addr;
-if (!StrToAddress("127.0.0.1", &amp;addr)) {
+if (!StrToAddress(&quot;127.0.0.1&quot;, &amp;addr)) {
    ...
 }
 </pre>
@@ -144,12 +144,14 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
     </constants>
 
     <constants lookup="NSF">
+      <const name="BROADCAST">Enable broadcast (UDP only).</const>
       <const name="DISABLE_SERVER_VERIFY">Disable SSL certificate verification (for testing only).</const>
       <const name="LOG_ALL">Print extra log messages.</const>
       <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
       <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
       <const name="SSL">Use Secure Sockets Layer for all communication.</const>
       <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
+      <const name="UDP">Use UDP (connectionless datagram protocol) instead of TCP.</const>
     </constants>
 
     <constants lookup="NTC" comment="NetSocket states">
@@ -200,9 +202,9 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
   </types>
   <structs>
     <struct name="IPAddress">
-      <field name="Data" type="INT" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
+      <field name="Data" type="INT" size="4">128-bit array for supporting both V4 (32-bit host order) and V6 (8-bit byte order) IP addresses.</field>
       <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
-      <field name="Pad" type="INT">Unused padding for 64-bit alignment</field>
+      <field name="Port" type="INT">For UDP packets, identifies the client port number in host byte order.</field>
     </struct>
 
   </structs>

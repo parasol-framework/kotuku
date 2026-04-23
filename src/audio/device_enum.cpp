@@ -3,7 +3,7 @@
 #include "device_enum.h"
 
 // Core enumeration function - populates device info for a single card
-bool ALSADeviceEnumerator::populate_device_info(LONG card_number, ALSADeviceInfo& info)
+bool ALSADeviceEnumerator::populate_device_info(int card_number, ALSADeviceInfo& info)
 {
    std::string device_name = "hw:" + std::to_string(card_number);
    snd_ctl_t *ctlhandle = nullptr;
@@ -19,7 +19,7 @@ bool ALSADeviceEnumerator::populate_device_info(LONG card_number, ALSADeviceInfo
          info.card_name = snd_ctl_card_info_get_name(card_info);
          info.device_name = device_name;
          info.is_modem = pf::iequals("modem", info.card_id);
-         
+
          // Get mixer control count
          info.mixer_controls = 0;
          snd_mixer_t *mixhandle = nullptr;
@@ -36,7 +36,7 @@ bool ALSADeviceEnumerator::populate_device_info(LONG card_number, ALSADeviceInfo
             }
             snd_mixer_close(mixhandle);
          }
-         
+
          success = true;
       }
       snd_ctl_close(ctlhandle);
@@ -49,7 +49,7 @@ bool ALSADeviceEnumerator::populate_device_info(LONG card_number, ALSADeviceInfo
 std::vector<ALSADeviceInfo> ALSADeviceEnumerator::enumerate_devices()
 {
    std::vector<ALSADeviceInfo> devices;
-   LONG card = -1;
+   int card = -1;
 
    // Iterate through all available cards
    if (snd_card_next(&card) >= 0 and card >= 0) {
@@ -58,7 +58,7 @@ std::vector<ALSADeviceInfo> ALSADeviceEnumerator::enumerate_devices()
          if (populate_device_info(card, info)) {
             devices.push_back(info);
          }
-         
+
          if (snd_card_next(&card) < 0) card = -1;
       }
    }
@@ -70,7 +70,7 @@ std::vector<ALSADeviceInfo> ALSADeviceEnumerator::enumerate_devices()
 ALSADeviceInfo ALSADeviceEnumerator::find_device_by_id(const std::string& device_id)
 {
    ALSADeviceInfo result;
-   
+
    // Handle special case for "default"
    if (pf::iequals("default", device_id)) {
       return select_best_device();
@@ -104,14 +104,14 @@ ALSADeviceInfo ALSADeviceEnumerator::select_best_device(DeviceFilter filter, Dev
 {
    auto devices = enumerate_devices();
    ALSADeviceInfo best_device;
-   
+
    // Use default filter and selector if none provided
    if (!filter) filter = default_filter;
    if (!selector) selector = default_selector;
 
    for (const auto& device : devices) {
       if (!filter(device)) continue;
-      
+
       if (best_device.card_number IS -1 or selector(device, best_device)) {
          best_device = device;
       }
@@ -124,24 +124,24 @@ ALSADeviceInfo ALSADeviceEnumerator::select_best_device(DeviceFilter filter, Dev
 bool ALSADeviceEnumerator::has_genuine_devices()
 {
    auto devices = enumerate_devices();
-   
+
    for (const auto& device : devices) {
       if (!device.is_modem) {
          return true;
       }
    }
-   
+
    return false;
 }
 
 // Wait for audio devices to become available (with timeout)
-ERR ALSADeviceEnumerator::wait_for_devices(LONG timeout_ms)
+ERR ALSADeviceEnumerator::wait_for_devices(int timeout_ms)
 {
    pf::Log log(__FUNCTION__);
    log.branch("Waiting for audio drivers to start...");
 
-   LARGE start_time = PreciseTime();
-   LARGE timeout_us = LARGE(timeout_ms) * 1000LL;
+   int64_t start_time = PreciseTime();
+   int64_t timeout_us = int64_t(timeout_ms) * 1000LL;
 
    while (PreciseTime() - start_time < timeout_us) {
       if (has_genuine_devices()) {
@@ -149,7 +149,7 @@ ERR ALSADeviceEnumerator::wait_for_devices(LONG timeout_ms)
          return ERR::Okay;
       }
 
-      WaitTime(0, -100000); // Wait 0.1 seconds
+      WaitTime(-0.1); // Wait 0.1 seconds without processing messages
    }
 
    log.msg("No sound drivers were started in the allotted time period.");

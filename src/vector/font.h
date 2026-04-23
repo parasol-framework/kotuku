@@ -1,6 +1,6 @@
 #pragma once
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
 #include <ft2build.h>
 #include FT_SIZES_H
@@ -13,8 +13,8 @@
 
 class common_font {
 public:
-   LONG type;
-   common_font(LONG pType) : type(pType) { }
+   int type;
+   common_font(int pType) : type(pType) { }
 };
 
 //********************************************************************************************************************
@@ -30,13 +30,13 @@ struct CaseInsensitiveMap {
 
 class bmp_font : public common_font {
 public:
-   objFont *font = NULL;
+   objFont *font = nullptr;
 
    bmp_font() : common_font(CF_BITMAP) { }
    bmp_font(objFont *pFont) : font(pFont), common_font(CF_BITMAP) { }
 
    ~bmp_font() {
-      if (font) { FreeResource(font); font = NULL; }
+      if (font) { FreeResource(font); font = nullptr; }
    }
 };
 
@@ -48,34 +48,34 @@ class freetype_font {
       struct glyph {
          agg::path_storage path; // AGG vector path generated from the freetype glyph
          double adv_x, adv_y;    // Pixel advances, these values should not be rounded
-         LONG   glyph_index;     // Freetype glyph index; saves having to call a function for conversion
+         int   glyph_index;     // Freetype glyph index; saves having to call a function for conversion
       };
 
       using METRIC_GROUP = std::vector<FT_Fixed>;
-      using GLYPH_TABLE = ankerl::unordered_dense::map<ULONG, glyph>; // Unicode to glyph lookup
+      using GLYPH_TABLE = ankerl::unordered_dense::map<uint32_t, glyph>; // Unicode to glyph lookup
 
       class ft_point : public common_font {
          public:
             GLYPH_TABLE glyphs;
-            freetype_font *font = NULL;
-            FT_Size ft_size = NULL;
+            freetype_font *font = nullptr;
+            FT_Size ft_size = nullptr;
 
             // These values are measured as pixels in 72 DPI.
             //
             // It is widely acknowledged that the metrics declared by font creators or their tools may not be
             // the precise glyph metrics in reality...
 
-            double height;  // Full height from the baseline - including accents
-            double ascent;  // Ascent from the baseline - not including accents.  Typically matches the font-size in pixels
-            double descent; // Number of pixels allocated below the baseline, not including vertical whitespace
-            double line_spacing;
+            double height;  // Full height equivalent to ascent + descent, does not include accents
+            double ascent;  // Ascent from the baseline (cap height), does not include accents.  Typically matches the font-size in pixels
+            double descent; // Number of pixels allocated below the baseline for glyphs, not including vertical whitespace
+            double line_spacing; // The vertical advance for a newline, if not predefined then is set to height * 1.15
             METRIC_GROUP axis;
 
-            glyph & get_glyph(ULONG);
+            glyph & get_glyph(uint32_t);
 
             ft_point() : common_font(CF_FREETYPE) { }
 
-            ft_point(freetype_font &pFont, METRIC_GROUP &pMetrics, LONG pSize) : common_font(CF_FREETYPE) {
+            ft_point(freetype_font &pFont, METRIC_GROUP &pMetrics, int pSize) : common_font(CF_FREETYPE) {
                font = &pFont;
                set_axis(pMetrics);
                FT_Set_Var_Design_Coordinates(pFont.face, axis.size(), axis.data());
@@ -83,7 +83,7 @@ class freetype_font {
                set_size(pSize);
             }
 
-            ft_point(freetype_font &pFont, LONG pSize) : common_font(CF_FREETYPE) {
+            ft_point(freetype_font &pFont, int pSize) : common_font(CF_FREETYPE) {
                font = &pFont;
                set_size(pSize);
             }
@@ -95,7 +95,7 @@ class freetype_font {
                //if (ft_size) { FT_Done_Size(ft_size); ft_size = NULL; }
             }
 
-            void set_size(LONG Size) {
+            void set_size(int Size) {
                if (!FT_New_Size(font->face, &ft_size)) {
                   FT_Activate_Size(ft_size);
                   FT_Set_Char_Size(font->face, 0, Size<<6, 72, 72);
@@ -105,7 +105,11 @@ class freetype_font {
                   }
                   else line_spacing = std::trunc(int26p6_to_dbl(ft_size->metrics.height + std::abs(ft_size->metrics.descender)) * 72.0 / glDisplayVDPI * 1.15);
 
-                  // Check if the client has applied a line spacing modifier for this font.
+                  ascent  = int26p6_to_dbl(ft_size->metrics.ascender) * (72.0 / glDisplayVDPI);
+                  descent = std::abs(int26p6_to_dbl(ft_size->metrics.descender)) * (72.0 / glDisplayVDPI);
+
+                  // Check if the client has applied metrics modifiers for this font.  The font module
+                  // comes with a tool, font_metrics.tiri, for helping with these modifiers.
 
                   if (glFontConfig) {
                      pf::ScopedObjectLock<objConfig> config(glFontConfig, 500);
@@ -117,12 +121,24 @@ class freetype_font {
                                  if (auto it = keys.find("LineSpacing"); it != keys.end()) {
                                     line_spacing *= std::stod(it->second);
                                  }
+                                 if (auto it = keys.find("Descent"); it != keys.end()) {
+                                    descent *= std::stod(it->second);
+                                 }
+                                 if (auto it = keys.find("Ascent"); it != keys.end()) {
+                                    ascent *= std::stod(it->second);
+                                 }
                                  break;
                               }
                               else if (auto it = keys.find("Name"); it != keys.end()) {
                                  if (pf::iequals(it->second, font->face->family_name)) {
                                     if (auto it = keys.find("LineSpacing"); it != keys.end()) {
                                        line_spacing *= std::stod(it->second);
+                                    }
+                                    if (auto it = keys.find("Descent"); it != keys.end()) {
+                                       descent *= std::stod(it->second);
+                                    }
+                                    if (auto it = keys.find("Ascent"); it != keys.end()) {
+                                       ascent *= std::stod(it->second);
                                     }
                                     break;
                                  }
@@ -132,9 +148,7 @@ class freetype_font {
                      }
                   }
 
-                  height  = int26p6_to_dbl(ft_size->metrics.height) * (72.0 / glDisplayVDPI);
-                  ascent  = int26p6_to_dbl(ft_size->metrics.ascender) * (72.0 / glDisplayVDPI);
-                  descent = std::abs(int26p6_to_dbl(ft_size->metrics.descender)) * (72.0 / glDisplayVDPI);
+                  height  = ascent + descent; // int26p6_to_dbl(ft_size->metrics.height) * (72.0 / glDisplayVDPI);
                }
             }
 
@@ -143,17 +157,17 @@ class freetype_font {
             }
       };
 
-      using SIZE_CACHE = std::map<LONG, ft_point>; // font-size = glyph cache
+      using SIZE_CACHE = std::map<int, ft_point>; // font-size = glyph cache
       using STYLE_CACHE = std::map<std::string, SIZE_CACHE, CaseInsensitiveMap>;
       using METRIC_TABLE = std::map<std::string, METRIC_GROUP, CaseInsensitiveMap>;
 
    public:
-      FT_Face face = NULL;
+      FT_Face face = nullptr;
       STYLE_CACHE style_cache; // Lists all known styles and contains the glyph cache for each style
       METRIC_TABLE metrics; // For variable fonts, these are pre-defined metrics with style names
       FMETA meta = FMETA::NIL;
-      LONG glyph_flags = 0;
-      ft_point *active_size = NULL;
+      int glyph_flags = 0;
+      ft_point *active_size = nullptr;
 
       freetype_font()  { }
       freetype_font(FT_Face pFace, STYLE_CACHE &pStyles, METRIC_TABLE &pMetrics, FMETA pMeta = FMETA::NIL)
@@ -167,14 +181,14 @@ class freetype_font {
       ~freetype_font();
 };
 
-extern ERR get_font(pf::Log &Log, CSTRING, CSTRING, LONG, LONG, common_font **);
+extern ERR get_font(pf::Log &Log, CSTRING, CSTRING, int, int, common_font **);
 
 // Caching note: Although it is policy for cached fonts to be permanently retained, it is not necessary for the
 // glyphs themselves to be permanently cached.  Future resource management should therefore actively remove
 // glyphs that have gone stale.
 
 extern std::recursive_mutex glFontMutex;
-extern ankerl::unordered_dense::map<ULONG, std::unique_ptr<bmp_font>> glBitmapFonts;
-extern ankerl::unordered_dense::map<ULONG, std::unique_ptr<freetype_font>> glFreetypeFonts;
+extern ankerl::unordered_dense::map<uint32_t, std::unique_ptr<bmp_font>> glBitmapFonts;
+extern ankerl::unordered_dense::map<uint32_t, std::unique_ptr<freetype_font>> glFreetypeFonts;
 
 extern FT_Library glFTLibrary;

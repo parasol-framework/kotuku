@@ -16,8 +16,8 @@ static ERR FILTEREFFECT_Free(extFilterEffect *Self)
 {
    if (Self->Filter) {
       for (auto e = Self->Filter->Effects; (e) and (Self->UsageCount > 0); e = (extFilterEffect *)e->Next) {
-         if (e->Input IS Self) { e->Input = NULL; Self->UsageCount--; }
-         if (e->Mix IS Self) { e->Mix = NULL; Self->UsageCount--; }
+         if (e->Input IS Self) { e->Input = nullptr; Self->UsageCount--; }
+         if (e->Mix IS Self) { e->Mix = nullptr; Self->UsageCount--; }
       }
 
       if (Self->Filter->Effects IS Self) Self->Filter->Effects = (extFilterEffect *)Self->Next;
@@ -75,7 +75,7 @@ static ERR FILTEREFFECT_MoveToBack(extFilterEffect *Self)
       if (Self->Prev) Self->Prev->Next = Self->Next;
       if (Self->Next) Self->Next->Prev = Self->Prev;
 
-      Self->Prev = NULL;
+      Self->Prev = nullptr;
       Self->Next = Self->Filter->Effects;
       Self->Next->Prev = Self;
       Self->Filter->Effects = Self;
@@ -97,7 +97,7 @@ static ERR FILTEREFFECT_MoveToFront(extFilterEffect *Self)
       if (Self->Prev) Self->Prev->Next = Self->Next;
       if (Self->Next) Self->Next->Prev = Self->Prev;
 
-      Self->Next = NULL;
+      Self->Next = nullptr;
       Self->Prev = Self->Filter->LastEffect;
       Self->Prev->Next = Self;
 
@@ -158,7 +158,7 @@ static ERR FILTEREFFECT_SET_Input(extFilterEffect *Self, extFilterEffect *Value)
       Value->UsageCount++;
    }
    else {
-      Self->Input = NULL;
+      Self->Input = nullptr;
       Self->SourceType = VSF::NIL;
    }
    return ERR::Okay;
@@ -302,18 +302,18 @@ static ERR FILTEREFFECT_SET_Y(extFilterEffect *Self, Unit &Value)
 #include "filter_effect_def.c"
 
 static const FieldArray clFilterEffectFields[] = {
-   { "Next",       FDF_OBJECT|FDF_RW, NULL, NULL, CLASSID::FILTEREFFECT },
-   { "Prev",       FDF_OBJECT|FDF_RW, NULL, NULL, CLASSID::FILTEREFFECT },
-   { "Target",     FDF_OBJECT|FDF_RW, NULL, NULL, CLASSID::BITMAP },
-   { "Input",      FDF_OBJECT|FDF_RW, NULL, FILTEREFFECT_SET_Input, CLASSID::FILTEREFFECT },
-   { "Mix",        FDF_OBJECT|FDF_RW, NULL, FILTEREFFECT_SET_Mix, CLASSID::FILTEREFFECT },
+   { "Next",       FDF_OBJECT|FDF_RW, nullptr, nullptr, CLASSID::FILTEREFFECT },
+   { "Prev",       FDF_OBJECT|FDF_RW, nullptr, nullptr, CLASSID::FILTEREFFECT },
+   { "Target",     FDF_OBJECT|FDF_RW, nullptr, nullptr, CLASSID::BITMAP },
+   { "Input",      FDF_OBJECT|FDF_RW, nullptr, FILTEREFFECT_SET_Input, CLASSID::FILTEREFFECT },
+   { "Mix",        FDF_OBJECT|FDF_RW, nullptr, FILTEREFFECT_SET_Mix, CLASSID::FILTEREFFECT },
    { "X",          FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_X, FILTEREFFECT_SET_X },
    { "Y",          FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Y, FILTEREFFECT_SET_Y },
    { "Width",      FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Width, FILTEREFFECT_SET_Width },
    { "Height",     FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Height, FILTEREFFECT_SET_Height },
-   { "Dimensions", FDF_INTFLAGS|FDF_R, NULL, NULL, &clFilterEffectDimensions },
-   { "SourceType", FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clFilterEffectSourceType },
-   { "MixType",    FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clFilterEffectMixType },
+   { "Dimensions", FDF_INTFLAGS|FDF_R, nullptr, nullptr, &clFilterEffectDimensions },
+   { "SourceType", FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clFilterEffectSourceType },
+   { "MixType",    FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clFilterEffectMixType },
    END_FIELD
 };
 

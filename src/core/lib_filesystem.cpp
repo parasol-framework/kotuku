@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+The source code for Kōtuku is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
@@ -52,13 +52,14 @@ typedef int HANDLE;
 #endif
 
 #include "defs.h"
-#include <parasol/main.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/strings.hpp>
 
 #include <stdarg.h>
 #include <errno.h>
 #include <map>
 #include <mutex>
+#include <bit>
 
 #ifdef _WIN32
  #include <io.h>
@@ -70,7 +71,7 @@ typedef int HANDLE;
   #define S_IRUSR _S_IREAD
   #define S_IWUSR _S_IWRITE
   #ifndef _S_ISTYPE
-   #define _S_ISTYPE(mode, mask)  (((mode) & _S_IFMT) == (mask))
+   #define _S_ISTYPE(mode, mask)  (((mode) & _S_IFMT) IS (mask))
    #define S_ISREG(mode) _S_ISTYPE((mode), _S_IFREG)
    #define S_ISDIR(mode) _S_ISTYPE((mode), _S_IFDIR)
   #endif
@@ -98,21 +99,20 @@ typedef int HANDLE;
 
 struct extCacheFile : public CacheFile {
    std::string FullPath;
-   std::vector<BYTE> Buffer;
-   WORD Locks;       // Internal count of active locks for this element.
+   std::vector<int8_t> Buffer;
+   int16_t Locks;       // Internal count of active locks for this element.
 
-   extCacheFile() {}
+   extCacheFile() = default;
 
-   extCacheFile(std::string_view pPath, int64_t pSize, int64_t pTimestamp) {
-      FullPath  = pPath;
+   extCacheFile(std::string_view pPath, int64_t pSize, int64_t pTimestamp)
+      : FullPath(pPath), Buffer(pSize + 1), Locks(1)
+   {
       Path      = FullPath.c_str();
-      Locks     = 1;
       Size      = pSize;
       TimeStamp = pTimestamp;
       LastUse   = PreciseTime();
 
-      Buffer.resize(pSize + 1);
-      Buffer[pSize] = 0; // Null terminator is added to help with text file processing
+      Buffer.back() = 0; // Null terminator is added to help with text file processing
       Data = Buffer.data(); // Client has direct access
    }
 };
@@ -122,27 +122,28 @@ struct extCacheFile : public CacheFile {
 class CacheFileIndex {
 public:
    std::string path;
-   int64_t timestamp;
-   int64_t size;
+   int64_t timestamp{};
+   int64_t size{};
 
-   CacheFileIndex(std::string Path, int64_t Timestamp, int64_t Size) {
-      path      = Path;
-      timestamp = Timestamp;
-      size      = Size;
-   }
+   CacheFileIndex() = default;
 
-   bool operator==(const CacheFileIndex &other) const {
-      return (path == other.path && timestamp == other.timestamp && size == other.size);
-   }
+   CacheFileIndex(std::string_view Path, int64_t Timestamp, int64_t Size)
+      : path(Path), timestamp(Timestamp), size(Size) { }
+
+   friend bool operator==(const CacheFileIndex &, const CacheFileIndex &) = default;
 };
 
 namespace std {
    template <>
    struct hash<CacheFileIndex> {
-      std::size_t operator()(const CacheFileIndex& k) const {
-         return ((std::hash<std::string>()(k.path)
-            ^ (std::hash<int64_t>()(k.timestamp) << 1)) >> 1)
-            ^ (std::hash<int64_t>()(k.size) << 1);
+      std::size_t operator()(const CacheFileIndex& Index) const noexcept {
+         std::size_t path_hash = std::hash<std::string>()(Index.path);
+         const auto timestamp_hash = std::hash<int64_t>()(Index.timestamp);
+         const auto size_hash = std::hash<int64_t>()(Index.size);
+
+         path_hash ^= std::rotl(timestamp_hash, 1);
+         path_hash ^= std::rotl(size_hash, 1);
+         return path_hash;
       }
    };
 }
@@ -152,18 +153,19 @@ static std::mutex glCacheLock;
 
 //********************************************************************************************************************
 
-static const ULONG get_volume_id(std::string_view Path)
+[[nodiscard]] constexpr uint32_t get_volume_id(std::string_view Path) noexcept
 {
    if ((Path.starts_with(':')) or (Path.empty())) return 0;
 
-   ULONG hash = 5381;
-   for (LONG len=0; (len < std::ssize(Path)) and (Path[len] != ':'); len++) {
-      char c = Path[len];
+   size_t i = 0;
+   for (; i < Path.size(); i++) {
+      auto c = Path[i];
+      if (c IS ':') break;
       if ((c IS '/') or (c IS '\\')) return 0; // If a slash is encountered early, the path belongs to the local FS
-      if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
-      else hash = (hash<<5) + hash + c;
    }
-   return hash;
+
+   if ((i >= Path.size()) or not (Path[i] IS ':')) return 0;
+   return strihash(Path.substr(0, i));
 }
 
 //********************************************************************************************************************
@@ -178,7 +180,7 @@ void free_file_cache(void)
 
 extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 {
-   if ((!Callback) or (!Feedback)) return FFR::OKAY;
+   if ((not Callback) or (not Feedback)) return FFR::OKAY;
 
    if (Callback->isC()) {
       auto routine = (FFR (*)(FileFeedback *, APTR))Callback->Routine;
@@ -210,12 +212,19 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 //********************************************************************************************************************
 // Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
 
-static const virtual_drive * get_virtual(std::string_view Path)
+static std::optional<virtual_drive> get_virtual_drive(uint32_t Id)
 {
-   if (Path.empty() or Path.starts_with(':')) return &glVirtual[0]; // Root level counts as virtual
+   std::lock_guard<std::mutex> lock(glmVirtual);
+   if (auto it = glVirtual.find(Id); it != glVirtual.end()) return it->second;
+   return std::nullopt;
+}
+
+static std::optional<virtual_drive> get_virtual(std::string_view Path)
+{
+   if (Path.empty() or Path.starts_with(':')) return get_virtual_drive(0); // Root level counts as virtual
    auto id = get_volume_id(Path);
-   if ((id) and (glVirtual.contains(id))) return &glVirtual[id];
-   return nullptr;
+   if (id) return get_virtual_drive(id);
+   return std::nullopt;
 }
 
 //********************************************************************************************************************
@@ -225,11 +234,12 @@ static const virtual_drive * get_virtual(std::string_view Path)
 // The Path must be resolved before you call this function, this is necessary to solve cases where a volume is a
 // shortcut to multiple paths for example.
 
-const virtual_drive * get_fs(std::string_view Path)
+virtual_drive get_fs(std::string_view Path)
 {
    auto id = get_volume_id(Path);
-   if (glVirtual.contains(id)) return &glVirtual[id];
-   return &glVirtual[0];
+   if (auto drive = get_virtual_drive(id)) return *drive;
+   if (auto drive = get_virtual_drive(0)) return *drive;
+   return glFSDefault;
 }
 
 //********************************************************************************************************************
@@ -241,9 +251,11 @@ ERR check_cache(OBJECTPTR Subscriber, int64_t Elapsed, int64_t CurrentTime)
 
    log.branch("Scanning file cache for unused entries...");
 
+   constexpr int64_t CACHE_EXPIRY_MICROSECONDS = 60LL * 1000000LL; // 60 seconds in microseconds
+
    const std::lock_guard<std::mutex> lock(glCacheLock);
    for (auto it=glCache.begin(); it != glCache.end(); ) {
-      if ((CurrentTime - it->second.LastUse >= 60LL * 1000000LL) and (it->second.Locks <= 0)) {
+      if ((CurrentTime - it->second.LastUse >= CACHE_EXPIRY_MICROSECONDS) and (it->second.Locks <= 0)) {
          log.msg("Removing expired cache file: %.80s", it->second.Path);
          it = glCache.erase(it);
       }
@@ -268,8 +280,8 @@ in an MP3 file.
 
 -INPUT-
 struct(FileInfo) Info: Pointer to a valid !FileInfo structure.
-cstr Name: The name of the tag, which must be declared in camel-case.
-cstr Value: The value to associate with the tag name.  If `NULL`, any existing tag with a matching `Name` will be removed.
+cpp(strview) Name: The name of the tag, which must be declared in camel-case.
+cpp(strview) Value: The value to associate with the tag name.  If empty, any existing tag with a matching `Name` will be removed.
 
 -ERRORS-
 Okay:
@@ -277,14 +289,15 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR AddInfoTag(FileInfo *Info, CSTRING Name, CSTRING Value)
+ERR AddInfoTag(FileInfo *Info, const std::string_view &Name, const std::string_view &Value)
 {
-   if (!Info->Tags) {
-      Info->Tags = new (std::nothrow) ankerl::unordered_dense::map<std::string, std::string>();
-      if (!Info->Tags) return ERR::CreateResource;
-   }
+   if (not Info) return ERR::NullArgs;
 
-   Info->Tags[0][Name] = std::string(Value);
+   auto tags = Info->getTags();
+   if (not tags) return ERR::CreateResource;
+
+   if (Value.empty()) tags->erase(Name);
+   else tags->insert_or_assign(Name, Value);
    return ERR::Okay;
 }
 
@@ -326,7 +339,7 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
    pf::Log log(__FUNCTION__);
 
    if (PathType) *PathType = LOC::NIL;
-   if (!Path) return ERR::NullArgs;
+   if ((not Path) or (not Path[0])) return ERR::NullArgs;
 
    // Special volumes 'string:' and 'memory:' are considered to be file paths.
 
@@ -343,7 +356,7 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
       Path++;
    }
 
-   LONG len = strlen(Path);
+   int len = strlen(Path);
    if (Path[len-1] IS ':') {
       if (auto lock = std::unique_lock{glmVolumes, 6s}) {
          std::string path_vol(Path, len-1);
@@ -360,10 +373,10 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
       log.trace("Testing path type for '%s'", test_path.c_str());
 
       auto vd = get_fs(test_path);
-      if (vd->TestPath) {
+      if (vd.TestPath) {
          LOC dummy;
-         if (!PathType) PathType = &dummy; // Dummy variable, helps to avoid bugs
-         return vd->TestPath(test_path, RSF::NIL, PathType);
+         if (not PathType) PathType = &dummy; // Dummy variable, helps to avoid bugs
+         return vd.TestPath(test_path, RSF::NIL, PathType);
       }
       else return ERR::NoSupport;
    }
@@ -400,28 +413,28 @@ NullArgs
 
 ERR CompareFilePaths(CSTRING PathA, CSTRING PathB)
 {
-   if ((!PathA) or (!PathB)) return ERR::NullArgs;
+   if ((not PathA) or (not PathB)) return ERR::NullArgs;
 
    std::string path1, path2;
    ERR error;
    if ((error = ResolvePath(PathA, RSF::NO_FILE_CHECK, &path1)) != ERR::Okay) return error;
    if ((error = ResolvePath(PathB, RSF::NO_FILE_CHECK, &path2)) != ERR::Okay) return error;
 
-   const virtual_drive *v1, *v2;
+   virtual_drive v1, v2;
    v1 = get_fs(path1);
    v2 = get_fs(path2);
 
-   if ((!v1->CaseSensitive) and (!v2->CaseSensitive)) {
+   if ((not v1.CaseSensitive) and (not v2.CaseSensitive)) {
       error = iequals(path1, path2) ? ERR::True : ERR::False;
    }
    else error = (std::string_view(path1) IS std::string_view(path2)) ? ERR::True : ERR::False;
 
    if (error != ERR::Okay) {
-      if (v1 IS v2) {
+      if (v1.VirtualID IS v2.VirtualID) {
          // Ask the virtual FS if the paths match
 
-         if (v1->SameFile) {
-            error = v1->SameFile(path1, path2);
+         if (v1.SameFile) {
+            error = v1.SameFile(path1, path2);
          }
          else error = ERR::False; // Assume the earlier string comparison is good enough
       }
@@ -439,12 +452,12 @@ static ERR CompareResolvedPaths(std::string_view PathA, std::string_view PathB)
    const auto v2 = get_fs(PathB);
 
    ERR error;
-   if ((!v1->CaseSensitive) and (!v2->CaseSensitive)) error = iequals(PathA, PathB) ? ERR::True : ERR::False;
+   if ((not v1.CaseSensitive) and (not v2.CaseSensitive)) error = iequals(PathA, PathB) ? ERR::True : ERR::False;
    else error = (std::string_view(PathA) IS std::string_view(PathB)) ? ERR::True : ERR::False;
 
    if (error != ERR::Okay) {
-      if (v1 IS v2) { // Ask the virtual FS if the paths match
-         if (v1->SameFile) return v1->SameFile(PathA, PathB);
+      if (v1.VirtualID IS v2.VirtualID) { // Ask the virtual FS if the paths match
+         if (v1.SameFile) return v1.SameFile(PathA, PathB);
          else return ERR::False; // Assume the earlier string comparison is sufficient
       }
       else return ERR::False;
@@ -459,7 +472,7 @@ ERR fs_samefile(std::string_view Path1, std::string_view Path2)
 #ifdef __unix__
    struct stat64 stat1, stat2;
 
-   if ((!stat64(Path1.data(), &stat1)) and (!stat64(Path2.data(), &stat2))) {
+   if ((not stat64(Path1.data(), &stat1)) and (not stat64(Path2.data(), &stat2))) {
       if ((stat1.st_ino IS stat2.st_ino)
             and (stat1.st_dev IS stat2.st_dev)
             and (stat1.st_mode IS stat2.st_mode)
@@ -491,14 +504,14 @@ cstr: The group name is returned, or `NULL` if the ID cannot be resolved.
 
 *********************************************************************************************************************/
 
-CSTRING ResolveGroupID(LONG GroupID)
+CSTRING ResolveGroupID(int GroupID)
 {
 #ifdef __unix__
 
-   static THREADVAR char group[40];
+   static thread_local char group[40];
 
    if (auto info = getgrgid(GroupID)) {
-      LONG i;
+      int i;
       for (i=0; (info->gr_name[i]) and ((size_t)i < sizeof(group)-1); i++) group[i] = info->gr_name[i];
       group[i] = 0;
       return group;
@@ -528,14 +541,14 @@ cstr: The user name is returned, or `NULL` if the ID cannot be resolved.
 
 *********************************************************************************************************************/
 
-CSTRING ResolveUserID(LONG UserID)
+CSTRING ResolveUserID(int UserID)
 {
 #ifdef __unix__
 
-   static THREADVAR char user[40];
+   static thread_local char user[40];
 
    if (auto info = getpwuid(UserID)) {
-      LONG i;
+      int i;
       for (i=0; (info->pw_name[i]) and ((size_t)i < sizeof(user)-1); i++) user[i] = info->pw_name[i];
       user[i] = 0;
       return user;
@@ -560,14 +573,14 @@ recursively, so as to copy all sub-folders and files within the location.
 It is important that you are aware that different types of string formatting can give different results.  The following
 examples illustrate:
 
-Copying `parasol:makefile` to `parasol:documents` results in a file called `parasol:documents`.
+Copying `kotuku:makefile` to `kotuku:documents` results in a file called `kotuku:documents`.
 
-Copying `parasol:makefile` to `parasol:documents/` results in a file called `parasol:documents/makefile`.
+Copying `kotuku:makefile` to `kotuku:documents/` results in a file called `kotuku:documents/makefile`.
 
-Copying `parasol:pictures/` to `parasol:documents/` results in a folder at `parasol:documents/pictures` and includes
+Copying `kotuku:pictures/` to `kotuku:documents/` results in a folder at `kotuku:documents/pictures` and includes
 a copy of all folders and files found within the pictures folder.
 
-Copying `parasol:pictures/` to `parasol:documents` results in a folder at `parasol:documents` (if the documents folder
+Copying `kotuku:pictures/` to `kotuku:documents` results in a folder at `kotuku:documents` (if the documents folder
 already exists, it receives additional content from the pictures folder).
 
 This function will overwrite any destination file(s) that already exist.
@@ -577,7 +590,7 @@ folder, a forward slash must terminate the string or it will be assumed that a f
 
 The Callback parameter can be set with a function that matches this prototype:
 
-`LONG Callback(struct FileFeedback *)`
+`INT Callback(FileFeedback *)`
 
 For each file that is processed during the copy operation, a &FileFeedback structure is passed that describes the
 source file and its target.  The callback must return a constant value that can potentially affect file processing.
@@ -604,9 +617,9 @@ ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 /*********************************************************************************************************************
 
 -FUNCTION-
-CreateLink: Creates symbolic links on Unix file systems.
+CreateLink: Creates symbolic links on supported file systems.
 
-Use the CreateLink() function to create symbolic links on Unix file systems. The link connects a new file created at
+Use the CreateLink() function to create symbolic links on supported file systems. The link connects a new file created at
 `From` to an existing file referenced at `To`. The `To` link is allowed to be relative to the `From` location - for instance,
 you can link `documents:myfiles/newlink.txt` to `../readme.txt` or `folder/readme.txt`. The `..` path component must be
 used when making references to parent folders.
@@ -638,24 +651,30 @@ FileExists: The location referenced at From already exists.
 
 ERR CreateLink(CSTRING From, CSTRING To)
 {
-#ifdef _WIN32
-
-   return ERR::NoSupport;
-
-#else
-
    pf::Log log(__FUNCTION__);
 
-   if ((!From) or (!To)) return ERR::NullArgs;
-
+   if ((not From) or (not To)) return ERR::NullArgs;
    log.branch("From: %.40s, To: %s", From, To);
+
+#ifdef _WIN32
+
+   std::string src, dest;
+   if (ResolvePath(From, RSF::NO_FILE_CHECK, &src) IS ERR::Okay) {
+      if (ResolvePath(To, RSF::NO_FILE_CHECK, &dest) IS ERR::Okay) {
+         return winCreateLink(src.c_str(), dest.c_str());
+      }
+      else return ERR::ResolvePath;
+   }
+   else return ERR::ResolvePath;
+
+#else
 
    std::string src, dest;
    if (ResolvePath(From, RSF::NO_FILE_CHECK, &src) IS ERR::Okay) {
       if (ResolvePath(To, RSF::NO_FILE_CHECK, &dest) IS ERR::Okay) {
          auto err = symlink(dest.c_str(), src.c_str());
 
-         if (!err) return ERR::Okay;
+         if (not err) return ERR::Okay;
          else return convert_errno(err, ERR::SystemCall);
       }
       else return ERR::ResolvePath;
@@ -701,7 +720,7 @@ ERR DeleteFile(CSTRING Path, FUNCTION *Callback)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Path) return ERR::NullArgs;
+   if (not Path) return ERR::NullArgs;
 
    log.branch("%s", Path);
 
@@ -710,8 +729,8 @@ ERR DeleteFile(CSTRING Path, FUNCTION *Callback)
 
    std::string resolve;
    if (ResolvePath(Path, RSF::NIL, &resolve) IS ERR::Okay) {
-      const virtual_drive *vd = get_fs(resolve);
-      if (vd->Delete) return vd->Delete(resolve, nullptr);
+      auto vd = get_fs(resolve);
+      if (vd.Delete) return vd.Delete(resolve, nullptr);
       else return ERR::NoSupport;
    }
    else return ERR::ResolvePath;
@@ -736,7 +755,7 @@ int(PERMIT) Permissions: Permission flags to be applied to new files.
 
 *********************************************************************************************************************/
 
-void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions)
+void SetDefaultPermissions(int User, int Group, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
 
@@ -751,74 +770,101 @@ void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions)
    glDefaultPermissions = Permissions;
 }
 
-//********************************************************************************************************************
-// Internal function for getting information from files, particularly virtual volumes.  If you know that a path
-// refers directly to the client's filesystem then you can revert to calling fs_getinfo() instead.
+/*********************************************************************************************************************
 
-static THREADVAR char glNameBuffer[MAX_FILENAME]; // Not thread-safe
+-FUNCTION-
+GetFileInfo: Gets information about a file or folder.
 
-ERR get_file_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
+This function will return information about a file or folder when given a valid file location.  The current user
+must have read access to the given file.  This function does not allow for the approximation of file names.  To
+approximate a file location, open it as a @File object or use ~ResolvePath() first.
+
+-INPUT-
+cpp(strview) Path: String referring to the file or folder to be queried.
+struct(*FileInfo) Info: Pointer to a !FileInfo structure to be populated.
+bufsize InfoSize: Size of the !FileInfo structure in bytes.
+
+-ERRORS-
+Okay:
+Args:
+LockFailed:
+NoSupport: The target filesystem does not support the operation.
+
+-END-
+
+*********************************************************************************************************************/
+
+// NB: If you know that a path refers directly to the client's filesystem then you can revert to calling
+// fs_getinfo() instead.
+
+ERR GetFileInfo(const std::string_view &Path, FileInfo *Info, int InfoSize)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
-   ERR error;
 
-   if (Path.empty() or (!Info) or (InfoSize <= 0)) return log.warning(ERR::Args);
-
-   clearmem(Info, InfoSize);
-   Info->Name = glNameBuffer;
+   if (Path.empty() or (not Info) or (InfoSize <= 0)) return log.warning(ERR::Args);
 
    // Check if the location is a volume with no file reference
 
    if (Path.ends_with(':')) {
-      const virtual_drive *vfs = get_fs(Path);
+      auto vfs = get_fs(Path);
 
-      Info->Flags = RDF::VOLUME;
+      Info->Size        = 0;
+      Info->TimeStamp   = 0;
+      Info->Next        = nullptr;
+      Info->Permissions = PERMIT::NIL;
+      Info->UserID      = 0;
+      Info->GroupID     = 0;
+      Info->Tags        = nullptr;
+      Info->Flags       = RDF::VOLUME;
+      Info->Created.clear();
+      Info->Modified.clear();
 
-      for (i=0; (i < MAX_FILENAME-1) and (i < std::ssize(Path)) and (Path[i] != ':'); i++) glNameBuffer[i] = Path[i];
-      LONG pos = i;
-      glNameBuffer[i] = 0;
+      if (auto pos = Path.find(':'); pos != std::string::npos) Info->Name = Path.substr(0, pos);
+      else Info->Name = Path;
 
-      error = ERR::Okay;
-
-      if (auto lock = std::unique_lock{glmVolumes, 4s}) {
-         if (glVolumes.contains(glNameBuffer)) {
-            if (glVolumes[glNameBuffer]["Hidden"] == "Yes") Info->Flags |= RDF::HIDDEN;
+      if (auto lock = std::unique_lock{glmVolumes, 1s}) {
+         if (glVolumes.contains(Info->Name)) {
+            if (glVolumes[Info->Name]["Hidden"] IS "Yes") Info->Flags |= RDF::HIDDEN;
          }
       }
-      else error = ERR::LockFailed;
 
-      if (pos < MAX_FILENAME-2) {
-         glNameBuffer[pos++] = ':';
-         glNameBuffer[pos] = 0;
+      Info->Name += ':';
 
-         if (vfs->is_virtual()) {
-            Info->Flags |= RDF::VIRTUAL;
-            if (vfs->GetInfo) error = vfs->GetInfo(Path, Info, InfoSize);
+      if (vfs.is_virtual()) {
+         Info->Flags |= RDF::VIRTUAL;
+         if (vfs.GetInfo) return vfs.GetInfo(Path, Info, InfoSize);
+         return ERR::Okay;
+      }
+      else return ERR::Okay;
+   }
+   else {
+      log.traceBranch("%.*s", int(Path.size()), Path.data());
+
+      std::string path;
+      if (auto error = ResolvePath(Path, RSF::NIL, &path); error IS ERR::Okay) {
+         auto vfs = get_fs(path);
+
+         if (not vfs.GetInfo) return log.warning(ERR::NoSupport);
+
+         Info->Size        = 0;
+         Info->TimeStamp   = 0;
+         Info->Next        = nullptr;
+         Info->Permissions = PERMIT::NIL;
+         Info->UserID      = 0;
+         Info->GroupID     = 0;
+         Info->Tags        = nullptr;
+         Info->Flags       = (vfs.is_virtual()) ? RDF::VIRTUAL : RDF::NIL;
+         Info->Created.clear();
+         Info->Modified.clear();
+
+         if ((error = vfs.GetInfo(path, Info, InfoSize)) IS ERR::Okay) {
+            Info->TimeStamp = calc_timestamp(&Info->Modified);
          }
 
          return error;
       }
-      else return log.warning(ERR::BufferOverflow);
+      else return error;
    }
-
-   log.traceBranch("%s", Path.data());
-
-   std::string path;
-   if ((error = ResolvePath(Path, RSF::NIL, &path)) IS ERR::Okay) {
-      auto vfs = get_fs(path);
-
-      if (vfs->GetInfo) {
-         if (vfs->is_virtual()) Info->Flags |= RDF::VIRTUAL;
-
-         if ((error = vfs->GetInfo(path, Info, InfoSize)) IS ERR::Okay) {
-            Info->TimeStamp = calc_timestamp(&Info->Modified);
-         }
-      }
-      else log.warning(ERR::NoSupport);
-   }
-
-   return error;
 }
 
 /*********************************************************************************************************************
@@ -829,9 +875,9 @@ LoadFile: Loads files into a local cache for fast file processing.
 The LoadFile() function loads complete files into memory and caches the content for use by other areas of the system
 or application.
 
-This function will first determine if the requested file has already been cached.  If this is true then the !CacheFile
-structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated
-as a cache miss and the file will be loaded into a new buffer.
+If the requested file has already been cached, the !CacheFile structure is returned immediately.  Note that if the
+file was previously cached but then modified, this will be treated as a cache miss and the file will be loaded into
+a new buffer.
 
 File content will be loaded into a readable memory buffer that is referenced by the Data field of the
 !CacheFile structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files.
@@ -858,7 +904,7 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Path) or (!Cache)) return ERR::NullArgs;
+   if ((not Path) or (not Cache)) return ERR::NullArgs;
 
    // Check if the file is already cached.  If it is, check that the file hasn't been written since the last time it was cached.
 
@@ -868,7 +914,7 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
 
    const std::lock_guard<std::mutex> lock(glCacheLock);
 
-   log.branch("%.80s, Flags: $%.8x", path.c_str(), LONG(Flags));
+   log.branch("%.80s, Flags: $%.8x", path.c_str(), int(Flags));
 
    auto file = objFile::create { fl::Path(path), fl::Flags(FL::READ|FL::FILE) };
 
@@ -879,7 +925,6 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
       CacheFileIndex index(path, timestamp, file_size);
 
       if (glCache.contains(index)) {
-
          *((extCacheFile **)Cache) = &glCache[index];
          if ((Flags & LDF::CHECK_EXISTS) IS LDF::NIL) glCache[index].Locks++;
          return ERR::Okay;
@@ -894,7 +939,7 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
       glCache.emplace(index, extCacheFile(path, file_size, timestamp));
 
       if (file_size) {
-         LONG result;
+         int result;
          error = file->read(glCache[index].Data, file_size, &result);
          if ((error IS ERR::Okay) and (file_size != result)) return ERR::Read;
       }
@@ -902,7 +947,7 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
       if (error IS ERR::Okay) {
          *((extCacheFile **)Cache) = &glCache[index];
 
-         if (!glCacheTimer) {
+         if (not glCacheTimer) {
             pf::SwitchContext context(CurrentTask());
             auto call = C_FUNCTION(check_cache);
             SubscribeTimer(60, &call, &glCacheTimer);
@@ -926,8 +971,8 @@ permission flags are passed, only the current user will have access to the new f
 supports security settings on the given media).  This function will create multiple folders if the complete path
 does not exist at the time of the call.
 
-On Unix systems you can define the owner and group ID's for the new folder by calling the
-~SetDefaultPermissions() function prior to CreateFolder().
+On Unix systems you can define the owner and group ID's for the new folder by calling the ~SetDefaultPermissions()
+function prior to CreateFolder().
 
 -INPUT-
 cstr Path: The location of the folder.
@@ -946,7 +991,7 @@ ERR CreateFolder(CSTRING Path, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Path) or (!*Path)) return log.warning(ERR::NullArgs);
+   if ((not Path) or (not *Path)) return log.warning(ERR::NullArgs);
 
    if (glDefaultPermissions != PERMIT::NIL) Permissions = glDefaultPermissions;
    else if ((Permissions IS PERMIT::NIL) or ((Permissions & PERMIT::INHERIT) != PERMIT::NIL)) {
@@ -956,8 +1001,8 @@ ERR CreateFolder(CSTRING Path, PERMIT Permissions)
 
    std::string resolve;
    if (ResolvePath(Path, RSF::NO_FILE_CHECK, &resolve) IS ERR::Okay) {
-      const virtual_drive *vd = get_fs(resolve);
-      if (vd->CreateFolder) return vd->CreateFolder(resolve, Permissions);
+      auto vd = get_fs(resolve);
+      if (vd.CreateFolder) return vd.CreateFolder(resolve, Permissions);
       else return ERR::NoSupport;
    }
    else return ERR::ResolvePath;
@@ -977,10 +1022,10 @@ following examples illustrate:
 
 <pre>
 <b>Source               Destination          Result</b>
-parasol:makefile     parasol:documents    parasol:documents
-parasol:makefile     parasol:documents/   parasol:documents/makefile
-parasol:pictures/    parasol:documents/   parasol:documents/pictures
-parasol:pictures/    parasol:documents    parasol:documents (Existing documents folder destroyed)
+kotuku:makefile     kotuku:documents    kotuku:documents
+kotuku:makefile     kotuku:documents/   kotuku:documents/makefile
+kotuku:pictures/    kotuku:documents/   kotuku:documents/pictures
+kotuku:pictures/    kotuku:documents    kotuku:documents (Existing documents folder destroyed)
 </>
 
 This function will overwrite the destination location if it already exists.
@@ -1014,7 +1059,7 @@ ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Source) or (!Dest)) return ERR::NullArgs;
+   if ((not Source) or (not Dest)) return ERR::NullArgs;
 
    log.branch("%s to %s", Source, Dest);
    return fs_copy(Source, Dest, Callback, TRUE);
@@ -1049,14 +1094,14 @@ File
 
 *********************************************************************************************************************/
 
-ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
+ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *BytesRead)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Path: %s, Buffer Size: %d", Path, BufferSize);
 
 #if defined(__unix__) || defined(_WIN32)
-   if ((!Path) or (BufferSize <= 0) or (!Buffer)) return ERR::Args;
+   if ((not Path) or (BufferSize <= 0) or (not Buffer)) return ERR::Args;
 
    bool approx;
    if (*Path IS '~') {
@@ -1095,8 +1140,8 @@ ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead
    extFile::create file = { fl::Path(Path), fl::Flags(FL::READ|FL::FILE|(approx ? FL::APPROXIMATE : FL::NIL)) };
 
    if (file.ok()) {
-      LONG result;
-      if (!file->read(Buffer, BufferSize, &result)) {
+      int result;
+      if (not file->read(Buffer, BufferSize, &result)) {
          if (BytesRead) *BytesRead = result;
          return ERR::Okay;
       }
@@ -1129,7 +1174,7 @@ NotFound:
 
 ERR ReadInfoTag(FileInfo *Info, CSTRING Name, CSTRING *Value)
 {
-   if ((!Info) or (!Name) or (!Value)) {
+   if ((not Info) or (not Name) or (not Value)) {
       pf::Log log(__FUNCTION__);
       return ERR::NullArgs;
    }
@@ -1165,7 +1210,7 @@ static ERR test_path(std::string &Path, RSF Flags)
 
 #ifdef _WIN32
    // Convert forward slashes to back slashes
-   for (LONG j=0; j < std::ssize(Path); j++) if (Path[j] IS '/') Path[j] = '\\';
+   for (int j=0; j < std::ssize(Path); j++) if (Path[j] IS '/') Path[j] = '\\';
 #endif
 
    if (Path.ends_with('/') or Path.ends_with('\\')) {
@@ -1180,7 +1225,7 @@ static ERR test_path(std::string &Path, RSF Flags)
          auto result = lstat64(Path.c_str(), &info);
          Path.push_back('/');
 
-         if (!result) return ERR::Okay;
+         if (not result) return ERR::Okay;
 
       #elif _WIN32
 
@@ -1202,12 +1247,12 @@ static ERR test_path(std::string &Path, RSF Flags)
          if (findfile(Path) IS ERR::Okay) return ERR::Okay;
       }
       #ifdef __unix__
-      else if (!lstat64(Path.c_str(), &info)) {
+      else if (not lstat64(Path.c_str(), &info)) {
          if (S_ISDIR(info.st_mode)) Path.append("/");
          return ERR::Okay;
       }
       #else
-      else if (!access(Path.c_str(), 0)) return ERR::Okay;
+      else if (not access(Path.c_str(), 0)) return ERR::Okay;
       //else log.trace("access() failed.");
       #endif
    }
@@ -1230,7 +1275,7 @@ resource(CacheFile) Cache: A pointer to a !CacheFile structure returned from ~Lo
 
 void UnloadFile(CacheFile *Cache)
 {
-   if (!Cache) return;
+   if (not Cache) return;
 
    pf::Log log(__FUNCTION__);
 
@@ -1265,12 +1310,12 @@ ERR findfile(std::string &Path)
 
    struct stat64 info;
    if (lstat64(Path.c_str(), &info) != -1) {
-      if (!S_ISDIR(info.st_mode)) return ERR::Okay;
+      if (not S_ISDIR(info.st_mode)) return ERR::Okay;
    }
 
-   auto len = Path.find_last_of(":/\\");
-   auto folder = (len IS std::string::npos) ? "" : Path.substr(0, len);
-   auto name = (len IS std::string::npos) ? std::string_view(Path) : std::string_view(Path.c_str() + len + 1);
+   auto len    = Path.find_last_of(":/\\");
+   auto folder = (len IS std::string::npos) ? "." : Path.substr(0, len);
+   auto name   = (len IS std::string::npos) ? std::string_view(Path) : std::string_view(Path.c_str() + len + 1);
 
    // Scan the files at the Path to find a similar filename (ignore the filename extension).
 
@@ -1291,8 +1336,11 @@ ERR findfile(std::string &Path)
          if (dot != std::string::npos) filename.remove_suffix(filename.size() - dot);
 
          if (iequals(name, filename)) {
-            Path.resize(folder.size());
-            if (!Path.ends_with('/')) Path.append("/");
+            if (len IS std::string::npos) Path.clear();
+            else {
+               Path.resize(folder.size());
+               if (not Path.ends_with('/')) Path.append("/");
+            }
             Path.append(entry->d_name);
 
             // If it turns out that the Path is a folder, ignore it
@@ -1348,9 +1396,9 @@ ERR findfile(std::string &Path)
 
 //********************************************************************************************************************
 
-LONG convert_permissions(PERMIT Permissions)
+int convert_permissions(PERMIT Permissions)
 {
-   LONG flags = 0;
+   int flags = 0;
 
 #ifdef __unix__
    if ((Permissions & PERMIT::READ) != PERMIT::NIL)         flags |= S_IRUSR;
@@ -1378,7 +1426,7 @@ LONG convert_permissions(PERMIT Permissions)
 
 //********************************************************************************************************************
 
-PERMIT convert_fs_permissions(LONG Permissions)
+PERMIT convert_fs_permissions(int Permissions)
 {
    PERMIT flags = PERMIT::NIL;
 
@@ -1428,9 +1476,9 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 {
    pf::Log log(Move ? "MoveFile" : "CopyFile");
 #ifdef __unix__
-   LONG gid, uid;
+   int gid, uid;
 #endif
-   LONG permissions;
+   int permissions;
    ERR error;
 
    if ((Source.empty()) or (Dest.empty())) return log.warning(ERR::NullArgs);
@@ -1441,8 +1489,8 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    if ((error = ResolvePath(Source, RSF::NIL, &src)) != ERR::Okay) return ERR::FileNotFound;
    if ((error = ResolvePath(Dest, RSF::NO_FILE_CHECK, &dest)) != ERR::Okay) return ERR::ResolvePath;
 
-   const virtual_drive *srcvirtual  = get_fs(src);
-   const virtual_drive *destvirtual = get_fs(dest);
+   auto srcvirtual  = get_fs(src);
+   auto destvirtual = get_fs(dest);
 
    bool srcdir = (src.ends_with('/') or src.ends_with('\\'));
 
@@ -1469,7 +1517,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    feedback.Path = src.data();
    feedback.Dest = dest.data();
 
-   if (srcvirtual->is_virtual() or destvirtual->is_virtual()) {
+   if (srcvirtual.is_virtual() or destvirtual.is_virtual()) {
       log.trace("Using virtual copy routine.");
 
       // Open the source and destination
@@ -1477,7 +1525,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       extFile::create srcfile = { fl::Path(Source.data()), fl::Flags(FL::READ) };
 
       if (srcfile.ok()) {
-         if ((Move) and (srcvirtual IS destvirtual)) {
+         if ((Move) and (srcvirtual.VirtualID IS destvirtual.VirtualID)) {
             // If the source and destination use the same virtual volume, execute the move method.
             fl::Move args = { Dest.data(), nullptr };
             return Action(fl::Move::id, *srcfile, &args);
@@ -1491,7 +1539,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          fl::Permissions(srcfile->Permissions)
       };
 
-      if (!destfile.ok()) return ERR::CreateFile;
+      if (not destfile.ok()) return ERR::CreateFile;
 
       // Folder copy
 
@@ -1502,7 +1550,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
          std::string srcbuffer(src);
 
-         // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
+         // Check if the copy would cause recursion  - e.g. "/kotuku/system/" to "/kotuku/system/temp/".
 
          if (src.size() <= dest.size()) {
             if (pf::startswith(src, dest)) {
@@ -1520,7 +1568,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
             // Delete the source if we are moving folders
             if (Move) return DeleteFile(srcbuffer.c_str(), nullptr);
          }
-         else log.warning("Folder copy process failed, error %d.", LONG(error));
+         else log.warning("Folder copy process failed, error %d.", int(error));
 
          return error;
       }
@@ -1531,16 +1579,16 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
       // Use a reasonably small read buffer so that we can provide continuous feedback
 
-      const LONG bufsize = ((Callback) and (Callback->defined())) ? 65536 : 65536 * 2;
+      const int bufsize = ((Callback) and (Callback->defined())) ? 65536 : 65536 * 2;
 
       // This routine is designed to handle streams - where either the source is a stream or the destination is a stream.
 
-      std::vector<BYTE> data(bufsize);
+      std::vector<int8_t> data(bufsize);
       error = ERR::Okay;
       const int64_t STREAM_TIMEOUT = 10000LL;
       int64_t time = PreciseTime() / 1000LL;
       while (srcfile->Position < srcfile->Size) {
-         LONG len;
+         int len;
          error = srcfile->read(data.data(), bufsize, &len);
          if (error != ERR::Okay) {
             log.warning("acRead() failed: %s", GetErrorMsg(error));
@@ -1562,7 +1610,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          // Write the data
 
          while (len > 0) {
-            LONG result;
+            int result;
             if (acWrite(*destfile, data.data(), len, &result) != ERR::Okay) return ERR::Write;
 
             if (result) time = (PreciseTime() / 1000LL);
@@ -1602,7 +1650,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    // This code manages symbolic links
 
    struct stat64 stinfo;
-   LONG result;
+   int result;
    if (srcdir) {
       src.pop_back();
       result = lstat64(src.c_str(), &stinfo);
@@ -1610,8 +1658,8 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    }
    else result = lstat64(src.c_str(), &stinfo);
 
-   if ((!result) and (S_ISLNK(stinfo.st_mode))) {
-      BYTE linkto[512];
+   if ((not result) and (S_ISLNK(stinfo.st_mode))) {
+      char linkto[512];
 
       if (srcdir) src.pop_back();
 
@@ -1626,14 +1674,14 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
          unlink(dest.c_str()); // Remove any existing file first
 
-         if (!symlink(linkto, dest.c_str())) return ERR::Okay;
+         if (not symlink(linkto, dest.c_str())) return ERR::Okay;
          else {
             // On failure, it may be possible that precursing folders need to be created for the link.  Do this here and then try
             // creating the link a second time.
 
             check_paths(dest.c_str(), PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE);
 
-            if (!symlink(linkto, dest.c_str())) error = ERR::Okay;
+            if (not symlink(linkto, dest.c_str())) error = ERR::Okay;
             else {
                log.warning("Failed to create link \"%s\"", dest.c_str());
                return ERR::CreateFile;
@@ -1677,7 +1725,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          // failed - drop through to file copy
       }
       else {
-         LONG parent_uid, parent_gid;
+         int parent_uid, parent_gid;
 
          // Move successful.  Now assign the user and group id's from the parent folder to the file.
 
@@ -1706,12 +1754,11 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          if (winCheckDirectoryExists(src.c_str()));
          else return ERR::File;
       #else
-         DIR *dirhandle;
-         if ((dirhandle = opendir(src.c_str()))) closedir(dirhandle);
+         if (auto dirhandle = opendir(src.c_str())) closedir(dirhandle);
          else return ERR::File;
       #endif
 
-      // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
+      // Check if the copy would cause recursion  - e.g. "/kotuku/system/" to "/kotuku/system/temp/".
 
       if (src.size() <= dest.size()) {
          if (pf::startswith(src, dest)) {
@@ -1743,12 +1790,12 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          // Delete the source if we are moving folders
          if (Move) return DeleteFile(srcbuffer.c_str(), nullptr);
       }
-      else log.warning("Folder copy process failed, error %d.", LONG(error));
+      else log.warning("Folder copy process failed, error %d.", int(error));
 
       return error;
    }
 
-   if (!Move) { // (If Move is enabled, we would have already sent feedback during the earlier rename() attempt
+   if (not Move) { // (If Move is enabled, we would have already sent feedback during the earlier rename() attempt
       if ((Callback) and (Callback->defined())) {
          FFR result = CALL_FEEDBACK(Callback, &feedback);
          if (result IS FFR::ABORT) return ERR::Cancelled;
@@ -1756,7 +1803,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       }
    }
 
-   if (LONG handle = open(src.c_str(), O_RDONLY|O_NONBLOCK|WIN32OPEN|O_LARGEFILE, nullptr); handle != -1) {
+   if (int handle = open(src.c_str(), O_RDONLY|O_NONBLOCK|WIN32OPEN|O_LARGEFILE, nullptr); handle != -1) {
       auto dc_handle = deferred_call([&handle] { close(handle); });
 
       // Get permissions of the source file to apply to the destination file
@@ -1810,7 +1857,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          }
       }
 
-      LONG dhandle;
+      int dhandle;
       if ((dhandle = open(dest.c_str(), O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions)) IS -1) {
          // If the initial open failed, we may need to create preceding paths
          check_paths(dest.c_str(), convert_fs_permissions(permissions));
@@ -1843,12 +1890,12 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
          // Use a reasonably small read buffer so that we can provide continuous feedback
 
-         LONG bufsize = ((Callback) and (Callback->defined())) ? 65536 : 524288;
-         std::vector<BYTE> data(bufsize);
-         LONG len;
+         int bufsize = ((Callback) and (Callback->defined())) ? 65536 : 524288;
+         std::vector<int8_t> data(bufsize);
+         int len;
          error = ERR::Okay;
          while ((len = read(handle, data.data(), bufsize)) > 0) {
-            if (LONG result = write(dhandle, data.data(), len); result IS -1) {
+            if (int result = write(dhandle, data.data(), len); result IS -1) {
                if (errno IS ENOSPC) return log.warning(ERR::OutOfSpace);
                else return log.warning(ERR::Write);
             }
@@ -1897,15 +1944,15 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
    auto src_len = Source.size();
    auto dest_len = Dest.size();
 
-   if ((!Source.ends_with('/')) and (!Source.ends_with('\\')) and (!Source.ends_with(':'))) Source.append("/");
-   if ((!Dest.ends_with('/')) and (!Dest.ends_with('\\')) and (!Dest.ends_with(':'))) Dest.append("/");
+   if ((not Source.ends_with('/')) and (not Source.ends_with('\\')) and (not Source.ends_with(':'))) Source.append("/");
+   if ((not Dest.ends_with('/')) and (not Dest.ends_with('\\')) and (not Dest.ends_with(':'))) Dest.append("/");
 
    DirInfo *dir;
    if (auto error = OpenDir(Source.c_str(), RDF::FILE|RDF::FOLDER|RDF::PERMISSIONS, &dir); error IS ERR::Okay) {
       while ((error = ScanDir(dir)) IS ERR::Okay) {
          FileInfo *file = dir->Info;
          if ((file->Flags & RDF::LINK) != RDF::NIL) {
-            if ((vsrc->ReadLink) and (vdest->CreateLink)) {
+            if ((vsrc.ReadLink) and (vdest.CreateLink)) {
                Source.append(file->Name);
                Dest.append(file->Name);
 
@@ -1918,9 +1965,9 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
                }
 
                STRING link;
-               if ((error = vsrc->ReadLink(Source, &link)) IS ERR::Okay) {
+               if ((error = vsrc.ReadLink(Source, &link)) IS ERR::Okay) {
                   DeleteFile(Dest.c_str(), nullptr);
-                  error = vdest->CreateLink(Dest, link);
+                  error = vdest.CreateLink(Dest, link);
                }
             }
             else {
@@ -1948,13 +1995,15 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
             }
 
             AdjustLogLevel(1);
+
                error = CreateFolder(Dest.c_str(), (glDefaultPermissions != PERMIT::NIL) ? glDefaultPermissions : file->Permissions);
 #ifdef __unix__
-               if (vdest->is_default()) {
+               if (vdest.is_default()) {
                   chown(Dest.c_str(), (glForceUID != -1) ? glForceUID : file->UserID, (glForceGID != -1) ? glForceGID : file->GroupID);
                }
 #endif
                if (error IS ERR::FileExists) error = ERR::Okay;
+
             AdjustLogLevel(-1);
 
             // Copy everything under the folder to the destination
@@ -1983,19 +2032,19 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
 // Gets the permissions of the parent folder.  Typically used for permission inheritance. NB: It is often wise to
 // remove exec and suid flags returned from this function.
 
-PERMIT get_parent_permissions(std::string_view Path, LONG *UserID, LONG *GroupID)
+PERMIT get_parent_permissions(std::string_view Path, int *UserID, int *GroupID)
 {
    std::string_view folder(Path);
    while (folder.ends_with('/') or folder.ends_with('\\') or folder.ends_with(':')) folder.remove_suffix(1);
 
-   while (!folder.empty()) {
+   while (not folder.empty()) {
       auto i = folder.find_last_of("/\\:");
       if (i IS std::string::npos) break;
       folder = folder.substr(0, i);
 
-      if (!folder.empty()) {
+      if (not folder.empty()) {
          FileInfo info;
-         if (get_file_info(folder, &info, sizeof(info)) IS ERR::Okay) {
+         if (GetFileInfo(folder, &info, sizeof(info)) IS ERR::Okay) {
             if (UserID) *UserID = info.UserID;
             if (GroupID) *GroupID = info.GroupID;
             return info.Permissions;
@@ -2013,7 +2062,7 @@ ERR fs_readlink(std::string_view Source, STRING *Link)
 {
 #ifdef __unix__
    char buffer[512];
-   if (LONG i = readlink(Source.data(), buffer, sizeof(buffer)-1); i != -1) {
+   if (int i = readlink(Source.data(), buffer, sizeof(buffer)-1); i != -1) {
       buffer[i] = 0;
       *Link = strclone(buffer);
       return ERR::Okay;
@@ -2033,6 +2082,10 @@ ERR fs_createlink(std::string_view Target, std::string_view Link)
       return convert_errno(errno, ERR::CreateFile);
    }
    else return ERR::Okay;
+#elif defined(_WIN32)
+   std::string target(Target);
+   std::string link(Link);
+   return winCreateLink(target.c_str(), link.c_str());
 #else
    return ERR::NoSupport;
 #endif
@@ -2050,7 +2103,7 @@ ERR fs_delete(std::string_view ResolvedPath, FUNCTION *Callback)
    if ((Callback) and (Callback->defined())) feedback.FeedbackID = FBK::DELETE_FILE;
    return delete_tree(buffer, Callback, &feedback);
 #else
-   if (!unlink(ResolvedPath.data())) { // unlink() works if the folder is empty
+   if (not unlink(ResolvedPath.data())) { // unlink() works if the folder is empty
       return ERR::Okay;
    }
    else if (errno IS EISDIR) {
@@ -2071,10 +2124,9 @@ ERR fs_scandir(DirInfo *Dir)
    struct dirent *de;
    struct stat64 info, link;
    struct tm *local;
-   LONG j;
 
    char pathbuf[256];
-   LONG path_end = strcopy(Dir->prvResolvedPath, pathbuf, sizeof(pathbuf));
+   int path_end = strcopy(Dir->prvResolvedPath, pathbuf, sizeof(pathbuf));
    if ((size_t)path_end >= sizeof(pathbuf)-12) return(ERR::BufferOverflow);
    if (pathbuf[path_end-1] != '/') pathbuf[path_end++] = '/';
 
@@ -2085,7 +2137,7 @@ ERR fs_scandir(DirInfo *Dir)
       strcopy(de->d_name, pathbuf + path_end, sizeof(pathbuf) - path_end);
 
       FileInfo *file = Dir->Info;
-      if (!(stat64(pathbuf, &info))) {
+      if (not (stat64(pathbuf, &info))) {
          if (S_ISDIR(info.st_mode)) {
             if ((Dir->prvFlags & RDF::FOLDER) IS RDF::NIL) continue;
             file->Flags |= RDF::FOLDER;
@@ -2095,7 +2147,7 @@ ERR fs_scandir(DirInfo *Dir)
             file->Flags |= RDF::FILE|RDF::SIZE|RDF::DATE|RDF::PERMISSIONS;
          }
       }
-      else if (!(lstat64(pathbuf, &info))) {
+      else if (not (lstat64(pathbuf, &info))) {
          if ((Dir->prvFlags & RDF::FILE) IS RDF::NIL) continue;
          file->Flags |= RDF::FILE|RDF::SIZE|RDF::DATE|RDF::PERMISSIONS;
       }
@@ -2105,12 +2157,8 @@ ERR fs_scandir(DirInfo *Dir)
          if (S_ISLNK(link.st_mode)) file->Flags |= RDF::LINK;
       }
 
-      j = strcopy(de->d_name, file->Name, MAX_FILENAME);
-
-      if (((file->Flags & RDF::FOLDER) != RDF::NIL) and ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL)) {
-         file->Name[j++] = '/';
-         file->Name[j] = 0;
-      }
+      file->Name = de->d_name;
+      if (((file->Flags & RDF::FOLDER) != RDF::NIL) and ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL)) file->Name += '/';
 
       if ((file->Flags & RDF::FILE) != RDF::NIL) file->Size = info.st_size;
       else file->Size = 0;
@@ -2154,7 +2202,6 @@ ERR fs_scandir(DirInfo *Dir)
 #elif _WIN32
 
    int8_t dir, hidden, readonly, archive;
-   LONG i;
 
    while (winScan(&Dir->prvHandle, Dir->prvResolvedPath, Dir->Info->Name, &Dir->Info->Size, &Dir->Info->Created, &Dir->Info->Modified, &dir, &hidden, &readonly, &archive)) {
       if (hidden)   Dir->Info->Flags |= RDF::HIDDEN;
@@ -2162,17 +2209,13 @@ ERR fs_scandir(DirInfo *Dir)
       if (archive)  Dir->Info->Flags |= RDF::ARCHIVE;
 
       if (dir) {
-         if ((Dir->prvFlags & RDF::FOLDER) IS RDF::NIL) { Dir->Info->Name[0] = 0; continue; }
+         if ((Dir->prvFlags & RDF::FOLDER) IS RDF::NIL) { Dir->Info->Name.clear(); continue; }
          Dir->Info->Flags |= RDF::FOLDER;
 
-         if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
-            i = strlen(Dir->Info->Name);
-            Dir->Info->Name[i++] = '/';
-            Dir->Info->Name[i] = 0;
-         }
+         if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) Dir->Info->Name += '/';
       }
       else {
-         if ((Dir->prvFlags & RDF::FILE) IS RDF::NIL) { Dir->Info->Name[0] = 0; continue; }
+         if ((Dir->prvFlags & RDF::FILE) IS RDF::NIL) { Dir->Info->Name.clear(); continue; }
          Dir->Info->Flags |= RDF::FILE|RDF::SIZE|RDF::DATE;
       }
 
@@ -2227,7 +2270,7 @@ ERR fs_closedir(DirInfo *Dir)
 
    log.trace("Dir: %p, VirtualID: %d", Dir, Dir->prvVirtualID);
 
-   if ((!Dir->prvVirtualID) or (Dir->prvVirtualID IS DEFAULT_VIRTUALID)) {
+   if ((not Dir->prvVirtualID) or (Dir->prvVirtualID IS DEFAULT_VIRTUALID)) {
       #ifdef __unix__
          if (Dir->prvHandle) closedir((DIR *)Dir->prvHandle);
       #elif _WIN32
@@ -2243,13 +2286,13 @@ ERR fs_closedir(DirInfo *Dir)
       if ((Dir->prvFlags & RDF::OPENDIR) != RDF::NIL) {
          // OpenDir() allocates Dir->Info as part of the Dir structure, so no need for a FreeResource(Dir->Info) here.
 
-         if (Dir->Info->Tags) { delete Dir->Info->Tags; Dir->Info->Tags = nullptr; }
+         Dir->Info->clearTags();
       }
       else {
          FileInfo *list = Dir->Info;
          while (list) {
             FileInfo *next = list->Next;
-            if (list->Tags) { delete list->Tags; list->Tags = nullptr; }
+            list->clearTags();
             FreeResource(list);
             list = next;
          }
@@ -2286,11 +2329,11 @@ ERR fs_testpath(std::string &Path, RSF Flags, LOC *Type)
 
       struct stat64 info;
       type = LOC::NIL;
-      if (!stat64(Path.c_str(), &info)) {
+      if (not stat64(Path.c_str(), &info)) {
          if (S_ISDIR(info.st_mode)) type = LOC::DIRECTORY;
          else type = LOC::FILE;
       }
-      else if (!lstat64(Path.c_str(), &info)) type = LOC::FILE; // The file is a broken symbolic link
+      else if (not lstat64(Path.c_str(), &info)) type = LOC::FILE; // The file is a broken symbolic link
 
    #elif _WIN32
 
@@ -2307,29 +2350,29 @@ ERR fs_testpath(std::string &Path, RSF Flags, LOC *Type)
 
 //********************************************************************************************************************
 
-ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
+ERR fs_getinfo(std::string_view Path, FileInfo *Info, int InfoSize)
 {
    pf::Log log(__FUNCTION__);
 
 #ifdef __unix__
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
 
-   char path_ref[256];
-   LONG len = strcopy(Path.data(), path_ref, sizeof(path_ref));
-   if ((size_t)len >= sizeof(path_ref)-1) return ERR::BufferOverflow;
-   if ((path_ref[len-1] IS '/') or (path_ref[len-1] IS '\\')) path_ref[len-1] = 0;
+   std::string path_ref(Path);
+   while ((path_ref.size() > 1) and ((path_ref.back() IS '/') or (path_ref.back() IS '\\'))) {
+      path_ref.pop_back();
+   }
 
    // Get the file info.  Use lstat64() and if it turns out that the file is a symbolic link, set the RDF::LINK flag
    // and then switch to stat64().
 
    struct stat64 info;
-   if (lstat64(path_ref, &info) IS -1) return ERR::FileNotFound;
+   if (lstat64(path_ref.c_str(), &info) IS -1) return ERR::FileNotFound;
 
    Info->Flags = RDF::NIL;
 
    if (S_ISLNK(info.st_mode)) {
       Info->Flags |= RDF::LINK;
-      if (stat64(path_ref, &info) IS -1) {
+      if (stat64(path_ref.c_str(), &info) IS -1) {
          // We do not abort in the case of a broken link, just warn and treat it as an empty file
          log.warning("Broken link detected.");
       }
@@ -2340,14 +2383,11 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
 
    // Extract file/folder name
 
-   LONG i = len;
+   int i = (int)path_ref.size();
    while ((i > 0) and (path_ref[i-1] != '/') and (path_ref[i-1] != '\\') and (path_ref[i-1] != ':')) i--;
-   i = strcopy(path_ref + i, Info->Name, MAX_FILENAME-2);
+   Info->Name = path_ref.c_str() + i;
 
-   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
-      Info->Name[i++] = '/';
-      Info->Name[i] = 0;
-   }
+   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) Info->Name += '/';
 
    Info->Tags = nullptr;
    Info->Size = info.st_size;
@@ -2385,17 +2425,16 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
 
 #else
    int8_t dir;
-   LONG i;
 
    Info->Flags = RDF::NIL;
    size_t isize;
-   if (!winFileInfo(Path.data(), &isize, &Info->Modified, &dir)) return ERR::File;
+   if (not winFileInfo(Path.data(), &isize, &Info->Modified, &dir)) return ERR::File;
    Info->Size = isize;
 
    // TimeStamp has to match that produced by GET_TimeStamp
 
    struct stat64 stats;
-   if (!stat64(Path.data(), &stats)) {
+   if (not stat64(Path.data(), &stats)) {
       if (auto local = localtime(&stats.st_mtime)) {
          Info->Modified.Year   = 1900 + local->tm_year;
          Info->Modified.Month  = local->tm_mon + 1;
@@ -2416,15 +2455,12 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
    if (Path.ends_with('/') or Path.ends_with('\\')) fi = Path.find_last_of("/\\:", Path.size()-2);
    else fi = Path.find_last_of("/\\:");
 
-   if (fi IS std::string::npos) i = strcopy(Path.data(), Info->Name, MAX_FILENAME - 2);
-   else i = strcopy(Path.data() + fi + 1, Info->Name, MAX_FILENAME - 2);
+   if (fi IS std::string::npos) Info->Name = Path;
+   else Info->Name.assign(Path, fi + 1, std::string::npos);
 
    if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
-      if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';
-      else if (Info->Name[i-1] != '/') {
-         Info->Name[i++] = '/';
-         Info->Name[i] = 0;
-      }
+      if (Info->Name.ends_with('\\')) Info->Name[Info->Name.size() - 1] = '/';
+      else if (not Info->Name.ends_with('/')) Info->Name += '/';
    }
 
    Info->Permissions = PERMIT::NIL;
@@ -2447,22 +2483,22 @@ ERR fs_getdeviceinfo(std::string_view Path, objStorageDevice *Info)
    ERR error;
 
 restart:
-   auto pathend = Path.find(':');
-   std::string vol(Path, 0, pathend);
+   auto path_end = Path.find(':');
+   std::string vol(Path, 0, path_end);
 
    if (auto lock = std::unique_lock{glmVolumes, 2s}) {
       // We keep this lock localised so that it doesn't impact ResolvePath()
       if (glVolumes.contains(vol)) {
-         if (!glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE::SOFTWARE; // Virtual device
+         if (not glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE::SOFTWARE; // Virtual device
 
          if (glVolumes[vol].contains("Device")) {
             auto &device = glVolumes[vol]["Device"];
-            if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE::FLOPPY_DISK|DEVICE::REMOVABLE|DEVICE::READ|DEVICE::WRITE;
-            else if (!device.compare("fixed")) Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
-            else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
-            else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE::COMPACT_DISC|DEVICE::REMOVABLE|DEVICE::READ;
-            else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE::USB|DEVICE::REMOVABLE;
-            else if (!device.compare("portable")) Info->DeviceFlags |= DEVICE::REMOVABLE;
+            if (not device.compare("disk"))       Info->DeviceFlags |= DEVICE::FLOPPY_DISK|DEVICE::REMOVABLE|DEVICE::READ|DEVICE::WRITE;
+            else if (not device.compare("fixed")) Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
+            else if (not device.compare("hd"))    Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
+            else if (not device.compare("cd"))    Info->DeviceFlags |= DEVICE::COMPACT_DISC|DEVICE::REMOVABLE|DEVICE::READ;
+            else if (not device.compare("usb"))   Info->DeviceFlags |= DEVICE::USB|DEVICE::REMOVABLE;
+            else if (not device.compare("portable")) Info->DeviceFlags |= DEVICE::REMOVABLE;
             else log.warning("Device '%s' unrecognised.", device.c_str());
          }
       }
@@ -2473,7 +2509,7 @@ restart:
       // Unable to find a device reference for the volume, so try to resolve the path and try again.
 
       Info->DeviceFlags |= DEVICE::BOOKMARK;
-      if (!resolve.empty()) { // We've done what we can - drop through
+      if (not resolve.empty()) { // We've done what we can - drop through
          #ifdef _WIN32
             // On win32 we can get the drive information from the drive letter
             // TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
@@ -2495,13 +2531,13 @@ restart:
 
 #ifdef _WIN32
 
-   int64_t bytes_avail, total_size;
+   int64_t bytes_free, total_size;
 
    if (location.empty()) error = ResolvePath(Path, RSF::NO_FILE_CHECK, &location);
    else error = ERR::Okay;
 
    if (error IS ERR::Okay) {
-      if (!(winGetFreeDiskSpace(location[0], &bytes_avail, &total_size))) {
+      if (not (winGetFreeDiskSpace(location[0], &bytes_free, &total_size))) {
          log.msg("Failed to read disk space for \"%s\" (%s)", location.c_str(), Path.data());
          Info->BytesFree  = -1;
          Info->BytesUsed  = 0;
@@ -2509,8 +2545,8 @@ restart:
          return ERR::Okay; // Even though the disk space calculation failed, we succeeded on resolving other device information
       }
       else {
-         Info->BytesFree  = bytes_avail;
-         Info->BytesUsed  = total_size - bytes_avail;
+         Info->BytesFree  = bytes_free;
+         Info->BytesUsed  = total_size - bytes_free;
          Info->DeviceSize = total_size;
          return ERR::Okay;
       }
@@ -2527,12 +2563,12 @@ restart:
 
       if (error IS ERR::Okay) {
          struct statfs fstat;
-         LONG result = statfs(location.c_str(), &fstat);
+         int result = statfs(location.c_str(), &fstat);
 
          if (result != -1) {
-            DOUBLE blocksize = (DOUBLE)fstat.f_bsize;
-            Info->BytesFree  = ((DOUBLE)fstat.f_bavail) * blocksize;
-            Info->DeviceSize = ((DOUBLE)fstat.f_blocks) * blocksize;
+            double blocksize = (double)fstat.f_bsize;
+            Info->BytesFree  = ((double)fstat.f_bavail) * blocksize;
+            Info->DeviceSize = ((double)fstat.f_blocks) * blocksize;
             Info->BytesUsed  = Info->DeviceSize - Info->BytesFree;
 
             /* statvfs()
@@ -2571,7 +2607,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
 
 #ifdef __unix__
 
-   LONG err, i;
+   int err, i;
 
    // The 'executable' bit must be set for folders in order to have any sort of access to their content.  So, if
    // the read or write flags are set, we automatically enable the executable bit for that folder.
@@ -2580,9 +2616,9 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
    if ((Permissions & PERMIT::GROUP) != PERMIT::NIL) Permissions |= PERMIT::GROUP_EXEC;
    if ((Permissions & PERMIT::OTHERS) != PERMIT::NIL) Permissions |= PERMIT::OTHERS_EXEC;
 
-   log.branch("%s, Permissions: $%.8x %s", Path.data(), LONG(Permissions), (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
+   log.branch("%s, Permissions: $%.8x %s", Path.data(), int(Permissions), (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
 
-   LONG secureflags = convert_permissions(Permissions);
+   int secureflags = convert_permissions(Permissions);
 
    if (mkdir(Path.data(), secureflags) IS -1) {
       auto buffer = std::make_unique<char[]>(Path.size()+1);
@@ -2603,7 +2639,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
 
             if (((err = mkdir(buffer.get(), secureflags)) IS -1) and (errno != EEXIST)) break;
 
-            if (!err) {
+            if (not err) {
                if ((glForceUID != -1) or (glForceGID != -1)) chown(buffer.get(), glForceUID, glForceGID);
                if (secureflags & (S_ISUID|S_ISGID)) chmod(buffer.get(), secureflags);
             }
@@ -2614,7 +2650,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
          log.warning("Failed to create folder \"%s\".", Path.data());
          return ERR::SystemCall;
       }
-      else if (!Path.ends_with('/')) {
+      else if (not Path.ends_with('/')) {
          // If the path did not end with a slash, there is still one last folder to create
          buffer[i] = 0;
          log.msg("%s", buffer.get());
@@ -2622,7 +2658,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
             log.warning("Failed to create folder \"%s\".", Path.data());
             return convert_errno(errno, ERR::SystemCall);
          }
-         if (!err) {
+         if (not err) {
             if ((glForceUID != -1) or (glForceGID != -1)) chown(buffer.get(), glForceUID, glForceGID);
             if (secureflags & (S_ISUID|S_ISGID)) chmod(buffer.get(), secureflags);
          }
@@ -2761,5 +2797,3 @@ ERR delete_tree(std::string &Path, FUNCTION *Callback, FileFeedback *Feedback)
 #include "fs_folders.cpp"
 #include "fs_volumes.cpp"
 #include "fs_watch_path.cpp"
-
-

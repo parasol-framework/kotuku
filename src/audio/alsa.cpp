@@ -24,8 +24,8 @@ static ERR init_audio(extAudio *Self)
    snd_mixer_elem_t *elem;
    snd_mixer_selem_id_t *sid;
    snd_pcm_uframes_t periodsize;
-   LONG err, index;
-   WORD channel;
+   int err, index;
+   int16_t channel;
    long pmin, pmax;
    int dir;
    std::string pcm_name;
@@ -45,7 +45,7 @@ static ERR init_audio(extAudio *Self)
 
    // Use unified device enumeration to find the appropriate audio device
    ALSADeviceInfo selected_device;
-   
+
    if (iequals("default", pcm_name)) {
       // Select best available device (most mixer controls, not a modem)
       selected_device = ALSADeviceEnumerator::select_best_device();
@@ -53,11 +53,11 @@ static ERR init_audio(extAudio *Self)
          log.warning("There are no sound cards supported by audio drivers.");
          return ERR::NoSupport;
       }
-      
+
       Self->Device = selected_device.card_id;
       pcm_name = selected_device.device_name;
-      log.msg("Selected default device: %s (%s) with %d mixer controls", 
-              selected_device.card_id.c_str(), selected_device.card_name.c_str(), 
+      log.msg("Selected default device: %s (%s) with %d mixer controls",
+              selected_device.card_id.c_str(), selected_device.card_name.c_str(),
               selected_device.mixer_controls);
    }
    else {
@@ -67,9 +67,9 @@ static ERR init_audio(extAudio *Self)
          log.warning("Requested device '%s' not found.", pcm_name.c_str());
          return ERR::NoSupport;
       }
-      
+
       pcm_name = selected_device.device_name;
-      log.msg("Using specified device: %s (%s)", 
+      log.msg("Using specified device: %s (%s)",
               selected_device.card_id.c_str(), selected_device.card_name.c_str());
    }
 
@@ -138,7 +138,7 @@ static ERR init_audio(extAudio *Self)
 
       volctl[index].Name = snd_mixer_selem_id_get_name(sid);
 
-      for (channel=0; channel < (LONG)volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
+      for (channel=0; channel < (int)volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
 
       VCF flags = VCF::NIL;
       if (snd_mixer_selem_has_playback_volume(elem))        flags |= VCF::PLAYBACK;
@@ -252,14 +252,14 @@ static ERR init_audio(extAudio *Self)
    // by the hardware.
 
    dir = 0;
-   if ((err = snd_pcm_hw_params_set_rate_near(pcmhandle, hwparams, (ULONG *)&Self->OutputRate, &dir)) < 0) {
+   if ((err = snd_pcm_hw_params_set_rate_near(pcmhandle, hwparams, (uint32_t *)&Self->OutputRate, &dir)) < 0) {
       log.warning("set_rate_near() %s", snd_strerror(err));
       return ERR::Failed;
    }
 
    // Set number of channels
 
-   ULONG channels = ((Self->Flags & ADF::STEREO) != ADF::NIL) ? 2 : 1;
+   uint32_t channels = ((Self->Flags & ADF::STEREO) != ADF::NIL) ? 2 : 1;
    if ((err = snd_pcm_hw_params_set_channels_near(pcmhandle, hwparams, &channels)) < 0) {
       log.warning("set_channels_near(%d) %s", channels, snd_strerror(err));
       return ERR::Failed;
@@ -295,7 +295,7 @@ static ERR init_audio(extAudio *Self)
    // Set buffer sizes.  Note that we will retrieve the period and buffer sizes AFTER telling ALSA what the audio
    // parameters are.
 
-   log.msg("Using period frame size of %d, buffer size of %d", (LONG)periodsize, (LONG)buffersize);
+   log.msg("Using period frame size of %d, buffer size of %d", (int)periodsize, (int)buffersize);
 
    if ((err = snd_pcm_hw_params_set_period_size_near(pcmhandle, hwparams, &periodsize, 0)) < 0) {
       log.warning("Period size failure: %s", snd_strerror(err));
@@ -321,7 +321,7 @@ static ERR init_audio(extAudio *Self)
 
    // Retrieve ALSA buffer sizes
 
-   err = snd_pcm_hw_params_get_periods(hwparams, (ULONG *)&Self->Periods, &dir);
+   err = snd_pcm_hw_params_get_periods(hwparams, (uint32_t *)&Self->Periods, &dir);
 
    snd_pcm_hw_params_get_period_size(hwparams, &periodsize, 0);
    Self->PeriodSize = periodsize;
@@ -347,9 +347,9 @@ static ERR init_audio(extAudio *Self)
          auto oldctl = Self->Volumes;
          Self->Volumes = volctl;
 
-         for (LONG i=0; i < (LONG)volctl.size(); i++) {
-            LONG j;
-            for (j=0; j < (LONG)oldctl.size(); j++) {
+         for (int i=0; i < (int)volctl.size(); i++) {
+            int j;
+            for (j=0; j < (int)oldctl.size(); j++) {
                if (volctl[i].Name == oldctl[j].Name) {
                   setvol.Index   = i;
                   setvol.Name    = nullptr;
@@ -365,7 +365,7 @@ static ERR init_audio(extAudio *Self)
 
             // If the user has no volume defined for a mixer, set our own.
 
-            if (j IS (LONG)oldctl.size()) {
+            if (j IS (int)oldctl.size()) {
                setvol.Index   = i;
                setvol.Name    = nullptr;
                setvol.Flags   = SVF::NIL;

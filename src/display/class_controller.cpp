@@ -32,7 +32,7 @@ Query: Get the current controller state.
 static ERR CONTROLLER_Query(objController *Self)
 {
 #ifdef _WIN32
-   if (auto error = winReadController(Self->Port, (DOUBLE *)&Self->LeftTrigger, Self->Buttons); error IS ERR::Okay) {
+   if (auto error = winReadController(Self->Port, (double *)&Self->LeftTrigger, Self->Buttons); error IS ERR::Okay) {
       return ERR::Okay;
    }
    else return error;
@@ -78,7 +78,7 @@ TotalPorts: Reports the total number of controllers connected to the system.
 
 *********************************************************************************************************************/
 
-static ERR CONTROLLER_GET_TotalPorts(extSurface *Self, LONG &Value)
+static ERR CONTROLLER_GET_TotalPorts(extSurface *Self, int &Value)
 {
 #ifdef _WIN32
    if (glLastPort >= 0) Value = glLastPort;

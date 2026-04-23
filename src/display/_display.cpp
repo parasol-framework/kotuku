@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -23,18 +23,18 @@ the display API will be diverted to the module binary that is relevant to the pl
 #include <stdio.h>
 #endif
 
-#include <parasol/modules/display.h>
+#include <kotuku/modules/display.h>
 #include "idl.h"
 
 //********************************************************************************************************************
 
 struct CoreBase *CoreBase;
-static objModule *modDriver = NULL;
+static objModule *modDriver = nullptr;
 
 //********************************************************************************************************************
 // Module function list.
 
-static LONG scrUnsupported(void)
+static int scrUnsupported(void)
 {
    pf::Log log("Display");
    log.warning("Unhandled display function called - driver is not complete.");
@@ -109,18 +109,18 @@ Function JumpTable[] = {
    { scrUnsupported, "GetInputEvent", argsGetInputEvent },
    { scrUnsupported, "GetInputTypeName", argsGetInputTypeName },
    { scrUnsupported, "ScaleToDPI", argsScaleToDPI },
-   { NULL, NULL, NULL }
+   { nullptr, nullptr, nullptr }
 };
 
 //********************************************************************************************************************
 
 #if defined(__linux__) && !defined(__ANDROID__)
-static LONG test_x11(STRING Path)
+static int test_x11(STRING Path)
 {
    pf::Log log("test_x11_socket");
    struct sockaddr_un sockname;
-   LONG namelen, fd, err;
-   WORD i;
+   int namelen, fd, err;
+   int16_t i;
 
    if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) != -1) {
       fcntl(fd, F_SETFL, O_NONBLOCK);
@@ -162,8 +162,8 @@ static LONG test_x11(STRING Path)
 
 static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   LONG i;
-   UBYTE display;
+   int i;
+   uint8_t display;
    CSTRING displaymod;
    enum {
       DISPLAY_AUTO=0,
@@ -200,11 +200,11 @@ static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 #if defined(__linux__) && !defined(__ANDROID__)
       // Check if X11 is running by scanning /tmp/.X11-unix
 
-      WORD j;
+      int16_t j;
       char buffer[] = "/tmp/.X11-unix/X10";
       STRING x11[] = { "X", "X0", "X1", "X2", "X3", "X5", "X6", "X7", "X8", "X9", "X10" };
 
-      for (WORD i=0; (i < std::ssize(x11)); i++) {
+      for (int16_t i=0; (i < std::ssize(x11)); i++) {
          for (j=0; x11[i][j]; j++) buffer[15+j] = x11[i][j];
          buffer[15+j] = 0;
          if (test_x11(buffer) IS ERR_Okay) {
@@ -237,9 +237,9 @@ static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load(displaymod, (OBJECTPTR *)&modDriver, &driver_base) != ERR_Okay) {
 #if defined(__linux__) && !defined(__ANDROID__)
       if (display IS DISPLAY_X11) {
-         static UBYTE x11_fail = FALSE;
+         static uint8_t x11_fail = FALSE;
          if (!x11_fail) {
-            printf("An X Server needs to be running (try running 'parasol-xserver' to automatically create one).\n");
+            printf("An X Server needs to be running (try running 'kotuku-xserver' to automatically create one).\n");
             x11_fail = TRUE;
          }
          return ERR_InitModule;
@@ -255,7 +255,7 @@ static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    Function * drivertable;
    if (!modDriver->get(FID_FunctionList, drivertable)) {
-      for (LONG i=0; drivertable[i].Name; i++) {
+      for (int i=0; drivertable[i].Name; i++) {
          if (drivertable[i].Address) JumpTable[i].Address = drivertable[i].Address;
       }
    }
@@ -271,10 +271,10 @@ static ERROR MODOpen(OBJECTPTR Module)
 
 static ERROR MODExpunge(void)
 {
-   if (modDriver) { FreeResource(modDriver); modDriver = NULL; }
+   if (modDriver) { FreeResource(modDriver); modDriver = nullptr; }
    return ERR_Okay;
 }
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, NULL)
+KOTUKU_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, nullptr)

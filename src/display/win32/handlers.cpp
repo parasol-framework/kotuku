@@ -71,7 +71,7 @@ void MsgWheelMovement(OBJECTID SurfaceID, float Wheel)
    if (!glPointerID) {
       if (FindObject("SystemPointer", CLASSID::NIL, FOF::NIL, &glPointerID) != ERR::Okay) return;
    }
-   
+
    if (auto pointer = gfx::AccessPointer(); pointer) {
       struct dcDeviceInput joy = {
          .Values    = { Wheel, 0 },
@@ -209,7 +209,7 @@ void CheckWindowSize(OBJECTID SurfaceID, int &Width, int &Height, int CurrentWid
       auto max_width  = surface->get<int>(FID_MaxWidth);
       auto max_height = surface->get<int>(FID_MaxHeight);
 
-      if ((min_width > 0) and (Width < min_width))    Width  = min_width; 
+      if ((min_width > 0) and (Width < min_width))    Width  = min_width;
       if ((min_height > 0) and (Height < min_height)) Height = min_height;
       if ((max_width > 0) and (Width > max_width))    Width  = max_width;
       if ((max_height > 0) and (Height > max_height)) Height = max_height;
@@ -218,20 +218,20 @@ void CheckWindowSize(OBJECTID SurfaceID, int &Width, int &Height, int CurrentWid
          if (Axis IS AXIS_BOTH) {
             if (min_width > min_height) {
                auto scale = (double)min_height / (double)min_width;
-               Height = F2T(Width * scale);
+               Height = int(Width * scale);
             }
             else {
                auto scale = (double)min_width / (double)min_height;
-               Width = F2T(Height * scale);
+               Width = int(Height * scale);
             }
          }
          else if (Axis IS AXIS_HORIZONTAL) {
             auto scale = (double)min_height / (double)min_width;
-            Height = F2T(Width * scale);
+            Height = int(Width * scale);
          }
          else if (Axis IS AXIS_VERTICAL) {
             auto scale = (double)min_width / (double)min_height;
-            Width = F2T(Height * scale);
+            Width = int(Height * scale);
          }
       }
    }

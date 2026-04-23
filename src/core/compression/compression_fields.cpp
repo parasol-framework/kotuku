@@ -5,7 +5,7 @@
 ArchiveName: Apply an archive name to the object, allowing it to be used as a named object in the file system.
 
 Setting the ArchiveName will allow a Compression object's files to be accessible using standard file system paths.
-This is achieved through use of the `archive:` volume, which is a virtual filesystem included in the Core API.  
+This is achieved through use of the `archive:` volume, which is a virtual filesystem included in the Core API.
 
 *********************************************************************************************************************/
 
@@ -31,7 +31,7 @@ but the compression ratio will improve.
 
 *********************************************************************************************************************/
 
-static ERR SET_CompressionLevel(extCompression *Self, LONG Value)
+static ERR SET_CompressionLevel(extCompression *Self, int Value)
 {
    if (Value < 0) Value = 0;
    else if (Value > 100) Value = 100;
@@ -93,7 +93,7 @@ This field is only of use to sub-classes that need to examine the first 32 bytes
 
 *********************************************************************************************************************/
 
-static ERR GET_Header(extCompression *Self, UBYTE **Header)
+static ERR GET_Header(extCompression *Self, uint8_t **Header)
 {
    *Header = Self->Header;
    return ERR::Okay;
@@ -118,7 +118,7 @@ static ERR SET_Path(extCompression *Self, CSTRING Value)
 {
    pf::Log log;
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    if ((Value) and (*Value)) {
       if (!(Self->Path = strclone(Value))) return log.warning(ERR::AllocMemory);
@@ -235,7 +235,7 @@ To support GZIP decompression, please set the WindowBits value to 47.
 
 *********************************************************************************************************************/
 
-static ERR SET_WindowBits(extCompression *Self, LONG Value)
+static ERR SET_WindowBits(extCompression *Self, int Value)
 {
    pf::Log log;
 

@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -28,9 +28,9 @@ signal an end to the streaming process.
 
 class extCompressedStream : public objCompressedStream {
    public:
-   UBYTE *OutputBuffer;
-   UBYTE Inflating:1;
-   UBYTE Deflating:1;
+   uint8_t *OutputBuffer;
+   uint8_t Inflating:1;
+   uint8_t Deflating:1;
    z_stream Stream;
    gz_header Header;
 };
@@ -86,8 +86,8 @@ static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
    Args->Result = 0;
    if (Args->Length <= 0) return ERR::Okay;
 
-   UBYTE inputstream[2048];
-   LONG length;
+   uint8_t inputstream[2048];
+   int length;
 
    if (acRead(Self->Input, inputstream, sizeof(inputstream), &length) != ERR::Okay) return ERR::Read;
 
@@ -118,12 +118,12 @@ static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
    }
 
    APTR output = Args->Buffer;
-   LONG outputsize = Args->Length;
+   int outputsize = Args->Length;
    if (outputsize < MIN_OUTPUT_SIZE) {
       // An internal buffer will need to be allocated if the one supplied to Read() is not large enough.
       outputsize = MIN_OUTPUT_SIZE;
       if (!(output = Self->OutputBuffer)) {
-         if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR::Okay) return ERR::AllocMemory;
+         if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, nullptr) != ERR::Okay) return ERR::AllocMemory;
          output = Self->OutputBuffer;
       }
    }
@@ -132,7 +132,7 @@ static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
    Self->Stream.avail_in = length;
 
    ERR error = ERR::Okay;
-   LONG result = Z_OK;
+   int result = Z_OK;
    while ((result IS Z_OK) and (Self->Stream.avail_in > 0) and (outputsize > 0)) {
       Self->Stream.next_out  = (Bytef *)output;
       Self->Stream.avail_out = outputsize;
@@ -182,7 +182,7 @@ static ERR CSTREAM_Reset(extCompressedStream *Self)
       Self->Deflating = FALSE;
    }
 
-   if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
+   if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = nullptr; }
 
    return ERR::Okay;
 }
@@ -210,16 +210,16 @@ static ERR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
 
    CSTREAM_Reset(Self);
 
-   LARGE pos = 0;
-   if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
-   else if (Args->Position IS SEEK::CURRENT) pos = Self->TotalOutput + F2T(Args->Offset);
+   int64_t pos = 0;
+   if (Args->Position IS SEEK::START) pos = int(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT) pos = Self->TotalOutput + int(Args->Offset);
    else return log.warning(ERR::Args);
 
    if (pos < 0) return log.warning(ERR::OutOfRange);
 
-   UBYTE buffer[1024];
+   uint8_t buffer[1024];
    while (pos > 0) {
-      struct acRead read = { .Buffer = buffer, .Length = (LONG)pos };
+      struct acRead read = { .Buffer = buffer, .Length = (int)pos };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
       if (Action(AC::Read, Self, &read) != ERR::Okay) return ERR::Decompression;
       pos -= read.Result;
@@ -269,11 +269,11 @@ static ERR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
    }
 
    if (!Self->OutputBuffer) {
-      if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR::Okay) return ERR::AllocMemory;
+      if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, nullptr) != ERR::Okay) return ERR::AllocMemory;
    }
 
    Args->Result = 0;
-   LONG mode;
+   int mode;
    if (Args->Length IS -1) { // A length of -1 is a signal to complete the compression process.
       mode = Z_FINISH;
       Self->Stream.next_in  = Self->OutputBuffer;
@@ -299,12 +299,12 @@ static ERR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
          return ERR::BufferOverflow;
       }
 
-      const LONG len = MIN_OUTPUT_SIZE - Self->Stream.avail_out; // Get number of compressed bytes that were output
+      const int len = MIN_OUTPUT_SIZE - Self->Stream.avail_out; // Get number of compressed bytes that were output
 
       if (len > 0) {
          Self->TotalOutput += len;
          log.trace("%d bytes (total %" PF64 ") were compressed.", len, Self->TotalOutput);
-         acWrite(Self->Output, Self->OutputBuffer, len, NULL);
+         acWrite(Self->Output, Self->OutputBuffer, len, nullptr);
       }
       else {
          // deflate() may not output anything if it needs more data to fill up a compression frame.  Return ERR::Okay
@@ -356,7 +356,7 @@ If the size is unknown, a value of `-1` is returned.
 
 *********************************************************************************************************************/
 
-static ERR CSTREAM_GET_Size(extCompressedStream *Self, LARGE *Value)
+static ERR CSTREAM_GET_Size(extCompressedStream *Self, int64_t *Value)
 {
    *Value = -1;
    if (Self->Input) {
@@ -383,7 +383,7 @@ static const FieldArray clStreamFields[] = {
    { "TotalOutput", FDF_INT64|FDF_R },
    { "Input",       FDF_OBJECT|FDF_RI },
    { "Output",      FDF_OBJECT|FDF_RI },
-   { "Format",      FDF_INT|FDF_LOOKUP|FD_RI, NULL, NULL, &clCompressedStreamFormat },
+   { "Format",      FDF_INT|FDF_LOOKUP|FD_RI, nullptr, nullptr, &clCompressedStreamFormat },
    // Virtual fields
    { "Size",        FDF_INT64|FDF_R, CSTREAM_GET_Size },
    END_FIELD
@@ -397,7 +397,7 @@ static const ActionArray clStreamActions[] = {
    { AC::Reset,     CSTREAM_Reset },
    { AC::Seek,      CSTREAM_Seek },
    { AC::Write,     CSTREAM_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 extern ERR add_compressed_stream_class(void)

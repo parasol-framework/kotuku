@@ -136,7 +136,7 @@ public:
    virtual void * FindFunction(const char *name) {
       pf::Log log(__FUNCTION__);
       log.msg("Name: %s", name);
-      return NULL;
+      return nullptr;
    }
 
    virtual bool IsValid() {
@@ -162,13 +162,13 @@ Scintilla::ElapsedTime::ElapsedTime()
 
 double Scintilla::ElapsedTime::Duration(bool reset)
 {
-   LARGE systime = PreciseTime() / 1000LL;
-   LARGE lasttime = ((LARGE)bigBit<<32) + *(ULONG*)&littleBit;
-   DOUBLE elapsed = systime - lasttime;
+   int64_t systime = PreciseTime() / 1000LL;
+   int64_t lasttime = ((int64_t)bigBit<<32) + *(uint32_t*)&littleBit;
+   double elapsed = systime - lasttime;
 
    if (reset) {
       bigBit = (long)(systime>>32);
-      *(ULONG*)&littleBit = (systime & 0xFFFFFFFF);
+      *(uint32_t*)&littleBit = (systime & 0xFFFFFFFF);
    }
 
    return elapsed * 0.001;

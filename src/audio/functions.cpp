@@ -69,11 +69,11 @@ struct SampleFormatTraits<SFM::U8_BIT_MONO> {
 // Template-based loop type handler using constexpr if (C++17)
 template<LTYPE loop_type>
 constexpr int calculate_samples_until_end(
-   int position, int sample_length, int loop_start, int loop_end, 
+   int position, int sample_length, int loop_start, int loop_end,
    bool over_sampling, int *next_offset) {
-   
+
    *next_offset = 1;
- 
+
    if constexpr (loop_type IS LTYPE::UNIDIRECTIONAL) {
       if (over_sampling) {
          if ((position + 1) < loop_end) return (loop_end - 1) - position;
@@ -81,9 +81,9 @@ constexpr int calculate_samples_until_end(
             *next_offset = loop_start - position;
             return loop_end - position;
          }
-      } 
+      }
       else return loop_end - position;
-   } 
+   }
    else { // Default/no loop
       if (over_sampling) {
          if ((position + 1) < sample_length) return (sample_length - 1) - position;
@@ -91,7 +91,7 @@ constexpr int calculate_samples_until_end(
             *next_offset = 0;
             return sample_length - position;
          }
-      } 
+      }
       else return sample_length - position;
    }
 }
@@ -109,10 +109,10 @@ template<typename OutputType, typename InputType = float, std::size_t UnrollFact
 void convert_samples(const InputType* input, int count, OutputType* output) {
    static_assert(std::is_arithmetic_v<OutputType>, "Output type must be arithmetic");
    static_assert(UnrollFactor > 0 and UnrollFactor <= 8, "Unroll factor must be 1-8");
-   
+
    const InputType* end = input + count;
    const InputType* unroll_end = input + (count - count % UnrollFactor);
-   
+
    if constexpr (std::is_same_v<OutputType, uint8_t>) {
       // 8-bit conversion with loop unrolling
       while (input < unroll_end) {
@@ -129,7 +129,7 @@ void convert_samples(const InputType* input, int count, OutputType* output) {
          *output = uint8_t(128 + clamp_sample(sample, int(-128), int(127)));
          ++input; ++output;
       }
-   } 
+   }
    else if constexpr (std::is_same_v<OutputType, int16_t>) {
       // 16-bit conversion with loop unrolling
       while (input < unroll_end) {
@@ -145,7 +145,7 @@ void convert_samples(const InputType* input, int count, OutputType* output) {
          *output = int16_t(clamp_sample(sample, int(-32768), int(32767)));
          ++input; ++output;
       }
-   } 
+   }
    else if constexpr (std::is_same_v<OutputType, float>) {
       // Float conversion with vectorization hints
       while (input < unroll_end) {
@@ -159,7 +159,7 @@ void convert_samples(const InputType* input, int count, OutputType* output) {
          *output = clamp_sample(float(*input), -1.0f, 1.0f);
          ++input; ++output;
       }
-   } 
+   }
    else {
       static_assert(std::is_same_v<OutputType, void>, "Unsupported output type");
    }
@@ -208,7 +208,7 @@ static BYTELEN fill_stream_buffer(int Handle, AudioSample &Sample, int Offset)
 
 //********************************************************************************************************************
 
-static ERR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
+[[maybe_unused]] static ERR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
 {
    auto ml = SAMPLE(0x7fffffff);
    for (int i=1; i < (int)Self->Sets.size(); i++) {
@@ -323,7 +323,7 @@ static ERR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 //********************************************************************************************************************
 // Process as many command batches as possible that will fit within MixLeft.
 
-ERR process_commands(extAudio *Self, SAMPLE Elements)
+[[maybe_unused]] static ERR process_commands(extAudio *Self, SAMPLE Elements)
 {
    pf::Log log(__FUNCTION__);
 
@@ -494,7 +494,7 @@ static ERR audio_timer(extAudio *Self, int64_t Elapsed, int64_t CurrentTime)
 
 #else
 
-   #warning No audio timer support on this platform.
+   // No audio timer support on this platform.
    return ERR::NoSupport;
 
 #endif
@@ -520,55 +520,55 @@ static void convert_float(float *buf, int TotalSamples, float *dest) {
 
 // Template dispatch table for loop types with compile-time optimization
 template<LTYPE loop_type>
-static int samples_until_end_impl(int position, int sample_length, int lp_start, int lp_end, 
-   bool over_sampling, bool is_backward, int &next_offset) 
+static int samples_until_end_impl(int position, int sample_length, int lp_start, int lp_end,
+   bool over_sampling, bool is_backward, int &next_offset)
 {
    next_offset = 1;
-   
+
    if constexpr (loop_type IS LTYPE::UNIDIRECTIONAL) {
       if (over_sampling) {
          if ((position + 1) < lp_end) {
             return (lp_end - 1) - position;
-         } 
+         }
          else {
             next_offset = lp_start - position;
             return lp_end - position;
          }
-      } 
+      }
       else return lp_end - position;
-   } 
+   }
    else if constexpr (loop_type IS LTYPE::BIDIRECTIONAL) {
       if (is_backward) {
          if (over_sampling) {
             if (position IS (lp_end - 1)) {
                next_offset = 0;
                return 1;
-            } 
+            }
             else return position - lp_start;
-         } 
+         }
          else return position - lp_start;
-      } 
+      }
       else if (over_sampling) {
          if ((position + 1) < lp_end) {
             return (lp_end - 1) - position;
-         } 
+         }
          else {
             next_offset = 0;
             return 1;
          }
-      } 
+      }
       else return lp_end - position;
-   } 
+   }
    else { // Default/no loop
       if (over_sampling) {
          if ((position + 1) < sample_length) {
             return (sample_length - 1) - position;
-         } 
+         }
          else {
             next_offset = 0;
             return sample_length - position;
          }
-      } 
+      }
       else return sample_length - position;
    }
 }
@@ -576,9 +576,9 @@ static int samples_until_end_impl(int position, int sample_length, int lp_start,
 static int samples_until_end(extAudio *Self, AudioChannel &Channel, int &NextOffset)
 {
    pf::Log log(__FUNCTION__);
-   
+
    auto &sample = Self->Samples[Channel.SampleHandle];
-   
+
    // Use structured bindings and conditional operator for cleaner loop parameter selection
    const auto [lp_start, lp_end, lp_type] = (Channel.LoopIndex IS 2) ?
       std::make_tuple(sample.Loop2Start, sample.Loop2End, sample.Loop2Type) :
@@ -604,12 +604,12 @@ static int samples_until_end(extAudio *Self, AudioChannel &Channel, int &NextOff
             if (over_sampling) {
                if ((Channel.Position + 1) < sample.SampleLength) {
                   num = (sample.SampleLength - 1) - Channel.Position;
-               } 
+               }
                else {
                   NextOffset = 0;
                   num = sample.SampleLength - Channel.Position;
                }
-            } 
+            }
             else num = sample.SampleLength - Channel.Position;
          }
          break;
@@ -780,7 +780,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 //********************************************************************************************************************
 // Main entry point for mixing sound data to destination
 
-static ERR mix_data(extAudio *Self, int Elements, APTR Dest)
+[[maybe_unused]] static ERR mix_data(extAudio *Self, int Elements, APTR Dest)
 {
    pf::Log log(__FUNCTION__);
 
@@ -852,20 +852,20 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
    constexpr auto format_dispatch = [](SFM format) constexpr -> std::tuple<int, double, bool> {
       // Using constexpr if-else chain for optimal code generation
       if (format IS SFM::S16_BIT_STEREO) {
-         return {SampleFormatTraits<SFM::S16_BIT_STEREO>::size, 
+         return {SampleFormatTraits<SFM::S16_BIT_STEREO>::size,
                  SampleFormatTraits<SFM::S16_BIT_STEREO>::conversion,
                  SampleFormatTraits<SFM::S16_BIT_STEREO>::is_stereo};
-      } 
+      }
       else if (format IS SFM::S16_BIT_MONO) {
          return {SampleFormatTraits<SFM::S16_BIT_MONO>::size,
                  SampleFormatTraits<SFM::S16_BIT_MONO>::conversion,
                  SampleFormatTraits<SFM::S16_BIT_MONO>::is_stereo};
-      } 
+      }
       else if (format IS SFM::U8_BIT_STEREO) {
          return {SampleFormatTraits<SFM::U8_BIT_STEREO>::size,
                  SampleFormatTraits<SFM::U8_BIT_STEREO>::conversion,
                  SampleFormatTraits<SFM::U8_BIT_STEREO>::is_stereo};
-      } 
+      }
       else {
          return {SampleFormatTraits<SFM::U8_BIT_MONO>::size,
                  SampleFormatTraits<SFM::U8_BIT_MONO>::conversion,
@@ -874,7 +874,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
    };
 
    const auto [sample_size, conversion, sample_is_stereo] = format_dispatch(sample.SampleType);
-   
+
    // Calculate stereo multiplier using template information
    const double stereo_mul = (!Self->Stereo and sample_is_stereo) ? 0.5 : 1.0;
    double mastervol = Self->Mute ? 0 : Self->MasterVolume * stereo_mul;

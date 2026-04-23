@@ -1,34 +1,22 @@
-#ifndef PLATFORM_CONFIG_H
-#define PLATFORM_CONFIG_H
+#pragma once
 
-#cmakedefine PARASOL_STATIC
+#include <stdint.h>
+
+#cmakedefine KOTUKU_STATIC
 
 #cmakedefine CMAKE_SYSTEM_NAME @CMAKE_SYSTEM_NAME@
 #cmakedefine CMAKE_SIZEOF_VOID_P @CMAKE_SIZEOF_VOID_P@
 #undef _LP64
 #cmakedefine _LP64 1
 #cmakedefine CMAKE_RC_COMPILER_INIT
-
-#if defined(_MSC_VER)
-#define INLINE static __inline
-#else
-#define INLINE static inline
-#endif
-
-#if defined(_MSC_VER)
-#define THREADVAR __declspec( thread )
-#else
-#define THREADVAR __thread
-#endif
-
 #cmakedefine REVERSE_BYTEORDER
 
-#ifdef PARASOL_STATIC
+#ifdef KOTUKU_STATIC
+// Note: Dependencies also exist in src/core/static_modules.cpp
 #cmakedefine INC_MOD_AUDIO
 #cmakedefine INC_MOD_BACKSTAGE
 #cmakedefine INC_MOD_DISPLAY
 #cmakedefine INC_MOD_DOCUMENT
-#cmakedefine INC_MOD_FLUID
 #cmakedefine INC_MOD_FONT
 #cmakedefine INC_MOD_HTTP
 #cmakedefine INC_MOD_JPEG
@@ -36,115 +24,64 @@
 #cmakedefine INC_MOD_MP3
 #cmakedefine INC_MOD_NETWORK
 #cmakedefine INC_MOD_PICTURE
+#cmakedefine INC_MOD_REGEX
 #cmakedefine INC_MOD_SCINTILLA
 #cmakedefine INC_MOD_SVG
+#cmakedefine INC_MOD_TIRI
 #cmakedefine INC_MOD_VECTOR
 #cmakedefine INC_MOD_XML
+#cmakedefine INC_MOD_XQUERY
 #cmakedefine INC_MOD_XRANDR
 #endif
 
-/*****************************************************************************
-** Standard data types.
-*/
+// Standard data types.
 
 #ifdef _WIN32
-typedef void * HOSTHANDLE; // Windows defines a pointer type for native handles
+using HOSTHANDLE = void *; // Windows defines a pointer type for native handles
 #define PTR_TO_HOST(a) (a)
 #else
-typedef int HOSTHANDLE;    // Unix systems use FD descriptors for handles
+using HOSTHANDLE = int;    // Unix systems use FD descriptors for handles
 #define PTR_TO_HOST(a) ((int)(intptr_t)(a))
 #endif
 
-#ifndef XMD_H
-#if !defined(_WINDEF_H) && !defined(_WINDEF_)
-typedef char               BYTE;     // Signed 8-bit quantity
-#endif
-#endif
-
-#if !defined(_WINDEF_H) && !defined(_WINDEF_)
-typedef short              WORD;     // Signed 16-bit quantity
-typedef int                LONG;     // Signed 32-bit quantity
-typedef unsigned int       ULONG;    // Unsigned 32-bit quantity
-#endif
-
-/* If your compiler does not accept 'long long' definitions, try changing the
-** LARGE type setting to __int64.
-*/
-
-#if defined(_MSC_VER)
-typedef __int64            LARGE;
-typedef __int64            BIGINT;
-#else
-typedef long long          LARGE;
-typedef long long          BIGINT;
-#endif
-
-#ifdef _WIN32
-typedef void * WINHANDLE;
-#else
-typedef void * WINHANDLE;
-#endif
+using WINHANDLE = void *;
 
 #undef MAXINT
 
 #ifdef  _LP64
-typedef LARGE MAXINT;
- #if defined(_MSC_VER)
-typedef unsigned __int64   UMAXINT;
- #else
-typedef unsigned long long UMAXINT;
- #endif
+ using MAXINT = int64_t;
+ using UMAXINT = uint64_t;
 #else
-typedef int MAXINT;
-typedef unsigned int UMAXINT;
+ using MAXINT = int;
+ using UMAXINT = uint32_t;
 #endif
 
-typedef unsigned char      UBYTE;    // Unsigned 8-bit quantity
-typedef unsigned short     UWORD;    // Unsigned 16-bit quantity
-typedef float              FLOAT;    // Signed 32-bit floating point
-typedef double             DOUBLE;   // Signed 64-bit floating point
-
-/*****************************************************************************
-** System specific types.
-*/
+// System specific types.
 
 #undef ERROR
 #undef OBJECTID
-typedef LONG ERROR;     // Standard error code
-#ifndef __OBJECTID_DEFINED
-typedef LONG OBJECTID;  // 32-bit object ID
-#endif
-typedef LONG MEMORYID;  // 32-bit memory ID
-typedef LARGE FIELD;    // 64-bit field ID - used for flag combos
 
-/*****************************************************************************
-** Pointer types.
-*/
+using ERROR = int32_t;     // Standard error code
+#ifndef __OBJECTID_DEFINED
+ using OBJECTID = int32_t;  // 32-bit object ID
+#endif
+using MEMORYID = int32_t;  // 32-bit memory ID
+using FIELD = int64_t;    // 64-bit field ID - used for flag combos
+
+// Pointer types.
 
 #define L64PTR(a)  (APTR)((MAXINT)(a))  // Converts a 64-bit integer to a pointer
-#define PTRL64(a)  (LARGE)((MAXINT)(a)) // Converts a pointer to an integer
+#define PTRL64(a)  (int64_t)((MAXINT)(a)) // Converts a pointer to an integer
 
-typedef void * TIMER;
-typedef const void * CPTR;     // Pointer with read-only content
-typedef void * APTR;           // 32 or 64 bit untyped pointer
-typedef char * STRING;         // string pointer (NULL terminated)
-typedef char * SSTRING;        // signed string pointer (NULL terminated)
-typedef const char * CSTRING;
-typedef void * OBJECT;           // Object pointer
-typedef struct Object * OBJECTPTR; // Object pointer
-typedef LARGE EVENTID;
-
-#if _WIN32
-typedef void * APTR64;    // 64-bit untyped pointer
-typedef char * STRING64;  // 64-bit string pointer (NULL terminated)
-typedef void * OBJECT64;  // 64-bit untyped object pointer
-typedef struct Object * OBJECTPTR64; // 64-bit typed object pointer
-#else
-typedef void * APTR64 __attribute__ ((aligned (8)));    // 64-bit untyped pointer
-typedef char * STRING64 __attribute__ ((aligned (8)));  // 64-bit string pointer (NULL terminated)
-typedef void * OBJECT64 __attribute__ ((aligned (8)));  // 64-bit untyped object pointer
-typedef struct Object * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit typed object pointer
-#endif
+using TIMER = void *;
+using CPTR = const void *;     // Pointer with read-only content
+using APTR = void *;           // 32 or 64 bit untyped pointer
+using STRING = char *;         // string pointer (NULL terminated)
+using SSTRING = char *;        // signed string pointer (NULL terminated)
+using CSTRING = const char *;
+using OBJECT = void *;             // Object pointer
+using OBJECTPTR = struct Object *; // Object pointer
+using EVENTID = int64_t;
 
 #ifdef _MSC_VER
  #define __export extern "C" __declspec(dllexport)
@@ -162,8 +99,6 @@ typedef struct Object * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit typ
 
 #ifdef __arm__
 #define CPU_PC CPU_ARMEABI
-#elif __pentium__
-#define CPU_PC CPU_I686 // What is the minimum required CPU for the compiled code?
 #else
 #define CPU_PC CPU_I686
 #endif
@@ -179,5 +114,3 @@ typedef struct Object * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit typ
 #ifndef IS
 #define IS ==
 #endif
-
-#endif /* PLATFORM_CONFIG_H */

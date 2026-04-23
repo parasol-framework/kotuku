@@ -9,10 +9,10 @@
     <comment>Acts as a proxy for decompressing and compressing data streams between objects.</comment>
     <fileDescription>GZip File</fileDescription>
     <version>1</version>
-    <id>2144cb86</id>
+    <id>6e56d1fb</id>
     <idstring>COMPRESSEDSTREAM</idstring>
     <category>Data</category>
-    <copyright>Paul Manias 1996-2025</copyright>
+    <copyright>Paul Manias 1996-2026</copyright>
     <description>
 <p>Use the CompressedStream class to compress and decompress data on the fly without the need for a temporary storage area.  The default compression algorithm is DEFLATE with gzip header data.  It is compatible with common command-line tools such as gzip.</p>
 <p>To decompress data, set the <fl>Input</fl> field with a source object that supports the Read() action, such as a <class name="File">File</class>. Repeatedly reading from the CompressedStream will automatically handle the decompression process.  If the decompressed size of the incoming data is defined in the source header, it will be reflected in the <fl>Size</fl> field.</p>
@@ -192,11 +192,8 @@
     </constants>
 
     <constants lookup="MSF" comment="Message flags.">
-      <const name="ADD">The default behaviour - this will add the message to the end of the queue.</const>
-      <const name="MESSAGE_ID">The Type parameter refers to a unique message ID rather than a message type for this call.</const>
       <const name="NO_DUPLICATE">If the <code>Type</code> parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with <code>ERR::Okay</code>.</const>
       <const name="UPDATE">If the <code>Type</code> parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</const>
-      <const name="WAIT">Wait before inserting the message if the queue is at maximum capacity.</const>
     </constants>
 
     <constants lookup="MSGID" comment="Reserved message ID's that are handled internally.">
@@ -206,16 +203,17 @@
       <const name="CORE_END"/>
       <const name="DEBUG"/>
       <const name="EVENT"/>
-      <const name="FLUID_THREAD_CALLBACK"/>
       <const name="FREE"/>
       <const name="QUIT"/>
       <const name="THREAD_ACTION"/>
       <const name="THREAD_CALLBACK"/>
+      <const name="TIRI_THREAD_CALLBACK"/>
       <const name="VALIDATE_PROCESS"/>
       <const name="WAIT_FOR_OBJECTS"/>
     </constants>
 
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
+      <const name="ASYNC_ACTIVE">Read-only indicator that asynchronous actions are queued or executing against this object.</const>
       <const name="COLLECT">Marked for garbage collection.</const>
       <const name="FREE">Read-only indicator for when the object is being freed.</const>
       <const name="FREE_ON_UNLOCK">Read-only indicator for when the object is marked for deletion.</const>
@@ -271,6 +269,7 @@
     </constants>
 
     <constants lookup="PMF" comment="Flags for ProcessMessages">
+      <const name="EVENT_LOOP">Set if this is the program's main event loop.  Should be accompanied with an infinite timeout.</const>
     </constants>
 
     <constants lookup="RDF" comment="Flags for the OpenDir() function.">
@@ -296,7 +295,6 @@
     </constants>
 
     <constants lookup="RES">
-      <const name="CORE_IDL">Refers to the Core module's compressed IDL string.</const>
       <const name="CPU_SPEED">The average top-speed of all CPU cores in Mhz.</const>
       <const name="FREE_MEMORY">The total amount of free memory.</const>
       <const name="FREE_SWAP">The total amount of free swap memory.</const>
@@ -304,13 +302,11 @@
       <const name="KEY_STATE">Maintains the state of key qualifiers such as caps-lock and the shift keys.</const>
       <const name="LOG_DEPTH">The current depth of log messages.</const>
       <const name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</const>
-      <const name="MAX_PROCESSES">The maximum number of processes that can be supported at any time.</const>
+      <const name="MAIN_THREAD">Read-only, returns <code>true</code> if called from the main thread.</const>
       <const name="MEMORY_USAGE">The total amount of memory used by the current process, in bytes.</const>
-      <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
       <const name="PRIVILEGED">This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</const>
       <const name="PRIVILEGED_USER">If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</const>
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
-      <const name="STATIC_BUILD">Returns true if the runtime is a statically linked build.</const>
       <const name="THREAD_ID">Return the ID of the current thread.</const>
       <const name="TOTAL_MEMORY">The total amount of installed memory.</const>
       <const name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use (system wide).</const>
@@ -329,7 +325,7 @@
 
     <constants lookup="RP" comment="Path types for SetResourcePath()">
       <const name="MODULE_PATH">An alternative path leading to the system modules (normally <code>system:modules/</code>).  Introduced for platforms such as Android, where modules are stored in asset folders.</const>
-      <const name="ROOT_PATH">Overrides the root path, which defaults to the location at which Parasol is installed.</const>
+      <const name="ROOT_PATH">Overrides the root path, which defaults to the location at which Kōtuku is installed.</const>
       <const name="SYSTEM_PATH">The path of the <code>system:</code> volume, which otherwise defaults to <code>[root]:system/</code>.</const>
     </constants>
 
@@ -385,7 +381,7 @@
       <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
       <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, int, const void *, int)">An internal function for writing to this field.</field>
       <field name="Name" type="CSTRING">The English name for the field, e.g. <code>Width</code></field>
-      <field name="FieldID" type="UINT">Provides a fast way of finding fields, e.g. <code>FID_Width</code></field>
+      <field name="FieldID" type="UINT">32-bit hash from fieldhash(). Represented by FID constants, e.g. <code>FID_Width</code></field>
       <field name="Offset" type="UINT16">Field offset within the object</field>
       <field name="Index" type="UINT16">Field array index</field>
       <field name="Flags" type="UINT">Special flags that describe the field</field>
@@ -395,7 +391,7 @@
       <field name="Size" type="INT64">The size of the file's content.</field>
       <field name="TimeStamp" type="INT64">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or <code>NULL</code>.</field>
-      <field name="Name" type="STRING">The name of the file.</field>
+      <field name="Name" type="std::string">The name of the file.</field>
       <field name="Flags" type="RDF" lookup="RDF">Additional flags to describe the file.</field>
       <field name="Permissions" type="PERMIT" lookup="PERMIT">Standard permission flags.</field>
       <field name="UserID" type="INT">User  ID (Unix systems only).</field>
@@ -426,8 +422,12 @@
 
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
       <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns <code>Native</code>, <code>Windows</code>, <code>OSX</code> or <code>Linux</code>.</field>
+      <field name="IDL" type="CSTRING">The Core module's compressed IDL string</field>
+      <field name="OpenInfo" type="const struct OpenInfo *">The OpenInfo structure originally used to initialise the system</field>
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
       <field name="Stage" type="INT">The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</field>
+      <field name="ReleaseBuild" type="INT"><code>1</code> = Release build, <code>0</code> = Debug build</field>
+      <field name="StaticBuild" type="INT"><code>1</code> = Static build, <code>0</code> = Dynamic build</field>
     </struct>
 
   </structs>

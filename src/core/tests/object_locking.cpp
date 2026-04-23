@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -10,17 +10,17 @@ This program tests the locking of private objects between threads.
 *********************************************************************************************************************/
 
 #include <pthread.h>
-#include <parasol/startup.h>
-#include <parasol/vector.hpp>
-#include <parasol/strings.hpp>
+#include <kotuku/startup.h>
+#include <kotuku/vector.hpp>
+#include <kotuku/strings.hpp>
 
 using namespace pf;
 
 CSTRING ProgName = "ObjectLocking";
-static volatile OBJECTPTR glConfig = NULL;
-static ULONG glTotalThreads = 8;
-static ULONG glLockAttempts = 200;
-static LONG glAccessGap = 200000;
+static volatile OBJECTPTR glConfig = nullptr;
+static uint32_t glTotalThreads = 8;
+static uint32_t glLockAttempts = 200;
+static int glAccessGap = 200000;
 static bool glTerminateObject = false;
 
 struct thread_info{
@@ -52,7 +52,7 @@ static void * thread_entry(void *Arg)
       #endif
          glConfig->ActionDepth++;
          log.msg("%d.%d: Object acquired.", info->index, i);
-         WaitTime(0, 2000);
+         WaitTime(0.002); // Wait 2 milliseconds
          if (glConfig->ActionDepth > 1) log.error("--- MAJOR ERROR: More than one thread has access to this object!");
          glConfig->ActionDepth--;
 
@@ -66,7 +66,7 @@ static void * thread_entry(void *Arg)
                #else
                ReleaseObject(glConfig);
                #endif
-               glConfig = NULL;
+               glConfig = nullptr;
                break;
             }
          }
@@ -80,13 +80,13 @@ static void * thread_entry(void *Arg)
          #ifdef __unix__
             sched_yield();
          #endif
-         if (glAccessGap > 0) WaitTime(0, glAccessGap);
+         if (glAccessGap > 0) WaitTime(glAccessGap / 1000000.0); // Convert microseconds to seconds
       }
       else log.msg("Attempt %d.%d: Failed to acquire a lock, error: %s", info->index, i, GetErrorMsg(error));
    }
 
    log.msg("----- Thread %d is finished.", info->index);
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -96,7 +96,7 @@ int main(int argc, CSTRING *argv)
    pf::Log log;
    pf::vector<std::string> *args;
 
-   if (auto msg = init_parasol(argc, argv)) {
+   if (auto msg = init_kotuku(argc, argv)) {
       printf("%s\n", msg);
       return -1;
    }
@@ -104,15 +104,15 @@ int main(int argc, CSTRING *argv)
    if ((CurrentTask()->get(FID_Parameters, args) IS ERR::Okay) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
          if (iequals(args[0][i], "-threads")) {
-            if (++i < args->size()) glTotalThreads = strtol(args[0][i].c_str(), NULL, 0);
+            if (++i < args->size()) glTotalThreads = strtol(args[0][i].c_str(), nullptr, 0);
             else break;
          }
          else if (iequals(args[0][i], "-attempts")) {
-            if (++i < args->size()) glLockAttempts = strtol(args[0][i].c_str(), NULL, 0);
+            if (++i < args->size()) glLockAttempts = strtol(args[0][i].c_str(), nullptr, 0);
             else break;
          }
          else if (iequals(args[0][i], "-gap")) {
-            if (++i < args->size()) glAccessGap = strtol(args[0][i].c_str(), NULL, 0);
+            if (++i < args->size()) glAccessGap = strtol(args[0][i].c_str(), nullptr, 0);
             else break;
          }
          else if (iequals(args[0][i], "-terminate")) glTerminateObject = true;
@@ -131,7 +131,7 @@ int main(int argc, CSTRING *argv)
 
    for (unsigned i=0; i < glTotalThreads; i++) {
       glThreads[i].index = i;
-      pthread_create(&glThreads[i].thread, NULL, &thread_entry, &glThreads[i]);
+      pthread_create(&glThreads[i].thread, nullptr, &thread_entry, &glThreads[i]);
    }
 
    // Main block now waits for all threads to terminate before it exits.
@@ -141,12 +141,12 @@ int main(int argc, CSTRING *argv)
    log.msg("Waiting for thread completion.");
 
    for (unsigned i=0; i < glTotalThreads; i++) {
-      pthread_join(glThreads[i].thread, NULL);
+      pthread_join(glThreads[i].thread, nullptr);
    }
 
    FreeResource(glConfig);
 
    printf("Testing complete.\n");
 
-   close_parasol();
+   close_kotuku();
 }

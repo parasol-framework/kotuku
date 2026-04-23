@@ -2,7 +2,7 @@
 // Display Unit class.  Reads CSS metric values during parsing and returns them as pixel values during the layout
 // process.
 
-enum class DU : UBYTE {
+enum class DU : uint8_t {
    NIL = 0,
    PIXEL,             // px in 72DPI
    SCALED,            // %: Scale to fill empty space
@@ -19,17 +19,17 @@ enum class DU : UBYTE {
 };
 
 struct DUNIT {
-   DOUBLE value;
+   double value;
    DU type;
 
    DUNIT() : value(0), type(DU::NIL) { }
 
-   DUNIT(DOUBLE pValue, DU pType = DU::PIXEL) : value(pValue), type(pType) { }
+   DUNIT(double pValue, DU pType = DU::PIXEL) : value(pValue), type(pType) { }
 
-   DUNIT(const std::string_view pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min());
+   DUNIT(const std::string_view pValue, DU pDefaultType = DU::PIXEL, double pMin = std::numeric_limits<double>::min());
 
    double px(class layout &) const;
-   
+
    constexpr bool empty() { return (type IS DU::NIL) or (!value); }
    constexpr void clear() { value = 0; type = DU::PIXEL; }
 

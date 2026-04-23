@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -16,7 +16,8 @@ To get the current system time, use the #Query() action.
 *********************************************************************************************************************/
 
 #include "../defs.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
+#include <chrono>
 #include <time.h>
 
 #ifdef __unix__
@@ -29,7 +30,7 @@ To get the current system time, use the #Query() action.
 #include <unistd.h>
 #endif
 
-static ERR GET_TimeStamp(objTime *, LARGE *);
+static ERR GET_TimeStamp(objTime *, int64_t *);
 
 static ERR TIME_Query(objTime *);
 static ERR TIME_SetTime(objTime *);
@@ -42,50 +43,37 @@ Query: Updates the values in a time object with the current system date and time
 
 static ERR TIME_Query(objTime *Self)
 {
-   #ifdef __unix__
+   auto now = std::chrono::system_clock::now();
+   auto duration_since_epoch = now.time_since_epoch();
+   auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration_since_epoch).count();
 
-      struct timeval tmday;
-      struct tm local;
+   // Get current timezone and convert to local time
+   auto current_zone = std::chrono::current_zone();
+   if (!current_zone) return ERR::SystemCall;
 
-      gettimeofday(&tmday, NULL);  // Get micro-seconds
-      time_t tm = time(NULL);
-      localtime_r(&tm, &local);     // Get time
-      Self->Year        = 1900 + local.tm_year;
-      Self->Month       = local.tm_mon + 1;
-      Self->Day         = local.tm_mday;
-      Self->Hour        = local.tm_hour;
-      Self->Minute      = local.tm_min;
-      Self->Second      = tmday.tv_sec % 60;
-      Self->MilliSecond = tmday.tv_usec / 1000;  // Between 0 and 999
-      Self->MicroSecond = tmday.tv_usec;         // Between 0 and 999999
-      Self->SystemTime  = (((LARGE)tm) * (LARGE)1000000) + (LARGE)Self->MicroSecond;
+   auto local_time = current_zone->to_local(now);
+   auto local_days = std::chrono::floor<std::chrono::days>(local_time);
+   auto ymd = std::chrono::year_month_day{local_days};
+   auto tod = std::chrono::hh_mm_ss{local_time - local_days};
 
-   #elif _WIN32
+   if (!ymd.ok()) return ERR::SystemCall;
 
-     time_t tm;
-     time(&tm);
-     struct tm *local = localtime(&tm);
-     LONG millisecond = winGetTickCount() / 1000;
-     Self->Year   = 1900 + local->tm_year;
-     Self->Month  = local->tm_mon + 1;
-     Self->Day    = local->tm_mday;
-     Self->Hour   = local->tm_hour;
-     Self->Minute = local->tm_min;
-     Self->Second = local->tm_sec;
+   Self->Year  = int(ymd.year());
+   Self->Month = unsigned(ymd.month());
+   Self->Day   = unsigned(ymd.day());
+   Self->Hour   = int(tod.hours().count());
+   Self->Minute = int(tod.minutes().count());
+   Self->Second = int(tod.seconds().count());
 
-     Self->MilliSecond = millisecond;
-     Self->MicroSecond = millisecond * 100;
-     Self->SystemTime  = (((LARGE)millisecond) * (LARGE)1000);
+   auto subsec_us = std::chrono::duration_cast<std::chrono::microseconds>(tod.subseconds()).count();
+   Self->MilliSecond = int(subsec_us / 1000);
+   Self->MicroSecond = int(subsec_us % 1000000);
+   Self->SystemTime  = int64_t(microseconds);
 
-   #else
-      #error Platform requires support for the Time class.
-   #endif
-
-   // Calculate the day of the week (0 = Sunday)
-
-   LONG a = (14 - Self->Month) / 12;
-   LONG y = Self->Year - a;
-   LONG m = Self->Month + 12 * a - 2;
+   // Calculate the day of the week (0 = Sunday) using Zeller's congruence
+   int a = (14 - Self->Month) / 12;
+   int y = Self->Year - a;
+   int m = Self->Month + 12 * a - 2;
    Self->DayOfWeek = (Self->Day + y + (y / 4) - (y / 100) + (y / 400) + (31 * m) / 12) % 7;
 
    return ERR::Okay;
@@ -108,7 +96,7 @@ static ERR TIME_SetTime(objTime *Self)
    pf::Log log;
    struct timeval tmday;
    struct tm time;
-   LONG fd;
+   int fd;
 
    log.branch();
 
@@ -147,13 +135,25 @@ static ERR TIME_SetTime(objTime *Self)
 
    if ((tmday.tv_sec = mktime(&time)) != -1) {
       tmday.tv_usec = 0;
-      if (settimeofday(&tmday, NULL) IS -1) {
+      if (settimeofday(&tmday, nullptr) IS -1) {
          log.warning("settimeofday() failed.");
       }
    }
    else log.warning("mktime() failed [%d/%d/%d, %d:%d:%d]", Self->Day, Self->Month, Self->Year, Self->Hour, Self->Minute, Self->Second);
 
    return ERR::Okay;
+
+#elif _WIN32
+   // Use Windows wrapper function to set system time
+   if (winSetSystemTime(Self->Year, Self->Month, Self->Day, Self->Hour, Self->Minute, Self->Second)) {
+      return ERR::Okay;
+   }
+   else {
+      // Setting system time failed - likely due to insufficient privileges
+      // Process needs SE_SYSTEMTIME_NAME privilege or to run as administrator
+      return ERR::PermissionDenied;
+   }
+
 #else
    return ERR::NoSupport;
 #endif
@@ -206,14 +206,14 @@ The TimeStamp value is dynamically calculated when reading this field.
 
 *********************************************************************************************************************/
 
-static ERR GET_TimeStamp(objTime *Self, LARGE *Value)
+static ERR GET_TimeStamp(objTime *Self, int64_t *Value)
 {
    *Value = Self->Second +
-            (LARGE(Self->Minute) * 60) +
-            (LARGE(Self->Hour) * 60 * 60) +
-            (LARGE(Self->Day) * 60 * 60 * 24) +
-            (LARGE(Self->Month) * 60 * 60 * 24 * 31) +
-            (LARGE(Self->Year) * 60 * 60 * 24 * 31 * 12);
+            (int64_t(Self->Minute) * 60) +
+            (int64_t(Self->Hour) * 60 * 60) +
+            (int64_t(Self->Day) * 60 * 60 * 24) +
+            (int64_t(Self->Month) * 60 * 60 * 24 * 31) +
+            (int64_t(Self->Year) * 60 * 60 * 24 * 31 * 12);
 
    *Value = *Value * 1000000LL;
 
@@ -248,12 +248,12 @@ static const FieldArray clFields[] = {
 static const ActionArray clActions[] = {
    { AC::Query,   TIME_Query },
    { AC::Refresh, TIME_Query },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const MethodEntry clMethods[] = {
    { pt::SetTime::id, (APTR)TIME_SetTime, "SetTime", 0, 0 },
-   { AC::NIL, NULL, NULL, NULL, 0 }
+   { AC::NIL, nullptr, nullptr, nullptr, 0 }
 };
 
 //********************************************************************************************************************

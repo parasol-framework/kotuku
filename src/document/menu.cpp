@@ -94,7 +94,7 @@ void doc_menu::refresh()
    pf::Log log(__FUNCTION__);
 
    const double HGAP = std::trunc(m_font_size * 0.2);
-   LONG total_icons = 0;
+   int total_icons = 0;
 
    std::ostringstream buf;
    buf << "<body margins=\"" << HGAP << " " << HGAP << " " << HGAP << " " << 0 << "\" " <<
@@ -110,7 +110,7 @@ void doc_menu::refresh()
       for (auto &item : m_items) {
          if (!item.icon.empty()) {
             buf << "    <image id=\"" << item.icon << "\" xlink:href=\"" << item.icon << "\" " <<
-               "width=\"" << F2T(m_font_size * 1.33) << "\" height=\"" << F2T(m_font_size * 1.33) << "\"/>\n";
+               "width=\"" << int(m_font_size * 1.33) << "\" height=\"" << int(m_font_size * 1.33) << "\"/>\n";
             total_icons++;
          }
       }

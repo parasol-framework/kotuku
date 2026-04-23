@@ -51,10 +51,10 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 //********************************************************************************************************************
 // Checks if an object is visible, according to its visibility and its parents visibility.
 
-static bool check_visibility(const SURFACELIST &list, LONG index)
+static bool check_visibility(const SURFACELIST &list, int index)
 {
    OBJECTID scan = list[index].SurfaceID;
-   for (LONG i=index; i >= 0; i--) {
+   for (int i=index; i >= 0; i--) {
       if (list[i].SurfaceID IS scan) {
          if (list[i].invisible()) return false;
          if (!(scan = list[i].ParentID)) return true;
@@ -66,7 +66,7 @@ static bool check_visibility(const SURFACELIST &list, LONG index)
 
 //********************************************************************************************************************
 
-ERR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
+ERR get_surface_abs(OBJECTID SurfaceID, int *AbsX, int *AbsY, int *Width, int *Height)
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
@@ -106,7 +106,7 @@ static void check_bmp_buffer_depth(extSurface *Self, objBitmap *Bitmap)
 //********************************************************************************************************************
 // Redraw everything in RegionB that does not intersect with RegionA.
 
-void redraw_nonintersect(OBJECTID SurfaceID, const SURFACELIST &List, LONG Index,
+void redraw_nonintersect(OBJECTID SurfaceID, const SURFACELIST &List, int Index,
    const ClipRectangle &Region, const ClipRectangle &RegionB, IRF RedrawFlags, EXF ExposeFlags)
 {
    pf::Log log(__FUNCTION__);
@@ -155,11 +155,11 @@ void redraw_nonintersect(OBJECTID SurfaceID, const SURFACELIST &List, LONG Index
 
 //********************************************************************************************************************
 
-ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
-   LONG Left, LONG Top, LONG Right, LONG Bottom, IRF Flags)
+ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, int index,
+   int Left, int Top, int Right, int Bottom, IRF Flags)
 {
    pf::Log log("redraw_surface");
-   static THREADVAR BYTE recursive = 0;
+   static thread_local int8_t recursive = 0;
 
    if ((list[index].Flags & RNF::TOTAL_REDRAW) != RNF::NIL) {
       // If the TOTAL_REDRAW flag is set against the surface then the entire surface must be redrawn regardless
@@ -208,7 +208,7 @@ ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
    }
    else {
       OBJECTID parent_id = SurfaceID;
-      LONG i = index;
+      int i = index;
       while (parent_id) {
          while ((list[i].SurfaceID != parent_id) and (i > 0)) i--;
 
@@ -244,7 +244,7 @@ ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
          log.warning("Removing references to surface object #%d (owner crashed).", list[index].SurfaceID);
          untrack_layer(list[index].SurfaceID);
       }
-      else log.warning("Unable to access surface object #%d, error %d.", list[index].SurfaceID, LONG(surface.error));
+      else log.warning("Unable to access surface object #%d, error %d.", list[index].SurfaceID, int(surface.error));
       return surface.error;
    }
 
@@ -253,7 +253,7 @@ ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
 
    if ((Flags & IRF::IGNORE_CHILDREN) IS IRF::NIL) {
       log.trace("Redrawing intersecting child surfaces.");
-      LONG level = list[index].Level;
+      int level = list[index].Level;
       for (unsigned i=index+1; i < list.size(); i++) {
          if (list[i].Level <= level) break; // End of list - exit this loop
 
@@ -284,14 +284,14 @@ ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
 //********************************************************************************************************************
 // This function fulfils the recursive drawing requirements of _redraw_surface() and is not intended for any other use.
 
-void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, ClipRectangle &Area,
+void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, int Index, ClipRectangle &Area,
    extBitmap *DestBitmap, IRF Flags)
 {
    pf::Log log("redraw_surface");
 
    if (Self->transparent()) return;
 
-   if (Index >= std::ssize(list)) log.warning("Index %d > %d", Index, LONG(list.size()));
+   if (Index >= std::ssize(list)) log.warning("Index %d > %d", Index, int(list.size()));
 
    auto abs = Area;
 
@@ -300,9 +300,9 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, C
    if (abs.Right  > list[Index].Right)  abs.Right  = list[Index].Right;
    if (abs.Bottom > list[Index].Bottom) abs.Bottom = list[Index].Bottom;
 
-   LONG i;
+   int i;
    if ((Flags & IRF::FORCE_DRAW) IS IRF::NIL) {
-      LONG level = list[Index].Level + 1;   // The +1 is used to include children contained in the surface object
+      int level = list[Index].Level + 1;   // The +1 is used to include children contained in the surface object
 
       for (i=Index+1; (i < std::ssize(list)) and (list[i].Level > 1); i++) {
          if (list[i].Level < level) level = list[i].Level;
@@ -386,8 +386,8 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, C
 
    // Prepare the buffer so that it matches the exposed area
 
-   UBYTE *data;
-   LONG xo = 0, yo = 0;
+   uint8_t *data;
+   int xo = 0, yo = 0;
    if (Self->BitmapOwnerID != Self->UID) {
       for (i=Index; (i > 0) and (list[i].SurfaceID != Self->BitmapOwnerID); i--);
       xo = list[Index].Left - list[i].Left;
@@ -460,7 +460,7 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, C
 
 //********************************************************************************************************************
 
-ERR RedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG Bottom, IRF Flags)
+ERR RedrawSurface(OBJECTID SurfaceID, int Left, int Top, int Right, int Bottom, IRF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -471,7 +471,7 @@ ERR RedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG Bott
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-   LONG index;
+   int index;
    if ((index = find_surface_list(SurfaceID)) IS -1) {
       log.traceWarning("Unable to find surface #%d in surface list.", SurfaceID);
       return ERR::Search;
@@ -483,7 +483,7 @@ ERR RedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG Bott
 //********************************************************************************************************************
 // Scans the surfacelist for the 'true owner' of a given bitmap.
 
-LONG find_bitmap_owner(const SURFACELIST &List, LONG Index)
+int find_bitmap_owner(const SURFACELIST &List, int Index)
 {
    auto owner = Index;
    for (auto i=Index; i >= 0; i--) {
@@ -521,7 +521,7 @@ ERR track_layer(extSurface *Self)
    record.BytesPerPixel = Self->BytesPerPixel;
    record.LineWidth     = Self->LineWidth;
    record.Data          = Self->Data;
-   record.Cursor        = BYTE(Self->Cursor);
+   record.Cursor        = int8_t(Self->Cursor);
    record.RootID        = Self->RootID;
    record.Width         = Self->Width;
    record.Height        = Self->Height;
@@ -534,7 +534,7 @@ ERR track_layer(extSurface *Self)
       glSurfaces.push_back(record);
    }
    else {
-      LONG parent;
+      int parent;
       if ((parent = find_parent_list(glSurfaces, Self)) IS -1) {
          log.warning("Failed to find parent surface #%d.", Self->ParentID);
          return ERR::Search;
@@ -572,7 +572,7 @@ void untrack_layer(OBJECTID ObjectID)
    if (auto i = find_surface_list(ObjectID); i != -1) {
       #ifdef DBG_LAYERS
          pf::Log log(__FUNCTION__);
-         log.msg("%d, Index: %d/%d", ObjectID, i, LONG(glSurfaces.size()));
+         log.msg("%d, Index: %d/%d", ObjectID, i, int(glSurfaces.size()));
          //print_layer_list("untrack_layer", glSurfaces, i);
       #endif
 
@@ -605,8 +605,8 @@ ERR update_surface_copy(extSurface *Self)
    // Calculate absolute coordinates by looking for the parent of this object.  Then simply add the parent's
    // absolute X,Y coordinates to our X and Y fields.
 
-   LONG i;
-   LONG absx, absy;
+   int i;
+   int absx, absy;
    if (Self->ParentID) {
       if ((i = find_parent_list(list, Self)) != -1) {
          absx = list[i].Left + Self->X;
@@ -644,13 +644,13 @@ ERR update_surface_copy(extSurface *Self)
       list[i].BytesPerPixel = Self->BytesPerPixel;
       list[i].LineWidth     = Self->LineWidth;
       list[i].Data          = Self->Data;
-      list[i].Cursor        = BYTE(Self->Cursor);
+      list[i].Cursor        = int8_t(Self->Cursor);
       list[i].RootID        = Self->RootID;
 
       // Rebuild absolute coordinates of child objects
 
       auto level = list[i].Level;
-      LONG c = i+1;
+      int c = i+1;
       while ((c < std::ssize(list)) and (list[c].Level > level)) {
          for (auto j=c-1; j >= 0; j--) {
             if (list[j].SurfaceID IS list[c].ParentID) {
@@ -670,11 +670,11 @@ ERR update_surface_copy(extSurface *Self)
 
 //********************************************************************************************************************
 
-void move_layer_pos(SURFACELIST &List, LONG Src, LONG Dest)
+void move_layer_pos(SURFACELIST &List, int Src, int Dest)
 {
    if (Src IS Dest) return;
 
-   LONG children;
+   int children;
    for (children=Src+1; (children < std::ssize(List)) and (List[children].Level > List[Src].Level); children++);
    children -= Src;
 
@@ -685,7 +685,7 @@ void move_layer_pos(SURFACELIST &List, LONG Src, LONG Dest)
    List.erase(List.begin() + Src, List.begin() + Src + children);
 
    // Insert the saved content
-   LONG target_index = (Dest > Src) ? Dest - children : Dest;
+   int target_index = (Dest > Src) ? Dest - children : Dest;
    List.insert(List.begin() + target_index, tmp.begin(), tmp.end());
 }
 
@@ -695,8 +695,8 @@ void move_layer_pos(SURFACELIST &List, LONG Src, LONG Dest)
 //
 // This function is also useful for skipping the dimension limits normally imposed when resizing.
 
-ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth,
-   LONG InsideHeight, LONG BPP, DOUBLE RefreshRate, LONG DeviceFlags)
+ERR resize_layer(extSurface *Self, int X, int Y, int Width, int Height, int InsideWidth,
+   int InsideHeight, int BPP, double RefreshRate, int DeviceFlags)
 {
    if (!Width)  Width = Self->Width;
    if (!Height) Height = Self->Height;
@@ -744,8 +744,8 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
             return log.warning(ERR::Redimension);
          }
 
-         Width = display->get<LONG>(FID_Width);
-         Height = display->get<LONG>(FID_Height);
+         Width = display->get<int>(FID_Width);
+         Height = display->get<int>(FID_Height);
       }
       else return log.warning(ERR::AccessObject);
    }
@@ -769,7 +769,7 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
 
    forbidDrawing();
 
-   struct acRedimension redimension = { (DOUBLE)X, (DOUBLE)Y, 0, (DOUBLE)Width, (DOUBLE)Height, (DOUBLE)BPP };
+   struct acRedimension redimension = { (double)X, (double)Y, 0, (double)Width, (double)Height, (double)BPP };
    NotifySubscribers(Self, AC::Redimension, &redimension, ERR::Okay);
 
    permitDrawing();
@@ -783,7 +783,7 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
       auto &list = glSurfaces;
 
-      LONG index;
+      int index;
       if ((index = find_surface_list(Self)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
          return ERR::Search;
       }
@@ -800,11 +800,11 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
          // Note: tlVolatileIndex determines the point at which volatile exposes will start.  We want volatile exposes to start just after our target surface, and not
          // anything that sits behind us in the containing parent.
 
-         LONG vindex;
+         int vindex;
          for (vindex=index+1; (vindex < std::ssize(list)) and (list[vindex].Level > list[index].Level); vindex++);
          tlVolatileIndex = vindex;
 
-         LONG parent_index;
+         int parent_index;
          for (parent_index=index-1; parent_index >= 0; parent_index--) {
             if (list[parent_index].SurfaceID IS Self->ParentID) break;
          }
@@ -837,7 +837,7 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
       log.traceBranch("Bitmap: %d, Count: %d", Bitmap->UID, Self->CallbackCount);
    #endif
 
-   for (LONG i=0; i < Self->CallbackCount; i++) {
+   for (int i=0; i < Self->CallbackCount; i++) {
       Bitmap->Opacity = 255;
       auto &cb = Self->Callback[i].Function;
       if (cb.isC()) {
@@ -871,11 +871,11 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
 // returning TRUE or FALSE accordingly.  If the region is completely obscured regardless of visibility settings, -1 is
 // returned.
 
-BYTE restrict_region_to_parents(const SURFACELIST &List, LONG Index, ClipRectangle &Area, bool MatchBitmap)
+int8_t restrict_region_to_parents(const SURFACELIST &List, int Index, ClipRectangle &Area, bool MatchBitmap)
 {
    bool visible = true;
    OBJECTID id = List[Index].SurfaceID;
-   for (LONG j=Index; (j >= 0) and (id); j--) {
+   for (int j=Index; (j >= 0) and (id); j--) {
       if (List[j].SurfaceID IS id) {
          if (List[j].invisible()) visible = false;
 
@@ -924,14 +924,14 @@ void permitExpose(void)
 }
 
 #ifdef DBG_LAYERS
-void print_layer_list(STRING Function, LONG POI)
+void print_layer_list(STRING Function, int POI)
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    auto &list = glSurfaces;
-   fprintf(stderr, "LAYER LIST: %d, From %s()\n", LONG(list.size()), Function);
+   fprintf(stderr, "LAYER LIST: %d, From %s()\n", int(list.size()), Function);
 
-   LONG j;
-   for (LONG i=0; i < LONG(list.size()); i++) {
+   int j;
+   for (int i=0; i < int(list.size()); i++) {
       fprintf(stderr, "%.2d: ", i);
       for (j=0; j < list[i].Level; j++) fprintf(stderr, " ");
       fprintf(stderr, "#%d, Parent: %d, Flags: $%.8x", list[i].SurfaceID, list[i].ParentID, list[i].Flags);
@@ -1035,13 +1035,13 @@ AccessObject
 *********************************************************************************************************************/
 
 ERR CopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, BDF Flags,
-          LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
+          int X, int Y, int Width, int Height, int XDest, int YDest)
 {
    pf::Log log(__FUNCTION__);
 
    if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR::NullArgs);
 
-   log.traceBranch("%dx%d,%dx%d TO %dx%d, Flags $%.8x", X, Y, Width, Height, XDest, YDest, LONG(Flags));
+   log.traceBranch("%dx%d,%dx%d TO %dx%d, Flags $%.8x", X, Y, Width, Height, XDest, YDest, int(Flags));
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
@@ -1055,7 +1055,7 @@ ERR CopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, BDF Flags,
 
          // Find the bitmap root
 
-         LONG root = find_bitmap_owner(glSurfaces, i);
+         int root = find_bitmap_owner(glSurfaces, i);
 
          SurfaceRecord list_i = glSurfaces[i];
          SurfaceRecord list_root = glSurfaces[root];
@@ -1131,7 +1131,7 @@ Search: The `Surface` ID does not refer to an existing surface object
 
 *********************************************************************************************************************/
 
-ERR ExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)
+ERR ExposeSurface(OBJECTID SurfaceID, int X, int Y, int Width, int Height, EXF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1140,7 +1140,7 @@ ERR ExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height, E
    if ((Width < 1) or (Height < 1)) return ERR::Okay;
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
-   LONG index;
+   int index;
    if ((index = find_surface_list(SurfaceID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
       log.traceWarning("Surface %d is not in the surfacelist.", SurfaceID);
       return ERR::Search;
@@ -1196,7 +1196,7 @@ Search: The supplied `Surface` ID did not refer to a recognised surface object.
 
 *********************************************************************************************************************/
 
-ERR GetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
+ERR GetSurfaceCoords(OBJECTID SurfaceID, int *X, int *Y, int *AbsX, int *AbsY, int *Width, int *Height)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1211,10 +1211,10 @@ ERR GetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *Abs
          if (Height) *Height = display->Height;
          return ERR::Okay;
       }
-      else return ERR::Failed;
+      else return ERR::SystemCall;
    }
 
-   LONG i;
+   int i;
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    if ((i = find_surface_list(SurfaceID)) IS -1) return ERR::Search;
 
@@ -1260,7 +1260,7 @@ ERR GetSurfaceFlags(OBJECTID SurfaceID, RNF *Flags)
    if (!SurfaceID) return log.warning(ERR::NullArgs);
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
-   LONG i;
+   int i;
    if ((i = find_surface_list(SurfaceID)) IS -1) return ERR::Search;
 
    *Flags = glSurfaces[i].Flags;
@@ -1290,7 +1290,7 @@ Search: The supplied SurfaceID did not refer to a recognised surface object.
 ERR GetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
 {
    pf::Log log(__FUNCTION__);
-   static THREADVAR SURFACEINFO info;
+   static thread_local SURFACEINFO info;
 
    // Note that a SurfaceID of zero is fine (returns the root surface).
 
@@ -1298,7 +1298,7 @@ ERR GetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-   LONG i, root;
+   int i, root;
    if (!SurfaceID) {
       i = 0;
       root = 0;
@@ -1375,7 +1375,7 @@ Search: The supplied `Surface` ID did not refer to a recognised surface object.
 
 *********************************************************************************************************************/
 
-ERR GetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
+ERR GetVisibleArea(OBJECTID SurfaceID, int *X, int *Y, int *AbsX, int *AbsY, int *Width, int *Height)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1390,12 +1390,12 @@ ERR GetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY,
          if (AbsY)   *AbsY = 0;
          return ERR::Okay;
       }
-      else return ERR::Failed;
+      else return ERR::SystemCall;
    }
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-   LONG i;
+   int i;
    if ((i = find_surface_list(SurfaceID)) IS -1) return ERR::Search;
 
    auto clip = glSurfaces[i].area();

@@ -1,19 +1,17 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 *********************************************************************************************************************/
 
-//#define _DEBUG
-//#define DBG_LAYOUT
-//#define DBG_STREAM
+//#define DBG_LAYOUT   // Enable layout log messages
+//#define DBG_STREAM   // Dump the bytecode stream to the log
 //#define DBG_SEGMENTS // Print list of segments
-//#define DBG_WORDWRAP
-//#define GUIDELINES // Clipping guidelines
-//#define GUIDELINES_CONTENT // Segment guidelines
+//#define DBG_WORDWRAP // Enable word-wrap log messages
+//#define GUIDELINES   // Draw guidelines around all registered content segments
 
-#if (defined(_DEBUG) || defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_SEGMENTS))
+#if (!defined(NDEBUG) || defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_SEGMENTS))
  #define RETAIN_LOG_LEVEL TRUE
 #endif
 
@@ -32,32 +30,16 @@ that is distributed with this package.  Please refer to it for further informati
 #define PRV_DOCUMENT_MODULE
 #define PRV_SURFACE
 
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/document.h>
-#include <parasol/modules/font.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/svg.h>
-#include <parasol/modules/vector.h>
-#include <parasol/strings.hpp>
-
-#include <float.h>
-#include <iomanip>
-#include <algorithm>
-#include <array>
-#include <variant>
-#include <stack>
-#include <cmath>
-#include <mutex>
-#include <charconv>
 #include "defs/hashes.h"
 #include "../link/unicode.h"
+#include <kotuku/modules/xquery.h>
+#include <cassert>
 
-using BYTECODE = ULONG;
-using CELL_ID = ULONG;
+using BYTECODE = uint32_t;
+using CELL_ID = uint32_t;
 
 static BYTECODE glByteCodeID = 1;
-static ULONG glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
+static uint32_t glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
 
 using namespace pf;
 
@@ -70,7 +52,7 @@ JUMPTABLE_VECTOR
 
 //********************************************************************************************************************
 
-static std::string glHighlight = "rgb(219,219,255,255)";
+static std::string glHighlight = "rgb(219 219 255 / 1)";
 
 static OBJECTPTR clDocument = nullptr;
 static OBJECTPTR modDisplay = nullptr, modFont = nullptr, modDocument = nullptr, modVector = nullptr;
@@ -132,18 +114,17 @@ struct layout; // Pre-def
 static ERR  activate_cell_edit(extDocument *, int, stream_char);
 static ERR  add_document_class(void);
 static int add_tabfocus(extDocument *, TT, BYTECODE);
-static void advance_tabfocus(extDocument *, BYTE);
+static void advance_tabfocus(extDocument *, int8_t);
 static void deactivate_edit(extDocument *, bool);
-static ERR  extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
+static ERR  extract_script(extDocument *, std::string_view, objScript **, std::string &, std::string &);
 static void error_dialog(const std::string, const std::string);
 static void error_dialog(const std::string, ERR);
-static const Field * find_field(OBJECTPTR, std::string_view, OBJECTPTR *);
 static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
 static int  find_tabfocus(extDocument *, TT, BYTECODE);
 static ERR  flash_cursor(extDocument *, int64_t, int64_t);
 static int getutf8(CSTRING, int *);
 static ERR  insert_text(extDocument *, RSTREAM *, stream_char &, const std::string_view, bool);
-static ERR  insert_xml(extDocument *, RSTREAM *, objXML *, objXML::TAGS &, int, STYLE = STYLE::NIL, IPF = IPF::NIL);
+static ERR  insert_xml(extDocument *, RSTREAM *, objXML *, const objXML::TAGS &, int, STYLE = STYLE::NIL, IPF = IPF::NIL);
 static ERR  key_event(objVectorViewport *, KQ, KEY, int);
 static void layout_doc(extDocument *);
 static ERR  load_doc(extDocument *, std::string, bool, ULD = ULD::NIL);
@@ -154,19 +135,18 @@ static void notify_free_event(OBJECTPTR, ACTIONID, ERR, APTR);
 static void notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
 static ERR  feedback_view(objVectorViewport *, FM);
 static void process_parameters(extDocument *, const std::string_view);
-static CSTRING read_unit(CSTRING, DOUBLE &, bool &);
+static std::string_view read_unit(std::string_view, double &, bool &);
 static void redraw(extDocument *, bool);
 static ERR  report_event(extDocument *, DEF, entity *, KEYVALUE *);
 static void reset_cursor(extDocument *);
-static ERR  resolve_fontx_by_index(extDocument *, stream_char, DOUBLE &);
-static int  safe_file_path(extDocument *, const std::string &);
+static ERR  resolve_fontx_by_index(extDocument *, stream_char, double &);
+static int  safe_file_path(extDocument *, std::string_view);
 static void set_focus(extDocument *, int, CSTRING);
-static void show_bookmark(extDocument *, const std::string &);
+static void show_bookmark(extDocument *, std::string_view);
 static std::string stream_to_string(RSTREAM &, stream_char, stream_char);
 static ERR  unload_doc(extDocument *, ULD = ULD::NIL);
 static bool valid_objectid(extDocument *, OBJECTID);
-static bool view_area(extDocument *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-static std::string write_calc(DOUBLE, WORD);
+static bool view_area(extDocument *, double, double, double, double);
 
 static ERR GET_WorkingPath(extDocument *, CSTRING *);
 
@@ -217,6 +197,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       APTR new_handle = nullptr;
       if (vec::GetFontHandle(resolved_face, DEFAULT_FONTSTYLE.c_str(), 400, DEFAULT_FONTSIZE, &new_handle) IS ERR::Okay) {
          glFonts.emplace_back(new_handle, resolved_face, DEFAULT_FONTSTYLE, DEFAULT_FONTSIZE);
+         glFontIndexCache.try_emplace(font_cache_key { resolved_face, DEFAULT_FONTSTYLE, DEFAULT_FONTSIZE }, 0);
       }
       else return ERR::Failed;
    }
@@ -227,6 +208,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
+   glFontIndexCache.clear();
    glFonts.clear();
 
    if (modVector)  { FreeResource(modVector);  modVector  = nullptr; }
@@ -323,5 +305,5 @@ static ERR add_document_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, nullptr)
+KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_document_module() { return &ModHeader; }

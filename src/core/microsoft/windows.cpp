@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <algorithm>
-#ifdef _DEBUG
+#ifndef NDEBUG
 #include <crtdbg.h>
 #endif
 #ifdef _MSC_VER
@@ -34,18 +34,15 @@
 #include <winioctl.h>
 #include <shlobj.h>
 
-#ifdef __CYGWIN__
-#include <sys/timespec.h>
-#endif
 #include <tchar.h>
 #include <imagehlp.h>
 
 #ifndef PLATFORM_CONFIG_H
-#include <parasol/config.h>
+#include <kotuku/config.h>
 #endif
 
 #include "windefs.h"
-#include <parasol/system/errors.h>
+#include <kotuku/system/errors.h>
 
 #define STD_TIMEOUT 1000
 
@@ -56,14 +53,12 @@ constexpr int MAX_ERROR_MSG = 400;
 constexpr int MAX_USERNAME = 256;
 constexpr int MAX_ENV_VALUE = 512;
 
-#ifdef _DEBUG
-#define MSG(...) printf(__VA_ARGS__)
-#else
+//#define MSG(...) printf(__VA_ARGS__)
 #define MSG(...)
-#endif
 
 #include <string>
 #include <array>
+#include <chrono>
 
 #define WAITLOCK_EVENTS 1 // Use events instead of semaphores for waitlocks (recommended)
 
@@ -88,7 +83,7 @@ static bool csGlobalInitialized = false;
 #ifndef _MSC_VER
 WINBASEAPI VOID WINAPI InitializeConditionVariable(PCONDITION_VARIABLE ConditionVariable);
 WINBASEAPI WINBOOL WINAPI SleepConditionVariableCS(PCONDITION_VARIABLE ConditionVariable, PCRITICAL_SECTION CriticalSection, DWORD dwMilliseconds);
-WINBASEAPI WINBOOL WINAPI SleepConditionVariableSRW(PCONDITION_VARIABLE ConditionVariable, PSRWLOCK SRWLock, DWORD dwMilliseconds, ULONG Flags);
+WINBASEAPI WINBOOL WINAPI SleepConditionVariableSRW(PCONDITION_VARIABLE ConditionVariable, PSRWLOCK SRWLock, DWORD dwMilliseconds, uint32_t Flags);
 WINBASEAPI VOID WINAPI WakeAllConditionVariable(PCONDITION_VARIABLE ConditionVariable);
 WINBASEAPI VOID WINAPI WakeConditionVariable(PCONDITION_VARIABLE ConditionVariable);
 #endif
@@ -96,14 +91,13 @@ WINBASEAPI VOID WINAPI WakeConditionVariable(PCONDITION_VARIABLE ConditionVariab
 
 extern "C" ERR plAllocPrivateSemaphore(HANDLE *Semaphore, int InitialValue);
 extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore);
-extern "C" long long winGetTickCount(void);
 
 static LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
 
 extern "C" int validate_process(int ProcessID);
 
 typedef void * APTR;
-typedef unsigned char UBYTE;
+typedef unsigned char uint8_t;
 
 static UINT glDeadProcessMsg; // Read only.
 
@@ -148,7 +142,7 @@ static struct {
    HANDLE LocalHandle;
 } glHandleBank[MAX_HANDLES];
 
-static WORD glHandleCount = 0;
+static int16_t glHandleCount = 0;
 static CRITICAL_SECTION csHandleBank;
 static CRITICAL_SECTION csJob;
 
@@ -157,17 +151,17 @@ static CRITICAL_SECTION csJob;
 typedef long long int64_t;
 typedef void * APTR;
 //typedef void * OBJECTPTR;
-typedef unsigned char UBYTE;
+typedef unsigned char uint8_t;
 
 
 typedef struct DateTime {
-   WORD Year;
-   BYTE Month;
-   BYTE Day;
-   BYTE Hour;
-   BYTE Minute;
-   BYTE Second;
-   BYTE TimeZone;
+   int16_t Year;
+   int8_t Month;
+   int8_t Day;
+   int8_t Hour;
+   int8_t Minute;
+   int8_t Second;
+   int8_t TimeZone;
 } DateTime;
 
 #define DRIVETYPE_REMOVABLE 1
@@ -191,6 +185,7 @@ typedef struct DateTime {
 #define MFF_DEEP 0x00001000
 #define MFF_RENAME (MFF_MOVED)
 #define MFF_WRITE (MFF_MODIFY)
+constexpr int WATCH_NOTIFY_SUBTREE = 0x40000000;
 
 // Return codes available to the feedback routine
 
@@ -264,7 +259,7 @@ extern std::string winFormatMessage(int Error = GetLastError());
 extern std::string winFormatMessage(int Error)
 {
    std::string Buffer(MAX_ERROR_MSG, '\0');
-   
+
    auto i = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error, 0, Buffer.data(), Buffer.size(), nullptr);
    while ((i > 0) and (Buffer[i-1] <= 0x20)) i--; // Windows puts whitespace at the end of error strings for some reason
    Buffer.resize(i);
@@ -281,15 +276,18 @@ static void printerror(void)
 }
 
 //********************************************************************************************************************
-// Console checker for Cygwin
+// Check if a handle refers to a console
 
-BYTE is_console(HANDLE h)
+static int8_t is_console(HANDLE h)
 {
    if (FILE_TYPE_UNKNOWN IS GetFileType(h) and ERROR_INVALID_HANDLE IS GetLastError()) {
-       if ((h = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr))) {
-           CloseHandle(h);
-           return true;
-       }
+      auto console_handle = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
+      if (console_handle != INVALID_HANDLE_VALUE) {
+         CloseHandle(console_handle);
+         return true;
+      }
+
+      return false;
    }
 
    CONSOLE_FONT_INFO cfi;
@@ -300,7 +298,7 @@ BYTE is_console(HANDLE h)
 // If the program is launched from a console, attach to it.  Otherwise create a new console window and redirect output
 // to it (e.g. if launched from a desktop icon).
 
-extern "C" void activate_console(BYTE AllowOpenConsole)
+extern "C" void activate_console(int8_t AllowOpenConsole)
 {
    static bool activated = false;
 
@@ -309,25 +307,25 @@ extern "C" void activate_console(BYTE AllowOpenConsole)
       if (GetEnvironmentVariable("TERM", value, sizeof(value)) or
           GetEnvironmentVariable("PROMPT", value, sizeof(value))) { // TERM defined by Cygwin, Mingw, PROMPT defined by cmd.exe
 
-         // NB: Cygwin stdout/err handling is broken and requires the following workaround for ensuring that stdout
-         // and stderr are managed correctly for both standard console output and file redirection.
-
          HANDLE current_out = GetStdHandle(STD_OUTPUT_HANDLE);
          HANDLE current_err = GetStdHandle(STD_ERROR_HANDLE);
 
          AttachConsole(ATTACH_PARENT_PROCESS);
+
+         // Double-check if we're attached to the console with is_console() because the parent process may have
+         // redirected the std* descriptors to a file for instance.  If we freopen() blindly then we otherwise
+         // revert output back to the console.
 
          if (is_console(current_out)) freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
          if (is_console(current_err)) freopen("CON", "w", stderr);
       }
       else if (AllowOpenConsole) { // Assume that executable was launched from desktop without a console
          AllocConsole();
-         AttachConsole(GetCurrentProcessId());
          freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
          freopen("CON", "w", stderr);
       }
       else return;
-      
+
       // Set console mode to handle UTF-8 properly
 
       SetConsoleOutputCP(CP_UTF8);
@@ -370,7 +368,7 @@ static inline unsigned int LCASEHASH(const char* String) noexcept
 
 //********************************************************************************************************************
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 static char glSymbolsLoaded = false;
 static void windows_print_stacktrace(CONTEXT* context)
 {
@@ -442,7 +440,7 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
    char path[255];
    int len;
 
-   #ifdef _DEBUG
+   #ifndef NDEBUG
       // This is only needed if the application crashes and a stack trace is printed.
       SymSetOptions(SymGetOptions() | SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS);
       if (SymInitialize(GetCurrentProcess(), 0, true)) glSymbolsLoaded = true;
@@ -456,7 +454,7 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
 
    SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOOPENFILEERRORBOX); // SEM_NOGPFAULTERRORBOX
 
-   // Calculate a unique hash from the Core's DLL path.  This hash can then be used for telling which Parasol
+   // Calculate a unique hash from the Core's DLL path.  This hash can then be used for telling which Kōtuku
    // programs are using the same set of binaries.
 
    if (PathHash) {
@@ -464,7 +462,8 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
 
       SetLastError(ERROR_SUCCESS);
       if (VirtualQuery(LPCVOID(winInitialise), &mbiInfo, sizeof(mbiInfo))) {
-         if ((len = GetModuleFileName((HINSTANCE)mbiInfo.AllocationBase, path, sizeof(path)))) {
+         if ((len = GetModuleFileName((HINSTANCE)mbiInfo.AllocationBase, path, sizeof(path) - 1))) {
+            path[sizeof(path) - 1] = 0;
             *PathHash = LCASEHASH(path);
          }
       }
@@ -484,7 +483,7 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
 
    InitializeCriticalSection(&csHandleBank);
    InitializeCriticalSection(&csJob);
-   
+
    // Initialize global access critical section
    if (!csGlobalInitialized) {
       InitializeCriticalSection(&csGlobalAccess);
@@ -506,7 +505,7 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
    wx.hInstance     = glInstance;
    wx.lpszClassName = glMsgClass;
    if (RegisterClassEx(&wx)) {
-      glMsgWindow = CreateWindowEx(0, glMsgClass, "Parasol",
+      glMsgWindow = CreateWindowEx(0, glMsgClass, "Kotuku",
          0, // WS flags
          0, 0, // Coordinates
          CW_USEDEFAULT, CW_USEDEFAULT,
@@ -532,9 +531,9 @@ extern "C" ERR plAllocPrivateSemaphore(HANDLE *Semaphore, int InitialValue)
 
 extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore)
 {
-   if (Semaphore and *Semaphore) { 
-      CloseHandle(*Semaphore); 
-      *Semaphore = nullptr; 
+   if (Semaphore and *Semaphore) {
+      CloseHandle(*Semaphore);
+      *Semaphore = nullptr;
    }
 }
 
@@ -545,7 +544,7 @@ extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore)
 extern "C" void winDeathBringer(int Status)
 {
    static int last_status = -1;
-   
+
    if (csGlobalInitialized) {
       EnterCriticalSection(&csGlobalAccess);
       if (Status > last_status) {
@@ -581,7 +580,7 @@ extern "C" void winShutdown(void)
    UnregisterClass(glMsgClass, glInstance);
 
    EnterCriticalSection(&csHandleBank);
-      WORD i;
+      int16_t i;
       for (i=0; i < glHandleCount; i++) {
          if (glHandleBank[i].LocalHandle) CloseHandle(glHandleBank[i].LocalHandle);
       }
@@ -590,7 +589,7 @@ extern "C" void winShutdown(void)
 
    DeleteCriticalSection(&csHandleBank);
    DeleteCriticalSection(&csJob);
-   
+
    // Cleanup global access critical section
    if (csGlobalInitialized) {
       DeleteCriticalSection(&csGlobalAccess);
@@ -644,7 +643,7 @@ static HANDLE handle_cache(int OtherProcess, HANDLE OtherHandle, BYTE *Free)
 extern "C" ERR alloc_public_waitlock(HANDLE *Lock, const char *Name)
 {
    if (!Lock) return ERR::NullArgs;
-   
+
 #ifdef WAITLOCK_EVENTS
    HANDLE event = nullptr;
 
@@ -706,28 +705,10 @@ extern "C" ERR wake_waitlock(HANDLE Lock, int TotalSleepers) noexcept
 
 //********************************************************************************************************************
 
-#ifdef __CYGWIN__
-static int strnicmp(const char *s1, const char *s2, size_t n)
-{
-   for (; n > 0; s1++, s2++, --n) {
-      unsigned char c1 = *s1;
-      unsigned char c2 = *s2;
-      if ((c1 >= 'A') or (c1 <= 'Z')) c1 = c1 - 'A' + 'a';
-      if ((c2 >= 'A') or (c2 <= 'Z')) c2 = c2 - 'A' + 'a';
-
-      if (c1 != c2) return ((*(unsigned char *)s1 < *(unsigned char *)s2) ? -1 : +1);
-      else if (c1 IS '\0') return 0;
-   }
-   return 0;
-}
-#endif
-
-//********************************************************************************************************************
-
 extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
 {
    if (!String or Length < 4) return 0; // Need at least "C:\\" + null terminator
-   
+
    int len, i;
    WCHAR **list;
 
@@ -757,7 +738,7 @@ extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
       while (i > 0) {
          if ((String[i] IS '/') or (String[i] IS '\\')) {
             String[i+1] = 0;
-            return i;
+            return i + 1;
          }
          i--;
       }
@@ -765,7 +746,8 @@ extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
 
    // Windows has not prepended the path to the executable.  (Observed in Windows 7 64).  Try another method...
 
-   if ((len = GetProcessImageFileNameA(GetCurrentProcess(), String, Length)) > 0) {
+   if ((len = GetProcessImageFileNameA(GetCurrentProcess(), String, Length - 1)) > 0) {
+      String[Length - 1] = 0;
       char tmp[MAX_PATH] = "";
 
       if (GetLogicalDriveStrings(sizeof(tmp)-1, tmp)) {
@@ -778,11 +760,15 @@ extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
 
             if (QueryDosDevice(szDrive, devname, sizeof(devname))) {
                int devlen = strlen(devname);
-               if (strnicmp(String, devname, devlen) IS devlen) {
+               if (strnicmp(String, devname, devlen) IS 0) {
                   if (String[devlen] IS '\\') {
                      // Replace device path with DOS path
                      std::string tmpfile = szDrive + std::string(String+devlen);
                      if ((tmpfile.size() > 0) and (tmpfile.size() < MAX_PATH)) {
+                        size_t last_slash = tmpfile.find_last_of('\\');
+                        if (last_slash != std::string::npos) tmpfile.resize(last_slash + 1);
+                        else return 0;
+
                         size_t copy_len = std::min<size_t>(tmpfile.size(), Length - 1);
                         memcpy(String, tmpfile.c_str(), copy_len);
                         String[copy_len] = 0;
@@ -812,12 +798,13 @@ extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
 extern "C" void winProcessMessages(void)
 {
    MSG msg;
-   long long time = winGetTickCount() + PROCESS_MESSAGE_TIMEOUT_US;
+   auto start_time = std::chrono::steady_clock::now();
+   auto timeout = std::chrono::microseconds(PROCESS_MESSAGE_TIMEOUT_US);
    ZeroMemory(&msg, sizeof(msg));
    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
-      if (winGetTickCount() > time) break; // This timer-break prevents any chance of infinite looping
+      if (std::chrono::steady_clock::now() - start_time > timeout) break; // This timer-break prevents any chance of infinite looping
    }
 }
 
@@ -832,8 +819,8 @@ extern "C" void winLowerPriority(void) noexcept
 
 extern "C" int winSetProcessPriority(int Priority) noexcept
 {
-   // Map Parasol priority values to Windows priority classes
-   // Parasol uses: negative = lower priority, positive = higher priority, 0 = normal
+   // Map Kōtuku priority values to Windows priority classes
+   // Kōtuku uses: negative = lower priority, positive = higher priority, 0 = normal
    DWORD priorityClass;
 
    if (Priority <= -20) priorityClass = IDLE_PRIORITY_CLASS;              // Lowest priority
@@ -851,11 +838,11 @@ extern "C" int winSetProcessPriority(int Priority) noexcept
 
 extern "C" int winGetProcessPriority(void) noexcept
 {
-   // Get current process priority class and map to Parasol priority values
+   // Get current process priority class and map to Kōtuku priority values
    const DWORD priorityClass = GetPriorityClass(GetCurrentProcess());
    if (priorityClass IS 0) return -1; // Error occurred
-   
-   // Map Windows priority classes to Parasol values
+
+   // Map Windows priority classes to Kōtuku values
    switch (priorityClass) {
       case IDLE_PRIORITY_CLASS:         return -20;  // Lowest priority
       case BELOW_NORMAL_PRIORITY_CLASS: return -10;  // Below normal
@@ -871,7 +858,7 @@ extern "C" int64_t winGetProcessAffinityMask(void) noexcept
 {
    DWORD_PTR processAffinityMask = 0;
    DWORD_PTR systemAffinityMask = 0;
-   
+
    // Get current process affinity mask
    if (GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask)) {
       return (int64_t)processAffinityMask;
@@ -886,23 +873,23 @@ extern "C" int winSetProcessAffinityMask(int64_t AffinityMask) noexcept
    // Set CPU affinity mask for the current process
    // AffinityMask is a bitmask where each bit represents a CPU core
    // Bit 0 = Core 0, Bit 1 = Core 1, etc.
-   
+
    if (AffinityMask IS 0) return ERROR_INVALID_PARAMETER; // Invalid mask
-   
+
    DWORD_PTR processAffinityMask = (DWORD_PTR)AffinityMask;
    DWORD_PTR systemAffinityMask;
-   
+
    // Get system affinity mask to validate our request
    if (not GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask)) {
       return GetLastError();
    }
-   
+
    // Ensure requested mask is valid for this system
    DWORD_PTR requestedMask = (DWORD_PTR)AffinityMask;
    if ((requestedMask & systemAffinityMask) != requestedMask) {
       return ERROR_INVALID_PARAMETER; // Requested cores not available
    }
-   
+
    // Set the process affinity mask
    if (SetProcessAffinityMask(GetCurrentProcess(), requestedMask)) return 0; // Success
    else return GetLastError();
@@ -948,7 +935,7 @@ extern "C" int winFreeLibrary(HMODULE Module)
 
 extern "C" HANDLE winLoadLibrary(LPCSTR Name)
 {
-   HANDLE h = LoadLibraryExA(Name, NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR|LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_USER_DIRS|LOAD_LIBRARY_SEARCH_SYSTEM32);
+   HANDLE h = LoadLibraryExA(Name, nullptr, LOAD_LIBRARY_SEARCH_APPLICATION_DIR|LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_USER_DIRS|LOAD_LIBRARY_SEARCH_SYSTEM32);
    return h;
 }
 
@@ -979,6 +966,7 @@ extern "C" int winGetCurrentProcessId(void)
 extern "C" size_t winGetProcessMemoryUsage(int ProcessID)
 {
    PROCESS_MEMORY_COUNTERS pmc;
+   ZeroMemory(&pmc, sizeof(pmc));
    HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, ProcessID);
    if (process) {
       if (GetProcessMemoryInfo(process, &pmc, sizeof(pmc))) {
@@ -987,7 +975,7 @@ extern "C" size_t winGetProcessMemoryUsage(int ProcessID)
       }
       CloseHandle(process);
    }
-   return -1; // Failed to retrieve memory usage
+   return 0; // Failed to retrieve memory usage
 }
 
 //********************************************************************************************************************
@@ -1042,7 +1030,7 @@ extern "C" int winWaitForSingleObject(HANDLE Handle, int Time)
 //   -3 = A message was received in the windows message queue.
 //   -4 = Unknown result returned from windows.
 
-extern "C" int winWaitForObjects(int Total, HANDLE *Handles, int Time, BYTE WinMsgs)
+extern "C" int winWaitForObjects(int Total, HANDLE *Handles, int Time, int8_t WinMsgs)
 {
    if (Time IS -1) Time = INFINITE;
 
@@ -1079,55 +1067,6 @@ extern "C" int winWaitForObjects(int Total, HANDLE *Handles, int Time, BYTE WinM
          return -4;
       }
    }
-}
-
-//********************************************************************************************************************
-
-extern "C" void winSleep(int Time)
-{
-   Sleep(Time);
-}
-
-//********************************************************************************************************************
-// Retrieve the 'counts per second' value if this hardware supports a high frequency timer.  Otherwise use
-// GetTickCount().
-
-extern "C" long long winGetTickCount(void)
-{
-   static LARGE_INTEGER freq;
-   static BYTE init = 0;
-   static long long start = 0;
-   static CRITICAL_SECTION csTickCount;
-   static bool csTickCountInit = false;
-
-   if (!init) {
-      // Initialize critical section for thread safety
-      if (!csTickCountInit) {
-         InitializeCriticalSection(&csTickCount);
-         csTickCountInit = true;
-      }
-      
-      EnterCriticalSection(&csTickCount);
-      if (!init) { // Double-check after acquiring lock
-         int r = QueryPerformanceFrequency(&freq);
-         if (r) {
-            init = 1;
-            // Record a base-line so that we know we're starting from zero and not some arbitrarily large number.
-            LARGE_INTEGER time;
-            QueryPerformanceCounter(&time);
-            start = time.QuadPart;
-         }
-         else init = -1; // Hardware does not support this feature.
-      }
-      LeaveCriticalSection(&csTickCount);
-   }
-
-   if (init IS 1) {
-      LARGE_INTEGER time;
-      QueryPerformanceCounter(&time); // Get tick count
-      return (time.QuadPart - start) * 1000000LL / freq.QuadPart; // Convert ticks to microseconds, then divide by 'frequency counts per second'
-   }
-   else return GetTickCount() * 1000LL;
 }
 
 //********************************************************************************************************************
@@ -1233,17 +1172,17 @@ HANDLE glMemoryPool;
 extern "C" int winCreateSharedMemory(char *Name, int mapsize, int initial_size, HANDLE *ControlID, void **Address)
 {
    if (!ControlID or !Address or initial_size <= 0) return -3; // Invalid arguments
-   
+
    *ControlID = nullptr;
    *Address = nullptr;
-   
+
    // Create the shared memory area with proper security attributes
    SECURITY_ATTRIBUTES sa = {
       .nLength = sizeof(SECURITY_ATTRIBUTES),
       .lpSecurityDescriptor = nullptr,
       .bInheritHandle = false
    };
-   
+
    if ((*ControlID = CreateFileMapping((HANDLE)-1, &sa, PAGE_READWRITE, 0, initial_size, Name))) {
       glMemoryPool = *ControlID;
       int init = (GetLastError() != ERROR_ALREADY_EXISTS) ? 1 : 0;
@@ -1260,6 +1199,63 @@ extern "C" int winCreateSharedMemory(char *Name, int mapsize, int initial_size, 
 }
 
 //********************************************************************************************************************
+// Allocate memory with OS-level protection using VirtualAlloc
+
+extern "C" void * winAllocProtectedMemory(size_t Size, int ProtectionFlags)
+{
+   if (Size IS 0) return nullptr;
+
+   // The caller must provide a page-aligned size (see align_page_size).
+   // No need to realign here.
+
+   // Determine protection flags from MEM flags
+   DWORD protect = PAGE_NOACCESS;
+   if (ProtectionFlags IS 0x00030000) protect = PAGE_READWRITE;  // MEM::READ_WRITE
+   else if (ProtectionFlags & 0x00020000) protect = PAGE_READWRITE;  // MEM::WRITE
+   else if (ProtectionFlags & 0x00010000) protect = PAGE_READONLY;   // MEM::READ
+
+   return VirtualAlloc(nullptr, Size, MEM_COMMIT | MEM_RESERVE, protect);
+}
+
+//********************************************************************************************************************
+// Free memory allocated with VirtualAlloc
+
+extern "C" int winFreeProtectedMemory(void *Address, size_t Size)
+{
+   if (!Address) return 0;
+   // VirtualFree with MEM_RELEASE ignores the size parameter and releases the entire region
+   return VirtualFree(Address, 0, MEM_RELEASE) ? 1 : 0;
+}
+
+//********************************************************************************************************************
+// Get the system page size
+
+extern "C" size_t winGetPageSize(void)
+{
+   SYSTEM_INFO si;
+   GetSystemInfo(&si);
+   return si.dwPageSize;
+}
+
+//********************************************************************************************************************
+// Change memory protection flags on an existing VirtualAlloc allocation
+
+extern "C" int winProtectMemory(void *Address, size_t Size, bool Read, bool Write, bool Exec)
+{
+   if ((not Address) or (Size == 0)) return 0;
+
+   DWORD protect = PAGE_NOACCESS;
+   if (Write and Exec) protect = PAGE_EXECUTE_READWRITE;
+   else if (Write) protect = PAGE_READWRITE;
+   else if (Read and Exec) protect = PAGE_EXECUTE_READ;
+   else if (Read) protect = PAGE_READONLY;
+   else if (Exec) protect = PAGE_EXECUTE;
+
+   DWORD old_protect;
+   return VirtualProtect(Address, Size, protect, &old_protect) ? 1 : 0;
+}
+
+//********************************************************************************************************************
 
 extern "C" int winDeleteFile(const char *Path)
 {
@@ -1268,17 +1264,13 @@ extern "C" int winDeleteFile(const char *Path)
 
 //********************************************************************************************************************
 
-extern "C" int winGetEnv(const char *Name, char *Buffer, int Size)
+extern "C" void winGetEnv(const char *Name, std::string &Buffer)
 {
-   if (!Name or !Buffer or Size <= 0) return 0;
-   
-   int result = GetEnvironmentVariable(Name, Buffer, Size);
-   if (result >= Size) {
-      // Buffer too small, ensure null termination
-      Buffer[Size - 1] = 0;
-      return Size - 1;
-   }
-   return result;
+   Buffer.clear();
+   if (!Name) return;
+   char buffer[4096];
+   int result = GetEnvironmentVariable(Name, buffer, sizeof(buffer));
+   if (result > 0) Buffer.assign(buffer, result);
 }
 
 //********************************************************************************************************************
@@ -1328,7 +1320,7 @@ int ExceptionFilter(LPEXCEPTION_POINTERS Args)
 {
    int continuable, code, err;
 
-   #ifdef _DEBUG
+   #ifndef NDEBUG
    if (Args->ExceptionRecord->ExceptionCode != EXCEPTION_STACK_OVERFLOW) {
       windows_print_stacktrace(Args->ContextRecord);
    }
@@ -1498,7 +1490,7 @@ extern "C" int winGetFullPathName(const char *Path, int PathLength, char *Output
 
 //********************************************************************************************************************
 
-extern "C" BYTE winGetCommand(char *Path, char *Buffer, int BufferSize)
+extern "C" int8_t winGetCommand(char *Path, char *Buffer, int BufferSize)
 {
    if (BufferSize < MAX_PATH+3) return 1;
 
@@ -1517,13 +1509,14 @@ extern "C" BYTE winGetCommand(char *Path, char *Buffer, int BufferSize)
 
 extern "C" int winCurrentDirectory(char *Buffer, int BufferSize)
 {
-   WORD i, len;
+   if (!Buffer or BufferSize <= 0) return 0;
 
    Buffer[0] = 0;
-   if ((len = GetModuleFileNameA(nullptr, Buffer, BufferSize))) {
-      for (i=len; i > 0; i--) {
-         if (Buffer[i] IS '\\') {
-            Buffer[i+1] = 0;
+   if (auto len = GetModuleFileNameA(nullptr, Buffer, BufferSize - 1)) {
+      Buffer[BufferSize - 1] = 0;
+      for (auto i=len; i > 0; i--) {
+         if (Buffer[i-1] IS '\\') {
+            Buffer[i] = 0;
             break;
          }
       }
@@ -1557,7 +1550,7 @@ static void convert_time(FILETIME *Source, struct DateTime *Dest)
 
 //********************************************************************************************************************
 
-extern "C" ERR winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, int64_t *Size,
+extern "C" ERR winGetFileAttributesEx(const char *Path, int8_t *Hidden, int8_t *ReadOnly, int8_t *Archive, int8_t *Folder, int64_t *Size,
    struct DateTime *LastWrite, struct DateTime *LastAccess, struct DateTime *LastCreate)
 {
    WIN32_FILE_ATTRIBUTE_DATA info;
@@ -1603,20 +1596,99 @@ extern "C" ERR winCreateDir(const char *Path)
 }
 
 //********************************************************************************************************************
+
+static void trim_trailing_separators(std::string &Path)
+{
+   while ((Path.size() > 1) and ((Path.back() IS '/') or (Path.back() IS '\\'))) {
+      if (((Path.size() IS 3) and (Path[1] IS ':')) or
+          ((Path.size() >= 2) and (Path[Path.size() - 2] IS ':'))) break;
+      Path.pop_back();
+   }
+}
+
+//********************************************************************************************************************
+
+static ERR convert_link_error(DWORD Error)
+{
+   switch (Error) {
+      case ERROR_ACCESS_DENIED:
+      case ERROR_PRIVILEGE_NOT_HELD:
+         return ERR::NoPermission;
+      case ERROR_NOT_SUPPORTED:
+      case ERROR_INVALID_FUNCTION:
+         return ERR::NoSupport;
+      case ERROR_ALREADY_EXISTS:
+      case ERROR_FILE_EXISTS:
+         return ERR::FileExists;
+      case ERROR_BUFFER_OVERFLOW:
+      case ERROR_FILENAME_EXCED_RANGE:
+         return ERR::BufferOverflow;
+      case ERROR_PATH_NOT_FOUND:
+         return ERR::FileNotFound;
+      case ERROR_DISK_FULL:
+      case ERROR_HANDLE_DISK_FULL:
+         return ERR::OutOfSpace;
+      default:
+         return ERR::SystemCall;
+   }
+}
+
+//********************************************************************************************************************
+
+extern "C" ERR winCreateLink(CSTRING Target, CSTRING Link)
+{
+   if ((!Target) or (!Target[0]) or (!Link) or (!Link[0])) return ERR::NullArgs;
+
+   std::string symlink_path(Target);
+   std::string target_path(Link);
+
+   bool is_directory = target_path.ends_with('/') or target_path.ends_with('\\') or target_path.ends_with(':');
+
+   std::string target_probe(target_path);
+   trim_trailing_separators(target_probe);
+   if (auto attrs = GetFileAttributes(target_probe.c_str()); attrs != INVALID_FILE_ATTRIBUTES) {
+      if (attrs & FILE_ATTRIBUTE_DIRECTORY) is_directory = true;
+   }
+
+   trim_trailing_separators(symlink_path);
+   trim_trailing_separators(target_path);
+
+   if (symlink_path.empty() or target_path.empty()) return ERR::NullArgs;
+
+   DWORD flags = is_directory ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0;
+#ifdef SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
+   flags |= SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
+#endif
+
+   if (CreateSymbolicLink(symlink_path.c_str(), target_path.c_str(), flags)) return ERR::Okay;
+
+   auto error = GetLastError();
+#ifdef SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
+   if (((flags & SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE) != 0) and (error IS ERROR_INVALID_PARAMETER)) {
+      flags &= ~SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
+      if (CreateSymbolicLink(symlink_path.c_str(), target_path.c_str(), flags)) return ERR::Okay;
+      error = GetLastError();
+   }
+#endif
+
+   return convert_link_error(error);
+}
+
+//********************************************************************************************************************
 // Returns true on success.
 
-extern "C" int winGetFreeDiskSpace(char Drive, long long *TotalSpace, long long *BytesUsed)
+extern "C" int winGetFreeDiskSpace(char Drive, long long *BytesFree, long long *TotalSize)
 {
    DWORD sectors, bytes_per_sector, free_clusters, total_clusters;
 
-   *TotalSpace = 0;
-   *BytesUsed = 0;
+   *BytesFree = 0;
+   *TotalSize = 0;
 
    char location[4] = { Drive, ':', '\\', 0 };
 
    if (GetDiskFreeSpace(location, &sectors, &bytes_per_sector, &free_clusters, &total_clusters)) {
-      *TotalSpace = (double)sectors * (double)bytes_per_sector * (double)free_clusters;
-      *BytesUsed  = ((double)sectors * (double)bytes_per_sector * (double)total_clusters);
+      *BytesFree = (long long)sectors * (long long)bytes_per_sector * (long long)free_clusters;
+      *TotalSize = (long long)sectors * (long long)bytes_per_sector * (long long)total_clusters;
       return 1;
    }
    else return 0;
@@ -1629,14 +1701,16 @@ extern "C" int winResetDate(STRING Location)
 {
    HANDLE handle;
 
-   if ((handle = CreateFile(Location, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, nullptr,
+   if ((handle = CreateFile(Location, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, nullptr,
          OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)) != INVALID_HANDLE_VALUE) {
 
       FILETIME filetime;
-      GetFileTime(handle, &filetime, nullptr, nullptr);
-      int err = SetFileTime(handle, nullptr, &filetime, &filetime);
-      CloseHandle(handle);
-      if (err) return 1;
+      if (GetFileTime(handle, &filetime, nullptr, nullptr)) {
+         int err = SetFileTime(handle, nullptr, &filetime, &filetime);
+         CloseHandle(handle);
+         if (err) return 1;
+      }
+      else CloseHandle(handle);
    }
 
    return 0;
@@ -1658,9 +1732,99 @@ extern "C" void winFindCloseChangeNotification(HANDLE Handle)
 
 //********************************************************************************************************************
 
+static DWORD win_get_watch_notify_buffer_size(void)
+{
+   return DWORD(sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD));
+}
+
+//********************************************************************************************************************
+
+static ERR win_rearm_watch_request(HANDLE Handle, OVERLAPPED *Ovlap, FILE_NOTIFY_INFORMATION *Fni, BOOL WatchFolders, DWORD WatchFlags)
+{
+   memset(Ovlap, 0, sizeof(OVERLAPPED));
+   memset(Fni, 0, win_get_watch_notify_buffer_size());
+
+   DWORD empty;
+   if (!ReadDirectoryChangesW(Handle, Fni, win_get_watch_notify_buffer_size(), WatchFolders, WatchFlags, &empty, Ovlap, nullptr)) {
+      auto error = GetLastError();
+      if (error IS ERROR_ACCESS_DENIED) return ERR::NoPermission;
+      else return ERR::SystemCall;
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
 extern "C" int winGetWatchBufferSize(void)
 {
-   return sizeof(OVERLAPPED) + sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH;
+   return sizeof(OVERLAPPED) + win_get_watch_notify_buffer_size();
+}
+
+//********************************************************************************************************************
+
+extern "C" int winValidateHandle(HANDLE Handle)
+{
+   if (!Handle or (Handle IS INVALID_HANDLE_VALUE)) return 0;
+
+   DWORD flags;
+   if (GetHandleInformation(Handle, &flags)) return 1;
+   else return 0;
+}
+
+//********************************************************************************************************************
+
+ERR winAnalysePath(CSTRING Path, bool &IsDirectory, bool &IsSymbolicLink)
+{
+   if (!Path) return ERR::NullArgs;
+
+   IsDirectory = false;
+   IsSymbolicLink = false;
+
+   WIN32_FILE_ATTRIBUTE_DATA fileData;
+   if (!GetFileAttributesEx(Path, GetFileExInfoStandard, &fileData)) {
+      return ERR::FileNotFound; // Path doesn't exist or access denied
+   }
+
+   auto attrs = fileData.dwFileAttributes;
+
+   if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
+      IsDirectory = true;
+
+      // Check for junction/symbolic link
+      if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+         HANDLE hDir = CreateFile(Path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+         if (hDir != INVALID_HANDLE_VALUE) {
+            BYTE reparseBuffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+            DWORD bytesReturned;
+            if (DeviceIoControl(hDir, FSCTL_GET_REPARSE_POINT, nullptr, 0, reparseBuffer, sizeof(reparseBuffer), &bytesReturned, nullptr)) {
+               auto reparseData = (REPARSE_GUID_DATA_BUFFER *)reparseBuffer;
+               if (reparseData->ReparseTag IS IO_REPARSE_TAG_MOUNT_POINT) IsSymbolicLink = true; // Technically a junction
+               else if (reparseData->ReparseTag IS IO_REPARSE_TAG_SYMLINK) IsSymbolicLink = true;
+            }
+            CloseHandle(hDir);
+         }
+      }
+   }
+   else { // Is a file
+      // Check for file symbolic link
+      if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+         HANDLE hFile = CreateFile(Path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+         if (hFile != INVALID_HANDLE_VALUE) {
+            BYTE reparseBuffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+            DWORD bytesReturned;
+            if (DeviceIoControl(hFile, FSCTL_GET_REPARSE_POINT, nullptr, 0, reparseBuffer, sizeof(reparseBuffer), &bytesReturned, nullptr)) {
+               auto reparseData = (REPARSE_GUID_DATA_BUFFER *)reparseBuffer;
+               if (reparseData->ReparseTag IS IO_REPARSE_TAG_SYMLINK) {
+                  IsSymbolicLink = true;
+               }
+            }
+            CloseHandle(hFile);
+         }
+      }
+   }
+
+   return ERR::Okay; // Success
 }
 
 //********************************************************************************************************************
@@ -1674,7 +1838,13 @@ extern "C" void winSetDllDirectory(LPCSTR Path)
 
 extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, int *WinFlags)
 {
-   if ((!Path) or (!Path[0])) return ERR::Args;
+   if ((!Path) or (!Path[0]) or (!Handle) or (!WinFlags) or (!WatchBuffer)) return ERR::Args;
+
+   *Handle = nullptr;
+   *WinFlags = 0;
+
+   bool is_folder, is_symlink;
+   if (winAnalysePath(Path, is_folder, is_symlink) != ERR::Okay) return ERR::FileNotFound;
 
    int nflags = 0;
    if (Flags & MFF_READ) nflags |= FILE_NOTIFY_CHANGE_LAST_ACCESS;
@@ -1683,79 +1853,166 @@ extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *H
    if (Flags & MFF_DELETE) nflags |= FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME;
    if (Flags & MFF_OPENED) nflags |= FILE_NOTIFY_CHANGE_LAST_ACCESS;
    if (Flags & MFF_ATTRIB) nflags |= FILE_NOTIFY_CHANGE_SECURITY | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_ATTRIBUTES;
-   if (Flags & MFF_CLOSED) nflags |= 0;
+   //if (Flags & MFF_CLOSED) nflags |= ?; // Not supported by Windows
    if (Flags & (MFF_MOVED|MFF_RENAME)) nflags |= FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME;
 
-   if (nflags) {
-      int i;
-      char strip_path[MAX_PATH];
-      for (i=0; (Path[i]) and (i < MAX_PATH-1); i++) strip_path[i] = Path[i];
-      strip_path[i] = 0;
-      if (strip_path[i-1] IS '\\') strip_path[i-1] = 0;
+   if (!nflags) return ERR::NoSupport;
 
-      *Handle = CreateFile(strip_path, FILE_LIST_DIRECTORY, FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
-         FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
+   std::string monitor_path, resolved_path;
 
-      if (*Handle != INVALID_HANDLE_VALUE) {
-         // Use ReadDirectoryChanges() to setup an asynchronous monitor on the target folder.
+   if (not is_folder) { // For individual files, monitor the parent directory
+      resolved_path = Path;
+      size_t last_slash = resolved_path.find_last_of('\\');
+      if (last_slash IS std::string::npos) return ERR::Args; // Invalid file path
+      resolved_path = resolved_path.substr(0, last_slash);
+   }
+   else resolved_path = Path;
 
-         auto ovlap = (OVERLAPPED *)WatchBuffer;
-         auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
+   monitor_path.assign(resolved_path);
+   if (monitor_path.ends_with('\\')) monitor_path.pop_back();
 
-         DWORD empty;
-         if (!ReadDirectoryChangesW(*Handle, fni,
-               sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH - 1, // The -1 is to give us room to impose a null byte
-               true, nflags, &empty, ovlap, nullptr)) {
+   DWORD open_flags = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED;
+   if (is_symlink) {
+      // For reparse points, we may need to follow the link
+      // depending on whether we want to monitor the link itself or the target
+      open_flags |= FILE_FLAG_OPEN_REPARSE_POINT;
+   }
 
-            CloseHandle(*Handle);
-            *Handle = nullptr;
-            return ERR::SystemCall;
-         }
+   *Handle = CreateFile(monitor_path.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, open_flags, nullptr);
+
+   if (*Handle != INVALID_HANDLE_VALUE) {
+      // Setup asynchronous monitor
+      memset(WatchBuffer, 0, sizeof(OVERLAPPED));
+      auto ovlap = (OVERLAPPED *)WatchBuffer;
+      auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
+      const DWORD buffer_size = win_get_watch_notify_buffer_size();
+
+      BOOL watch_folders = (is_folder and (Flags & MFF_DEEP)) ? TRUE : FALSE;
+
+      DWORD empty;
+      if (not ReadDirectoryChangesW(*Handle, fni, buffer_size, watch_folders, nflags, &empty, ovlap, nullptr)) {
+         auto error = GetLastError();
+         CloseHandle(*Handle);
+         *Handle = nullptr;
+         return (error IS ERROR_ACCESS_DENIED) ? ERR::NoPermission : ERR::SystemCall;
       }
 
-      *WinFlags = nflags;
+      *WinFlags = nflags | ((watch_folders) ? WATCH_NOTIFY_SUBTREE : 0);
       return ERR::Okay;
    }
-   else return ERR::NoSupport;
+   else {
+      *Handle = nullptr;
+
+      switch (GetLastError()) {
+         case ERROR_FILE_NOT_FOUND: return ERR::FileNotFound;
+         case ERROR_PATH_NOT_FOUND: return ERR::FileNotFound;
+         case ERROR_ACCESS_DENIED:  return ERR::NoPermission;
+         default: return ERR::SystemCall;
+      }
+   }
 }
 
 //********************************************************************************************************************
 
 extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, char *PathOutput, int PathSize, int *Status)
 {
-   DWORD bytes_out;
+   if ((!Handle) or (!WatchBuffer) or (!PathOutput) or (PathSize < 2) or (!Status)) return ERR::Args;
+
+   DWORD bytes_out = 0;
    auto ovlap = (OVERLAPPED *)WatchBuffer;
    auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
+   DWORD watch_flags = NotifyFlags & (~WATCH_NOTIFY_SUBTREE);
+   BOOL watch_folders = (NotifyFlags & WATCH_NOTIFY_SUBTREE) ? TRUE : FALSE;
+   const DWORD buffer_size = win_get_watch_notify_buffer_size();
+   const DWORD header_size = FIELD_OFFSET(FILE_NOTIFY_INFORMATION, FileName);
+   const DWORD max_filename_bytes = buffer_size - header_size;
 
-   if (GetOverlappedResult(Handle, ovlap, &bytes_out, false)) {
-      if (fni->Action) {
-         ((char *)fni)[bytes_out] = 0; // Ensure path is null terminated
-         wcstombs(PathOutput, fni->FileName, PathSize); // Convert to UTF8
+   *Status = 0;
+   PathOutput[0] = '\0';
 
-         if (fni->Action IS FILE_ACTION_ADDED) *Status = MFF_CREATE;
-         else if (fni->Action IS FILE_ACTION_REMOVED) *Status = MFF_DELETE;
-         else if (fni->Action IS FILE_ACTION_MODIFIED) *Status = MFF_MODIFY|MFF_ATTRIB;
-         else if (fni->Action IS FILE_ACTION_RENAMED_OLD_NAME) *Status = MFF_MOVED;
-         else if (fni->Action IS FILE_ACTION_RENAMED_NEW_NAME) *Status = MFF_MOVED;
-         else *Status = 0;
-
-         fni->Action = 0;
-
-         // Re-subscription is required to receive the next queued notification
-
-         DWORD empty;
-         ReadDirectoryChangesW(Handle, fni, sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH - 1, true, NotifyFlags, &empty, ovlap, nullptr);
-
-         return ERR::Okay;
+   if (!GetOverlappedResult(Handle, ovlap, &bytes_out, false)) {
+      DWORD error = GetLastError();
+      if (error IS ERROR_IO_INCOMPLETE or error IS ERROR_IO_PENDING) {
+         return ERR::NothingDone;
       }
-      else return ERR::NothingDone;
+      else if (error IS ERROR_NOTIFY_ENUM_DIR) {
+         auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+         if (rearm_error != ERR::Okay) return rearm_error;
+         return ERR::NothingDone;
+      }
+      else return ERR::SystemCall;
    }
-   else return ERR::NothingDone;
+
+   // Validate we received enough data for at least the header
+   if (bytes_out < header_size) {
+      auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+      if (rearm_error != ERR::Okay) return rearm_error;
+      return ERR::NothingDone;
+   }
+
+   // Buffer corruption detection - validate the FILE_NOTIFY_INFORMATION structure
+   if ((!fni->Action) or (fni->FileNameLength > max_filename_bytes)) {
+      auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+      if (rearm_error != ERR::Okay) return rearm_error;
+      return ERR::NothingDone;
+   }
+
+   // Validate buffer bounds before accessing filename
+   DWORD required_size = header_size + fni->FileNameLength;
+   if (required_size > bytes_out) {
+      auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+      if (rearm_error != ERR::Okay) return rearm_error;
+      return ERR::NothingDone;
+   }
+
+   // Process the first notification in the buffer
+   if (fni->FileNameLength > 0) {
+      DWORD filename_length_chars = fni->FileNameLength / sizeof(WCHAR);
+
+      // Convert Unicode filename to UTF-8 with proper error handling
+      int result = WideCharToMultiByte(CP_UTF8, 0, fni->FileName, filename_length_chars, PathOutput, PathSize - 1, nullptr, nullptr);
+      if (result <= 0 or result >= PathSize) {
+         auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+         if (rearm_error != ERR::Okay) return rearm_error;
+         return ERR::NothingDone;
+      }
+      PathOutput[result] = 0;  // Null terminate
+   }
+
+   // Map Windows actions to MFF flags more accurately
+   switch (fni->Action) {
+      case FILE_ACTION_ADDED:             *Status = MFF_CREATE; break;
+      case FILE_ACTION_REMOVED:           *Status = MFF_DELETE; break;
+      case FILE_ACTION_MODIFIED:          *Status = MFF_MODIFY; break;
+      case FILE_ACTION_RENAMED_OLD_NAME:  *Status = MFF_MOVED; break;
+      case FILE_ACTION_RENAMED_NEW_NAME:  *Status = MFF_MOVED; break;
+      default: *Status = 0; break;
+   }
+
+   // Clear the processed notification to prevent reprocessing
+   DWORD action = fni->Action;
+   fni->Action = 0;
+
+   // Handle multiple notifications in buffer if present
+   if (fni->NextEntryOffset > 0 and fni->NextEntryOffset < bytes_out) {
+      // Move remaining notifications to the beginning of the buffer
+      DWORD remaining_size = bytes_out - fni->NextEntryOffset;
+      if (remaining_size > 0 and remaining_size < bytes_out) {
+         memmove(fni, (BYTE *)fni + fni->NextEntryOffset, remaining_size);
+         memset((BYTE *)fni + remaining_size, 0, bytes_out - remaining_size); // Zero out the rest of the buffer
+      }
+   }
+   else { // No more notifications, clear the buffer and re-subscribe
+      auto rearm_error = win_rearm_watch_request(Handle, ovlap, fni, watch_folders, watch_flags);
+      if (rearm_error != ERR::Okay) return rearm_error;
+   }
+
+   return (action != 0) ? ERR::Okay : ERR::NothingDone;
 }
 
 //********************************************************************************************************************
 
-extern "C" int winSetFileTime(STRING Location, bool Folder, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second)
+extern "C" int winSetFileTime(STRING Location, bool Folder, int16_t Year, int16_t Month, int16_t Day, int16_t Hour, int16_t Minute, int16_t Second)
 {
    SYSTEMTIME time;
    FILETIME filetime, localtime;
@@ -1807,7 +2064,7 @@ extern "C" int winReadKey(LPCSTR Key, LPCSTR Value, LPBYTE Buffer, int Length)
       if (RegQueryValueEx(handle, Value, 0, 0, Buffer, &length) IS ERROR_SUCCESS) {
          err = length-1;
       }
-      CloseHandle(handle);
+      RegCloseKey(handle);
    }
    return err;
 }
@@ -1823,7 +2080,7 @@ extern "C" int winReadRootKey(LPCSTR Key, LPCSTR Value, LPBYTE Buffer, int Lengt
       if (RegQueryValueEx(handle, Value, 0, 0, Buffer, &length) IS ERROR_SUCCESS) {
          err = length-1;
       }
-      CloseHandle(handle);
+      RegCloseKey(handle);
    }
    return err;
 }
@@ -1834,11 +2091,22 @@ extern "C" int winGetUserName(STRING Buffer, int Length)
 {
    if (!Buffer or Length <= 0) return 0;
    if (Length > MAX_USERNAME) Length = MAX_USERNAME;
-   
+
    DWORD len = Length;
    auto result = GetUserName(Buffer, &len);
-   if (result and (int(len) < Length)) Buffer[len] = 0;
-   return result ? len : 0;
+   if (!result or !len) return 0;
+
+   Buffer[len - 1] = 0;
+   return len - 1;
+}
+
+//********************************************************************************************************************
+
+static bool case_sensitive_name_match(CSTRING Location, int NameStart, int NameEnd, CSTRING ActualName)
+{
+   int index = 0;
+   while ((NameStart + index < NameEnd) and (Location[NameStart + index] IS ActualName[index]) and ActualName[index]) index++;
+   return (NameStart + index IS NameEnd) and (ActualName[index] IS 0);
 }
 
 //********************************************************************************************************************
@@ -1951,15 +2219,18 @@ extern ERR winGetVolumeInformation(STRING Volume, std::string &Label, std::strin
 
 //********************************************************************************************************************
 
-extern "C" int winTestLocation(STRING Location, BYTE CaseSensitive)
+extern "C" int winTestLocation(STRING Location, int8_t CaseSensitive)
 {
    int len, result;
    HANDLE handle;
    WIN32_FIND_DATA find;
    char save;
    int i, savepos;
+   bool found = false;
 
    for (len=0; Location[len]; len++);
+   if (len < 1) return 0;
+
    if ((Location[len-1] IS '/') or (Location[len-1] IS '\\')) {
 
       if (len IS 3) {
@@ -1981,6 +2252,7 @@ extern "C" int winTestLocation(STRING Location, BYTE CaseSensitive)
          save = Location[savepos];
          Location[savepos] = 0; // Remove the trailing slash
          if ((handle = FindFirstFile(Location, &find)) != INVALID_HANDLE_VALUE) {
+            found = true;
             if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) result = LOC_DIRECTORY;
             else while (FindNextFile(handle, &find)) {
                if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -1994,11 +2266,12 @@ extern "C" int winTestLocation(STRING Location, BYTE CaseSensitive)
          if (CaseSensitive) {
             // Check that the filename of the given location matches that of the actual name set on the file system.
 
-            len--;
-            while ((len > 0) and (Location[len-1] != '/') and (Location[len-1] != '\\')) len--;
-            for (i=0; (Location[len+i] IS find.cFileName[i]) and (find.cFileName[i]) and (Location[len+i]); i++);
-            if ((!Location[len+i]) and (!find.cFileName[i])) return result; // Match
-            else return 0; // Not a case sensitive match
+            if (found and result) {
+               i = savepos;
+               while ((i > 0) and (Location[i-1] != '/') and (Location[i-1] != '\\')) i--;
+               if (!case_sensitive_name_match(Location, i, savepos, find.cFileName)) result = 0; // Not a case sensitive match
+            }
+            else result = 0;
          }
 
          Location[savepos] = save;
@@ -2017,10 +2290,9 @@ extern "C" int winTestLocation(STRING Location, BYTE CaseSensitive)
       if (CaseSensitive) {
          // Check that the filename of the given location matches that of the actual name set on the file system.
 
-         while ((len > 0) and (Location[len-1] != '/') and (Location[len-1] != '\\')) len--;
-         for (i=0; (Location[len+i] IS find.cFileName[i]) and (find.cFileName[i]) and (Location[len+i]); i++);
-         if ((!Location[len+i]) and (!find.cFileName[i])) return result; /* Match */
-         else return 0; /* Not a case sensitive match */
+         i = len;
+         while ((i > 0) and (Location[i-1] != '/') and (Location[i-1] != '\\')) i--;
+         if (!case_sensitive_name_match(Location, i, len, find.cFileName)) return 0; /* Not a case sensitive match */
       }
 
       return result;
@@ -2040,15 +2312,9 @@ static ERR delete_file_helper(const std::string &FilePath)
          SetFileAttributes(FilePath.c_str(), attrib);
       }
    }
-   
+
    if (unlink(FilePath.c_str()) IS 0) return ERR::Okay;
-   else {
-      #ifdef __CYGWIN__
-      return convert_errno(*__errno(), ERR::SystemCall);
-      #else
-      return convert_errno(errno, ERR::SystemCall);
-      #endif
-   }
+   else return convert_errno(errno, ERR::SystemCall);
 }
 
 //********************************************************************************************************************
@@ -2063,7 +2329,7 @@ static ERR delete_directory_helper(const std::string &DirPath)
          SetFileAttributes(DirPath.c_str(), attrib);
       }
    }
-   
+
    if (RemoveDirectory(DirPath.c_str())) return ERR::Okay;
    else return ERR::SystemCall;
 }
@@ -2193,8 +2459,8 @@ extern "C" HANDLE winFindFile(CSTRING Location, HANDLE *Handle, STRING Result)
 ** Used by fs_scandir()
 */
 
-extern "C" int winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Size, struct DateTime *CreateTime, 
-   struct DateTime *WriteTime, BYTE *Dir, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive)
+extern "C" int winScan(HANDLE *Handle, CSTRING Path, std::string &Name, long long *Size, struct DateTime *CreateTime,
+   struct DateTime *WriteTime, int8_t *Dir, int8_t *Hidden, int8_t *ReadOnly, int8_t *Archive)
 {
    WIN32_FIND_DATA find;
    int i;
@@ -2227,8 +2493,7 @@ extern "C" int winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Siz
       if (find.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE) *Archive = true;
       else *Archive = false;
 
-      for (i=0; (find.cFileName[i]) and (i < 254); i++) Name[i] = find.cFileName[i];
-      Name[i] = 0;
+      Name.assign(find.cFileName);
 
       if (CreateTime) convert_time(&find.ftCreationTime, CreateTime);
       if (WriteTime) convert_time(&find.ftLastWriteTime, WriteTime);
@@ -2280,7 +2545,7 @@ extern "C" void winGetAttrib(CSTRING Path, int *Flags)
 
 //********************************************************************************************************************
 
-extern "C" int winFileInfo(CSTRING Path, size_t *Size, struct DateTime *Time, BYTE *Folder)
+extern "C" int winFileInfo(CSTRING Path, size_t *Size, struct DateTime *Time, int8_t *Folder)
 {
    if (!Path) return 0;
 
@@ -2385,5 +2650,33 @@ extern "C" int winCheckDirectoryExists(CSTRING Path)
       //else printerror();
 
       return 0;
+   }
+}
+
+//********************************************************************************************************************
+// Set system time on Windows - requires administrator privileges
+
+extern "C" int winSetSystemTime(int16_t Year, int16_t Month, int16_t Day, int16_t Hour, int16_t Minute, int16_t Second)
+{
+   SYSTEMTIME st;
+   ZeroMemory(&st, sizeof(st));
+
+   st.wYear         = Year;
+   st.wMonth        = Month;
+   st.wDay          = Day;
+   st.wHour         = Hour;
+   st.wMinute       = Minute;
+   st.wSecond       = Second;
+   st.wMilliseconds = 0;
+
+   // Set the system time - requires SE_SYSTEMTIME_NAME privilege
+   if (SetSystemTime(&st)) {
+      return 1; // Success
+   }
+   else {
+      // Common error codes:
+      // ERROR_PRIVILEGE_NOT_HELD (1314) - Process lacks required privilege
+      // ERROR_INVALID_PARAMETER (87) - Invalid time values
+      return 0; // Failure
    }
 }

@@ -9,8 +9,34 @@ static ERR loadPEMCertificate(const std::string &, std::optional<const std::stri
 //********************************************************************************************************************
 
 // Forward declarations for template functions
-template <class T> void ssl_handshake_write(HOSTHANDLE Socket, T *Self);
-template <class T> void ssl_handshake_read(HOSTHANDLE Socket, T *Self);
+template <class T> void ssl_handshake_write_impl(HOSTHANDLE SocketFD, T *Self);
+template <class T> void ssl_handshake_read_impl(HOSTHANDLE SocketFD, T *Self);
+
+// Non-template wrappers for RegisterFD callbacks
+static void ssl_handshake_write_netsocket(HOSTHANDLE SocketFD, APTR Data) {
+   ssl_handshake_write_impl(SocketFD, (extNetSocket *)Data);
+}
+
+static void ssl_handshake_read_netsocket(HOSTHANDLE SocketFD, APTR Data) {
+   ssl_handshake_read_impl(SocketFD, (extNetSocket *)Data);
+}
+
+static void ssl_handshake_write_clientsocket(HOSTHANDLE SocketFD, APTR Data) {
+   ssl_handshake_write_impl(SocketFD, (extClientSocket *)Data);
+}
+
+static void ssl_handshake_read_clientsocket(HOSTHANDLE SocketFD, APTR Data) {
+   ssl_handshake_read_impl(SocketFD, (extClientSocket *)Data);
+}
+
+// Template wrappers for direct calls with SocketHandle
+template <class T> void ssl_handshake_write(SocketHandle Socket, T *Self) {
+   ssl_handshake_write_impl(Socket.hosthandle(), Self);
+}
+
+template <class T> void ssl_handshake_read(SocketHandle Socket, T *Self) {
+   ssl_handshake_read_impl(Socket.hosthandle(), Self);
+}
 
 template <class T> void sslDisconnect(T *Self)
 {
@@ -96,7 +122,7 @@ static ERR loadCustomCertificateOpenSSL(extNetSocket *Self, SSL_CTX *ctx)
    std::string cp(Self->SSLCertificate);
    std::string ext = cp.substr(cp.find_last_of(".") + 1);
    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-   
+
    std::string cert_path, key_path;
    if (ResolvePath(Self->SSLCertificate, RSF::NIL, &cert_path) IS ERR::Okay) {
       auto opt_password = std::make_optional<const std::string>();
@@ -117,7 +143,7 @@ static ERR loadCustomCertificateOpenSSL(extNetSocket *Self, SSL_CTX *ctx)
       }
       else return log.warning(ERR::InvalidData);
    }
-   
+
    return ERR::Okay;
 }
 
@@ -521,21 +547,27 @@ static ERR sslConnect(extNetSocket *Self)
 // handshake and then ceases monitoring of the FD.  If SSL then needs to continue its handshake then it will tell us in
 // the RECEIVE() and SEND() functions.
 
-template <class T> void ssl_handshake_write(HOSTHANDLE Socket, T *Self)
+template <class T> void ssl_handshake_write_impl(HOSTHANDLE SocketFD, T *Self)
 {
    pf::Log log(__FUNCTION__);
+   SocketHandle Socket(SocketFD);
 
-   log.trace("Socket: %" PF64, (MAXINT)Socket);
+   log.trace("Socket: %" PF64, (MAXINT)SocketFD);
+
+   auto write_callback = std::is_same<T, extNetSocket>::value ?
+      ssl_handshake_write_netsocket : ssl_handshake_write_clientsocket;
+   auto read_callback = std::is_same<T, extNetSocket>::value ?
+      ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
 
    if (auto result = SSL_do_handshake(Self->SSLHandle); result == 1) { // Handshake successful, connection established
-      RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<T>), Self);
+      RegisterFD(Socket.hosthandle(), RFD::WRITE|RFD::REMOVE|RFD::SOCKET, write_callback, Self);
       Self->HandshakeStatus = SHS::NIL;
    }
    else switch (SSL_get_error(Self->SSLHandle, result)) {
       case SSL_ERROR_WANT_READ:
-         RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<T>), Self);
+         RegisterFD(Socket.hosthandle(), RFD::WRITE|RFD::REMOVE|RFD::SOCKET, write_callback, Self);
          Self->HandshakeStatus = SHS::READ;
-         RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<T>), Self);
+         RegisterFD(Socket.hosthandle(), RFD::READ|RFD::SOCKET, read_callback, Self);
          break;
 
       case SSL_ERROR_WANT_WRITE:
@@ -547,14 +579,20 @@ template <class T> void ssl_handshake_write(HOSTHANDLE Socket, T *Self)
    }
 }
 
-template <class T> void ssl_handshake_read(HOSTHANDLE Socket, T *Self)
+template <class T> void ssl_handshake_read_impl(HOSTHANDLE SocketFD, T *Self)
 {
    pf::Log log(__FUNCTION__);
+   SocketHandle Socket(SocketFD);
 
-   log.trace("Socket: %" PF64, (MAXINT)Socket);
+   log.trace("Socket: %" PF64, (MAXINT)SocketFD);
+
+   auto write_callback = std::is_same<T, extNetSocket>::value ?
+      ssl_handshake_write_netsocket : ssl_handshake_write_clientsocket;
+   auto read_callback = std::is_same<T, extNetSocket>::value ?
+      ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
 
    if (auto result = SSL_do_handshake(Self->SSLHandle); result == 1) { // Handshake successful, connection established
-      RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<T>), Self);
+      RegisterFD(Socket.hosthandle(), RFD::READ|RFD::REMOVE|RFD::SOCKET, read_callback, Self);
       Self->HandshakeStatus = SHS::NIL;
    }
    else switch (SSL_get_error(Self->SSLHandle, result)) {
@@ -563,9 +601,9 @@ template <class T> void ssl_handshake_read(HOSTHANDLE Socket, T *Self)
          break;
 
       case SSL_ERROR_WANT_WRITE:
-         RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<T>), Self);
+         RegisterFD(Socket.hosthandle(), RFD::READ|RFD::REMOVE|RFD::SOCKET, read_callback, Self);
          Self->HandshakeStatus = SHS::WRITE;
-         RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<T>), Self);
+         RegisterFD(Socket.hosthandle(), RFD::WRITE|RFD::SOCKET, write_callback, Self);
          break;
 
       default:

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
-LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size);
-ULONG UTF8ReadValue(CSTRING String, LONG *Length);
+int UTF8Copy(CSTRING String, STRING Dest, int Chars, int Size);
+uint32_t UTF8ReadValue(CSTRING String, int *Length);
 //CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
-LONG UTF8WriteValue(LONG Value, STRING String, LONG StringSize);
+int UTF8WriteValue(int Value, STRING String, int StringSize);
 
 /*********************************************************************************************************************
 
@@ -23,11 +23,11 @@ int: Returns the number of bytes used to create the UTF-8 character referred to 
 
 *********************************************************************************************************************/
 
-[[nodiscard]] static inline LONG UTF8CharLength(CSTRING String)
+[[nodiscard]] static inline int UTF8CharLength(CSTRING String)
 {
    if ((!String) or (!*String)) return 0;
 
-   LONG total;
+   int total;
    for (total=1; ((String[total] & 0xc0) IS 0x80); total++);
    return total;
 }
@@ -49,11 +49,11 @@ int: Returns the byte offset of the character.
 
 *********************************************************************************************************************/
 
-[[nodiscard]] static inline LONG UTF8CharOffset(CSTRING String, LONG Index)
+[[nodiscard]] static inline int UTF8CharOffset(CSTRING String, int Index)
 {
    if (!String) return 0;
 
-   LONG offset = 0;
+   int offset = 0;
    while ((String[offset]) and (Index > 0)) {
       for (++offset; ((String[offset] & 0xc0) IS 0x80); offset++);
       Index--;
@@ -76,11 +76,11 @@ int: Returns the total number of characters used in the supplied UTF-8 string.
 
 *********************************************************************************************************************/
 
-[[nodiscard]] static inline LONG UTF8Length(CSTRING String)
+[[nodiscard]] static inline int UTF8Length(CSTRING String)
 {
    if (!String) return 0;
 
-   LONG total;
+   int total;
    for (total=0; *String; total++) {
       for (++String; ((*String & 0xc0) IS 0x80); String++);
    }
@@ -103,11 +103,11 @@ int: Returns the number of the character at the given byte position.
 
 *********************************************************************************************************************/
 
-[[nodiscard]] static inline LONG UTF8OffsetToChar(CSTRING String, LONG Offset)
+[[nodiscard]] static inline int UTF8OffsetToChar(CSTRING String, int Offset)
 {
    if (!String) return 0;
 
-   LONG pos = 0;
+   int pos = 0;
    while ((Offset) and (String[pos])) {
       for (++pos; ((String[pos] & 0xc0) IS 0x80); pos++);
       Offset--;
@@ -132,9 +132,9 @@ int: Returns the byte-length of the previous character.
 
 *********************************************************************************************************************/
 
-[[nodiscard]] static inline LONG UTF8PrevLength(CSTRING String, LONG ByteIndex)
+[[nodiscard]] static inline int UTF8PrevLength(CSTRING String, int ByteIndex)
 {
-   LONG len = 0;
+   int len = 0;
    for (--ByteIndex; ByteIndex > 0; --ByteIndex) {
       len++;
       if ((String[ByteIndex] & 0xc0) != 0x80) return len;

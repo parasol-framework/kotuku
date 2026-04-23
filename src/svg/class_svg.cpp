@@ -19,7 +19,7 @@ Key capabilities include:
 
 The class supports both file-based loading via #Path and direct string-based parsing via #Statement.  SVG documents can be integrated into existing scene graphs by setting the #Target field, or rendered independently through the automatically created scene structure.
 
-Animation timing is controlled through the #FrameRate field, with callback support via #FrameCallback for custom rendering workflows.  The implementation maintains compatibility with the complete SVG specification while providing enhanced programmatic access unique to the Parasol framework.
+Animation timing is controlled through the #FrameRate field, with callback support via #FrameCallback for custom rendering workflows.  The implementation maintains compatibility with the complete SVG specification while providing enhanced programmatic access unique to Kotuku.
 
 Please refer to the W3C's online documentation for exhaustive information on the SVG standard.
 
@@ -35,7 +35,7 @@ static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERR 
 static void notify_free_scene(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extSVG *)CurrentContext();
-   if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = NULL; }
+   if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = nullptr; }
 }
 
 /*********************************************************************************************************************
@@ -60,10 +60,10 @@ static ERR SVG_Activate(extSVG *Self)
 {
    if (!Self->Animations.empty()) {
       if (!Self->AnimationTimer) {
-         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
+         SubscribeTimer(1.0 / (double)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
          SubscribeAction(Self->Scene, AC::Free, C_FUNCTION(notify_free_scene));
       }
-      else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
+      else UpdateTimer(Self->AnimationTimer, 1.0 / (double)Self->FrameRate);
    }
 
    return ERR::Okay;
@@ -131,13 +131,13 @@ static ERR SVG_Free(extSVG *Self)
 
    if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->Owner IS Self)) {
       FreeResource(Self->Target);
-      Self->Target = NULL;
+      Self->Target = nullptr;
    }
 
-   if (Self->Path)      { FreeResource(Self->Path);      Self->Path = NULL; }
-   if (Self->Title)     { FreeResource(Self->Title);     Self->Title = NULL; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
-   if (Self->XML)       { FreeResource(Self->XML);       Self->XML = NULL; }
+   if (Self->Path)      { FreeResource(Self->Path);      Self->Path = nullptr; }
+   if (Self->Title)     { FreeResource(Self->Title);     Self->Title = nullptr; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   if (Self->XML)       { FreeResource(Self->XML);       Self->XML = nullptr; }
 
    if (!Self->Resources.empty()) {
       for (auto id : Self->Resources) FreeResource(id);
@@ -179,8 +179,8 @@ static ERR SVG_Init(extSVG *Self)
       else return ERR::NewObject;
    }
 
-   if (Self->Path) return parse_svg(Self, Self->Path, NULL);
-   else if (Self->Statement) return parse_svg(Self, NULL, Self->Statement);
+   if (Self->Path) return parse_svg(Self, Self->Path, nullptr);
+   else if (Self->Statement) return parse_svg(Self, nullptr, Self->Statement);
 
    return ERR::Okay;
 }
@@ -273,8 +273,8 @@ static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
    if (!Args) return ERR::NullArgs;
 
    objBitmap *bmp = Args->Bitmap;
-   LONG page_width = Args->Width;
-   LONG page_height = Args->Height;
+   int page_width = Args->Width;
+   int page_height = Args->Height;
 
    Self->Scene->setBitmap(bmp);
 
@@ -285,7 +285,7 @@ static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
 //   Self->Scene->Viewport->setViewY(Args->Y);
 
    auto data = bmp->offset(Args->X, Args->Y);
-   Action(AC::Draw, Self->Scene, NULL);
+   Action(AC::Draw, Self->Scene, nullptr);
    bmp->Data = data;
    return ERR::Okay;
 }
@@ -310,8 +310,8 @@ static ERR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
 
    if (!Args) return ERR::NullArgs;
 
-   LONG width = 0;
-   LONG height = 0;
+   int width = 0;
+   int height = 0;
    Self->Scene->get(FID_PageWidth, width);
    Self->Scene->get(FID_PageHeight, height);
 
@@ -350,12 +350,12 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((mc->get(FID_ActionTable, actions) IS ERR::Okay) and (actions)) {
-         if ((actions[LONG(AC::SaveToObject)]) and (actions[LONG(AC::SaveToObject)] != (APTR)SVG_SaveToObject)) {
-            return actions[LONG(AC::SaveToObject)](Self, Args);
+         if ((actions[int(AC::SaveToObject)]) and (actions[int(AC::SaveToObject)] != (APTR)SVG_SaveToObject)) {
+            return actions[int(AC::SaveToObject)](Self, Args);
          }
-         else if ((actions[LONG(AC::SaveImage)]) and (actions[LONG(AC::SaveImage)] != (APTR)SVG_SaveImage)) {
+         else if ((actions[int(AC::SaveImage)]) and (actions[int(AC::SaveImage)] != (APTR)SVG_SaveImage)) {
             struct acSaveImage saveimage = { .Dest = Args->Dest };
-            return actions[LONG(AC::SaveImage)](Self, &saveimage);
+            return actions[int(AC::SaveImage)](Self, &saveimage);
          }
          else return log.warning(ERR::NoSupport);
       }
@@ -367,11 +367,11 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
       if (xml.ok()) {
          Self->XML = *xml;
 
-         ERR error = xml->insertXML(0, XMI::NIL, header, NULL);
-         LONG index = xml->Tags.back().ID;
+         ERR error = xml->insertXML(0, XMI::NIL, header, nullptr);
+         int index = xml->Tags.back().ID;
 
-         XMLTag *tag;
-         if ((error = xml->insertStatement(index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag)) IS ERR::Okay) {
+         XTag *tag;
+         if ((error = xml->insertStatement(index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:kotuku=\"http://www.kotuku.dev/xmlns/svg\"/>", &tag)) IS ERR::Okay) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {
                if ((error = save_svg_defs(Self, *xml, Self->Scene, index)) IS ERR::Okay) {
@@ -384,7 +384,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                }
             }
             else {
-               DOUBLE x, y, width, height;
+               double x, y, width, height;
 
                if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewX, x);
                if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewY, y);
@@ -423,7 +423,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                }
             }
 
-            Self->XML = NULL;
+            Self->XML = nullptr;
          }
 
          return error;
@@ -546,7 +546,7 @@ The frame rate only affects animated SVG documents containing SMIL features.  St
 
 *********************************************************************************************************************/
 
-static ERR SET_FrameRate(extSVG *Self, LONG Value)
+static ERR SET_FrameRate(extSVG *Self, int Value)
 {
    if ((Value >= 20) and (Value <= 1000)) {
       Self->FrameRate = Value;
@@ -566,7 +566,7 @@ The loading process occurs automatically during initialisation when a valid path
 
 <b>Supported file types:</b> Standard SVG files (*.svg) and compressed SVG files (*.svgz) are both supported, with automatic decompression handling for compressed formats.
 
-<b>Path resolution:</b> The file system path is resolved through the standard Parasol file access mechanisms, supporting virtual file systems, archives, and network-accessible resources where configured.
+<b>Path resolution:</b> The file system path is resolved through the standard Kotuku file access mechanisms, supporting virtual file systems, archives, and network-accessible resources where configured.
 
 When both #Path and #Statement are specified, the Path field takes precedence and the Statement content is ignored during initialisation.
 
@@ -580,7 +580,7 @@ static ERR GET_Path(extSVG *Self, STRING *Value)
 
 static ERR SET_Path(extSVG *Self, CSTRING Value)
 {
-   if (Self->Path)   { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path)   { FreeResource(Self->Path); Self->Path = nullptr; }
    Self->Folder.clear();
 
    if ((Value) and (*Value)) {
@@ -623,7 +623,7 @@ progressive document construction from data streams.
 
 static ERR SET_Statement(extSVG *Self, CSTRING Value)
 {
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
 
    if ((Value) and (*Value)) {
       if (!(Self->Statement = strclone(Value))) return ERR::AllocMemory;
@@ -694,7 +694,7 @@ where a title has been specified, it will be possible to read it from this field
 
 static ERR SET_Title(extSVG *Self, CSTRING Value)
 {
-   if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
+   if (Self->Title) { FreeResource(Self->Title); Self->Title = nullptr; }
    if (Value) Self->Title = strclone(Value);
    return ERR::Okay;
 }
@@ -734,19 +734,19 @@ static ERR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 #include "class_svg_def.c"
 
 static const FieldArray clSVGFields[] = {
-   { "Target",    FDF_OBJECT|FDF_RI, NULL, SET_Target },
-   { "Path",      FDF_STRING|FDF_RW, NULL, SET_Path },
-   { "Title",     FDF_STRING|FDF_RW, NULL, SET_Title },
-   { "Statement", FDF_STRING|FDF_RW, NULL, SET_Statement },
-   { "Frame",     FDF_INT|FDF_RW, NULL, NULL },
-   { "Flags",     FDF_INTFLAGS|FDF_RW, NULL, NULL, &clSVGFlags },
-   { "FrameRate", FDF_INT|FDF_RW, NULL, SET_FrameRate },
+   { "Target",    FDF_OBJECT|FDF_RI, nullptr, SET_Target },
+   { "Path",      FDF_STRING|FDF_RW, nullptr, SET_Path },
+   { "Title",     FDF_STRING|FDF_RW, nullptr, SET_Title },
+   { "Statement", FDF_STRING|FDF_RW, nullptr, SET_Statement },
+   { "Frame",     FDF_INT|FDF_RW, nullptr, nullptr },
+   { "Flags",     FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clSVGFlags },
+   { "FrameRate", FDF_INT|FDF_RW, nullptr, SET_FrameRate },
    // Virtual Fields
    { "Colour",        FDF_VIRTUAL|FDF_STRING|FDF_RW, GET_Colour, SET_Colour },
    { "FrameCallback", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_FrameCallback, SET_FrameCallback },
    { "Src",           FDF_VIRTUAL|FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "Scene",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, NULL },
-   { "Viewport",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, NULL },
+   { "Scene",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, nullptr },
+   { "Viewport",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, nullptr },
    END_FIELD
 };
 

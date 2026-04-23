@@ -236,7 +236,7 @@ namespace agg
     // to navigate to the path afterwards.
     //
     // See also: vertex_source concept
-    
+
     template<class VertexContainer> class path_base {
     public:
         typedef VertexContainer            container_type;
@@ -339,7 +339,7 @@ namespace agg
         void modify_vertex(unsigned idx, double x, double y);
         void modify_vertex(unsigned idx, double x, double y, unsigned cmd);
         void modify_command(unsigned idx, unsigned cmd);
-                
+
         void     rewind(unsigned path_id);
         unsigned vertex(double* x, double* y);
 
@@ -347,19 +347,19 @@ namespace agg
         // or in all paths. After calling arrange_orientations() or
         // arrange_orientations_all_paths(), all the polygons will have
         // the same orientation, i.e. path_flags_cw or path_flags_ccw
-        
+
         unsigned arrange_polygon_orientation(unsigned start, int orientation);
         unsigned arrange_orientations(unsigned path_id, int orientation);
         void     arrange_orientations_all_paths(int orientation);
         void     invert_polygon(unsigned start);
 
         // Flip all vertices horizontally or vertically, between x1 and x2, or between y1 and y2 respectively
-        
+
         void flip_x(double x1, double x2);
         void flip_y(double y1, double y2);
 
         // Concatenate path. The path is added as is.
- 
+
         template<class VertexSource> void concat_path(VertexSource& vs, unsigned path_id = 0) {
             double x, y;
             unsigned cmd;

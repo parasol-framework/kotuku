@@ -2,8 +2,8 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
@@ -47,16 +47,16 @@ namespace agg
         }
 
         //--------------------------------------------------------------------
-        AGG_INLINE void blend_pixel(int x, int y, 
-                                    const color_type& c, 
+        AGG_INLINE void blend_pixel(int x, int y,
+                                    const color_type& c,
                                     int8u cover)
         {
             m_pixf->blend_pixel(y, x, c, cover);
         }
 
         //--------------------------------------------------------------------
-        AGG_INLINE void copy_hline(int x, int y, 
-                                   unsigned len, 
+        AGG_INLINE void copy_hline(int x, int y,
+                                   unsigned len,
                                    const color_type& c)
         {
             m_pixf->copy_vline(y, x, len, c);
@@ -64,7 +64,7 @@ namespace agg
 
         //--------------------------------------------------------------------
         AGG_INLINE void copy_vline(int x, int y,
-                                   unsigned len, 
+                                   unsigned len,
                                    const color_type& c)
         {
             m_pixf->copy_hline(y, x, len, c);
@@ -72,7 +72,7 @@ namespace agg
 
         //--------------------------------------------------------------------
         AGG_INLINE void blend_hline(int x, int y,
-                                    unsigned len, 
+                                    unsigned len,
                                     const color_type& c,
                                     int8u cover)
         {
@@ -81,7 +81,7 @@ namespace agg
 
         //--------------------------------------------------------------------
         AGG_INLINE void blend_vline(int x, int y,
-                                    unsigned len, 
+                                    unsigned len,
                                     const color_type& c,
                                     int8u cover)
         {
@@ -90,7 +90,7 @@ namespace agg
 
         //--------------------------------------------------------------------
         AGG_INLINE void blend_solid_hspan(int x, int y,
-                                          unsigned len, 
+                                          unsigned len,
                                           const color_type& c,
                                           const int8u* covers)
         {
@@ -99,7 +99,7 @@ namespace agg
 
         //--------------------------------------------------------------------
         AGG_INLINE void blend_solid_vspan(int x, int y,
-                                          unsigned len, 
+                                          unsigned len,
                                           const color_type& c,
                                           const int8u* covers)
         {
@@ -108,7 +108,7 @@ namespace agg
 
         //--------------------------------------------------------------------
         AGG_INLINE void copy_color_hspan(int x, int y,
-                                         unsigned len, 
+                                         unsigned len,
                                          const color_type* colors)
         {
             m_pixf->copy_color_vspan(y, x, len, colors);
@@ -116,7 +116,7 @@ namespace agg
 
         //--------------------------------------------------------------------
         AGG_INLINE void copy_color_vspan(int x, int y,
-                                         unsigned len, 
+                                         unsigned len,
                                          const color_type* colors)
         {
             m_pixf->copy_color_hspan(y, x, len, colors);
@@ -124,7 +124,7 @@ namespace agg
 
         //--------------------------------------------------------------------
         AGG_INLINE void blend_color_hspan(int x, int y,
-                                          unsigned len, 
+                                          unsigned len,
                                           const color_type* colors,
                                           const int8u* covers,
                                           int8u cover)
@@ -134,7 +134,7 @@ namespace agg
 
         //--------------------------------------------------------------------
         AGG_INLINE void blend_color_vspan(int x, int y,
-                               unsigned len, 
+                               unsigned len,
                                const color_type* colors,
                                const int8u* covers,
                                int8u cover)

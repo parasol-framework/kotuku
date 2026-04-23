@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+The source code for Kōtuku is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
@@ -55,7 +55,7 @@ static const int COLUMN1 = 30;
 enum { MS_NONE, MS_FUNCTION, MS_MSG };
 enum { EL_NONE=0, EL_MINOR, EL_MAJOR, EL_MAJORBOLD };
 
-static THREADVAR int tlBaseLine = 0;
+static thread_local int tlBaseLine = 0;
 
 /*********************************************************************************************************************
 
@@ -141,7 +141,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
    if ((Flags & VLF::CRITICAL) != VLF::NIL) { // Print the message irrespective of the log level
       #ifdef __ANDROID__
-         __android_log_vprint(ANDROID_LOG_ERROR, Header ? Header : "Parasol", Message, Args);
+         __android_log_vprint(ANDROID_LOG_ERROR, Header ? Header : "Kotuku", Message, Args);
       #else
          #ifdef ESC_OUTPUT
             if (!Header) Header = "";
@@ -211,11 +211,11 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       // If no header is provided, make one to match the current context
 
-      auto ctx = tlContext;
-      auto obj = ctx->object();
-      if (ctx->action > AC::NIL) action = ActionTable[int(ctx->action)].Name;
-      else if (ctx->action < AC::NIL) {
-         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-int(ctx->action)].Name;
+      auto &ctx = tlContext.back();
+      auto obj = ctx.obj;
+      if (ctx.action > AC::NIL) action = ActionTable[int(ctx.action)].Name;
+      else if (ctx.action < AC::NIL) {
+         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-int(ctx.action)].Name;
          else action = "Method";
       }
       else action = "App";
@@ -267,13 +267,13 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
             name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
             if (glLogLevel > 5) {
-               if (ctx->field) {
-                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx->field->Name);
+               if (ctx.field) {
+                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx.field->Name);
                }
                else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
             }
-            else if (ctx->field) {
-               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx->field->Name);
+            else if (ctx.field) {
+               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx.field->Name);
             }
             else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UID);
          }
@@ -315,7 +315,7 @@ C/C++ as the function name is automatically entered by the C pre-processor.
 
 -INPUT-
 cstr Header: A short string that names the function that is making the call.
-error Error: An error code from the `system/errors.h` include file.  Valid error codes and their descriptions can be found in the Parasol Wiki.
+error Error: An error code from the `system/errors.h` include file.  Valid error codes and their descriptions can be found in the Kotuku Wiki.
 
 -RESULT-
 error: Returns the same code that was specified in the `Error` parameter.
@@ -328,12 +328,12 @@ ERR FuncError(CSTRING Header, ERR Code)
    if (glLogLevel < 2) return Code;
    if ((tlDepth >= glMaxDepth) or (tlLogStatus <= 0)) return Code;
 
-   auto ctx = tlContext;
-   auto obj = tlContext->object();
+   auto &ctx = tlContext.back();
+   auto obj = ctx.obj;
    if (!Header) {
-      if (ctx->action > AC::NIL) Header = ActionTable[int(ctx->action)].Name;
-      else if (ctx->action < AC::NIL) {
-         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-int(ctx->action)].Name;
+      if (ctx.action > AC::NIL) Header = ActionTable[int(ctx.action)].Name;
+      else if (ctx.action < AC::NIL) {
+         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-int(ctx.action)].Name;
          else Header = "Method";
       }
       else Header = "Function";
@@ -369,8 +369,8 @@ ERR FuncError(CSTRING Header, ERR Code)
       if (obj->Class) {
          CSTRING name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
-         if (ctx->field) {
-            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->field->Name, glMessages[int(Code)], hiend);
+         if (ctx.field) {
+            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx.field->Name, glMessages[int(Code)], hiend);
          }
          else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[int(Code)], hiend);
       }

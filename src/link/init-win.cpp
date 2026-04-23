@@ -5,76 +5,76 @@ This file is in the public domain and may be distributed and modified without re
 *********************************************************************************************************************/
 
 #include <stdio.h>
+#include <string>
 
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 #define DLLCALL // __declspec(dllimport)
 #define WINAPI  __stdcall
 
 extern "C" {
 DLLCALL APTR WINAPI GetProcAddress(APTR, CSTRING);
-DLLCALL LONG WINAPI FreeLibrary(APTR);
+DLLCALL int WINAPI FreeLibrary(APTR);
 }
-typedef ERR OPENCORE(struct OpenInfo *, struct CoreBase **);
-typedef void CLOSECORE(void);
+using OPENCORE = ERR(struct OpenInfo *, struct CoreBase **);
+using CLOSECORE = void(void);
 
 struct CoreBase *CoreBase;
-static APTR find_core(char *PathBuffer, int Size);
-static APTR corehandle = NULL;
-CLOSECORE *CloseCore = NULL;
+static APTR find_core();
+static APTR corehandle = nullptr;
+CLOSECORE *CloseCore = nullptr;
 #else
 static struct CoreBase *CoreBase; // Dummy
 #endif
 
 //********************************************************************************************************************
 
-extern "C" const char * init_parasol(int argc, CSTRING *argv)
+extern "C" const char * init_kotuku(int argc, CSTRING *argv)
 {
-#ifndef PARASOL_STATIC
-   char path_buffer[256];
-   corehandle = find_core(path_buffer, sizeof(path_buffer));
-   if (!corehandle) return "Failed to open Parasol's core library.";
+#ifndef KOTUKU_STATIC
+   corehandle = find_core();
+   if (!corehandle) return "Failed to open Kotuku's core library.";
 
    auto OpenCore = (OPENCORE *)GetProcAddress((APTR)corehandle, "OpenCore");
    if (!OpenCore) {
       FreeLibrary(corehandle);
-      return "Could not find the OpenCore symbol in Parasol.";
+      return "Could not find the OpenCore symbol in Kotuku.";
    }
 
    if (!(CloseCore = (CLOSECORE *)GetProcAddress((APTR)corehandle, "CloseCore"))) {
       FreeLibrary(corehandle);
-      return "Could not find the CloseCore symbol in Parasol.";
+      return "Could not find the CloseCore symbol in Kotuku.";
    }
 #endif
 
    struct OpenInfo info;
+   info.Options     = nullptr;
    info.Detail      = 0;
    info.MaxDepth    = 14;
    info.Args        = argv;
    info.ArgCount    = argc;
-   info.Error = ERR::Okay;
-   info.Flags = OPF::ARGS|OPF::ERROR;
+   info.Flags       = OPF::ARGS;
 
-   if (OpenCore(&info, &CoreBase) == ERR::Okay) return NULL;
-   else if (info.Error IS ERR::CoreVersion) {
-      return "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
+   if (auto error = OpenCore(&info, &CoreBase); error IS ERR::Okay) return nullptr;
+   else if (error IS ERR::CoreVersion) {
+      return "This program requires the latest version of the Kotuku framework.\nPlease visit www.kotuku.dev to upgrade.";
    }
    else {
       static char msgbuf[120];
-      snprintf(msgbuf, sizeof(msgbuf), "Failed to initialise Parasol, error code %d.", LONG(info.Error));
+      snprintf(msgbuf, sizeof(msgbuf), "Failed to initialise Kotuku, error code %d.", int(error));
       return msgbuf;
    }
 }
 
 //********************************************************************************************************************
 
-extern "C" void close_parasol(void)
+extern "C" void close_kotuku(void)
 {
    CloseCore();
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
    FreeLibrary(corehandle);
 #endif
 }
 
-#include "common-win.c"
+#include "common-win.cpp"

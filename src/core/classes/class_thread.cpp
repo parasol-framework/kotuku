@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -38,23 +38,45 @@ thread routine.
 #endif
 
 #include "../defs.h"
-#include <parasol/main.h>
+#include <kotuku/main.h>
 
-THREADVAR int8_t tlThreadCrashed;
-THREADVAR extThread *tlThreadRef;
+thread_local int8_t tlThreadCrashed;
+thread_local extThread *tlThreadRef;
 
 static void thread_entry_cleanup(void *);
+
+struct ThreadEntryCleanupGuard {
+   ~ThreadEntryCleanupGuard() {
+      thread_entry_cleanup(nullptr);
+   }
+};
 
 //********************************************************************************************************************
 // Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
 
-static THREADVAR THREADID tlUniqueThreadID(0);
+static thread_local THREADID tlUniqueThreadID(0);
 static std::atomic_int glThreadIDCount = 1;
 
 THREADID get_thread_id(void)
 {
-   if (tlUniqueThreadID.defined()) return tlUniqueThreadID;
+   if (tlUniqueThreadID.defined()) {
+      // Preserve the invariant that a defined thread ID always has a registry record.
+      std::lock_guard lock(glmThreadRegistry);
+      if (auto it = glThreadRegistry.find(int(tlUniqueThreadID)); it IS glThreadRegistry.end()) {
+         glThreadRegistry[int(tlUniqueThreadID)] = std::make_shared<ThreadRecord>();
+      }
+      return tlUniqueThreadID;
+   }
+
    tlUniqueThreadID = THREADID(glThreadIDCount++);
+
+   // Register the new thread in the global thread registry
+   auto record = std::make_shared<ThreadRecord>();
+   {
+      std::lock_guard lock(glmThreadRegistry);
+      glThreadRegistry[int(tlUniqueThreadID)] = std::move(record);
+   }
+
    return tlUniqueThreadID;
 }
 
@@ -83,6 +105,7 @@ ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int Ms
 
    ScopedObjectLock<extThread> thread(uid, 10000);
    if (thread.granted()) {
+      thread->InterruptThreadID.store(0, std::memory_order_release);
       // NB: If a client wants notification of the thread ending, they can use WaitForObjects()
       // if not using callbacks.
       thread->Active = false;
@@ -104,8 +127,13 @@ static void thread_entry_cleanup(void *Arg)
    if (tlThreadCrashed) {
       pf::Log log("thread_cleanup");
       log.error("A thread in this program has crashed.");
-      if (tlThreadRef) tlThreadRef->Active = false;
+      if (tlThreadRef) {
+         tlThreadRef->InterruptThreadID.store(0, std::memory_order_release);
+         tlThreadRef->Active = false;
+      }
    }
+
+   deregister_thread();
 
    #ifdef _WIN32
       free_threadlock();
@@ -132,8 +160,9 @@ static ERR THREAD_Activate(extThread *Self)
    Self->Active = true; // Indicate that the thread is running
 
    std::thread::id thread_id = std::this_thread::get_id();
+   Self->InterruptThreadID.store(0, std::memory_order_release);
 
-   Self->CPPThread = new (std::nothrow) std::jthread([Self]() {
+   Self->CPPThread = new (std::nothrow) std::jthread([Self](std::stop_token StopToken) {
       auto uid = Self->UID;
 
       // Note that the Active flag will have been set to true prior to entry, and will remain until msg_threadcallback()
@@ -143,9 +172,8 @@ static ERR THREAD_Activate(extThread *Self)
 
       tlThreadCrashed = true;
       tlThreadRef     = Self;
-      #ifdef __GNUC__
-         pthread_cleanup_push(&thread_entry_cleanup, Self);
-      #endif
+      ThreadEntryCleanupGuard cleanup_guard;
+      Self->InterruptThreadID.store(int(get_thread_id()), std::memory_order_release);
 
       ThreadMessage msg = { .ThreadID = uid, .Callback = Self->Callback };
 
@@ -153,7 +181,10 @@ static ERR THREAD_Activate(extThread *Self)
          // Replace the default dummy context with one that pertains to the thread
          extObjectContext thread_ctx(Self, AC::NIL);
 
-         if (Self->Routine.isC()) {
+         if (StopToken.stop_requested()) {
+            Self->Error = ERR::Cancelled;
+         }
+         else if (Self->Routine.isC()) {
             auto routine = (ERR (*)(extThread *, APTR))Self->Routine.Routine;
             Self->Error = routine(Self, Self->Routine.Meta);
          }
@@ -169,15 +200,11 @@ static ERR THREAD_Activate(extThread *Self)
       // if the client routine is persistently running during shutdown.
 
       // See msg_threadcallback()
-      SendMessage(MSGID::THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
+      SendMessage(MSGID::THREAD_CALLBACK, MSF::NIL, &msg, sizeof(msg));
 
       // Reset the crash indicators and invoke the cleanup code.
       tlThreadRef     = nullptr;
       tlThreadCrashed = false;
-
-      #ifdef __GNUC__
-         pthread_cleanup_pop(true);
-      #endif
    });
 
    if (Self->CPPThread) {
@@ -202,9 +229,11 @@ could result in an unstable application.
 
 static ERR THREAD_Deactivate(extThread *Self)
 {
-   if (Self->Active) {
+   if (Self->Active and Self->CPPThread) {
       Self->CPPThread->request_stop();
-      Self->Active = false;
+
+      auto thread_id = Self->InterruptThreadID.load(std::memory_order_acquire);
+      if (thread_id > 0) WakeThread(thread_id, true);
    }
 
    return ERR::Okay;
@@ -303,6 +332,7 @@ static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
 
    if (!Args->Size) { // If no size is provided, we simply copy the provided pointer.
       Self->Data = Args->Data;
+      Self->DataSize = 0;
       return ERR::Okay;
    }
    else if (AllocMemory(Args->Size, MEM::DATA, &Self->Data, nullptr) IS ERR::Okay) {

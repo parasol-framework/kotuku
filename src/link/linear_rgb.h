@@ -7,17 +7,17 @@
 
 class rgb_to_linear {
 private:
-   inline static UBYTE conv_r2l(double Value) {
+   inline static uint8_t conv_r2l(double Value) {
       if (Value <= 0.04045) Value /= 12.92;
       else Value = std::pow((Value + 0.055) / 1.055, 2.4);
-      return pf::F2T((Value * 255.0) + 0.5);
+      return int((Value * 255.0) + 0.5);
    }
 
-   inline static UBYTE conv_l2r(double Value) {
-      LONG ix;
+   inline static uint8_t conv_l2r(double Value) {
+      int ix;
 
-      if (Value < 0.0031308) ix = pf::F2T(((Value * 12.92) * 255.0) + 0.5);
-      else ix = pf::F2T(((std::pow(Value, 1.0 / 2.4) * 1.055 - 0.055) * 255.0) + 0.5);
+      if (Value < 0.0031308) ix = int(((Value * 12.92) * 255.0) + 0.5);
+      else ix = int(((std::pow(Value, 1.0 / 2.4) * 1.055 - 0.055) * 255.0) + 0.5);
 
       return (ix < 0) ? 0 : (ix > 255) ? 255 : ix;
    }
@@ -25,17 +25,17 @@ private:
 public:
    inline rgb_to_linear() {
       // Initialise conversion tables
-      for (LONG i=0; i < 256; i++) {
+      for (int i=0; i < 256; i++) {
          r2l[i] = conv_r2l((double)i * (1.0 / 255.0));
          l2r[i] = conv_l2r((double)i * (1.0 / 255.0));
       }
    }
 
-   inline constexpr UBYTE convert(const UBYTE Colour) { // RGB to linear
+   inline constexpr uint8_t convert(const uint8_t Colour) { // RGB to linear
       return r2l[Colour];
    }
 
-   inline constexpr UBYTE invert(const UBYTE Colour) { // Linear to RGB
+   inline constexpr uint8_t invert(const uint8_t Colour) { // Linear to RGB
       return l2r[Colour];
    }
 
@@ -53,13 +53,13 @@ public:
       Colour.Blue  = l2r[Colour.Blue];
    }
 
-   inline static FLOAT f_invert(FLOAT Value) {
+   inline static float f_invert(float Value) {
       if (Value < 0.0031308) Value = Value * 12.92;
       else Value = std::pow(Value, 1.0 / 2.4) * 1.055 - 0.055;
       return (Value < 0) ? 0 : (Value > 255) ? 255 : Value;
    }
 
-   inline static FLOAT f_convert(FLOAT Value) {
+   inline static float f_convert(float Value) {
       if (Value <= 0.04045) return Value / 12.92;
       else return std::pow((Value + 0.055) / 1.055, 2.4);
    }
@@ -82,8 +82,8 @@ public:
    }
 
 private:
-   UBYTE r2l[256];
-   UBYTE l2r[256];
+   uint8_t r2l[256];
+   uint8_t l2r[256];
 };
 
 extern rgb_to_linear glLinearRGB;

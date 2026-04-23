@@ -1,5 +1,5 @@
 
-#ifdef PARASOL_MAIN_H
+#ifdef KOTUKU_MAIN_H
 typedef void * HWND;
 typedef void * HDC;
 typedef void * HBITMAP;
@@ -7,7 +7,7 @@ typedef void * HANDLE;
 typedef void * HINSTANCE;
 typedef void * WNDPROC;
 typedef void * HCURSOR;
-enum class PTC : LONG;
+enum class PTC : int;
 #endif
 
 struct WinCursor {
@@ -16,7 +16,7 @@ struct WinCursor {
    #else
    void * WinCursor;
    #endif
-   #ifdef PARASOL_MAIN_H
+   #ifdef KOTUKU_MAIN_H
    PTC CursorID;
    #else
    int CursorID;
@@ -29,7 +29,7 @@ struct WinDT {
    void *Data;
 };
 
-#if !defined(PARASOL_MAIN_H) && defined(__cplusplus)
+#if !defined(KOTUKU_MAIN_H) && defined(__cplusplus)
 enum class CON : unsigned int {
    NIL = 0,
    GAMEPAD_S = 0x00000001,
@@ -59,7 +59,7 @@ extern "C" {
 
 extern int glIgnoreClip;
 extern int glClipboardUpdates;
-extern BYTE glOleInit;
+extern int8_t glOleInit;
 
 int winLookupSurfaceID(HWND);
 void winCreateScreenClassClipboard(void);

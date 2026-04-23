@@ -18,7 +18,7 @@ void anim_base::set_orig_value(svgState &State)
             break;
 
          case SVF_STROKE_WIDTH:
-            target_attrib_orig.assign(std::to_string(obj->get<DOUBLE>(FID_StrokeWidth)));
+            target_attrib_orig.assign(std::to_string(obj->get<double>(FID_StrokeWidth)));
             break;
 
          case SVF_FILL: {
@@ -76,7 +76,7 @@ double anim_motion::get_total_dist()
       POINT<double> prev, pt;
       read_numseq(values[0], { &prev.x, &prev.y });
       distances.push_back(0);
-      for (LONG i=1; i < std::ssize(values); i++) {
+      for (int i=1; i < std::ssize(values); i++) {
          read_numseq(values[i], { &pt.x, &pt.y });
          total_dist += prev - pt;
          distances.push_back(total_dist);
@@ -114,7 +114,7 @@ double anim_base::get_total_dist()
       double prev, val;
       read_numseq(values[0], { &prev });
       distances.push_back(0);
-      for (LONG i=1; i < std::ssize(values); i++) {
+      for (int i=1; i < std::ssize(values); i++) {
          read_numseq(values[i], { &val });
          total_dist += std::abs(val - prev);
          distances.push_back(total_dist);
@@ -149,7 +149,7 @@ double anim_base::get_paired_dist()
       POINT<double> a, b;
       read_numseq(values[0], { &b.x, &b.y });
       distances.push_back(0);
-      for (LONG i=1; i < std::ssize(values); i++) {
+      for (int i=1; i < std::ssize(values); i++) {
          read_numseq(values[i], { &a.x, &a.y });
          total_dist += a - b;
          distances.push_back(total_dist);
@@ -182,11 +182,11 @@ double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
    double seek_to = seek;
 
    if ((seek >= 1.0) and (!freeze)) {
-      return strtod(target_attrib_orig.c_str(), NULL);
+      return strtod(target_attrib_orig.c_str(), nullptr);
    }
 
    if (not values.empty()) {
-      LONG i;
+      int i;
       if (timing.size() IS values.size()) {
          seek *= timing.back(); // In discrete mode the last time doesn't have to be 1.0
          for (i=0; (i < std::ssize(timing)-1) and (timing[i+1] < seek); i++);
@@ -194,7 +194,7 @@ double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
          seek_to = (seek - timing[i]) / delta;
       }
       else {
-         i = std::clamp<LONG>(F2T((values.size()-1) * seek), 0, values.size() - 2);
+         i = std::clamp<int>(int((values.size()-1) * seek), 0, values.size() - 2);
          // Recompute the seek position to fit between the two values
          const double mod = 1.0 / double(values.size() - 1);
          seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
@@ -277,7 +277,7 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
    double seek_to = seek;
 
    if (not values.empty()) {
-      LONG i;
+      int i;
 
       if (calc_mode IS CMODE::PACED) {
          const auto dist_pos = seek * get_total_dist();
@@ -291,13 +291,13 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
          i = 0;
          if (timing.size() IS spline_paths.size()) {
             for (i=0; (i < std::ssize(timing)-1) and (timing[i+1] < seek); i++);
-            i = std::clamp<LONG>(i, 0, timing.size() - 1);
+            i = std::clamp<int>(i, 0, timing.size() - 1);
          }
          else {
             // When no timing is specified, the 'values' are distributed evenly.  This determines
             // what spline-path we are going to use.
 
-            i = std::clamp<LONG>(F2T(seek * std::ssize(spline_paths)), 0, std::ssize(spline_paths) - 1);
+            i = std::clamp<int>(int(seek * std::ssize(spline_paths)), 0, std::ssize(spline_paths) - 1);
          }
 
          auto &sp = spline_paths[i]; // sp = The spline we're going to use
@@ -308,7 +308,7 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
 
          const double x = (seek >= 1.0) ? 1.0 : fmod(seek, 1.0 / double(std::ssize(spline_paths))) * std::ssize(spline_paths);
 
-         LONG si;
+         int si;
          for (si=0; (si < std::ssize(sp.points)-1) and (sp.points[si+1].point.x < x); si++);
 
          const double mod_x = x - sp.points[si].point.x;
@@ -320,12 +320,12 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
             seek *= timing.back(); // In discrete mode the last time doesn't have to be 1.0
 
             for (i=0; (i < std::ssize(timing)-1) and (timing[i+1] < seek); i++);
-            i = std::clamp<LONG>(i, 0, timing.size() - 2);
+            i = std::clamp<int>(i, 0, timing.size() - 2);
             const double delta = timing[i+1] - timing[i];
             seek_to = (seek - timing[i]) / delta;
          }
          else {
-            i = std::clamp<LONG>(F2T((values.size()-1) * seek), 0, values.size() - 2);
+            i = std::clamp<int>(int((values.size()-1) * seek), 0, values.size() - 2);
             const double mod = 1.0 / double(values.size() - 1);
             seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
          }
@@ -393,24 +393,24 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
 
    if (not values.empty()) {
       if (values.size() >= 2) {
-         LONG vi = F2T((values.size()-1) * seek);
-         if (vi >= LONG(values.size())-1) vi = values.size() - 2;
-         vec::ReadPainter(NULL, values[vi].c_str(), &from_col, NULL);
-         vec::ReadPainter(NULL, values[vi+1].c_str(), &to_col, NULL);
+         int vi = int((values.size()-1) * seek);
+         if (vi >= int(values.size())-1) vi = values.size() - 2;
+         vec::ReadPainter(nullptr, values[vi].c_str(), &from_col, nullptr);
+         vec::ReadPainter(nullptr, values[vi+1].c_str(), &to_col, nullptr);
 
          const double mod = 1.0 / double(values.size() - 1);
          seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
       }
       else if (values.size() IS 1) { // Equivalent to a single 'to'
-         vec::ReadPainter(NULL, target_attrib_orig.c_str(), &from_col, NULL);
-         vec::ReadPainter(NULL, values[0].c_str(), &to_col, NULL);
+         vec::ReadPainter(nullptr, target_attrib_orig.c_str(), &from_col, nullptr);
+         vec::ReadPainter(nullptr, values[0].c_str(), &to_col, nullptr);
       }
       else return { 0, 0, 0, 0 };
    }
    else if (not from.empty()) {
       if (not to.empty()) {
-         vec::ReadPainter(NULL, from.c_str(), &from_col, NULL);
-         vec::ReadPainter(NULL, to.c_str(), &to_col, NULL);
+         vec::ReadPainter(nullptr, from.c_str(), &from_col, nullptr);
+         vec::ReadPainter(nullptr, to.c_str(), &to_col, nullptr);
       }
       else if (not by.empty()) {
          return { 0, 0, 0, 0 };
@@ -418,15 +418,15 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
    }
    else if (not to.empty()) {
       // The original value will be the 'from' in this situation
-      vec::ReadPainter(NULL, target_attrib_orig.c_str(), &from_col, NULL);
-      vec::ReadPainter(NULL, to.c_str(), &to_col, NULL);
+      vec::ReadPainter(nullptr, target_attrib_orig.c_str(), &from_col, nullptr);
+      vec::ReadPainter(nullptr, to.c_str(), &to_col, nullptr);
    }
    else if (not by.empty()) {
       float *colour;
       int elements;
       if ((Vector.get(Field, colour, elements) IS ERR::Okay) and (elements IS 4)) {
          from_col.Colour = { colour[0], colour[1], colour[2], colour[3] };
-         vec::ReadPainter(NULL, to.c_str(), &to_col, NULL);
+         vec::ReadPainter(nullptr, to.c_str(), &to_col, nullptr);
          to_col.Colour.Red   = std::clamp<float>(to_col.Colour.Red   + colour[0], 0.0, 1.0);
          to_col.Colour.Green = std::clamp<float>(to_col.Colour.Green + colour[1], 0.0, 1.0);
          to_col.Colour.Blue  = std::clamp<float>(to_col.Colour.Blue  + colour[2], 0.0, 1.0);
@@ -438,7 +438,7 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
 
    if ((seek_to >= 1.0) and (!freeze)) {
       VectorPainter painter;
-      vec::ReadPainter(NULL, target_attrib_orig.c_str(), &painter, NULL);
+      vec::ReadPainter(nullptr, target_attrib_orig.c_str(), &painter, nullptr);
       return painter.Colour;
    }
 

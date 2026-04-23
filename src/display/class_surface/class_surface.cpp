@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -30,14 +30,14 @@ areas.
 
 #undef __xwindows__
 #include "../defs.h"
-#include <parasol/modules/picture.h>
+#include <kotuku/modules/picture.h>
 #include <numeric> // For std::gcd
 
 #ifdef _WIN32
 using namespace display;
 #endif
 
-static ERR SET_Opacity(extSurface *, DOUBLE);
+static ERR SET_Opacity(extSurface *, double);
 static ERR SET_XOffset(extSurface *, Unit *);
 static ERR SET_YOffset(extSurface *, Unit *);
 
@@ -46,7 +46,7 @@ static ERR SET_YOffset(extSurface *, Unit *);
 
 static ERR consume_input_events(const InputEvent *, int);
 static void draw_region(extSurface *, extSurface *, extBitmap *);
-static ERR redraw_timer(extSurface *, LARGE, LARGE);
+static ERR redraw_timer(extSurface *, int64_t, int64_t);
 
 /*********************************************************************************************************************
 ** This call is used to refresh the pointer image when at least one layer has been rearranged.  The timer is used to
@@ -54,7 +54,7 @@ static ERR redraw_timer(extSurface *, LARGE, LARGE);
 ** The delay also prevents clashes with read/write access to the surface list.
 */
 
-static ERR refresh_pointer_timer(OBJECTPTR Task, LARGE Elapsed, LARGE CurrentTime)
+static ERR refresh_pointer_timer(OBJECTPTR Task, int64_t Elapsed, int64_t CurrentTime)
 {
    objPointer *pointer;
    if ((pointer = gfx::AccessPointer())) {
@@ -104,7 +104,7 @@ static void release_video(objDisplay *Display)
          winReleaseDC(winhandle, surface);
       }
 
-      Display->Bitmap->setHandle((APTR)NULL);
+      Display->Bitmap->setHandle((APTR)nullptr);
    #endif
 
    acFlush(Display);
@@ -252,7 +252,7 @@ static void expose_buffer(const SURFACELIST &list, int Limit, int Index, int Sca
       if (glComposite) {
          if (glComposite->BitsPerPixel != list[Index].BitsPerPixel) {
             FreeResource(glComposite);
-            glComposite = NULL;
+            glComposite = nullptr;
          }
          else {
             if ((glComposite->Width < list[Index].Width) or (glComposite->Height < list[Index].Height)) {
@@ -274,7 +274,7 @@ static void expose_buffer(const SURFACELIST &list, int Limit, int Index, int Sca
       // Build the background in our buffer
 
       ClipRectangle clip(Left, Top, Right, Bottom);
-      prepare_background(NULL, list, Index, glComposite, clip, STAGE_COMPOSITE);
+      prepare_background(nullptr, list, Index, glComposite, clip, STAGE_COMPOSITE);
 
       // Blend the surface's graphics into the composited buffer
       // NOTE: THE FOLLOWING IS NOT OPTIMISED WITH RESPECT TO CLIPPING
@@ -467,7 +467,7 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERR R
 
    // Get the width and height of our parent surface
 
-   DOUBLE parentwidth, parentheight, width, height, x, y;
+   double parentwidth, parentheight, width, height, x, y;
 
    if (Self->ParentID) {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
@@ -582,7 +582,7 @@ object performs a redraw event, all functions inserted by this method will be ca
 order with a direct reference to the Surface's target bitmap.  The C/C++ prototype is
 `Function(APTR Context, *Surface, *Bitmap, APTR Meta)`.
 
-The Fluid prototype is `function draw(Surface, Bitmap)`
+The Tiri prototype is `function draw(Surface, Bitmap)`
 
 The subscriber can draw to the bitmap surface as it would with any freshly allocated bitmap object (refer to the
 @Bitmap class).  To get the width and height of the available drawing space, please read the Width and
@@ -608,13 +608,13 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
    if (!Args) return log.warning(ERR::NullArgs);
 
    OBJECTPTR context = ParentContext();
-   OBJECTPTR call_context = NULL;
+   OBJECTPTR call_context = nullptr;
    if (Args->Callback->isC()) call_context = (OBJECTPTR)Args->Callback->Context;
    else if (Args->Callback->isScript()) call_context = context; // Scripts use runtime ID resolution...
 
    if (context->UID < 0) {
       log.warning("Public objects may not draw directly to surfaces.");
-      return ERR::Failed;
+      return ERR::NoPermission;
    }
 
    log.msg("Context: %d, Callback Context: %d, Routine: %p (Count: %d)", context->UID, call_context ? call_context->UID : 0, Args->Callback->Routine, Self->CallbackCount);
@@ -722,7 +722,7 @@ Focus: Changes the primary user focus to the surface object.
 -END-
 *********************************************************************************************************************/
 
-static LARGE glLastFocusTime = 0;
+static int64_t glLastFocusTime = 0;
 
 static ERR SURFACE_Focus(extSurface *Self)
 {
@@ -860,7 +860,7 @@ static ERR SURFACE_Focus(extSurface *Self)
    // placed first, then the lost-focus chain.
 
    int event_size = sizeof(evFocus) + (glFocusList.size() * sizeof(OBJECTID)) + (lostfocus.size() * sizeof(OBJECTID));
-   auto buffer = std::make_unique<BYTE[]>(event_size);
+   auto buffer = std::make_unique<int8_t[]>(event_size);
    auto ev = (evFocus *)(buffer.get());
    ev->EventID        = EVID_GUI_SURFACE_FOCUS;
    ev->TotalWithFocus = glFocusList.size();
@@ -914,7 +914,7 @@ static ERR SURFACE_Free(extSurface *Self)
 
    if ((Self->Callback) and (Self->Callback != Self->CallbackCache)) {
       FreeResource(Self->Callback);
-      Self->Callback = NULL;
+      Self->Callback = nullptr;
       Self->CallbackCount = 0;
       Self->CallbackSize = 0;
    }
@@ -923,7 +923,7 @@ static ERR SURFACE_Free(extSurface *Self)
       if (pf::ScopedObjectLock<extSurface> parent(Self->ParentID, 5000); parent.granted()) {
          UnsubscribeAction(*parent, AC::NIL);
          if (Self->transparent()) {
-            Action(drw::RemoveCallback::id, Self, NULL);
+            Action(drw::RemoveCallback::id, Self, nullptr);
          }
       }
    }
@@ -940,7 +940,7 @@ static ERR SURFACE_Free(extSurface *Self)
    }
 
    if ((Self->BufferID) and ((!Self->BitmapOwnerID) or (Self->BitmapOwnerID IS Self->UID))) {
-      if (Self->Bitmap) { ReleaseObject(Self->Bitmap); Self->Bitmap = NULL; }
+      if (Self->Bitmap) { ReleaseObject(Self->Bitmap); Self->Bitmap = nullptr; }
       FreeResource(Self->BufferID);
       Self->BufferID = 0;
    }
@@ -958,7 +958,7 @@ static ERR SURFACE_Free(extSurface *Self)
    if ((Self->Flags & RNF::AUTO_QUIT) != RNF::NIL) {
       pf::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
-      SendMessage(MSGID::QUIT, MSF::NIL, NULL, 0);
+      SendMessage(MSGID::QUIT, MSF::NIL, nullptr, 0);
    }
 
    if (Self->InputHandle) gfx::UnsubscribeInput(Self->InputHandle);
@@ -1062,7 +1062,7 @@ static ERR SURFACE_InheritedFocus(extSurface *Self, struct drw::InheritedFocus *
 
       //UpdateSurfaceField(Self, Flags); // Not necessary because SURFACE_Focus sets the surfacelist
 
-      NotifySubscribers(Self, AC::Focus, NULL, ERR::Okay);
+      NotifySubscribers(Self, AC::Focus, nullptr, ERR::Okay);
       return ERR::Okay;
    }
 }
@@ -1587,7 +1587,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
    // response times.
 
    int index = 0;
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
+   uint8_t msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
    while (ScanMessages(&index, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
@@ -1684,7 +1684,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 */
 
    log.traceBranch("Sending redimension notifications");
-   struct acRedimension redimension = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, (DOUBLE)Self->Width, (DOUBLE)Self->Height, 0 };
+   struct acRedimension redimension = { (double)Self->X, (double)Self->Y, 0, (double)Self->Width, (double)Self->Height, 0 };
    NotifySubscribers(Self, AC::Redimension, &redimension, ERR::Okay);
    return ERR::Okay|ERR::Notified;
 }
@@ -1944,7 +1944,7 @@ Search
 static ERR SURFACE_RemoveCallback(extSurface *Self, struct drw::RemoveCallback *Args)
 {
    pf::Log log;
-   OBJECTPTR context = NULL;
+   OBJECTPTR context = nullptr;
 
    if (Args) {
       if ((Args->Callback) and (Args->Callback->isC())) {
@@ -2130,7 +2130,7 @@ Okay
 static ERR SURFACE_ScheduleRedraw(extSurface *Self)
 {
    // TODO Currently defaults to 60FPS, we should get the correct FPS from the Display object.
-   const DOUBLE FPS = 60.0;
+   const double FPS = 60.0;
 
    if (Self->RedrawScheduled) return ERR::Okay;
 
@@ -2260,7 +2260,7 @@ static ERR SURFACE_SetOpacity(extSurface *Self, struct drw::SetOpacity *Args)
       return ERR::NoSupport;
    }
 
-   DOUBLE value;
+   double value;
    if (Args->Adjustment) {
       value = (Self->Opacity * (100.0 / 255.0)) + Args->Adjustment;
       SET_Opacity(Self, value);
@@ -2322,7 +2322,7 @@ static ERR SURFACE_Show(extSurface *Self)
 
 //********************************************************************************************************************
 
-static ERR redraw_timer(extSurface *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR redraw_timer(extSurface *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    if (Self->RedrawScheduled) {
       Self->RedrawScheduled = false; // Done before Draw() because it tests this field.
@@ -2334,7 +2334,7 @@ static ERR redraw_timer(extSurface *Self, LARGE Elapsed, LARGE CurrentTime)
       // system.
       if (Self->RedrawCountdown > 0) Self->RedrawCountdown--;
       if (!Self->RedrawCountdown) {
-         Self->RedrawTimer = NULL;
+         Self->RedrawTimer = nullptr;
          return ERR::Terminate;
       }
    }
@@ -2404,13 +2404,13 @@ static ERR consume_input_events(const InputEvent *Events, int Handle)
 
    auto Self = (extSurface *)CurrentContext();
 
-   static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
+   static double glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
 
    for (auto event=Events; event; event=event->Next) {
       // Process events that support consolidation first.
 
       if ((event->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
-         DOUBLE xchange, ychange;
+         double xchange, ychange;
          int dragindex;
 
          // Dragging support
@@ -2430,8 +2430,8 @@ static ERR consume_input_events(const InputEvent *Events, int Handle)
                   event = event->Next;
                }
 
-               DOUBLE absx = event->AbsX - glAnchorX;
-               DOUBLE absy = event->AbsY - glAnchorY;
+               double absx = event->AbsX - glAnchorX;
+               double absy = event->AbsY - glAnchorY;
 
                xchange = 0;
                ychange = 0;
@@ -2466,8 +2466,8 @@ static ERR consume_input_events(const InputEvent *Events, int Handle)
             if (Self->DragStatus IS DRAG::ANCHOR) {
                const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
                if ((dragindex = find_surface_list(Self)) != -1) {
-                  DOUBLE absx = glSurfaces[dragindex].Left + glAnchorX;
-                  DOUBLE absy = glSurfaces[dragindex].Top + glAnchorY;
+                  double absx = glSurfaces[dragindex].Left + glAnchorX;
+                  double absy = glSurfaces[dragindex].Top + glAnchorY;
                   gfx::SetCursorPos(absx, absy);
                }
             }
@@ -2516,7 +2516,7 @@ static ERR consume_input_events(const InputEvent *Events, int Handle)
 static const FieldDef MovementFlags[] = {
    { "Vertical",   MOVE_VERTICAL },
    { "Horizontal", MOVE_HORIZONTAL },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clWindowType[] = { // This table is copied from pointer_class.c
@@ -2525,51 +2525,51 @@ static const FieldDef clWindowType[] = { // This table is copied from pointer_cl
    { "Taskbar",  SWIN::TASKBAR },
    { "IconTray", SWIN::ICON_TRAY },
    { "None",     SWIN::NONE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clTypeFlags[] = {
    { "Root", RT::ROOT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 #include "surface_def.c"
 
 static const FieldArray clSurfaceFields[] = {
-   { "Drag",         FDF_OBJECTID|FDF_RW, NULL, SET_Drag, CLASSID::SURFACE },
-   { "Buffer",       FDF_OBJECTID|FDF_R,  NULL, NULL, CLASSID::BITMAP },
-   { "Parent",       FDF_OBJECTID|FDF_RW, NULL, SET_Parent, CLASSID::SURFACE },
-   { "PopOver",      FDF_OBJECTID|FDF_RI, NULL, SET_PopOver },
-   { "MinWidth",     FDF_INT|FDF_RW,  NULL, SET_MinWidth },
-   { "MinHeight",    FDF_INT|FDF_RW,  NULL, SET_MinHeight },
-   { "MaxWidth",     FDF_INT|FDF_RW,  NULL, SET_MaxWidth },
-   { "MaxHeight",    FDF_INT|FDF_RW,  NULL, SET_MaxHeight },
-   { "LeftLimit",    FDF_INT|FDF_RW,  NULL, SET_LeftLimit },
-   { "RightLimit",   FDF_INT|FDF_RW,  NULL, SET_RightLimit },
-   { "TopLimit",     FDF_INT|FDF_RW,  NULL, SET_TopLimit },
-   { "BottomLimit",  FDF_INT|FDF_RW,  NULL, SET_BottomLimit },
-   { "Display",      FDF_OBJECTID|FDF_R, NULL, NULL, CLASSID::DISPLAY },
-   { "Flags",        FDF_INTFLAGS|FDF_RW, NULL, SET_Flags, &clSurfaceFlags },
+   { "Drag",         FDF_OBJECTID|FDF_RW, nullptr, SET_Drag, CLASSID::SURFACE },
+   { "Buffer",       FDF_OBJECTID|FDF_R,  nullptr, nullptr, CLASSID::BITMAP },
+   { "Parent",       FDF_OBJECTID|FDF_RW, nullptr, SET_Parent, CLASSID::SURFACE },
+   { "PopOver",      FDF_OBJECTID|FDF_RI, nullptr, SET_PopOver },
+   { "MinWidth",     FDF_INT|FDF_RW,  nullptr, SET_MinWidth },
+   { "MinHeight",    FDF_INT|FDF_RW,  nullptr, SET_MinHeight },
+   { "MaxWidth",     FDF_INT|FDF_RW,  nullptr, SET_MaxWidth },
+   { "MaxHeight",    FDF_INT|FDF_RW,  nullptr, SET_MaxHeight },
+   { "LeftLimit",    FDF_INT|FDF_RW,  nullptr, SET_LeftLimit },
+   { "RightLimit",   FDF_INT|FDF_RW,  nullptr, SET_RightLimit },
+   { "TopLimit",     FDF_INT|FDF_RW,  nullptr, SET_TopLimit },
+   { "BottomLimit",  FDF_INT|FDF_RW,  nullptr, SET_BottomLimit },
+   { "Display",      FDF_OBJECTID|FDF_R, nullptr, nullptr, CLASSID::DISPLAY },
+   { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, SET_Flags, &clSurfaceFlags },
    { "X",            FDF_UNIT|FDF_INT|FDF_SCALED|FDF_RW, GET_XCoord, SET_XCoord },
    { "Y",            FDF_UNIT|FDF_INT|FDF_SCALED|FDF_RW, GET_YCoord, SET_YCoord },
    { "Width",        FDF_UNIT|FDF_INT|FDF_SCALED|FDF_RW, GET_Width,  SET_Width },
    { "Height",       FDF_UNIT|FDF_INT|FDF_SCALED|FDF_RW, GET_Height, SET_Height },
-   { "RootLayer",    FDF_OBJECTID|FDF_RW, NULL, SET_RootLayer },
-   { "Align",        FDF_INTFLAGS|FDF_RW, NULL, NULL, &clSurfaceAlign },
-   { "Dimensions",   FDF_INT|FDF_RW, NULL, SET_Dimensions, &clSurfaceDimensions },
-   { "DragStatus",   FDF_INT|FDF_LOOKUP|FDF_R, NULL, NULL, &clSurfaceDragStatus },
-   { "Cursor",       FDF_INT|FDF_LOOKUP|FDF_RW, NULL, SET_Cursor, &clSurfaceCursor },
+   { "RootLayer",    FDF_OBJECTID|FDF_RW, nullptr, SET_RootLayer },
+   { "Align",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clSurfaceAlign },
+   { "Dimensions",   FDF_INT|FDF_RW, nullptr, SET_Dimensions, &clSurfaceDimensions },
+   { "DragStatus",   FDF_INT|FDF_LOOKUP|FDF_R, nullptr, nullptr, &clSurfaceDragStatus },
+   { "Cursor",       FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_Cursor, &clSurfaceCursor },
    { "Colour",       FDF_RGB|FDF_RW },
-   { "Type",         FDF_SYSTEM|FDF_INT|FDF_RI, NULL, NULL, &clTypeFlags },
-   { "Modal",        FDF_INT|FDF_RW, NULL, SET_Modal },
+   { "Type",         FDF_SYSTEM|FDF_INT|FDF_RI, nullptr, nullptr, &clTypeFlags },
+   { "Modal",        FDF_INT|FDF_RW, nullptr, SET_Modal },
    // Virtual fields
    { "AbsX",          FDF_VIRTUAL|FDF_INT|FDF_RW, GET_AbsX, SET_AbsX },
    { "AbsY",          FDF_VIRTUAL|FDF_INT|FDF_RW, GET_AbsY, SET_AbsY },
    { "BitsPerPixel",  FDF_VIRTUAL|FDF_INT|FDF_RI, GET_BitsPerPixel, SET_BitsPerPixel },
    { "Bottom",        FDF_VIRTUAL|FDF_INT|FDF_R,  GET_Bottom },
-   { "Movement",      FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, NULL, SET_Movement, &MovementFlags },
+   { "Movement",      FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, nullptr, SET_Movement, &MovementFlags },
    { "Opacity",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, GET_Opacity, SET_Opacity },
-   { "RevertFocus",   FDF_SYSTEM|FDF_VIRTUAL|FDF_OBJECTID|FDF_W, NULL, SET_RevertFocus },
+   { "RevertFocus",   FDF_SYSTEM|FDF_VIRTUAL|FDF_OBJECTID|FDF_W, nullptr, SET_RevertFocus },
    { "Right",         FDF_VIRTUAL|FDF_INT|FDF_R,  GET_Right },
    { "UserFocus",     FDF_VIRTUAL|FDF_INT|FDF_R,  GET_UserFocus },
    { "Visible",       FDF_VIRTUAL|FDF_INT|FDF_RW, GET_Visible, SET_Visible },

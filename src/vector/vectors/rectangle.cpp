@@ -11,7 +11,7 @@ VectorRectangle extends the @Vector class with the ability to generate rectangul
 
 static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Path)
 {
-   DOUBLE x, y, width, height;
+   double x, y, width, height;
 
    if (dmf::hasX(Vector->rDimensions)) x = Vector->rX;
    else if (dmf::hasScaledX(Vector->rDimensions)) x = Vector->rX * get_parent_width(Vector);
@@ -62,7 +62,7 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
       // Coordinates are either ALL scaled or ALL fixed, not a mix of both.
       // This feature is not SVG compliant.
 
-      DOUBLE scale_x = 1.0, scale_y = 1.0;
+      double scale_x = 1.0, scale_y = 1.0;
 
       if (dmf::hasScaledRadiusX(Vector->rDimensions)) {
          scale_x = sqrt((width * width) + (height * height)) * INV_SQRT2;
@@ -73,7 +73,7 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
          else scale_y = sqrt((width * width) + (height * height)) * INV_SQRT2;
       }
 
-      DOUBLE rx[4], ry[4];
+      double rx[4], ry[4];
       for (unsigned i=0; i < 4; i++) {
          rx[i] = Vector->rRound[i].x * scale_x;
          ry[i] = Vector->rRound[i].y * scale_y;
@@ -105,7 +105,7 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
       // If RX is greater than width/2, set RX to width/2.  Same for RY on the vertical axis.
       // If RX or RY is explicitly defined as zero by the client, the corners are square.
 
-      DOUBLE rx = Vector->rRound[0].x, ry = Vector->rRound[0].y;
+      double rx = Vector->rRound[0].x, ry = Vector->rRound[0].y;
       bool x_defined = dmf::hasScaledRadiusX(Vector->rDimensions) or dmf::hasRadiusX(Vector->rDimensions);
       bool y_defined = dmf::hasScaledRadiusY(Vector->rDimensions) or dmf::hasRadiusY(Vector->rDimensions);
 
@@ -307,17 +307,17 @@ against the rectangle's diagonal.
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_Rounding(extVectorRectangle *Self, DOUBLE **Value, LONG *Elements)
+static ERR RECTANGLE_GET_Rounding(extVectorRectangle *Self, double **Value, int *Elements)
 {
-   *Value = (DOUBLE *)Self->rRound.data();
+   *Value = (double *)Self->rRound.data();
    *Elements = 8;
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_Rounding(extVectorRectangle *Self, DOUBLE *Value, LONG Elements)
+static ERR RECTANGLE_SET_Rounding(extVectorRectangle *Self, double *Value, int Elements)
 {
    if (Elements >= 8) {
-      copymem(Value, Self->rRound.data(), sizeof(DOUBLE) * 8);
+      copymem(Value, Self->rRound.data(), sizeof(double) * 8);
       Self->rFullControl = true;
       reset_path(Self);
       return ERR::Okay;
@@ -412,14 +412,14 @@ XOffset: The right-side of the rectangle, expressed as a fixed or scaled offset 
 
 static ERR RECTANGLE_GET_XOffset(extVectorRectangle *Self, Unit *Value)
 {
-   DOUBLE value = 0;
+   double value = 0;
 
    if (dmf::hasXOffset(Self->rDimensions)) value = Self->rXOffset;
    else if (dmf::hasScaledXOffset(Self->rDimensions)) {
       value = Self->rXOffset * get_parent_width(Self);
    }
    else if ((dmf::hasAnyX(Self->rDimensions)) and (dmf::hasAnyWidth(Self->rDimensions))) {
-      DOUBLE width;
+      double width;
       if (dmf::hasWidth(Self->rDimensions)) width = Self->rHeight;
       else width = get_parent_width(Self) * Self->rHeight;
 
@@ -502,14 +502,14 @@ YOffset: The bottom of the rectangle, expressed as a fixed or scaled offset valu
 
 static ERR RECTANGLE_GET_YOffset(extVectorRectangle *Self, Unit *Value)
 {
-   DOUBLE value = 0;
+   double value = 0;
 
    if (dmf::hasYOffset(Self->rDimensions)) value = Self->rYOffset;
    else if (dmf::hasScaledYOffset(Self->rDimensions)) {
       value = Self->rYOffset * get_parent_height(Self);
    }
    else if ((dmf::hasAnyY(Self->rDimensions)) and (dmf::hasAnyHeight(Self->rDimensions))) {
-      DOUBLE height;
+      double height;
       if (dmf::hasHeight(Self->rDimensions)) height = Self->rHeight;
       else height = get_parent_height(Self) * Self->rHeight;
 
@@ -547,7 +547,7 @@ static const FieldDef clRectDimensions[] = {
    { "ScaledY",       DMF::SCALED_Y },
    { "ScaledXOffset", DMF::SCALED_X_OFFSET },
    { "ScaledYOffset", DMF::SCALED_Y_OFFSET },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clRectangleFields[] = {
@@ -570,7 +570,7 @@ static const ActionArray clRectangleActions[] = {
    { AC::NewObject,     RECTANGLE_NewObject },
    //{ AC::Redimension, RECTANGLE_Redimension },
    { AC::Resize,      RECTANGLE_Resize },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static ERR init_rectangle(void)

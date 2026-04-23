@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -190,8 +190,7 @@ extern "C" void end_of_stream(OBJECTPTR Object, int BytesRemaining)
 //********************************************************************************************************************
 // Stubs.
 
-static SFM sample_format(extSound *Self) __attribute__((unused));
-static SFM sample_format(extSound *Self)
+[[maybe_unused]] static SFM sample_format(extSound *Self)
 {
    if (Self->BitsPerSample IS 8) {
       if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM::U8_BIT_STEREO;
@@ -204,8 +203,7 @@ static SFM sample_format(extSound *Self)
    return SFM::NIL;
 }
 
-static ERR snd_init_audio(extSound *Self) __attribute__((unused));
-static ERR snd_init_audio(extSound *Self)
+[[maybe_unused]] static ERR snd_init_audio(extSound *Self)
 {
    pf::Log log;
 
@@ -340,7 +338,7 @@ static ERR SOUND_Activate(extSound *Self)
       if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 16 * 1024)) Self->Flags |= SDF::STREAM;
       else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 256 * 1024)) Self->Flags |= SDF::STREAM;
 
-      BYTE *buffer;
+      int8_t *buffer;
       if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
          log.msg("Streaming enabled for playback in format $%.8x; Length: %d", int(sampleformat), Self->Length);
 
@@ -1048,9 +1046,9 @@ static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
    if (!Args) return log.warning(ERR::NullArgs);
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
-   if (Args->Position IS SEEK::START)         Self->Position = F2T(Args->Offset);
-   else if (Args->Position IS SEEK::END)      Self->Position = Self->Length - F2T(Args->Offset);
-   else if (Args->Position IS SEEK::CURRENT)  Self->Position += F2T(Args->Offset);
+   if (Args->Position IS SEEK::START)         Self->Position = int(Args->Offset);
+   else if (Args->Position IS SEEK::END)      Self->Position = Self->Length - int(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT)  Self->Position += int(Args->Offset);
    else if (Args->Position IS SEEK::RELATIVE) Self->Position = Self->Length * Args->Offset;
    else return log.warning(ERR::Args);
 
@@ -1231,9 +1229,9 @@ The buffer that is referred to by the Header field is not populated until the In
 
 *********************************************************************************************************************/
 
-static ERR SOUND_GET_Header(extSound *Self, BYTE **Value, int *Elements)
+static ERR SOUND_GET_Header(extSound *Self, int8_t **Value, int *Elements)
 {
-   *Value = (BYTE *)Self->Header;
+   *Value = (int8_t *)Self->Header;
    *Elements = std::ssize(Self->Header);
    return ERR::Okay;
 }

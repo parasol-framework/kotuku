@@ -18,7 +18,7 @@ template<typename... tArgs>
 static ERR add_command(objAudio* Audio, CMD Command, int Handle, tArgs&&... pArgs) {
    auto ea = (extAudio *)(Audio);
    int index = Handle >> 16;
-   
+
    pf::Log log(__FUNCTION__);
    if ((index < 1) or (index >= int(ea->Sets.size()))) return log.warning(ERR::OutOfRange);
    if (ea->Sets[index].Commands.capacity() == 0) return log.warning(ERR::OutOfRange);
@@ -49,7 +49,7 @@ static ERR fade_in(extAudio *Audio, AudioChannel *channel)
 //********************************************************************************************************************
 // In oversampling mode, active samples are faded-out on a shadow channel rather than stopped abruptly.
 
-static ERR fade_out(extAudio *Audio, LONG Handle)
+static ERR fade_out(extAudio *Audio, int Handle)
 {
    if ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL) return ERR::Okay;
 
@@ -111,7 +111,7 @@ NullArgs: Required parameters are null or missing.
 
 *********************************************************************************************************************/
 
-ERR MixStartSequence(objAudio *Audio, LONG Handle)
+ERR MixStartSequence(objAudio *Audio, int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -142,7 +142,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixEndSequence(objAudio *Audio, LONG Handle)
+ERR MixEndSequence(objAudio *Audio, int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -178,7 +178,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixContinue(objAudio *Audio, LONG Handle)
+ERR MixContinue(objAudio *Audio, int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -238,7 +238,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixMute(objAudio *Audio, LONG Handle, LONG Mute)
+ERR MixMute(objAudio *Audio, int Handle, int Mute)
 {
    pf::Log log(__FUNCTION__);
 
@@ -278,7 +278,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
+ERR MixFrequency(objAudio *Audio, int Handle, int Frequency)
 {
    pf::Log log(__FUNCTION__);
 
@@ -316,7 +316,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
+ERR MixPan(objAudio *Audio, int Handle, double Pan)
 {
    pf::Log log(__FUNCTION__);
 
@@ -361,7 +361,7 @@ Failed: Channel not associated with a valid sample.
 
 *********************************************************************************************************************/
 
-ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position)
+ERR MixPlay(objAudio *Audio, int Handle, int Position)
 {
    pf::Log log(__FUNCTION__);
 
@@ -424,13 +424,13 @@ ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position)
          // Either playing sample before releasing, or playing has ended - check the first loop type.
 
          if (sample.OnStop.defined()) {
-            DOUBLE sec;
+            double sec;
             if (sample.Stream) {
                // NB: Accuracy is dependent on the StreamLength value being correct.
-               sec = DOUBLE((sample.StreamLength - sample.PlayPos)>>sample_shift(sample.SampleType)) / DOUBLE(channel->Frequency);
+               sec = double((sample.StreamLength - sample.PlayPos)>>sample_shift(sample.SampleType)) / double(channel->Frequency);
             }
-            else sec = DOUBLE(sample.SampleLength - Position) / DOUBLE(channel->Frequency);
-            channel->EndTime = PreciseTime() + F2I(sec * 1000000.0);
+            else sec = double(sample.SampleLength - Position) / double(channel->Frequency);
+            channel->EndTime = PreciseTime() + std::lrint(sec * 1000000.0);
          }
          else channel->EndTime = 0;
 
@@ -552,7 +552,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate)
+ERR MixRate(objAudio *Audio, int Handle, int Rate)
 {
    pf::Log log(__FUNCTION__);
 
@@ -570,7 +570,7 @@ ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate)
    }
 
    int16_t index = Handle>>16;
-   if ((index >= 0) and (index < (LONG)((extAudio *)Audio)->Sets.size())) {
+   if ((index >= 0) and (index < (int)((extAudio *)Audio)->Sets.size())) {
       ((extAudio *)Audio)->Sets[index].UpdateRate = Rate;
       return ERR::Okay;
    }
@@ -600,17 +600,17 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
+ERR MixSample(objAudio *Audio, int Handle, int SampleIndex)
 {
    pf::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
-   LONG idx = SampleIndex;
+   int idx = SampleIndex;
 
    log.traceBranch("Audio: #%d, Channel: $%.8x, Sample: %d", Audio->UID, Handle, idx);
 
-   if ((idx <= 0) or (idx >= (LONG)((extAudio *)Audio)->Samples.size())) {
+   if ((idx <= 0) or (idx >= (int)((extAudio *)Audio)->Samples.size())) {
       return log.warning(ERR::OutOfRange);
    }
    else if (!((extAudio *)Audio)->Samples[idx].Data) {
@@ -668,7 +668,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixStop(objAudio *Audio, LONG Handle)
+ERR MixStop(objAudio *Audio, int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -713,7 +713,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixStopLoop(objAudio *Audio, LONG Handle)
+ERR MixStopLoop(objAudio *Audio, int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -759,7 +759,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
+ERR MixVolume(objAudio *Audio, int Handle, double Volume)
 {
    pf::Log log(__FUNCTION__);
 

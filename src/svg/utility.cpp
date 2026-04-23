@@ -1,17 +1,17 @@
 
-static HSV rgb_to_hsl(FRGB Colour) __attribute__((unused));
-static FRGB hsl_to_rgb(HSV Colour) __attribute__((unused));
+[[maybe_unused]] static HSV rgb_to_hsl(FRGB Colour);
+[[maybe_unused]] static FRGB hsl_to_rgb(HSV Colour);
 
 #if defined(DEBUG)
 static void debug_tree(CSTRING Header, OBJECTPTR) __attribute__ ((unused));
-static void debug_branch(CSTRING Header, OBJECTPTR, LONG &Level) __attribute__ ((unused));
+static void debug_branch(CSTRING Header, OBJECTPTR, int &Level) __attribute__ ((unused));
 
-static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG &Level)
+static void debug_branch(CSTRING Header, OBJECTPTR Vector, int &Level)
 {
    pf::Log log(Header);
 
    auto spacing = std::string(Level + 1, ' ');
-   Level = Level + 1;
+   Level++;
 
    while (Vector) {
       if (Vector->classID() IS CLASSID::VECTORSCENE) {
@@ -27,12 +27,12 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG &Level)
       else break;
    }
 
-   Level = Level - 1;
+   Level--;
 }
 
 static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 {
-   LONG level = 0;
+   int level = 0;
    while (Vector) {
       debug_branch(Header, Vector, level);
       if (Vector->Class->BaseClassID IS CLASSID::VECTOR) {
@@ -71,7 +71,7 @@ static HSV rgb_to_hsl(FRGB Colour)
 
 static FRGB hsl_to_rgb(HSV Colour)
 {
-   auto hueToRgb = [](FLOAT p, FLOAT q, FLOAT t) -> FLOAT {
+   auto hueToRgb = [](float p, float q, float t) -> float {
       if (t < 0) t += 1;
       if (t > 1) t -= 1;
       if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
@@ -80,8 +80,8 @@ static FRGB hsl_to_rgb(HSV Colour)
       return p;
    };
 
-   if (Colour.Saturation == 0) {
-      return { FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Alpha) };
+   if (Colour.Saturation IS 0) {
+      return { float(Colour.Value), float(Colour.Value), float(Colour.Value), float(Colour.Alpha) };
    }
    else {
       const double q = (Colour.Value < 0.5) ? Colour.Value * (1.0 + Colour.Saturation) : Colour.Value + Colour.Saturation - Colour.Value * Colour.Saturation;
@@ -90,7 +90,7 @@ static FRGB hsl_to_rgb(HSV Colour)
          hueToRgb(p, q, Colour.Hue + 1.0/3.0),
          hueToRgb(p, q, Colour.Hue),
          hueToRgb(p, q, Colour.Hue - 1.0/3.0),
-         FLOAT(Colour.Alpha)
+         float(Colour.Alpha)
       };
    }
 }
@@ -102,7 +102,7 @@ ERR svgState::current_colour(objVector *Vector, FRGB &RGB) noexcept
 {
    if (!m_color.empty()) {
       VectorPainter painter;
-      if (vec::ReadPainter(NULL, m_color.c_str(), &painter, NULL) IS ERR::Okay) {
+      if (vec::ReadPainter(nullptr, m_color.c_str(), &painter, nullptr) IS ERR::Okay) {
          RGB = painter.Colour;
          return ERR::Okay;
       }
@@ -138,12 +138,12 @@ static void parse_result(extSVG *Self, objFilterEffect *Effect, std::string Valu
 static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input, FIELD SourceField, FIELD RefField)
 {
    switch (strihash(Input)) {
-      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, LONG(VSF::GRAPHIC)); break;
-      case SVF_SOURCEALPHA:     Effect->set(SourceField, LONG(VSF::ALPHA)); break;
-      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, LONG(VSF::BKGD)); break;
-      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, LONG(VSF::BKGD_ALPHA)); break;
-      case SVF_FILLPAINT:       Effect->set(SourceField, LONG(VSF::FILL)); break;
-      case SVF_STROKEPAINT:     Effect->set(SourceField, LONG(VSF::STROKE)); break;
+      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, int(VSF::GRAPHIC)); break;
+      case SVF_SOURCEALPHA:     Effect->set(SourceField, int(VSF::ALPHA)); break;
+      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, int(VSF::BKGD)); break;
+      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, int(VSF::BKGD_ALPHA)); break;
+      case SVF_FILLPAINT:       Effect->set(SourceField, int(VSF::FILL)); break;
+      case SVF_STROKEPAINT:     Effect->set(SourceField, int(VSF::STROKE)); break;
       default:  {
          if (Self->Effects.contains(Input)) {
             Effect->set(RefField, Self->Effects[Input]);
@@ -171,7 +171,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
       if (iequals("stop", scan.name())) {
          Transition stop;
          stop.Offset = 0;
-         stop.Transform = NULL;
+         stop.Transform = nullptr;
          for (unsigned a=1; a < scan.Attribs.size(); a++) {
             auto &name = scan.Attribs[a].Name;
             auto &value = scan.Attribs[a].Value;
@@ -205,7 +205,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 static CSTRING folder(extSVG *Self)
 {
    if (!Self->Folder.empty()) return Self->Folder.c_str();
-   if (!Self->Path) return NULL;
+   if (!Self->Path) return nullptr;
 
    // Setting a path of "my/house/is/red.svg" results in "my/house/is/"
 
@@ -217,12 +217,12 @@ static CSTRING folder(extSVG *Self)
       }
       else Self->Folder.clear();
    }
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
 
-static void parse_transform(objVector *Vector, const std::string Value, LONG Tag)
+static void parse_transform(objVector *Vector, const std::string Value, int Tag)
 {
    if ((Vector->Class->BaseClassID IS CLASSID::VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
@@ -241,16 +241,16 @@ static void parse_transform(objVector *Vector, const std::string Value, LONG Tag
 
 static const std::string uri_name(const std::string Ref)
 {
-   LONG skip = 0;
+   int skip = 0;
    while ((Ref[skip]) and (Ref[skip] <= 0x20)) skip++;
 
    if (Ref[skip] IS '#') {
       return Ref.substr(skip+1);
    }
    else if (startswith("url(#", Ref.c_str() + skip)) {
-      LONG i;
+      int i;
       skip += 5;
-      for (i=0; (Ref[skip+i] != ')') and (skip+i < LONG(Ref.size())); i++);
+      for (i=0; (Ref[skip+i] != ')') and (skip+i < int(Ref.size())); i++);
       return Ref.substr(skip, i);
    }
    else return Ref.substr(skip);
@@ -260,13 +260,13 @@ static const std::string uri_name(const std::string Ref)
 
 //********************************************************************************************************************
 
-static XMLTag * find_href_tag(extSVG *Self, std::string Ref)
+static XTag * find_href_tag(extSVG *Self, std::string Ref)
 {
    auto ref = uri_name(Ref);
    if ((!ref.empty()) and (Self->IDs.contains(ref))) {
       return Self->IDs[ref];
    }
-   return NULL;
+   return nullptr;
 }
 
 /*********************************************************************************************************************
@@ -322,7 +322,7 @@ static double read_time(const std::string_view Value)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static double read_unit(std::string_view &Value, LARGE *FieldID)
+static double read_unit(std::string_view &Value, int64_t *FieldID)
 {
    if (FieldID) *FieldID |= TDOUBLE;
 
@@ -404,7 +404,7 @@ template <class T = double> std::string_view read_numseq(std::string_view String
 //********************************************************************************************************************
 // Read a sequence of doubles from a string.  Commas, parenthesis and whitespace is ignored.
 
-template<class T = double> std::vector<T> read_array(const std::string Value, LONG Limit = 0x7fffffff)
+template<class T = double> std::vector<T> read_array(const std::string Value, int Limit = 0x7fffffff)
 {
    std::vector<T> result;
 
@@ -428,9 +428,9 @@ template<class T = double> std::vector<T> read_array(const std::string Value, LO
 // This function is called before fully parsing the document so that we can extract all tags making use of the
 // 'id' attribute.
 
-static void parse_ids(extSVG *Self, XMLTag &Tag)
+static void parse_ids(extSVG *Self, XTag &Tag)
 {
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &name = Tag.Attribs[a].Name;
       if ((name.size() IS 2) and (name[0] IS 'i') and (name[1] IS 'd')) {
          if (Tag.Attribs[a].Value.empty()) continue;
@@ -463,7 +463,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
    AdjustLogLevel(1);
 #endif
 
-   if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
+   if (Self->XML) { FreeResource(Self->XML); Self->XML = nullptr; }
 
    objXML *xml;
    ERR error = ERR::Okay;
@@ -497,7 +497,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          // Set a new working path based on the path
 
          auto last = std::string::npos;
-         for (LONG i=0; Path[i]; i++) {
+         for (int i=0; Path[i]; i++) {
             if ((Path[i] IS '/') or (Path[i] IS '\\') or (Path[i] IS ':')) last = i+1;
          }
          if (last != std::string::npos) {
@@ -514,7 +514,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          convert_styles(xml->Tags);
 
-         objVector *sibling = NULL;
+         objVector *sibling = nullptr;
          for (auto &scan : xml->Tags) {
             if (iequals("svg", scan.name())) {
                svgState state(Self);
@@ -568,7 +568,7 @@ static void convert_styles(objXML::TAGS &Tags)
    pf::Log log(__FUNCTION__);
 
    for (auto &tag : Tags) {
-      for (LONG style=1; style < std::ssize(tag.Attribs); style++) {
+      for (int style=1; style < std::ssize(tag.Attribs); style++) {
          if (!iequals("style", tag.Attribs[style].Name)) continue;
 
          // Convert all the style values into real attributes.
@@ -608,8 +608,8 @@ static void convert_styles(objXML::TAGS &Tags)
 
 static void update_dpi(void)
 {
-   static LARGE last_update = -0x7fffffff;
-   LARGE current_time = PreciseTime();
+   static int64_t last_update = -0x7fffffff;
+   int64_t current_time = PreciseTime();
 
    if (current_time - last_update > 3000000LL) {
       DISPLAYINFO *display;

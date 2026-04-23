@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -23,12 +23,12 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <variant>
 #include <algorithm>
 #include <cfloat>
-#include <parasol/main.h>
-#include <parasol/modules/picture.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/vector.h>
-#include <parasol/modules/display.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/picture.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/vector.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/strings.hpp>
 #include "svg_def.c"
 #include <katana.h>
 #include <math.h>
@@ -40,8 +40,8 @@ JUMPTABLE_CORE
 JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 
-static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL, modPicture = NULL;
-static DOUBLE glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
+static OBJECTPTR clSVG = nullptr, clRSVG = nullptr, modDisplay = nullptr, modVector = nullptr, modPicture = nullptr;
+static double glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 struct prvSVG { // Private variables for RSVG
    class objSVG *SVG;
@@ -57,9 +57,9 @@ struct svgLink {
 };
 
 struct svgID { // All elements using the 'id' attribute will be registered with one of these structures.
-   LONG TagIndex;
+   int TagIndex;
 
-   svgID(const LONG pTagIndex) {
+   svgID(const int pTagIndex) {
       TagIndex = pTagIndex;
    }
 
@@ -67,11 +67,11 @@ struct svgID { // All elements using the 'id' attribute will be registered with 
 };
 
 struct svgAnimState {
-   VectorMatrix *matrix = NULL;
+   VectorMatrix *matrix = nullptr;
    std::vector<class anim_transform *> transforms;
 };
 
-#include <parasol/modules/svg.h>
+#include <kotuku/modules/svg.h>
 
 class extSVG;
 struct svgState;
@@ -83,10 +83,10 @@ struct svgState;
 class extSVG : public objSVG {
    public:
    FUNCTION FrameCallback;
-   ankerl::unordered_dense::map<std::string, XMLTag *> IDs;
+   ankerl::unordered_dense::map<std::string, XTag *> IDs;
    ankerl::unordered_dense::map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
-   DOUBLE SVGVersion;
-   DOUBLE AnimEpoch;  // Epoch time for the animations.
+   double SVGVersion;
+   double AnimEpoch;  // Epoch time for the animations.
    objXML *XML;
    objVectorScene *Scene;
    std::string Folder;
@@ -97,15 +97,15 @@ class extSVG : public objSVG {
    std::vector<std::unique_ptr<svgLink>> Links;
    std::vector<svgInherit> Inherit;
    std::vector<OBJECTID> Resources; // Resources to terminate if ENFORCE_TRACKING was enabled.
-   ankerl::unordered_dense::map<ULONG, std::vector<anim_base *>> StartOnBegin; // When the animation indicated by ULONG begins, it must activate() the referenced anim_base
-   ankerl::unordered_dense::map<ULONG, std::vector<anim_base *>> StartOnEnd; // When the animation indicated by ULONG ends, it must activate() the referenced anim_base
+   ankerl::unordered_dense::map<uint32_t, std::vector<anim_base *>> StartOnBegin; // When the animation indicated by uint32_t begins, it must activate() the referenced anim_base
+   ankerl::unordered_dense::map<uint32_t, std::vector<anim_base *>> StartOnEnd; // When the animation indicated by uint32_t ends, it must activate() the referenced anim_base
    TIMER AnimationTimer;
-   WORD  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
+   int16_t  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
    bool  PreserveWS; // Preserve white-space
 };
 
 struct svgState {
-   enum class DU : UBYTE {
+   enum class DU : uint8_t {
       NIL = 0,
       PIXEL,  // px
       SCALED, // %: Scale to fill empty space
@@ -144,7 +144,7 @@ struct svgState {
       operator double() const noexcept { return value; }
       operator DU() const noexcept { return type; }
 
-      inline LARGE field() const noexcept {
+      inline int64_t field() const noexcept {
          return (type == DU::SCALED) ? (field_id | TDOUBLE | TSCALE) : field_id | TDOUBLE;
       }
 
@@ -170,7 +170,7 @@ struct svgState {
    double  m_fill_opacity;    // -1 if undefined
    double  m_opacity;         // -1 if undefined
    double  m_stop_opacity;    // -1 if undefined
-   LONG    m_font_weight;     // 0 if undefined
+   int    m_font_weight;     // 0 if undefined
    RQ      m_path_quality;    // RQ::AUTO default
    VLJ     m_line_join;
    VLC     m_line_cap;
@@ -191,86 +191,90 @@ public:
       m_line_join(VLJ::NIL), m_line_cap(VLC::NIL), m_inner_join(VIJ::NIL),
       Self(pSVG), Scene(pSVG->Scene) { }
 
-   void process_children(XMLTag &, OBJECTPTR) noexcept;
-   void proc_svg(XMLTag &, OBJECTPTR, objVector *&) noexcept;
+   void process_children(XTag &, OBJECTPTR) noexcept;
+   void proc_svg(XTag &, OBJECTPTR, objVector *&) noexcept;
 
 private:
-   void applyTag(const XMLTag &) noexcept;
+   void applyTag(const XTag &) noexcept;
    void applyStateToVector(objVector *) const noexcept;
-   const std::vector<GradientStop> process_gradient_stops(const XMLTag &) noexcept;
-   ERR  set_property(objVector *, ULONG, XMLTag &, const std::string) noexcept;
-   ERR  process_tag(XMLTag &, XMLTag &, OBJECTPTR, objVector * &) noexcept;
+   const std::vector<GradientStop> process_gradient_stops(const XTag &) noexcept;
+   ERR  set_property(objVector *, uint32_t, XTag &, const std::string) noexcept;
+   ERR  process_tag(XTag &, XTag &, OBJECTPTR, objVector * &) noexcept;
 
-   ERR  proc_defs(XMLTag &, OBJECTPTR) noexcept;
-   ERR  proc_set(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
-   ERR  proc_animate(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
-   ERR  proc_animate_colour(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
-   ERR  proc_animate_motion(XMLTag &, OBJECTPTR) noexcept;
-   ERR  proc_animate_transform(XMLTag &, OBJECTPTR) noexcept;
-   void proc_def_image(XMLTag &) noexcept;
-   void proc_filter(XMLTag &) noexcept;
-   void proc_group(XMLTag &, OBJECTPTR, objVector * &) noexcept;
-   ERR  proc_image(XMLTag &, OBJECTPTR, objVector * &) noexcept;
-   void proc_link(XMLTag &, OBJECTPTR, objVector * &Vector) noexcept;
-   void proc_mask(XMLTag &) noexcept;
-   void proc_pathtransition(XMLTag &) noexcept;
-   void proc_pattern(XMLTag &) noexcept;
-   ERR  proc_shape(CLASSID, XMLTag &, OBJECTPTR, objVector * &) noexcept;
-   void proc_switch(XMLTag &, OBJECTPTR, objVector * &) noexcept;
-   void proc_use(XMLTag &, OBJECTPTR) noexcept;
-   void proc_clippath(XMLTag &) noexcept;
-   void proc_morph(XMLTag &Tag, OBJECTPTR Parent) noexcept;
-   ERR  proc_style(XMLTag &);
-   void proc_symbol(XMLTag &Tag) noexcept;
-   ERR  proc_conicgradient(const XMLTag &) noexcept;
-   ERR  proc_contourgradient(const XMLTag &) noexcept;
-   ERR  proc_diamondgradient(const XMLTag &) noexcept;
-   ERR  proc_lineargradient(const XMLTag &) noexcept;
-   ERR  proc_radialgradient(const XMLTag &) noexcept;
+   ERR  proc_defs(XTag &, OBJECTPTR) noexcept;
+   ERR  proc_set(XTag &, XTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate(XTag &, XTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_colour(XTag &, XTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_motion(XTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_transform(XTag &, OBJECTPTR) noexcept;
+   void proc_def_image(XTag &) noexcept;
+   void proc_filter(XTag &) noexcept;
+   void proc_group(XTag &, OBJECTPTR, objVector * &) noexcept;
+   ERR  proc_image(XTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_link(XTag &, OBJECTPTR, objVector * &Vector) noexcept;
+   void proc_mask(XTag &) noexcept;
+   void proc_pathtransition(XTag &) noexcept;
+   void proc_pattern(XTag &) noexcept;
+   ERR  proc_shape(CLASSID, XTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_switch(XTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_use(XTag &, OBJECTPTR) noexcept;
+   void proc_clippath(XTag &) noexcept;
+   void proc_morph(XTag &Tag, OBJECTPTR Parent) noexcept;
+   ERR  proc_style(XTag &);
+   void proc_symbol(XTag &Tag) noexcept;
+   ERR  proc_conicgradient(const XTag &) noexcept;
+   ERR  proc_contourgradient(const XTag &) noexcept;
+   ERR  proc_diamondgradient(const XTag &) noexcept;
+   ERR  proc_lineargradient(const XTag &) noexcept;
+   ERR  proc_radialgradient(const XTag &) noexcept;
 
-   void process_attrib(XMLTag &, objVector *) noexcept;
-   void process_inherit_refs(XMLTag &) noexcept;
-   void process_shape_children(XMLTag &, OBJECTPTR) noexcept;
+   void process_attrib(XTag &, objVector *) noexcept;
+   void process_inherit_refs(XTag &) noexcept;
+   void process_shape_children(XTag &, OBJECTPTR) noexcept;
    ERR  set_paint_server(objVector *, FIELD, const std::string);
    ERR  current_colour(objVector *, FRGB &) noexcept;
 
-   void parse_contourgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
-   void parse_diamondgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
-   void parse_lineargradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
-   void parse_radialgradient(const XMLTag &, objVectorGradient &, std::string &) noexcept;
+   void parse_contourgradient(const XTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_diamondgradient(const XTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_lineargradient(const XTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_radialgradient(const XTag &, objVectorGradient &, std::string &) noexcept;
 
-   ERR  parse_fe_blur(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_colour_matrix(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_component_xfer(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_composite(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_convolve_matrix(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_displacement_map(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_flood(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_image(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_lighting(objVectorFilter *, XMLTag &, LT) noexcept;
-   ERR  parse_fe_merge(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_morphology(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_offset(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_source(objVectorFilter * , XMLTag &) noexcept;
-   ERR  parse_fe_turbulence(objVectorFilter *, XMLTag &) noexcept;
-   ERR  parse_fe_wavefunction(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_blur(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_colour_matrix(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_component_xfer(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_composite(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_convolve_matrix(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_displacement_map(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_flood(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_image(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_lighting(objVectorFilter *, XTag &, LT) noexcept;
+   ERR  parse_fe_merge(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_morphology(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_offset(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_source(objVectorFilter * , XTag &) noexcept;
+   ERR  parse_fe_turbulence(objVectorFilter *, XTag &) noexcept;
+   ERR  parse_fe_wavefunction(objVectorFilter *, XTag &) noexcept;
 };
 
 //********************************************************************************************************************
 
-static ERR  animation_timer(extSVG *, LARGE, LARGE);
+static ERR  animation_timer(extSVG *, int64_t, int64_t);
 static void convert_styles(objXML::TAGS &);
-static double read_unit(std::string_view &, LARGE * = nullptr);
+static double read_unit(std::string_view &, int64_t * = nullptr);
 
 static ERR  init_svg(void);
 static ERR  init_rsvg(void);
 
 static void process_rule(extSVG *, objXML::TAGS &, KatanaRule *);
 
-static ERR  save_svg_scan(extSVG *, objXML *, objVector *, LONG);
-static ERR  save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
-static ERR  save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
+static ERR  save_svg_scan(extSVG *, objXML *, objVector *, int);
+static ERR  save_svg_defs(extSVG *, objXML *, objVectorScene *, int);
+static ERR  save_svg_scan_std(extSVG *, objXML *, objVector *, int);
 static ERR  save_svg_transform(VectorMatrix *, std::stringstream &);
+
+// Tracking for resources like patterns, gradients, filters, etc.  If ENFORCE_TRACKING is enabled, these resources 
+// will be automatically terminated when the SVG is terminated.  Otherwise, they will persist until the client 
+// terminates them or the process ends.
 
 inline void track_object(extSVG *SVG, OBJECTPTR Object)
 {
@@ -309,12 +313,12 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
-   if (modVector)  { FreeResource(modVector);  modVector = NULL; }
-   if (modPicture) { FreeResource(modPicture); modPicture = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = nullptr; }
+   if (modVector)  { FreeResource(modVector);  modVector = nullptr; }
+   if (modPicture) { FreeResource(modPicture); modPicture = nullptr; }
 
-   if (clSVG)  { FreeResource(clSVG);  clSVG = NULL; }
-   if (clRSVG) { FreeResource(clRSVG); clRSVG = NULL; }
+   if (clSVG)  { FreeResource(clSVG);  clSVG = nullptr; }
+   if (clRSVG) { FreeResource(clRSVG); clRSVG = nullptr; }
    return ERR::Okay;
 }
 
@@ -325,5 +329,5 @@ static ERR MODExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_svg_module() { return &ModHeader; }

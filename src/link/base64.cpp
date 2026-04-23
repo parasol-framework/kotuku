@@ -9,14 +9,14 @@ typedef enum { step_A=0, step_B, step_C } base64_encodestep;
 static const char * encoding = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char decoding[] = {62,-1,-1,-1,63,52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-2,-1,-1,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,-1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51};
 
-static int base64_decode_block(CSTRING, LONG, char *, BASE64DECODE *);
-static int base64_encode_block(CSTRING, LONG, char *, BASE64ENCODE *);
+static int base64_decode_block(CSTRING, int, char *, BASE64DECODE *);
+static int base64_encode_block(CSTRING, int, char *, BASE64ENCODE *);
 
-inline LONG base64_decode_value(LONG value_in)
+inline int base64_decode_value(int value_in)
 {
    value_in -= 43;
-   if ((value_in < 0) or (value_in > (LONG)sizeof(decoding))) return -1;
-   return decoding[(LONG)value_in];
+   if ((value_in < 0) or (value_in > (int)sizeof(decoding))) return -1;
+   return decoding[(int)value_in];
 }
 
 inline char base64_encode_value(char value_in)
@@ -50,7 +50,7 @@ int: The total number of bytes output is returned.
 
 **********************************************************************************************************************/
 
-LONG Base64Encode(BASE64ENCODE *State, const void *Input, LONG InputSize, STRING Output, LONG OutputSize)
+int Base64Encode(BASE64ENCODE *State, const void *Input, int InputSize, STRING Output, int OutputSize)
 {
    if ((!State) or (!Input) or (!Output) or (OutputSize < 1)) return 0;
 
@@ -83,7 +83,7 @@ LONG Base64Encode(BASE64ENCODE *State, const void *Input, LONG InputSize, STRING
    }
 }
 
-static int base64_encode_block(CSTRING plaintext_in, LONG length_in, char *code_out, BASE64ENCODE *State)
+static int base64_encode_block(CSTRING plaintext_in, int length_in, char *code_out, BASE64ENCODE *State)
 {
    const char *plainchar = plaintext_in;
    const char *const plaintextend = plaintext_in + length_in;
@@ -160,13 +160,13 @@ buf(ptr) Output:  The output buffer.  The size of the buffer must be greater or 
 
 **********************************************************************************************************************/
 
-ERR Base64Decode(BASE64DECODE *State, CSTRING Input, LONG InputSize, APTR Output, LONG *Written)
+ERR Base64Decode(BASE64DECODE *State, CSTRING Input, int InputSize, APTR Output, int *Written)
 {
    if ((!State) or (!Input) or (!Output) or (!Written)) return ERR::NullArgs;
    if (InputSize < 4) return ERR::Args;
 
    if (!State->Initialised) {
-      State->Initialised = TRUE;
+      State->Initialised = true;
       State->Step        = step_a;
       State->PlainChar   = 0;
    }
@@ -175,7 +175,7 @@ ERR Base64Decode(BASE64DECODE *State, CSTRING Input, LONG InputSize, APTR Output
    return ERR::Okay;
 }
 
-static LONG base64_decode_block(CSTRING code_in, LONG length_in, char * plaintext_out, BASE64DECODE *State)
+static int base64_decode_block(CSTRING code_in, int length_in, char * plaintext_out, BASE64DECODE *State)
 {
    const char* codechar = code_in;
    char* plainchar = plaintext_out;

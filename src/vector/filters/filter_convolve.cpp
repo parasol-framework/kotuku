@@ -137,9 +137,9 @@ class extConvolveFX : public extFilterEffect {
             double r = 0.0, g = 0.0, b = 0.0, a = 0.0;
             uint8_t kv = 0;
             for (int fy = 0; fy < MatrixRows; fy++) {
-                int isrcY = F2I(y - (TargetY * UnitY) + (fy * UnitY));
+                int isrcY = std::lrint(y - (TargetY * UnitY) + (fy * UnitY));
                 for (int fx = 0; fx < MatrixColumns; fx++) {
-                    int isrcX = F2I(x - (TargetX * UnitX) + (fx * UnitX));
+                    int isrcX = std::lrint(x - (TargetX * UnitX) + (fx * UnitX));
                     if (auto pixel = getPixel(InputBitmap, isrcX, isrcY)) {
                         r += pixel[R] * Matrix[kv];
                         g += pixel[G] * Matrix[kv];
@@ -150,13 +150,13 @@ class extConvolveFX : public extFilterEffect {
                 }
             }
 
-            int lr = F2I((factor * r) + bias);
-            int lg = F2I((factor * g) + bias);
-            int lb = F2I((factor * b) + bias);
+            int lr = std::lrint((factor * r) + bias);
+            int lg = std::lrint((factor * g) + bias);
+            int lb = std::lrint((factor * b) + bias);
             out[R] = glLinearRGB.invert(std::clamp(lr, 0, 255));
             out[G] = glLinearRGB.invert(std::clamp(lg, 0, 255));
             out[B] = glLinearRGB.invert(std::clamp(lb, 0, 255));
-            if (!PreserveAlpha) out[A] = std::clamp(F2I(factor * a + bias), 0, 255);
+            if (!PreserveAlpha) out[A] = std::clamp(int(std::lrint(factor * a + bias)), 0, 255);
             else out[A] = (alpha_input + (x * InputBitmap->BytesPerPixel))[A];
             out += 4;
          }
@@ -175,13 +175,13 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
    const int canvas_width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
    const int canvas_height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
 
-   if (canvas_width * canvas_height > 4096 * 4096) return ERR::Failed; // Bail on really large bitmaps.
+   if (canvas_width * canvas_height > 4096 * 4096) return ERR::OutOfRange; // Bail on really large bitmaps.
 
    std::vector<uint8_t> data;
    data.resize(canvas_width * canvas_height * Self->Target->BytesPerPixel);
 
    objBitmap *inBmp;
-   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::NoData;
 
    // Note: The inBmp->Data pointer is pre-adjusted to match the Clip Left and Top values (i.e. add
    // (Clip.Left * BPP) + (Clip.Top * LineWidth) to Data in order to get its true value)
@@ -245,7 +245,7 @@ static ERR CONVOLVEFX_Init(extConvolveFX *Self)
 
    if (Self->MatrixSize != filter_size) {
       log.warning("Matrix size of %d does not match the filter size of %dx%d", Self->MatrixSize, Self->MatrixColumns, Self->MatrixRows);
-      return ERR::Failed;
+      return ERR::Mismatch;
    }
 
    // Use client-provided tx/ty values, otherwise default according to the SVG standard.

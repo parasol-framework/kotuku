@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inventory xmlns="http://example.com/inventory">
+   <item>
+      <name>Widget</name>
+   </item>
+</inventory>

@@ -1,7 +1,7 @@
 
-#include <parasol/modules/display.h>
+#include <kotuku/modules/display.h>
 
-static const ankerl::unordered_dense::map<ULONG, RGB8> glNamedColours = { // For vecReadPainter()
+static const ankerl::unordered_dense::map<uint32_t, RGB8> glNamedColours = { // For vecReadPainter()
   { SVF_NONE,                 { 0, 0, 0, 0 } },
   { SVF_ALICEBLUE,            { 240,248,255, 255 } },
   { SVF_ANTIQUEWHITE,         { 250,235,215, 255 } },
@@ -152,7 +152,7 @@ static const ankerl::unordered_dense::map<ULONG, RGB8> glNamedColours = { // For
   { SVF_YELLOWGREEN,          { 154,205,50, 255 } }
 };
 
-static const ankerl::unordered_dense::map<ULONG, RGB8> glAppColours = { // For vecReadPainter()
+static const ankerl::unordered_dense::map<uint32_t, RGB8> glAppColours = { // For vecReadPainter()
   { SVF_ActiveBorder,         { 0x20, 0x60, 0xf9, 255 } },
   { SVF_ActiveCaption,        { 0x29, 0x80, 0xb9, 255 } },
   { SVF_AppWorkspace,         { 120, 150, 150, 255 } },

@@ -13,6 +13,7 @@ private:
    agg::scanline_u8  mScanLine; // Use scanline_p for large solid polygons/rectangles and scanline_u for complex shapes like text
    extVectorViewport *mView;    // The current view
    objBitmap         *mBitmap;
+   std::vector<class InputBoundary> mInputBounds; // Records boundaries for input events and cursor changes.
 
 public:
    // The ClipBuffer is used to hold any alpha-masks that are generated as the scene is rendered.
@@ -121,7 +122,7 @@ public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_reflect_y(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
+   span_reflect_y(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
        m_src(&pixf),
        m_wrap_x(pixf.mWidth),
        m_wrap_y(pixf.mHeight),
@@ -169,8 +170,8 @@ private:
    wrap_mode_repeat_auto_pow2 m_wrap_x;
    wrap_mode_reflect_auto_pow2 m_wrap_y;
    uint8_t *m_row_ptr;
-   unsigned m_offset_x;
-   unsigned m_offset_y;
+   int m_offset_x;
+   int m_offset_y;
    uint8_t m_bk_buf[4];
    int m_x;
 };
@@ -185,7 +186,7 @@ public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_reflect_x(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
+   span_reflect_x(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
        m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
        m_offset_x(offset_x), m_offset_y(offset_y)
    {
@@ -230,8 +231,8 @@ private:
    wrap_mode_reflect_auto_pow2 m_wrap_x;
    wrap_mode_repeat_auto_pow2 m_wrap_y;
    uint8_t *m_row_ptr;
-   unsigned m_offset_x;
-   unsigned m_offset_y;
+   int m_offset_x;
+   int m_offset_y;
    uint8_t m_bk_buf[4];
    int m_x;
 };
@@ -246,7 +247,7 @@ public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_repeat_pf(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
+   span_repeat_pf(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
        m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
        m_offset_x(offset_x), m_offset_y(offset_y) {
       m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
@@ -289,7 +290,7 @@ public:
 private:
    wrap_mode_repeat_auto_pow2 m_wrap_x, m_wrap_y;
    uint8_t *m_row_ptr;
-   unsigned m_offset_x, m_offset_y;
+   int m_offset_x, m_offset_y;
    uint8_t m_bk_buf[4];
    int m_x;
 };
@@ -368,8 +369,11 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
    objBitmap *SrcBitmap, VSPREAD SpreadMethod, double Opacity, agg::trans_affine *Transform = nullptr, double XOffset = 0, double YOffset = 0)
 {
    agg::pixfmt_psl pixels(*SrcBitmap);
+   const bool requires_interpolation = (std::floor(XOffset) != XOffset) or (std::floor(YOffset) != YOffset) or
+      ((Transform) and ((Transform->is_complex()) or (std::floor(Transform->tx) != Transform->tx) or
+         (std::floor(Transform->ty) != Transform->ty)));
 
-   if ((Transform) and (Transform->is_complex())) {
+   if (requires_interpolation) {
       agg::span_interpolator_linear interpolator(*Transform);
       agg::image_filter_lut filter;
       set_filter(filter, SampleMethod, *Transform);  // Set the interpolation filter to use.
@@ -403,20 +407,23 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
          YOffset += Transform->ty;
       }
 
+      const int x_offset = int(XOffset);
+      const int y_offset = int(YOffset);
+
       if (SpreadMethod IS VSPREAD::REFLECT_X) {
-         agg::span_reflect_x source(pixels, XOffset, YOffset);
+         agg::span_reflect_x source(pixels, x_offset, y_offset);
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REFLECT_Y) {
-         agg::span_reflect_y source(pixels, XOffset, YOffset);
+         agg::span_reflect_y source(pixels, x_offset, y_offset);
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REPEAT) {
-         agg::span_repeat_pf source(pixels, XOffset, YOffset);
+         agg::span_repeat_pf source(pixels, x_offset, y_offset);
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else { // VSPREAD::PAD and VSPREAD::CLIP modes.
-         agg::span_once<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
+         agg::span_once<agg::pixfmt_psl> source(pixels, x_offset, y_offset);
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
    }
@@ -556,7 +563,7 @@ void SceneRenderer::draw(objBitmap *Bitmap, objVectorViewport *Viewport)
 
    mObjectCount = 0;
 
-   log.traceBranch("Bitmap: %dx%d,%dx%d, Viewport: %p", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport);
+   log.traceBranch("Bitmap: %dx%d,%dx%d, Viewport: %d", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport->UID);
 
    if ((Bitmap->Clip.Bottom > Bitmap->Height) or (Bitmap->Clip.Right > Bitmap->Width)) {
       // NB: Any code that triggers this warning needs to be fixed.
@@ -572,10 +579,13 @@ void SceneRenderer::draw(objBitmap *Bitmap, objVectorViewport *Viewport)
       mView = nullptr; // Current view
       mRenderBase.clip_box(Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right-1, Bitmap->Clip.Bottom-1);
 
-      Scene->InputBoundaries.clear();
+      // Pre-size the input boundary buffer based on the previous frame's boundary count to avoid growth reallocations.
+      mInputBounds.reserve(Scene->InputBoundaries.size());
 
       VectorState state;
       draw_vectors((extVector *)Viewport, state);
+
+      Scene->InputBoundaries = std::move(mInputBounds);
    }
 }
 
@@ -744,7 +754,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       }
 
       if (shape->classID() IS CLASSID::VECTORVIEWPORT) {
-         if ((shape->Child) or (shape->InputSubscriptions) or (shape->Fill[0].Pattern)) {
+         if ((shape->Child) or (has_input_boundary(shape)) or (shape->Fill[0].Pattern)) {
             auto view = (extVectorViewport *)shape;
 
             if (view->vpOverflowX != VOF::INHERIT) state.mOverflowX = view->vpOverflowX;
@@ -794,9 +804,9 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
                // For viewports that read user input, we record the collision box for the cursor.
 
-               if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
+               if (has_input_boundary(shape)) {
                   clip.shrinking(view);
-                  Scene->InputBoundaries.emplace_back(shape->UID, view->Cursor, clip, view->vpBounds.left, view->vpBounds.top);
+                  mInputBounds.emplace_back(shape->UID, view->Cursor, clip, view->vpBounds.left, view->vpBounds.top);
                }
 
                if ((Scene->Flags & VPF::OUTLINE_VIEWPORTS) != VPF::NIL) { // Debug option: Draw the viewport's path with a green outline
@@ -896,7 +906,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      bool redraw = view->vpRefreshBuffer or state.mDirty;
                      view->vpRefreshBuffer = false;
 
-                     if ((!redraw) and (Scene->ShareModified)) redraw = true;
+                     if ((not redraw) and (Scene->ShareModified)) redraw = true;
 
                      if (view->vpBuffer) {
                         if ((view->vpBuffer->Width != view->vpFixedWidth) or (view->vpBuffer->Height != view->vpFixedHeight)) {
@@ -937,7 +947,18 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                         auto save_data = mBitmap->offset(-view->vpBounds.left, -view->vpBounds.top);
                         mFormat.setBitmap(*view->vpBuffer);
 
+                        auto ib_size = mInputBounds.size();
+
                         draw_vectors((extVector *)view->Child, child_state);
+
+                        // Cache the freshly-generated boundaries on the viewport so that they can be re-used on
+                        // subsequent frames that skip re-rendering this buffered viewport.
+
+                        if (mInputBounds.size() > ib_size) {
+                           if (not view->vpInputBounds) view->vpInputBounds = std::make_unique<std::vector<InputBoundary>>();
+                           view->vpInputBounds->assign(mInputBounds.begin() + ib_size, mInputBounds.end());
+                        }
+                        else if (view->vpInputBounds) view->vpInputBounds->clear();
 
                         mBitmap->Data = save_data;
 
@@ -946,6 +967,11 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                         mFormat     = save_format;
 
                         //save_bitmap(view->vpBuffer, std::string("viewport"));
+                     }
+                     else if (view->vpInputBounds) {
+                        // Input boundaries need to be redeclared on every drawing cycle, so replay the cached
+                        // boundaries from the previous render of this buffered viewport.
+                        mInputBounds.insert(mInputBounds.end(), view->vpInputBounds->begin(), view->vpInputBounds->end());
                      }
 
                      // Draw the cached bitmap buffer
@@ -1010,7 +1036,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                render_stroke(state, *shape);
             }
 
-            if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
+            if (has_input_boundary(shape)) {
                // If the vector receives user input events then we record the collision box for the mouse cursor.
 
                TClipRectangle b;
@@ -1041,7 +1067,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                TClipRectangle<double> rb_bounds = { double(mRenderBase.xmin()), double(mRenderBase.ymin()), double(mRenderBase.xmax()), double(mRenderBase.ymax()) };
                b.shrinking(rb_bounds);
 
-               Scene->InputBoundaries.emplace_back(shape->UID, shape->Cursor, b, abs_x, abs_y, shape->InputSubscriptions ? false : true);
+               mInputBounds.emplace_back(shape->UID, shape->Cursor, b, abs_x, abs_y, has_input_subscriptions(shape) ? false : true);
             }
          } // if: shape->GeneratePath
 

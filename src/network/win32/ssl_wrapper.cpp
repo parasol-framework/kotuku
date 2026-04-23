@@ -1,7 +1,7 @@
 /*********************************************************************************************************************
 
 Windows SSL Wrapper Implementation
-Pure Windows implementation that avoids all Parasol headers to prevent conflicts.
+Pure Windows implementation that avoids all Kotuku headers to prevent conflicts.
 
 *********************************************************************************************************************/
 
@@ -31,7 +31,7 @@ Pure Windows implementation that avoids all Parasol headers to prevent conflicts
 #include "ssl_wrapper.h"
 
 static void ssl_debug_log(int level, const char* format, ...);
-extern "C" void ssl_debug_to_parasol_log(const char* message, int level);
+extern "C" void ssl_debug_to_kotuku_log(const char* message, int level);
 
 // Forward declarations
 static void cache_connection_info(ssl_context* SSL);
@@ -259,7 +259,7 @@ static void ssl_debug_log(int level, const char* format, ...)
    vsnprintf(buffer, sizeof(buffer), format, args);
    va_end(args);
 
-   ssl_debug_to_parasol_log(buffer, level);
+   ssl_debug_to_kotuku_log(buffer, level);
 }
 
 //********************************************************************************************************************
@@ -309,7 +309,7 @@ SSL_HANDLE ssl_create_context(bool ValidateCredentials, bool ServerMode)
 
    ssl_context *ctx = new (std::nothrow) ssl_context;
    if (!ctx) return nullptr;
-   
+
    ctx->validate_credentials = ValidateCredentials;
    ctx->is_server_mode = ServerMode;
    return ctx;

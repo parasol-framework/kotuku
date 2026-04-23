@@ -3,16 +3,16 @@
 // Manually activate the animation.  If Reset is true, the animation is guaranteed to start from seek position zero.
 
 void anim_base::activate(bool Reset)
-{ 
+{
    // Reset the variables that control time management and the animation will start from scratch.
 
    if (Reset) {
       begin_offset = (double(PreciseTime()) / 1000000.0) - svg->AnimEpoch; // Seeks to position zero
       repeat_index = 0;
    }
-   
+
    start_time = svg->AnimEpoch + begin_offset; // Directly affects the calculated seek value
-   
+
    end_time   = 0;
 
    // Test: w3-animate-elem-21-t.svg
@@ -26,7 +26,7 @@ void anim_base::activate(bool Reset)
 }
 
 //********************************************************************************************************************
-// Return true if the animation has started.  For absolute consistency, animations start 'at the time they should have 
+// Return true if the animation has started.  For absolute consistency, animations start 'at the time they should have
 // started', which we can strictly calculate from begin and duration timing values.
 
 bool anim_base::started(double CurrentTime)
@@ -47,7 +47,7 @@ bool anim_base::next_frame(double CurrentTime)
    if (end_time) return false;
 
    const double elapsed = CurrentTime - start_time;
-   
+
    if (!duration) seek = 0;
    else seek = elapsed / duration; // A value between 0 and 1.0
 
@@ -76,7 +76,7 @@ void anim_base::stop(double Time)
 {
    if (!begin_series.empty()) {
       // Check if there's a serialised begin offset following the one that's completed.
-      LONG i;
+      int i;
       for (i=0; i < std::ssize(begin_series)-1; i++) {
          if (begin_offset IS begin_series[i]) {
             begin_offset = begin_series[i+1];
@@ -100,7 +100,7 @@ void anim_base::stop(double Time)
 
 //********************************************************************************************************************
 
-static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
+static ERR animation_timer(extSVG *SVG, int64_t TimeElapsed, int64_t CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 
@@ -136,7 +136,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 
       // SVG rules state that only one transformation matrix is active at any time, irrespective of however many
       // <animateTransform> elements are active for a vector.  Multiple transformations are multiplicative by default.
-      // If a transform is in REPLACE mode, all prior transforms are overwritten, INCLUDING the vector's 'transform' 
+      // If a transform is in REPLACE mode, all prior transforms are overwritten, INCLUDING the vector's 'transform'
       // attribute.
 
       if (not vt.matrix) {
@@ -151,10 +151,10 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
       //
       // Tested in: w3-animate-elem-(24|81)-t.svg
 
-      VectorMatrix *m = NULL;
+      VectorMatrix *m = nullptr;
       if (vt.transforms.front()->additive IS ADD::REPLACE) {
          for (m = vector->Matrices; (m); m=m->Next) {
-            if (m->Tag IS MTAG_SVG_TRANSFORM) {
+            if ((unsigned int)m->Tag IS MTAG_SVG_TRANSFORM) {
                double d = 1.0 / (m->ScaleX * m->ScaleY - m->ShearY * m->ShearX);
 
                double t0 = m->ScaleY * d;

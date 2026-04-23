@@ -8,10 +8,10 @@
     <module>Core</module>
     <comment>Enables access to the file system.</comment>
     <version>1.2</version>
-    <id>7c96cb25</id>
+    <id>4ca5c5b3</id>
     <idstring>FILE</idstring>
     <category>System</category>
-    <copyright>Paul Manias 1996-2025</copyright>
+    <copyright>Paul Manias 1996-2026</copyright>
     <description>
 <p>The File class provides extensive support for file management and I/O.  The class supports the notion of individual file compression and file finding capabilities.  Since all File objects are tracked, there is no chance of the system leaving locked files behind after a program exits.  Folder management is also integrated into this class to ease the management of both file types.</p>
 <p>To read or write to a file, set the <fl>Path</fl> of the file as well as the correct I/O file flags before initialisation. See the <fl>Flags</fl> field for information on the available I/O flags.  Functionality for read and write operations is provided through the <action>Read</action> and <action>Write</action> actions.  The <action>Seek</action> action can be used to change the read/write position in a file.</p></description>
@@ -60,7 +60,7 @@
         <error code="FileNotFound">File not found.</error>
         <error code="NoPermission">Permission was denied when accessing or creating the file.</error>
         <error code="SetField">An error occurred while updating the <fl>Path</fl> field.</error>
-        <error code="MissingPath">The object is missing a setting in the Path or Location field.</error>
+        <error code="MissingPath">The object is missing a path reference.</error>
         <error code="ResolvePath">A volume could not be resolved.</error>
       </result>
     </action>
@@ -90,7 +90,7 @@
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="OutOfRange">Invalid <code>Length</code> parameter.</error>
         <error code="FileReadFlag">The <code>FL::READ</code> flag was not specified on initialisation.</error>
-        <error code="NotInitialised">The object has not been initialised.</error>
+        <error code="NotInitialised">The resource has not been initialised.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="ExpectedFolder">The file object refers to a folder.</error>
       </result>
@@ -204,7 +204,7 @@
         <error code="Okay">File deleted successfully.</error>
         <error code="Failed">The deletion attempt failed (specific condition not available).</error>
         <error code="NoPermission">The user does not have the necessary permissions to delete the file.</error>
-        <error code="MissingPath">The object is missing a setting in the Path or Location field.</error>
+        <error code="MissingPath">The object is missing a path reference.</error>
         <error code="BufferOverflow">The file path string is too long.</error>
         <error code="ResolvePath">A volume could not be resolved.</error>
         <error code="ReadOnly">The file is on a read-only filesystem.</error>
@@ -226,8 +226,8 @@
       </description>
       <result>
         <error code="Okay">The File was moved successfully.</error>
-        <error code="Failed">General failure.</error>
         <error code="Args">Invalid arguments passed to function.</error>
+        <error code="InvalidPath">Attempted to move a volume.</error>
         <error code="FieldNotSet">The <fl>Path</fl> field has not been set in the file object.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -345,18 +345,17 @@
     <method>
       <name>Watch</name>
       <comment>Monitors files and folders for file system events.</comment>
-      <prototype>ERR fl::Watch(OBJECTPTR Object, FUNCTION * Callback, INT64 Custom, MFF Flags)</prototype>
+      <prototype>ERR fl::Watch(OBJECTPTR Object, FUNCTION * Callback, MFF Flags)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">The routine that will be called when a file change is triggered by the system.</param>
-        <param type="INT64" name="Custom">A custom 64-bit value that will passed to the Callback routine as a parameter.</param>
         <param type="MFF" name="Flags" lookup="MFF">Filter events to those indicated in these flags.</param>
       </input>
       <description>
 <p>The Watch() method configures event based reporting for changes to any file or folder in the file system. The capabilities of this method are dependent on the host platform, with Windows and Linux systems being able to support most of the current feature set.</p>
 <p>The path that will be monitored is determined by the File object's <fl>Path</fl> field.  Both files and folders are supported as targets.</p>
 <p>The optional <lk>MFF</lk> Flags are used to filter events to those that are desired for monitoring.</p>
-<p>The client must provide a <code>Callback</code> that will be triggered when a monitored event is triggered.  The <code>Callback</code> must follow the format <code>ERR Routine(*File, STRING Path, INT64 Custom, LONG Flags)</code></p>
-<p>Each event will be delivered in the sequence that they are originally raised.  The <code>Flags</code> parameter will reflect the specific event that has occurred.  The <code>Custom</code> parameter is identical to the <code>Custom</code> argument originally passed to this method.  The <code>Path</code> is a string that is relative to the File's <fl>Path</fl> field.</p>
+<p>The client must provide a <code>Callback</code> that will be triggered when a monitored event is triggered.  The <code>Callback</code> must follow the format <code>ERR Routine(*File, std::string_view Path, MFF Flags, APTR Meta)</code></p>
+<p>Each event will be delivered in the sequence that they are originally raised.  The <code>Flags</code> parameter will reflect the specific event that has occurred.  The <code>Path</code> is a string that is relative to the File's <fl>Path</fl> field.</p>
 <p>If the callback routine returns <code>ERR::Terminate</code>, the watch will be disabled.  It is also possible to disable an existing watch by calling this method with no parameters, or by setting the <code>Flags</code> parameter to <code>0</code>.</p>
       </description>
       <result>
@@ -404,9 +403,10 @@
     <field>
       <name>Flags</name>
       <comment>File flags and options.</comment>
-      <access read="R" write="I">Read/Init</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="FL">FL</type>
       <description>
+<p>Note: If setting flags post-initialisation, the following restrictions apply: 1. The file must not have been activated (opened) yet; 2. Only the <code>NEW</code>, <code>READ</code> and <code>WRITE</code> flags can be utilised.</p>
 <types lookup="FL"/>
       </description>
     </field>
@@ -460,10 +460,11 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field is required for initialisation and must either be in the format of a universal path string, or a path that is compatible with the host system.  The standard format for a universal path is <code>volume:folder/file</code>, for instance <code>parasol:system/classes.bin</code>.</p>
+<p>This field is required for initialisation and must either be in the format of a universal path string, or a path that is compatible with the host system.  The standard format for a universal path is <code>volume:folder/file</code>, for instance <code>kotuku:system/classes.bin</code>.</p>
 <p>To reference a folder in a way that is distinct from a file, use a trailing slash as in <code>volume:folder/</code>.</p>
 <p>Referencing a <code>volume:</code> is optional.  In the event that a volume is not defined, the current working path is used as the point of origin.</p>
 <p>The accepted method for referencing parent folders is <code>../</code>, which can be repeated for as many parent folders as needed to traverse the folder hierarchy.</p>
+<p>Access to <code>std*</code> handles is achieved by using the path strings <code>std:in</code>, <code>std:out</code> and <code>std:err</code>.</p>
       </description>
     </field>
 

@@ -19,12 +19,12 @@ definition.  This will ensure that the VectorGradient is de-allocated when the s
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, LONG Elements);
+static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, int Elements);
 
 // Return a gradient table for a vector with its opacity multiplier applied.  The table is cached with the vector so
 // that it does not need to be recalculated when required again.
 
-GRADIENT_TABLE * get_fill_gradient_table(extPainter &Painter, DOUBLE Opacity)
+GRADIENT_TABLE * get_fill_gradient_table(extPainter &Painter, double Opacity)
 {
    pf::Log log(__FUNCTION__);
 
@@ -77,7 +77,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
       return &cols->table;
    }
    else {
-      DOUBLE opacity = Vector.StrokeOpacity * Vector.Opacity;
+      double opacity = Vector.StrokeOpacity * Vector.Opacity;
       if ((Vector.Stroke.GradientTable) and (opacity IS Vector.Stroke.GradientAlpha)) return Vector.Stroke.GradientTable;
 
       delete Vector.Stroke.GradientTable;
@@ -102,14 +102,14 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 
 GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS ColourSpace, double Alpha, double Resolution)
 {
-   LONG stop, i1, i2, i;
+   int stop, i1, i2, i;
 
    for (stop=0; stop < std::ssize(Stops)-1; stop++) {
-      i1 = F2T(255.0 * Stops[stop].Offset);
+      i1 = int(255.0 * Stops[stop].Offset);
       if (i1 < 0) i1 = 0;
       else if (i1 > 255) i1 = 255;
 
-      i2 = F2T(255.0 * Stops[stop+1].Offset);
+      i2 = int(255.0 * Stops[stop+1].Offset);
       if (i2 < 0) i2 = 0;
       else if (i2 > 255) i2 = 255;
 
@@ -140,7 +140,7 @@ GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS Col
 
 GradientColours::GradientColours(const std::array<FRGB, 256> &Map, double Resolution)
 {
-   for (LONG i=0; i < std::ssize(Map); i++) {
+   for (int i=0; i < std::ssize(Map); i++) {
       table[i] = agg::rgba8(Map[i]);
    }
 
@@ -172,12 +172,12 @@ static ERR VECTORGRADIENT_Init(extVectorGradient *Self)
 {
    pf::Log log;
 
-   if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
+   if ((int(Self->SpreadMethod) <= 0) or (int(Self->SpreadMethod) >= int(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return ERR::OutOfRange;
    }
 
-   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
+   if ((int(Self->Units) <= 0) or (int(Self->Units) >= int(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return ERR::OutOfRange;
    }
@@ -275,14 +275,14 @@ The Colour value is defined in floating-point RGBA format, using a range of 0 - 
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_Colour(extVectorGradient *Self, FLOAT **Value, LONG *Elements)
+static ERR VECTORGRADIENT_GET_Colour(extVectorGradient *Self, float **Value, int *Elements)
 {
-   *Value = (FLOAT *)&Self->Colour;
+   *Value = (float *)&Self->Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, FLOAT *Value, LONG Elements)
+static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, float *Value, int Elements)
 {
    pf::Log log;
    if (Value) {
@@ -292,10 +292,10 @@ static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, FLOAT *Value, LONG
          Self->Colour.Blue  = Value[2];
          Self->Colour.Alpha = (Elements >= 4) ? Value[3] : 1.0;
 
-         Self->ColourRGB.Red   = F2T(Self->Colour.Red * 255.0);
-         Self->ColourRGB.Green = F2T(Self->Colour.Green * 255.0);
-         Self->ColourRGB.Blue  = F2T(Self->Colour.Blue * 255.0);
-         Self->ColourRGB.Alpha = F2T(Self->Colour.Alpha * 255.0);
+         Self->ColourRGB.Red   = int(Self->Colour.Red * 255.0);
+         Self->ColourRGB.Green = int(Self->Colour.Green * 255.0);
+         Self->ColourRGB.Blue  = int(Self->Colour.Blue * 255.0);
+         Self->ColourRGB.Alpha = int(Self->Colour.Alpha * 255.0);
       }
       else return log.warning(ERR::InvalidValue);
    }
@@ -534,13 +534,13 @@ If NumericID is set by the client, then any value in #ID will be immediately cle
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_NumericID(extVectorGradient *Self, LONG *Value)
+static ERR VECTORGRADIENT_GET_NumericID(extVectorGradient *Self, int *Value)
 {
    *Value = Self->NumericID;
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_NumericID(extVectorGradient *Self, LONG Value)
+static ERR VECTORGRADIENT_SET_NumericID(extVectorGradient *Self, int Value)
 {
    Self->NumericID = Value;
    if (Self->ID) { FreeResource(Self->ID); Self->ID = nullptr; }
@@ -584,7 +584,7 @@ Resolution: Affects the rate of change for colours in the gradient.
 By default, the colours generated for a gradient will be spaced for a smooth transition between stops that maximise
 resolution.  The resolution can be reduced by setting the Resolution value to a fraction between 0 and 1.0.
 
-This results in the colour values being averaged to a single value for every block of n colours, where n is the value 
+This results in the colour values being averaged to a single value for every block of n colours, where n is the value
 `1 / (1 - Resolution)`.
 
 Resolution is at its maximum when this value is set to 1 (the default).
@@ -641,14 +641,14 @@ to define a start and end point for interpolating the gradient colours.
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_Stops(extVectorGradient *Self, GradientStop **Value, LONG *Elements)
+static ERR VECTORGRADIENT_GET_Stops(extVectorGradient *Self, GradientStop **Value, int *Elements)
 {
    *Value    = Self->Stops.data();
    *Elements = Self->Stops.size();
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, LONG Elements)
+static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, int Elements)
 {
    Self->Stops.clear();
 
@@ -675,7 +675,7 @@ This read-only field indicates the total number of stops that have been defined 
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_TotalStops(extVectorGradient *Self, LONG *Value)
+static ERR VECTORGRADIENT_GET_TotalStops(extVectorGradient *Self, int *Value)
 {
    *Value = Self->Stops.size();
    return ERR::Okay;
@@ -694,7 +694,7 @@ static ERR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Command
    pf::Log log;
 
    if (!Commands) return log.warning(ERR::InvalidValue);
-   
+
    Self->modified();
 
    if (!Self->Matrices) {
@@ -748,11 +748,11 @@ references it.  The alternative is `USERSPACE`, which positions the gradient sca
 -FIELD-
 X1: Initial X coordinate for the gradient.
 
-For linear gradients, the `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  The 
+For linear gradients, the `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  The
 gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.  Coordinate values can be expressed as units that are
 scaled to the target space.
 
-For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.  
+For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.
 `X1` has a range of `0 < X1 < X2` and `X2` has a range of `.01 < X2 < 10`.
 
 *********************************************************************************************************************/
@@ -777,11 +777,11 @@ static ERR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Unit &Value)
 -FIELD-
 X2: Final X coordinate for the gradient.
 
-For linear gradients, the `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  The 
+For linear gradients, the `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  The
 gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.  Coordinate values can be expressed as units that are
 scaled to the target space.
 
-For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.  
+For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.
 `X1` has a range of `0 < X1 < X2` and `X2` has a range of `.01 < X2 < 10`.
 
 *********************************************************************************************************************/

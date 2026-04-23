@@ -1,0 +1,170 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="module.xsl"?>
+
+<book>
+  <info>
+    <name>XML</name>
+    <type>module</type>
+    <comment>Provides an interface for the management of structured data.</comment>
+    <version>1</version>
+    <copyright>Paul Manias © 2001-2026</copyright>
+    <description>
+<p>The XML module provides comprehensive support for XML 1.0 document parsing, manipulation, and querying.  It integrates with the XPath module to deliver a standards-compliant XML processing environment with extensive querying capabilities.</p>
+<header>XML Processing</header>
+<p>The module implements full XML 1.0 parsing and serialisation, including support for namespaces, attributes, CDATA sections, processing instructions, and DOCTYPE declarations.  Documents can be loaded from files, strings, or streams, and modified programmatically through a tree-based API.  The parser validates well-formedness and provides detailed error reporting for malformed documents.</p>
+<header>XPath 2.0+ Support</header>
+<p>All aspects of XPath 2.0 are supported except for the following:</p>
+<list type="bullet">
+<li>Namespace axis: The <code>namespace::*</code> and <code>namespace::prefix</code> axis expressions are not supported.</li>
+<li>Schema imports: Schema import declarations are not recognised.</li>
+<li>External variables: External variable declarations (<code>declare variable $name external</code>) are not supported.</li>
+<li>Custom collations: Only the W3C codepoint collation (<code>http://www.w3.org/2005/xpath-functions/collation/codepoint</code>) is supported.  Custom collation URIs are rejected.</li>
+</list>
+<header>XQuery 1.0+ Support</header>
+<p>The module implements core XQuery 1.0 functionality, including FLWOR expressions (<code>for</code>, <code>let</code>, <code>where</code>, <code>order by</code>, <code>return</code>, <code>group by</code>, <code>count</code> clauses), node constructors (element, attribute, document, text, comment, processing instruction), and a comprehensive function library covering strings, numbers, sequences, dates, durations, QNames, and document access.  XQuery support excludes the following:</p>
+<list type="bullet">
+<li>Schema-aware processing: Type validation against XML Schema is not supported.</li>
+</list></description>
+    <classes>
+      <class>XML</class>
+    </classes>
+  </info>
+
+  <function>
+    <name>XValueNodes</name>
+    <comment>For node-set XPathValue objects, returns the node-set as an array.</comment>
+    <prototype>ERR xml::XValueNodes(struct XPathValue * Value, pf::vector&lt;struct XTag *&gt; * Result)</prototype>
+    <input>
+      <param type="struct XPathValue *" name="Value">The XPathValue to convert.</param>
+      <param type="pf::vector&lt;struct XTag *&gt; *" name="Result">The node-set is returned here as an array of <st>XTag</st> structures.</param>
+    </input>
+    <description>
+<p>If an XPathValue represents a node-set (type <code>XPVT::NODE_SET</code>) then XValueToNodes() will return a direct pointer to the node-set array.</p>
+<p>Note: The integrity of the array is not guaranteed if the original XML document is modified or freed.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>XValueToNumber</name>
+    <comment>Converts an XPathValue to a 64-bit floating point value.</comment>
+    <prototype>ERR xml::XValueToNumber(struct XPathValue * Value, DOUBLE * Result)</prototype>
+    <input>
+      <param type="struct XPathValue *" name="Value">The XPathValue to convert.</param>
+      <param type="DOUBLE *" name="Result">The numeric representation of the value is returned here.</param>
+    </input>
+    <description>
+<p>Call XValueToNumber() to convert an XPathValue object to a 64-bit floating point number.  This function also includes cover support for boolean types, converting true to 1.0 and false to 0.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>XValueToString</name>
+    <comment>Converts an XPathValue to its string representation.</comment>
+    <prototype>ERR xml::XValueToString(const struct XPathValue * Value, std::string * Result)</prototype>
+    <input>
+      <param type="const struct XPathValue *" name="Value">The XPathValue to convert.</param>
+      <param type="std::string *" name="Result">Receives the string representation of the value.</param>
+    </input>
+    <description>
+<p>Call XValueToString() to convert an XPathValue object into its string representation.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <types>
+    <constants lookup="XMF" comment="Standard flags for the XML class.">
+      <const name="HAS_SCHEMA">Automatically defined when a schema has been loaded into the XML object.</const>
+      <const name="INCLUDE_COMMENTS">By default, comments are stripped when parsing XML input unless this flag is specified.</const>
+      <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (<action>GetXMLString</action> only)</const>
+      <const name="INCLUDE_WHITESPACE">By default the XML parser will skip content between tags when they contain pure whitespace.  Setting this flag will retain all whitespace.</const>
+      <const name="INDENT">Indent the output of serialised XML to improve readability.</const>
+      <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
+      <const name="LOG_ALL">Print extra log messages.</const>
+      <const name="NAMESPACE_AWARE">Enable namespace processing during parsing.</const>
+      <const name="NEW">Creates an empty XML object on initialisation - if the <fl>Path</fl> field has been set, the source file will not be loaded.</const>
+      <const name="NO_ESCAPE">Turns off escape code conversion.</const>
+      <const name="OMIT_TAGS">Prevents tags from being output when the XML is serialised (output content only).</const>
+      <const name="PARSE_ENTITY">Enables parsing of DOCTYPE entities.</const>
+      <const name="PARSE_HTML">Automatically parse HTML escape codes.</const>
+      <const name="READABLE">Indent the output of serialised XML to improve readability.</const>
+      <const name="STANDALONE">Automatically defined when the XML declaration specifies standalone="yes".</const>
+      <const name="STRIP_CDATA">Do not serialise <code>CDATA</code> sections.  Note that this option is used as a parameter, not an object flag.</const>
+      <const name="STRIP_CONTENT">Strip all content from incoming XML data.</const>
+      <const name="STRIP_HEADERS">XML headers found in the source data will not be included in the parsed results.</const>
+      <const name="WELL_FORMED">By default, the XML class will accept badly structured XML data.  This flag requires that XML statements must be well-formed (tags must balance) or an <code>ERR::BadData</code> error will be returned during processing.</const>
+    </constants>
+
+    <constants lookup="XMI" comment="Tag insertion options.">
+      <const name="CHILD">Insert as the first child of the target.</const>
+      <const name="CHILD_END">Insert as the last child of the target.</const>
+      <const name="NEXT">Insert as the next tag of the target.</const>
+      <const name="PREV">Insert as the previous tag of the target.</const>
+    </constants>
+
+    <constants lookup="XMS" comment="For SetAttrib()">
+      <const name="NEW">Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.</const>
+      <const name="UPDATE">As for <code>UPDATE_ONLY</code>, but if the attribute does not exist, it will be created.</const>
+      <const name="UPDATE_ONLY">SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  <code>ERR::Search</code> is returned if the attribute cannot be found.</const>
+    </constants>
+
+    <constants lookup="XPVT" comment="Type descriptors for XPathValue">
+      <const name="Array"/>
+      <const name="Boolean"/>
+      <const name="Date"/>
+      <const name="DateTime"/>
+      <const name="Map"/>
+      <const name="NodeSet"/>
+      <const name="Number"/>
+      <const name="String"/>
+      <const name="Time"/>
+    </constants>
+
+    <constants lookup="XSF" comment="Options for the Sort method.">
+      <const name="CHECK_SORT">Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the <code>Attrib</code> field.</const>
+      <const name="DESC">Sort in descending order.</const>
+    </constants>
+
+    <constants lookup="XTF" comment="Standard flags for XTag.">
+      <const name="CDATA">Tag represents <code>CDATA</code>.</const>
+      <const name="COMMENT">Tag represents a comment of the format <code>&lt;!-- Comment --&gt;</code>.</const>
+      <const name="INSTRUCTION">Tag represents an instruction of the format <code>&lt;?xml?&gt;</code>.</const>
+      <const name="NOTATION">Tag represents a notation of the format <code>&lt;!XML&gt;</code>.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="XMLAttrib" typeName="XMLATTRIB">
+      <field name="Name" type="std::string">Name of the attribute</field>
+      <field name="Value" type="std::string">Value of the attribute</field>
+    </struct>
+
+    <struct name="XPathValue" typeName="XPATHVALUE">
+      <field name="Type" type="XPVT" lookup="XPVT">Identifies the type of value stored</field>
+      <field name="NumberValue" type="DOUBLE">Defined if the type is Number or Boolean</field>
+      <field name="StringValue" type="std::string">Defined if the type is String</field>
+    </struct>
+
+    <struct name="XTag" typeName="XTAG">
+      <field name="ID" type="INT">Globally unique ID assigned to the tag on creation.</field>
+      <field name="ParentID" type="INT">UID of the parent tag</field>
+      <field name="LineNo" type="INT">Line number on which this tag was encountered</field>
+      <field name="Flags" type="XTF" lookup="XTF">Optional flags</field>
+      <field name="NamespaceID" type="UINT">Hash of namespace URI or 0 for no namespace</field>
+      <field name="Reserved" type="INT">Private</field>
+      <field name="Attribs" type="pf::vector&lt;XMLAttrib&gt;">Array of attributes for this tag</field>
+      <field name="Children" type="pf::vector&lt;XTag&gt;">Array of child tags</field>
+    </struct>
+
+  </structs>
+</book>

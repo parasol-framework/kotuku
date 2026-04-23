@@ -1,11 +1,11 @@
-#ifndef DEFS_H
-#define DEFS_H 1
+#pragma once
 
 #ifndef PLATFORM_CONFIG_H
-#include <parasol/config.h>
+#include <kotuku/config.h>
 #endif
 
 #include <set>
+#include <deque>
 #include <functional>
 #include <mutex>
 #include <sstream>
@@ -15,38 +15,33 @@
 #include <atomic>
 #include <thread>
 #include <algorithm>
+#include <optional>
 #include <ankerl/unordered_dense.h>
+#include <unordered_set>
 
 using namespace std::chrono_literals;
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
-#define PRV_THREAD
 #ifndef __system__
 #define __system__
 #endif
 
 #ifdef __unix__
+ #include <fcntl.h>
  #include <sys/un.h>
  #include <sys/socket.h>
  #include <pthread.h>
  #include <semaphore.h>
+#elif defined(_WIN32)
+ #include <fcntl.h>
 #endif
-
-#define PRV_METACLASS 1
-#define PRV_MODULE 1
 
 #include "microsoft/windefs.h"
 
 // See the makefile for optional defines
 
-constexpr int MAX_TASKS = 50;  // Maximum number of tasks allowed to run at once
-
-constexpr int SIZE_SYSTEM_PATH = 100;  // Max characters for the Parasol system path
-
 constexpr int MAX_THREADS   = 20;  // Maximum number of threads per process.
-constexpr int MAX_NB_LOCKS  = 20;  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
-constexpr int MAX_WAITLOCKS = 60;  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
 
 #define CLASSDB_HEADER 0x7f887f89
 
@@ -63,8 +58,6 @@ constexpr int MAX_WAITLOCKS = 60;  // This value is effectively imposing a limit
 #else
 #define WIN32OPEN 0
 #endif
-
-constexpr int LEN_VOLUME_NAME = 40;
 
 constexpr int DRIVETYPE_REMOVABLE = 1;
 constexpr int DRIVETYPE_CDROM     = 2;
@@ -89,9 +82,9 @@ constexpr int DRIVETYPE_USB       = 5;
 
 #define BREAKPOINT { uint8_t *nz = 0; nz[0] = 0; }
 
-#include <parasol/system/errors.h>
-#include <parasol/system/types.h>
-#include <parasol/system/registry.h>
+#include <kotuku/system/errors.h>
+#include <kotuku/system/types.h>
+#include <kotuku/system/registry.h>
 
 #include <stdarg.h>
 
@@ -104,15 +97,16 @@ struct RGB8;
 struct pfBase64Decode;
 struct FileInfo;
 struct DirInfo;
+struct ActionTable;
+struct FileFeedback;
+struct ResourceManager;
+struct MsgHandler;
+
 class objFile;
 class objStorageDevice;
 class objConfig;
 class objMetaClass;
 class objTask;
-struct ActionTable;
-struct FileFeedback;
-struct ResourceManager;
-struct MsgHandler;
 
 enum class RES    : int;
 enum class RP     : int;
@@ -144,8 +138,6 @@ enum class EVG    : int;
 enum class AC     : int;
 enum class MSGID  : int;
 
-#define STAT_FOLDER 0x0001
-
 struct THREADID : strong_typedef<THREADID, int> { // Internal thread ID, unrelated to the host platform.
    // Make constructors available
    using strong_typedef::strong_typedef;
@@ -153,7 +145,6 @@ struct THREADID : strong_typedef<THREADID, int> { // Internal thread ID, unrelat
 };
 
 struct rkWatchPath {
-   int64_t    Custom;    // User's custom data pointer or value
    HOSTHANDLE Handle;    // The handle for the file being monitored, can be a special reference for virtual paths
    FUNCTION   Routine;   // Routine to call on event trigger
    MFF        Flags;     // Event mask (original flags supplied to Watch)
@@ -164,11 +155,11 @@ struct rkWatchPath {
 #endif
 };
 
-#include <parasol/vector.hpp>
+#include <kotuku/vector.hpp>
 #include "prototypes.h"
 
-#include <parasol/main.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/strings.hpp>
 
 using namespace pf;
 
@@ -178,11 +169,20 @@ struct ThreadMessage {
 };
 
 struct ThreadActionMessage {
-   OBJECTPTR Object;    // Direct pointer to a target object.
    AC        ActionID;  // The action to execute.
-   int       Key;       // Internal
+   OBJECTID  ObjectID;  // ID of the target object (for queue dispatch).
    ERR       Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
+};
+
+// Queued async action, waiting for the same-object action to complete.
+
+struct QueuedAction {
+   OBJECTID  ObjectID;
+   AC        ActionID;
+   int       ArgsSize;
+   std::vector<int8_t> Parameters;
+   FUNCTION  Callback;
 };
 
 //********************************************************************************************************************
@@ -202,8 +202,27 @@ extern std::recursive_mutex glmMemory;
 extern std::recursive_mutex glmMsgHandler;
 extern std::recursive_mutex glmAsyncActions;
 
+extern std::mutex glmActionQueue;
+extern std::unordered_map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
+extern std::unordered_set<OBJECTID> glActiveAsyncObjects;
+extern std::unordered_map<OBJECTID, int> glAsyncObjectThreads;
+
 extern std::condition_variable_any cvResources;
 extern std::condition_variable_any cvObjects;
+
+// Per-thread record for the global thread registry.  Threads are registered on first use of get_thread_id() and
+// deregistered on thread destruction.  The condition variable allows other threads to interrupt a sleeping thread
+// via WakeThread().
+
+struct ThreadRecord {
+   std::mutex mutex;                            // Guards cv.wait() and compound updates from WakeThread()
+   std::condition_variable cv;
+   std::atomic<TSTATE> state = TSTATE::RUNNING; // Readable without locking; writes from other threads require mutex
+   std::atomic<bool> interrupted = false;        // Readable without locking; set by WakeThread() under mutex
+};
+
+extern std::mutex glmThreadRegistry;
+extern std::unordered_map<int, std::shared_ptr<ThreadRecord>> glThreadRegistry;
 
 //********************************************************************************************************************
 
@@ -238,7 +257,7 @@ public:
    };
    MEMORYID MemoryID;   // Unique identifier
    OBJECTID OwnerID;    // The object that allocated this block.
-   uint32_t Size;       // 4GB max
+   uint32_t Size;       // 4GB max (user-requested size)
    THREADID ThreadLockID = THREADID(0);
    MEM      Flags;
    int16_t  AccessCount = 0; // Total number of locks
@@ -298,6 +317,7 @@ struct virtual_drive {
 };
 
 extern const virtual_drive glFSDefault;
+extern std::mutex glmVirtual;
 extern ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 
 //********************************************************************************************************************
@@ -320,21 +340,22 @@ extern ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
   #define SHMKEY 0x0009f830 // Keep the key value low as we will be incrementing it
 
   #ifdef USE_SHM
-    #define MEMORYFILE           "/tmp/parasol.mem"
+    #define MEMORYFILE           "/tmp/kotuku.mem"
   #else
     // To mount a 32MB RAMFS filesystem for this method:
     //
     //    mkdir -p /RAM1
     //    mount -t ramfs none /tmp/ramfs -o maxsize=32000
 
-    #define MEMORYFILE           "/tmp/ramfs/parasol.mem"
+    #define MEMORYFILE           "/tmp/ramfs/kotuku.mem"
 
     extern int glMemoryFD;
   #endif
 #endif
 
 enum {
-   RT_OBJECT
+   RT_OBJECT,
+   RT_SLEEP // Thread is sleeping in ProcessMessages / sleep_task
 };
 
 //********************************************************************************************************************
@@ -433,6 +454,7 @@ class extThread : public objThread {
    std::jthread::native_handle_type Handle;
    std::jthread::id ThreadID;
    std::jthread *CPPThread;
+   std::atomic_int InterruptThreadID = 0; // Internal thread ID used by WakeThread() for cooperative shutdown
    FUNCTION Routine;
    FUNCTION Callback;
    std::atomic_bool Active;
@@ -445,34 +467,39 @@ class extTask : public objTask {
    pf::vector<std::string> Parameters; // Arguments (string array)
    uint64_t AffinityMask;  // CPU affinity mask for process/thread binding
    MEMORYID MessageMID;
-   STRING   LaunchPath;
-   STRING   Path;
-   STRING   ProcessPath;
-   STRING   Location;         // Where to load the task from (string)
+   std::string LaunchPath;
+   std::string Path;
+   std::string ProcessPath;
+   std::string Location;      // Where to load the task from (string)
    char     Name[32];         // Name of the task, if specified (string)
    bool     ReturnCodeSet;    // TRUE if the ReturnCode has been set
+   bool     QuitCalled;       // TRUE if TASK_Quit has been called before
    FUNCTION ErrorCallback;
    FUNCTION OutputCallback;
    FUNCTION ExitCallback;
    FUNCTION InputCallback;
-   struct MsgHandler *MsgAction;
-   struct MsgHandler *MsgFree;
-   struct MsgHandler *MsgDebug;
-   struct MsgHandler *MsgWaitForObjects;
-   struct MsgHandler *MsgQuit;
-   struct MsgHandler *MsgEvent;
-   struct MsgHandler *MsgThreadCallback;
-   struct MsgHandler *MsgThreadAction;
+   MsgHandler *MsgAction;
+   MsgHandler *MsgFree;
+   MsgHandler *MsgDebug;
+   MsgHandler *MsgWaitForObjects;
+   MsgHandler *MsgQuit;
+   MsgHandler *MsgEvent;
+   MsgHandler *MsgThreadCallback;
+   MsgHandler *MsgThreadAction;
 
    #ifdef __unix__
-      int InFD;             // stdin FD for receiving output from launched task
-      int ErrFD;            // stderr FD for receiving output from launched task
+      int InFD = -1;       // stdin FD for receiving output from launched task
+      int ErrFD = -1;      // stderr FD for receiving output from launched task
    #endif
    #ifdef _WIN32
-      STRING Env;
+      std::string Env;
       APTR Platform;
    #endif
    struct ActionEntry Actions[int(AC::END)]; // Action routines to be intercepted by the program
+
+   extTask() {
+      TimeOut = 60 * 60 * 24;
+   }
 };
 
 //********************************************************************************************************************
@@ -518,7 +545,7 @@ struct ClassRecord {
    std::string Header;
    std::string Icon;
 
-   static const int MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(int) + (sizeof(int) * 4);
+   static constexpr int MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(int) + (sizeof(int) * 4);
 
    ClassRecord() { }
 
@@ -686,22 +713,22 @@ extern int16_t glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
 extern int64_t glTimeLog;
 extern RootModule *glModuleList;    // Locked with glmGeneric.  Maintained as a linked-list; hashmap unsuitable.
-extern OpenInfo *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
+extern OpenInfo glOpenInfo;         // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern extTask *glCurrentTask;
 extern "C" const ActionTable ActionTable[];
 extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
-extern ankerl::unordered_dense::map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup;  // Locked with glmObjectlookup
 extern ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
-extern ankerl::unordered_dense::map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Using ankerl::unordered_dense for superior performance
-extern ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory; // Locked with glmMemory.
-extern ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren; // Locked with glmMemory.
 extern ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB; // Class DB populated either by static_modules.cpp or by pre-generated file if modular.
 extern ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
 extern ankerl::unordered_dense::map<uint32_t, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
-extern ankerl::unordered_dense::map<OBJECTID, ObjectSignal> glWFOList;
+extern std::set<std::shared_ptr<std::jthread>> glAsyncThreads;
+extern std::unordered_map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup;  // Locked with glmObjectlookup
+extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Using ankerl::unordered_dense for superior performance
+extern std::unordered_map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory; // Locked with glmMemory.
+extern std::unordered_map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren; // Locked with glmMemory.
+extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
-extern ankerl::unordered_dense::set<std::shared_ptr<std::jthread>> glAsyncThreads;
 extern std::unordered_multimap<uint32_t, CLASSID> glWildClassMap; // Fast lookup for identifying classes by file extension
 extern int glWildClassMapTotal;
 extern std::vector<TaskRecord> glTasks;
@@ -710,7 +737,8 @@ extern const int glTotalMessages;
 extern "C" int glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern int glStdErrFlags; // Read only
-extern int glValidateProcessID; // Not a threading concern
+extern int glValidateProcessID; // Used by core thread only.
+extern size_t glPageSize;
 extern std::atomic_int glMessageIDCount;
 extern std::atomic_int glGlobalIDCount;
 extern std::atomic_int glPrivateIDCounter;
@@ -727,8 +755,7 @@ extern Object glDummyObject;
 extern TIMER glProcessJanitor;
 extern int glEventMask;
 extern struct ModHeader glCoreHeader;
-
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 extern CSTRING glClassBinPath;
 #endif
 
@@ -758,17 +785,36 @@ extern std::atomic_int glUniqueMsgID;
 //********************************************************************************************************************
 // Thread specific variables - these do not require locks.
 
-extern THREADVAR class extObjectContext *tlContext;
-extern THREADVAR class TaskMessage *tlCurrentMsg;
-extern THREADVAR bool tlMainThread;
-extern THREADVAR int16_t tlMsgRecursion;
-extern THREADVAR int16_t tlDepth;
-extern THREADVAR int16_t tlLogStatus;
-extern THREADVAR int16_t tlPreventSleep;
-extern THREADVAR int16_t tlPublicLockCount;
-extern THREADVAR int16_t tlPrivateLockCount;
-extern THREADVAR int glForceUID, glForceGID;
-extern THREADVAR PERMIT glDefaultPermissions;
+#if defined(__MINGW32__) || defined(__MINGW64__)
+// MinGW TLS destructor bug workaround: use a thread-local pointer and lazy init to avoid non-trivial TLS dtors
+extern thread_local pf::vector<ObjectContext> *tlContextPtr;
+
+static inline pf::vector<ObjectContext> & tls_get_context() noexcept
+{
+   if (!tlContextPtr) {
+      auto p = new pf::vector<ObjectContext>();
+      p->reserve(16);
+      p->emplace_back(ObjectContext { &glDummyObject, nullptr, AC::NIL });
+      tlContextPtr = p;
+   }
+   return *tlContextPtr;
+}
+
+#define tlContext (tls_get_context())
+
+#else
+extern thread_local pf::vector<ObjectContext> tlContext;
+#endif
+extern thread_local class TaskMessage *tlCurrentMsg;
+extern thread_local bool tlMainThread;
+extern thread_local int16_t tlMsgRecursion;
+extern thread_local int16_t tlDepth;
+extern thread_local int16_t tlLogStatus;
+extern thread_local int16_t tlPreventSleep;
+extern thread_local int16_t tlPublicLockCount;
+extern thread_local int16_t tlPrivateLockCount;
+extern thread_local int glForceUID, glForceGID;
+extern thread_local PERMIT glDefaultPermissions;
 
 //********************************************************************************************************************
 
@@ -779,12 +825,12 @@ extern void (*glNetProcessMessages)(int, APTR);
 
 #ifdef _WIN32
 extern "C" WINHANDLE glProcessHandle;
-extern THREADVAR bool tlMessageBreak;
+extern thread_local bool tlMessageBreak;
 extern WINHANDLE glTaskLock;
 #endif
 
 #ifdef __unix__
-extern THREADVAR int glSocket;
+extern thread_local int glSocket;
 extern struct FileMonitor *glFileMonitor;
 #endif
 
@@ -887,57 +933,64 @@ class TaskMessage {
 
 class extObjectContext : public ObjectContext {
    public:
-   extObjectContext() { // Dummy initialisation
-      stack  = nullptr;
+   inline extObjectContext() noexcept { // Dummy initialisation
       obj    = &glDummyObject;
       field  = nullptr;
       action = AC::NIL;
    }
 
-   extObjectContext(OBJECTPTR pObject, AC pAction, struct Field *pField = nullptr) {
-      stack  = tlContext;
+   inline extObjectContext(OBJECTPTR pObject, AC pAction) noexcept {
+      tlContext.emplace_back(pObject, nullptr, pAction);
+
+      obj    = pObject;
+      field  = nullptr;
+      action = pAction;
+   }
+
+   inline extObjectContext(OBJECTPTR pObject, struct Field *pField = nullptr) noexcept {
+      tlContext.emplace_back(pObject, pField, AC::NIL);
+
+      obj    = pObject;
+      field  = pField;
+      action = AC::NIL;
+   }
+
+   inline extObjectContext(OBJECTPTR pObject, struct Field *pField, AC pAction) noexcept {
+      tlContext.emplace_back(pObject, pField, pAction);
+
       obj    = pObject;
       field  = pField;
       action = pAction;
-      #pragma GCC diagnostic push
-      #pragma GCC diagnostic ignored "-Wdangling-pointer"
-      tlContext = this;
-      #pragma GCC diagnostic pop
    }
 
-   ~extObjectContext() {
-      if (stack) tlContext = stack;
-   }
-
-   // Return the nearest object for resourcing purposes.  Note that an action ID of 0 has special meaning and indicates
-   // that resources should be tracked to the next object on the stack (this feature is used by GetField*() functionality).
-
-   inline OBJECTPTR resource() const {
-      if (action != AC::NIL) return obj;
-      else {
-         for (auto ctx = stack; ctx; ctx=ctx->stack) {
-            if (action != AC::NIL) return ctx->obj;
-         }
-         return &glDummyObject;
-      }
-   }
-
-   inline OBJECTPTR setContext(OBJECTPTR pObject) {
-      auto old = obj;
-      obj = pObject;
-      return old;
-   }
-
-   constexpr inline OBJECTPTR object() const { // Return the object that has the context (but not necessarily for resourcing)
-      return obj;
+   inline ~extObjectContext() noexcept {
+      // Pop the context frame we pushed in the constructor
+      tlContext.pop_back();
    }
 };
+
+[[maybe_unused]] static inline OBJECTPTR current_resource()
+{
+   // Field contexts are not treated as resource nodes (i.e. we want GetField to track to the caller)
+   for (auto it=tlContext.rbegin(); it != tlContext.rend(); ++it) {
+      if (not it->field) return it->obj;
+   }
+   return &glDummyObject;
+}
+
+[[maybe_unused]] static inline OBJECTPTR current_action()
+{
+   for (auto it=tlContext.rbegin(); it != tlContext.rend(); ++it) {
+      if (it->action != AC::NIL) return it->obj;
+   }
+   return &glDummyObject;
+}
 
 //********************************************************************************************************************
 
 #ifdef __ANDROID__
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Parasol:Core", __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Parasol:Core", __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Kotuku:Core", __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Kotuku:Core", __VA_ARGS__)
 #endif
 
 //********************************************************************************************************************
@@ -954,7 +1007,13 @@ struct FDRecord {
 };
 
 extern std::list<FDRecord> glFDTable;
+
+#ifdef __linux__
 extern int glInotify;
+extern std::mutex glmInotifyLookup;
+extern std::unordered_map<int, OBJECTID> glInotifyLookup;
+#endif
+
 extern int8_t glFDProtected;
 extern std::vector<FDRecord> glRegisterFD;
 
@@ -983,10 +1042,11 @@ class RootModule : public Object {
    MHF    Flags;
    bool   NoUnload;
    bool   DLL;                 // TRUE if the module is a Windows DLL
-   ERR    (*Init)(OBJECTPTR, struct CoreBase *);
-   void   (*Close)(OBJECTPTR);
-   ERR    (*Open)(OBJECTPTR);
-   ERR    (*Expunge)(void);
+   ModInit Init;
+   ModClose Close;
+   ModOpen Open;
+   ModExpunge Expunge;
+   ModTest Test;
    struct ActionEntry prvActions[int(AC::END)]; // Action routines to be intercepted by the program
    std::string LibraryName; // Name of the library loaded from disk
 
@@ -994,6 +1054,9 @@ class RootModule : public Object {
 };
 
 THREADID get_thread_id(void);
+void deregister_thread(void);
+[[nodiscard]] std::shared_ptr<ThreadRecord> get_thread_record(void);
+ERR WakeThread(int Thread, int Stop = false);
 
 //********************************************************************************************************************
 
@@ -1012,7 +1075,7 @@ ERR fs_scandir(DirInfo *);
 ERR fs_testpath(std::string &, RSF, LOC *);
 ERR fs_watch_path(class extFile *);
 
-const virtual_drive * get_fs(std::string_view Path);
+virtual_drive get_fs(std::string_view Path);
 void  free_storage_class(void);
 
 ERR    convert_zip_error(struct z_stream_s *, int);
@@ -1024,7 +1087,6 @@ ERR    RenameVolume(CSTRING, CSTRING);
 ERR    findfile(std::string &);
 PERMIT convert_fs_permissions(int);
 int   convert_permissions(PERMIT);
-ERR    get_file_info(std::string_view, FileInfo *, int);
 extern "C" ERR convert_errno(int Error, ERR Default);
 void free_file_cache(void);
 
@@ -1035,12 +1097,13 @@ extern void remove_archive(class extCompression *);
 
 void   print_diagnosis(int);
 CSTRING action_name(OBJECTPTR Object, int ActionID);
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 APTR   build_jump_table(const Function *);
 #endif
 void   stop_async_actions(void);
 ERR    copy_args(const FunctionField *, int, int8_t *, std::vector<int8_t> &);
 ERR    create_archive_volume(void);
+void   dispatch_queued_action(OBJECTID);
 ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 ERR    find_private_object_entry(OBJECTID, int *);
@@ -1057,10 +1120,12 @@ ERR    msg_free(APTR, int, int, APTR, int);
 void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERR    process_janitor(OBJECTID, int, int);
+void   register_sleep(int);
+void   deregister_sleep(void);
 void   remove_process_waitlocks(void);
 CLASSID lookup_class_by_ext(CLASSID, std::string_view);
 
-#ifndef PARASOL_STATIC
+#ifndef KOTUKU_STATIC
 void   scan_classes(void);
 #endif
 
@@ -1094,6 +1159,10 @@ extern "C" int winCloseHandle(WINHANDLE);
 extern "C" int winCreatePipe(WINHANDLE *Read, WINHANDLE *Write);
 extern "C" int winCreateSharedMemory(STRING, int, int, WINHANDLE *, APTR *);
 extern "C" WINHANDLE winCreateThread(APTR Function, APTR Arg, int StackSize, int *ID);
+extern "C" APTR winAllocProtectedMemory(size_t Size, int ProtectionFlags);
+extern "C" int winFreeProtectedMemory(APTR Address, size_t Size);
+extern "C" size_t winGetPageSize(void);
+extern "C" int winProtectMemory(APTR Address, size_t Size, bool, bool, bool);
 extern "C" int winGetCurrentThreadId(void);
 extern "C" void winDeathBringer(int Value);
 extern "C" int winDuplicateHandle(int, int, int, int *);
@@ -1101,7 +1170,7 @@ extern "C" void winEnterCriticalSection(APTR);
 extern std::string winFormatMessage(int);
 extern "C" int winFreeLibrary(WINHANDLE);
 extern "C" void winFreeProcess(APTR);
-extern "C" int winGetEnv(CSTRING, STRING, int);
+extern "C" void winGetEnv(CSTRING, std::string &);
 extern "C" int winGetExeDirectory(int, STRING);
 extern "C" int winGetCurrentDirectory(int, STRING);
 extern "C" WINHANDLE winGetCurrentProcess(void);
@@ -1111,7 +1180,6 @@ extern "C" size_t winGetFileSize(STRING);
 extern "C" size_t winGetProcessMemoryUsage(int ProcessID);
 extern "C" APTR winGetProcAddress(WINHANDLE, CSTRING);
 extern "C" WINHANDLE winGetStdInput(void);
-extern "C" int64_t winGetTickCount(void);
 extern "C" void winInitialise(int *, void *);
 extern "C" void winInitializeCriticalSection(APTR Lock);
 extern "C" int winIsDebuggerPresent(void);
@@ -1122,8 +1190,8 @@ extern "C" WINHANDLE winLoadLibrary(CSTRING);
 extern "C" void winLowerPriority(void);
 extern "C" int winGetProcessPriority(void);
 extern "C" int winSetProcessPriority(int Priority);
-extern "C" LARGE winGetProcessAffinityMask(void);
-extern "C" int winSetProcessAffinityMask(LARGE AffinityMask);
+extern "C" int64_t winGetProcessAffinityMask(void);
+extern "C" int winSetProcessAffinityMask(int64_t AffinityMask);
 extern "C" void winProcessMessages(void);
 extern "C" int winReadStd(APTR, int, APTR Buffer, int *Size);
 extern "C" int winReadPipe(WINHANDLE FD, APTR Buffer, int *Size);
@@ -1134,7 +1202,6 @@ extern "C" void winSelect(WINHANDLE FD, char *Read, char *Write);
 extern "C" void winSetEnv(CSTRING, CSTRING);
 extern "C" void winSetUnhandledExceptionFilter(int (*Function)(int, APTR, int, int *));
 extern "C" void winShutdown(void);
-extern "C" void winSleep(int);
 extern "C" int winTerminateApp(int dwPID, int dwTimeout);
 extern "C" void winTerminateThread(WINHANDLE);
 extern "C" int winTryEnterCriticalSection(APTR);
@@ -1146,6 +1213,7 @@ extern "C" int winWriteStd(APTR, CPTR Buffer, int Size);
 extern "C" int winDeleteFile(char *Path);
 extern "C" int winCheckDirectoryExists(CSTRING);
 extern "C" ERR winCreateDir(CSTRING);
+extern "C" ERR winCreateLink(CSTRING Target, CSTRING Link);
 extern "C" int winCurrentDirectory(STRING, int);
 extern "C" int winFileInfo(CSTRING, size_t *, struct DateTime *, int8_t *);
 extern "C" void winFindClose(WINHANDLE);
@@ -1160,12 +1228,13 @@ extern "C" int winGetFullPathName(const char *Path, int PathLength, char *Output
 extern "C" int winGetUserFolder(STRING, int);
 extern "C" int winGetUserName(STRING, int);
 extern "C" int winGetWatchBufferSize(void);
+extern "C" int winValidateHandle(WINHANDLE Handle);
 extern "C" int winMoveFile(STRING, STRING);
-extern "C" int winReadChanges(WINHANDLE, APTR, int NotifyFlags, char *, int, int *);
+extern "C" ERR winReadChanges(WINHANDLE, APTR, int NotifyFlags, char *, int, int *);
 extern "C" int winReadKey(CSTRING, CSTRING, STRING, int);
 extern "C" int winReadRootKey(CSTRING, STRING, STRING, int);
 extern "C" int winReadStdInput(WINHANDLE FD, APTR Buffer, int BufferSize, int *Size);
-extern "C" int winScan(APTR *, STRING, STRING, int64_t *, struct DateTime *, struct DateTime *, int8_t *, int8_t *, int8_t *, int8_t *);
+extern "C" int winScan(APTR *, STRING, std::string &, int64_t *, struct DateTime *, struct DateTime *, int8_t *, int8_t *, int8_t *, int8_t *);
 extern "C" int winSetAttrib(CSTRING, int);
 extern "C" int winSetEOF(CSTRING, int64_t);
 extern "C" int winTestLocation(CSTRING, int8_t);
@@ -1177,17 +1246,9 @@ extern "C" int winSetFileTime(CSTRING, bool, int16_t Year, int16_t Month, int16_
 extern "C" int winResetDate(STRING);
 extern "C" void winSetDllDirectory(CSTRING);
 extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, int8_t));
+extern "C" int winSetSystemTime(int16_t Year, int16_t Month, int16_t Day, int16_t Hour, int16_t Minute, int16_t Second);
 
 #endif
-
-//********************************************************************************************************************
-// Internal function to set the manager for an allocated resource.
-
-inline void set_memory_manager(APTR Address, ResourceManager *Manager)
-{
-   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(int) - sizeof(int) - sizeof(ResourceManager *));
-   address_mgr[0] = Manager;
-}
 
 //********************************************************************************************************************
 
@@ -1209,6 +1270,12 @@ inline uint32_t reverse_long(uint32_t Value) {
             ((Value & 0x0000FF00) <<  8) |
             ((Value & 0x00FF0000) >>  8) |
             ((Value & 0xFF000000) >> 24));
+}
+
+// Align a size to the system page size
+
+inline size_t align_page_size(size_t Size) {
+   return ((Size + glPageSize - 1) / glPageSize) * glPageSize;
 }
 
 //********************************************************************************************************************
@@ -1235,5 +1302,3 @@ typename Container::const_iterator binary_search(const Container& container, con
     }
     return container.end();
 }
-
-#endif // DEFS_H

@@ -8,8 +8,8 @@ class extPicture : public objPicture {
    std::string prvSoftware;
    std::string prvDescription;
    std::string prvDisclaimer;
-   BYTE     prvHeader[256];
+   int8_t     prvHeader[256];
    objFile  *prvFile;
-   UBYTE    Cached:1;
-   UBYTE    Queried:1;
+   uint8_t    Cached:1;
+   uint8_t    Queried:1;
 };

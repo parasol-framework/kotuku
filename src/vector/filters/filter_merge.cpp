@@ -85,14 +85,14 @@ direct pointer to the referenced effect in the Effect field, or an error will be
 
 *********************************************************************************************************************/
 
-static ERR MERGEFX_SET_SourceList(extMergeFX *Self, MergeSource *Value, LONG Elements)
+static ERR MERGEFX_SET_SourceList(extMergeFX *Self, MergeSource *Value, int Elements)
 {
    if ((!Value) or (Elements <= 0)) {
       Self->List.clear();
       return ERR::Okay;
    }
 
-   for (LONG i=0; i < Elements; i++) {
+   for (int i=0; i < Elements; i++) {
       if (Value[i].SourceType IS VSF::REFERENCE) {
          if (Value[i].Effect) ((extFilterEffect *)Value[i].Effect)->UsageCount++;
          else return ERR::InvalidData;

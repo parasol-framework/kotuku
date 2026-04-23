@@ -18,9 +18,9 @@ template <class T> void sslDisconnect(T *Self)
 }
 
 //********************************************************************************************************************
-// SSL Debug callback - forwards debug messages from the Windows wrapper to Parasol log system
+// SSL Debug callback - forwards debug messages from the Windows wrapper to Kotuku log system
 
-extern "C" void ssl_debug_to_parasol_log(const char* message, int level)
+extern "C" void ssl_debug_to_kotuku_log(const char* message, int level)
 {
    pf::Log log("SSL");
 
@@ -51,7 +51,7 @@ static ERR sslSetup(extNetSocket *Self)
    if (Self->SSLHandle = ssl_create_context(validate_cert, server_mode); !Self->SSLHandle) {
       return ERR::Failed;
    }
-   
+
    // Load custom certificate if specified for server mode
    if (server_mode) {
       if (Self->SSLCertificate) {
@@ -84,7 +84,7 @@ static ERR sslSetup(extNetSocket *Self)
          }
       }
    }
-   
+
    return ERR::Okay;
 }
 
@@ -142,7 +142,7 @@ template <class T> ERR sslConnect(T *Self)
    if (!Self->SSLHandle) return ERR::FieldNotSet;
 
    std::string hostname = Self->Address ? Self->Address : "";
-   auto result = ssl_connect(Self->SSLHandle, (void *)(size_t)Self->Handle, hostname);
+   auto result = ssl_connect(Self->SSLHandle, (void *)(size_t)Self->Handle.socket(), hostname);
 
    switch (result) {
       case SSL_OK:

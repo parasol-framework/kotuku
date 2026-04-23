@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -34,10 +34,10 @@ static ERR VECTOR_Push(extVector *, struct vec::Push *);
 //********************************************************************************************************************
 // For the use of the VectorScene's Debug() method.
 
-void debug_tree(extVector *Vector, LONG &Level)
+void debug_tree(extVector *Vector, int &Level)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
+   int i;
 
    auto indent = std::make_unique<char[]>(Level + 1);
    for (i=0; i < Level; i++) indent[i] = ' '; // Indenting
@@ -62,7 +62,7 @@ void debug_tree(extVector *Vector, LONG &Level)
 
 //********************************************************************************************************************
 
-static void validate_tree(extVector *Vector) __attribute__((unused));
+[[maybe_unused]] static void validate_tree(extVector *Vector);
 static void validate_tree(extVector *Vector)
 {
    pf::Log log(__FUNCTION__);
@@ -198,7 +198,7 @@ Okay:
 
 static ERR VECTOR_Debug(extVector *Self)
 {
-   LONG level = 0;
+   int level = 0;
    debug_tree(Self, level);
    return ERR::Okay;
 }
@@ -239,10 +239,10 @@ static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       // TODO: Would need to account for client defined brush stroke widths and stroke scaling.
 
       const auto stroke_width = Self->fixed_stroke_width() + 1;
-      const LONG bx1 = F2T(Self->BX1 - stroke_width);
-      const LONG by1 = F2T(Self->BY1 - stroke_width);
-      const LONG bx2 = F2T(Self->BX2 + stroke_width);
-      const LONG by2 = F2T(Self->BY2 + stroke_width);
+      const int bx1 = int(Self->BX1 - stroke_width);
+      const int by1 = int(Self->BY1 - stroke_width);
+      const int bx2 = int(Self->BX2 + stroke_width);
+      const int by2 = int(Self->BY2 + stroke_width);
 
       struct drwScheduleRedraw area = { .X = bx1, .Y = by1, .Width = bx2 - bx1, .Height = by2 - by1 };
 #endif
@@ -253,10 +253,7 @@ static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       }
       else return ERR::AccessObject;
    }
-   else {
-      pf::Log log;
-      return log.warning(ERR::FieldNotSet);
-   }
+   else return pf::Log().warning(ERR::FieldNotSet);
 }
 
 /*********************************************************************************************************************
@@ -283,7 +280,7 @@ static ERR VECTOR_Free(extVector *Self)
    if (Self->Morph)      UnsubscribeAction(Self->Morph, AC::Free);
    if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC::Free);
 
-   if (Self->ID)           { FreeResource(Self->ID); Self->ID = nullptr; }
+   if (Self->SID)          { FreeResource(Self->SID); Self->SID = nullptr; }
    if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = nullptr; }
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = nullptr; }
    if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = nullptr; }
@@ -504,7 +501,7 @@ static ERR VECTOR_Init(extVector *Self)
 
    if (Self->classID() IS CLASSID::VECTOR) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
-      return ERR::Failed;
+      return ERR::UseSubClass;
    }
 
    if (!Self->Parent) {
@@ -770,7 +767,7 @@ static ERR VECTOR_Push(extVector *Self, struct vec::Push *Args)
 
    auto scan = Self;
    if (Args->Position < 0) { // Move backward through the stack.
-      for (LONG i=-Args->Position; (scan->Prev) and (i); i--) scan = (extVector *)scan->Prev;
+      for (int i=-Args->Position; (scan->Prev) and (i); i--) scan = (extVector *)scan->Prev;
       if (scan IS Self) return ERR::Okay;
 
       // Patch up either side of the current position.
@@ -789,7 +786,7 @@ static ERR VECTOR_Push(extVector *Self, struct vec::Push *Args)
       else Self->Prev->Next = Self;
    }
    else { // Move forward through the stack.
-      for (LONG i=Args->Position; (scan->Next) and (i); i--) scan = (extVector *)scan->Next;
+      for (int i=Args->Position; (scan->Next) and (i); i--) scan = (extVector *)scan->Next;
       if (scan IS Self) return ERR::Okay;
 
       if (Self->Prev) Self->Prev->Next = Self->Next;
@@ -921,8 +918,9 @@ static ERR VECTOR_SubscribeInput(extVector *Self, struct vec::SubscribeInput *Ar
       auto mask = Args->Mask;
 
       Self->InputMask |= mask;
-      ((extVectorScene *)Self->Scene)->InputSubscriptions[Self] = Self->InputMask;
       Self->InputSubscriptions->emplace_back(*Args->Callback, mask);
+      update_input_subscription_state(Self);
+      mark_input_boundary_dirty(Self);
    }
    else if (Self->InputSubscriptions) { // Remove existing subscriptions for this callback
       for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); ) {
@@ -930,11 +928,8 @@ static ERR VECTOR_SubscribeInput(extVector *Self, struct vec::SubscribeInput *Ar
          else it++;
       }
 
-      if (Self->InputSubscriptions->empty()) {
-         if ((Self->Scene) and (!Self->Scene->collecting())) {
-            ((extVectorScene *)Self->Scene)->InputSubscriptions.erase(Self);
-         }
-      }
+      update_input_subscription_state(Self);
+      mark_input_boundary_dirty(Self);
    }
 
    return ERR::Okay;
@@ -1026,12 +1021,12 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
    Self->BasePath.rewind(0);
    Self->BasePath.approximation_scale(Args->Scale);
 
-   DOUBLE x, y;
-   LONG cmd = -1;
-   LONG index = 0;
+   double x, y;
+   int cmd = -1;
+   int index = 0;
 
   if (Args->Callback->isC()) {
-      auto routine = ((ERR (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->Routine));
+      auto routine = ((ERR (*)(extVector *, int, int, double, double, APTR))(Args->Callback->Routine));
 
       pf::SwitchContext context(ParentContext());
 
@@ -1060,10 +1055,10 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
    else if (Args->Callback->isScript()) {
       std::array<ScriptArg, 5> args {{
          { "Vector",  Self->UID, FD_OBJECTID },
-         { "Index",   LONG(0) },
-         { "Command", LONG(0) },
-         { "X",       DOUBLE(0) },
-         { "Y",       DOUBLE(0) }
+         { "Index",   int(0) },
+         { "Command", int(0) },
+         { "X",       double(0) },
+         { "Y",       double(0) }
       }};
       args[0].Int = Self->UID;
 
@@ -1077,7 +1072,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
                args[2].Int = cmd;
                args[3].Double = x;
                args[4].Double = y;
-               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Function;
                if (result IS ERR::Terminate) return ERR::Okay;
             }
          } while (cmd != agg::path_cmd_stop);
@@ -1091,7 +1086,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
                args[2].Int = cmd;
                args[3].Double = x;
                args[4].Double = y;
-               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Function;
                if (result IS ERR::Terminate) return ERR::Okay;
             }
          } while (cmd != agg::path_cmd_stop);
@@ -1106,7 +1101,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
 AppendPath: Experimental.  Append the path of the referenced vector during path generation.
 
 The path of a vector object can be appended to another vector in real-time by making a reference to the former
-vector here.  The operation is completed immediately after the generation of the client vector's base path, prior 
+vector here.  The operation is completed immediately after the generation of the client vector's base path, prior
 to any transforms.
 
 It is strongly recommended that the appended vector has its #Visibility set to `HIDDEN`.  Any direct transform that
@@ -1204,11 +1199,12 @@ It is a pre-requisite that the associated @VectorScene has been linked to a @Sur
 static ERR VECTOR_SET_Cursor(extVector *Self, PTC Value)
 {
    Self->Cursor = Value;
+   mark_input_boundary_dirty(Self);
 
    if (Self->initialised()) {
       // Send a dummy input event to refresh the cursor
 
-      DOUBLE x, y, absx, absy;
+      double x, y, absx, absy;
 
       gfx::GetRelativeCursorPos(Self->Scene->SurfaceID, &x, &y);
       gfx::GetCursorPos(&absx, &absy);
@@ -1245,7 +1241,7 @@ then the list of values is repeated to yield an even number of values.  Thus `5,
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Elements)
+static ERR VECTOR_GET_DashArray(extVector *Self, double **Value, int *Elements)
 {
    if (Self->DashArray) {
       *Value    = Self->DashArray->values.data();
@@ -1258,27 +1254,27 @@ static ERR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Elements)
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
+static ERR VECTOR_SET_DashArray(extVector *Self, double *Value, int Elements)
 {
    pf::Log log;
 
    if (Self->DashArray) { delete Self->DashArray; Self->DashArray = nullptr; }
 
    if ((Value) and (Elements >= 1)) {
-      LONG total;
+      int total;
 
       if (Elements & 1) total = Elements * 2; // To satisfy requirements, the dash path can be doubled to make an even number.
       else total = Elements;
 
       Self->DashArray = new (std::nothrow) DashedStroke(Self->BasePath, total);
       if (Self->DashArray) {
-         for (LONG i=0; i < Elements; i++) Self->DashArray->values[i] = Value[i];
+         for (int i=0; i < Elements; i++) Self->DashArray->values[i] = Value[i];
          if (Elements & 1) {
-            for (LONG i=0; i < Elements; i++) Self->DashArray->values[Elements+i] = Value[i];
+            for (int i=0; i < Elements; i++) Self->DashArray->values[Elements+i] = Value[i];
          }
 
-         DOUBLE total_length = 0;
-         for (LONG i=0; i < std::ssize(Self->DashArray->values)-1; i+=2) {
+         double total_length = 0;
+         for (int i=0; i < std::ssize(Self->DashArray->values)-1; i+=2) {
             if ((Self->DashArray->values[i] < 0) or (Self->DashArray->values[i+1] < 0)) { // Negative values can cause an infinite drawing cycle.
                log.warning("Invalid dash array value pair (%f, %f)", Self->DashArray->values[i], Self->DashArray->values[i+1]);
                delete Self->DashArray;
@@ -1320,7 +1316,7 @@ negative then the shift will be to the right.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SET_DashOffset(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_DashOffset(extVector *Self, double Value)
 {
    Self->DashOffset = Value;
    if (Self->DashArray) {
@@ -1341,7 +1337,7 @@ instance if the vector is the child of a viewport scaled down to 50%, the result
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_DisplayScale(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_DisplayScale(extVector *Self, double *Value)
 {
    if (!Self->initialised()) return ERR::NotInitialised;
    gen_vector_tree(Self);
@@ -1423,21 +1419,21 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 FillColour: Defines a solid colour for filling the vector path.
 
 Set the FillColour field to define a solid colour for filling the vector path.  The colour is defined as an array
-of four 32-bit floating point values between 0 and 1.0.  The array elements consist of Red, Green, Blue and Alpha
-values in that order.
+of four 32-bit floating point values between 0 and 1.0 if restricted to sRGB colourspace.  The array elements 
+consist of Red, Green, Blue and Alpha values in that order.
 
 If the Alpha component is set to zero then the FillColour will be ignored by the renderer.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_FillColour(extVector *Self, FLOAT **Value, LONG *Elements)
+static ERR VECTOR_GET_FillColour(extVector *Self, float **Value, int *Elements)
 {
-   *Value = (FLOAT *)&Self->Fill[0].Colour;
+   *Value = (float *)&Self->Fill[0].Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
+static ERR VECTOR_SET_FillColour(extVector *Self, float *Value, int Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Fill[0].Colour.Red   = Value[0];
@@ -1471,13 +1467,13 @@ the #Opacity to determine a final opacity value for the render.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_FillOpacity(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_FillOpacity(extVector *Self, double *Value)
 {
    *Value = Self->FillOpacity;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_FillOpacity(extVector *Self, double Value)
 {
    pf::Log log;
 
@@ -1501,7 +1497,7 @@ using the @VectorFilter class and added to a VectorScene using @VectorScene.AddD
 then be referenced by ID in the Filter field of any vector object.  Please refer to the @VectorFilter class
 for further details on filter configuration.
 
-The Filter value can be in the format `ID` or `url(#ID)` according to client preference.
+The Filter value can be in the format `ID` or `url(#SID)` according to client preference.
 
 *********************************************************************************************************************/
 
@@ -1572,29 +1568,29 @@ static ERR VECTOR_SET_FillRule(extVector *Self, VFR Value)
 
 /*********************************************************************************************************************
 -FIELD-
-ID: String identifier for a vector.
+SID: String identifier for a vector.
 
-The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the
-existing object name and automatically assigned ID's for identifiers.
+The SID field is provided for SVG support.  Use the existing object name and UID for identification in all other 
+circumstances.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_ID(extVector *Self, STRING *Value)
+static ERR VECTOR_GET_SID(extVector *Self, STRING *Value)
 {
-   *Value = Self->ID;
+   *Value = Self->SID;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_ID(extVector *Self, CSTRING Value)
+static ERR VECTOR_SET_SID(extVector *Self, CSTRING Value)
 {
-   if (Self->ID) FreeResource(Self->ID);
+   if (Self->SID) FreeResource(Self->SID);
 
    if (Value) {
-      Self->ID = strclone(Value);
+      Self->SID = strclone(Value);
       Self->NumericID = strhash(Value);
    }
    else {
-      Self->ID = nullptr;
+      Self->SID = nullptr;
       Self->NumericID = 0;
    }
    return ERR::Okay;
@@ -1637,7 +1633,7 @@ static ERR VECTOR_SET_InnerJoin(extVector *Self, VIJ Value)
       case VIJ::BEVEL: Self->InnerJoin = agg::inner_bevel; break;
       case VIJ::JAG:   Self->InnerJoin = agg::inner_jag; break;
       case VIJ::INHERIT: Self->InnerJoin = agg::inner_inherit; break;
-      default: return ERR::Failed;
+      default: return ERR::InvalidValue;
    }
    mark_buffers_for_refresh(Self);
    return ERR::Okay;
@@ -1674,7 +1670,7 @@ static ERR VECTOR_SET_LineCap(extVector *Self, VLC Value)
       case VLC::SQUARE:  Self->LineCap = agg::square_cap; break;
       case VLC::ROUND:   Self->LineCap = agg::round_cap; break;
       case VLC::INHERIT: Self->LineCap = agg::inherit_cap; break;
-      default: return ERR::Failed;
+      default: return ERR::InvalidValue;
    }
    mark_buffers_for_refresh(Self);
    return ERR::Okay;
@@ -1712,7 +1708,7 @@ static ERR VECTOR_SET_LineJoin(extVector *Self, VLJ Value)
       case VLJ::MITER_SMART:  Self->LineJoin = agg::miter_join; break;
       case VLJ::MITER_ROUND:  Self->LineJoin = agg::miter_join_round; break;
       case VLJ::INHERIT:      Self->LineJoin = agg::inherit_join; break;
-      default: return ERR::Failed;
+      default: return ERR::InvalidValue;
    }
    mark_buffers_for_refresh(Self);
    return ERR::Okay;
@@ -1785,7 +1781,7 @@ them for theta less than approximately 29 degrees, and a limit of 10.0 converts 
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SET_MiterLimit(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_MiterLimit(extVector *Self, double Value)
 {
    pf::Log log;
 
@@ -1911,22 +1907,22 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
 NumericID: A unique identifier for the vector.
 
 This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the
-#ID field if that has been defined previously.
+#SID field if that has been defined previously.
 
-If NumericID is set by the client, then any value in #ID will be immediately cleared.
+If NumericID is set by the client, then any value in #SID will be immediately cleared.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_NumericID(extVector *Self, LONG *Value)
+static ERR VECTOR_GET_NumericID(extVector *Self, int *Value)
 {
    *Value = Self->NumericID;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_NumericID(extVector *Self, LONG Value)
+static ERR VECTOR_SET_NumericID(extVector *Self, int Value)
 {
    Self->NumericID = Value;
-   if (Self->ID) { FreeResource(Self->ID); Self->ID = nullptr; }
+   if (Self->SID) { FreeResource(Self->SID); Self->SID = nullptr; }
    return ERR::Okay;
 }
 
@@ -1941,7 +1937,7 @@ calculated as `#FillOpacity * Opacity`.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SET_Opacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_Opacity(extVector *Self, double Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->Opacity = Value;
@@ -2121,8 +2117,8 @@ static ERR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    agg::path_storage &base = Self->BasePath;
 
-   DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
-   for (ULONG i=0; i < base.total_vertices(); i++) {
+   double x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
+   for (uint32_t i=0; i < base.total_vertices(); i++) {
       auto cmd = base.command(i);
       //LONG cmd_flags = cmd & (~agg::path_cmd_mask);
       cmd &= agg::path_cmd_mask;
@@ -2231,20 +2227,21 @@ static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 StrokeColour: Defines the colour of the path stroke in RGB float format.
 
 This field defines the colour that will be used in stroking a path, and is comprised of floating point RGBA values.
-The intensity of each component is measured from 0 - 1.0.  Stroking is disabled if the alpha value is 0.
+The intensity of each component is measured from 0 - 1.0 if restricted to sRGB colourspace, but may otherwise exceed
+these limits.  Stroking is disabled if the alpha value is 0.
 
 This field is complemented by the #StrokeOpacity and #Stroke fields.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_StrokeColour(extVector *Self, FLOAT **Value, LONG *Elements)
+static ERR VECTOR_GET_StrokeColour(extVector *Self, float **Value, int *Elements)
 {
-   *Value = (FLOAT *)&Self->Stroke.Colour;
+   *Value = (float *)&Self->Stroke.Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Elements)
+static ERR VECTOR_SET_StrokeColour(extVector *Self, float *Value, int Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Stroke.Colour.Red   = Value[0];
@@ -2272,13 +2269,13 @@ rendering.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_StrokeOpacity(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_StrokeOpacity(extVector *Self, double *Value)
 {
    *Value = Self->StrokeOpacity;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_StrokeOpacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_StrokeOpacity(extVector *Self, double Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->StrokeOpacity = Value;
@@ -2335,13 +2332,13 @@ When two vectors share the same priority, preference is given to the older of th
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_TabOrder(extVector *Self, LONG *Value)
+static ERR VECTOR_GET_TabOrder(extVector *Self, int *Value)
 {
    *Value = Self->TabOrder;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_TabOrder(extVector *Self, LONG Value)
+static ERR VECTOR_SET_TabOrder(extVector *Self, int Value)
 {
    if ((Value >= 1) and (Value <= 255)) {
       Self->TabOrder = Value;
@@ -2433,7 +2430,7 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
             // In this implementation the script function will receive all the events chained via the Next field
             sc::Call(sub.Callback, std::to_array<ScriptArg>({
                { "Vector", Vector, FDF_OBJECT },
-               { "Event",  LONG(Event) },
+               { "Event",  int(Event) },
                { "EventObject", EventObject, FDF_OBJECT }
             }), result);
          }
@@ -2449,7 +2446,7 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
 
 //********************************************************************************************************************
 
-DOUBLE extVector::fixed_stroke_width()
+double extVector::fixed_stroke_width()
 {
    if (this->ScaledStrokeWidth) {
       return get_parent_diagonal(this) * INV_SQRT2 * this->StrokeWidth;
@@ -2535,7 +2532,7 @@ static const FieldArray clVectorFields[] = {
    { "AppendPath",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_AppendPath, VECTOR_SET_AppendPath },
    { "MorphFlags",   FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW,        VECTOR_GET_MorphFlags, VECTOR_SET_MorphFlags, &clMorphFlags },
    { "NumericID",    FDF_VIRTUAL|FDF_INT|FDF_RW,             VECTOR_GET_NumericID, VECTOR_SET_NumericID },
-   { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_ID, VECTOR_SET_ID },
+   { "SID",          FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_SID, VECTOR_SET_SID },
    { "ResizeEvent",  FDF_VIRTUAL|FDF_FUNCTION|FDF_W,         nullptr, VECTOR_SET_ResizeEvent },
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, VECTOR_GET_Sequence },
    { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Stroke, VECTOR_SET_Stroke },

@@ -1,3 +1,62 @@
+//********************************************************************************************************************
+// XML Entity Decoding and Character Reference Processing
+//
+// Provides functions for decoding XML entity references and numeric character references in XML content.  This
+// module handles both named entities (like &amp;, &lt;, &gt;) and numeric character references (&#xHH; and &#DDD;)
+// according to XML specifications.
+//
+// Key functionality:
+//   - Numeric character reference decoding (decimal and hexadecimal)
+//   - Unicode codepoint to UTF-8 conversion
+//   - Entity reference lookup and substitution
+//   - Character validation and bounds checking
+//
+// The implementation ensures safe decoding of XML escape sequences whilst preserving Unicode correctness and
+// handling edge cases like invalid references and out-of-range codepoints.
+
+#include "unescape.h"
+#include <stdint.h>
+#include <string.h>
+#include "xml.h"
+#include "../link/unicode.h"
+
+#define IS ==
+
+bool decode_numeric_reference(const char *Start, size_t Length, char *Buffer, size_t &ResultLength)
+{
+   if (Length < 3) return false;
+   if (!(Start[0] IS '&') or !(Start[1] IS '#') or !(Start[Length - 1] IS ';')) return false;
+
+   size_t position = 2;
+   bool is_hex = false;
+   if ((position < Length - 1) and ((Start[position] IS 'x') or (Start[position] IS 'X'))) {
+      is_hex = true;
+      position++;
+   }
+
+   uint32_t unicode = 0;
+   while (position < Length - 1) {
+      auto digit = Start[position];
+      if (is_hex) {
+         uint32_t value = 0;
+         if ((digit >= '0') and (digit <= '9')) value = uint32_t(digit - '0');
+         else if ((digit >= 'a') and (digit <= 'f')) value = uint32_t(digit - 'a' + 10);
+         else if ((digit >= 'A') and (digit <= 'F')) value = uint32_t(digit - 'A' + 10);
+         else return false;
+         unicode <<= 4;
+         unicode += value;
+      }
+      else {
+         if ((digit < '0') or (digit > '9')) return false;
+         unicode *= 10;
+         unicode += uint32_t(digit - '0');
+      }
+      position++;
+   }
+
+   ResultLength = UTF8WriteValue(unicode, Buffer, 6);
+   return true;
+}
 
 static ankerl::unordered_dense::map<std::string, std::string> glOfficial = {
    { "amp",  "&" },
@@ -7,7 +66,7 @@ static ankerl::unordered_dense::map<std::string, std::string> glOfficial = {
    { "quot", "\"" }
 };
 
-static ankerl::unordered_dense::map<std::string, UWORD> glHTML = {
+static ankerl::unordered_dense::map<std::string, uint16_t> glHTML = {
    { "AElig",   0xc6 },
    { "Aacute",  0xC1 },
    { "Acirc",   0xC2 },
@@ -263,43 +322,21 @@ static ankerl::unordered_dense::map<std::string, UWORD> glHTML = {
 
 static void xml_unescape(extXML *Self, std::string &String)
 {
-   pf::Log log(__FUNCTION__);
-
-
    auto c = String.find('&');
    while (c != std::string::npos) {
-      if (String[c + 1] IS '#') { // Numeric escape code detected.
-         auto len = c + 2;
-         ULONG unicode = 0;
-
-         if (String[len] IS 'x') { // Hexadecimal literal
-            len++;
-            while ((String[len]) and (String[len] != ';')) {
-               unicode <<= 4;
-               if ((String[len] >= '0') and (String[len] <= '9')) unicode += String[len] - '0';
-               else if ((String[len] >= 'a') and (String[len] <= 'f')) unicode += String[len] - 'a' + 10;
-               else if ((String[len] >= 'A') and (String[len] <= 'F')) unicode += String[len] - 'A' + 10;
-               else break;
-               len++;
-            }
-         }
-         else { // Decimal literal
-            while ((String[len]) and (String[len] != ';')) {
-               unicode *= 10;
-               if ((String[len] >= '0') and (String[len] <= '9')) unicode += String[len] - '0';
-               else break;
-               len++;
-            }
-         }
-
-         if (String[len] IS ';') { // The correct terminator must be present
+      if ((c + 1 < String.size()) and (String[c + 1] IS '#')) {
+         auto end = String.find(';', c);
+         if (!(end IS std::string::npos)) {
             char unichar[6];
-            auto ulen = UTF8WriteValue(unicode, unichar, sizeof(unichar));
-            len++;
-            String.replace(c, len - c, unichar, ulen);
-            c += ulen;
+            size_t ulen = 0;
+            if (decode_numeric_reference(String.c_str() + c, end - c + 1, unichar, ulen)) {
+               String.replace(c, end - c + 1, unichar, ulen);
+               c += ulen;
+               c = String.find('&', c);
+               continue;
+            }
          }
-         else c++; // Ignore invalid escape codes
+         c++;
       }
       else {
          auto end = String.find(';', c);
@@ -311,7 +348,14 @@ static void xml_unescape(extXML *Self, std::string &String)
                String.replace(c, end-c, glOfficial[lookup]);
                c++;
             }
-            else if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) c++; // Not yet implemented
+            else if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) {
+               std::string resolved;
+               if (Self->resolveEntity(lookup, resolved) IS ERR::Okay) {
+                  String.replace(c, end - c, resolved);
+                  // TODO: Rescan the inserted text to handle nested entity references.
+               }
+               else c++;
+            }
             else if ((Self->Flags & XMF::PARSE_HTML) != XMF::NIL) { // Process HTML escape codes
                if (glHTML.contains(lookup)) {
                   auto unicode = glHTML[lookup];
@@ -332,7 +376,7 @@ static void xml_unescape(extXML *Self, std::string &String)
 
 //********************************************************************************************************************
 
-static void unescape_all(extXML *Self, TAGS &Tags)
+void unescape_all(extXML *Self, TAGS &Tags)
 {
    for (auto &tag : Tags) {
       if (!tag.Children.empty()) {

@@ -2,23 +2,12 @@
 static const int MAXLOOP = 1000;
 
 static const char glDefaultStyles[] =
-"<template name=\"h1\"><p leading=\"1.5\" font-size=\"2em\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h2\"><p leading=\"1.5\"  font-size=\"1.8em\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h3\"><p leading=\"1.25\" font-size=\"1.6em\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h4\"><p leading=\"1.25\" font-size=\"1.4em\"><inject/></p></template>\n\
-<template name=\"h5\"><p leading=\"1.0\"  font-size=\"1.2em\"><inject/></p></template>\n\
-<template name=\"h6\"><p leading=\"1.0\"  font-size=\"1em\"><inject/></p></template>\n";
-
-static const Field * find_field(OBJECTPTR Object, std::string_view Name, OBJECTPTR *Source) // Read-only, thread safe function.
-{
-   // Skip any special characters that are leading the field name (e.g. $, @).  Some symbols like / are used for XPath
-   // lookups, so we only want to skip reserved symbols or we risk confusion between real fields and variable fields.
-
-   unsigned i;
-   for (i=0; i < Name.size() and ((Name[i] IS '$') or (Name[i] IS '@')); i++);
-   if (i) Name.remove_prefix(i);
-   return FindField(Object, strihash(Name), Source);
-}
+"<template name=\"h1\"><p leading=\"1.5\" font-size=\"2em\" font-style=\"bold\"><inject/></p></>\n\
+<template name=\"h2\"><p leading=\"1.25\" font-size=\"1.8em\" font-style=\"bold\"><inject/></p></>\n\
+<template name=\"h3\"><p leading=\"1.25\" font-size=\"1.6em\" font-style=\"bold\"><inject/></p></>\n\
+<template name=\"h4\"><p leading=\"1.25\" font-size=\"1.4em\"><inject/></p></>\n\
+<template name=\"h5\"><p leading=\"1.0\"  font-size=\"1.2em\"><inject/></p></>\n\
+<template name=\"h6\"><p leading=\"1.0\"  font-size=\"1em\"><inject/></p></>\n";
 
 //********************************************************************************************************************
 
@@ -88,106 +77,82 @@ static void apply_border_to_path(CB Border, std::vector<PathCommand> &Seq, Float
    }
 }
 
-/*********************************************************************************************************************
-
-This function can be used for performing simple calculations on numeric values and strings.  It can return a result in
-either a numeric format or in a string buffer if the calculation involves non-numeric characters.  Here are some
-examples of valid strings:
-
-<pre>
-100/50+(12*14)
-0.05 * 100 + '%'
-</pre>
-
-Currently acceptable operators are plus, minus, divide and multiply.  String references must be enclosed in single
-quotes or will be ignored.  Brackets may be used to organise the order of operations during calculation.
-
-Special operators include:
-
-<types type="Symbol">
-<type name="p">This character immediately followed with an integer allows you to change the floating-point precision of output values.</>
-<type name="f">The same as the 'p' operator except the precision is always guaranteed to be fixed at that value through the use of trailing zeros (so a fixed precision of two used to print the number '7' will give a result of '7.00'.</>
-</>
-
-*********************************************************************************************************************/
-
-static std::string write_calc(double Value, WORD Precision)
-{
-   if (!Precision) return std::to_string(F2T(Value));
-
-   int64_t wholepart = F2T(Value);
-   auto out = std::to_string(wholepart);
-
-   double fraction = std::abs(Value) - std::abs(wholepart);
-   if ((fraction > 0) or (Precision < 0)) {
-      out += '.';
-      fraction *= 10;
-      auto px = std::abs(Precision);
-      while ((fraction > 0.00001) and (px > 0)) {
-         auto ival = F2T(fraction);
-         out += char(ival) + '0';
-         fraction = (fraction - ival) * 10;
-         px--;
-      }
-
-      while (px > 0) { out += '0'; px--; }
-   }
-
-   return out;
-}
-
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static CSTRING read_unit(CSTRING Input, double &Output, bool &Scaled)
+static std::string_view read_unit(std::string_view Input, double &Output, bool &Scaled)
 {
-   bool isnumber = true;
-   auto v = Input;
-   while ((*v) and (unsigned(*v) <= 0x20)) v++;
-
-   auto str = v;
-   if ((*str IS '-') or (*str IS '+')) str++;
+   auto value = Input;
+   while ((not value.empty()) and (unsigned(value.front()) <= 0x20)) value.remove_prefix(1);
 
    Scaled = false;
-   if (((*str >= '0') and (*str <= '9')) or (*str IS '.')) {
-      while ((*str >= '0') and (*str <= '9')) str++;
-
-      if (*str IS '.') {
-         str++;
-         if ((*str >= '0') and (*str <= '9')) {
-            while ((*str >= '0') and (*str <= '9')) str++;
-         }
-         else isnumber = false;
-      }
-
-      double multiplier = 1.0;
-      double dpi = 96.0;
-
-      if (*str IS '%') {
-         Scaled = true;
-         multiplier = 0.01;
-         str++;
-      }
-      else if ((str[0] IS 'p') and (str[1] IS 'x')) str += 2; // Pixel.  This is the default type
-      else if ((str[0] IS 'e') and (str[1] IS 'm')) { str += 2; multiplier = 12.0 * (4.0 / 3.0); } // Current font-size
-      else if ((str[0] IS 'e') and (str[1] IS 'x')) { str += 2; multiplier = 6.0 * (4.0 / 3.0); } // Current font-size, reduced to the height of the 'x' character.
-      else if ((str[0] IS 'i') and (str[1] IS 'n')) { str += 2; multiplier = dpi; } // Inches
-      else if ((str[0] IS 'c') and (str[1] IS 'm')) { str += 2; multiplier = (1.0 / 2.56) * dpi; } // Centimetres
-      else if ((str[0] IS 'm') and (str[1] IS 'm')) { str += 2; multiplier = (1.0 / 20.56) * dpi; } // Millimetres
-      else if ((str[0] IS 'p') and (str[1] IS 't')) { str += 2; multiplier = (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
-      else if ((str[0] IS 'p') and (str[1] IS 'c')) { str += 2; multiplier = (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
-
-      Output = strtod(v, NULL) * multiplier;
+   if (value.empty()) {
+      Output = 0;
+      return value;
    }
-   else Output = 0;
 
-   return str;
+   size_t pos = 0;
+   bool negative = false;
+   if ((value[pos] IS '-') or (value[pos] IS '+')) {
+      negative = value[pos] IS '-';
+      pos++;
+   }
+
+   auto number_start = pos;
+   while ((pos < value.size()) and (value[pos] >= '0') and (value[pos] <= '9')) pos++;
+
+   bool has_digits = pos > number_start;
+   if ((pos < value.size()) and (value[pos] IS '.')) {
+      pos++;
+      auto fraction_start = pos;
+      while ((pos < value.size()) and (value[pos] >= '0') and (value[pos] <= '9')) pos++;
+      has_digits = has_digits or (pos > fraction_start);
+   }
+
+   if (not has_digits) {
+      Output = 0;
+      return value.substr(number_start);
+   }
+
+   std::string number_text;
+   number_text.reserve((negative ? 1 : 0) + (pos - number_start) + ((value[number_start] IS '.') ? 1 : 0));
+   if (negative) number_text += '-';
+   if (value[number_start] IS '.') number_text += '0';
+   number_text.append(value.data() + number_start, pos - number_start);
+
+   auto numeric_value = 0.0;
+   auto [ptr, error] = std::from_chars(number_text.data(), number_text.data() + number_text.size(), numeric_value);
+   if (error != std::errc()) {
+      Output = 0;
+      return value.substr(pos);
+   }
+
+   double multiplier = 1.0;
+   static constexpr double dpi = 96.0;
+   auto suffix = value.substr(pos);
+
+   if (suffix.starts_with('%')) {
+      Scaled = true;
+      multiplier = 0.01;
+      suffix.remove_prefix(1);
+   }
+   else if (suffix.starts_with("px")) suffix.remove_prefix(2); // Pixel.  This is the default type
+   else if (suffix.starts_with("em")) { suffix.remove_prefix(2); multiplier = 12.0 * (4.0 / 3.0); } // Current font-size
+   else if (suffix.starts_with("ex")) { suffix.remove_prefix(2); multiplier = 6.0 * (4.0 / 3.0); } // Current font-size, reduced to the height of the 'x' character.
+   else if (suffix.starts_with("in")) { suffix.remove_prefix(2); multiplier = dpi; } // Inches
+   else if (suffix.starts_with("cm")) { suffix.remove_prefix(2); multiplier = (1.0 / 2.56) * dpi; } // Centimetres
+   else if (suffix.starts_with("mm")) { suffix.remove_prefix(2); multiplier = (1.0 / 20.56) * dpi; } // Millimetres
+   else if (suffix.starts_with("pt")) { suffix.remove_prefix(2); multiplier = (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
+   else if (suffix.starts_with("pc")) { suffix.remove_prefix(2); multiplier = (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
+
+   Output = numeric_value * multiplier;
+   return suffix;
 }
 
 //********************************************************************************************************************
 // Checks if the file path is safe, i.e. does not refer to an absolute file location.
 
-static int safe_file_path(extDocument *Self, const std::string &Path)
+static int safe_file_path(extDocument *Self, std::string_view Path)
 {
    if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) return true;
 
@@ -201,7 +166,7 @@ static int safe_file_path(extDocument *Self, const std::string &Path)
 //********************************************************************************************************************
 // Process an XML tree by setting correct style information and then calling parse_tags().
 
-static ERR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex,
+static ERR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, const objXML::TAGS &Tag, INDEX TargetIndex,
    STYLE StyleFlags, IPF Options)
 {
    pf::Log log(__FUNCTION__);
@@ -279,6 +244,33 @@ static ERR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML::T
 //
 // Preformat must be set to true if all consecutive whitespace characters in Text are to be inserted.
 
+static constexpr size_t MAX_BC_TEXT_BYTES = 0xffff;
+
+static inline size_t utf8_split_boundary(std::string_view Text, size_t Limit)
+{
+   if (Text.size() <= Limit) return Text.size();
+   if (!Limit) return 0;
+
+   auto split = Limit;
+   while ((split > 0) and ((uint8_t(Text[split]) & 0xc0) IS 0x80)) split--;
+   if (!split) return Limit;
+   return split;
+}
+
+static void emit_bc_text(RSTREAM *Stream, stream_char &Index, std::string_view Text, bool Formatted)
+{
+   if (Text.empty()) return;
+
+   for (size_t offset = 0; offset < Text.size(); ) {
+      auto split = utf8_split_boundary(Text.substr(offset), MAX_BC_TEXT_BYTES);
+      if (!split) split = std::min(MAX_BC_TEXT_BYTES, Text.size() - offset);
+
+      bc_text et(Text.substr(offset, split), Formatted);
+      Stream->emplace<bc_text>(Index, et);
+      offset += split;
+   }
+}
+
 static ERR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index, const std::string_view Text, bool Preformat)
 {
    // Check if there is content to be processed
@@ -290,26 +282,25 @@ static ERR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index, c
    }
 
    if (Preformat) {
-      bc_text et(Text, true);
-      Stream->emplace<bc_text>(Index, et);
+      emit_bc_text(Stream, Index, Text, true);
    }
    else {
-      bc_text et;
-      et.text.reserve(Text.size());
+      std::string normalised_text;
+      normalised_text.reserve(Text.size());
       auto ws = Self->NoWhitespace; // Retrieve previous whitespace state
       for (unsigned i=0; i < Text.size(); ) {
          if (unsigned(Text[i]) <= 0x20) { // Whitespace encountered
             for (++i; (i < Text.size()) and (unsigned(Text[i]) <= 0x20); i++);
-            if (!ws) et.text += ' ';
+            if (!ws) normalised_text += ' ';
             ws = true;
          }
          else {
-            et.text += Text[i++];
+            normalised_text += Text[i++];
             ws = false;
          }
       }
       Self->NoWhitespace = ws;
-      Stream->emplace(Index, et);
+      emit_bc_text(Stream, Index, normalised_text, false);
    }
 
    return ERR::Okay;
@@ -332,7 +323,7 @@ static ERR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unload
    auto i = Path.find_first_of("&#?");
    if (i != std::string::npos) Path.erase(i);
 
-   if (AnalysePath(Path.c_str(), NULL) IS ERR::Okay) {
+   if (AnalysePath(Path.c_str(), nullptr) IS ERR::Okay) {
       auto task = CurrentTask();
       task->setPath(Path);
 
@@ -354,7 +345,9 @@ static ERR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unload
 
          parse.process_page(*xml);
 
-         if (Self->initialised()) {
+         auto process_error = Self->Error;
+
+         if ((Self->initialised()) and (process_error IS ERR::Okay)) {
             Self->UpdatingLayout = true;
             redraw(Self, true);
          }
@@ -362,7 +355,8 @@ static ERR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unload
          #ifdef DBG_STREAM
             print_stream(Self->Stream);
          #endif
-         return Self->Error;
+         if (process_error != ERR::Okay) return process_error;
+         else return Self->Error;
       }
       else {
          error_dialog("Document Load Error", std::string("Failed to load document file '") + Path + "'");
@@ -393,11 +387,11 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    Self->Highlight = glHighlight;
 
-   Self->CursorStroke   = "rgba(102,102,204,1.0)";
-   Self->FontFill       = "rgb(0,0,0)";
-   Self->LinkFill       = "rgb(0,0,255)";
-   Self->LinkSelectFill = "rgb(255,0,0)";
-   Self->Background     = "rgba(255,255,255,1.0)";
+   Self->CursorStroke   = "rgb(102 102 204 / 1)";
+   Self->FontFill       = "rgb(0 0 0)";
+   Self->LinkFill       = "rgb(0 0 255)";
+   Self->LinkSelectFill = "rgb(255 0 0)";
+   Self->Background     = "rgb(255 255 255 / 1)";
 
    Self->LeftMargin    = 10;
    Self->RightMargin   = 10;
@@ -411,13 +405,13 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    Self->PageWidth     = 0;
    Self->CalcWidth     = 0;
    Self->MinPageWidth  = MIN_PAGE_WIDTH;
-   Self->DefaultScript = NULL;
+   Self->DefaultScript = nullptr;
    Self->FocusIndex    = -1;
    Self->PageProcessed = false;
    Self->RefreshTemplates = true;
    Self->MouseOverSegment = -1;
    Self->ActiveEditCellID = 0;
-   Self->ActiveEditDef    = NULL;
+   Self->ActiveEditDef    = nullptr;
    Self->SelectIndex.reset();
    Self->CursorIndex.reset();
 
@@ -425,10 +419,10 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    Self->Links.clear();
 
-   Self->FontFace = DEFAULT_FONTFACE;
-   Self->FontSize = DEFAULT_FONTSIZE;
+   Self->FontFace  = DEFAULT_FONTFACE;
+   Self->FontSize  = DEFAULT_FONTSIZE;
    Self->FontStyle = DEFAULT_FONTSTYLE;
-   Self->PageTag = NULL;
+   Self->PageTag   = nullptr;
 
    Self->EditCells.clear();
    Self->Stream.clear();
@@ -442,19 +436,19 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    if ((Flags & ULD::TERMINATE) != ULD::NIL) Self->Vars.clear();
 
-   if (Self->SVG)         { FreeResource(Self->SVG); Self->SVG = NULL; }
-   if (Self->Keywords)    { FreeResource(Self->Keywords); Self->Keywords = NULL; }
-   if (Self->Author)      { FreeResource(Self->Author); Self->Author = NULL; }
-   if (Self->Copyright)   { FreeResource(Self->Copyright); Self->Copyright = NULL; }
-   if (Self->Description) { FreeResource(Self->Description); Self->Description = NULL; }
-   if (Self->Title)       { FreeResource(Self->Title); Self->Title = NULL; }
+   if (Self->SVG)         { FreeResource(Self->SVG); Self->SVG = nullptr; }
+   if (Self->Keywords)    { FreeResource(Self->Keywords); Self->Keywords = nullptr; }
+   if (Self->Author)      { FreeResource(Self->Author); Self->Author = nullptr; }
+   if (Self->Copyright)   { FreeResource(Self->Copyright); Self->Copyright = nullptr; }
+   if (Self->Description) { FreeResource(Self->Description); Self->Description = nullptr; }
+   if (Self->Title)       { FreeResource(Self->Title); Self->Title = nullptr; }
 
    // Free templates only if they have been modified (no longer at the default settings).
 
    if (Self->Templates) {
       if (Self->TemplatesModified != Self->Templates->Modified) {
          FreeResource(Self->Templates);
-         Self->Templates = NULL;
+         Self->Templates = nullptr;
       }
    }
 
@@ -487,7 +481,7 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    }
 
    if (Self->Page) {
-      Self->Page->setMask(NULL); // Reset the clipping mask if it was defined by <body>
+      Self->Page->setMask(nullptr); // Reset the clipping mask if it was defined by <body>
 
       pf::vector<ChildEntry> list;
       if (ListChildren(Self->Page->UID, &list) IS ERR::Okay) {
@@ -604,11 +598,47 @@ static int getutf8(CSTRING Value, int *Unicode)
 }
 
 //********************************************************************************************************************
+// Build the token list for a bc_text from its text string.  Tokens represent word, whitespace, and newline boundaries.
+// This avoids repeated byte-by-byte scanning during layout restarts.
+
+void bc_text::tokenise()
+{
+   tokens.clear();
+   tokens_dirty = false;
+
+   auto &str = text;
+   if (str.empty()) return;
+
+   // Reserve a reasonable estimate to reduce allocations (average ~5 chars per token)
+
+   tokens.reserve(str.size() / 5 + 1);
+
+   for (unsigned i = 0; i < str.size(); ) {
+      if (str[i] IS '\n') {
+         tokens.push_back({ uint16_t(i), uint16_t(i + 1), -1, 0, text_token_kind::NEWLINE });
+         i++;
+      }
+      else if (unsigned(str[i]) <= 0x20) {
+         auto start = i;
+         i++;
+         tokens.push_back({ uint16_t(start), uint16_t(i), -1, 0, text_token_kind::WHITESPACE });
+      }
+      else {
+         auto start = i;
+         while ((i < str.size()) and (unsigned(str[i]) > 0x20) and (str[i] != '\n')) i++;
+         tokens.push_back({ uint16_t(start), uint16_t(i), -1, 0, text_token_kind::WORD });
+      }
+   }
+
+   widths_dirty = true;
+}
+
+//********************************************************************************************************************
 // Find the nearest font style that will represent Char
 
 static bc_font * find_style(RSTREAM &Stream, stream_char &Char)
 {
-   bc_font *style = NULL;
+   bc_font *style = nullptr;
 
    for (INDEX fi = Char.index; fi < Char.index; fi++) {
       if (Stream[fi].code IS SCODE::FONT) style = &Stream.lookup<bc_font>(fi);
@@ -790,58 +820,58 @@ static void process_parameters(extDocument *Self, const std::string_view String)
 // Resolves function references.
 // E.g. "script.function(Args...)"; "function(Args...)"; "function()", "function", "script.function"
 
-static ERR extract_script(extDocument *Self, const std::string &Link, objScript **Script, std::string &Function, std::string &Args)
+static ERR extract_script(extDocument *Self, std::string_view Link, objScript **Script, std::string &Function, std::string &Args)
 {
    pf::Log log(__FUNCTION__);
 
    if (Script) {
       if (!(*Script = Self->DefaultScript)) {
          if (!(*Script = Self->ClientScript)) {
-            log.warning("Cannot call function '%s', no default script in document.", Link.c_str());
+            log.warning("Cannot call function '%.*s', no default script in document.", int(Link.size()), Link.data());
             return ERR::Search;
          }
       }
    }
 
-   auto pos = std::string::npos;
+   auto pos = std::string_view::npos;
    auto dot = Link.find('.');
    auto open_bracket = Link.find('(');
 
-   if (dot != std::string::npos) { // A script name is referenced
+   if (dot != std::string_view::npos) { // A script name is referenced
       pos = dot + 1;
       if (Script) {
-         std::string script_name;
-         script_name.assign(Link, 0, dot);
+         auto script_name = Link.substr(0, dot);
+         auto script_name_text = std::string(script_name);
          OBJECTID id;
-         if (FindObject(script_name.c_str(), CLASSID::SCRIPT, FOF::NIL, &id) IS ERR::Okay) {
+         if (FindObject(script_name_text.c_str(), CLASSID::SCRIPT, FOF::NIL, &id) IS ERR::Okay) {
             // Security checks
             *Script = (objScript *)GetObjectPtr(id);
             if ((Script[0]->Owner != Self) and ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL)) {
-               log.warning("Script '%s' does not belong to this document.  Request ignored due to security restrictions.", script_name.c_str());
+               log.warning("Script '%s' does not belong to this document.  Request ignored due to security restrictions.", script_name_text.c_str());
                return ERR::NoPermission;
             }
          }
          else {
-            log.warning("Unable to find '%s'", script_name.c_str());
+            log.warning("Unable to find '%s'", script_name_text.c_str());
             return ERR::Search;
          }
       }
    }
    else pos = 0;
 
-   if ((open_bracket != std::string::npos) and (open_bracket < dot)) {
-      log.warning("Malformed function reference: %s", Link.c_str());
+   if ((dot != std::string_view::npos) and (open_bracket != std::string_view::npos) and (open_bracket < dot)) {
+      log.warning("Malformed function reference: %.*s", int(Link.size()), Link.data());
       return ERR::InvalidData;
    }
 
-   if (open_bracket != std::string::npos) {
-      Function.assign(Link, pos, open_bracket-pos);
-      if (auto end_bracket = Link.find_last_of(')'); end_bracket != std::string::npos) {
-         Args.assign(Link, open_bracket + 1, end_bracket-1);
+   if (open_bracket != std::string_view::npos) {
+      Function.assign(Link.substr(pos, open_bracket - pos));
+      if (auto end_bracket = Link.find_last_of(')'); end_bracket != std::string_view::npos) {
+         Args.assign(Link.substr(open_bracket + 1, end_bracket - open_bracket - 1));
       }
-      else log.warning("Malformed function args: %s", Link.c_str());
+      else log.warning("Malformed function args: %.*s", int(Link.size()), Link.data());
    }
-   else Function.assign(Link, pos);
+   else Function.assign(Link.substr(pos));
 
    return ERR::Okay;
 }
@@ -864,7 +894,7 @@ void ui_link::exec(extDocument *Self)
 
       if (origin.type IS LINK::FUNCTION) {
          std::string function_name, args;
-         if (extract_script(Self, origin.ref, NULL, function_name, args) IS ERR::Okay) {
+         if (extract_script(Self, origin.ref, nullptr, function_name, args) IS ERR::Okay) {
             params.emplace("on-click", function_name);
          }
       }
@@ -872,11 +902,10 @@ void ui_link::exec(extDocument *Self)
          params.emplace("href", origin.ref);
       }
 
-      for (size_t i=0; i < origin.args.size(); i++) {
-         if ((origin.args[i].first[0] IS '@') or (origin.args[i].first[0] IS '$')) {
-            params.emplace(origin.args[i].first.c_str()+1, origin.args[i].second);
-         }
-         else params.emplace(origin.args[i].first, origin.args[i].second);
+      for (const auto & [key, value] : origin.args) {
+         auto ksv = std::string_view(key);
+         if (ksv.starts_with('@') or ksv.starts_with('$')) ksv.remove_prefix(1);
+         params.emplace(ksv, value);
       }
 
       ERR result = report_event(Self, DEF::LINK_ACTIVATED, &origin, &params);
@@ -889,11 +918,11 @@ void ui_link::exec(extDocument *Self)
          std::vector<ScriptArg> sa;
 
          if (!origin.args.empty()) {
-            for (auto &arg : origin.args) {
-               if (arg.first.starts_with('_')) { // Global variable setting
-                  acSetKey(script, arg.first.c_str()+1, arg.second.c_str());
+            for (const auto& [key, value] : origin.args) {
+               if (key.starts_with('_')) { // Global variable setting
+                  acSetKey(script, key.c_str()+1, value.c_str());
                }
-               else sa.emplace_back("", arg.second.data());
+               else sa.emplace_back("", value.data());
             }
          }
 
@@ -939,7 +968,11 @@ void ui_link::exec(extDocument *Self)
 
             auto lk = path + origin.ref;
             auto end = lk.find_first_of("?#&");
-            if (IdentifyFile(lk.substr(0, end).c_str(), CLASSID::NIL, &class_id, &subclass_id) IS ERR::Okay) {
+            auto identify_path = std::string_view(lk);
+            if (end != std::string::npos) identify_path = identify_path.substr(0, end);
+
+            auto identify_text = std::string(identify_path);
+            if (IdentifyFile(identify_text.c_str(), CLASSID::NIL, &class_id, &subclass_id) IS ERR::Okay) {
                if (class_id IS CLASSID::DOCUMENT) {
                   Self->set(FID_Path, lk);
 
@@ -961,16 +994,17 @@ end:
 
 //********************************************************************************************************************
 
-static void show_bookmark(extDocument *Self, const std::string &Bookmark)
+static void show_bookmark(extDocument *Self, std::string_view Bookmark)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("%s", Bookmark.c_str());
+   log.branch("%.*s", int(Bookmark.size()), Bookmark.data());
 
    // Find the indexes for the bookmark name
 
+   auto bookmark_text = std::string(Bookmark);
    int start, end;
-   if (Self->findIndex(Bookmark.c_str(), &start, &end) IS ERR::Okay) {
+   if (Self->findIndex(bookmark_text.c_str(), &start, &end) IS ERR::Okay) {
       // Get the vertical position of the index and scroll to it
 
       auto &esc_index = Self->Stream.lookup<bc_index>(start);
@@ -986,7 +1020,7 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
 
       acMoveToPoint(Self->Page, 0, Self->YPosition, 0, MTF::X|MTF::Y);
    }
-   else log.warning("Failed to find bookmark '%s'", Bookmark.c_str());
+   else log.warning("Failed to find bookmark '%s'", bookmark_text.c_str());
 }
 
 //********************************************************************************************************************
@@ -1033,18 +1067,18 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
 // Set padding values in clockwise order.  For percentages, the final value is calculated from the diagonal of the
 // parent.
 
-void padding::parse(const std::string &Value)
+void padding::parse(std::string_view Value)
 {
-   auto str = Value.c_str();
+   auto str = Value;
    str = read_unit(str, left, left_scl);
 
-   if (*str) str = read_unit(str, top, top_scl);
+   if (not str.empty()) str = read_unit(str, top, top_scl);
    else { top = left; top_scl = left_scl; }
 
-   if (*str) str = read_unit(str, right, right_scl);
+   if (not str.empty()) str = read_unit(str, right, right_scl);
    else { right = top; right_scl = top_scl; }
 
-   if (*str) str = read_unit(str, bottom, bottom_scl);
+   if (not str.empty()) str = read_unit(str, bottom, bottom_scl);
    else { bottom = right; bottom_scl = right_scl; }
 
    if (left < 0)   left   = 0;

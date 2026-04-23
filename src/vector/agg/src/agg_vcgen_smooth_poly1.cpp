@@ -2,8 +2,8 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
@@ -104,11 +104,11 @@ namespace agg
                    *x = m_src_vertices[m_src_vertices.size() - 1].x;
                    *y = m_src_vertices[m_src_vertices.size() - 1].y;
                    m_status = end_poly;
-                   return path_cmd_curve3;                    
+                   return path_cmd_curve3;
                 }
 
-                calculate(m_src_vertices.prev(m_src_vertex), 
-                          m_src_vertices.curr(m_src_vertex), 
+                calculate(m_src_vertices.prev(m_src_vertex),
+                          m_src_vertices.curr(m_src_vertex),
                           m_src_vertices.next(m_src_vertex),
                           m_src_vertices.next(m_src_vertex + 1));
 

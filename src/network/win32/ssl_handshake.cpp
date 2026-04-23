@@ -6,9 +6,9 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
 {
    if ((!SSL) or (!ServerData) or (DataLength <= 0)) return SSL_ERROR_ARGS;
    ConsumedOut = 0;
-   
+
    if (!SSL->context_initialised) return SSL_ERROR_FAILED;
-   
+
    // Append new handshake data to receive buffer to handle fragmentation
    std::span<const unsigned char> server_data_span(static_cast<const unsigned char*>(ServerData), DataLength);
    if (!SSL->recv_buffer.append(server_data_span)) {
@@ -54,10 +54,10 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
          &SSL->credentials, &SSL->context, const_cast<char*>(SSL->hostname.c_str()), flags,
          0, SECURITY_NATIVE_DREP, &in_buffer_desc, 0,
          &SSL->context, &out_buffer_desc, &out_flags, &expiry);
-      
+
       // Check if we consumed some of the input data and handle extra data
       size_t bytes_consumed = SSL->recv_buffer.size();
-      
+
       // Check for extra data in input buffer
       for (const auto& buf : in_buffers) {
          if (buf.BufferType == SECBUFFER_EXTRA and buf.cbBuffer > 0) {
@@ -99,7 +99,7 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
                break;
             }
          }
-         
+
          if (!SSL->recv_buffer.empty()) {
             if (!found_valid_extra) {
                SSL->recv_buffer.reset();
@@ -107,7 +107,7 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
          }
 
          cache_connection_info(SSL);
-         
+
          ConsumedOut = int(bytes_consumed);
          return SSL_OK;
       }
@@ -124,7 +124,7 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
             }
          }
 
-         ConsumedOut = int(bytes_consumed); 
+         ConsumedOut = int(bytes_consumed);
          if (bytes_consumed < SSL->recv_buffer.size()) {
             SSL->recv_buffer.compact(bytes_consumed);
          }

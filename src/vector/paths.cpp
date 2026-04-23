@@ -14,10 +14,10 @@ extVectorViewport * get_parent_view(extVector *Vector)
             return Vector->ParentView;
          }
          else if (node->Parent->Class->BaseClassID IS CLASSID::VECTOR) node = (extVector *)(node->Parent);
-         else return NULL;
+         else return nullptr;
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -62,7 +62,7 @@ void gen_vector_path(extVector *Vector)
 
    pf::SwitchContext context(Vector);
 
-   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Class->ClassName, Vector->UID, LONG(Vector->Dirty), Vector->ParentView ? Vector->ParentView->UID : 0);
+   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Class->ClassName, Vector->UID, int(Vector->Dirty), Vector->ParentView ? Vector->ParentView->UID : 0);
 
    auto parent_view = get_parent_view(Vector);
 
@@ -113,7 +113,7 @@ void gen_vector_path(extVector *Vector)
 
          if ((!parent_width) or (!parent_height)) {
             // NB: It is perfectly legal, even if unlikely, that a viewport has a width/height of zero.
-            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, LONG(parent_view->vpDimensions));
+            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, int(parent_view->vpDimensions));
          }
 
          parent_id = parent_view->UID;
@@ -357,7 +357,7 @@ void gen_vector_path(extVector *Vector)
       }
       else if (Vector->FillRaster) {
          delete Vector->FillRaster;
-         Vector->FillRaster = NULL;
+         Vector->FillRaster = nullptr;
       }
 
       if (Vector->Stroked) {
@@ -387,7 +387,7 @@ void gen_vector_path(extVector *Vector)
       }
       else if (Vector->StrokeRaster) {
          delete Vector->StrokeRaster;
-         Vector->StrokeRaster = NULL;
+         Vector->StrokeRaster = nullptr;
       }
 
       Vector->Dirty &= ~RC::FINAL_PATH;

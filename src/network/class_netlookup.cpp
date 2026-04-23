@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -25,10 +25,10 @@ struct resolve_buffer {
    IPAddress IP;
    std::string Address;
 
-   resolve_buffer(OBJECTID pNLID, IPAddress pIP, std::string_view pAddress) : 
+   resolve_buffer(OBJECTID pNLID, IPAddress pIP, std::string_view pAddress) :
       NetLookupID(pNLID), IP(pIP), Address(pAddress) { }
-   
-   resolve_buffer(OBJECTID pNLID, std::string_view pAddress) : 
+
+   resolve_buffer(OBJECTID pNLID, std::string_view pAddress) :
       NetLookupID(pNLID), Address(pAddress) { }
 
    std::vector<int8_t> serialise() {
@@ -57,11 +57,11 @@ struct resolve_buffer {
    }
 };
 
-static ERR resolve_address(CSTRING, const IPAddress *, DNSEntry **);
-static ERR resolve_name(CSTRING, DNSEntry **);
-static ERR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry **);
+static ERR resolve_address(CSTRING, const IPAddress *, DNSEntry &);
+static ERR resolve_name(CSTRING, DNSEntry &);
+static ERR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry &);
 #ifdef __linux__
-static ERR cache_host(HOSTMAP &, CSTRING, struct addrinfo *, DNSEntry **);
+static ERR cache_host(HOSTMAP &, CSTRING, struct addrinfo *, DNSEntry &);
 #endif
 
 static std::vector<IPAddress> glNoAddresses;
@@ -75,14 +75,25 @@ static void resolve_callback(extNetLookup *, ERR, const std::string & = "", std:
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize)
 {
    pf::Log log(__FUNCTION__);
-   
+
    resolve_buffer r((int8_t *)Message);
 
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s", int(MsgID), int(MsgType), r.Address.c_str());
 
-   if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {     
-      if (auto it = glHosts.find(r.Address); it != glHosts.end()) {
-         nl->Info = it->second;
+   if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {
+      bool found = false;
+      DNSEntry cached;
+      {
+         std::shared_lock<std::shared_mutex> lock(glHostsMutex);
+         auto it = glHosts.find(r.Address);
+         if (it != glHosts.end()) {
+            cached = it->second;
+            found = true;
+         }
+      }
+
+      if (found) {
+         nl->Info = cached;
          resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
       }
       else resolve_callback(*nl, ERR::Failed);
@@ -100,9 +111,20 @@ static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Mes
 
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s", int(MsgID), MsgType, r.Address.c_str());
 
-   if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {    
-      if (auto it = glAddresses.find(r.Address); it != glAddresses.end()) {
-         nl->Info = it->second;
+   if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {
+      bool found = false;
+      DNSEntry cached;
+      {
+         std::shared_lock<std::shared_mutex> lock(glAddressesMutex);
+         auto it = glAddresses.find(r.Address);
+         if (it != glAddresses.end()) {
+            cached = it->second;
+            found = true;
+         }
+      }
+
+      if (found) {
+         nl->Info = cached;
          resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
       }
       else resolve_callback(*nl, ERR::Failed);
@@ -149,9 +171,9 @@ static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nl::Block
 
    IPAddress ip;
    if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
-      DNSEntry *info;
-      if (auto error = resolve_address(Args->Address, &ip, &info); error IS ERR::Okay) {
-         Self->Info = *info;
+      DNSEntry info;
+      if (auto error = resolve_address(Args->Address, &ip, info); error IS ERR::Okay) {
+         Self->Info = info;
          resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
          return ERR::Okay;
       }
@@ -193,9 +215,9 @@ static ERR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nl::ResolveN
 
    log.branch("Host: %s", Args->HostName);
 
-   DNSEntry *info;
-   if (auto error = resolve_name(Args->HostName, &info); error IS ERR::Okay) {
-      Self->Info = *info;
+   DNSEntry info;
+   if (auto error = resolve_name(Args->HostName, info); error IS ERR::Okay) {
+      Self->Info = info;
       resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
       return ERR::Okay;
    }
@@ -274,8 +296,19 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
    log.branch("Address: %s", Args->Address);
 
    if ((Self->Flags & NLF::NO_CACHE) IS NLF::NIL) { // Use the cache if available.
-      if (auto it = glAddresses.find(Args->Address); it != glAddresses.end()) {
-         Self->Info = it->second;
+      bool found = false;
+      DNSEntry cached;
+      {
+         std::shared_lock<std::shared_mutex> lock(glAddressesMutex);
+         auto it = glAddresses.find(Args->Address);
+         if (it != glAddresses.end()) {
+            cached = it->second;
+            found = true;
+         }
+      }
+
+      if (found) {
+         Self->Info = cached;
          log.trace("Cache hit for address %s", Args->Address);
          resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
          return ERR::Okay;
@@ -287,10 +320,10 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
       resolve_buffer rb(Self->UID, ip, Args->Address);
 
       Self->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](resolve_buffer rb) {
-         DNSEntry *dummy;
-         rb.Error = resolve_address(rb.Address.c_str(), &rb.IP, &dummy);
+         DNSEntry dummy;
+         rb.Error = resolve_address(rb.Address.c_str(), &rb.IP, dummy);
          auto ser = rb.serialise();
-         SendMessage(glResolveAddrMsgID, MSF::WAIT, ser.data(), ser.size()); // See resolve_addr_receiver()
+         SendMessage(glResolveAddrMsgID, MSF::NIL, ser.data(), ser.size()); // See resolve_addr_receiver()
       }, std::move(rb))));
 
       return ERR::Okay;
@@ -329,22 +362,33 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
    log.branch("Host: %s", Args->HostName);
 
    if ((Self->Flags & NLF::NO_CACHE) IS NLF::NIL) { // Use the cache if available.
-      if (auto it = glHosts.find(Args->HostName); it != glHosts.end()) {
-         Self->Info = it->second;
+      bool found = false;
+      DNSEntry cached;
+      {
+         std::shared_lock<std::shared_mutex> lock(glHostsMutex);
+         auto it = glHosts.find(Args->HostName);
+         if (it != glHosts.end()) {
+            cached = it->second;
+            found = true;
+         }
+      }
+
+      if (found) {
+         Self->Info = cached;
          log.trace("Cache hit for host %s", Self->Info.HostName);
          resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
          return ERR::Okay;
       }
    }
-   
+
    resolve_buffer rb(Self->UID, Args->HostName);
    Self->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([Self](resolve_buffer rb) {
-      DNSEntry *dummy;
-      rb.Error = resolve_name(rb.Address.c_str(), &dummy);
+      DNSEntry dummy;
+      rb.Error = resolve_name(rb.Address.c_str(), dummy);
       auto ser = rb.serialise();
-      SendMessage(glResolveNameMsgID, MSF::WAIT, ser.data(), ser.size()); // See resolve_name_receiver()
+      SendMessage(glResolveNameMsgID, MSF::NIL, ser.data(), ser.size()); // See resolve_name_receiver()
    }, std::move(rb))));
-   
+
    return ERR::Okay;
 }
 
@@ -357,10 +401,10 @@ A list of the most recently resolved IP addresses can be read from this field.
 
 *********************************************************************************************************************/
 
-static ERR GET_Addresses(extNetLookup *Self, BYTE **Value, int *Elements)
+static ERR GET_Addresses(extNetLookup *Self, int8_t **Value, int *Elements)
 {
    if (!Self->Info.Addresses.empty()) {
-      *Value = (BYTE *)Self->Info.Addresses.data();
+      *Value = (int8_t *)Self->Info.Addresses.data();
       *Elements = Self->Info.Addresses.size();
       return ERR::Okay;
    }
@@ -375,7 +419,7 @@ Callback: This function will be called on the completion of any name or address 
 The function referenced here will receive the results of the most recently resolved name or address.  The C++ prototype
 is `Function(*NetLookup, ERR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)`.
 
-The Fluid prototype is as follows, with results readable from the #HostName and #Addresses fields:
+The Tiri prototype is as follows, with results readable from the #HostName and #Addresses fields:
 `function(NetLookup, Error)`.
 
 *********************************************************************************************************************/
@@ -423,9 +467,9 @@ static ERR GET_HostName(extNetLookup *Self, CSTRING *Value)
 
 //********************************************************************************************************************
 
-static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntry **Cache)
+static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntry &Cache)
 {
-   if ((!Host) or (!Cache)) return ERR::NullArgs;
+   if (!Host) return ERR::NullArgs;
 
    if (!Key) {
       if (!(Key = Host->h_name)) return ERR::Args;
@@ -435,7 +479,6 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntr
 
    log.detail("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
 
-   *Cache = nullptr;
    if ((Host->h_addrtype != AF_INET) and (Host->h_addrtype != AF_INET6)) return ERR::Args;
 
    DNSEntry cache;
@@ -459,18 +502,20 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntr
       }
    }
 
-   Store[Key] = std::move(cache);
-   *Cache = &Store[Key];
+   {
+      std::unique_lock<std::shared_mutex> lock(glAddressesMutex);
+      auto &entry = Store[Key];
+      entry = std::move(cache);
+      Cache = entry;
+   }
    return ERR::Okay;
 }
 
 #ifdef __linux__
 
-static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
+static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEntry &Cache)
 {
-   if ((!Host) or (!Cache)) return ERR::NullArgs;
-
-   *Cache = nullptr;
+   if (!Host) return ERR::NullArgs;
 
    if (!Key) {
       if (!(Key = Host->ai_canonname)) return ERR::Args;
@@ -500,8 +545,12 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEnt
       }
    }
 
-   Store[Key] = std::move(cache);
-   *Cache = &Store[Key];
+   {
+      std::unique_lock<std::shared_mutex> lock(glAddressesMutex);
+      auto &entry = Store[Key];
+      entry = std::move(cache);
+      Cache = entry;
+   }
    return ERR::Okay;
 }
 
@@ -509,8 +558,16 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEnt
 
 //********************************************************************************************************************
 
-static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info)
+static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry &Info)
 {
+   {
+      std::shared_lock<std::shared_mutex> lock(glAddressesMutex);
+      if (auto it = glAddresses.find(Address); it != glAddresses.end()) {
+         Info = it->second;
+         return ERR::Okay;
+      }
+   }
+
 #ifdef _WIN32
    struct hostent *host = win_gethostbyaddr(IP);
    if (!host) return ERR::Failed;
@@ -561,11 +618,9 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info
 
 #ifdef _WIN32
 
-static ERR cache_host_from_addrinfo(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
+static ERR cache_host_from_addrinfo(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEntry &Cache)
 {
-   if ((!Host) or (!Cache)) return ERR::NullArgs;
-
-   *Cache = nullptr;
+   if (!Host) return ERR::NullArgs;
 
    if (!Key) {
       if (!(Key = Host->ai_canonname)) return ERR::Args;
@@ -590,14 +645,18 @@ static ERR cache_host_from_addrinfo(HOSTMAP &Store, CSTRING Key, struct addrinfo
       else if (scan->ai_family IS AF_INET6) {
          auto addr = (struct sockaddr_in6 *)scan->ai_addr;
          cache.Addresses.push_back({
-            ((uint32_t *)&addr->sin6_addr.s6_addr)[0], ((uint32_t *)&addr->sin6_addr.s6_addr)[1], 
+            ((uint32_t *)&addr->sin6_addr.s6_addr)[0], ((uint32_t *)&addr->sin6_addr.s6_addr)[1],
             ((uint32_t *)&addr->sin6_addr.s6_addr)[2], ((uint32_t *)&addr->sin6_addr.s6_addr)[3], IPADDR::V6
          });
       }
    }
 
-   Store[Key] = std::move(cache);
-   *Cache = &Store[Key];
+   {
+      std::unique_lock<std::shared_mutex> lock(glHostsMutex);
+      auto &entry = Store[Key];
+      entry = std::move(cache);
+      Cache = entry;
+   }
    return ERR::Okay;
 }
 
@@ -605,13 +664,17 @@ static ERR cache_host_from_addrinfo(HOSTMAP &Store, CSTRING Key, struct addrinfo
 
 //********************************************************************************************************************
 
-static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
+static ERR resolve_name(CSTRING HostName, DNSEntry &Info)
 {
    // Use the cache if available.
-   
-   if (auto it = glHosts.find(HostName); it != glHosts.end()) {
-      *Info = &it->second;
-      return ERR::Okay;
+
+   {
+      std::shared_lock<std::shared_mutex> lock(glHostsMutex);
+      auto it = glHosts.find(HostName);
+      if (it != glHosts.end()) {
+         Info = it->second;
+         return ERR::Okay;
+      }
    }
 
    // Use getaddrinfo() on both Linux and Windows for proper IPv4 and IPv6 (AAAA record) support
@@ -625,7 +688,7 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_flags    = AI_CANONNAME;
    auto result = getaddrinfo(HostName, nullptr, &hints, &servinfo);
-   
+
    log.detail("getaddrinfo returned: %d", result);
 
    switch (result) {
@@ -664,7 +727,7 @@ static void resolve_callback(extNetLookup *Self, ERR Error, const std::string &H
       routine(Self, Error, HostName, Addresses, Self->Callback.Meta);
    }
    else if (Self->Callback.isScript()) {
-      // Fluid scripts can retrieve the host and addresses from the NetLookup object - it's a more optimal solution
+      // Tiri scripts can retrieve the host and addresses from the NetLookup object - it's a more optimal solution
       sc::Call(Self->Callback, std::to_array<ScriptArg>({ { "NetLookup", Self, FDF_OBJECT }, { "Error", int(Error) } }));
    }
 }

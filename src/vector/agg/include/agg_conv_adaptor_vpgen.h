@@ -2,8 +2,8 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
@@ -31,7 +31,7 @@ namespace agg
 
     private:
         conv_adaptor_vpgen(const conv_adaptor_vpgen<VertexSource, VPGen>&);
-        const conv_adaptor_vpgen<VertexSource, VPGen>& 
+        const conv_adaptor_vpgen<VertexSource, VPGen>&
             operator = (const conv_adaptor_vpgen<VertexSource, VPGen>&);
 
         VertexSource* m_source;
@@ -46,8 +46,8 @@ namespace agg
 
     //------------------------------------------------------------------------
     template<class VertexSource, class VPGen>
-    void conv_adaptor_vpgen<VertexSource, VPGen>::rewind(unsigned path_id) 
-    { 
+    void conv_adaptor_vpgen<VertexSource, VPGen>::rewind(unsigned path_id)
+    {
         m_source->rewind(path_id);
         m_vpgen.reset();
         m_start_x    = 0;
@@ -78,7 +78,7 @@ namespace agg
 
             if(m_vertices < 0)
             {
-                if(m_vertices < -1) 
+                if(m_vertices < -1)
                 {
                     m_vertices = 0;
                     return path_cmd_stop;
@@ -92,7 +92,7 @@ namespace agg
             cmd = m_source->vertex(&tx, &ty);
             if(is_vertex(cmd))
             {
-                if(is_move_to(cmd)) 
+                if(is_move_to(cmd))
                 {
                     if(m_vpgen.auto_close() && m_vertices > 2)
                     {
@@ -108,7 +108,7 @@ namespace agg
                     m_start_y  = ty;
                     m_vertices = 1;
                 }
-                else 
+                else
                 {
                     m_vpgen.line_to(tx, ty);
                     ++m_vertices;

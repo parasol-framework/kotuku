@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -95,15 +95,15 @@ capabilities.
 #include "ScintillaBase.h"
 #include "UniConversion.h"
 
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/font.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/font.h>
-#include <parasol/modules/vector.h>
-#include <parasol/strings.hpp>
+#include <kotuku/main.h>
+#include <kotuku/modules/xml.h>
+#include <kotuku/modules/font.h>
+#include <kotuku/modules/display.h>
+#include <kotuku/modules/font.h>
+#include <kotuku/modules/vector.h>
+#include <kotuku/strings.hpp>
 
-#include "scintillaparasol.h"
+#include "scintillakotuku.h"
 
 #include "module_def.c"
 
@@ -112,21 +112,21 @@ JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 JUMPTABLE_FONT
 
-static OBJECTPTR clScintilla = NULL;
-static OBJECTPTR modDisplay = NULL, modFont = NULL, modVector = NULL;
+static OBJECTPTR clScintilla = nullptr;
+static OBJECTPTR modDisplay = nullptr, modFont = nullptr, modVector = nullptr;
 //static OBJECTID glInputID = 0;
 static RGB8 glHighlight = { 220, 220, 255 };
 extern OBJECTPTR clScintillaSearch;
 
 struct styledef {
-   UBYTE Index;
-   ULONG Colour;
+   uint8_t Index;
+   uint32_t Colour;
    FTF FontStyle;
 };
 
 // This is bad - the fonts should be stored in the class.
 
-static OBJECTPTR glFont = NULL, glBoldFont = NULL, glItalicFont = NULL, glBIFont = NULL;
+static OBJECTPTR glFont = nullptr, glBoldFont = nullptr, glItalicFont = nullptr, glBIFont = nullptr;
 
 static const struct {
    CSTRING File;
@@ -140,7 +140,7 @@ static const struct {
    { "*.css",         SCLEX::CSS },
    { "*.diff",        SCLEX::DIFF },
    { "*.errorlist",   SCLEX::ERRORLIST },
-   { "*.lua|*.fluid", SCLEX::FLUID },
+   { "*.lua|*.tiri", SCLEX::TIRI },
    { "*.dmd",         SCLEX::HTML },
    { "*.html",        SCLEX::HTML },
    { "makefile|*.make", SCLEX::MAKEFILE },
@@ -153,65 +153,65 @@ static const struct {
    { "*.vb",           SCLEX::VB },
    { "*.vbscript",     SCLEX::VBSCRIPT },
    { "*.xml",          SCLEX::XML },
-   { NULL, SCLEX::NIL }
+   { nullptr, SCLEX::NIL }
 };
 
-#define SCICOLOUR(red,green,blue) (((UBYTE)(blue))<<16)|(((UBYTE)(green))<<8)|((UBYTE)(red))
-#define SCIRED(c)   (UBYTE)(c)
-#define SCIGREEN(c) (UBYTE)(c>>8)
-#define SCIBLUE(c)  (UBYTE)(c>>16)
+#define SCICOLOUR(red,green,blue) (((uint8_t)(blue))<<16)|(((uint8_t)(green))<<8)|((uint8_t)(red))
+#define SCIRED(c)   (uint8_t)(c)
+#define SCIGREEN(c) (uint8_t)(c>>8)
+#define SCIBLUE(c)  (uint8_t)(c>>16)
 #define SCICALL     Self->API->SendScintilla
 
 //********************************************************************************************************************
 // Scintilla class definition.
 
-static ERR GET_AllowTabs(extScintilla *, LONG *);
-static ERR GET_AutoIndent(extScintilla *, LONG *);
+static ERR GET_AllowTabs(extScintilla *, int *);
+static ERR GET_AutoIndent(extScintilla *, int *);
 static ERR GET_FileDrop(extScintilla *, FUNCTION **);
-static ERR GET_FoldingMarkers(extScintilla *, LONG *);
-static ERR GET_LineCount(extScintilla *, LONG *);
-static ERR GET_LineNumbers(extScintilla *, LONG *);
+static ERR GET_FoldingMarkers(extScintilla *, int *);
+static ERR GET_LineCount(extScintilla *, int *);
+static ERR GET_LineNumbers(extScintilla *, int *);
 static ERR GET_Path(extScintilla *, CSTRING *);
-static ERR GET_ShowWhitespace(extScintilla *, LONG *);
+static ERR GET_ShowWhitespace(extScintilla *, int *);
 static ERR GET_EventCallback(extScintilla *, FUNCTION **);
 static ERR GET_String(extScintilla *, STRING *);
-static ERR GET_Symbols(extScintilla *, LONG *);
-static ERR GET_TabWidth(extScintilla *, LONG *);
-static ERR GET_Wordwrap(extScintilla *, LONG *);
+static ERR GET_Symbols(extScintilla *, int *);
+static ERR GET_TabWidth(extScintilla *, int *);
+static ERR GET_Wordwrap(extScintilla *, int *);
 
-static ERR SET_AllowTabs(extScintilla *, LONG);
-static ERR SET_AutoIndent(extScintilla *, LONG);
+static ERR SET_AllowTabs(extScintilla *, int);
+static ERR SET_AutoIndent(extScintilla *, int);
 static ERR SET_BkgdColour(extScintilla *, RGB8 *);
 static ERR SET_CursorColour(extScintilla *, RGB8 *);
 static ERR SET_FileDrop(extScintilla *, FUNCTION *);
-static ERR SET_FoldingMarkers(extScintilla *, LONG);
-static ERR SET_LeftMargin(extScintilla *, LONG);
+static ERR SET_FoldingMarkers(extScintilla *, int);
+static ERR SET_LeftMargin(extScintilla *, int);
 static ERR SET_Lexer(extScintilla *, SCLEX);
 static ERR SET_LineHighlight(extScintilla *, RGB8 *);
-static ERR SET_LineNumbers(extScintilla *, LONG);
+static ERR SET_LineNumbers(extScintilla *, int);
 static ERR SET_Path(extScintilla *, CSTRING);
-static ERR SET_Modified(extScintilla *, LONG);
+static ERR SET_Modified(extScintilla *, int);
 static ERR SET_Origin(extScintilla *, CSTRING);
-static ERR SET_RightMargin(extScintilla *, LONG);
-static ERR SET_ShowWhitespace(extScintilla *, LONG);
+static ERR SET_RightMargin(extScintilla *, int);
+static ERR SET_ShowWhitespace(extScintilla *, int);
 static ERR SET_EventCallback(extScintilla *, FUNCTION *);
 static ERR SET_SelectBkgd(extScintilla *, RGB8 *);
 static ERR SET_SelectFore(extScintilla *, RGB8 *);
 static ERR SET_String(extScintilla *, CSTRING);
-static ERR SET_Symbols(extScintilla *, LONG);
-static ERR SET_TabWidth(extScintilla *, LONG);
+static ERR SET_Symbols(extScintilla *, int);
+static ERR SET_TabWidth(extScintilla *, int);
 static ERR SET_TextColour(extScintilla *, RGB8 *);
-static ERR SET_Wordwrap(extScintilla *, LONG);
+static ERR SET_Wordwrap(extScintilla *, int);
 
 //********************************************************************************************************************
 
-static ERR consume_input_events(const InputEvent *, LONG);
+static ERR consume_input_events(const InputEvent *, int);
 static void create_styled_fonts(extScintilla *);
 static ERR create_scintilla(void);
 static void draw_scintilla(extScintilla *, objSurface *, objBitmap *);
 static ERR load_file(extScintilla *, CSTRING);
 static void calc_longest_line(extScintilla *);
-static void key_event(evKey *, LONG, extScintilla *);
+static void key_event(evKey *, int, extScintilla *);
 static void report_event(extScintilla *, SEF Event);
 static ERR idle_timer(extScintilla *Self, int64_t Elapsed, int64_t CurrentTime);
 extern ERR init_search(void);
@@ -221,11 +221,11 @@ extern ERR init_search(void);
 static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 {
    VectorPainter painter;
-   if (vec::ReadPainter(NULL, Value, &painter, NULL) IS ERR::Okay) {
-      RGB->Red   = F2T(painter.Colour.Red   * 255.0);
-      RGB->Green = F2T(painter.Colour.Green * 255.0);
-      RGB->Blue  = F2T(painter.Colour.Blue  * 255.0);
-      RGB->Alpha = F2T(painter.Colour.Alpha * 255.0);
+   if (vec::ReadPainter(nullptr, Value, &painter, nullptr) IS ERR::Okay) {
+      RGB->Red   = int(painter.Colour.Red   * 255.0);
+      RGB->Green = int(painter.Colour.Green * 255.0);
+      RGB->Blue  = int(painter.Colour.Blue  * 255.0);
+      RGB->Alpha = int(painter.Colour.Alpha * 255.0);
       return true;
    }
    else return false;
@@ -259,11 +259,11 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (modDisplay)  { FreeResource(modDisplay);  modDisplay = NULL; }
-   if (modFont)     { FreeResource(modFont);     modFont = NULL; }
-   if (modVector)   { FreeResource(modVector);   modVector = NULL; }
-   if (clScintilla) { FreeResource(clScintilla); clScintilla = NULL; }
-   if (clScintillaSearch) { FreeResource(clScintillaSearch); clScintillaSearch = NULL; }
+   if (modDisplay)  { FreeResource(modDisplay);  modDisplay = nullptr; }
+   if (modFont)     { FreeResource(modFont);     modFont = nullptr; }
+   if (modVector)   { FreeResource(modVector);   modVector = nullptr; }
+   if (clScintilla) { FreeResource(clScintilla); clScintilla = nullptr; }
+   if (clScintillaSearch) { FreeResource(clScintillaSearch); clScintillaSearch = nullptr; }
    return ERR::Okay;
 }
 
@@ -283,8 +283,8 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERR Result, str
 
    struct dcRequest request;
    request.Item          = Args->Item;
-   request.Preference[0] = BYTE(DATA::FILE);
-   request.Preference[1] = BYTE(DATA::TEXT);
+   request.Preference[0] = int8_t(DATA::FILE);
+   request.Preference[1] = int8_t(DATA::TEXT);
    request.Preference[2] = 0;
 
    struct acDataFeed dc;
@@ -339,7 +339,7 @@ static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, AP
    log.branch();
 
    auto Self = (extScintilla *)CurrentContext();
-   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
+   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = nullptr; }
 
    Self->API->panLostFocus();
 }
@@ -360,13 +360,13 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
 
    auto Self = (extScintilla *)CurrentContext();
    bool resized;
-   if ((Self->Surface.Width != F2T(Args->Width)) or (Self->Surface.Height != F2T(Args->Height))) resized = true;
+   if ((Self->Surface.Width != int(Args->Width)) or (Self->Surface.Height != int(Args->Height))) resized = true;
    else resized = false;
 
-   Self->Surface.X = F2T(Args->X);
-   Self->Surface.Y = F2T(Args->Y);
-   Self->Surface.Width  = F2T(Args->Width);
-   Self->Surface.Height = F2T(Args->Height);
+   Self->Surface.X = int(Args->X);
+   Self->Surface.Y = int(Args->Y);
+   Self->Surface.Width  = int(Args->Width);
+   Self->Surface.Height = int(Args->Height);
 
    if (resized) Self->API->panResized();
 }
@@ -381,7 +381,7 @@ static void notify_write(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct
    if (!Args) return;
 
    if (Result != ERR::Okay) {
-      if (Self->FileStream) { FreeResource(Self->FileStream); Self->FileStream = NULL; }
+      if (Self->FileStream) { FreeResource(Self->FileStream); Self->FileStream = nullptr; }
       return;
    }
 
@@ -488,7 +488,7 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                         };
 
                         auto script = (objScript *)Self->FileDrop.Context;
-                        script->callback(Self->FileDrop.ProcedureID, args, std::ssize(args), NULL);
+                        script->callback(Self->FileDrop.ProcedureID, args, std::ssize(args), nullptr);
                      }
                      break;
                   }
@@ -529,7 +529,7 @@ Okay
 static ERR SCINTILLA_DeleteLine(extScintilla *Self, struct sci::DeleteLine *Args)
 {
    pf::Log log;
-   LONG line, pos, start, end, linecount;
+   int line, pos, start, end, linecount;
 
    linecount = SCICALL(SCI_GETLINECOUNT);
 
@@ -623,7 +623,7 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
    pf::Log log;
 
    delete Self->API;
-   Self->API = NULL;
+   Self->API = nullptr;
 
    if (Self->TimerID) { UpdateTimer(Self->TimerID, 0); Self->TimerID = 0; }
 
@@ -646,14 +646,14 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
       Self->PointerLocked = FALSE;
    }*/
 
-   if (Self->prvKeyEvent)  { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-   if (Self->FileStream)   { FreeResource(Self->FileStream); Self->FileStream = NULL; }
-   if (Self->Path)         { FreeResource(Self->Path);  Self->Path = NULL; }
-   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
-   if (Self->Font)         { FreeResource(Self->Font);       Self->Font = NULL; }
-   if (Self->BoldFont)     { FreeResource(Self->BoldFont);   Self->BoldFont = NULL; }
-   if (Self->ItalicFont)   { FreeResource(Self->ItalicFont); Self->ItalicFont = NULL; }
-   if (Self->BIFont)       { FreeResource(Self->BIFont);     Self->BIFont = NULL; }
+   if (Self->prvKeyEvent)  { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = nullptr; }
+   if (Self->FileStream)   { FreeResource(Self->FileStream); Self->FileStream = nullptr; }
+   if (Self->Path)         { FreeResource(Self->Path);  Self->Path = nullptr; }
+   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = nullptr; }
+   if (Self->Font)         { FreeResource(Self->Font);       Self->Font = nullptr; }
+   if (Self->BoldFont)     { FreeResource(Self->BoldFont);   Self->BoldFont = nullptr; }
+   if (Self->ItalicFont)   { FreeResource(Self->ItalicFont); Self->ItalicFont = nullptr; }
+   if (Self->BIFont)       { FreeResource(Self->BIFont);     Self->BIFont = nullptr; }
 
    gfx::UnsubscribeInput(Self->InputHandle);
 
@@ -688,7 +688,7 @@ static ERR SCINTILLA_GetLine(extScintilla *Self, struct sci::GetLine *Args)
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
    if ((Args->Line < 0) or (Args->Length < 1)) return log.warning(ERR::OutOfRange);
 
-   LONG len = SCICALL(SCI_LINELENGTH, Args->Line); // Returns the length of the line (in bytes) including line-end characters (NB: there could be more than one line-end character!)
+   int len = SCICALL(SCI_LINELENGTH, Args->Line); // Returns the length of the line (in bytes) including line-end characters (NB: there could be more than one line-end character!)
    if (Args->Length > len) {
       SCICALL(SCI_GETLINE, Args->Line, Args->Buffer);
       Args->Buffer[len] = 0;
@@ -827,7 +827,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    // Create a Scintilla class object, passing it the target surface and a pointer to our own structure to link us
    // together.
 
-   if (!(Self->API = new ScintillaParasol(Self->SurfaceID, Self))) {
+   if (!(Self->API = new ScintillaKTK(Self->SurfaceID, Self))) {
       return ERR::Failed;
    }
 
@@ -847,7 +847,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    if (Self->Visible IS -1) Self->Visible = TRUE;
 
    if (((Self->Flags & SCIF::DETECT_LEXER) IS SCIF::NIL) and (Self->Lexer != SCLEX::NIL)) {
-      Self->API->SetLexer(LONG(Self->Lexer));
+      Self->API->SetLexer(int(Self->Lexer));
    }
 
    QueueAction(AC::Draw, Self->SurfaceID);
@@ -893,7 +893,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    if (Self->ShowWhitespace) SCICALL(SCI_SETVIEWWS, (long unsigned int)SCWS_VISIBLEALWAYS);
    else SCICALL(SCI_SETVIEWWS, (long unsigned int)SCWS_INVISIBLE);
 
-   // Turn off buffered drawing because Parasol surfaces already include buffer support
+   // Turn off buffered drawing because Kotuku surfaces already include buffer support
 
    SCICALL(SCI_SETBUFFEREDDRAW, 0UL);
 
@@ -957,7 +957,7 @@ OutOfRange
 static ERR SCINTILLA_InsertText(extScintilla *Self, struct sci::InsertText *Args)
 {
    pf::Log log;
-   LONG pos;
+   int pos;
 
    if ((!Args) or (!Args->String)) return log.warning(ERR::NullArgs);
 
@@ -1089,7 +1089,7 @@ static ERR SCINTILLA_ReplaceLine(extScintilla *Self, struct sci::ReplaceLine *Ar
 
    // Select the line, then replace the text
 
-   LONG start, end;
+   int start, end;
    if ((start = SCICALL(SCI_POSITIONFROMLINE, Args->Line)) < 0) return log.warning(ERR::OutOfRange);
    if ((end = SCICALL(SCI_GETLINEENDPOSITION, Args->Line)) < 0) return log.warning(ERR::OutOfRange);
    SCICALL(SCI_SETTARGETSTART, start);
@@ -1128,11 +1128,11 @@ Search: The keyword could not be found.
 static ERR SCINTILLA_ReplaceText(extScintilla *Self, struct sci::ReplaceText *Args)
 {
    pf::Log log;
-   LONG start, end;
+   int start, end;
 
    if ((!Args) or (!Args->Find) or (!*Args->Find)) return log.warning(ERR::NullArgs);
 
-   log.branch("Text: '%.10s'... Between: %d - %d, Flags: $%.8x", Args->Find, Args->Start, Args->End, LONG(Args->Flags));
+   log.branch("Text: '%.10s'... Between: %d - %d, Flags: $%.8x", Args->Find, Args->Start, Args->End, int(Args->Flags));
 
    // Calculate the start and end positions
 
@@ -1157,17 +1157,17 @@ static ERR SCINTILLA_ReplaceText(extScintilla *Self, struct sci::ReplaceText *Ar
    SCICALL(SCI_SETTARGETSTART, start);
    SCICALL(SCI_SETTARGETEND, end);
 
-   LONG findlen = strlen(Args->Find);
-   LONG replacelen = strlen(replace);
+   int findlen = strlen(Args->Find);
+   int replacelen = strlen(replace);
 
-   LONG flags = (((Args->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
+   int flags = (((Args->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
                 (((Args->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
 
    SCICALL(SCI_SETSEARCHFLAGS, flags);
 
    SCICALL(SCI_BEGINUNDOACTION);
 
-   LONG pos = 0;
+   int pos = 0;
    while (pos != -1) {
       log.trace("Search between %d - %d", start, end);
 
@@ -1184,11 +1184,11 @@ static ERR SCINTILLA_ReplaceText(extScintilla *Self, struct sci::ReplaceText *Ar
          // Do the replace
 
          if ((Args->Flags & STF::EXPRESSION) != STF::NIL) {
-            LONG len = SCICALL(SCI_REPLACETARGETRE, (long unsigned int)-1, replace);
+            int len = SCICALL(SCI_REPLACETARGETRE, (long unsigned int)-1, replace);
             end = end + (len - findlen);
          }
          else {
-            SCICALL(SCI_REPLACETARGET, (ULONG)-1, replace);
+            SCICALL(SCI_REPLACETARGET, (uint32_t)-1, replace);
             end = end + (replacelen - findlen);
          }
       }
@@ -1229,7 +1229,7 @@ static ERR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *Arg
 
    if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
 
-   LONG len = SCICALL(SCI_GETLENGTH);
+   int len = SCICALL(SCI_GETLENGTH);
 
    log.branch("To: %d, Size: %d", Args->Dest->UID, len);
 
@@ -1237,7 +1237,7 @@ static ERR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *Arg
    APTR buffer;
    if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
-      error = acWrite(Args->Dest, buffer, len, NULL);
+      error = acWrite(Args->Dest, buffer, len, nullptr);
       FreeResource(buffer);
    }
    else error = ERR::AllocMemory;
@@ -1337,7 +1337,7 @@ static ERR SCINTILLA_SelectRange(extScintilla *Self, struct sci::SelectRange *Ar
    pf::Log log;
 
    if ((!Args) or ((!Args->Start) and (!Args->End))) { // Deselect all text
-      LONG pos = SCICALL(SCI_GETCURRENTPOS);
+      int pos = SCICALL(SCI_GETCURRENTPOS);
       SCICALL(SCI_SETANCHOR, pos);
       return ERR::Okay;
    }
@@ -1345,8 +1345,8 @@ static ERR SCINTILLA_SelectRange(extScintilla *Self, struct sci::SelectRange *Ar
    log.branch("Selecting area %d to %d", Args->Start, Args->End);
 
    if (Args->End < 0) {
-      LONG linecount = SCICALL(SCI_GETLINECOUNT);
-      LONG end = SCICALL(SCI_FINDCOLUMN, linecount, 0L);
+      int linecount = SCICALL(SCI_GETLINECOUNT);
+      int end = SCICALL(SCI_FINDCOLUMN, linecount, 0L);
       SCICALL(SCI_SETSEL, Args->Start, end);
       SCICALL(SCI_SCROLLCARET);
    }
@@ -1394,17 +1394,17 @@ static ERR SCINTILLA_TrimWhitespace(extScintilla *Self)
 
    log.traceBranch();
 
-   LONG cursorpos = SCICALL(SCI_GETCURRENTPOS);
-   LONG cursorline = SCICALL(SCI_LINEFROMPOSITION, cursorpos);
+   int cursorpos = SCICALL(SCI_GETCURRENTPOS);
+   int cursorline = SCICALL(SCI_LINEFROMPOSITION, cursorpos);
 
    SCICALL(SCI_BEGINUNDOACTION);
 
-   LONG maxLines = SCICALL(SCI_GETLINECOUNT);
-   for (LONG line=0; line < maxLines; line++) {
-      LONG lineStart = SCICALL(SCI_POSITIONFROMLINE, line);
-      LONG lineEnd = SCICALL(SCI_GETLINEENDPOSITION, line);
-      LONG i = lineEnd - 1;
-      UBYTE ch = SCICALL(SCI_GETCHARAT, i);
+   int maxLines = SCICALL(SCI_GETLINECOUNT);
+   for (int line=0; line < maxLines; line++) {
+      int lineStart = SCICALL(SCI_POSITIONFROMLINE, line);
+      int lineEnd = SCICALL(SCI_GETLINEENDPOSITION, line);
+      int i = lineEnd - 1;
+      uint8_t ch = SCICALL(SCI_GETCHARAT, i);
       while ((i >= lineStart) and ((ch IS ' ') or (ch IS '\t'))) {
          i--;
          ch = SCICALL(SCI_GETCHARAT, i);
@@ -1445,13 +1445,13 @@ AllowTabs: If enabled, use of the tab key produces real tabs and not spaces.
 
 *********************************************************************************************************************/
 
-static ERR GET_AllowTabs(extScintilla *Self, LONG *Value)
+static ERR GET_AllowTabs(extScintilla *Self, int *Value)
 {
    *Value = Self->AllowTabs;
    return ERR::Okay;
 }
 
-static ERR SET_AllowTabs(extScintilla *Self, LONG Value)
+static ERR SET_AllowTabs(extScintilla *Self, int Value)
 {
    if (Value) {
       Self->AllowTabs = TRUE;
@@ -1471,13 +1471,13 @@ AutoIndent: If TRUE, enables auto-indenting when the user presses the enter key.
 
 *********************************************************************************************************************/
 
-static ERR GET_AutoIndent(extScintilla *Self, LONG *Value)
+static ERR GET_AutoIndent(extScintilla *Self, int *Value)
 {
    *Value = Self->AutoIndent;
    return ERR::Okay;
 }
 
-static ERR SET_AutoIndent(extScintilla *Self, LONG Value)
+static ERR SET_AutoIndent(extScintilla *Self, int Value)
 {
    if (Value) Self->AutoIndent = 1;
    else Self->AutoIndent = 0;
@@ -1579,13 +1579,13 @@ FoldingMarkers: Folding markers in the left margin will be visible when this val
 
 *********************************************************************************************************************/
 
-static ERR GET_FoldingMarkers(extScintilla *Self, LONG *Value)
+static ERR GET_FoldingMarkers(extScintilla *Self, int *Value)
 {
    *Value = Self->FoldingMarkers;
    return ERR::Okay;
 }
 
-static ERR SET_FoldingMarkers(extScintilla *Self, LONG Value)
+static ERR SET_FoldingMarkers(extScintilla *Self, int Value)
 {
    if (Value) {
       Self->FoldingMarkers = TRUE;
@@ -1614,7 +1614,7 @@ LeftMargin: The amount of white-space at the left side of the page.
 
 *********************************************************************************************************************/
 
-static ERR SET_LeftMargin(extScintilla *Self, LONG Value)
+static ERR SET_LeftMargin(extScintilla *Self, int Value)
 {
    if ((Value >= 0) and (Value <= 100)) {
       Self->LeftMargin = Value;
@@ -1640,8 +1640,8 @@ static ERR SET_Lexer(extScintilla *Self, SCLEX Value)
    Self->Lexer = Value;
    if (Self->initialised()) {
       pf::Log log;
-      log.branch("Changing lexer to %d", LONG(Value));
-      Self->API->SetLexer(LONG(Self->Lexer));
+      log.branch("Changing lexer to %d", int(Value));
+      Self->API->SetLexer(int(Self->Lexer));
    }
    return ERR::Okay;
 }
@@ -1653,7 +1653,7 @@ LineCount: The total number of lines in the document.
 
 *********************************************************************************************************************/
 
-static ERR GET_LineCount(extScintilla *Self, LONG *Value)
+static ERR GET_LineCount(extScintilla *Self, int *Value)
 {
    if (Self->initialised()) {
       *Value = SCICALL(SCI_GETLINECOUNT);
@@ -1692,13 +1692,13 @@ LineNumbers: Line numbers will appear on the left when this value is TRUE.
 
 *********************************************************************************************************************/
 
-static ERR GET_LineNumbers(extScintilla *Self, LONG *Value)
+static ERR GET_LineNumbers(extScintilla *Self, int *Value)
 {
    *Value = Self->LineNumbers;
    return ERR::Okay;
 }
 
-static ERR SET_LineNumbers(extScintilla *Self, LONG Value)
+static ERR SET_LineNumbers(extScintilla *Self, int Value)
 {
    if (Value) {
       Self->LineNumbers = TRUE;
@@ -1736,7 +1736,7 @@ static ERR SET_Path(extScintilla *Self, CSTRING Value)
 
    log.branch("%s", Value);
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    if ((Value) and (*Value)) {
       if ((Self->Path = strclone(Value))) {
@@ -1765,7 +1765,7 @@ needs to be changed without causing a load operation.
 
 static ERR SET_Origin(extScintilla *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    if ((Value) and (*Value)) {
       if (!(Self->Path = strclone(Value))) return ERR::AllocMemory;
@@ -1788,7 +1788,7 @@ not make this change for you automatically.
 
 *********************************************************************************************************************/
 
-static ERR SET_Modified(extScintilla *Self, LONG Value)
+static ERR SET_Modified(extScintilla *Self, int Value)
 {
    if (Self->initialised()) {
       if (Value) {
@@ -1812,7 +1812,7 @@ RightMargin: Defines the amount of white-space at the right side of the page.
 
 *********************************************************************************************************************/
 
-static ERR SET_RightMargin(extScintilla *Self, LONG Value)
+static ERR SET_RightMargin(extScintilla *Self, int Value)
 {
    if ((Value >= 0) and (Value <= 100)) {
       Self->RightMargin = Value;
@@ -1831,13 +1831,13 @@ ShowWhitespace: White-space characters will be visible to the user when this fie
 
 *********************************************************************************************************************/
 
-static ERR GET_ShowWhitespace(extScintilla *Self, LONG *Value)
+static ERR GET_ShowWhitespace(extScintilla *Self, int *Value)
 {
    *Value = Self->ShowWhitespace;
    return ERR::Okay;
 }
 
-static ERR SET_ShowWhitespace(extScintilla *Self, LONG Value)
+static ERR SET_ShowWhitespace(extScintilla *Self, int Value)
 {
    if (Value) {
       Self->ShowWhitespace = 1;
@@ -1952,9 +1952,9 @@ method as the preferred alternative, as it is much more efficient with memory us
 
 static ERR GET_String(extScintilla *Self, STRING *Value)
 {
-   LONG len = SCICALL(SCI_GETLENGTH);
+   int len = SCICALL(SCI_GETLENGTH);
 
-   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
+   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = nullptr; }
 
    if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->StringBuffer) IS ERR::Okay) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)Self->StringBuffer);
@@ -1989,13 +1989,13 @@ Symbols: Symbols can be displayed in the left margin when this value is TRUE.
 
 *********************************************************************************************************************/
 
-static ERR GET_Symbols(extScintilla *Self, LONG *Value)
+static ERR GET_Symbols(extScintilla *Self, int *Value)
 {
    *Value = Self->Symbols;
    return ERR::Okay;
 }
 
-static ERR SET_Symbols(extScintilla *Self, LONG Value)
+static ERR SET_Symbols(extScintilla *Self, int Value)
 {
    if (Value) {
       Self->Symbols = TRUE;
@@ -2015,13 +2015,13 @@ TabWidth: The width of tab stops in the document, measured as fixed-width charac
 
 *********************************************************************************************************************/
 
-static ERR GET_TabWidth(extScintilla *Self, LONG *Value)
+static ERR GET_TabWidth(extScintilla *Self, int *Value)
 {
    *Value = Self->TabWidth;
    return ERR::Okay;
 }
 
-static ERR SET_TabWidth(extScintilla *Self, LONG Value)
+static ERR SET_TabWidth(extScintilla *Self, int Value)
 {
    if (Value > 0) {
       if (Value > 200) Value = 200;
@@ -2065,13 +2065,13 @@ Wordwrap: Enables automatic word wrapping when TRUE.
 
 *********************************************************************************************************************/
 
-static ERR GET_Wordwrap(extScintilla *Self, LONG *Value)
+static ERR GET_Wordwrap(extScintilla *Self, int *Value)
 {
    *Value = Self->Wordwrap;
    return ERR::Okay;
 }
 
-static ERR SET_Wordwrap(extScintilla *Self, LONG Value)
+static ERR SET_Wordwrap(extScintilla *Self, int Value)
 {
    if (Value) Self->Wordwrap = TRUE;
    else Self->Wordwrap = FALSE;
@@ -2088,13 +2088,13 @@ static void create_styled_fonts(extScintilla *Self)
 {
    pf::Log log;
 
-   log.msg("create_styled_fonts(%s,%.2f,$%.8x)", Self->Font->Face, Self->Font->Point, LONG(Self->Font->Flags));
+   log.msg("create_styled_fonts(%s,%.2f,$%.8x)", Self->Font->Face, Self->Font->Point, int(Self->Font->Flags));
 
    if (!Self->Font) return;
 
-   if (Self->BoldFont)   { FreeResource(Self->BoldFont); Self->BoldFont = NULL; }
-   if (Self->ItalicFont) { FreeResource(Self->ItalicFont); Self->ItalicFont = NULL; }
-   if (Self->BIFont)     { FreeResource(Self->BIFont); Self->BIFont = NULL; }
+   if (Self->BoldFont)   { FreeResource(Self->BoldFont); Self->BoldFont = nullptr; }
+   if (Self->ItalicFont) { FreeResource(Self->ItalicFont); Self->ItalicFont = nullptr; }
+   if (Self->BIFont)     { FreeResource(Self->BIFont); Self->BIFont = nullptr; }
 
    if ((Self->BoldFont = objFont::create::local(
          fl::Face(Self->Font->Face),
@@ -2121,7 +2121,7 @@ static void create_styled_fonts(extScintilla *Self)
 //********************************************************************************************************************
 // Scintilla initiates drawing instructions through window::InvalidateRectangle()
 
-static THREADVAR objBitmap *glBitmap = NULL;
+static thread_local objBitmap *glBitmap = nullptr;
 
 static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *Bitmap)
 {
@@ -2141,7 +2141,7 @@ static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *B
 
    Self->API->panDraw(Surface, Bitmap);
 
-   glBitmap = NULL;
+   glBitmap = nullptr;
 
    if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) {
       gfx::DrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, Bitmap->packPixel(0, 0, 0, 64), BAF::FILL|BAF::BLEND);
@@ -2163,7 +2163,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERR Error)
 
    OBJECTPTR dialog;
    if (NewObject(CLASSID::SCRIPT, &dialog) IS ERR::Okay) {
-      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("system:scripts/gui/dialog.fluid"));
+      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("system:scripts/gui/dialog.tiri"));
 
       acSetKey(dialog, "modal", "1");
       acSetKey(dialog, "title", Title);
@@ -2196,7 +2196,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
 {
    pf::Log log(__FUNCTION__);
    STRING str;
-   LONG size, len;
+   int size, len;
    ERR error = ERR::Okay;
 
    if (auto file = objFile::create::local(fl::Flags(FL::READ), fl::Path(Path))) {
@@ -2206,7 +2206,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
 
             SubscribeAction(file, AC::Write, C_FUNCTION(notify_write));
             Self->FileStream = file;
-            file = NULL;
+            file = nullptr;
          }
          else error = ERR::Failed;
       }
@@ -2239,7 +2239,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
    else error = ERR::File;
 
    if ((error IS ERR::Okay) and ((Self->Flags & SCIF::DETECT_LEXER) != SCIF::NIL)) {
-      LONG i = strlen(Path);
+      int i = strlen(Path);
       while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
       Path = Path + i;
 
@@ -2247,8 +2247,8 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
          if (wildcmp(glLexers[i].File, Path)) {
             pf::Log log;
             Self->Lexer = glLexers[i].Lexer;
-            log.branch("Lexer for the loaded file is %d.", LONG(Self->Lexer));
-            Self->API->SetLexer(LONG(Self->Lexer));
+            log.branch("Lexer for the loaded file is %d.", int(Self->Lexer));
+            Self->API->SetLexer(int(Self->Lexer));
             break;
          }
       }
@@ -2260,7 +2260,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
 
 //********************************************************************************************************************
 
-static void key_event(evKey *Event, LONG Size, extScintilla *Self)
+static void key_event(evKey *Event, int Size, extScintilla *Self)
 {
    pf::Log log;
 
@@ -2276,13 +2276,13 @@ static void key_event(evKey *Event, LONG Size, extScintilla *Self)
       string[0] = 0;
 
       if ((Event->Qualifiers & KQ::NOT_PRINTABLE) IS KQ::NIL) {
-         WORD out = UTF8WriteValue(Event->Unicode, string, sizeof(string)-1);
+         int16_t out = UTF8WriteValue(Event->Unicode, string, sizeof(string)-1);
          if (out >= 0) string[out] = 0;
       }
 
       strcopy(string, (STRING)Self->API->lastkeytrans, sizeof(Self->API->lastkeytrans));
 
-      LONG keyval;
+      int keyval;
       switch (Event->Code) {
          // Handle known non-printable character keys first
          case KEY::TAB:       keyval = SCK_TAB; break;
@@ -2305,11 +2305,11 @@ static void key_event(evKey *Event, LONG Size, extScintilla *Self)
                // Unhandled non-printable characters are ignored
                keyval = 0;
             }
-            else if ((LONG(Event->Code) >= LONG(KEY::A)) and (LONG(Event->Code) <= LONG(KEY::Z))) {
-               keyval = LONG(Event->Code) - LONG(KEY::A) + LONG('a');
+            else if ((int(Event->Code) >= int(KEY::A)) and (int(Event->Code) <= int(KEY::Z))) {
+               keyval = int(Event->Code) - int(KEY::A) + int('a');
             }
-            else if ((LONG(Event->Code) >= LONG(KEY::ZERO)) and (LONG(Event->Code) <= LONG(KEY::NINE))) {
-               keyval = LONG(Event->Code) - LONG(KEY::ZERO) + LONG('0');
+            else if ((int(Event->Code) >= int(KEY::ZERO)) and (int(Event->Code) <= int(KEY::NINE))) {
+               keyval = int(Event->Code) - int(KEY::ZERO) + int('0');
             }
             else {
                // Call KeyDefault(), which will pull the key value from the lastkeytrans buffer
@@ -2320,7 +2320,7 @@ static void key_event(evKey *Event, LONG Size, extScintilla *Self)
       }
 
       if (keyval) {
-         log.traceBranch("Keypress: %d", LONG(keyval));
+         log.traceBranch("Keypress: %d", int(keyval));
          Self->API->panKeyDown(keyval, Event->Qualifiers);
       }
    }
@@ -2333,7 +2333,7 @@ static void key_event(evKey *Event, LONG Size, extScintilla *Self)
 
 //********************************************************************************************************************
 
-static ERR consume_input_events(const InputEvent *Events, LONG TotalEvents)
+static ERR consume_input_events(const InputEvent *Events, int TotalEvents)
 {
    auto Self = (extScintilla *)CurrentContext();
 
@@ -2374,29 +2374,29 @@ static void report_event(extScintilla *Self, SEF Event)
 
 static void calc_longest_line(extScintilla *Self)
 {
-   LONG linewidth;
-   static const LONG LINE_COUNT_LIMIT = 2000;
+   int linewidth;
+   static const int LINE_COUNT_LIMIT = 2000;
 
    if (!Self->Font) return;
 
    pf::Log log(__FUNCTION__);
    log.traceBranch("Wrap: %d", Self->Wordwrap);
 
-   LONG lines = SCICALL(SCI_GETLINECOUNT);
+   int lines = SCICALL(SCI_GETLINECOUNT);
    if (lines > LINE_COUNT_LIMIT) lines = LINE_COUNT_LIMIT;
 
-   LONG cwidth = 0;
-   LONG cline  = 0;
+   int cwidth = 0;
+   int cline  = 0;
 
    if (Self->Wordwrap) {
       Self->LongestLine = 0;
       Self->LongestWidth = 0;
    }
    else { // Find the line with the longest width
-      for (LONG i=0; i < lines; i++) {
-         LONG end = SCICALL(SCI_GETLINEENDPOSITION, i);
+      for (int i=0; i < lines; i++) {
+         int end = SCICALL(SCI_GETLINEENDPOSITION, i);
          if (Self->Font->FixedWidth) {
-            LONG col = SCICALL(SCI_GETCOLUMN, end);
+            int col = SCICALL(SCI_GETCOLUMN, end);
             linewidth = col * Self->Font->FixedWidth;
          }
          else linewidth = SCICALL(SCI_POINTXFROMPOSITION, 0, end);
@@ -2450,25 +2450,25 @@ static ERR idle_timer(extScintilla *Self, int64_t Elapsed, int64_t CurrentTime)
 #include "class_scintilla_def.cxx"
 
 static const FieldArray clFields[] = {
-   { "Font",           FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::FONT },
-   { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
-   { "EventFlags",     FDF_INT|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
-   { "Surface",        FDF_OBJECTID|FDF_RI, NULL, NULL, CLASSID::SURFACE },
-   { "Flags",          FDF_INTFLAGS|FDF_RI, NULL, NULL, &clScintillaFlags },
+   { "Font",           FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::FONT },
+   { "Path",           FDF_STRING|FDF_RW, nullptr, SET_Path },
+   { "EventFlags",     FDF_INT|FDF_FLAGS|FDF_RW, nullptr, nullptr, &clScintillaEventFlags },
+   { "Surface",        FDF_OBJECTID|FDF_RI, nullptr, nullptr, CLASSID::SURFACE },
+   { "Flags",          FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clScintillaFlags },
    { "Focus",          FDF_OBJECTID|FDF_RI },
    { "Visible",        FDF_INT|FDF_RI },
-   { "LeftMargin",     FDF_INT|FDF_RW, NULL, SET_LeftMargin },
-   { "RightMargin",    FDF_INT|FDF_RW, NULL, SET_RightMargin },
-   { "LineHighlight",  FDF_RGB|FDF_RW, NULL, SET_LineHighlight },
-   { "SelectFore",     FDF_RGB|FDF_RI, NULL, SET_SelectFore },
-   { "SelectBkgd",     FDF_RGB|FDF_RI, NULL, SET_SelectBkgd },
-   { "BkgdColour",     FDF_RGB|FDF_RW, NULL, SET_BkgdColour },
-   { "CursorColour",   FDF_RGB|FDF_RW, NULL, SET_CursorColour },
-   { "TextColour",     FDF_RGB|FDF_RW, NULL, SET_TextColour },
+   { "LeftMargin",     FDF_INT|FDF_RW, nullptr, SET_LeftMargin },
+   { "RightMargin",    FDF_INT|FDF_RW, nullptr, SET_RightMargin },
+   { "LineHighlight",  FDF_RGB|FDF_RW, nullptr, SET_LineHighlight },
+   { "SelectFore",     FDF_RGB|FDF_RI, nullptr, SET_SelectFore },
+   { "SelectBkgd",     FDF_RGB|FDF_RI, nullptr, SET_SelectBkgd },
+   { "BkgdColour",     FDF_RGB|FDF_RW, nullptr, SET_BkgdColour },
+   { "CursorColour",   FDF_RGB|FDF_RW, nullptr, SET_CursorColour },
+   { "TextColour",     FDF_RGB|FDF_RW, nullptr, SET_TextColour },
    { "CursorRow",      FDF_INT|FDF_RW },
    { "CursorCol",      FDF_INT|FDF_RW },
-   { "Lexer",          FDF_INT|FDF_LOOKUP|FDF_RI, NULL, SET_Lexer, &clScintillaLexer },
-   { "Modified",       FDF_INT|FDF_RW, NULL, SET_Modified },
+   { "Lexer",          FDF_INT|FDF_LOOKUP|FDF_RI, nullptr, SET_Lexer, &clScintillaLexer },
+   { "Modified",       FDF_INT|FDF_RW, nullptr, SET_Modified },
 
    // Virtual fields
    { "AllowTabs",      FDF_INT|FDF_RW,   GET_AllowTabs, SET_AllowTabs },
@@ -2509,5 +2509,5 @@ static ERR create_scintilla(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_scintilla_module() { return &ModHeader; }
