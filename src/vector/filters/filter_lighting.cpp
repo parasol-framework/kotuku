@@ -239,7 +239,7 @@ FRGB extLightingFX::colour_spot_light(point3 &Point)
       const double cosAngle = -Point.dot(SpotDelta);
       if (cosAngle < CosOuterConeAngle) return FRGB(0.0, 0.0, 0.0, 1.0);
 
-      double scale = pow(cosAngle, SpotExponent);
+      double scale = pow(std::max(0.0, cosAngle), SpotExponent);
       if (cosAngle < CosInnerConeAngle) {
          scale = scale * (cosAngle - CosOuterConeAngle);
          scale *= ConeScale;
@@ -247,7 +247,7 @@ FRGB extLightingFX::colour_spot_light(point3 &Point)
       return FRGB(LinearColour.Red * scale, LinearColour.Green * scale, LinearColour.Blue * scale, LinearColour.Alpha * scale);
    }
    else {
-      const double scale = pow(-Point.dot(SpotDelta), SpotExponent);
+      const double scale = pow(std::max(0.0, -Point.dot(SpotDelta)), SpotExponent);
       return FRGB(LinearColour.Red * scale, LinearColour.Green * scale, LinearColour.Blue * scale, LinearColour.Alpha * scale);
    }
 }
@@ -271,7 +271,7 @@ inline void extLightingFX::specular_light(const point3 &Normal, const point3 &ST
    halfDir.z += 1.0; // Eye position is always (0, 0, 1)
    halfDir.normalise();
 
-   double scale = std::clamp((Constant * std::pow(Normal.dot(halfDir), SpecularExponent)) * 255.0, 0.0, 255.0);
+   double scale = std::clamp((Constant * std::pow(std::max(0.0, Normal.dot(halfDir)), SpecularExponent)) * 255.0, 0.0, 255.0);
 
    const uint8_t r = int(Colour.Red * scale);
    const uint8_t g = int(Colour.Green * scale);
@@ -621,10 +621,12 @@ void extLightingFX::draw()
    int height = Target->Clip.Bottom - Target->Clip.Top;
    if (bmp->Clip.Right - bmp->Clip.Left < width) width = bmp->Clip.Right - bmp->Clip.Left;
    if (bmp->Clip.Bottom - bmp->Clip.Top < height) height = bmp->Clip.Bottom - bmp->Clip.Top;
+   if ((width < 1) or (height < 1)) return;
 
    const double spot_height = MapHeight * scale;
 
-   const int num_threads = std::min(std::thread::hardware_concurrency(), static_cast<unsigned int>(height));
+   int num_threads = std::min(int(std::thread::hardware_concurrency()), height);
+   if (num_threads < 1) num_threads = 1;
    const int min_rows_per_chunk = 4; // Minimum work per thread to avoid overhead
    const int chunk_size = std::max(min_rows_per_chunk, height / num_threads);
    const int num_chunks = (height + chunk_size - 1) / chunk_size;
