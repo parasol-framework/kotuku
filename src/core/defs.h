@@ -15,6 +15,7 @@
 #include <atomic>
 #include <thread>
 #include <algorithm>
+#include <optional>
 #include <ankerl/unordered_dense.h>
 #include <unordered_set>
 
@@ -316,6 +317,7 @@ struct virtual_drive {
 };
 
 extern const virtual_drive glFSDefault;
+extern std::mutex glmVirtual;
 extern ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 
 //********************************************************************************************************************
@@ -1073,7 +1075,7 @@ ERR fs_scandir(DirInfo *);
 ERR fs_testpath(std::string &, RSF, LOC *);
 ERR fs_watch_path(class extFile *);
 
-const virtual_drive * get_fs(std::string_view Path);
+virtual_drive get_fs(std::string_view Path);
 void  free_storage_class(void);
 
 ERR    convert_zip_error(struct z_stream_s *, int);

@@ -196,6 +196,7 @@ const struct virtual_drive glFSDefault = {
    fs_createlink
 };
 
+std::mutex glmVirtual;
 ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 
 #ifdef __unix__

@@ -1047,7 +1047,10 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
 
    log.branch("Initialising filesystem volumes.");
 
-   glVirtual[0] = glFSDefault;
+   {
+      std::lock_guard<std::mutex> lock(glmVirtual);
+      glVirtual[0] = glFSDefault;
+   }
 
    log.trace("Attempting to create SystemVolumes object.");
 

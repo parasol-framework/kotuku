@@ -212,12 +212,19 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 //********************************************************************************************************************
 // Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
 
-static const virtual_drive * get_virtual(std::string_view Path)
+static std::optional<virtual_drive> get_virtual_drive(uint32_t Id)
 {
-   if (Path.empty() or Path.starts_with(':')) return &glVirtual[0]; // Root level counts as virtual
+   std::lock_guard<std::mutex> lock(glmVirtual);
+   if (auto it = glVirtual.find(Id); it != glVirtual.end()) return it->second;
+   return std::nullopt;
+}
+
+static std::optional<virtual_drive> get_virtual(std::string_view Path)
+{
+   if (Path.empty() or Path.starts_with(':')) return get_virtual_drive(0); // Root level counts as virtual
    auto id = get_volume_id(Path);
-   if ((id) and (glVirtual.contains(id))) return &glVirtual[id];
-   return nullptr;
+   if (id) return get_virtual_drive(id);
+   return std::nullopt;
 }
 
 //********************************************************************************************************************
@@ -227,11 +234,12 @@ static const virtual_drive * get_virtual(std::string_view Path)
 // The Path must be resolved before you call this function, this is necessary to solve cases where a volume is a
 // shortcut to multiple paths for example.
 
-const virtual_drive * get_fs(std::string_view Path)
+virtual_drive get_fs(std::string_view Path)
 {
    auto id = get_volume_id(Path);
-   if (glVirtual.contains(id)) return &glVirtual[id];
-   return &glVirtual[0];
+   if (auto drive = get_virtual_drive(id)) return *drive;
+   if (auto drive = get_virtual_drive(0)) return *drive;
+   return glFSDefault;
 }
 
 //********************************************************************************************************************
@@ -365,10 +373,10 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
       log.trace("Testing path type for '%s'", test_path.c_str());
 
       auto vd = get_fs(test_path);
-      if (vd->TestPath) {
+      if (vd.TestPath) {
          LOC dummy;
          if (not PathType) PathType = &dummy; // Dummy variable, helps to avoid bugs
-         return vd->TestPath(test_path, RSF::NIL, PathType);
+         return vd.TestPath(test_path, RSF::NIL, PathType);
       }
       else return ERR::NoSupport;
    }
@@ -412,21 +420,21 @@ ERR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    if ((error = ResolvePath(PathA, RSF::NO_FILE_CHECK, &path1)) != ERR::Okay) return error;
    if ((error = ResolvePath(PathB, RSF::NO_FILE_CHECK, &path2)) != ERR::Okay) return error;
 
-   const virtual_drive *v1, *v2;
+   virtual_drive v1, v2;
    v1 = get_fs(path1);
    v2 = get_fs(path2);
 
-   if ((not v1->CaseSensitive) and (not v2->CaseSensitive)) {
+   if ((not v1.CaseSensitive) and (not v2.CaseSensitive)) {
       error = iequals(path1, path2) ? ERR::True : ERR::False;
    }
    else error = (std::string_view(path1) IS std::string_view(path2)) ? ERR::True : ERR::False;
 
    if (error != ERR::Okay) {
-      if (v1 IS v2) {
+      if (v1.VirtualID IS v2.VirtualID) {
          // Ask the virtual FS if the paths match
 
-         if (v1->SameFile) {
-            error = v1->SameFile(path1, path2);
+         if (v1.SameFile) {
+            error = v1.SameFile(path1, path2);
          }
          else error = ERR::False; // Assume the earlier string comparison is good enough
       }
@@ -444,12 +452,12 @@ static ERR CompareResolvedPaths(std::string_view PathA, std::string_view PathB)
    const auto v2 = get_fs(PathB);
 
    ERR error;
-   if ((not v1->CaseSensitive) and (not v2->CaseSensitive)) error = iequals(PathA, PathB) ? ERR::True : ERR::False;
+   if ((not v1.CaseSensitive) and (not v2.CaseSensitive)) error = iequals(PathA, PathB) ? ERR::True : ERR::False;
    else error = (std::string_view(PathA) IS std::string_view(PathB)) ? ERR::True : ERR::False;
 
    if (error != ERR::Okay) {
-      if (v1 IS v2) { // Ask the virtual FS if the paths match
-         if (v1->SameFile) return v1->SameFile(PathA, PathB);
+      if (v1.VirtualID IS v2.VirtualID) { // Ask the virtual FS if the paths match
+         if (v1.SameFile) return v1.SameFile(PathA, PathB);
          else return ERR::False; // Assume the earlier string comparison is sufficient
       }
       else return ERR::False;
@@ -721,8 +729,8 @@ ERR DeleteFile(CSTRING Path, FUNCTION *Callback)
 
    std::string resolve;
    if (ResolvePath(Path, RSF::NIL, &resolve) IS ERR::Okay) {
-      const virtual_drive *vd = get_fs(resolve);
-      if (vd->Delete) return vd->Delete(resolve, nullptr);
+      auto vd = get_fs(resolve);
+      if (vd.Delete) return vd.Delete(resolve, nullptr);
       else return ERR::NoSupport;
    }
    else return ERR::ResolvePath;
@@ -798,7 +806,7 @@ ERR GetFileInfo(const std::string_view &Path, FileInfo *Info, int InfoSize)
    // Check if the location is a volume with no file reference
 
    if (Path.ends_with(':')) {
-      const virtual_drive *vfs = get_fs(Path);
+      auto vfs = get_fs(Path);
 
       Info->Size        = 0;
       Info->TimeStamp   = 0;
@@ -822,9 +830,9 @@ ERR GetFileInfo(const std::string_view &Path, FileInfo *Info, int InfoSize)
 
       Info->Name += ':';
 
-      if (vfs->is_virtual()) {
+      if (vfs.is_virtual()) {
          Info->Flags |= RDF::VIRTUAL;
-         if (vfs->GetInfo) return vfs->GetInfo(Path, Info, InfoSize);
+         if (vfs.GetInfo) return vfs.GetInfo(Path, Info, InfoSize);
          return ERR::Okay;
       }
       else return ERR::Okay;
@@ -836,7 +844,7 @@ ERR GetFileInfo(const std::string_view &Path, FileInfo *Info, int InfoSize)
       if (auto error = ResolvePath(Path, RSF::NIL, &path); error IS ERR::Okay) {
          auto vfs = get_fs(path);
 
-         if (not vfs->GetInfo) return log.warning(ERR::NoSupport);
+         if (not vfs.GetInfo) return log.warning(ERR::NoSupport);
 
          Info->Size        = 0;
          Info->TimeStamp   = 0;
@@ -845,11 +853,11 @@ ERR GetFileInfo(const std::string_view &Path, FileInfo *Info, int InfoSize)
          Info->UserID      = 0;
          Info->GroupID     = 0;
          Info->Tags        = nullptr;
-         Info->Flags       = (vfs->is_virtual()) ? RDF::VIRTUAL : RDF::NIL;
+         Info->Flags       = (vfs.is_virtual()) ? RDF::VIRTUAL : RDF::NIL;
          Info->Created.clear();
          Info->Modified.clear();
 
-         if ((error = vfs->GetInfo(path, Info, InfoSize)) IS ERR::Okay) {
+         if ((error = vfs.GetInfo(path, Info, InfoSize)) IS ERR::Okay) {
             Info->TimeStamp = calc_timestamp(&Info->Modified);
          }
 
@@ -993,8 +1001,8 @@ ERR CreateFolder(CSTRING Path, PERMIT Permissions)
 
    std::string resolve;
    if (ResolvePath(Path, RSF::NO_FILE_CHECK, &resolve) IS ERR::Okay) {
-      const virtual_drive *vd = get_fs(resolve);
-      if (vd->CreateFolder) return vd->CreateFolder(resolve, Permissions);
+      auto vd = get_fs(resolve);
+      if (vd.CreateFolder) return vd.CreateFolder(resolve, Permissions);
       else return ERR::NoSupport;
    }
    else return ERR::ResolvePath;
@@ -1478,8 +1486,8 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    if ((error = ResolvePath(Source, RSF::NIL, &src)) != ERR::Okay) return ERR::FileNotFound;
    if ((error = ResolvePath(Dest, RSF::NO_FILE_CHECK, &dest)) != ERR::Okay) return ERR::ResolvePath;
 
-   const virtual_drive *srcvirtual  = get_fs(src);
-   const virtual_drive *destvirtual = get_fs(dest);
+   auto srcvirtual  = get_fs(src);
+   auto destvirtual = get_fs(dest);
 
    bool srcdir = (src.ends_with('/') or src.ends_with('\\'));
 
@@ -1506,7 +1514,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    feedback.Path = src.data();
    feedback.Dest = dest.data();
 
-   if (srcvirtual->is_virtual() or destvirtual->is_virtual()) {
+   if (srcvirtual.is_virtual() or destvirtual.is_virtual()) {
       log.trace("Using virtual copy routine.");
 
       // Open the source and destination
@@ -1514,7 +1522,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       extFile::create srcfile = { fl::Path(Source.data()), fl::Flags(FL::READ) };
 
       if (srcfile.ok()) {
-         if ((Move) and (srcvirtual IS destvirtual)) {
+         if ((Move) and (srcvirtual.VirtualID IS destvirtual.VirtualID)) {
             // If the source and destination use the same virtual volume, execute the move method.
             fl::Move args = { Dest.data(), nullptr };
             return Action(fl::Move::id, *srcfile, &args);
@@ -1941,7 +1949,7 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
       while ((error = ScanDir(dir)) IS ERR::Okay) {
          FileInfo *file = dir->Info;
          if ((file->Flags & RDF::LINK) != RDF::NIL) {
-            if ((vsrc->ReadLink) and (vdest->CreateLink)) {
+            if ((vsrc.ReadLink) and (vdest.CreateLink)) {
                Source.append(file->Name);
                Dest.append(file->Name);
 
@@ -1954,9 +1962,9 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
                }
 
                STRING link;
-               if ((error = vsrc->ReadLink(Source, &link)) IS ERR::Okay) {
+               if ((error = vsrc.ReadLink(Source, &link)) IS ERR::Okay) {
                   DeleteFile(Dest.c_str(), nullptr);
-                  error = vdest->CreateLink(Dest, link);
+                  error = vdest.CreateLink(Dest, link);
                }
             }
             else {
@@ -1987,7 +1995,7 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
 
                error = CreateFolder(Dest.c_str(), (glDefaultPermissions != PERMIT::NIL) ? glDefaultPermissions : file->Permissions);
 #ifdef __unix__
-               if (vdest->is_default()) {
+               if (vdest.is_default()) {
                   chown(Dest.c_str(), (glForceUID != -1) ? glForceUID : file->UserID, (glForceGID != -1) ? glForceGID : file->GroupID);
                }
 #endif
