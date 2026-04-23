@@ -26,8 +26,8 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
 
    if (dmf::hasY(Vector->rDimensions)) y = Vector->rY;
    else if (dmf::hasScaledY(Vector->rDimensions)) y = Vector->rY * get_parent_height(Vector);
-   else if ((dmf::hasAnyWidth(Vector->rDimensions)) and (dmf::hasAnyYOffset(Vector->rDimensions))) {
-      if (dmf::hasWidth(Vector->rDimensions)) height = Vector->rHeight;
+   else if ((dmf::hasAnyHeight(Vector->rDimensions)) and (dmf::hasAnyYOffset(Vector->rDimensions))) {
+      if (dmf::hasHeight(Vector->rDimensions)) height = Vector->rHeight;
       else height = get_parent_height(Vector) * Vector->rHeight;
 
       if (dmf::hasYOffset(Vector->rDimensions)) y = get_parent_height(Vector) - height - Vector->rYOffset;
@@ -420,8 +420,8 @@ static ERR RECTANGLE_GET_XOffset(extVectorRectangle *Self, Unit *Value)
    }
    else if ((dmf::hasAnyX(Self->rDimensions)) and (dmf::hasAnyWidth(Self->rDimensions))) {
       double width;
-      if (dmf::hasWidth(Self->rDimensions)) width = Self->rHeight;
-      else width = get_parent_width(Self) * Self->rHeight;
+      if (dmf::hasWidth(Self->rDimensions)) width = Self->rWidth;
+      else width = get_parent_width(Self) * Self->rWidth;
 
       if (dmf::hasX(Self->rDimensions)) value = get_parent_width(Self) - (Self->rX + width);
       else value = get_parent_width(Self) - ((Self->rX * get_parent_width(Self)) + width);

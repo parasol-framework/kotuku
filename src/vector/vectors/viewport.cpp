@@ -772,7 +772,7 @@ static ERR VIEW_GET_XOffset(extVectorViewport *Self, Unit &Value)
    gen_vector_tree(Self);
 
    if (dmf::hasXOffset(Self->vpDimensions)) value = Self->vpTargetXO;
-   else if (dmf::hasScaledYOffset(Self->vpDimensions)) {
+   else if (dmf::hasScaledXOffset(Self->vpDimensions)) {
       value = Self->vpTargetXO * Self->ParentView->vpFixedWidth;
    }
    else if ((dmf::hasAnyX(Self->vpDimensions)) and (dmf::hasAnyWidth(Self->vpDimensions))) {

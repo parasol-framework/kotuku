@@ -1879,22 +1879,35 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
 {
    pf::Log log;
 
-   if (Value->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::InvalidObject);
    if ((!Value) or (Value IS Self)) return log.warning(ERR::InvalidValue);
+   if (Value->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::InvalidObject);
    if (Self->Owner != Value->Owner) return log.warning(ERR::UnsupportedOwner); // Owners must match
+   if ((Self->Next IS Value) and (Value->Prev IS Self)) return ERR::Okay;
 
-   if (Self->Next) Self->Next->Prev = nullptr; // Detach from the current Next object.
-   if (Self->Prev) Self->Prev->Next = nullptr; // Detach from the current Prev object.
+   auto old_parent = Self->Parent;
+   auto old_prev = Self->Prev;
+   auto old_next = Self->Next;
 
-   Self->Next  = Value; // Patch the chain
+   if (old_next) old_next->Prev = old_prev;
+   if (old_prev) old_prev->Next = old_next;
+   else if (old_parent) {
+      if (old_parent->classID() IS CLASSID::VECTORSCENE) ((objVectorScene *)old_parent)->Viewport = (objVectorViewport *)old_next;
+      else if (old_parent->Class->BaseClassID IS CLASSID::VECTOR) ((extVector *)old_parent)->Child = old_next;
+      if (old_next) old_next->Parent = old_parent;
+   }
+
+   auto value_parent = Value->Parent;
+   auto value_prev = Value->Prev;
+
+   Self->Parent = value_parent;
+   Self->Prev   = value_prev;
+   Self->Next   = Value;
+
    Value->Prev = Self;
-   Self->Prev  = Value->Prev;
-   if (Value->Prev) Value->Prev->Next = Self;
-
-   if (Value->Parent) { // Patch into the parent if we are at the start of the branch
-      Self->Parent = Value->Parent;
-      if (Self->Parent->classID() IS CLASSID::VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
-      else if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) ((extVector *)Self->Parent)->Child = Self;
+   if (value_prev) value_prev->Next = Self;
+   else if (value_parent) {
+      if (value_parent->classID() IS CLASSID::VECTORSCENE) ((objVectorScene *)value_parent)->Viewport = (objVectorViewport *)Self;
+      else if (value_parent->Class->BaseClassID IS CLASSID::VECTOR) ((extVector *)value_parent)->Child = Self;
    }
 
    mark_buffers_for_refresh(Self);
@@ -1991,29 +2004,31 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
 {
    pf::Log log;
 
+   if ((!Value) or (Value IS Self)) return log.warning(ERR::InvalidValue);
    if (Value->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::InvalidObject);
-   if (!Value) return log.warning(ERR::InvalidValue);
    if (Self->Owner != Value->Owner) return log.warning(ERR::UnsupportedOwner); // Owners must match
+   if ((Self->Prev IS Value) and (Value->Next IS Self)) return ERR::Okay;
 
-   if (Self->Next) Self->Next->Prev = nullptr; // Detach from the current Next object.
-   if (Self->Prev) Self->Prev->Next = nullptr; // Detach from the current Prev object.
+   auto old_parent = Self->Parent;
+   auto old_prev = Self->Prev;
+   auto old_next = Self->Next;
 
-   if (Self->Parent) { // Detach from the parent
-      if (Self->Parent->classID() IS CLASSID::VECTORSCENE) {
-         ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
-         Self->Next->Parent = Self->Parent;
-      }
-      else if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) {
-         ((extVector *)Self->Parent)->Child = Self->Next;
-         Self->Next->Parent = Self->Parent;
-      }
-      Self->Parent = nullptr;
+   if (old_next) old_next->Prev = old_prev;
+   if (old_prev) old_prev->Next = old_next;
+   else if (old_parent) {
+      if (old_parent->classID() IS CLASSID::VECTORSCENE) ((objVectorScene *)old_parent)->Viewport = (objVectorViewport *)old_next;
+      else if (old_parent->Class->BaseClassID IS CLASSID::VECTOR) ((extVector *)old_parent)->Child = old_next;
+      if (old_next) old_next->Parent = old_parent;
    }
 
-   Self->Prev = Value; // Patch the chain
-   Self->Next = Value->Next;
-   Self->Parent = Value->Parent;
-   if (Value->Next) Value->Next->Prev = Self;
+   auto value_parent = Value->Parent;
+   auto value_next = Value->Next;
+
+   Self->Parent = value_parent;
+   Self->Prev   = Value;
+   Self->Next   = value_next;
+
+   if (value_next) value_next->Prev = Self;
    Value->Next = Self;
 
    mark_buffers_for_refresh(Self);

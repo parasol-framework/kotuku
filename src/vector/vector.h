@@ -563,7 +563,7 @@ class GradientColours {
 
          // For a given block of colours, compute the average colour and apply it to the entire block.
 
-         int block_size = int(resolution * table.size());
+         int block_size = std::max(1, int(resolution * int(table.size())));
          for (int i = 0; i < table.size(); i += block_size) {
 
             int red = 0, green = 0, blue = 0, alpha = 0, total = 0;
@@ -1243,9 +1243,9 @@ static int get_utf8(const std::string_view &Value, uint32_t &Unicode, std::size_
    }
 
    for (int i=1; i < len; ++i) {
-      if ((Value[i] & 0xc0) != 0x80) code = -1;
+      if ((Value[Index + i] & 0xc0) != 0x80) code = -1;
       code <<= 6;
-      code |= Value[i] & 0x3f;
+      code |= Value[Index + i] & 0x3f;
    }
 
    if (code IS -1) {

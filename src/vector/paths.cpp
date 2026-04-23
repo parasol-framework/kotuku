@@ -142,7 +142,7 @@ void gen_vector_path(extVector *Vector)
       else if (dmf::hasHeight(view->vpDimensions)) view->vpFixedHeight = view->vpTargetHeight;
       else view->vpFixedHeight = parent_height;
 
-      if (dmf::hasScaledYOffset(view->vpDimensions)) {
+      if (dmf::hasScaledXOffset(view->vpDimensions)) {
          if (dmf::hasAnyX(view->vpDimensions)) {
             view->vpFixedWidth = parent_width - (parent_width * view->vpTargetXO) - view->FinalX;
          }

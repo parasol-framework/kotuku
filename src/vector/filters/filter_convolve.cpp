@@ -103,10 +103,10 @@ class extConvolveFX : public extFilterEffect {
             X -= Bitmap->Clip.Left;
             Y -= Bitmap->Clip.Top;
 
-            if (X < 0) X = std::abs(width + X) % width;
+            if (X < 0) X = ((X % width) + width) % width;
             else if (X >= width) X %= width;
 
-            if (Y < 0) Y = std::abs(height + Y) % height;
+            if (Y < 0) Y = ((Y % height) + height) % height;
             else if (Y >= height) Y %= height;
 
             return Bitmap->Data + ((Y + Bitmap->Clip.Top)  * Bitmap->LineWidth) + ((X + Bitmap->Clip.Left) * Bitmap->BytesPerPixel);

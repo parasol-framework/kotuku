@@ -102,6 +102,14 @@ The picture bitmap must be in a 32-bit graphics format.
 
 static ERR IMAGE_SET_Picture(extVectorImage *Self, objPicture *Value)
 {
+   if (!Value) {
+      Self->Picture = nullptr;
+      Self->Bitmap = nullptr;
+      return ERR::Okay;
+   }
+
+   if (!Value->Bitmap) return ERR::InvalidData;
+
    if (Value->Bitmap->BitsPerPixel < 32) {
       pf::Log log;
       log.warning("The source image must be 32 bit, not %d bit.", Value->Bitmap->BitsPerPixel);
@@ -160,7 +168,7 @@ Y: Apply a vertical offset to the image, the origin of which is determined by th
 
 static ERR IMAGE_SET_Y(extVectorImage *Self, double Value)
 {
-   Self->X = Value;
+   Self->Y = Value;
    Self->modified();
    return ERR::Okay;
 }
@@ -223,4 +231,3 @@ ERR init_image(void) // The gradient is a definition type for creating gradients
 
    return clVectorImage ? ERR::Okay : ERR::AddClass;
 }
-

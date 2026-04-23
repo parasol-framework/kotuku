@@ -392,7 +392,7 @@ static ERR parse_hsv(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
    double hue, sat, val;
    parse_hsx(IRI, hue, sat, val, rgb.Alpha);
 
-   hue = hue / 60.0;
+   hue = hue * 6.0;
    int i = floor(hue);
    double f = hue - i;
 
