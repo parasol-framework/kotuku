@@ -472,11 +472,15 @@ static ERR COLOURFX_Init(extColourFX *Self)
 
 static ERR COLOURFX_NewObject(extColourFX *Self)
 {
+   clearmem(Self->Values, sizeof(Self->Values));
    // Configure identity matrix
    Self->Values[0] = 1;
    Self->Values[6] = 1;
    Self->Values[12] = 1;
    Self->Values[18] = 1;
+   Self->Matrix = nullptr;
+   Self->Mode = CM::NONE;
+   Self->TotalValues = CM_SIZE;
    return ERR::Okay;
 }
 
@@ -524,6 +528,7 @@ static ERR COLOURFX_SET_Values(extColourFX *Self, double *Array, int Elements)
    if (Elements > std::ssize(Self->Values)) return ERR::InvalidValue;
    if (Array) copymem(Array, Self->Values, Elements * sizeof(double));
    clearmem(Self->Values + Elements, (std::ssize(Self->Values) - Elements) * sizeof(double));
+   Self->TotalValues = Elements;
    return ERR::Okay;
 }
 

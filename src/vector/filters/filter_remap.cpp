@@ -75,7 +75,7 @@ class Component {
       Intercept = pIntercept;
 
       for (size_t i=0; i < sizeof(Lookup); i++) {
-         uint32_t c = int((double(i) * pSlope) + pIntercept * 255.0);
+         auto c = std::clamp(int((double(i) * pSlope) + pIntercept * 255.0), 0, 255);
          Lookup[i] = c;
          ILookup[i] = glLinearRGB.invert(c);
       }
@@ -89,14 +89,15 @@ class Component {
 
       for (size_t i=0; i < sizeof(Lookup); i++) {
          double pe = pow(double(i) * (1.0/255.0), pExponent);
-         uint32_t c = int(((pAmplitude * pe) + pOffset) * 255.0);
-         Lookup[i]  = (c < 255) ? c : 255;
-         ILookup[i] = glLinearRGB.invert((c < 255) ? c : 255);
+         auto c = std::clamp(int(((pAmplitude * pe) + pOffset) * 255.0), 0, 255);
+         Lookup[i]  = c;
+         ILookup[i] = glLinearRGB.invert(c);
       }
    }
 
    void select_discrete(const double *pValues, const int pSize) {
       Type = RFT_DISCRETE;
+      Table.clear();
       Table.insert(Table.end(), pValues, pValues + pSize);
 
       uint32_t n = Table.size();
@@ -112,6 +113,7 @@ class Component {
 
    void select_table(const double *pValues, const int pSize) {
       Type = RFT_TABLE;
+      Table.clear();
       Table.insert(Table.end(), pValues, pValues + pSize);
 
       uint32_t n = Table.size();
@@ -189,6 +191,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
                out[A] = Self->Alpha.Lookup[a];
                dp[0] = ((uint32_t *)out)[0];
             }
+            else dp[0] = 0;
             dp++;
             sp += 4;
          }
@@ -203,6 +206,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
                out[A] = Self->Alpha.Lookup[a];
                dp[0] = ((uint32_t *)out)[0];
             }
+            else dp[0] = 0;
             dp++;
             sp += 4;
          }

@@ -54,6 +54,15 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
    const uint8_t G = Self->Target->ColourFormat->GreenPos>>3;
    const uint8_t B = Self->Target->ColourFormat->BluePos>>3;
 
+   objBitmap *inBmp;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::NoData;
+
+   if ((Self->RadiusX <= 0) and (Self->RadiusY <= 0)) {
+      BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
+      gfx::CopyArea(inBmp, Self->Target, copy_flags, 0, 0, inBmp->Width, inBmp->Height, 0, 0);
+      return ERR::Okay;
+   }
+
    uint8_t *out_line;
    uint8_t *buffer = nullptr;
    int out_linewidth;
@@ -75,8 +84,6 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
       buffer_as_input = false;
    }
 
-   objBitmap *inBmp;
-   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::NoData;
    uint8_t *input = inBmp->Data + (inBmp->Clip.Top * inBmp->LineWidth) + (inBmp->Clip.Left * inBmp->BytesPerPixel);
 
    if (Self->RadiusX > 0) { // Top-to-bottom dilate
