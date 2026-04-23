@@ -204,6 +204,14 @@ void path_monitor(HOSTHANDLE FD, OBJECTPTR)
 
 #elif _WIN32
 
+static std::string_view watched_filename(const extFile *File)
+{
+   std::string_view path(File->prvResolvedPath);
+   auto slash = path.find_last_of("\\/");
+   if (slash != std::string_view::npos) path.remove_prefix(slash + 1);
+   return path;
+}
+
 static void path_monitor(HOSTHANDLE Handle, extFile *File)
 {
    pf::Log log(__FUNCTION__);
@@ -241,6 +249,8 @@ static void path_monitor(HOSTHANDLE Handle, extFile *File)
          if ((File->prvWatch->Flags & MFF::DEEP) IS MFF::NIL) { // Ignore if path is in a sub-folder and the deep option is not enabled.
             if (event_path.find('\\') != std::string_view::npos) continue;
          }
+
+         if ((!File->isFolder) and (!iequals(event_path, watched_filename(File)))) continue;
 
          if (File->prvWatch->Routine.isC()) {
             pf::SwitchContext context(File->prvWatch->Routine.Context);

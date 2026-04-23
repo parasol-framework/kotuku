@@ -436,7 +436,7 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
    }
    else if (Flags & FD_STRING) {
       APTR arraybuffer;
-      if ((arraybuffer = malloc(strlen((CSTRING)Data) * 8))) {
+      if ((arraybuffer = malloc(strlen((CSTRING)(Data ? Data : "")) * 8))) {
          if (!Data) {
             if (Field->Flags & FD_RGB) {
                Data = "0,0,0,0"; // A string of nullptr will 'clear' the colour (the alpha value will be zero)

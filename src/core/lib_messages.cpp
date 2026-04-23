@@ -786,7 +786,7 @@ ERR write_nonblock(int Handle, APTR Data, int Size, int64_t EndTime)
                FD_SET(Handle, &wfds);
                tv.tv_sec = (EndTime - (PreciseTime() / 1000LL)) / 1000LL;
                tv.tv_usec = 0;
-               int total = select(1, &wfds, nullptr, nullptr, &tv);
+               int total = select(Handle + 1, nullptr, &wfds, nullptr, &tv);
                if (total IS -1) error = ERR::SystemCall;
                else if (!total) error = ERR::TimeOut;
                else break;
