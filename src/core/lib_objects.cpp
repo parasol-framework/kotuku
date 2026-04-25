@@ -1250,6 +1250,8 @@ In any event of failure, `NULL` is returned.
 
 If the ID of a named class is not known, call ~ResolveClassName() first and pass the resulting ID to this function.
 
+NOTE: To retrieve a list of all sub-classes associated with a base-class, read the SubClasses field of the @MetaClass.
+
 -INPUT-
 cid ClassID: A class ID such as one retrieved from ~ResolveClassName().
 

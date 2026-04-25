@@ -658,6 +658,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>This function will find a specific class by ID and return its <class name="MetaClass">MetaClass</class>.  If the class is not already loaded, the internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded into memory and the correct MetaClass will be returned.</p>
 <p>In any event of failure, <code>NULL</code> is returned.</p>
 <p>If the ID of a named class is not known, call <function>ResolveClassName</function> first and pass the resulting ID to this function.</p>
+<p>NOTE: To retrieve a list of all sub-classes associated with a base-class, read the SubClasses field of the <class name="MetaClass">MetaClass</class>.</p>
     </description>
     <result type="objMetaClass *">Returns a pointer to the <class name="MetaClass">MetaClass</class> structure that has been found as a result of the search, or <code>NULL</code> if no matching class was found.</result>
   </function>
