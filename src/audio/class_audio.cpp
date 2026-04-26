@@ -41,7 +41,7 @@ static ERR init_audio(extAudio *Self)
 
 inline double extAudio::MixerLag() {
    if (!mixerLag) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       #ifdef _WIN32
          // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
          mixerLag = MIX_INTERVAL + (double(MixElements>>1) / double(OutputRate));
@@ -101,7 +101,7 @@ Failed: Hardware device unavailable or driver initialisation failed.
 
 static ERR AUDIO_Activate(extAudio *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Initialising) return ERR::Okay;
 
@@ -223,7 +223,7 @@ AllocMemory: Failed to allocate enough memory to hold the sample data.
 
 ERR AUDIO_AddSample(extAudio *Self, struct snd::AddSample *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -337,7 +337,7 @@ static const int MAX_STREAM_BUFFER = 16 * 1024; // Max stream buffer length in b
 
 static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (Args->SampleFormat IS SFM::NIL)) return log.warning(ERR::NullArgs);
    if (Args->Callback.Type IS CALL::NIL) return log.warning(ERR::NullArgs);
@@ -461,7 +461,7 @@ Args
 
 static ERR AUDIO_CloseChannels(extAudio *Self, struct snd::CloseChannels *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -485,7 +485,7 @@ resources back to the host system.  The audio object will remain in a suspended 
 
 static ERR AUDIO_Deactivate(extAudio *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
 
@@ -538,7 +538,7 @@ static ERR AUDIO_Free(extAudio *Self)
 
 static ERR AUDIO_Init(extAudio *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
 #ifdef _WIN32
    Self->OutputRate = 44100; // Mix rate is forced for direct sound
@@ -551,7 +551,7 @@ static ERR AUDIO_Init(extAudio *Self)
 
 static ERR AUDIO_NewObject(extAudio *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    Self->OutputRate  = 44100;        // Rate for output to speakers
    Self->InputRate   = 44100;        // Input rate for recording
@@ -624,7 +624,7 @@ AllocMemory: Memory for the audio channels could not be allocated.
 
 static ERR AUDIO_OpenChannels(extAudio *Self, struct snd::OpenChannels *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -677,7 +677,7 @@ OutOfRange: The provided sample handle is not within the valid range.
 
 static ERR AUDIO_RemoveSample(extAudio *Self, struct snd::RemoveSample *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -712,7 +712,7 @@ SaveToObject: Saves the current audio settings to another object.
 
 static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
 
@@ -833,7 +833,7 @@ Failed: Sample is not a stream.
 
 static ERR AUDIO_SetSampleLength(extAudio *Self, struct snd::SetSampleLength *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -888,7 +888,7 @@ OutOfRange: The `Volume` or `Index` is out of the acceptable range.
 
 static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
 #ifdef ALSA_ENABLED
 
@@ -1373,7 +1373,7 @@ static ERR SET_Stereo(extAudio *Self, int Value)
 
 static void load_config(extAudio *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Attempt to get the user's preferred pointer settings from the user:config/pointer file.
 

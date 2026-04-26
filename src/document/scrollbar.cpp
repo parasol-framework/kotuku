@@ -228,7 +228,7 @@ void scroll_mgr::recalc_sliders_from_view()
 
 void scroll_mgr::scroll_bar::init(scroll_mgr *Manager, char Direction, objVectorViewport *Viewport)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Target: #%d", Viewport->ownerID());
 

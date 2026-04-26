@@ -34,7 +34,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <math.h>
 #include "../link/base64.h"
 
-using namespace pf;
+using namespace kt;
 
 JUMPTABLE_CORE
 JUMPTABLE_DISPLAY

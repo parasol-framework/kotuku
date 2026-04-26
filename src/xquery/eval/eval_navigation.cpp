@@ -344,7 +344,7 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
          }
 
          bool wildcard_local = expected_local.find('*') != std::string::npos;
-         bool local_matches = wildcard_local ? pf::wildcmp(expected_local, candidate_local) : pf::iequals(expected_local, candidate_local);
+         bool local_matches = wildcard_local ? kt::wildcmp(expected_local, candidate_local) : kt::iequals(expected_local, candidate_local);
          if (not local_matches) return false;
 
          if ((not xml) or ((xml->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL)) {
@@ -363,7 +363,7 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
             return candidate_prefix.empty();
          }
 
-         return pf::iequals(test_name, attribute_name);
+         return kt::iequals(test_name, attribute_name);
       }
 
       return false;
@@ -399,7 +399,7 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
       if (candidate_name.empty()) return false;
 
       std::string candidate_target(candidate_name);
-      return pf::iequals(candidate_target, NodeTest->value);
+      return kt::iequals(candidate_target, NodeTest->value);
    }
 
    if (not Candidate) return false;
@@ -430,7 +430,7 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
          }
 
          bool wildcard_local = expected_local.find('*') != std::string::npos;
-         bool name_matches = wildcard_local ? pf::wildcmp(expected_local, candidate_local) : pf::iequals(expected_local, candidate_local);
+         bool name_matches = wildcard_local ? kt::wildcmp(expected_local, candidate_local) : kt::iequals(expected_local, candidate_local);
          if (not name_matches) return false;
 
          if (not expected_prefix.empty()) {
@@ -447,9 +447,9 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
          return Candidate->NamespaceID IS expected_namespace;
       }
 
-      if (test_name.find('*') != std::string::npos) return pf::wildcmp(test_name, candidate_name);
+      if (test_name.find('*') != std::string::npos) return kt::wildcmp(test_name, candidate_name);
 
-      return pf::iequals(test_name, candidate_name);
+      return kt::iequals(test_name, candidate_name);
    }
 
    return false;

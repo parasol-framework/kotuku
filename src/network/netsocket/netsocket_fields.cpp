@@ -13,7 +13,7 @@ connection.
 static ERR SET_Address(extNetSocket *Self, CSTRING Value)
 {
    if (Self->Address) { FreeResource(Self->Address); Self->Address = nullptr; }
-   if (Value) Self->Address = pf::strclone(Value);
+   if (Value) Self->Address = kt::strclone(Value);
    return ERR::Okay;
 }
 
@@ -200,7 +200,7 @@ static ERR GET_Outgoing(extNetSocket *Self, FUNCTION **Value)
 
 static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC::Free);
    Self->Outgoing = *Value;
@@ -277,7 +277,7 @@ static ERR SET_SSLCertificate(extNetSocket *Self, CSTRING Value)
    if (Self->SSLCertificate) { FreeResource(Self->SSLCertificate); Self->SSLCertificate = nullptr; }
 
    if ((Value) and (*Value)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
 
       LOC type;
       if ((AnalysePath(Value, &type) IS ERR::Okay) and (type IS LOC::FILE)) {
@@ -287,7 +287,7 @@ static ERR SET_SSLCertificate(extNetSocket *Self, CSTRING Value)
          std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
          if ((ext IS "pem") or (ext IS "crt") or (ext IS "cert") or (ext IS "p12") or (ext IS "pfx")) {
-            Self->SSLCertificate = pf::strclone(Value);
+            Self->SSLCertificate = kt::strclone(Value);
          }
          else return log.warning(ERR::InvalidData);
       }
@@ -313,7 +313,7 @@ static ERR SET_SSLPrivateKey(extNetSocket *Self, CSTRING Value)
    if (Self->SSLPrivateKey) { FreeResource(Self->SSLPrivateKey); Self->SSLPrivateKey = nullptr; }
 
    if ((Value) and (*Value)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
 
       LOC type;
       if ((AnalysePath(Value, &type) IS ERR::Okay) and (type IS LOC::FILE)) {
@@ -322,7 +322,7 @@ static ERR SET_SSLPrivateKey(extNetSocket *Self, CSTRING Value)
          std::string ext = path.substr(path.find_last_of(".") + 1);
          std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
          if ((ext IS "pem") or (ext IS "key")) {
-            Self->SSLPrivateKey = pf::strclone(Value);
+            Self->SSLPrivateKey = kt::strclone(Value);
          }
          else return log.warning(ERR::InvalidData);
       }
@@ -344,7 +344,7 @@ not encrypted, this field can be left empty.
 static ERR SET_SSLKeyPassword(extNetSocket *Self, CSTRING Value)
 {
    if (Self->SSLKeyPassword) { FreeResource(Self->SSLKeyPassword); Self->SSLKeyPassword = nullptr; }
-   if ((Value) and (*Value)) Self->SSLKeyPassword = pf::strclone(Value);
+   if ((Value) and (*Value)) Self->SSLKeyPassword = kt::strclone(Value);
    return ERR::Okay;
 }
 
@@ -365,7 +365,7 @@ client sockets.  Each @ClientSocket carries its own independent State value for 
 static ERR GET_State(extNetSocket *Self, NTC &Value)
 {
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      pf::Log().warning("Reading the State of a server socket is a probable defect.");
+      kt::Log().warning("Reading the State of a server socket is a probable defect.");
       Value = NTC::MULTISTATE;
    }
    else Value = Self->State;
@@ -374,7 +374,7 @@ static ERR GET_State(extNetSocket *Self, NTC &Value)
 
 static ERR SET_State(extNetSocket *Self, NTC Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       return log.warning(ERR::Immutable);
@@ -416,7 +416,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
             Self->State = NTC::DISCONNECTED;
             if (Self->Feedback.defined()) {
                if (Self->Feedback.isC()) {
-                  pf::SwitchContext context(Self->Feedback.Context);
+                  kt::SwitchContext context(Self->Feedback.Context);
                   auto routine = (void (*)(extNetSocket *, NTC, APTR))Self->Feedback.Routine;
                   if (routine) routine(Self, Self->State, Self->Feedback.Meta);
                }
@@ -438,7 +438,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
          log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", int(Self->State), Self->Feedback.Context);
 
          if (Self->Feedback.isC()) {
-            pf::SwitchContext context(Self->Feedback.Context);
+            kt::SwitchContext context(Self->Feedback.Context);
             auto routine = (void (*)(extNetSocket *, NTC, APTR))Self->Feedback.Routine;
             if (routine) routine(Self, Self->State, Self->Feedback.Meta);
          }

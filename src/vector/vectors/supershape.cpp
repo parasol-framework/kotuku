@@ -19,7 +19,7 @@ class extVectorShape : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORSHAPE;
    static constexpr CSTRING CLASS_NAME = "VectorShape";
-   using create = pf::Create<extVectorShape>;
+   using create = kt::Create<extVectorShape>;
 
    double Radius;
    double CX, CY;

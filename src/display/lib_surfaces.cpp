@@ -18,7 +18,7 @@ static OBJECTID glModalID = 0;
 void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 {
 #ifdef WIN_DRAGDROP
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Surface: %d", SurfaceID);
 
@@ -32,9 +32,9 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
       if (!modal_id) {
          SURFACEINFO *info;
          if (gfx::GetSurfaceInfo(pointer->OverObjectID, &info) IS ERR::Okay) {
-            pf::ScopedObjectLock display(info->DisplayID);
+            kt::ScopedObjectLock display(info->DisplayID);
             if (display.granted()) {
-               pf::ScopedObjectLock obj(pointer->OverObjectID);
+               kt::ScopedObjectLock obj(pointer->OverObjectID);
                if (obj.granted()) acDragDrop(*obj, *display, -1, Datatypes);
             }
          }
@@ -85,7 +85,7 @@ ERR get_surface_abs(OBJECTID SurfaceID, int *AbsX, int *AbsY, int *Width, int *H
 
 static void check_bmp_buffer_depth(extSurface *Self, objBitmap *Bitmap)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((Bitmap->Flags & BMF::FIXED_DEPTH) != BMF::NIL) return;  // Don't change bitmaps marked as fixed-depth
 
@@ -109,7 +109,7 @@ static void check_bmp_buffer_depth(extSurface *Self, objBitmap *Bitmap)
 void redraw_nonintersect(OBJECTID SurfaceID, const SURFACELIST &List, int Index,
    const ClipRectangle &Region, const ClipRectangle &RegionB, IRF RedrawFlags, EXF ExposeFlags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!SurfaceID) { // Implemented this check because an invalid SurfaceID has happened before.
       log.warning("SurfaceID == 0");
@@ -158,7 +158,7 @@ void redraw_nonintersect(OBJECTID SurfaceID, const SURFACELIST &List, int Index,
 ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, int index,
    int Left, int Top, int Right, int Bottom, IRF Flags)
 {
-   pf::Log log("redraw_surface");
+   kt::Log log("redraw_surface");
    static thread_local int8_t recursive = 0;
 
    if ((list[index].Flags & RNF::TOTAL_REDRAW) != RNF::NIL) {
@@ -287,7 +287,7 @@ ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, int index,
 void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, int Index, ClipRectangle &Area,
    extBitmap *DestBitmap, IRF Flags)
 {
-   pf::Log log("redraw_surface");
+   kt::Log log("redraw_surface");
 
    if (Self->transparent()) return;
 
@@ -462,7 +462,7 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, int Index, Cl
 
 ERR RedrawSurface(OBJECTID SurfaceID, int Left, int Top, int Right, int Bottom, IRF Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (tlNoDrawing) {
       log.trace("tlNoDrawing: %d", tlNoDrawing);
@@ -502,7 +502,7 @@ int find_bitmap_owner(const SURFACELIST &List, int Index)
 
 ERR track_layer(extSurface *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
@@ -571,7 +571,7 @@ void untrack_layer(OBJECTID ObjectID)
 
    if (auto i = find_surface_list(ObjectID); i != -1) {
       #ifdef DBG_LAYERS
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.msg("%d, Index: %d/%d", ObjectID, i, int(glSurfaces.size()));
          //print_layer_list("untrack_layer", glSurfaces, i);
       #endif
@@ -714,12 +714,12 @@ ERR resize_layer(extSurface *Self, int X, int Y, int Width, int Height, int Insi
       return ERR::Okay;
    }
 
-   pf::Log log;
+   kt::Log log;
 
    log.traceBranch("resize_layer() %dx%d,%dx%d TO %dx%d,%dx%dx%d", Self->X, Self->Y, Self->Width, Self->Height, X, Y, Width, Height, BPP);
 
    if (Self->BitmapOwnerID IS Self->UID) {
-      pf::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000);
+      kt::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000);
       if (bitmap.granted()) {
          if (bitmap->resize(Width, Height, BPP) IS ERR::Okay) {
             Self->LineWidth     = bitmap->LineWidth;
@@ -788,7 +788,7 @@ ERR resize_layer(extSurface *Self, int X, int Y, int Width, int Height, int Insi
          return ERR::Search;
       }
 
-      pf::Log log;
+      kt::Log log;
       log.traceBranch("Redrawing the resized surface.");
 
       _redraw_surface(Self->UID, list, index, list[index].Left, list[index].Top, list[index].Right, list[index].Bottom, IRF::NIL);
@@ -831,7 +831,7 @@ ERR resize_layer(extSurface *Self, int X, int Y, int Width, int Height, int Insi
 
 void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    #ifdef DBG_DRAW_ROUTINES
       log.traceBranch("Bitmap: %d, Count: %d", Bitmap->UID, Self->CallbackCount);
@@ -844,12 +844,12 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
          auto routine = (void (*)(APTR, extSurface *, objBitmap *, APTR))cb.Routine;
 
          #ifdef DBG_DRAW_ROUTINES
-            pf::Log log(__FUNCTION__);
+            kt::Log log(__FUNCTION__);
             log.branch("%d/%d: Routine: %p, Object: %p, Context: %p", i, Self->CallbackCount, routine, Self->Callback[i].Object, cb.Context);
          #endif
 
          if (cb.Context) {
-            pf::SwitchContext context(cb.Context);
+            kt::SwitchContext context(cb.Context);
             routine(cb.Context, Self, Bitmap, cb.Meta);
          }
          else routine(Self->Callback[i].Object, Self, Bitmap, cb.Meta);
@@ -983,7 +983,7 @@ NullArgs
 
 ERR CheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Parent: %d, Child: %d", ParentID, ChildID);
 
@@ -1037,7 +1037,7 @@ AccessObject
 ERR CopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, BDF Flags,
           int X, int Y, int Width, int Height, int XDest, int YDest)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR::NullArgs);
 
@@ -1133,7 +1133,7 @@ Search: The `Surface` ID does not refer to an existing surface object
 
 ERR ExposeSurface(OBJECTID SurfaceID, int X, int Y, int Width, int Height, EXF Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (tlNoDrawing) return ERR::Okay;
    if (!SurfaceID) return ERR::NullArgs;
@@ -1165,7 +1165,7 @@ OBJECTID GetModalSurface(void)
 {
    // Safety check: Confirm that the object still exists
    if ((glModalID) and (CheckObjectExists(glModalID) != ERR::True)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.msg("Modal surface #%d no longer exists.", glModalID);
       glModalID = 0;
    }
@@ -1198,7 +1198,7 @@ Search: The supplied `Surface` ID did not refer to a recognised surface object.
 
 ERR GetSurfaceCoords(OBJECTID SurfaceID, int *X, int *Y, int *AbsX, int *AbsY, int *Width, int *Height)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!SurfaceID) {
       DISPLAYINFO *display;
@@ -1252,7 +1252,7 @@ AccessMemory
 
 ERR GetSurfaceFlags(OBJECTID SurfaceID, RNF *Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Flags) *Flags = RNF::NIL;
    else return log.warning(ERR::NullArgs);
@@ -1289,7 +1289,7 @@ Search: The supplied SurfaceID did not refer to a recognised surface object.
 
 ERR GetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    static thread_local SURFACEINFO info;
 
    // Note that a SurfaceID of zero is fine (returns the root surface).
@@ -1377,7 +1377,7 @@ Search: The supplied `Surface` ID did not refer to a recognised surface object.
 
 ERR GetVisibleArea(OBJECTID SurfaceID, int *X, int *Y, int *AbsX, int *AbsY, int *Width, int *Height)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!SurfaceID) {
       DISPLAYINFO *display;
@@ -1436,7 +1436,7 @@ oid: The object ID of the previous modal surface is returned (zero if there was 
 
 OBJECTID SetModalSurface(OBJECTID SurfaceID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("#%d, CurrentFocus: %d", SurfaceID, gfx::GetUserFocus());
 
@@ -1463,7 +1463,7 @@ OBJECTID SetModalSurface(OBJECTID SurfaceID)
    else { // We are the new modal surface
       auto old_modal = glModalID;
       glModalID = SurfaceID;
-      pf::ScopedObjectLock<objSurface> surface(SurfaceID);
+      kt::ScopedObjectLock<objSurface> surface(SurfaceID);
       if (surface.granted()) {
          acMoveToFront(*surface);
 

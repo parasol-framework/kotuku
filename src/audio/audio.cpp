@@ -153,7 +153,7 @@ static const int16_t glAlsaConvert[6] = {
 
 static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   pf::Log log;
+   kt::Log log;
 
    CoreBase = argCoreBase;
    glAudioModule = argModule;
@@ -189,7 +189,7 @@ static ERR MODExpunge(void)
    for (auto& [id, handle] : glSoundChannels) {
       // NB: Most Audio objects will be disposed of prior to this module being expunged.
       if (handle) {
-         pf::ScopedObjectLock<extAudio> audio(id, 3000);
+         kt::ScopedObjectLock<extAudio> audio(id, 3000);
          if (audio.granted()) audio->closeChannels(handle);
       }
    }

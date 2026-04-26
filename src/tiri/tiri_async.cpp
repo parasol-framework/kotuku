@@ -46,7 +46,7 @@ struct ThreadMsg {
 
 static void msg_thread_complete(ACTIONID ActionID, OBJECTPTR Object, ERR Error, ThreadMsg *Msg)
 {
-   pf::Log log("thread_callback");
+   kt::Log log("thread_callback");
 
    auto prv = (prvTiri *)Msg->Owner->ChildPrivate;
 
@@ -91,7 +91,7 @@ static void msg_thread_complete(ACTIONID ActionID, OBJECTPTR Object, ERR Error, 
 
 static int async_script(lua_State *Lua)
 {
-   pf::Log log("async.script");
+   kt::Log log("async.script");
 
    GCobject *gc_script = lua_toobject(Lua, 1);
    if (gc_script->classptr->ClassID != CLASSID::SCRIPT) luaL_error(Lua, ERR::WrongClass);
@@ -140,7 +140,7 @@ static int async_script(lua_State *Lua)
 
 static int async_action(lua_State *Lua)
 {
-   pf::Log log("async.action");
+   kt::Log log("async.action");
 
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
@@ -237,7 +237,7 @@ static int async_action(lua_State *Lua)
 
 static int async_method(lua_State *Lua)
 {
-   pf::Log log("async.method");
+   kt::Log log("async.method");
 
    auto gc_obj = lj_lib_checkobject(Lua, 1);
    if (not gc_obj->ptr) luaL_error(Lua, ERR::ObjectCorrupt);
@@ -347,7 +347,7 @@ static int async_method(lua_State *Lua)
 
 static int async_wait(lua_State *Lua)
 {
-   pf::Log log("async.wait");
+   kt::Log log("async.wait");
 
    // Collect object IDs from argument 1 into a zero-terminated array.
 
@@ -578,7 +578,7 @@ static int pool_clear(lua_State *Lua)
 
 void register_async_class(lua_State *Lua)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.trace("Registering async interface.");
 

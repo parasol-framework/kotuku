@@ -28,7 +28,7 @@ class extImageFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::IMAGEFX;
    static constexpr CSTRING CLASS_NAME = "ImageFX";
-   using create = pf::Create<extImageFX>;
+   using create = kt::Create<extImageFX>;
 
    objBitmap *Bitmap;    // Bitmap containing source image data.
    objPicture *Picture;  // Origin picture if loading a source file.
@@ -60,7 +60,7 @@ static ERR IMAGEFX_Free(extImageFX *Self)
 
 static ERR IMAGEFX_Init(extImageFX *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->Bitmap) return log.warning(ERR::UndefinedField);
 
@@ -72,7 +72,7 @@ static ERR IMAGEFX_Init(extImageFX *Self)
 
 static ERR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Args->Object->classID() IS CLASSID::BITMAP) {
       if (!Self->Bitmap) {

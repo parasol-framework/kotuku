@@ -31,20 +31,20 @@
 
 #define LJLIB_MODULE_array
 
-constexpr auto HASH_INT     = pf::strhash("int");
-constexpr auto HASH_BYTE    = pf::strhash("byte");
-constexpr auto HASH_CHAR    = pf::strhash("char");
-constexpr auto HASH_INT16   = pf::strhash("int16");
-constexpr auto HASH_INT64   = pf::strhash("int64");
-constexpr auto HASH_FLOAT   = pf::strhash("float");
-constexpr auto HASH_DOUBLE  = pf::strhash("double");
-constexpr auto HASH_STRING  = pf::strhash("string");
-constexpr auto HASH_STRUCT  = pf::strhash("struct");
-constexpr auto HASH_POINTER = pf::strhash("pointer");
-constexpr auto HASH_OBJECT  = pf::strhash("object");
-constexpr auto HASH_TABLE   = pf::strhash("table");
-constexpr auto HASH_ARRAY   = pf::strhash("array");
-constexpr auto HASH_ANY     = pf::strhash("any");
+constexpr auto HASH_INT     = kt::strhash("int");
+constexpr auto HASH_BYTE    = kt::strhash("byte");
+constexpr auto HASH_CHAR    = kt::strhash("char");
+constexpr auto HASH_INT16   = kt::strhash("int16");
+constexpr auto HASH_INT64   = kt::strhash("int64");
+constexpr auto HASH_FLOAT   = kt::strhash("float");
+constexpr auto HASH_DOUBLE  = kt::strhash("double");
+constexpr auto HASH_STRING  = kt::strhash("string");
+constexpr auto HASH_STRUCT  = kt::strhash("struct");
+constexpr auto HASH_POINTER = kt::strhash("pointer");
+constexpr auto HASH_OBJECT  = kt::strhash("object");
+constexpr auto HASH_TABLE   = kt::strhash("table");
+constexpr auto HASH_ARRAY   = kt::strhash("array");
+constexpr auto HASH_ANY     = kt::strhash("any");
 
 // Forward declarations
 static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step);
@@ -155,7 +155,7 @@ LJLIB_CF(array_new)
       auto elem_type = AET::BYTE;
       arr = lj_array_new(L, s->len, elem_type);
 
-      pf::copymem(strdata(s), arr->get<CSTRING>(), s->len);
+      kt::copymem(strdata(s), arr->get<CSTRING>(), s->len);
    }
    else {
       auto size = lj_lib_checkint(L, 1);

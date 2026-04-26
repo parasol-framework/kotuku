@@ -32,7 +32,7 @@
 #include <optional>
 #include <concepts>
 
-namespace pf {
+namespace kt {
 
 //********************************************************************************************************************
 
@@ -143,7 +143,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing locked mem
 
 //********************************************************************************************************************
 // Defer() function for calling lambdas at end-of-scope.
-// Example: auto cleanup = pf::Defer([&]() { log.msg("Finished"); });
+// Example: auto cleanup = kt::Defer([&]() { log.msg("Finished"); });
 
 template <typename FUNC> struct deferred_call {
    deferred_call(const deferred_call &that) = delete;
@@ -232,7 +232,7 @@ class ScopedObjectLock {
 //
 // For locally scoped allocations only; this class does not support reference counting.
 //
-// Usage: pf::LocalResource resource(thing)
+// Usage: kt::LocalResource resource(thing)
 
 template <class T>
 class LocalResource {
@@ -338,7 +338,7 @@ class GuardedObject {
             object = Object;
             id     = ((int *)Object)[-2];
          }
-         else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
+         else { kt::Log log(__FUNCTION__); log.warning(ERR::InUse); }
       }
 
       constexpr bool empty() { return !object; } // Returns true if no object is being guarded.
@@ -433,7 +433,7 @@ class GuardedResource {
             resource = Resource;
             id       = ((int *)Resource)[-2];
          }
-         else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
+         else { kt::Log log(__FUNCTION__); log.warning(ERR::InUse); }
       }
 
       constexpr bool empty() { return !resource; } // Returns true if no resource is being guarded.
@@ -447,7 +447,7 @@ class GuardedResource {
 // target object, on the basis that we need to retain R/W access and prevent early termination while operating in the
 // object's space.  In cases where this is undesirable, use direct calls to SetObjectContext().
 //
-// Usage: pf::SwitchContext context(YourObject)
+// Usage: kt::SwitchContext context(YourObject)
 
 template <class T>
 class SwitchContext { // C++ wrapper for changing the current context with a resource guard in place
@@ -483,7 +483,7 @@ class objBitmap;
 class objNetClient;
 
 namespace fl {
-   using namespace pf;
+   using namespace kt;
 
 [[nodiscard]] constexpr FieldValue Path(CSTRING Value) { return FieldValue(FID_Path, Value); }
 inline FieldValue Path(const std::string &Value) { return FieldValue(FID_Path, Value.c_str()); }

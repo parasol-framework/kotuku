@@ -828,7 +828,7 @@ void register_io_class(lua_State *Lua)
       { nullptr, nullptr }
    };
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Registering io interface.");
 
    // Create file handle metatable

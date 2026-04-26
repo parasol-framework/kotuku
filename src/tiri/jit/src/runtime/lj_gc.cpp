@@ -985,7 +985,7 @@ int lj_gc_step_jit(global_State *g, MSize steps)
 
 void lj_gc_fullgc(lua_State *L)
 {
-   pf::Log(__FUNCTION__).detail("Running full cycle");
+   kt::Log(__FUNCTION__).detail("Running full cycle");
 
    global_State *g = G(L);
    VMStateGuard vm_guard(g);  // RAII: saves vmstate, sets to GC, restores on exit.

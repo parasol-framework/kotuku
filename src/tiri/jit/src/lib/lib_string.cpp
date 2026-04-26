@@ -126,7 +126,7 @@ LJLIB_ASM(string_char)      LJLIB_REC(.)
 
 LJLIB_ASM(string_sub)      LJLIB_REC(string_range 1)
 {
-   pf::Log("string.sub()").warning("Use substr()");
+   kt::Log("string.sub()").warning("Use substr()");
    lj_lib_checkstr(L, 1);
    lj_lib_checkint(L, 2);
    int32_t end_val = lj_lib_optint(L, 3, -1);
@@ -634,8 +634,8 @@ LJLIB_CF(string_hash)
 
    auto str = strdata(s);
    uint32_t hash;
-   if (caseSensitive) hash = pf::strhash({ str, s->len });
-   else hash = pf::strihash({ str, s->len });
+   if (caseSensitive) hash = kt::strhash({ str, s->len });
+   else hash = kt::strihash({ str, s->len });
 
    setintV(L->top - 1, (int32_t)hash);
    return 1;
@@ -781,7 +781,7 @@ LJLIB_CF(string_find)      LJLIB_REC(.)
 
 LJLIB_CF(string_match)
 {
-   pf::Log("string.match()").warning("DEPRECATED");
+   kt::Log("string.match()").warning("DEPRECATED");
    return 0;
 }
 
@@ -789,7 +789,7 @@ LJLIB_CF(string_match)
 
 LJLIB_CF(string_gmatch)
 {
-   pf::Log("string.gmatch()").warning("DEPRECATED");
+   kt::Log("string.gmatch()").warning("DEPRECATED");
    return 0;
 }
 
@@ -797,7 +797,7 @@ LJLIB_CF(string_gmatch)
 
 LJLIB_CF(string_gsub)
 {
-   pf::Log("string.gsub()").warning("DEPRECATED");
+   kt::Log("string.gsub()").warning("DEPRECATED");
    return 0;
 }
 

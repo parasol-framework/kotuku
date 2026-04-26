@@ -15,7 +15,7 @@ class extCompositeFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::COMPOSITEFX;
    static constexpr CSTRING CLASS_NAME = "CompositeFX";
-   using create = pf::Create<extCompositeFX>;
+   using create = kt::Create<extCompositeFX>;
 
    double K1, K2, K3, K4; // For the arithmetic operator
    OP Operator; // OP constant
@@ -555,7 +555,7 @@ Draw: Render the effect to the target bitmap.
 
 static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Target->BytesPerPixel != 4) return ERR::InvalidState;
 
@@ -740,7 +740,7 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
 
 static ERR COMPOSITEFX_Init(extCompositeFX *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->MixType IS VSF::NIL) {
       log.warning("A mix input is required.");

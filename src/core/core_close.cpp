@@ -27,7 +27,7 @@ static void free_classes(void)
 static void remove_task(void)
 {
    if (glCurrentTask) {
-      pf::Log log("Shutdown");
+      kt::Log log("Shutdown");
       log.branch("Freeing the task object and its resources.");
       FreeResource(glCurrentTask);
       glCurrentTask = nullptr;
@@ -56,7 +56,7 @@ static void remove_schedulers(void)
 
 static void remove_object_locks(void)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (auto lock = std::unique_lock{glmMemory}) {
       for (const auto & [ id, mem ] : glPrivateMemory) {
@@ -74,7 +74,7 @@ static void remove_object_locks(void)
 
 void CloseCore(void)
 {
-   pf::Log log("Shutdown");
+   kt::Log log("Shutdown");
 
    if (glCodeIndex IS CP_FINISHED) return;
 
@@ -101,7 +101,7 @@ void CloseCore(void)
    // Destroy all other tasks in our instance that we have created.
 
    {
-      pf::Log log("Shutdown");
+      kt::Log log("Shutdown");
       log.branch("Removing any child processes...");
 
       #ifdef KILL_PROCESS_GROUP
@@ -304,7 +304,7 @@ void CloseCore(void)
 
 __export void Expunge(int16_t Force)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!tlMainThread) {
       log.warning("Only the main thread can expunge modules.");
@@ -343,7 +343,7 @@ __export void Expunge(int16_t Force)
 
             if (!class_in_use) {
                if (mod_master->Expunge) {
-                  pf::Log log(__FUNCTION__);
+                  kt::Log log(__FUNCTION__);
                   log.branch("Expunging %s module #%d.", mod_master->Name.c_str(), mod_master->UID);
                   if (auto error = mod_master->Expunge(); error IS ERR::Okay) {
                      ccount++;
@@ -427,7 +427,7 @@ restart_forced_expunge:
 
       if ((mod_master) and (sanity_check != mod_master)) {
          if (mod_master->Expunge) {
-            pf::Log log(__FUNCTION__);
+            kt::Log log(__FUNCTION__);
             log.branch("Forcing the expunge of stubborn module %s, owned by #%d.", mod_master->Name.c_str(), mod_master->ownerID());
             mod_master->Expunge();
             mod_master->NoUnload = true; // Do not actively destroy the module code as a precaution (e.g. X11 Display module doesn't like it)
@@ -443,7 +443,7 @@ restart_forced_expunge:
 
 static void free_private_memory(void)
 {
-   pf::Log log("Shutdown");
+   kt::Log log("Shutdown");
 
    log.branch("Checking for orphaned memory allocations...");
 

@@ -28,7 +28,7 @@ contains the pattern content.
 
 static ERR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->Scene->PageWidth) return log.warning(ERR::FieldNotSet);
    if (!Self->Scene->PageHeight) return log.warning(ERR::FieldNotSet);
@@ -72,7 +72,7 @@ static ERR PATTERN_Free(extVectorPattern *Self)
 
 static ERR PATTERN_Init(extVectorPattern *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((int(Self->SpreadMethod) <= 0) or (int(Self->SpreadMethod) >= int(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
@@ -284,7 +284,7 @@ A transform can be applied to the pattern by setting this field with an SVG comp
 
 static ERR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Commands) return log.warning(ERR::InvalidValue);
 

@@ -3,7 +3,7 @@
 
 static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
 {
-   pf::Log log("http_feedback");
+   kt::Log log("http_feedback");
 
    log.msg("Socket: %p, State: %d, Context: %d", Socket, int(State), CurrentContext()->UID);
 
@@ -144,7 +144,7 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
 
 static ERR socket_outgoing(objNetSocket *Socket)
 {
-   pf::Log log("http_outgoing");
+   kt::Log log("http_outgoing");
 
    constexpr int CHUNK_LENGTH_OFFSET = 10; // Enough space for an 8-digit hex length + CRLF
 
@@ -208,7 +208,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
    else if (Self->InputObjectID) {
       log.detail("Sending content from InputObject #%d.", Self->InputObjectID);
 
-      pf::ScopedObjectLock object(Self->InputObjectID, 100);
+      kt::ScopedObjectLock object(Self->InputObjectID, 100);
       if (object.granted()) {
          int offset = (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
          Self->WriteBuffer.resize(Self->BufferSize + offset);
@@ -364,7 +364,7 @@ static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
 
    MD5Final((uint8_t *)HA1, &md5);
 
-   if (pf::iequals(Self->AuthAlgorithm, "md5-sess")) {
+   if (kt::iequals(Self->AuthAlgorithm, "md5-sess")) {
       MD5Init(&md5);
       MD5Update(&md5, (uint8_t *)HA1, HASHLEN);
       MD5Update(&md5, (uint8_t *)":", 1);
@@ -382,7 +382,7 @@ static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
 
 static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING NonceCount, HASHHEX HA1, HASHHEX HEntity, HASHHEX Response)
 {
-   pf::Log log;
+   kt::Log log;
    MD5Context md5;
    HASH ha2, response_hash;
    HASHHEX ha2_hex;
@@ -403,7 +403,7 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
    for (i=0; req[i] > 0x20; i++);
    MD5Update(&md5, (uint8_t *)req, i); // Compute MD5 from the path of the HTTP method that we are calling
 
-   if (pf::iequals(Self->AuthQOP, "auth-int")) {
+   if (kt::iequals(Self->AuthQOP, "auth-int")) {
       MD5Update(&md5, (uint8_t *)":", 1);
       MD5Update(&md5, (uint8_t *)HEntity, HASHHEXLEN);
    }
@@ -443,7 +443,7 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
 
 static ERR http_timeout(extHTTP *Self, int64_t Elapsed, int64_t CurrentTime)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Self->Socket->State IS NTC::CONNECTED) {
       log.warning("Data timeout (%gs) - disconnecting from server .", Self->DataTimeout);
@@ -461,7 +461,7 @@ static ERR http_timeout(extHTTP *Self, int64_t Elapsed, int64_t CurrentTime)
 
 static ERR check_incoming_end(extHTTP *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Self->CurrentState IS HGS::AUTHENTICATING) return ERR::False;
    if (Self->CurrentState >= HGS::COMPLETED) return ERR::True;

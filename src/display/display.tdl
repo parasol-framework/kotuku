@@ -657,7 +657,7 @@ module({ name="Display", copyright="Paul Manias © 2003-2026", version=1.0, stat
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
 
 namespace fl {
-   using namespace pf;
+   using namespace kt;
 
 constexpr FieldValue WindowType(SWIN Value) { return FieldValue(FID_WindowType, int(Value)); }
 

@@ -74,7 +74,7 @@ class objFont : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::FONT;
    static constexpr CSTRING CLASS_NAME = "Font";
 
-   using create = pf::Create<objFont>;
+   using create = kt::Create<objFont>;
 
    double Point;           // The point size of a font.
    double GlyphSpacing;    // Adjusts the amount of spacing between each character.

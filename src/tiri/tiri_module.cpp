@@ -87,7 +87,7 @@ static int process_results(prvTiri *, APTR, const FunctionField *);
 
 static CSTRING load_include_constant(CSTRING Line, std::string_view Source)
 {
-   pf::Log log("load_include");
+   kt::Log log("load_include");
 
    int i;
    for (i=0; (unsigned(Line[i]) > 0x20) and (Line[i] != ':'); i++);
@@ -133,7 +133,7 @@ static CSTRING load_include_constant(CSTRING Line, std::string_view Source)
          else if (dt IS 'h') constant = TiriConstant(int64_t(strtoull(value.c_str(), nullptr, 0)));
          else log.warning("Unsupported constant value: %s", value.c_str());
 
-         glConstantRegistry.emplace(pf::strhash(name), constant);
+         glConstantRegistry.emplace(kt::strhash(name), constant);
       }
 
       if (*Line IS ',') Line++;
@@ -187,7 +187,7 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
    }
 
    if (process_constants) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.branch("Definition: %s", Module);
 
       AdjustLogLevel(1);
@@ -230,7 +230,7 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
       }
    }
    else {
-      pf::Log(__FUNCTION__).warning("Malformed struct name in %.*s.", int(Source.size()), Source.data());
+      kt::Log(__FUNCTION__).warning("Malformed struct name in %.*s.", int(Source.size()), Source.data());
       return next_line(Line);
    }
 }
@@ -289,7 +289,7 @@ static int module_load(lua_State *Lua)
       return 0;
    }
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch("Module: %s", modname);
 
    int i;
@@ -390,7 +390,7 @@ static int module_index(lua_State *Lua)
 
 static int module_call(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objScript *Self = Lua->script;
    uint8_t buffer[MAX_MODULE_ARGS * 16]; // 16 bytes seems overkill but some parameters output meta information (e.g. size).
    int i;
@@ -971,7 +971,7 @@ static int module_call(lua_State *Lua)
 
 static int process_results(prvTiri *prv, APTR resultsidx, const FunctionField *args)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto scan = (uint8_t *)resultsidx;
    int results = 0;
@@ -1122,7 +1122,7 @@ static int process_results(prvTiri *prv, APTR resultsidx, const FunctionField *a
 
 void register_module_class(lua_State *Lua)
 {
-   pf::Log log;
+   kt::Log log;
 
    static const struct luaL_Reg modlib_functions[] = {
       { "load", module_load },

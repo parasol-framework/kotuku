@@ -183,7 +183,7 @@ void lj_snap_add(jit_State* J)
    MSize nsnap = J->cur.nsnap;
    MSize nsnapmap = J->cur.nsnapmap;
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.msg(VLF::BRANCH|VLF::DETAIL, "Adding snapshot %d, baseslot=%d, maxslot=%d, retdepth=%d, ByteCode: %d", nsnap, J->baseslot, J->maxslot, J->retdepth, bc_op(*J->pc));
 
    // Merge if no ins. inbetween or if requested and no guard inbetween.
@@ -788,7 +788,7 @@ const BCIns * lj_snap_restore(jit_State *J, void *exptr)
    const BCIns* pc = snap_pc(&map[nent]);
    lua_State* L = J->L;
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("Restoring snapshot %d for trace %d", snapno, J->parent);
    log.trace("Snapshot: nent=%d, nslots=%d, topslot=%d, mapofs=%d", nent, snap->nslots, snap->topslot, snap->mapofs);
    log.trace("Before restore: L->base=%p, L->top=%p, jit_base=%p", L->base, L->top, tvref(G(L)->jit_base));

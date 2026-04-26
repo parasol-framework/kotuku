@@ -133,7 +133,7 @@ static std::string glHomeFolderName;
 static void print_class_list(void) __attribute__ ((unused));
 static void print_class_list(void)
 {
-   pf::Log log("Class List");
+   kt::Log log("Class List");
    std::ostringstream out;
    for (auto & [ cid, v ] : glClassDB) {
       out << v.Name << " ";
@@ -306,7 +306,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
    std::forward_list<std::string> volumes;
 
-   pf::vector<std::string> newargs;
+   kt::vector<std::string> newargs;
    if ((Info->Flags & OPF::ARGS) != OPF::NIL) {
       for (i=1; i < Info->ArgCount; i++) {
          auto arg = Info->Args[i];
@@ -413,7 +413,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    setrlimit(RLIMIT_FSIZE, &rlp);
 #endif
 
-   pf::Log log("Core");
+   kt::Log log("Core");
 
    AdjustLogLevel(1); // Temporarily limit log output when opening the Core because it's not that interesting
 
@@ -562,10 +562,10 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    // This can lead to rare bugs in custom builds where modules have dependencies on each other.
 
    {
-      pf::Log log("Core");
+      kt::Log log("Core");
       log.branch("Initialising %d static modules.", int(std::ssize(glStaticModules)));
       for (auto & [ name, hdr ] : glStaticModules) {
-         objModule::create mod = { pf::FieldValue(FID_Name, name.c_str()) };
+         objModule::create mod = { kt::FieldValue(FID_Name, name.c_str()) };
       }
    }
 #endif
@@ -805,7 +805,7 @@ static void DiagnosisHandler(int SignalNumber, siginfo_t *Info, APTR Context)
 #ifdef __unix__
 static void CrashHandler(int SignalNumber, siginfo_t *Info, APTR Context)
 {
-   pf::Log log("Core");
+   kt::Log log("Core");
 
    if (glCrashStatus > 1) {
       if ((glCodeIndex) and (glCodeIndex IS glLastCodeIndex)) {
@@ -929,7 +929,7 @@ APTR glExceptionAddress = 0;
 
 static int CrashHandler(int Code, APTR Address, int Continuable, int *Info)
 {
-   pf::Log log("Core");
+   kt::Log log("Core");
 
    //winDeathBringer(0);  // Win7 doesn't like us calling SendMessage() during our handler?
 
@@ -1011,7 +1011,7 @@ extern "C" ERR convert_errno(int Error, ERR Default)
 #ifdef _WIN32
 static void BreakHandler(void)
 {
-   pf::Log log("Core");
+   kt::Log log("Core");
 
    //winDeathBringer(0);  // Win7 doesn't like us calling SendMessage() during our handler?
 
@@ -1042,7 +1042,7 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 
 static ERR init_volumes(const std::forward_list<std::string> &Volumes)
 {
-   pf::Log log("Core");
+   kt::Log log("Core");
 
    log.branch("Initialising filesystem volumes.");
 

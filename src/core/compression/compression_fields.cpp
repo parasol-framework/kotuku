@@ -116,7 +116,7 @@ static ERR GET_Path(extCompression *Self, CSTRING *Value)
 
 static ERR SET_Path(extCompression *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
@@ -237,7 +237,7 @@ To support GZIP decompression, please set the WindowBits value to 47.
 
 static ERR SET_WindowBits(extCompression *Self, int Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (((Value >= 8) and (Value <= 15)) or ((Value >= -15) and (Value <= -8)) or
        (Value IS 15 + 32) or (Value IS 16 + 32)) {

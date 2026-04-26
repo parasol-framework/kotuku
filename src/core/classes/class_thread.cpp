@@ -85,7 +85,7 @@ THREADID get_thread_id(void)
 
 ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   pf::Log log;
+   kt::Log log;
 
    auto msg = (ThreadMessage *)Message;
    auto uid = msg->ThreadID;
@@ -125,7 +125,7 @@ ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int Ms
 static void thread_entry_cleanup(void *Arg)
 {
    if (tlThreadCrashed) {
-      pf::Log log("thread_cleanup");
+      kt::Log log("thread_cleanup");
       log.error("A thread in this program has crashed.");
       if (tlThreadRef) {
          tlThreadRef->InterruptThreadID.store(0, std::memory_order_release);
@@ -148,7 +148,7 @@ Activate: Spawn a new thread that calls the function referenced in the #Routine 
 
 static ERR THREAD_Activate(extThread *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Active) return ERR::ThreadAlreadyActive;
 
@@ -268,7 +268,7 @@ static ERR THREAD_FreeWarning(extThread *Self)
 {
    if (!Self->Active) return ERR::Okay;
    else {
-      pf::Log log;
+      kt::Log log;
       log.detail("Thread is still running, marking for auto termination.");
       Self->Flags |= THF::AUTO_FREE;
       return ERR::InUse;
@@ -279,7 +279,7 @@ static ERR THREAD_FreeWarning(extThread *Self)
 
 static ERR THREAD_Init(extThread *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    return ERR::Okay;
 }
@@ -319,7 +319,7 @@ AllocMemory
 
 static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Data)) return log.warning(ERR::NullArgs);
    if (Args->Size < 0) return log.warning(ERR::Args);

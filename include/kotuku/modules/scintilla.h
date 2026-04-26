@@ -107,7 +107,7 @@ class objScintilla : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::SCINTILLA;
    static constexpr CSTRING CLASS_NAME = "Scintilla";
 
-   using create = pf::Create<objScintilla>;
+   using create = kt::Create<objScintilla>;
 
    objFont * Font;               // Refers to the font that is used for drawing text in the document.
    CSTRING   Path;               // Identifies the location of a text file to load.
@@ -411,7 +411,7 @@ class objScintillaSearch : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::SCINTILLASEARCH;
    static constexpr CSTRING CLASS_NAME = "ScintillaSearch";
 
-   using create = pf::Create<objScintillaSearch>;
+   using create = kt::Create<objScintillaSearch>;
 
    objScintilla * Scintilla;    // Targets a Scintilla object for searching.
    CSTRING Text;                // The string sequence to search for.

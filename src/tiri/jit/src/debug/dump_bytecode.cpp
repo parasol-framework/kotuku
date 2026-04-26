@@ -81,7 +81,7 @@ static std::string describe_gc_constant(GCproto *Proto, ptrdiff_t Index)
 
    if (not gc_obj) {
       // Most likely an invalid index - could indicate an invalid bytecode stream has been generated.
-      pf::Log("ByteCode").warning("describe_gc_constant: null GC object at index %" PRId64, uint64_t(Index));
+      kt::Log("ByteCode").warning("describe_gc_constant: null GC object at index %" PRId64, uint64_t(Index));
       return "K<null>";
    }
    else if (gc_obj->gch.gct IS (uint8_t)~LJ_TSTR) {
@@ -412,7 +412,7 @@ void trace_proto_bytecode(lua_State *L, GCproto *Proto, BytecodeLogger Logger, v
 
 extern void dump_bytecode(FuncState &fs)
 {
-   pf::Log log("ByteCode");
+   kt::Log log("ByteCode");
 
    auto log_callback = [](std::string_view Msg, void *Meta) {
       fprintf(stderr, "%.*s\n", int(Msg.size()), Msg.data());

@@ -54,9 +54,9 @@ void svgState::process_inherit_refs(XTag &Tag) noexcept
 
    // Replace all use of currentColor in child tags
 
-   std::function<void(pf::vector<XTag> &, const std::string &)> process_color;
+   std::function<void(kt::vector<XTag> &, const std::string &)> process_color;
 
-   process_color = [&process_color](pf::vector<XTag> &Tags, const std::string &Colour) {
+   process_color = [&process_color](kt::vector<XTag> &Tags, const std::string &Colour) {
       for (auto &scan : Tags) {
          if (!scan.isTag()) continue;
          for (int a=1; a < std::ssize(scan.Attribs); a++) {
@@ -113,7 +113,7 @@ static RQ shape_rendering_to_render_quality(const std::string_view Value)
    else if (iequals(Value, "geometricPrecision")) return RQ::PRECISE;
    else if (iequals(Value, "best")) return RQ::BEST;
    else {
-      pf::Log log;
+      kt::Log log;
       log.warning("Unknown shape-rendering value '%s'", std::string(Value).c_str());
    }
 
@@ -126,7 +126,7 @@ static RQ shape_rendering_to_render_quality(const std::string_view Value)
 
 void svgState::applyStateToVector(objVector *Vector) const noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("%s: Fill: %s, Stroke: %s, Opacity: %.2f, Font: %s %s",
       Vector->Class->ClassName, m_fill.c_str(), m_stroke.c_str(), m_opacity, m_font_family.c_str(), m_font_size.c_str());
@@ -171,7 +171,7 @@ void svgState::applyStateToVector(objVector *Vector) const noexcept
 
 void svgState::applyTag(const XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Total Attributes: %d", int(std::ssize(Tag.Attribs)));
 
@@ -298,7 +298,7 @@ void svgState::process_children(XTag &Tag, OBJECTPTR Vector) noexcept
 
 void svgState::process_shape_children(XTag &Tag, OBJECTPTR Vector) noexcept
 {
-   pf::Log log;
+   kt::Log log;
 
    for (auto &child : Tag.Children) {
       if (!child.isTag()) continue;
@@ -316,7 +316,7 @@ void svgState::process_shape_children(XTag &Tag, OBJECTPTR Vector) noexcept
                if (!child.Children.empty()) {
                   auto buffer = child.getContent();
                   if (!buffer.empty()) {
-                     pf::ltrim(buffer);
+                     kt::ltrim(buffer);
                      Vector->set(FID_String, buffer);
                   }
                   else log.msg("Failed to retrieve content for <text> @ line %d", Tag.LineNo);
@@ -337,7 +337,7 @@ void svgState::process_shape_children(XTag &Tag, OBJECTPTR Vector) noexcept
 
 void svgState::proc_pathtransition(XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %d", Tag.ID);
 
@@ -380,7 +380,7 @@ void svgState::proc_pathtransition(XTag &Tag) noexcept
 
 void svgState::proc_clippath(XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %d", Tag.ID);
 
@@ -448,7 +448,7 @@ void svgState::proc_clippath(XTag &Tag) noexcept
 
 void svgState::proc_mask(XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %d", Tag.ID);
 
@@ -517,7 +517,7 @@ void svgState::proc_mask(XTag &Tag) noexcept
 
 ERR svgState::parse_fe_blur(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::BLURFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -566,7 +566,7 @@ ERR svgState::parse_fe_blur(objVectorFilter *Filter, XTag &Tag) noexcept
 
 ERR svgState::parse_fe_offset(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::OFFSETFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -599,7 +599,7 @@ ERR svgState::parse_fe_offset(objVectorFilter *Filter, XTag &Tag) noexcept
 
 ERR svgState::parse_fe_merge(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::MERGEFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -678,7 +678,7 @@ static const std::array<double,20> glAchromatomaly = { 0.618,0.320,0.062,0,0, 0.
 
 ERR svgState::parse_fe_colour_matrix(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::COLOURFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -755,7 +755,7 @@ ERR svgState::parse_fe_colour_matrix(objVectorFilter *Filter, XTag &Tag) noexcep
 
 ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::CONVOLVEFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -845,7 +845,7 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XTag &Tag) noexc
 
 ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XTag &Tag, LT Type) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objLightingFX *fx;
 
    if (NewObject(CLASSID::LIGHTINGFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -970,7 +970,7 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XTag &Tag, LT Type) noe
 
 ERR svgState::parse_fe_displacement_map(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::DISPLACEMENTFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -1074,7 +1074,7 @@ ERR svgState::parse_fe_wavefunction(objVectorFilter *Filter, XTag &Tag) noexcept
 
 ERR svgState::parse_fe_component_xfer(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objRemapFX *fx;
 
    if (NewObject(CLASSID::REMAPFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -1160,7 +1160,7 @@ ERR svgState::parse_fe_component_xfer(objVectorFilter *Filter, XTag &Tag) noexce
 
 ERR svgState::parse_fe_composite(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::COMPOSITEFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -1261,7 +1261,7 @@ ERR svgState::parse_fe_composite(objVectorFilter *Filter, XTag &Tag) noexcept
 
 ERR svgState::parse_fe_flood(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::FLOODFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -1312,7 +1312,7 @@ ERR svgState::parse_fe_flood(objVectorFilter *Filter, XTag &Tag) noexcept
 
 ERR svgState::parse_fe_turbulence(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::TURBULENCEFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -1370,7 +1370,7 @@ ERR svgState::parse_fe_turbulence(objVectorFilter *Filter, XTag &Tag) noexcept
 
 ERR svgState::parse_fe_morphology(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::MORPHOLOGYFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -1415,7 +1415,7 @@ ERR svgState::parse_fe_morphology(objVectorFilter *Filter, XTag &Tag) noexcept
 
 ERR svgState::parse_fe_source(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::SOURCEFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -1474,7 +1474,7 @@ ERR svgState::parse_fe_source(objVectorFilter *Filter, XTag &Tag) noexcept
 
 ERR svgState::parse_fe_image(objVectorFilter *Filter, XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Check if the client has specified an href that refers to a pattern name instead of an image file.  In that
    // case we need to divert to the SourceFX parser.
@@ -1576,7 +1576,7 @@ ERR svgState::parse_fe_image(objVectorFilter *Filter, XTag &Tag) noexcept
 
 void svgState::proc_filter(XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    objVectorFilter *filter;
    std::string id;
@@ -1692,7 +1692,7 @@ void svgState::proc_filter(XTag &Tag) noexcept
 
 void svgState::proc_pattern(XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objVectorPattern *pattern;
    std::string id;
 
@@ -1853,7 +1853,7 @@ ERR svgState::proc_shape(CLASSID VectorID, XTag &Tag, OBJECTPTR Parent, objVecto
 
 ERR svgState::process_tag(XTag &Tag, XTag &ParentTag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("%s", Tag.name());
 
@@ -1896,7 +1896,7 @@ ERR svgState::process_tag(XTag &Tag, XTag &ParentTag, OBJECTPTR Parent, objVecto
          if (Self->Title) { FreeResource(Self->Title); Self->Title = nullptr; }
          if (!Tag.Children.empty()) {
             if (auto buffer = Tag.getContent(); !buffer.empty()) {
-               pf::ltrim(buffer);
+               kt::ltrim(buffer);
                Self->Title = strclone(buffer);
             }
          }
@@ -1919,7 +1919,7 @@ ERR svgState::process_tag(XTag &Tag, XTag &ParentTag, OBJECTPTR Parent, objVecto
                Vector->get(FID_String, existing_str);
 
                if (auto buffer = Tag.getContent(); !buffer.empty()) {
-                  pf::ltrim(buffer);
+                  kt::ltrim(buffer);
                   if (existing_str) buffer.insert(0, existing_str);
                   Vector->set(FID_String, buffer);
                }
@@ -1942,7 +1942,7 @@ ERR svgState::process_tag(XTag &Tag, XTag &ParentTag, OBJECTPTR Parent, objVecto
 
 static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, double Width = 0, double Height = 0)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    *Picture = nullptr;
    objFile *file = nullptr;
@@ -1964,14 +1964,14 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, double
             while ((*val) and (*val != ',')) val++;
             if (*val IS ',') val++;
 
-            pf::BASE64DECODE state;
+            kt::BASE64DECODE state;
             clearmem(&state, sizeof(state));
 
             uint8_t *output;
             int size = strlen(val);
             if (AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &output) IS ERR::Okay) {
                int written;
-               if ((error = pf::Base64Decode(&state, val, size, output, &written)) IS ERR::Okay) {
+               if ((error = kt::Base64Decode(&state, val, size, output, &written)) IS ERR::Okay) {
                   Path = "temp:svg.img";
                   if ((file = objFile::create::local(fl::Path(Path), fl::Flags(FL::NEW|FL::WRITE)))) {
                      int result;
@@ -2013,7 +2013,7 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, double
 
 void svgState::proc_def_image(XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objVectorImage *image;
    std::string id, src;
    FUNIT width, height;
@@ -2085,7 +2085,7 @@ void svgState::proc_def_image(XTag &Tag) noexcept
 
 ERR svgState::proc_image(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    std::string src, filter, transform, id;
    ARF ratio = ARF::X_MID|ARF::Y_MID|ARF::MEET; // SVG default if the client leaves preserveAspectRatio undefined
@@ -2189,7 +2189,7 @@ ERR svgState::proc_image(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexc
 
 ERR svgState::proc_defs(XTag &Tag, OBJECTPTR Parent) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %d", Tag.ID);
 
@@ -2219,7 +2219,7 @@ ERR svgState::proc_defs(XTag &Tag, OBJECTPTR Parent) noexcept
 
 ERR svgState::proc_style(XTag &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    ERR error = ERR::Okay;
 
    if (!Self->XML) {
@@ -2288,7 +2288,7 @@ void svgState::proc_symbol(XTag &Tag) noexcept
 
 void svgState::proc_morph(XTag &Tag, OBJECTPTR Parent) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Parent) or (Parent->Class->BaseClassID != CLASSID::VECTOR)) {
       log.traceWarning("Unable to apply morph to non-vector parent object.");
@@ -2393,7 +2393,7 @@ void svgState::proc_morph(XTag &Tag, OBJECTPTR Parent) noexcept
 
 void svgState::proc_use(XTag &Tag, OBJECTPTR Parent) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    std::string ref;
    for (int a=1; (a < std::ssize(Tag.Attribs)) and ref.empty(); a++) {
@@ -2590,7 +2590,7 @@ void svgState::proc_use(XTag &Tag, OBJECTPTR Parent) noexcept
 
 static ERR link_event(objVector *Vector, const InputEvent *Events, svgLink *Link)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto Self = (extSVG *)CurrentContext();
 
@@ -2647,7 +2647,7 @@ void svgState::proc_link(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexc
 
       process_children(Tag, group);
 
-      pf::vector<ChildEntry> list;
+      kt::vector<ChildEntry> list;
       if (ListChildren(group->UID, &list) IS ERR::Okay) {
          for (auto &child : list) {
             auto obj = (objVector *)GetObjectPtr(child.ObjectID);
@@ -2696,7 +2696,7 @@ void svgState::proc_switch(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noe
 
       if (render) {
          if (Tag.Attribs.size() > 1) { // The <switch> element is treated as a container type
-            pf::Log log(__FUNCTION__);
+            kt::Log log(__FUNCTION__);
             log.traceBranch("Tag: %d", Tag.ID);
 
             auto state = *this;
@@ -2726,7 +2726,7 @@ void svgState::proc_switch(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noe
 
 void svgState::proc_group(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %d", Tag.ID);
 
@@ -2752,7 +2752,7 @@ void svgState::proc_group(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noex
 
 void svgState::proc_svg(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int a;
 
    if (!Parent) {
@@ -2908,7 +2908,7 @@ void svgState::proc_svg(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexce
 
 ERR svgState::proc_animate_transform(XTag &Tag, OBJECTPTR Parent) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto &new_anim = Self->Animations.emplace_back(anim_transform { Self, Parent->UID });
    auto &anim = std::get<anim_transform>(new_anim);
@@ -2944,7 +2944,7 @@ ERR svgState::proc_animate_transform(XTag &Tag, OBJECTPTR Parent) noexcept
 
 ERR svgState::proc_animate(XTag &Tag, XTag &ParentTag, OBJECTPTR Parent) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto &new_anim = Self->Animations.emplace_back(anim_value { Self, Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
@@ -3107,7 +3107,7 @@ ERR svgState::proc_animate_motion(XTag &Tag, OBJECTPTR Parent) noexcept
 
 void svgState::process_attrib(XTag &Tag, objVector *Vector) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (int t=1; t < std::ssize(Tag.Attribs); t++) {
       if (Tag.Attribs[t].Value.empty()) continue;
@@ -3133,7 +3133,7 @@ void svgState::process_attrib(XTag &Tag, objVector *Vector) noexcept
 
 static void apply_rule(extSVG *Self, KatanaArray *Properties, XTag &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (unsigned i=0; i < Properties->length; i++) {
       auto prop = (KatanaDeclaration *)Properties->data[i];
@@ -3218,7 +3218,7 @@ static void apply_rule(extSVG *Self, KatanaArray *Properties, XTag &Tag)
 
 static void process_rule(extSVG *Self, objXML::TAGS &Tags, KatanaRule *Rule)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Rule) return;
 
@@ -3310,7 +3310,7 @@ static void process_rule(extSVG *Self, objXML::TAGS &Tags, KatanaRule *Rule)
 
 ERR svgState::set_property(objVector *Vector, uint32_t Hash, XTag &Tag, const std::string StrValue) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Ignore stylesheet attributes
    if (Hash IS SVF_CLASS) return ERR::Okay;

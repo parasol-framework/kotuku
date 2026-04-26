@@ -321,7 +321,7 @@ class extColourFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::COLOURFX;
    static constexpr CSTRING CLASS_NAME = "ColourFX";
-   using create = pf::Create<extColourFX>;
+   using create = kt::Create<extColourFX>;
 
    double Values[CM_SIZE];
    ColourMatrix *Matrix;
@@ -404,7 +404,7 @@ static ERR COLOURFX_Free(extColourFX *Self)
 
 static ERR COLOURFX_Init(extColourFX *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->SourceType IS VSF::NIL) return log.warning(ERR::UndefinedField);
 

@@ -169,7 +169,7 @@ static int safe_file_path(extDocument *Self, std::string_view Path)
 static ERR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, const objXML::TAGS &Tag, INDEX TargetIndex,
    STYLE StyleFlags, IPF Options)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (TargetIndex < 0) TargetIndex = Stream->size();
 
@@ -310,7 +310,7 @@ static ERR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index, c
 
 static ERR load_doc(extDocument *Self, std::string Path, bool Unload, ULD UnloadFlags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Loading file '%s', page '%s'", Path.c_str(), Self->PageName.c_str());
 
@@ -335,7 +335,7 @@ static ERR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unload
 
       if (xml.ok()) {
          #ifndef RETAIN_LOG_LEVEL
-         pf::LogLevel level(3);
+         kt::LogLevel level(3);
          #endif
          parser parse(Self, &Self->Stream);
 
@@ -377,7 +377,7 @@ static ERR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unload
 
 static ERR unload_doc(extDocument *Self, ULD Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Flags: $%.2x", int(Flags));
 
@@ -455,7 +455,7 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    // Remove all page related resources
 
    if (!Self->Resources.empty()) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.branch("Freeing page-allocated resources.");
 
       for (auto it = Self->Resources.begin(); it != Self->Resources.end(); ) {
@@ -483,7 +483,7 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    if (Self->Page) {
       Self->Page->setMask(nullptr); // Reset the clipping mask if it was defined by <body>
 
-      pf::vector<ChildEntry> list;
+      kt::vector<ChildEntry> list;
       if (ListChildren(Self->Page->UID, &list) IS ERR::Okay) {
          for (auto it=list.rbegin(); it != list.rend(); it++) FreeResource(it->ObjectID);
       }
@@ -491,7 +491,7 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    if ((Self->View) and (Self->Page)) {
       // Client generated objects can appear in the View if <svg placement="background"/> was used.
-      pf::vector<ChildEntry> list;
+      kt::vector<ChildEntry> list;
       if (ListChildren(Self->View->UID, &list) IS ERR::Okay) {
          for (auto child=list.rbegin(); child != list.rend(); child++) {
             if (child->ObjectID != Self->Page->UID) FreeResource(child->ObjectID);
@@ -674,7 +674,7 @@ static bc_font * find_style(RSTREAM &Stream, stream_char &Char)
 /*
 static ERR resolve_font_pos(doc_segment &Segment, double X, double &CharX, stream_char &Char)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    bc_font *style = find_style(Segment.stream[0], Char);
    auto font = style ? style->get_font() : glFonts[0].font;
@@ -726,7 +726,7 @@ static SEGINDEX find_segment(std::vector<doc_segment> &Segments, stream_char Cha
 
 static void process_parameters(extDocument *Self, const std::string_view String)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch();
 
@@ -822,7 +822,7 @@ static void process_parameters(extDocument *Self, const std::string_view String)
 
 static ERR extract_script(extDocument *Self, std::string_view Link, objScript **Script, std::string &Function, std::string &Args)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Script) {
       if (!(*Script = Self->DefaultScript)) {
@@ -883,7 +883,7 @@ void ui_link::exec(extDocument *Self)
    objScript *script;
    CLASSID class_id, subclass_id;
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch();
 
@@ -996,7 +996,7 @@ end:
 
 static void show_bookmark(extDocument *Self, std::string_view Bookmark)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("%.*s", int(Bookmark.size()), Bookmark.data());
 
@@ -1028,7 +1028,7 @@ static void show_bookmark(extDocument *Self, std::string_view Bookmark)
 
 static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *EventData)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    ERR result = ERR::Okay;
 
    if ((Event & Self->EventMask) != DEF::NIL) {
@@ -1036,7 +1036,7 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
 
       if (Self->EventCallback.isC()) {
          auto routine = (ERR (*)(extDocument *, DEF, KEYVALUE *, entity *, APTR))Self->EventCallback.Routine;
-         pf::SwitchContext context(Self->EventCallback.Context);
+         kt::SwitchContext context(Self->EventCallback.Context);
          result = routine(Self, Event, EventData, Entity, Self->EventCallback.Meta);
       }
       else if (Self->EventCallback.isScript()) {

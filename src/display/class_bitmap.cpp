@@ -183,7 +183,7 @@ FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { 
 ERR lock_surface(extBitmap *Bitmap, int16_t Access)
 {
    if (!Bitmap->Data) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->UID);
       return ERR::FieldNotSet;
    }
@@ -259,7 +259,7 @@ ERR unlock_surface(extBitmap *Bitmap)
 
 ERR lock_surface(extBitmap *Bitmap, int16_t Access)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((Bitmap->DataFlags & MEM::VIDEO) != MEM::NIL) {
       // MEM::VIDEO represents the video display in OpenGL.  Read/write CPU access is not available to this area but
@@ -349,7 +349,7 @@ ERR unlock_surface(extBitmap *Bitmap)
 ERR lock_surface(extBitmap *Bitmap, int16_t Access)
 {
    if (!Bitmap->Data) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->UID);
       return ERR::FieldNotSet;
    }
@@ -369,7 +369,7 @@ ERR unlock_surface(extBitmap *Bitmap)
 #ifdef __xwindows__
 static ERR alloc_shm(int Size, uint8_t **Data, int *ID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto id = shmget(IPC_PRIVATE, Size, IPC_CREAT|IPC_EXCL|S_IRWXO|S_IRWXG|S_IRWXU);
    if (id IS -1) {
@@ -507,7 +507,7 @@ CreateObject: A Compression object could not be created.
 
 static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -587,7 +587,7 @@ InvalidDimension: The clipping region is invalid.
 
 ERR BITMAP_ConvertToLinear(extBitmap *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->ColourSpace IS CS::LINEAR_RGB) return log.warning(ERR::NothingDone);
    if (Self->BytesPerPixel != 4) return log.warning(ERR::InvalidState);
@@ -663,7 +663,7 @@ InvalidDimension: The clipping region is invalid.
 
 ERR BITMAP_ConvertToRGB(extBitmap *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Self->ColourSpace IS CS::SRGB) return log.warning(ERR::NothingDone);
    if (Self->BytesPerPixel != 4) return log.warning(ERR::InvalidState);
@@ -768,7 +768,7 @@ AllocMemory: Insufficient memory in recreating the bitmap data buffer.
 
 static ERR BITMAP_Decompress(extBitmap *Self, struct bmp::Decompress *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->prvCompress) return ERR::Okay;
 
@@ -820,7 +820,7 @@ This action features automatic clipping and remapping, for occasions where the b
 
 static ERR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
    if ((Args->Dest->classID() != CLASSID::BITMAP)) return log.warning(ERR::Args);
@@ -865,7 +865,7 @@ InvalidDimension: The clipping region is invalid.
 
 static ERR BITMAP_Demultiply(extBitmap *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    static std::mutex mutex;
    if (!glDemultiply) {
@@ -1101,7 +1101,7 @@ The Init() action requires that the #Width and #Height fields are defined at min
 
 static ERR BITMAP_Init(extBitmap *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (acQuery(Self) != ERR::Okay) return log.warning(ERR::Query);
 
@@ -1489,7 +1489,7 @@ InvalidDimension: The clipping region is invalid.
 
 static ERR BITMAP_Premultiply(extBitmap *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & BMF::PREMUL) != BMF::NIL) {
       return log.warning(ERR::NothingDone);
@@ -1547,7 +1547,7 @@ that the bitmap is a 16 bit, 64k colour bitmap.
 
 static ERR BITMAP_Query(extBitmap *Self)
 {
-   pf::Log log;
+   kt::Log log;
    OBJECTID display_id;
    int i;
 
@@ -1748,7 +1748,7 @@ FieldNotSet
 
 static ERR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
 {
-   pf::Log log;
+   kt::Log log;
    int width, height, bytewidth, bpp, amtcolours, size;
 
    if (!Args) return log.warning(ERR::NullArgs);
@@ -1936,7 +1936,7 @@ SaveImage: Saves a bitmap's image to a data object of your choosing in PCX forma
 
 static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 {
-   pf::Log log;
+   kt::Log log;
    struct {
       int8_t  Signature;
       int8_t  Version;
@@ -2383,7 +2383,7 @@ ERR SET_Data(extBitmap *Self, uint8_t *Value)
       if (Self->DataFlags IS MEM::NIL) {
          MemInfo info;
          if (MemoryPtrInfo(Value, &info) != ERR::Okay) {
-            pf::Log log;
+            kt::Log log;
             log.warning("Could not obtain flags from address %p.", Value);
          }
          else if (Self->DataFlags != info.Flags) {
@@ -2535,7 +2535,7 @@ to be propagated to the video display.
 
 ERR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
 {
-   pf::Log log;
+   kt::Log log;
 
    // The objective here is to copy the given source palette to the bitmap's palette.  To see how the hook is set up,
    // refer to the bitmap's object definition structure that is compiled into the module.
@@ -2685,7 +2685,7 @@ Width: The width of the bitmap, in pixels.
 
 static ERR CalculatePixelRoutines(extBitmap *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Type IS BMP::PLANAR) {
       Self->ReadUCPixel  = MemReadPixelPlanar;

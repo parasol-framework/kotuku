@@ -58,7 +58,7 @@ static void process_ptr_wheel(extPointer *, struct dcDeviceInput *);
 inline void add_input(CSTRING Debug, InputEvent &input, JTYPE Flags, OBJECTID RecipientID, OBJECTID OverID,
    double AbsX, double AbsY, double OverX, double OverY)
 {
-   //pf::Log log(__FUNCTION__);
+   //kt::Log log(__FUNCTION__);
    //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d %.2fx%.2f, Abs: %.2fx%.2f %s",
    //   (input->Type < JET::END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
 
@@ -131,7 +131,7 @@ flag for that button.
 
 static ERR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -163,7 +163,7 @@ static ERR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 
 static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    InputEvent userinput;
    OBJECTID target;
    int buttonflag, bi;
@@ -295,15 +295,15 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       // Drag and drop has been released.  Inform the destination surface of the item's release.
 
       if (Self->DragSurface) {
-         pf::ScopedObjectLock surface(Self->DragSurface);
+         kt::ScopedObjectLock surface(Self->DragSurface);
          if (surface.granted()) acHide(*surface);
          Self->DragSurface = 0;
       }
 
       if (!modal_id) {
-         pf::ScopedObjectLock src(Self->DragSourceID);
+         kt::ScopedObjectLock src(Self->DragSourceID);
          if (src.granted()) {
-            pf::ScopedObjectLock surface(Self->OverObjectID);
+            kt::ScopedObjectLock surface(Self->OverObjectID);
             if (surface.granted()) acDragDrop(*surface, *src, Self->DragItem, Self->DragData);
          }
       }
@@ -341,7 +341,7 @@ static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 
 static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    InputEvent userinput;
 
    clearmem(&userinput, sizeof(userinput));
@@ -433,7 +433,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
                }
             }
 
-            pf::ScopedObjectLock surface(Self->DragSurface);
+            kt::ScopedObjectLock surface(Self->DragSurface);
             if (surface.granted()) acMoveToPoint(*surface, sx, sy, 0, MTF::X|MTF::Y);
          }
 
@@ -516,7 +516,7 @@ Hide: Hides the pointer from the display.
 
 static ERR PTR_Hide(extPointer *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
 
@@ -543,7 +543,7 @@ static ERR PTR_Hide(extPointer *Self)
 
 static ERR PTR_Init(extPointer *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    // Find the Surface object that we are associated with.  Note that it is okay if no surface is available at this
    // stage, but the host system must have a mechanism for setting the Surface field at a later stage or else
@@ -589,7 +589,7 @@ change).
 
 static ERR PTR_Move(extPointer *Self, struct acMove *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::Args);
    if ((!Args->DeltaX) and (!Args->DeltaY)) return ERR::Okay;
@@ -612,7 +612,7 @@ The client can subscribe to this action to listen for changes to the cursor's po
 
 static ERR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs)|ERR::Notified;
 /*
@@ -717,7 +717,7 @@ SaveToObject: Saves the current pointer settings to another object.
 
 static ERR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
 
@@ -743,7 +743,7 @@ Show: Shows the pointer if it is not already on the display.
 
 static ERR PTR_Show(extPointer *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
 
@@ -815,7 +815,7 @@ static ERR GET_ButtonOrder(extPointer *Self, CSTRING *Value)
 
 static ERR SET_ButtonOrder(extPointer *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.msg("%s", Value);
 
@@ -1064,7 +1064,7 @@ static void set_pointer_defaults(extPointer *Self)
 
 static bool get_over_object(extPointer *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((Self->SurfaceID) and (CheckObjectExists(Self->SurfaceID) != ERR::Okay)) Self->SurfaceID = 0;
 
@@ -1091,7 +1091,7 @@ static bool get_over_object(extPointer *Self)
    auto cursor_image    = PTC(glSurfaces[i].Cursor); // Preferred cursor ID
 
    if (Self->OverObjectID != li_objectid) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
 
       log.traceBranch("OverObject changing from #%d to #%d.", Self->OverObjectID, li_objectid);
 
@@ -1165,7 +1165,7 @@ static int examine_chain(extPointer *Self, int Index, SURFACELIST &List, int End
 
 static ERR repeat_timer(extPointer *Self, int64_t Elapsed, int64_t Unused)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // The subscription is automatically removed if no buttons are held down
 

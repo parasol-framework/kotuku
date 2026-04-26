@@ -53,7 +53,7 @@ template <class T> inline APTR ResolveAddress(T *Pointer, int Offset) {
 
 static ERR msghandler_free(APTR Address)
 {
-   pf::Log log("RemoveMsgHandler");
+   kt::Log log("RemoveMsgHandler");
    log.trace("Handle: %p", Address);
 
    if (auto lock = std::unique_lock{glmMsgHandler}) {
@@ -78,7 +78,7 @@ static ResourceManager glResourceMsgHandler = {
 static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    if (auto lref = glWFOList.find(Object->UID); lref != glWFOList.end()) {
-      pf::Log log;
+      kt::Log log;
       auto &ref = lref->second;
       log.trace("Object #%d has been signalled from action %d.", Object->UID, ActionID);
 
@@ -136,7 +136,7 @@ AllocMemory
 
 ERR AddMsgHandler(MSGID MsgType, FUNCTION *Routine, MsgHandler **Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Routine) return log.warning(ERR::NullArgs);
 
@@ -204,7 +204,7 @@ TimeOut:
 
 ERR ProcessMessages(PMF Flags, int TimeOut)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if (!tlMainThread) return log.warning(ERR::OutsideMainThread);
@@ -283,7 +283,7 @@ timer_cycle:
                   error = routine(nullptr, elapsed, current_time, timer->Routine.Meta);
                }
                else if (AccessObject(timer->SubscriberID, 50, &subscriber) IS ERR::Okay) {
-                  pf::SwitchContext context(subscriber);
+                  kt::SwitchContext context(subscriber);
 
                   auto routine = (ERR (*)(OBJECTPTR, int64_t, int64_t, APTR))timer->Routine.Routine;
                   glmTimer.unlock();
@@ -494,7 +494,7 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 ERR ScanMessages(int *Handle, MSGID Type, APTR Buffer, int BufferSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Handle) return log.warning(ERR::NullArgs);
    if (!Buffer) BufferSize = 0;
@@ -558,7 +558,7 @@ Args:
 
 ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (glLogLevel >= 9) {
       if (Type IS MSGID::ACTION) {
@@ -628,7 +628,7 @@ OutsideMainThread
 ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
 {
    // Refer to the Task class for the message interception routines
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    std::unordered_map<OBJECTID, ObjectSignal> saved_list;
 
@@ -649,7 +649,7 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
 
    if (ObjectSignals) {
       for (int i=0; ((error IS ERR::Okay) and (ObjectSignals[i].Object)); i++) {
-         pf::ScopedObjectLock lock(ObjectSignals[i].Object); // For thread safety
+         kt::ScopedObjectLock lock(ObjectSignals[i].Object); // For thread safety
 
          if (lock.granted()) {
             if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
@@ -697,7 +697,7 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
 
    if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions
       for (auto &ref : glWFOList) {
-         pf::ScopedObjectLock lock(ref.second.Object); // For thread safety
+         kt::ScopedObjectLock lock(ref.second.Object); // For thread safety
          if (lock.granted()) {
             UnsubscribeAction(ref.second.Object, AC::Free);
             UnsubscribeAction(ref.second.Object, AC::Signal);
@@ -723,7 +723,7 @@ ERR send_thread_msg(WINHANDLE Handle, MSGID Type, APTR Data, int Size)
 ERR send_thread_msg(int Handle, MSGID Type, APTR Data, int Size)
 #endif
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    ERR error;
 
    log.function("Type: %d, Data: %p, Size: %d", int(Type), Data, Size);
@@ -855,7 +855,7 @@ ERR UpdateMessage(int MessageID, MSGID Type, APTR Buffer, int BufferSize)
 #ifdef __unix__
 ERR sleep_task(int Timeout)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!tlMainThread) {
       log.warning("Only the main thread can call this function.");
@@ -1027,7 +1027,7 @@ ERR sleep_task(int Timeout)
 #ifdef _WIN32
 ERR sleep_task(int Timeout, int8_t SystemOnly)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!tlMainThread) {
       log.warning("Only the main thread can call this function.");
@@ -1178,7 +1178,7 @@ static void thread_socket_init(void) { pthread_key_create(&keySocket, thread_soc
 
 static ERR wake_task(void)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!glCurrentTask) return ERR::Okay;
 

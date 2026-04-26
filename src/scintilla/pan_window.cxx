@@ -14,7 +14,7 @@ inline OBJECTID getSurfaceID(Scintilla::Window* win)
 
 Scintilla::Window::~Window()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch();
    Destroy();
 }
@@ -23,7 +23,7 @@ Scintilla::Window::~Window()
 
 void Scintilla::Window::Destroy()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch();
 
    wid = 0; // this object doesn't actually own the Scintilla drawable
@@ -33,7 +33,7 @@ void Scintilla::Window::Destroy()
 
 bool Scintilla::Window::HasFocus()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    SURFACEINFO *info;
 
    log.branch();
@@ -50,7 +50,7 @@ bool Scintilla::Window::HasFocus()
 
 Scintilla::PRectangle Scintilla::Window::GetPosition()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    SURFACEINFO *info;
 
    // Before any size allocated pretend its 1000 wide so not scrolled
@@ -72,10 +72,10 @@ Scintilla::PRectangle Scintilla::Window::GetPosition()
 
 void Scintilla::Window::SetPosition(Scintilla::PRectangle rc)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch();
 
-   pf::ScopedObjectLock surface(getSurfaceID(this));
+   kt::ScopedObjectLock surface(getSurfaceID(this));
    if (surface.granted()) acRedimension(*surface, rc.left, rc.top, 0, rc.Width(), rc.Height(), 0);
 }
 
@@ -83,7 +83,7 @@ void Scintilla::Window::SetPosition(Scintilla::PRectangle rc)
 
 void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla::Window relativeTo)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    SURFACEINFO *info;
 
    log.branch();
@@ -105,7 +105,7 @@ void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla:
 
 Scintilla::PRectangle Scintilla::Window::GetClientPosition()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    extScintilla *scintilla = (extScintilla *)this->GetID();
 
    //log.trace("%dx%d", scintilla->Surface.Width, scintilla->Surface.Height);
@@ -127,10 +127,10 @@ Scintilla::PRectangle Scintilla::Window::GetMonitorRect(Scintilla::Point)
 
 void Scintilla::Window::Show(bool show)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch();
 
-   pf::ScopedObjectLock surface(getSurfaceID(this));
+   kt::ScopedObjectLock surface(getSurfaceID(this));
    if (surface.granted()) {
       if (show) acShow(*surface);
       else acHide(*surface);
@@ -141,7 +141,7 @@ void Scintilla::Window::Show(bool show)
 
 void Scintilla::Window::InvalidateAll()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto scintilla = (extScintilla *)this->GetID();
 
@@ -157,7 +157,7 @@ void Scintilla::Window::InvalidateAll()
 
 void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto scintilla = (extScintilla *)this->GetID();
 
@@ -175,7 +175,7 @@ void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
 
 void Scintilla::Window::SetFont(Scintilla::Font &)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch("[UNSUPPORTED]");
    // Can not be done generically but only needed for ListBox
 }
@@ -201,7 +201,7 @@ void Scintilla::Window::SetCursor(Cursor curs)
    }
 
    if (wid) {
-      if (pf::ScopedObjectLock<objSurface> surface(getSurfaceID(this), 500); surface.granted()) {
+      if (kt::ScopedObjectLock<objSurface> surface(getSurfaceID(this), 500); surface.granted()) {
          surface->setCursor(cursorid);
          cursorLast = curs;
       }

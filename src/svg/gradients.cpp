@@ -32,7 +32,7 @@ static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, uint32_t
 
 const std::vector<GradientStop> svgState::process_gradient_stops(const XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch();
 
@@ -119,7 +119,7 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XTag &Tag
 
 void svgState::parse_lineargradient(const XTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Determine the user coordinate system first.
 
@@ -202,7 +202,7 @@ void svgState::parse_lineargradient(const XTag &Tag, objVectorGradient *Gradient
 
 void svgState::parse_radialgradient(const XTag &Tag, objVectorGradient &Gradient, std::string &ID) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Determine the user coordinate system first.
 
@@ -283,7 +283,7 @@ void svgState::parse_radialgradient(const XTag &Tag, objVectorGradient &Gradient
 
 void svgState::parse_diamondgradient(const XTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Determine the user coordinate system first.
 
@@ -356,7 +356,7 @@ void svgState::parse_diamondgradient(const XTag &Tag, objVectorGradient *Gradien
 
 void svgState::parse_contourgradient(const XTag &Tag, objVectorGradient *Gradient, std::string &ID) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Determine the user coordinate system first.
 
@@ -426,7 +426,7 @@ void svgState::parse_contourgradient(const XTag &Tag, objVectorGradient *Gradien
 
 ERR svgState::proc_lineargradient(const XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
    std::string id;
@@ -464,7 +464,7 @@ ERR svgState::proc_lineargradient(const XTag &Tag) noexcept
 
 ERR svgState::proc_radialgradient(const XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
 
@@ -501,7 +501,7 @@ ERR svgState::proc_radialgradient(const XTag &Tag) noexcept
 
 ERR svgState::proc_diamondgradient(const XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
 
@@ -534,7 +534,7 @@ ERR svgState::proc_diamondgradient(const XTag &Tag) noexcept
 
 ERR svgState::proc_contourgradient(const XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
 
@@ -567,7 +567,7 @@ ERR svgState::proc_contourgradient(const XTag &Tag) noexcept
 
 ERR svgState::proc_conicgradient(const XTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
    auto state = *this;

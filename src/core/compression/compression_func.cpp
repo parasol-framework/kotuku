@@ -13,10 +13,10 @@ template<class T> void wrb(T Value, APTR Target) {
 
 static void print(extCompression *Self, CSTRING Buffer)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->OutputID) {
-      pf::ScopedObjectLock output(Self->OutputID);
+      kt::ScopedObjectLock output(Self->OutputID);
       if (output.granted()) acDataFeed(*output, Self, DATA::TEXT, Buffer, strlen(Buffer) + 1);
    }
    else log.msg("%s", Buffer);
@@ -24,10 +24,10 @@ static void print(extCompression *Self, CSTRING Buffer)
 
 static void print(extCompression *Self, std::string Buffer)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->OutputID) {
-      pf::ScopedObjectLock output(Self->OutputID);
+      kt::ScopedObjectLock output(Self->OutputID);
       if (output.granted()) acDataFeed(*output, Self, DATA::TEXT, Buffer.c_str(), Buffer.length() + 1);
    }
    else log.msg("%s", Buffer.c_str());
@@ -37,7 +37,7 @@ static void print(extCompression *Self, std::string Buffer)
 
 static ERR compress_folder(extCompression *Self, std::string Location, std::string Path)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Compressing folder \"%s\" to \"%s\"", Location.c_str(), Path.c_str());
 
@@ -157,7 +157,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
 
 static ERR compress_file(extCompression *Self, std::string Location, std::string Path, bool Link)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Compressing file \"%s\" to \"%s\"", Location.c_str(), Path.c_str());
 
@@ -172,7 +172,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
-   auto defer = pf::Defer([Self, deflateend] {
+   auto defer = kt::Defer([Self, deflateend] {
       if (deflateend) deflateEnd(&Self->Zip);
       Self->FileIndex++;
    });
@@ -414,7 +414,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
 static ERR remove_file(extCompression *Self, std::list<ZipFile>::iterator &File)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Deleting \"%s\"", File->Name.c_str());
 
@@ -463,7 +463,7 @@ static ERR remove_file(extCompression *Self, std::list<ZipFile>::iterator &File)
 
 static ERR fast_scan_zip(extCompression *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    ziptail tail;
 
    log.traceBranch();
@@ -566,7 +566,7 @@ static ERR fast_scan_zip(extCompression *Self)
 
 static ERR scan_zip(extCompression *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch();
 
@@ -680,14 +680,14 @@ static ERR scan_zip(extCompression *Self)
 
 static ERR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    ERR error;
 
    if (!Self->Feedback.defined()) return ERR::Okay;
 
    if (Self->Feedback.isC()) {
       auto routine = (ERR (*)(extCompression *, CompressionFeedback *, APTR Meta))Self->Feedback.Routine;
-      pf::SwitchContext context(Self->Feedback.Context);
+      kt::SwitchContext context(Self->Feedback.Context);
       error = routine(Self, Feedback, Self->Feedback.Meta);
    }
    else if (Self->Feedback.isScript()) {

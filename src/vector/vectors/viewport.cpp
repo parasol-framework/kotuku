@@ -47,7 +47,7 @@ static ERR drag_callback(extVectorViewport *Viewport, const InputEvent *Events)
             double y = glDragOriginY + (event->AbsY - glAnchorY);
 
             if (Viewport->vpDragCallback.isC()) {
-               pf::SwitchContext context(Viewport->vpDragCallback.Context);
+               kt::SwitchContext context(Viewport->vpDragCallback.Context);
                auto routine = (void (*)(extVectorViewport *, double, double, double, double, APTR Meta))Viewport->vpDragCallback.Routine;
                routine(Viewport, x, y, glDragOriginX, glDragOriginY, Viewport->vpDragCallback.Meta);
             }
@@ -90,7 +90,7 @@ Clear: Free all child objects contained by the viewport.
 
 static ERR VECTORVIEWPORT_Clear(extVectorViewport *Self)
 {
-   pf::vector<ChildEntry> list;
+   kt::vector<ChildEntry> list;
    if (ListChildren(Self->UID, &list) IS ERR::Okay) {
       for (unsigned i=0; i < list.size(); i++) FreeResource(list[i].ObjectID);
    }
@@ -399,7 +399,7 @@ static ERR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
 {
    if (Value) {
       if ((!Self->Scene) or (!Self->Scene->SurfaceID)) {
-         pf::Log log;
+         kt::Log log;
          return log.warning(ERR::FieldNotSet);
       }
 

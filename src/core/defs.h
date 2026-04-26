@@ -161,7 +161,7 @@ struct rkWatchPath {
 #include <kotuku/main.h>
 #include <kotuku/strings.hpp>
 
-using namespace pf;
+using namespace kt;
 
 struct ThreadMessage {
    OBJECTID ThreadID;    // Internal
@@ -393,7 +393,7 @@ enum {
 
 class extMetaClass : public objMetaClass {
    public:
-   using create = pf::Create<extMetaClass>;
+   using create = kt::Create<extMetaClass>;
    class extMetaClass *Base;            // Reference to the base class if this is a sub-class
    std::vector<Field> FieldLookup;      // Field dictionary for base-class fields
    std::vector<MethodEntry> Methods;    // Original method array supplied by the module.
@@ -409,7 +409,7 @@ class extMetaClass : public objMetaClass {
 
 class extFile : public objFile {
    public:
-   using create = pf::Create<extFile>;
+   using create = kt::Create<extFile>;
    struct DateTime prvModified;
    struct DateTime prvCreated;
    std::string Path;
@@ -436,20 +436,20 @@ class extFile : public objFile {
 
 class extConfig : public objConfig {
    public:
-   using create = pf::Create<extConfig>;
+   using create = kt::Create<extConfig>;
    uint32_t CRC;   // CRC32, for determining if config data has been altered
 };
 
 class extStorageDevice : public objStorageDevice {
    public:
-   using create = pf::Create<extStorageDevice>;
+   using create = kt::Create<extStorageDevice>;
    STRING DeviceID;   // Unique ID for the filesystem, if available
    STRING Volume;
 };
 
 class extThread : public objThread {
    public:
-   using create = pf::Create<extThread>;
+   using create = kt::Create<extThread>;
 
    std::jthread::native_handle_type Handle;
    std::jthread::id ThreadID;
@@ -462,9 +462,9 @@ class extThread : public objThread {
 
 class extTask : public objTask {
    public:
-   using create = pf::Create<extTask>;
+   using create = kt::Create<extTask>;
    ankerl::unordered_dense::map<std::string, std::string, CaseInsensitiveHash, CaseInsensitiveEqual> Fields; // Variable field storage
-   pf::vector<std::string> Parameters; // Arguments (string array)
+   kt::vector<std::string> Parameters; // Arguments (string array)
    uint64_t AffinityMask;  // CPU affinity mask for process/thread binding
    MEMORYID MessageMID;
    std::string LaunchPath;
@@ -527,7 +527,7 @@ struct TaskRecord {
 
 class extModule : public objModule {
    public:
-   using create = pf::Create<extModule>;
+   using create = kt::Create<extModule>;
    std::string Name;     // Name of the module
    APTR   prvMBMemory;   // Module base memory
 };
@@ -792,12 +792,12 @@ extern std::atomic_int glUniqueMsgID;
 
 #if defined(__MINGW32__) || defined(__MINGW64__)
 // MinGW TLS destructor bug workaround: use a thread-local pointer and lazy init to avoid non-trivial TLS dtors
-extern thread_local pf::vector<ObjectContext> *tlContextPtr;
+extern thread_local kt::vector<ObjectContext> *tlContextPtr;
 
-static inline pf::vector<ObjectContext> & tls_get_context() noexcept
+static inline kt::vector<ObjectContext> & tls_get_context() noexcept
 {
    if (!tlContextPtr) {
-      auto p = new pf::vector<ObjectContext>();
+      auto p = new kt::vector<ObjectContext>();
       p->reserve(16);
       p->emplace_back(ObjectContext { &glDummyObject, nullptr, AC::NIL });
       tlContextPtr = p;
@@ -808,7 +808,7 @@ static inline pf::vector<ObjectContext> & tls_get_context() noexcept
 #define tlContext (tls_get_context())
 
 #else
-extern thread_local pf::vector<ObjectContext> tlContext;
+extern thread_local kt::vector<ObjectContext> tlContext;
 #endif
 extern thread_local class TaskMessage *tlCurrentMsg;
 extern thread_local bool tlMainThread;

@@ -8,7 +8,7 @@ Scintilla::Menu::Menu() {}
 
 void Scintilla::Menu::CreatePopUp()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    OBJECTID display_id;
    //OBJECTPTR menu;
 
@@ -48,7 +48,7 @@ void Scintilla::Menu::CreatePopUp()
 
 void Scintilla::Menu::Destroy()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch();
 
    //OBJECTID surface_id;
@@ -65,7 +65,7 @@ void Scintilla::Menu::Destroy()
 
 void Scintilla::Menu::Show(Scintilla::Point pt, Window &Window)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch("%dx%d", pt.x, pt.y);
 
 #if 0

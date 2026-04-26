@@ -132,7 +132,7 @@ class extRemapFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::REMAPFX;
    static constexpr CSTRING CLASS_NAME = "RemapFX";
-   using create = pf::Create<extRemapFX>;
+   using create = kt::Create<extRemapFX>;
 
    Component Red;
    Component Green;
@@ -256,7 +256,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectDiscrete(extRemapFX *Self, struct rf::SelectDiscrete *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Values)) return log.warning(ERR::NullArgs);
    if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR::Args);
@@ -288,7 +288,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectIdentity(extRemapFX *Self, struct rf::SelectIdentity *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -322,7 +322,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectGamma(extRemapFX *Self, struct rf::SelectGamma *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -356,7 +356,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectInvert(extRemapFX *Self, struct rf::SelectInvert *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -390,7 +390,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectLinear(extRemapFX *Self, struct rf::SelectLinear *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if (Args->Slope < 0) return log.warning(ERR::Args);
@@ -427,7 +427,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectMask(extRemapFX *Self, struct rf::SelectMask *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -463,7 +463,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectTable(extRemapFX *Self, struct rf::SelectTable *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Values)) return log.warning(ERR::NullArgs);
    if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR::Args);

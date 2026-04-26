@@ -5,7 +5,7 @@
 static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int Values, int total)
 {
    if (Field->Flags & FD_INT) {
-      pf::vector<int> values((size_t)total);
+      kt::vector<int> values((size_t)total);
       for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
          int index = lua_tointeger(Lua, -2) - 1;
          if ((index >= 0) and (index < total)) {
@@ -15,7 +15,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int Values,
       return Object->set(Field->FieldID, values);
    }
    else if (Field->Flags & FD_STRING) {
-      pf::vector<CSTRING> values((size_t)total);
+      kt::vector<CSTRING> values((size_t)total);
       for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
          int index = lua_tointeger(Lua, -2) - 1;
          if ((index >= 0) and (index < total)) {
@@ -188,7 +188,7 @@ static ERR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, int Va
             Object->set(Field->FieldID, id);
          }
          else {
-            pf::Log log;
+            kt::Log log;
             log.warning("Object \"%s\" could not be found.", lua_tostring(Lua, ValueIndex));
             return ERR::Search;
          }
@@ -225,7 +225,7 @@ static ERR object_set_number(lua_State *Lua, OBJECTPTR Object, Field *Field, int
 
 static int object_get(lua_State *Lua)
 {
-   pf::Log log("obj.get");
+   kt::Log log("obj.get");
 
    if (auto fieldname = luaL_checkstring(Lua, 1)) {
       auto def = object_context(Lua);
@@ -374,7 +374,7 @@ static int object_setkey(lua_State *Lua)
 
 static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, uint32_t FieldHash, int ValueIndex)
 {
-   pf::Log log("obj.setfield");
+   kt::Log log("obj.setfield");
 
    int type = lua_type(Lua, ValueIndex);
 
@@ -536,15 +536,15 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, GCobject *De
       APTR *list;
       if (field->Flags & FD_CPP) {
          if (field->Flags & FD_STRING) {
-            pf::vector<std::string> *values; // std::string doesn't work like standard primitives - at least not in MSVC - so it gets a special handler.
+            kt::vector<std::string> *values; // std::string doesn't work like standard primitives - at least not in MSVC - so it gets a special handler.
             if ((error = obj->get(field->FieldID, values, total, false)) IS ERR::Okay) {
                if (total <= 0) lua_pushnil(Lua);
                else make_array(Lua, AET::STR_CPP, total, values);
             }
          }
          else {
-            // For pf::vector primitives we can just convert to a raw data array.
-            pf::vector<APTR> *values; // The type doesn't matter.
+            // For kt::vector primitives we can just convert to a raw data array.
+            kt::vector<APTR> *values; // The type doesn't matter.
             if ((error = obj->get(field->FieldID, values, total, false)) IS ERR::Okay) {
                if (total <= 0) lua_pushnil(Lua);
                else {
@@ -567,7 +567,7 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, GCobject *De
             make_any_array(Lua, field->Flags, struct_name, total, list);
          }
          else {
-            pf::Log(__FUNCTION__).warning("Invalid array type for '%s', flags: $%.8x", field->Name, field->Flags);
+            kt::Log(__FUNCTION__).warning("Invalid array type for '%s', flags: $%.8x", field->Name, field->Flags);
             error = ERR::FieldTypeMismatch;
          }
       }
@@ -613,7 +613,7 @@ static int object_get_struct(lua_State *Lua, const obj_read &Handle, GCobject *D
          }
       }
       else {
-         pf::Log(__FUNCTION__).warning("No struct name reference for field %s in class %s.", field->Name, obj->Class->ClassName);
+         kt::Log(__FUNCTION__).warning("No struct name reference for field %s in class %s.", field->Name, obj->Class->ClassName);
          error = ERR::Failed;
       }
       release_object(Def);

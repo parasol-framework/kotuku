@@ -309,7 +309,7 @@ Surface field, if available.  If this does not yield a valid surface then `ERR::
 
 static ERR SET_PopOver(extSurface *Self, OBJECTID Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Value IS Self->UID) return ERR::Okay;
 
@@ -421,7 +421,7 @@ static ERR GET_WindowType(extSurface *Self, SWIN *Value)
 static ERR SET_WindowType(extSurface *Self, SWIN Value)
 {
    if (Self->initialised()) {
-      pf::Log log;
+      kt::Log log;
 
       if (Self->WindowType IS Value) {
          log.trace("WindowType == %d", Value);

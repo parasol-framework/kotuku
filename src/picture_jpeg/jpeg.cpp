@@ -185,7 +185,7 @@ static void jpeg_kotuku_dest(j_compress_ptr cinfo, objFile *outfile) {
 
 static ERR JPEG_Activate(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
    struct jpeg_decompress_struct cinfo;
    struct jpeg_error_mgr jerr;
 
@@ -256,7 +256,7 @@ static ERR JPEG_Activate(extPicture *Self)
 
 static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_decompress_struct *Cinfo)
 {
-   pf::Log log;
+   kt::Log log;
    RGB8 rgb;
 
    jpeg_start_decompress(Cinfo);
@@ -307,7 +307,7 @@ static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 
 static ERR JPEG_Init(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
    uint8_t *buffer;
    CSTRING path = nullptr;
 
@@ -345,7 +345,7 @@ static ERR JPEG_Init(extPicture *Self)
 
 static ERR JPEG_Query(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
    struct jpeg_decompress_struct *cinfo;
    struct jpeg_error_mgr jerr;
 
@@ -389,7 +389,7 @@ static ERR JPEG_Query(extPicture *Self)
 
 static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
 

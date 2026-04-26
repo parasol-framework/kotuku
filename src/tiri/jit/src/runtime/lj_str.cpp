@@ -155,7 +155,7 @@ GCstr * lj_str_new(lua_State *L, const char *str, size_t lenx)
    auto *g = G(L);
    if (lenx - 1 < LJ_MAX_STR - 1) {
       auto len = MSize(lenx);
-      auto hash = pf::strhash(std::string_view(str, lenx));
+      auto hash = kt::strhash(std::string_view(str, lenx));
       MSize coll = 0;
       // Check if the string has already been interned.
       auto *o = gcref(g->str.tab[hash & g->str.mask]);

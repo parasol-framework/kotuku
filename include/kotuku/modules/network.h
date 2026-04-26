@@ -128,7 +128,7 @@ class objNetClient : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::NETCLIENT;
    static constexpr CSTRING CLASS_NAME = "NetClient";
 
-   using create = pf::Create<objNetClient>;
+   using create = kt::Create<objNetClient>;
 
    char IP[8];                       // The IP address of the client.
    objNetClient * Next;              // The next client IP with connections to the server socket.
@@ -159,7 +159,7 @@ class objClientSocket : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::CLIENTSOCKET;
    static constexpr CSTRING CLASS_NAME = "ClientSocket";
 
-   using create = pf::Create<objClientSocket>;
+   using create = kt::Create<objClientSocket>;
 
    int64_t ConnectTime;       // System time for the creation of this socket.
    objClientSocket * Prev;    // Previous socket in the chain.
@@ -245,7 +245,7 @@ class objProxy : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::PROXY;
    static constexpr CSTRING CLASS_NAME = "Proxy";
 
-   using create = pf::Create<objProxy>;
+   using create = kt::Create<objProxy>;
 
    STRING NetworkFilter;    // The name of the network that the proxy is limited to.
    STRING GatewayFilter;    // The IP address of the gateway that the proxy is limited to.
@@ -359,7 +359,7 @@ class objNetLookup : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::NETLOOKUP;
    static constexpr CSTRING CLASS_NAME = "NetLookup";
 
-   using create = pf::Create<objNetLookup>;
+   using create = kt::Create<objNetLookup>;
 
    int64_t ClientData;    // Optional user data storage
    NLF     Flags;         // Optional flags
@@ -427,7 +427,7 @@ class objNetSocket : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::NETSOCKET;
    static constexpr CSTRING CLASS_NAME = "NetSocket";
 
-   using create = pf::Create<objNetSocket>;
+   using create = kt::Create<objNetSocket>;
 
    objNetClient * Clients;    // For server sockets, lists all clients connected to the server.
    APTR   ClientData;         // A client-defined value that can be useful in action notify events.

@@ -141,7 +141,7 @@ class objHTTP : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::HTTP;
    static constexpr CSTRING CLASS_NAME = "HTTP";
 
-   using create = pf::Create<objHTTP>;
+   using create = kt::Create<objHTTP>;
 
    double   DataTimeout;     // The data timeout value, relevant when receiving or sending data.
    double   ConnectTimeout;  // The initial connection timeout value, measured in seconds.

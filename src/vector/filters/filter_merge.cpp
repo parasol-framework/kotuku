@@ -28,7 +28,7 @@ class extMergeFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::MERGEFX;
    static constexpr CSTRING CLASS_NAME = "MergeFX";
-   using create = pf::Create<extMergeFX>;
+   using create = kt::Create<extMergeFX>;
 
    std::vector<MergeSource> List;
 };

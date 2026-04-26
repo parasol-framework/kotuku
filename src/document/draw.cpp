@@ -4,13 +4,13 @@
 
 static void redraw(extDocument *Self, bool Focus)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch();
 
    {
       #ifndef RETAIN_LOG_LEVEL
-      pf::LogLevel level(3);
+      kt::LogLevel level(3);
       #endif
 
       layout_doc(Self); // Does nothing if UpdatingLayout is false
@@ -151,7 +151,7 @@ void layout::render_segments(OBJECTID Target, std::vector<doc_segment> &Segments
 
 ERR layout::gen_scene_init(objVectorViewport *Viewport)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch();
 
@@ -216,7 +216,7 @@ ERR layout::gen_scene_init(objVectorViewport *Viewport)
 
 void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segment> &Segments)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    std::stack<bc_list *>      stack_list;
    std::stack<bc_row *>       stack_row;
@@ -227,7 +227,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
    std::stack<objVectorViewport *> stack_vp;
 
 #ifndef RETAIN_LOG_LEVEL
-   pf::LogLevel level(2);
+   kt::LogLevel level(2);
 #endif
 
 /*

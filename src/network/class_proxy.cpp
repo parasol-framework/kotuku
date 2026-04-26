@@ -47,7 +47,7 @@ static objConfig * get_proxy_config(void)
 {
    std::lock_guard lock(glProxyMutex);
    if (!glProxyFileChecked) {
-      pf::SwitchContext ctx(glNetworkModule);
+      kt::SwitchContext ctx(glNetworkModule);
       glProxyConfig = objConfig::create::global({ fl::Path("user:config/network/proxies.cfg") });
       glProxyFileChecked = true;
    }
@@ -75,7 +75,7 @@ public:
 
    void setString(STRING& field, std::string_view value) {
       if (field) { FreeResource(field); field = nullptr; }
-      if (!value.empty()) { field = pf::strclone(value); }
+      if (!value.empty()) { field = kt::strclone(value); }
    }
 };
 
@@ -176,7 +176,7 @@ Okay: Proxy deleted.
 
 static ERR PROXY_DeleteRecord(extProxy *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->GroupName.empty()) or (!Self->Record)) return log.error(ERR::Failed);
 
@@ -261,7 +261,7 @@ NoSearchResult: No matching proxy was discovered.
 
 static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.traceBranch("Port: %d, Enabled: %d", (Args) ? Args->Port : 0, (Args) ? Args->Enabled : -1);
 
@@ -367,7 +367,7 @@ static bool matchesPortFilter(const KeysType& keys, const std::string& findPort)
 
    if (keys.contains("Port")) {
       const auto& port = keys.at("Port");
-      return (port IS "0") or pf::wildcmp(port, findPort);
+      return (port IS "0") or kt::wildcmp(port, findPort);
    }
    return false;
 }
@@ -384,7 +384,7 @@ static bool matchesEnabledFilter(const KeysType& keys, int findEnabled) {
 
 static ERR find_proxy(extProxy *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    clear_values(Self);
 
@@ -481,7 +481,7 @@ administrator to define proxy settings as the default for all users by copying t
 
 static ERR PROXY_SaveSettings(extProxy *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Self->Server) or (!Self->ServerPort)) return log.error(ERR::FieldNotSet);
 
@@ -716,7 +716,7 @@ static ERR SET_ServerPort(extProxy *Self, int Value)
       Self->ServerPort = Value;
       return ERR::Okay;
    }
-   pf::Log log;
+   kt::Log log;
    return log.error(ERR::OutOfRange);
 }
 
@@ -764,7 +764,7 @@ static ERR SET_Record(extProxy *Self, int Value)
 
 static ERR get_record(extProxy *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Group: %s", Self->GroupName.c_str());
 
@@ -808,7 +808,7 @@ static ERR get_record(extProxy *Self)
 
 static void clear_values(extProxy *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.trace("");
 

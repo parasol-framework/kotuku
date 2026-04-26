@@ -415,7 +415,7 @@ The resulting log information is returned as a string, which needs to be dealloc
 
 static ERR TIRI_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -669,7 +669,7 @@ static ERR TIRI_DebugLog(objScript *Self, struct sc::DebugLog *Args)
    if (opts.show_state) emit_state_info(prv, buf, opts.compact);
 
    const std::string result = buf.str();
-   if ((Args->Result = pf::strclone(result.c_str())) IS nullptr) return ERR::AllocMemory;
+   if ((Args->Result = kt::strclone(result.c_str())) IS nullptr) return ERR::AllocMemory;
 
    return ERR::Okay;
 }
@@ -678,7 +678,7 @@ static ERR TIRI_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 
 static ERR TIRI_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return ERR::NullArgs;
 
@@ -707,7 +707,7 @@ static ERR TIRI_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
 
 static ERR TIRI_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Procedure) or (not Args->Procedure[0])) return log.warning(ERR::NullArgs);
 

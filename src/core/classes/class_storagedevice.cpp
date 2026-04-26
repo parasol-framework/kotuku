@@ -35,7 +35,7 @@ static ERR STORAGE_Free(extStorageDevice *Self)
 
 static ERR STORAGE_Init(extStorageDevice *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->Volume) return log.warning(ERR::FieldNotSet);
 
@@ -118,7 +118,7 @@ static ERR GET_Volume(extStorageDevice *Self, STRING *Value)
 
 static ERR SET_Volume(extStorageDevice *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->initialised()) return log.warning(ERR::Immutable);
 

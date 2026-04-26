@@ -26,7 +26,7 @@ The REST API and documentation on how to use Backstage is documented in the Kotu
 #include <kotuku/modules/network.h>
 #include <kotuku/strings.hpp>
 
-using namespace pf;
+using namespace kt;
 
 static OBJECTPTR modNetwork = nullptr;
 
@@ -41,7 +41,7 @@ class objNetSocket *glServer = nullptr;
 
 static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   pf::Log log("Backstage");
+   kt::Log log("Backstage");
 
    CoreBase = argCoreBase;
 
@@ -51,7 +51,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (auto state = GetSystemState()) {
       for (int i=0; i < state->OpenInfo->ArgCount; i++) {
-         if (pf::iequals(state->OpenInfo->Args[i], "--backstage")) {
+         if (kt::iequals(state->OpenInfo->Args[i], "--backstage")) {
       	   if (i + 1 < state->OpenInfo->ArgCount) {
       		   int port = atoi(state->OpenInfo->Args[i + 1]);
       		   if (port > 0) {
@@ -86,7 +86,7 @@ static ERR MODExpunge(void)
 
 void server_feedback(objNetSocket *Socket, class objClientSocket *Client, NTC State)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    if (State IS NTC::CONNECTED) {
       log.msg("Client connected: %d.%d.%d.%d", Client->Client->IP[0], Client->Client->IP[1], Client->Client->IP[2], Client->Client->IP[3]);
    }
@@ -106,7 +106,7 @@ ERR server_incoming(objNetSocket *Socket, OBJECTPTR Context)
 
 ERR init_backstage(int Port)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    glServer = objNetSocket::create::global({
       fl::Port(Port),

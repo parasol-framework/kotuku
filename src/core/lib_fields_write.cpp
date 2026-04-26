@@ -78,11 +78,11 @@ static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
           else if (Flags & FD_DOUBLE) ((double *)Dest)[i]  = strtod(String, &end);
           else if (Flags & FD_STRING) {
              // Not feasible to convert a string into an array of strings
-             pf::Log().warning(ERR::InvalidType);
+             kt::Log().warning(ERR::InvalidType);
              return 0;
           }
           else {
-             pf::Log().warning(ERR::InvalidType);
+             kt::Log().warning(ERR::InvalidType);
              return 0;
           }
 
@@ -98,7 +98,7 @@ static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
 
 ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int Elements)
 {
-   pf::Log log("WriteField");
+   kt::Log log("WriteField");
 
    //log.trace("[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", Object->className(), Object->UID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
 
@@ -138,7 +138,7 @@ ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int E
 
 static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Source, int Elements)
 {
-   pf::Log log("WriteField");
+   kt::Log log("WriteField");
 
    if (not Field->writeable()) return ERR::NoFieldAccess;
 
@@ -190,7 +190,7 @@ static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Sour
 
 static ERR writeval_flags(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   pf::Log log("WriteField");
+   kt::Log log("WriteField");
    int j, int32;
 
    // Converts flags to numeric form if the source value is a string.
@@ -264,7 +264,7 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
 
 static ERR writeval_lookup(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   pf::Log log("WriteField");
+   kt::Log log("WriteField");
    int int32;
 
    if (Flags & FD_STRING) {
@@ -459,7 +459,7 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
       else return ERR::AllocMemory;
    }
    else {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.warning("Arrays can only be set using the FD_ARRAY type.");
       return ERR::SetValueNotArray;
    }
@@ -554,7 +554,7 @@ static ERR setval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
 
 void optimise_write_field(Field &Field)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Field.writeable()) return;
 

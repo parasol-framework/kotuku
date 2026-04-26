@@ -18,7 +18,7 @@ class extFloodFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::FLOODFX;
    static constexpr CSTRING CLASS_NAME = "FloodFX";
-   using create = pf::Create<extFloodFX>;
+   using create = kt::Create<extFloodFX>;
 
    FRGB   Colour;
    RGB8   ColourRGB; // A cached conversion of the FRGB value
@@ -94,7 +94,7 @@ static ERR FLOODFX_GET_Colour(extFloodFX *Self, float **Value, int *Elements)
 
 static ERR FLOODFX_SET_Colour(extFloodFX *Self, float *Value, int Elements)
 {
-   pf::Log log;
+   kt::Log log;
    if (Value) {
       if (Elements >= 3) {
          Self->Colour.Red   = Value[0];
@@ -128,7 +128,7 @@ static ERR FLOODFX_GET_Opacity(extFloodFX *Self, double *Value)
 
 static ERR FLOODFX_SET_Opacity(extFloodFX *Self, double Value)
 {
-   pf::Log log;
+   kt::Log log;
    if ((Value >= 0.0) and (Value <= 1.0)) {
       Self->Opacity = Value;
       return ERR::Okay;

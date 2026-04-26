@@ -35,7 +35,7 @@ namespace {
 
 struct TestCase {
    const char* name;
-   bool (*fn)(pf::Log &Log);
+   bool (*fn)(kt::Log &Log);
 };
 
 struct LuaStateHolder {
@@ -60,7 +60,7 @@ private:
 //********************************************************************************************************************
 // Core Data Structures
 
-static bool test_array_creation_byte(pf::Log &Log)
+static bool test_array_creation_byte(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -104,7 +104,7 @@ static bool test_array_creation_byte(pf::Log &Log)
    return true;
 }
 
-static bool test_array_creation_int32(pf::Log &Log)
+static bool test_array_creation_int32(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -145,7 +145,7 @@ static bool test_array_creation_int32(pf::Log &Log)
    return true;
 }
 
-static bool test_array_creation_double(pf::Log &Log)
+static bool test_array_creation_double(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -182,7 +182,7 @@ static bool test_array_creation_double(pf::Log &Log)
    return true;
 }
 
-static bool test_array_index_access(pf::Log &Log)
+static bool test_array_index_access(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -220,7 +220,7 @@ static bool test_array_index_access(pf::Log &Log)
    return true;
 }
 
-static bool test_array_elemsize(pf::Log &Log)
+static bool test_array_elemsize(kt::Log &Log)
 {
    if (lj_array_elemsize(AET::BYTE) != 1) {
       Log.error("AET::BYTE size incorrect");
@@ -254,7 +254,7 @@ static bool test_array_elemsize(pf::Log &Log)
    return true;
 }
 
-static bool test_array_external(pf::Log &Log)
+static bool test_array_external(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -295,7 +295,7 @@ static bool test_array_external(pf::Log &Log)
    return true;
 }
 
-static bool test_array_to_table(pf::Log &Log)
+static bool test_array_to_table(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -349,7 +349,7 @@ static bool test_array_to_table(pf::Log &Log)
    return true;
 }
 
-static bool test_array_type_tag(pf::Log &Log)
+static bool test_array_type_tag(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -372,7 +372,7 @@ static bool test_array_type_tag(pf::Log &Log)
 //********************************************************************************************************************
 // VM Type System Integration
 
-static bool test_tvalue_array(pf::Log &Log)
+static bool test_tvalue_array(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -404,7 +404,7 @@ static bool test_tvalue_array(pf::Log &Log)
    return true;
 }
 
-static bool test_typename_array(pf::Log &Log)
+static bool test_typename_array(kt::Log &Log)
 {
    const char* name = lj_obj_itypename[~LJ_TARRAY];
    if (strcmp(name, "array") != 0) {
@@ -415,7 +415,7 @@ static bool test_typename_array(pf::Log &Log)
    return true;
 }
 
-static bool test_setarrayV(pf::Log &Log)
+static bool test_setarrayV(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -453,7 +453,7 @@ static bool tv_is_integer(cTValue* o, int32_t expected)
    return false;
 }
 
-static bool test_arr_getidx_int32(pf::Log &Log)
+static bool test_arr_getidx_int32(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -491,7 +491,7 @@ static bool test_arr_getidx_int32(pf::Log &Log)
    return true;
 }
 
-static bool test_arr_getidx_double(pf::Log &Log)
+static bool test_arr_getidx_double(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -523,7 +523,7 @@ static bool test_arr_getidx_double(pf::Log &Log)
    return true;
 }
 
-static bool test_arr_setidx_int32(pf::Log &Log)
+static bool test_arr_setidx_int32(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -564,7 +564,7 @@ static bool test_arr_setidx_int32(pf::Log &Log)
    return true;
 }
 
-static bool test_arr_setidx_double(pf::Log &Log)
+static bool test_arr_setidx_double(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -596,7 +596,7 @@ static bool test_arr_setidx_double(pf::Log &Log)
    return true;
 }
 
-static bool test_arr_roundtrip(pf::Log &Log)
+static bool test_arr_roundtrip(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -627,7 +627,7 @@ static bool test_arr_roundtrip(pf::Log &Log)
    return true;
 }
 
-static bool test_arr_byte_type(pf::Log &Log)
+static bool test_arr_byte_type(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -666,7 +666,7 @@ static bool test_arr_byte_type(pf::Log &Log)
 //********************************************************************************************************************
 // Library Functions
 
-static bool test_lib_array_new(pf::Log &Log)
+static bool test_lib_array_new(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -695,7 +695,7 @@ static bool test_lib_array_new(pf::Log &Log)
    return true;
 }
 
-static bool test_lib_array_index(pf::Log &Log)
+static bool test_lib_array_index(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -727,7 +727,7 @@ static bool test_lib_array_index(pf::Log &Log)
    return true;
 }
 
-static bool test_lib_array_table(pf::Log &Log)
+static bool test_lib_array_table(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -762,7 +762,7 @@ static bool test_lib_array_table(pf::Log &Log)
    return true;
 }
 
-static bool test_lib_array_copy(pf::Log &Log)
+static bool test_lib_array_copy(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -798,7 +798,7 @@ static bool test_lib_array_copy(pf::Log &Log)
    return true;
 }
 
-static bool test_lib_array_string(pf::Log &Log)
+static bool test_lib_array_string(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -829,7 +829,7 @@ static bool test_lib_array_string(pf::Log &Log)
    return true;
 }
 
-static bool test_lib_array_fill(pf::Log &Log)
+static bool test_lib_array_fill(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -863,7 +863,7 @@ static bool test_lib_array_fill(pf::Log &Log)
    return true;
 }
 
-static bool test_lib_array_len_operator(pf::Log &Log)
+static bool test_lib_array_len_operator(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -892,7 +892,7 @@ static bool test_lib_array_len_operator(pf::Log &Log)
    return true;
 }
 
-static bool test_lib_array_double_type(pf::Log &Log)
+static bool test_lib_array_double_type(kt::Log &Log)
 {
    LuaStateHolder Holder;
    lua_State *L = Holder.get();
@@ -971,7 +971,7 @@ void array_unit_tests(int &Passed, int &Total)
    if (Action(AC::Init, glArrayTestScript, nullptr) != ERR::Okay) return;
 
    for (const TestCase& Test : Tests) {
-      pf::Log Log("ArrayTests");
+      kt::Log Log("ArrayTests");
       Log.branch("Running %s", Test.name);
       ++Total;
       if (Test.fn(Log)) {

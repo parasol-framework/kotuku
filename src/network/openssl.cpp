@@ -41,7 +41,7 @@ template <class T> void ssl_handshake_read(SocketHandle Socket, T *Self) {
 template <class T> void sslDisconnect(T *Self)
 {
    if (Self->SSLHandle) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
 
       log.traceBranch("Closing SSL connection.");
 
@@ -71,7 +71,7 @@ template <class T> void sslDisconnect(T *Self)
 static void sslMsgCallback(const ssl_st *s, int where, int ret)
 {
    const char *state;
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    int w = where & (~SSL_ST_MASK);
 
@@ -114,7 +114,7 @@ static void sslCtxMsgCallback(const SSL *s, int where, int ret)
 
 static ERR loadCustomCertificateOpenSSL(extNetSocket *Self, SSL_CTX *ctx)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Self->SSLCertificate or !*Self->SSLCertificate) return ERR::FieldNotSet;
 
@@ -152,7 +152,7 @@ static ERR loadCustomCertificateOpenSSL(extNetSocket *Self, SSL_CTX *ctx)
 
 static ERR loadPEMCertificate(const std::string &certPath, std::optional<const std::string> &keyPath, std::optional<const std::string> &password, SSL_CTX *ctx)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    FILE *cert_file = fopen(certPath.c_str(), "r");
    if (!cert_file) return log.warning(ERR::File);
@@ -198,7 +198,7 @@ static ERR loadPEMCertificate(const std::string &certPath, std::optional<const s
 
 static ERR loadPKCS12Certificate(const std::string &p12Path, std::optional<const std::string> &password, SSL_CTX *ctx)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto p12_file = fopen(p12Path.c_str(), "rb");
    if (!p12_file) {
@@ -266,7 +266,7 @@ static ERR loadPKCS12Certificate(const std::string &p12Path, std::optional<const
 
 static ERR sslSetup(extNetSocket *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch();
 
@@ -447,7 +447,7 @@ static ERR sslSetup(extNetSocket *Self)
 
 static ERR sslLinkSocket(extNetSocket *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch();
 
@@ -472,7 +472,7 @@ static ERR sslLinkSocket(extNetSocket *Self)
 
 static ERR sslConnect(extNetSocket *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch();
 
@@ -549,7 +549,7 @@ static ERR sslConnect(extNetSocket *Self)
 
 template <class T> void ssl_handshake_write_impl(HOSTHANDLE SocketFD, T *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    SocketHandle Socket(SocketFD);
 
    log.trace("Socket: %" PF64, (MAXINT)SocketFD);
@@ -581,7 +581,7 @@ template <class T> void ssl_handshake_write_impl(HOSTHANDLE SocketFD, T *Self)
 
 template <class T> void ssl_handshake_read_impl(HOSTHANDLE SocketFD, T *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    SocketHandle Socket(SocketFD);
 
    log.trace("Socket: %" PF64, (MAXINT)SocketFD);

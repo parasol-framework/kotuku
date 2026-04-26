@@ -72,7 +72,7 @@
 <p>It is crucial that calls to AccessObject() are followed with a call to <function>ReleaseObject</function> once the lock is no longer required.  Calls to AccessObject() will also nest, so they must be paired with <function>ReleaseObject</function> correctly.</p>
 <p>It is recommended that C++ developers use the <code>ScopedObjectLock</code> class to acquire object locks rather than making direct calls to AccessObject().  The following example illustrates lock acquisition within a 1 second time limit:</p>
 <pre>{
-   pf::ScopedObjectLock&lt;OBJECTPTR&gt; obj(my_object_id, 1000);
+   kt::ScopedObjectLock&lt;OBJECTPTR&gt; obj(my_object_id, 1000);
    if (lock.granted()) {
       obj.acDraw();
    }
@@ -956,10 +956,10 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
     <name>ListChildren</name>
     <category>Objects</category>
     <comment>Returns a list of all children belonging to an object.</comment>
-    <prototype>ERR ListChildren(OBJECTID Object, pf::vector&lt;ChildEntry&gt; * List)</prototype>
+    <prototype>ERR ListChildren(OBJECTID Object, kt::vector&lt;ChildEntry&gt; * List)</prototype>
     <input>
       <param type="OBJECTID" name="Object">An object to query.</param>
-      <param type="pf::vector&lt;ChildEntry&gt; *" name="List">Must refer to an array of <st>ChildEntry</st> structures.</param>
+      <param type="kt::vector&lt;ChildEntry&gt; *" name="List">Must refer to an array of <st>ChildEntry</st> structures.</param>
     </input>
     <description>
 <p>The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty vector of <st>ChildEntry</st> structures to host the results, which include unique object ID's and their class identifiers.</p>

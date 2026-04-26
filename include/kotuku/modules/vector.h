@@ -593,7 +593,7 @@ class objVectorColour : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORCOLOUR;
    static constexpr CSTRING CLASS_NAME = "VectorColour";
 
-   using create = pf::Create<objVectorColour>;
+   using create = kt::Create<objVectorColour>;
 
    double Red;    // The red component value.
    double Green;  // The green component value.
@@ -637,7 +637,7 @@ class objVectorTransition : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORTRANSITION;
    static constexpr CSTRING CLASS_NAME = "VectorTransition";
 
-   using create = pf::Create<objVectorTransition>;
+   using create = kt::Create<objVectorTransition>;
 
    // Action stubs
 
@@ -672,7 +672,7 @@ class objVectorScene : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORSCENE;
    static constexpr CSTRING CLASS_NAME = "VectorScene";
 
-   using create = pf::Create<objVectorScene>;
+   using create = kt::Create<objVectorScene>;
 
    int64_t  RenderTime;           // Returns the rendering time of the last scene.
    double   Gamma;                // Private. Not currently implemented.
@@ -786,7 +786,7 @@ class objVectorImage : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORIMAGE;
    static constexpr CSTRING CLASS_NAME = "VectorImage";
 
-   using create = pf::Create<objVectorImage>;
+   using create = kt::Create<objVectorImage>;
 
    double  X;               // Apply a horizontal offset to the image, the origin of which is determined by the Units value.
    double  Y;               // Apply a vertical offset to the image, the origin of which is determined by the Units value.
@@ -860,7 +860,7 @@ class objVectorPattern : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORPATTERN;
    static constexpr CSTRING CLASS_NAME = "VectorPattern";
 
-   using create = pf::Create<objVectorPattern>;
+   using create = kt::Create<objVectorPattern>;
 
    double  X;                       // X coordinate for the pattern.
    double  Y;                       // Y coordinate for the pattern.
@@ -960,7 +960,7 @@ class objVectorGradient : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORGRADIENT;
    static constexpr CSTRING CLASS_NAME = "VectorGradient";
 
-   using create = pf::Create<objVectorGradient>;
+   using create = kt::Create<objVectorGradient>;
 
    double  X1;            // Initial X coordinate for the gradient.
    double  Y1;            // Initial Y coordinate for the gradient.
@@ -1143,7 +1143,7 @@ class objFilterEffect : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::FILTEREFFECT;
    static constexpr CSTRING CLASS_NAME = "FilterEffect";
 
-   using create = pf::Create<objFilterEffect>;
+   using create = kt::Create<objFilterEffect>;
 
    objFilterEffect * Next;    // Next filter in the chain.
    objFilterEffect * Prev;    // Previous filter in the chain.
@@ -1248,7 +1248,7 @@ class objImageFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::IMAGEFX;
    static constexpr CSTRING CLASS_NAME = "ImageFX";
 
-   using create = pf::Create<objImageFX>;
+   using create = kt::Create<objImageFX>;
 
    // Action stubs
 
@@ -1290,7 +1290,7 @@ class objSourceFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::SOURCEFX;
    static constexpr CSTRING CLASS_NAME = "SourceFX";
 
-   using create = pf::Create<objSourceFX>;
+   using create = kt::Create<objSourceFX>;
 
    // Action stubs
 
@@ -1332,7 +1332,7 @@ class objBlurFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::BLURFX;
    static constexpr CSTRING CLASS_NAME = "BlurFX";
 
-   using create = pf::Create<objBlurFX>;
+   using create = kt::Create<objBlurFX>;
 
    // Action stubs
 
@@ -1368,7 +1368,7 @@ class objColourFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::COLOURFX;
    static constexpr CSTRING CLASS_NAME = "ColourFX";
 
-   using create = pf::Create<objColourFX>;
+   using create = kt::Create<objColourFX>;
 
    // Action stubs
 
@@ -1404,7 +1404,7 @@ class objCompositeFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::COMPOSITEFX;
    static constexpr CSTRING CLASS_NAME = "CompositeFX";
 
-   using create = pf::Create<objCompositeFX>;
+   using create = kt::Create<objCompositeFX>;
 
    // Action stubs
 
@@ -1458,7 +1458,7 @@ class objConvolveFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::CONVOLVEFX;
    static constexpr CSTRING CLASS_NAME = "ConvolveFX";
 
-   using create = pf::Create<objConvolveFX>;
+   using create = kt::Create<objConvolveFX>;
 
    // Action stubs
 
@@ -1548,7 +1548,7 @@ class objDisplacementFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::DISPLACEMENTFX;
    static constexpr CSTRING CLASS_NAME = "DisplacementFX";
 
-   using create = pf::Create<objDisplacementFX>;
+   using create = kt::Create<objDisplacementFX>;
 
    // Action stubs
 
@@ -1590,7 +1590,7 @@ class objFloodFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::FLOODFX;
    static constexpr CSTRING CLASS_NAME = "FloodFX";
 
-   using create = pf::Create<objFloodFX>;
+   using create = kt::Create<objFloodFX>;
 
    // Action stubs
 
@@ -1635,7 +1635,7 @@ class objLightingFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::LIGHTINGFX;
    static constexpr CSTRING CLASS_NAME = "LightingFX";
 
-   using create = pf::Create<objLightingFX>;
+   using create = kt::Create<objLightingFX>;
 
    // Action stubs
 
@@ -1713,7 +1713,7 @@ class objMergeFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::MERGEFX;
    static constexpr CSTRING CLASS_NAME = "MergeFX";
 
-   using create = pf::Create<objMergeFX>;
+   using create = kt::Create<objMergeFX>;
 
    // Action stubs
 
@@ -1743,7 +1743,7 @@ class objMorphologyFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::MORPHOLOGYFX;
    static constexpr CSTRING CLASS_NAME = "MorphologyFX";
 
-   using create = pf::Create<objMorphologyFX>;
+   using create = kt::Create<objMorphologyFX>;
 
    // Action stubs
 
@@ -1785,7 +1785,7 @@ class objOffsetFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::OFFSETFX;
    static constexpr CSTRING CLASS_NAME = "OffsetFX";
 
-   using create = pf::Create<objOffsetFX>;
+   using create = kt::Create<objOffsetFX>;
 
    // Action stubs
 
@@ -1834,7 +1834,7 @@ class objRemapFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::REMAPFX;
    static constexpr CSTRING CLASS_NAME = "RemapFX";
 
-   using create = pf::Create<objRemapFX>;
+   using create = kt::Create<objRemapFX>;
 
    // Action stubs
 
@@ -1886,7 +1886,7 @@ class objTurbulenceFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::TURBULENCEFX;
    static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
 
-   using create = pf::Create<objTurbulenceFX>;
+   using create = kt::Create<objTurbulenceFX>;
 
    // Action stubs
 
@@ -1946,7 +1946,7 @@ class objWaveFunctionFX : public objFilterEffect {
    static constexpr CLASSID CLASS_ID = CLASSID::WAVEFUNCTIONFX;
    static constexpr CSTRING CLASS_NAME = "WaveFunctionFX";
 
-   using create = pf::Create<objWaveFunctionFX>;
+   using create = kt::Create<objWaveFunctionFX>;
 
    // Action stubs
 
@@ -2018,7 +2018,7 @@ class objVectorClip : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORCLIP;
    static constexpr CSTRING CLASS_NAME = "VectorClip";
 
-   using create = pf::Create<objVectorClip>;
+   using create = kt::Create<objVectorClip>;
 
    objVectorViewport * Viewport;    // This viewport hosts the Vector objects that will contribute to the clip path.
    VUNIT Units;                     // Defines the coordinate system for fields X, Y, Width and Height.
@@ -2053,7 +2053,7 @@ class objVectorFilter : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORFILTER;
    static constexpr CSTRING CLASS_NAME = "VectorFilter";
 
-   using create = pf::Create<objVectorFilter>;
+   using create = kt::Create<objVectorFilter>;
 
    double X;                     // X coordinate for the filter.
    double Y;                     // Y coordinate for the filter.
@@ -2175,7 +2175,7 @@ class objVector : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTOR;
    static constexpr CSTRING CLASS_NAME = "Vector";
 
-   using create = pf::Create<objVector>;
+   using create = kt::Create<objVector>;
 
    objVector * Child;                 // The first child vector, or NULL.
    objVectorScene * Scene;            // Short-cut to the top-level VectorScene.
@@ -2483,7 +2483,7 @@ class objVectorPath : public objVector {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORPATH;
    static constexpr CSTRING CLASS_NAME = "VectorPath";
 
-   using create = pf::Create<objVectorPath>;
+   using create = kt::Create<objVectorPath>;
 
    // Action stubs
 
@@ -2557,7 +2557,7 @@ class objVectorText : public objVector {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORTEXT;
    static constexpr CSTRING CLASS_NAME = "VectorText";
 
-   using create = pf::Create<objVectorText>;
+   using create = kt::Create<objVectorText>;
 
    // Action stubs
 
@@ -2744,7 +2744,7 @@ class objVectorGroup : public objVector {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORGROUP;
    static constexpr CSTRING CLASS_NAME = "VectorGroup";
 
-   using create = pf::Create<objVectorGroup>;
+   using create = kt::Create<objVectorGroup>;
 
    // Action stubs
 
@@ -2763,7 +2763,7 @@ class objVectorWave : public objVector {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORWAVE;
    static constexpr CSTRING CLASS_NAME = "VectorWave";
 
-   using create = pf::Create<objVectorWave>;
+   using create = kt::Create<objVectorWave>;
 
    // Action stubs
 
@@ -2858,7 +2858,7 @@ class objVectorRectangle : public objVector {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORRECTANGLE;
    static constexpr CSTRING CLASS_NAME = "VectorRectangle";
 
-   using create = pf::Create<objVectorRectangle>;
+   using create = kt::Create<objVectorRectangle>;
 
    // Action stubs
 
@@ -2945,7 +2945,7 @@ class objVectorPolygon : public objVector {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORPOLYGON;
    static constexpr CSTRING CLASS_NAME = "VectorPolygon";
 
-   using create = pf::Create<objVectorPolygon>;
+   using create = kt::Create<objVectorPolygon>;
 
    // Action stubs
 
@@ -3016,7 +3016,7 @@ class objVectorShape : public objVector {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORSHAPE;
    static constexpr CSTRING CLASS_NAME = "VectorShape";
 
-   using create = pf::Create<objVectorShape>;
+   using create = kt::Create<objVectorShape>;
 
    // Action stubs
 
@@ -3134,7 +3134,7 @@ class objVectorSpiral : public objVector {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORSPIRAL;
    static constexpr CSTRING CLASS_NAME = "VectorSpiral";
 
-   using create = pf::Create<objVectorSpiral>;
+   using create = kt::Create<objVectorSpiral>;
 
    // Action stubs
 
@@ -3218,7 +3218,7 @@ class objVectorEllipse : public objVector {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORELLIPSE;
    static constexpr CSTRING CLASS_NAME = "VectorEllipse";
 
-   using create = pf::Create<objVectorEllipse>;
+   using create = kt::Create<objVectorEllipse>;
 
    // Action stubs
 
@@ -3298,7 +3298,7 @@ class objVectorViewport : public objVector {
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORVIEWPORT;
    static constexpr CSTRING CLASS_NAME = "VectorViewport";
 
-   using create = pf::Create<objVectorViewport>;
+   using create = kt::Create<objVectorViewport>;
 
    // Action stubs
 
@@ -4142,7 +4142,7 @@ inline ERR SubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
 } // namespace
 
 namespace fl {
-   using namespace pf;
+   using namespace kt;
 
 constexpr FieldValue Flags(VCLF Value) { return FieldValue(FID_Flags, int(Value)); }
 
@@ -4163,11 +4163,11 @@ inline FieldValue Sequence(std::string &Value) { return FieldValue(FID_Sequence,
 constexpr FieldValue FontStyle(CSTRING Value) { return FieldValue(FID_FontStyle, Value); }
 inline FieldValue FontStyle(std::string &Value) { return FieldValue(FID_FontStyle, Value.c_str()); }
 
-template <pf::NumericOrScale T> FieldValue RoundX(T Value) {
+template <kt::NumericOrScale T> FieldValue RoundX(T Value) {
    return FieldValue(FID_RoundX, Value);
 }
 
-template <pf::NumericOrScale T> FieldValue RoundY(T Value) {
+template <kt::NumericOrScale T> FieldValue RoundY(T Value) {
    return FieldValue(FID_RoundY, Value);
 }
 

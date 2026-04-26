@@ -54,7 +54,7 @@ static ERR init_wave(void);
 
 static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   pf::Log log;
+   kt::Log log;
 
    CoreBase = argCoreBase;
 

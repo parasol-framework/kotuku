@@ -177,7 +177,7 @@ class objAudio : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::AUDIO;
    static constexpr CSTRING CLASS_NAME = "Audio";
 
-   using create = pf::Create<objAudio>;
+   using create = kt::Create<objAudio>;
 
    int OutputRate;    // Determines the frequency to use for the output of audio data.
    int InputRate;     // Determines the frequency to use when recording audio data.
@@ -315,7 +315,7 @@ class objSound : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::SOUND;
    static constexpr CSTRING CLASS_NAME = "Sound";
 
-   using create = pf::Create<objSound>;
+   using create = kt::Create<objSound>;
 
    double   Volume;     // The volume to use when playing the sound sample.
    double   Pan;        // Determines the horizontal position of a sound when played through stereo speakers.

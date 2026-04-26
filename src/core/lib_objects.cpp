@@ -24,7 +24,7 @@ Name: Objects
 
 #include "defs.h"
 
-using namespace pf;
+using namespace kt;
 
 static void drain_action_queue(OBJECTID, bool = false);
 static void async_wait_callback(OBJECTID, bool);
@@ -43,7 +43,7 @@ void stop_async_actions(void)
    {
       std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);
       if (not glAsyncThreads.empty()) {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.msg("Stopping %d async action threads...", int(glAsyncThreads.size()));
 
          for (auto &thread_ptr : glAsyncThreads) {
@@ -151,7 +151,7 @@ ERR msg_free(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 
 static ERR object_free(Object *Object)
 {
-   pf::Log log("Free");
+   kt::Log log("Free");
 
    ScopedObjectAccess objlock(Object);
    if (not objlock.granted()) return ERR::AccessObject;
@@ -321,7 +321,7 @@ constexpr CSTRING action_name(OBJECTPTR Object, ACTIONID ActionID)
 
 static void free_children(OBJECTPTR Object)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (auto lock = std::unique_lock{glmMemory}) {
       if (not glObjectChildren[Object->UID].empty()) {
@@ -390,7 +390,7 @@ static void launch_async_thread(OBJECTPTR, AC, int, std::vector<int8_t>, FUNCTIO
 
 void dispatch_queued_action(OBJECTID ObjectID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Do not consume queued actions if the process is shutting down.
    if (glTaskState IS TSTATE::STOPPING) {
@@ -476,7 +476,7 @@ void dispatch_queued_action(OBJECTID ObjectID)
 
 static void drain_action_queue(OBJECTID ObjectID, bool Terminating)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    std::deque<QueuedAction> drained;
    {
@@ -713,11 +713,11 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
                #ifndef NDEBUG
                // Locked subscribers can sometimes warrant investigation
                if ((int(ActionID) > 0) and list.Subscriber->locked()) {
-                  pf::Log(__FUNCTION__).msg("Notifying %s subscriber #%d (lock-status: %d) with action %s",
+                  kt::Log(__FUNCTION__).msg("Notifying %s subscriber #%d (lock-status: %d) with action %s",
                      list.Subscriber->className(), list.Subscriber->UID, list.Subscriber->locked(), ActionTable[int(ActionID)].Name);
                }
                #endif
-               pf::SwitchContext ctx(list.Subscriber);
+               kt::SwitchContext ctx(list.Subscriber);
                list.Callback(Object, ActionID, (error IS ERR::NoAction) ? ERR::Okay : error, Parameters, list.Meta);
             }
          }
@@ -838,7 +838,7 @@ Init
 
 ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *Callback)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((ActionID IS AC::NIL) or (not Object)) return ERR::NullArgs;
 
@@ -931,7 +931,7 @@ NullArgs
 
 ERR AsyncCancel(OBJECTID *Objects, int Size)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Objects) return ERR::NullArgs;
 
@@ -1017,7 +1017,7 @@ InUse: Another AsyncWait() call is already active.
 
 ERR AsyncWait(OBJECTID *Objects, int Size, int TimeOut)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Objects) return log.warning(ERR::NullArgs);
 
@@ -1139,7 +1139,7 @@ LostClass:
 
 ERR CheckAction(OBJECTPTR Object, ACTIONID ActionID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((ActionID <= AC::NIL) or (ActionID >= AC::END)) return log.warning(ERR::OutOfRange);
 
@@ -1187,7 +1187,7 @@ ERR CheckObjectExists(OBJECTID ObjectID)
       }
       return ERR::False;
    }
-   else return pf::Log(__FUNCTION__).warning(ERR::LockFailed);
+   else return kt::Log(__FUNCTION__).warning(ERR::LockFailed);
 }
 
 /*********************************************************************************************************************
@@ -1207,7 +1207,7 @@ Okay
 
 ERR ClassDatabase(ClassRecord ***Classes)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Classes) return log.warning(ERR::NullArgs);
 
@@ -1309,7 +1309,7 @@ objMetaClass * FindClass(CLASSID ClassID)
    // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
    // would result in lost CPU and memory resources due to loading code that may not be needed.
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    if (glClassDB.contains(ClassID)) {
       if (auto &path = glClassDB[ClassID].Path; !path.empty()) {
          // Load the module from the associated location and then find the class that it contains.  If the module fails,
@@ -1367,7 +1367,7 @@ DoesNotExist:
 
 ERR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Result) or (not InitialName)) return ERR::NullArgs;
    if (not InitialName[0]) return log.warning(ERR::EmptyString);
@@ -1568,7 +1568,7 @@ ObjectCorrupt
 
 ERR InitObject(OBJECTPTR Object)
 {
-   pf::Log log("Init");
+   kt::Log log("Init");
 
    ScopedObjectAccess objlock(Object);
 
@@ -1717,9 +1717,9 @@ LockFailed
 
 *********************************************************************************************************************/
 
-ERR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
+ERR ListChildren(OBJECTID ObjectID, kt::vector<ChildEntry> *List)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not ObjectID) or (not List)) return log.warning(ERR::NullArgs);
 
@@ -1776,7 +1776,7 @@ AllocMemory
 
 ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto class_id = ClassID;
    if ((class_id IS CLASSID::NIL) or (not Object)) return log.warning(ERR::NullArgs);
@@ -1806,7 +1806,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
       SetResourceMgr(head, &glResourceObject);
 
       new (head) class Object; // Class constructors aren't expected to initialise the Object header, we do it for them
-      pf::clearmem(head + 1, mc->Size - sizeof(class Object));
+      kt::clearmem(head + 1, mc->Size - sizeof(class Object));
 
       ERR error = ERR::Okay;
       if ((mc->Base) and (mc->Base->ActionTable[int(AC::NewPlacement)].PerformAction)) {
@@ -1858,7 +1858,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
       // on creation, as opposed to during initialisation.  This can allow ChildPrivate to be configured early on in the
       // process, making it possible to set custom fields that would depend on it.
 
-      pf::SwitchContext context(head);
+      kt::SwitchContext context(head);
 
       if (mc->Base) {
          if (mc->Base->ActionTable[int(AC::NewObject)].PerformAction) {
@@ -1933,7 +1933,7 @@ error Error: The error code that is associated with the action result.
 
 void NotifySubscribers(OBJECTPTR Object, ACTIONID ActionID, APTR Parameters, ERR ErrorCode)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // No need for prv_access() since this function is called from within class action code only.
 
@@ -1948,7 +1948,7 @@ void NotifySubscribers(OBJECTPTR Object, ACTIONID ActionID, APTR Parameters, ERR
       glSubReadOnly++; // Prevents changes to glSubscriptions while we're processing it.
       for (auto &sub : glSubscriptions[Object->UID][int(ActionID)]) {
          if (sub.Subscriber) {
-            pf::SwitchContext ctx(sub.Subscriber);
+            kt::SwitchContext ctx(sub.Subscriber);
             sub.Callback(Object, ActionID, ErrorCode, Parameters, sub.Meta);
          }
       }
@@ -2012,7 +2012,7 @@ IllegalMethodID:
 
 ERR QueueAction(ACTIONID ActionID, OBJECTID ObjectID, APTR Args)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((ActionID IS AC::NIL) or (not ObjectID)) return log.warning(ERR::NullArgs);
    if (ActionID >= AC::END) return log.warning(ERR::OutOfRange);
@@ -2071,7 +2071,7 @@ cid: Returns the class ID identified from the class name, or `NULL` if the class
 CLASSID ResolveClassName(CSTRING ClassName)
 {
    if ((not ClassName) or (not *ClassName)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.warning(ERR::NullArgs);
       return CLASSID::NIL;
    }
@@ -2104,7 +2104,7 @@ CSTRING ResolveClassID(CLASSID ID)
 {
    if (glClassDB.contains(ID)) return glClassDB[ID].Name.c_str();
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.warning("Failed to resolve ID $%.8x", uint32_t(ID));
    return nullptr;
 }
@@ -2143,7 +2143,7 @@ SystemLocked
 
 ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Object) or (not Owner)) return log.warning(ERR::NullArgs);
 
@@ -2266,7 +2266,7 @@ static const char sn_lookup[256] = {
 
 ERR SetName(OBJECTPTR Object, CSTRING NewName)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Object) or (not NewName)) return log.warning(ERR::NullArgs);
 
@@ -2343,7 +2343,7 @@ OutOfRange: The Action parameter is invalid.
 
 ERR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Object) or (not Callback)) return log.warning(ERR::NullArgs);
    if ((ActionID < AC::NIL) or (ActionID >= AC::END)) return log.warning(ERR::OutOfRange);
@@ -2387,7 +2387,7 @@ Args:
 
 ERR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Object) return log.warning(ERR::NullArgs);
    if ((ActionID < AC::NIL) or (ActionID >= AC::END)) return log.warning(ERR::Args);

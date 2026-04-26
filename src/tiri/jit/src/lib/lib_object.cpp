@@ -289,7 +289,7 @@ READ_TABLE * get_read_table(objMetaClass *Class)
 {
    if (not Class->ReadTable.empty()) return &Class->ReadTable;
 
-   pf::ScopedObjectLock lock(Class);
+   kt::ScopedObjectLock lock(Class);
 
    READ_TABLE &jmp = Class->ReadTable;
 
@@ -336,7 +336,7 @@ READ_TABLE * get_read_table(objMetaClass *Class)
             else jmp.push_back(obj_read(hash, object_get_long, &field));
          }
          else if (field.Flags & FD_FUNCTION); // Unsupported
-         else pf::Log().warning("Unable to support field %s.%s for reading", Class->Name, field.Name);
+         else kt::Log().warning("Unable to support field %s.%s for reading", Class->Name, field.Name);
       }
    }
 
@@ -366,7 +366,7 @@ WRITE_TABLE * get_write_table(objMetaClass *Class)
 {
    if (not Class->WriteTable.empty()) return &Class->WriteTable;
 
-   pf::ScopedObjectLock lock(Class);
+   kt::ScopedObjectLock lock(Class);
 
    WRITE_TABLE &jmp = Class->WriteTable;
    Field *dict;
@@ -475,7 +475,7 @@ extern int object_newindex(lua_State *Lua)
 
 [[nodiscard]] static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action, const FunctionField **Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((action[0] IS 'm') and (action[1] IS 't')) {
       action += 2;
@@ -512,7 +512,7 @@ extern int object_newindex(lua_State *Lua)
 
 LJLIB_CF(object_new)
 {
-   pf::Log log("obj.new");
+   kt::Log log("obj.new");
    CSTRING class_name;
    CLASSID class_id;
 
@@ -596,7 +596,7 @@ LJLIB_CF(object_new)
 
 LJLIB_CF(object_find)
 {
-   pf::Log log("object.find");
+   kt::Log log("object.find");
    CSTRING object_name;
    CLASSID class_id;
    OBJECTID object_id;
@@ -626,7 +626,7 @@ LJLIB_CF(object_find)
    else if ((type IS LUA_TNUMBER) and ((object_id = lua_tointeger(L, 1)))) {
       log.trace("obj.find(#%d)", object_id);
 
-      pf::ScopedObjectLock lock(object_id);
+      kt::ScopedObjectLock lock(object_id);
       if (lock.granted()) {
          return object_find_ptr(L, *lock);
       }
@@ -673,7 +673,7 @@ static int object_state(lua_State *Lua)
    auto def = object_context(Lua);
    auto prv = (prvTiri *)Lua->script->ChildPrivate;
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    if (auto it = prv->StateMap.find(def->uid); it != prv->StateMap.end()) {
       lua_rawgeti(Lua, LUA_REGISTRYINDEX, it->second);
       return 1;
@@ -692,7 +692,7 @@ static int object_state(lua_State *Lua)
 
 static int object_newchild(lua_State *Lua)
 {
-   pf::Log log("obj.child");
+   kt::Log log("obj.child");
 
    auto parent = object_context(Lua);
 
@@ -783,7 +783,7 @@ static int object_newchild(lua_State *Lua)
 
 static int object_children(lua_State *Lua)
 {
-   pf::Log log("obj.children");
+   kt::Log log("obj.children");
 
    log.trace("");
 
@@ -796,7 +796,7 @@ static int object_children(lua_State *Lua)
    }
    else class_id = CLASSID::NIL;
 
-   pf::vector<ChildEntry> list;
+   kt::vector<ChildEntry> list;
    if (ListChildren(def->uid, &list) IS ERR::Okay) {
       int index = 0;
       auto id = std::make_unique<int[]>(list.size());
@@ -821,7 +821,7 @@ static int object_detach(lua_State *Lua)
 {
    auto def = object_context(Lua);
 
-   pf::Log log("obj.detach");
+   kt::Log log("obj.detach");
    log.traceBranch("Detached: %d", def->is_detached());
 
    if (not def->is_detached()) def->set_detached(true);
@@ -874,7 +874,7 @@ static int object_subscribe(lua_State *Lua)
       return 0;
    }
 
-   pf::Log log("obj.subscribe");
+   kt::Log log("obj.subscribe");
    log.trace("Object: %d, Action: %s (ID %d)", def->uid, action, action_id);
 
    auto callback = C_FUNCTION(notify_action);
@@ -909,7 +909,7 @@ static int object_subscribe(lua_State *Lua)
 
 static int object_unsubscribe(lua_State *Lua)
 {
-   pf::Log log("unsubscribe");
+   kt::Log log("unsubscribe");
 
    auto def = object_context(Lua);
 

@@ -247,7 +247,7 @@ virtual_drive get_fs(std::string_view Path)
 
 ERR check_cache(OBJECTPTR Subscriber, int64_t Elapsed, int64_t CurrentTime)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Scanning file cache for unused entries...");
 
@@ -336,7 +336,7 @@ DoesNotExist:
 
 ERR AnalysePath(CSTRING Path, LOC *PathType)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (PathType) *PathType = LOC::NIL;
    if ((not Path) or (not Path[0])) return ERR::NullArgs;
@@ -651,7 +651,7 @@ FileExists: The location referenced at From already exists.
 
 ERR CreateLink(CSTRING From, CSTRING To)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not From) or (not To)) return ERR::NullArgs;
    log.branch("From: %.40s, To: %s", From, To);
@@ -718,7 +718,7 @@ NoSupport: The filesystem driver does not support deletion.
 
 ERR DeleteFile(CSTRING Path, FUNCTION *Callback)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Path) return ERR::NullArgs;
 
@@ -757,7 +757,7 @@ int(PERMIT) Permissions: Permission flags to be applied to new files.
 
 void SetDefaultPermissions(int User, int Group, PERMIT Permissions)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    glForceUID = User;
    glForceGID = Group;
@@ -799,7 +799,7 @@ NoSupport: The target filesystem does not support the operation.
 
 ERR GetFileInfo(const std::string_view &Path, FileInfo *Info, int InfoSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Path.empty() or (not Info) or (InfoSize <= 0)) return log.warning(ERR::Args);
 
@@ -902,7 +902,7 @@ Search: If `CHECK_EXISTS` is specified, this failure indicates that the file is 
 
 ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Path) or (not Cache)) return ERR::NullArgs;
 
@@ -948,7 +948,7 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
          *((extCacheFile **)Cache) = &glCache[index];
 
          if (not glCacheTimer) {
-            pf::SwitchContext context(CurrentTask());
+            kt::SwitchContext context(CurrentTask());
             auto call = C_FUNCTION(check_cache);
             SubscribeTimer(60, &call, &glCacheTimer);
          }
@@ -989,7 +989,7 @@ Failed:
 
 ERR CreateFolder(CSTRING Path, PERMIT Permissions)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Path) or (not *Path)) return log.warning(ERR::NullArgs);
 
@@ -1057,7 +1057,7 @@ Failed
 
 ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Source) or (not Dest)) return ERR::NullArgs;
 
@@ -1096,7 +1096,7 @@ File
 
 ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *BytesRead)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Path: %s, Buffer Size: %d", Path, BufferSize);
 
@@ -1175,7 +1175,7 @@ NotFound:
 ERR ReadInfoTag(FileInfo *Info, CSTRING Name, CSTRING *Value)
 {
    if ((not Info) or (not Name) or (not Value)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       return ERR::NullArgs;
    }
 
@@ -1193,7 +1193,7 @@ ERR ReadInfoTag(FileInfo *Info, CSTRING Name, CSTRING *Value)
 
 static ERR test_path(std::string &Path, RSF Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.trace("%s", Path.c_str());
 
@@ -1277,7 +1277,7 @@ void UnloadFile(CacheFile *Cache)
 {
    if (not Cache) return;
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.function("%.80s, Locks: %d", Cache->Path, ((extCacheFile *)Cache)->Locks);
 
@@ -1302,7 +1302,7 @@ struct olddirent {
 
 ERR findfile(std::string &Path)
 {
-   pf::Log log("FindFile");
+   kt::Log log("FindFile");
 
    if (Path.empty() or Path.starts_with(':')) return ERR::Args;
 
@@ -1458,7 +1458,7 @@ PERMIT convert_fs_permissions(int Permissions)
 
 ERR check_paths(CSTRING Path, PERMIT Permissions)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("%s", Path);
 
    std::string path(Path);
@@ -1474,7 +1474,7 @@ ERR check_paths(CSTRING Path, PERMIT Permissions)
 
 ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, bool Move)
 {
-   pf::Log log(Move ? "MoveFile" : "CopyFile");
+   kt::Log log(Move ? "MoveFile" : "CopyFile");
 #ifdef __unix__
    int gid, uid;
 #endif
@@ -1553,7 +1553,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          // Check if the copy would cause recursion  - e.g. "/kotuku/system/" to "/kotuku/system/temp/".
 
          if (src.size() <= dest.size()) {
-            if (pf::startswith(src, dest)) {
+            if (kt::startswith(src, dest)) {
                log.warning("The copy operation would cause recursion.");
                return ERR::Loop;
             }
@@ -1761,7 +1761,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       // Check if the copy would cause recursion  - e.g. "/kotuku/system/" to "/kotuku/system/temp/".
 
       if (src.size() <= dest.size()) {
-         if (pf::startswith(src, dest)) {
+         if (kt::startswith(src, dest)) {
             log.warning("The requested copy would cause recursion.");
             return ERR::Loop;
          }
@@ -1936,7 +1936,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
 ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, FUNCTION *Callback, int8_t Move)
 {
-   pf::Log log("copy_file");
+   kt::Log log("copy_file");
 
    const auto vsrc = get_fs(Source);
    const auto vdest = get_fs(Dest);
@@ -2233,7 +2233,7 @@ ERR fs_scandir(DirInfo *Dir)
 
 ERR fs_opendir(DirInfo *Info)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.trace("Resolve '%.40s'/ '%.40s'", Info->prvPath, Info->prvResolvedPath);
 
@@ -2266,7 +2266,7 @@ ERR fs_opendir(DirInfo *Info)
 
 ERR fs_closedir(DirInfo *Dir)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.trace("Dir: %p, VirtualID: %d", Dir, Dir->prvVirtualID);
 
@@ -2352,7 +2352,7 @@ ERR fs_testpath(std::string &Path, RSF Flags, LOC *Type)
 
 ERR fs_getinfo(std::string_view Path, FileInfo *Info, int InfoSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
 #ifdef __unix__
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
@@ -2477,7 +2477,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, int InfoSize)
 
 ERR fs_getdeviceinfo(std::string_view Path, objStorageDevice *Info)
 {
-   pf::Log log("GetDeviceInfo");
+   kt::Log log("GetDeviceInfo");
 
    std::string location, resolve;
    ERR error;
@@ -2603,7 +2603,7 @@ restart:
 
 ERR fs_makedir(std::string_view Path, PERMIT Permissions)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
 #ifdef __unix__
 
@@ -2711,7 +2711,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
 
 ERR delete_tree(std::string &Path, FUNCTION *Callback, FileFeedback *Feedback)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    ERR error;
 
    log.trace("Path: %s", Path.c_str());

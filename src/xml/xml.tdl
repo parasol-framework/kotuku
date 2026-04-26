@@ -33,7 +33,7 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2026", versio
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Reserved(0)
       { }
 
-   XTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
+   XTag(int pID, int pLine, kt::vector<XMLAttrib> pAttribs) :
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Reserved(0), Attribs(pAttribs)
       { }
 
@@ -53,7 +53,7 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2026", versio
 
    inline const std::string * attrib(const std::string &Name) const {
       for (unsigned a=1; a < Attribs.size(); a++) {
-         if (pf::iequals(Attribs[a].Name, Name)) return &Attribs[a].Value;
+         if (kt::iequals(Attribs[a].Name, Name)) return &Attribs[a].Value;
       }
       return NULL;
    }
@@ -119,7 +119,7 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2026", versio
   ]],
   nil,
   [[
-   typedef pf::vector<XTag> TAGS;
+   typedef kt::vector<XTag> TAGS;
    TAGS Tags;
 
    template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XTag **Result) {
@@ -157,7 +157,7 @@ struct XPathArrayStorage;]])
     cpp(str)  StringValue  # Defined if the type is String
   ]],
   [[
-   pf::vector<XTag *> node_set; // Defined if the type is NodeSet
+   kt::vector<XTag *> node_set; // Defined if the type is NodeSet
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
@@ -168,7 +168,7 @@ struct XPathArrayStorage;]])
 
    XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
 
-   explicit XPathValue(const pf::vector<XTag *> &Nodes,
+   explicit XPathValue(const kt::vector<XTag *> &Nodes,
       std::optional<std::string> NodeSetString = std::nullopt,
       std::vector<std::string> NodeSetStrings = {},
       std::vector<const XMLAttrib *> NodeSetAttributes = {})
@@ -251,7 +251,7 @@ namespace xml {
 inline void UpdateAttrib(XTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
 {
    for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
-      if (pf::iequals(Name, a->Name)) {
+      if (kt::iequals(Name, a->Name)) {
          a->Name  = Name;
          a->Value = Value;
          return;

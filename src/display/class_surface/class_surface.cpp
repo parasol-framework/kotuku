@@ -68,7 +68,7 @@ static ERR refresh_pointer_timer(OBJECTPTR Task, int64_t Elapsed, int64_t Curren
 void refresh_pointer(extSurface *Self)
 {
    if (!glRefreshPointerTimer) {
-      pf::SwitchContext context(glModule);
+      kt::SwitchContext context(glModule);
       SubscribeTimer(0.02, C_FUNCTION(refresh_pointer_timer), &glRefreshPointerTimer);
    }
 }
@@ -163,7 +163,7 @@ static bool check_volatile(const SURFACELIST &List, int Index)
 static void expose_buffer(const SURFACELIST &list, int Limit, int Index, int ScanIndex, int Left, int Top,
                    int Right, int Bottom, OBJECTID DisplayID, extBitmap *Bitmap)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Scan for overlapping parent/sibling regions and avoid them
 
@@ -326,7 +326,7 @@ static void expose_buffer(const SURFACELIST &list, int Limit, int Index, int Sca
 static void invalidate_overlap(extSurface *Self, const SURFACELIST &list, int OldIndex, int Index,
    const ClipRectangle &Area, objBitmap *Bitmap)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int j;
 
    log.traceBranch("%dx%d %dx%d, Between %d to %d", Area.Left, Area.Top, Area.width(), Area.height(), OldIndex, Index);
@@ -388,7 +388,7 @@ static void display_resized(OBJECTID DisplayID, int X, int Y, int Width, int Hei
 {
    OBJECTID surface_id = GetOwnerID(DisplayID);
 
-   if (pf::ScopedObjectLock<extSurface> surface(surface_id, 4000); surface.granted()) {
+   if (kt::ScopedObjectLock<extSurface> surface(surface_id, 4000); surface.granted()) {
       if (surface->classID() IS CLASSID::SURFACE) {
          if ((X != surface->X) or (Y != surface->Y)) {
             surface->X = X;
@@ -407,7 +407,7 @@ static void display_resized(OBJECTID DisplayID, int X, int Y, int Width, int Hei
 
 static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERR Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
 
    // Free ourselves in advance if our parent is in the process of being killed.  This causes a chain reaction
@@ -421,7 +421,7 @@ static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERR Result)
 
 static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERR Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
 
    for (int i=0; i < Self->CallbackCount; i++) {
@@ -442,7 +442,7 @@ static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERR Result
 
 static void notify_draw_display(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct acDraw *Args)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
 
    if (Self->collecting()) return;
@@ -457,7 +457,7 @@ static void notify_draw_display(OBJECTPTR Object, ACTIONID ActionID, ERR Result,
 
 static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct acRedimension *Args)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
 
    if (Self->Document) return;
@@ -603,7 +603,7 @@ AllocMemory
 
 static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -726,7 +726,7 @@ static int64_t glLastFocusTime = 0;
 
 static ERR SURFACE_Focus(extSurface *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->disabled()) return ERR::Okay|ERR::Notified;
 
@@ -741,7 +741,7 @@ static ERR SURFACE_Focus(extSurface *Self)
 
    if ((Self->Flags & RNF::IGNORE_FOCUS) != RNF::NIL) {
       FOCUSMSG("Focus propagated to parent (IGNORE_FOCUS flag set).");
-      pf::ScopedObjectLock focus(Self->ParentID);
+      kt::ScopedObjectLock focus(Self->ParentID);
       if (focus.granted()) acFocus(*focus);
       glLastFocusTime = PreciseTime();
       return ERR::Okay|ERR::Notified;
@@ -844,7 +844,7 @@ static ERR SURFACE_Focus(extSurface *Self)
 
    auto it = glFocusList.begin() + 1; // Skip Self
    while (it != glFocusList.end()) {
-      pf::ScopedObjectLock<objSurface> obj(*it);
+      kt::ScopedObjectLock<objSurface> obj(*it);
       if (obj.granted()) obj->inheritedFocus(Self->UID, Self->Flags);
       it++;
    }
@@ -852,7 +852,7 @@ static ERR SURFACE_Focus(extSurface *Self)
    // Send out LostFocus actions to all objects that do not intersect with the new focus chain.
 
    for (auto &id : lostfocus) {
-      pf::ScopedObjectLock obj(id);
+      kt::ScopedObjectLock obj(id);
       if (obj.granted()) acLostFocus(*obj);
    }
 
@@ -876,7 +876,7 @@ static ERR SURFACE_Focus(extSurface *Self)
       // Return without notification as we already have the focus
 
       if (Self->RevertFocusID) {
-         pf::ScopedObjectLock focus(Self->RevertFocusID);
+         kt::ScopedObjectLock focus(Self->RevertFocusID);
          Self->RevertFocusID = 0;
          if (focus.granted()) acFocus(*focus);
       }
@@ -891,12 +891,12 @@ static ERR SURFACE_Focus(extSurface *Self)
       // Focussing on the display window is important in hosted environments
 
       if (Self->DisplayID) {
-         pf::ScopedObjectLock display(Self->DisplayID);
+         kt::ScopedObjectLock display(Self->DisplayID);
          if (display.granted()) acFocus(*display);
       }
 
       if (Self->RevertFocusID) {
-         pf::ScopedObjectLock focus(Self->RevertFocusID);
+         kt::ScopedObjectLock focus(Self->RevertFocusID);
          Self->RevertFocusID = 0;
          if (focus.granted()) acFocus(*focus);
       }
@@ -920,7 +920,7 @@ static ERR SURFACE_Free(extSurface *Self)
    }
 
    if (Self->ParentID) {
-      if (pf::ScopedObjectLock<extSurface> parent(Self->ParentID, 5000); parent.granted()) {
+      if (kt::ScopedObjectLock<extSurface> parent(Self->ParentID, 5000); parent.granted()) {
          UnsubscribeAction(*parent, AC::NIL);
          if (Self->transparent()) {
             Action(drw::RemoveCallback::id, Self, nullptr);
@@ -950,13 +950,13 @@ static ERR SURFACE_Free(extSurface *Self)
 
    if (Self->hasFocus() and (Self->Owner) and (Self->Owner->classID() != CLASSID::WINDOW)) {
       if (Self->ParentID) {
-         pf::ScopedObjectLock focus(Self->ParentID);
+         kt::ScopedObjectLock focus(Self->ParentID);
          if (focus.granted()) acFocus(*focus);
       }
    }
 
    if ((Self->Flags & RNF::AUTO_QUIT) != RNF::NIL) {
-      pf::Log log;
+      kt::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
       SendMessage(MSGID::QUIT, MSF::NIL, nullptr, 0);
    }
@@ -981,7 +981,7 @@ Hide: Hides a surface object from the display.
 
 static ERR SURFACE_Hide(extSurface *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.traceBranch();
 
@@ -991,7 +991,7 @@ static ERR SURFACE_Hide(extSurface *Self)
       Self->Flags &= ~RNF::VISIBLE; // Important to switch off visibliity before Hide(), otherwise a false redraw will occur.
       UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
 
-      pf::ScopedObjectLock display(Self->DisplayID);
+      kt::ScopedObjectLock display(Self->DisplayID);
       if (display.granted()) if (acHide(*display) != ERR::Okay) return ERR::Failed;
    }
    else {
@@ -1071,7 +1071,7 @@ static ERR SURFACE_InheritedFocus(extSurface *Self, struct drw::InheritedFocus *
 
 static ERR SURFACE_Init(extSurface *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    bool require_store = false;
    OBJECTID parent_bitmap = 0;
@@ -1094,7 +1094,7 @@ static ERR SURFACE_Init(extSurface *Self)
 
    ERR error = ERR::Okay;
    if (Self->ParentID) {
-      pf::ScopedObjectLock<extSurface> parent(Self->ParentID, 3000);
+      kt::ScopedObjectLock<extSurface> parent(Self->ParentID, 3000);
       if (!parent.granted()) return ERR::AccessObject;
 
       log.trace("Initialising surface to parent #%d.", Self->ParentID);
@@ -1306,7 +1306,7 @@ static ERR SURFACE_Init(extSurface *Self)
       CSTRING name = FindObject("SystemDisplay", CLASSID::NIL, FOF::NIL, &id) != ERR::Okay ? "SystemDisplay" : (CSTRING)nullptr;
 
       if (Self->PopOverID) {
-         if (pf::ScopedObjectLock<extSurface> popsurface(Self->PopOverID, 2000); popsurface.granted()) {
+         if (kt::ScopedObjectLock<extSurface> popsurface(Self->PopOverID, 2000); popsurface.granted()) {
             pop_display = popsurface->DisplayID;
 
             if (!pop_display) log.warning("Surface #%d doesn't have a display ID for pop-over.", Self->PopOverID);
@@ -1417,7 +1417,7 @@ static ERR SURFACE_Init(extSurface *Self)
    if (require_store) {
       Self->BitmapOwnerID = Self->UID;
 
-      pf::ScopedObjectLock<objDisplay> display(Self->DisplayID, 3000);
+      kt::ScopedObjectLock<objDisplay> display(Self->DisplayID, 3000);
 
       if (display.granted()) {
          auto memflags = MEM::DATA;
@@ -1467,7 +1467,7 @@ static ERR SURFACE_Init(extSurface *Self)
    // If the FIXED_BUFFER option is set, pass the NEVER_SHRINK option to the bitmap
 
    if ((Self->Flags & RNF::FIXED_BUFFER) != RNF::NIL) {
-      if (pf::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000); bitmap.granted()) {
+      if (kt::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000); bitmap.granted()) {
          bitmap->Flags |= BMF::NEVER_SHRINK;
       }
    }
@@ -1559,7 +1559,7 @@ host platform.
 static ERR SURFACE_Minimise(extSurface *Self)
 {
    if (Self->DisplayID) {
-      pf::ScopedObjectLock<objDisplay> display(Self->DisplayID);
+      kt::ScopedObjectLock<objDisplay> display(Self->DisplayID);
       if (display.granted()) display->minimise();
    }
    return ERR::Okay;
@@ -1573,7 +1573,7 @@ Move: Moves a surface object to a new display position.
 
 static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 {
-   pf::Log log;
+   kt::Log log;
    struct acMove move;
    int i;
 
@@ -1697,10 +1697,10 @@ MoveToBack: Moves a surface object to the back of its container.
 
 static ERR SURFACE_MoveToBack(extSurface *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->ParentID) {
-      pf::ScopedObjectLock<objDisplay> display(Self->DisplayID);
+      kt::ScopedObjectLock<objDisplay> display(Self->DisplayID);
       if (display.granted()) display->moveToBack();
       return ERR::Okay|ERR::Notified;
    }
@@ -1757,12 +1757,12 @@ MoveToFront: Moves a surface object to the front of its container.
 
 static ERR SURFACE_MoveToFront(extSurface *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch("%s", Self->Name);
 
    if (!Self->ParentID) {
-      pf::ScopedObjectLock<objDisplay> display(Self->DisplayID);
+      kt::ScopedObjectLock<objDisplay> display(Self->DisplayID);
       if (display.granted()) display->moveToFront();
       return ERR::Okay|ERR::Notified;
    }
@@ -1803,7 +1803,7 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
          for (auto i=index-1; i > 0; i--) {
             if (glSurfaces[i].Level IS level) {
                if (glSurfaces[i].SurfaceID != Self->PopOverID) {
-                  pf::ScopedObjectLock<objSurface> pop(Self->PopOverID);
+                  kt::ScopedObjectLock<objSurface> pop(Self->PopOverID);
                   if (pop.granted()) pop->moveToFront();
                   return ERR::Okay|ERR::Notified;
                }
@@ -1841,7 +1841,7 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
       //   Any volatile regions that were in front of our surface prior to the move-to-front (by moving to the front, their background has been changed).
       //   Areas of our surface that were obscured by surfaces that also shared our bitmap space.
 
-      if (pf::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000); bitmap.granted()) {
+      if (kt::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000); bitmap.granted()) {
          auto area = ClipRectangle(cplist[i].Left, cplist[i].Top, cplist[i].Right, cplist[i].Bottom);
          invalidate_overlap(Self, cplist, currentindex, i, area, *bitmap);
       }
@@ -1856,7 +1856,7 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
       for (int i=index-1; i > 0; i--) {
          if (cplist[i].Level IS level) {
             if (cplist[i].SurfaceID != Self->PopOverID) {
-               if (pf::ScopedObjectLock<objSurface> pop(Self->PopOverID); pop.granted()) {
+               if (kt::ScopedObjectLock<objSurface> pop(Self->PopOverID); pop.granted()) {
                   pop->moveToFront();
                }
                return ERR::Okay;
@@ -1943,7 +1943,7 @@ Search
 
 static ERR SURFACE_RemoveCallback(extSurface *Self, struct drw::RemoveCallback *Args)
 {
-   pf::Log log;
+   kt::Log log;
    OBJECTPTR context = nullptr;
 
    if (Args) {
@@ -2043,7 +2043,7 @@ AccessMemory: Unable to access internal surface list.
 
 static ERR SURFACE_ResetDimensions(extSurface *Self, struct drw::ResetDimensions *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -2165,7 +2165,7 @@ specified, the user's preferred default file format is used.
 
 static ERR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 {
-   pf::Log log;
+   kt::Log log;
    int j, level;
 
    if (!Args) return log.warning(ERR::NullArgs);
@@ -2251,7 +2251,7 @@ NullArgs
 
 static ERR SURFACE_SetOpacity(extSurface *Self, struct drw::SetOpacity *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -2285,7 +2285,7 @@ Show: Shows a surface object on the display.
 
 static ERR SURFACE_Show(extSurface *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.traceBranch("%dx%d, %dx%d, Parent: %d, Modal: %d", Self->X, Self->Y, Self->Width, Self->Height, Self->ParentID, Self->Modal);
 
@@ -2297,7 +2297,7 @@ static ERR SURFACE_Show(extSurface *Self)
    else notified = ERR::NIL;
 
    if (!Self->ParentID) {
-      pf::ScopedObjectLock display(Self->DisplayID);
+      kt::ScopedObjectLock display(Self->DisplayID);
       if (acShow(*display) IS ERR::Okay) {
          Self->Flags |= RNF::VISIBLE;
          if (Self->hasFocus()) acFocus(*display);
@@ -2400,7 +2400,7 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
 
 static ERR consume_input_events(const InputEvent *Events, int Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto Self = (extSurface *)CurrentContext();
 
@@ -2446,7 +2446,7 @@ static ERR consume_input_events(const InputEvent *Events, int Handle)
             // Move the dragging surface to the new location
 
             if ((Self->DragID) and (Self->DragID != Self->UID)) {
-               pf::ScopedObjectLock drag(Self->DragID);
+               kt::ScopedObjectLock drag(Self->DragID);
                if (drag.granted()) acMove(*drag, xchange, ychange, 0);
             }
             else {

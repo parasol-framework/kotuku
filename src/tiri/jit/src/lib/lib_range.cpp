@@ -825,28 +825,28 @@ static int range_toarray(lua_State *L)
 // Handles property access (.start, .stop, .step, .inclusive, .length)
 // and method calls (:contains, :toArray)
 
-constexpr auto HASH_start     = pf::strhash("start");
-constexpr auto HASH_stop      = pf::strhash("stop");
-constexpr auto HASH_step      = pf::strhash("step");
-constexpr auto HASH_inclusive = pf::strhash("inclusive");
-constexpr auto HASH_length    = pf::strhash("length");
-constexpr auto HASH_contains  = pf::strhash("contains");
-constexpr auto HASH_toArray   = pf::strhash("toArray");
-constexpr auto HASH_each      = pf::strhash("each");
-constexpr auto HASH_filter    = pf::strhash("filter");
-constexpr auto HASH_reduce    = pf::strhash("reduce");
-constexpr auto HASH_map       = pf::strhash("map");
-constexpr auto HASH_take      = pf::strhash("take");
-constexpr auto HASH_any       = pf::strhash("any");
-constexpr auto HASH_all       = pf::strhash("all");
-constexpr auto HASH_find      = pf::strhash("find");
+constexpr auto HASH_start     = kt::strhash("start");
+constexpr auto HASH_stop      = kt::strhash("stop");
+constexpr auto HASH_step      = kt::strhash("step");
+constexpr auto HASH_inclusive = kt::strhash("inclusive");
+constexpr auto HASH_length    = kt::strhash("length");
+constexpr auto HASH_contains  = kt::strhash("contains");
+constexpr auto HASH_toArray   = kt::strhash("toArray");
+constexpr auto HASH_each      = kt::strhash("each");
+constexpr auto HASH_filter    = kt::strhash("filter");
+constexpr auto HASH_reduce    = kt::strhash("reduce");
+constexpr auto HASH_map       = kt::strhash("map");
+constexpr auto HASH_take      = kt::strhash("take");
+constexpr auto HASH_any       = kt::strhash("any");
+constexpr auto HASH_all       = kt::strhash("all");
+constexpr auto HASH_find      = kt::strhash("find");
 
 static int range_index(lua_State *Lua)
 {
    auto r = get_range(Lua, 1);
 
    if (lua_type(Lua, 2) IS LUA_TSTRING) {
-      auto hash = pf::strhash(lua_tostring(Lua, 2));
+      auto hash = kt::strhash(lua_tostring(Lua, 2));
 
       switch(hash) {
          case HASH_start:     lua_pushinteger(Lua, r->start); return 1;

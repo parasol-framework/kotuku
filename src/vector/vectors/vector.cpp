@@ -36,7 +36,7 @@ static ERR VECTOR_Push(extVector *, struct vec::Push *);
 
 void debug_tree(extVector *Vector, int &Level)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int i;
 
    auto indent = std::make_unique<char[]>(Level + 1);
@@ -50,7 +50,7 @@ void debug_tree(extVector *Vector, int &Level)
       if (FindField(v, FID_Dimensions, nullptr)) v->get(strihash("Dimensions"), dim);
 
       if ((v->Class->BaseClassID IS CLASSID::VECTOR) and (v->Child)) {
-         pf::Log blog(__FUNCTION__);
+         kt::Log blog(__FUNCTION__);
          blog.branch(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, dim.c_str());
          debug_tree((extVector *)v->Child, Level);
       }
@@ -65,7 +65,7 @@ void debug_tree(extVector *Vector, int &Level)
 [[maybe_unused]] static void validate_tree(extVector *Vector);
 static void validate_tree(extVector *Vector)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (auto v=Vector; v; v=(extVector *)v->Next) {
       if ((v->Next) and (v->Next->Prev != v)) {
@@ -247,13 +247,13 @@ static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       struct drwScheduleRedraw area = { .X = bx1, .Y = by1, .Width = bx2 - bx1, .Height = by2 - by1 };
 #endif
 
-      if (pf::ScopedObjectLock<objSurface> surface(Self->Scene->SurfaceID); surface.granted()) {
+      if (kt::ScopedObjectLock<objSurface> surface(Self->Scene->SurfaceID); surface.granted()) {
          surface->scheduleRedraw();
          return ERR::Okay;
       }
       else return ERR::AccessObject;
    }
-   else return pf::Log().warning(ERR::FieldNotSet);
+   else return kt::Log().warning(ERR::FieldNotSet);
 }
 
 /*********************************************************************************************************************
@@ -319,7 +319,7 @@ static ERR VECTOR_Free(extVector *Self)
 
       if (scene->ActiveVector IS Self->UID) {
          if (scene->Cursor != PTC::DEFAULT) {
-            pf::ScopedObjectLock<objSurface> surface(scene->SurfaceID);
+            kt::ScopedObjectLock<objSurface> surface(scene->SurfaceID);
             if ((surface.granted()) and (surface.obj->Cursor != PTC::DEFAULT)) {
                surface.obj->setCursor(PTC::DEFAULT);
             }
@@ -433,7 +433,7 @@ NotPossible: The vector does not support path generation.
 
 static ERR VECTOR_GetBoundary(extVector *Self, struct vec::GetBoundary *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -497,7 +497,7 @@ static ERR VECTOR_Hide(extVector *Self)
 
 static ERR VECTOR_Init(extVector *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->classID() IS CLASSID::VECTOR) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
@@ -589,7 +589,7 @@ static ERR VECTOR_NewPlacement(extVector *Self)
 
 static ERR VECTOR_NewOwner(extVector *Self, struct acNewOwner *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->classID() IS CLASSID::NIL) return ERR::Okay;
 
@@ -685,7 +685,7 @@ NoSupport: The vector type does not support path generation.
 
 static ERR VECTOR_PointInPath(extVector *Self, struct vec::PointInPath *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -760,7 +760,7 @@ NullArgs:
 
 static ERR VECTOR_Push(extVector *Self, struct vec::Push *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if (!Args->Position) return ERR::Okay;
@@ -845,7 +845,7 @@ NullArgs:
 
 static ERR VECTOR_SubscribeFeedback(extVector *Self, struct vec::SubscribeFeedback *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
@@ -901,7 +901,7 @@ Function: A call to ~Display.SubscribeInput() failed.
 
 static ERR VECTOR_SubscribeInput(extVector *Self, struct vec::SubscribeInput *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    // Refer to scene_input_events() for the origin of incoming input messages
 
@@ -966,7 +966,7 @@ Function: A call to ~Display.SubscribeInput() failed.
 
 static ERR VECTOR_SubscribeKeyboard(extVector *Self, struct vec::SubscribeKeyboard *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
@@ -1010,7 +1010,7 @@ NoData: The vector does not define a path.
 
 static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
@@ -1028,7 +1028,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
   if (Args->Callback->isC()) {
       auto routine = ((ERR (*)(extVector *, int, int, double, double, APTR))(Args->Callback->Routine));
 
-      pf::SwitchContext context(ParentContext());
+      kt::SwitchContext context(ParentContext());
 
       if (Args->Transform) {
          agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
@@ -1121,7 +1121,7 @@ static ERR VECTOR_GET_AppendPath(extVector *Self, extVector **Value)
 
 static ERR VECTOR_SET_AppendPath(extVector *Self, extVector *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    mark_dirty(Self, RC::BASE_PATH);
 
@@ -1256,7 +1256,7 @@ static ERR VECTOR_GET_DashArray(extVector *Self, double **Value, int *Elements)
 
 static ERR VECTOR_SET_DashArray(extVector *Self, double *Value, int Elements)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->DashArray) { delete Self->DashArray; Self->DashArray = nullptr; }
 
@@ -1475,7 +1475,7 @@ static ERR VECTOR_GET_FillOpacity(extVector *Self, double *Value)
 
 static ERR VECTOR_SET_FillOpacity(extVector *Self, double Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->FillOpacity = Value;
@@ -1509,7 +1509,7 @@ static ERR VECTOR_GET_Filter(extVector *Self, CSTRING *Value)
 
 static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    mark_buffers_for_refresh(Self);
 
@@ -1731,7 +1731,7 @@ static ERR VECTOR_GET_Mask(extVector *Self, extVectorClip **Value)
 
 static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Value) {
       if (Self->ClipMask) {
@@ -1783,7 +1783,7 @@ them for theta less than approximately 29 degrees, and a limit of 10.0 converts 
 
 static ERR VECTOR_SET_MiterLimit(extVector *Self, double Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Value >= 1.0) {
       Self->MiterLimit = Value;
@@ -1814,7 +1814,7 @@ static ERR VECTOR_GET_Morph(extVector *Self, extVector **Value)
 
 static ERR VECTOR_SET_Morph(extVector *Self, extVector *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Value) {
       if (Self->Morph) {
@@ -1877,7 +1877,7 @@ UnsupportedOwner: The referenced vector does not share the same owner.
 
 static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Value) or (Value IS Self)) return log.warning(ERR::InvalidValue);
    if (Value->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::InvalidObject);
@@ -2002,7 +2002,7 @@ UnsupportedOwner: The referenced vector does not share the same owner.
 
 static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Value) or (Value IS Self)) return log.warning(ERR::InvalidValue);
    if (Value->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::InvalidObject);
@@ -2117,7 +2117,7 @@ of the previous command).
 
 static ERR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->GeneratePath) return log.warning(ERR::Mismatch); // Path generation must be supported by the vector.
 
@@ -2383,7 +2383,7 @@ static ERR VECTOR_GET_Transition(extVector *Self, extVectorTransition **Value)
 
 static ERR VECTOR_SET_Transition(extVector *Self, extVectorTransition *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Value) {
       if (Self->Transition) {
@@ -2437,7 +2437,7 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
          sub.Mask &= ~Event; // Turned off to prevent recursion
 
          if (sub.Callback.isC()) {
-            pf::SwitchContext ctx(sub.Callback.Context);
+            kt::SwitchContext ctx(sub.Callback.Context);
             auto callback = (ERR (*)(extVector *, FM, APTR, APTR))sub.Callback.Routine;
             result = callback(Vector, Event, EventObject, sub.Callback.Meta);
          }

@@ -114,7 +114,7 @@ struct NoThrowMover {
 };
 
 void test_basic_accessors(TestContext &Context) {
-   pf::vector<int> numbers;
+   kt::vector<int> numbers;
    Context.expect_true(numbers.empty(), "Default vector starts empty");
    Context.expect_equal(numbers.size(), std::size_t(0), "Default size is zero");
    numbers.push_back(7);
@@ -129,7 +129,7 @@ void test_basic_accessors(TestContext &Context) {
 }
 
 void test_zero_capacity_growth(TestContext &Context) {
-   pf::vector<int> values(0);
+   kt::vector<int> values(0);
    values.push_back(1);
    Context.expect_equal(values.size(), std::size_t(1), "push_back succeeds after zero-capacity construction");
    Context.expect_equal(values.front(), 1, "push_back stores value in zero-capacity regression");
@@ -137,7 +137,7 @@ void test_zero_capacity_growth(TestContext &Context) {
 
 void test_range_and_initializer_construction(TestContext &Context) {
    std::array<int, 3> array_values{1, 2, 3};
-   pf::vector<int> from_range(array_values.begin(), array_values.end());
+   kt::vector<int> from_range(array_values.begin(), array_values.end());
    Context.expect_equal(from_range.size(), std::size_t(3), "Range constructor copies all elements");
    std::size_t index = 0;
    for (int value : from_range) {
@@ -145,26 +145,26 @@ void test_range_and_initializer_construction(TestContext &Context) {
       index += 1;
    }
 
-   pf::vector<int> from_list{4, 5, 6, 7};
+   kt::vector<int> from_list{4, 5, 6, 7};
    Context.expect_equal(from_list.size(), std::size_t(4), "Initialiser list constructor sets size");
    Context.expect_equal(from_list.front(), 4, "Initialiser list front element matches");
    Context.expect_equal(from_list.back(), 7, "Initialiser list back element matches");
 
    std::forward_list<int> forward_source{8, 9, 10};
-   pf::vector<int> from_forward(forward_source.begin(), forward_source.end());
+   kt::vector<int> from_forward(forward_source.begin(), forward_source.end());
    Context.expect_equal(from_forward.size(), std::size_t(3), "Forward iterator constructor copies all elements");
    Context.expect_equal(from_forward.front(), 8, "Forward iterator constructor keeps first element");
    Context.expect_equal(from_forward.back(), 10, "Forward iterator constructor keeps last element");
 
-   pf::vector<int> reserved(32);
+   kt::vector<int> reserved(32);
    Context.expect_equal(reserved.size(), std::size_t(0), "Explicit capacity constructor starts empty");
    reserved.push_back(42);
    Context.expect_equal(reserved.back(), 42, "Explicit capacity constructor allows pushes");
 }
 
 void test_copy_move_semantics(TestContext &Context) {
-   pf::vector<int> original{1, 2, 3, 4};
-   pf::vector<int> copied(original);
+   kt::vector<int> original{1, 2, 3, 4};
+   kt::vector<int> copied(original);
    Context.expect_equal(copied.size(), original.size(), "Copy constructor preserves size");
    std::size_t index = 0;
    for (int value : copied) {
@@ -172,7 +172,7 @@ void test_copy_move_semantics(TestContext &Context) {
       index += 1;
    }
 
-   pf::vector<int> assigned;
+   kt::vector<int> assigned;
    assigned = copied;
    Context.expect_equal(assigned.size(), copied.size(), "Copy assignment preserves size");
    index = 0;
@@ -181,18 +181,18 @@ void test_copy_move_semantics(TestContext &Context) {
       index += 1;
    }
 
-   pf::vector<int> moved(std::move(copied));
+   kt::vector<int> moved(std::move(copied));
    Context.expect_equal(moved.size(), std::size_t(4), "Move constructor transfers size");
    Context.expect_equal(copied.size(), std::size_t(0), "Moved-from vector becomes empty");
 
-   pf::vector<int> another{9, 10};
+   kt::vector<int> another{9, 10};
    moved = std::move(another);
    Context.expect_equal(moved.size(), std::size_t(2), "Move assignment transfers new size");
    Context.expect_equal(moved.front(), 9, "Move assignment transfers first value");
    Context.expect_equal(moved.back(), 10, "Move assignment transfers last value");
 
-   pf::vector<int> left{11, 12};
-   pf::vector<int> right{21};
+   kt::vector<int> left{11, 12};
+   kt::vector<int> right{21};
    left.swap(right);
    Context.expect_equal(left.size(), std::size_t(1), "swap exchanges sizes");
    Context.expect_equal(right.size(), std::size_t(2), "swap exchanges sizes for other vector");
@@ -201,7 +201,7 @@ void test_copy_move_semantics(TestContext &Context) {
 }
 
 void test_iterator_coverage(TestContext &Context) {
-   pf::vector<int> numbers{2, 4, 6, 8};
+   kt::vector<int> numbers{2, 4, 6, 8};
    Context.expect_equal(numbers.begin()[0], 2, "begin returns pointer to first element");
    Context.expect_equal(*(numbers.end() - 1), 8, "end points one past last element");
    Context.expect_equal(numbers.cbegin()[1], 4, "cbegin iterates over const data");
@@ -218,7 +218,7 @@ void test_iterator_coverage(TestContext &Context) {
 }
 
 void test_modifiers(TestContext &Context) {
-   pf::vector<int> numbers{1, 3, 4};
+   kt::vector<int> numbers{1, 3, 4};
    int lvalue = 0;
    numbers.insert(numbers.begin(), lvalue);
    Context.expect_equal(numbers.front(), 0, "insert with lvalue works at begin");
@@ -240,7 +240,7 @@ void test_modifiers(TestContext &Context) {
    Context.expect_equal(numbers.size(), std::size_t(3), "Range erase shrinks vector appropriately");
    Context.expect_equal(numbers.back(), 3, "Range erase keeps remaining elements");
 
-   pf::vector<std::pair<int, std::string>> paired;
+   kt::vector<std::pair<int, std::string>> paired;
    auto &emplaced = paired.emplace_back(1, "alpha");
    Context.expect_equal(emplaced.first, 1, "emplace_back constructs first element in place");
    Context.expect_true(emplaced.second.size() IS std::size_t(5), "emplace_back constructs second element in place");
@@ -249,7 +249,7 @@ void test_modifiers(TestContext &Context) {
    Context.expect_true(paired.empty(), "clear empties vector");
    Context.expect_equal(paired.size(), std::size_t(0), "clear sets size to zero");
 
-   pf::vector<int> reserve_target;
+   kt::vector<int> reserve_target;
    for (int value = 0; value < 32; value += 1) {
       reserve_target.push_back(value);
    }
@@ -263,9 +263,9 @@ void test_modifiers(TestContext &Context) {
 }
 
 void test_comparisons(TestContext &Context) {
-   pf::vector<int> alpha{1, 2, 3};
-   pf::vector<int> beta{1, 2, 3};
-   pf::vector<int> gamma{3, 2, 1};
+   kt::vector<int> alpha{1, 2, 3};
+   kt::vector<int> beta{1, 2, 3};
+   kt::vector<int> gamma{3, 2, 1};
    Context.expect_true(alpha IS beta, "operator== returns true for identical contents");
    Context.expect_true(not (alpha IS gamma), "operator== returns false for different contents");
    Context.expect_true(gamma != alpha, "operator!= returns true for different contents");
@@ -274,7 +274,7 @@ void test_comparisons(TestContext &Context) {
 void test_sfinae_paths(TestContext &Context) {
    ThrowOnMove::reset();
    {
-      pf::vector<ThrowOnMove> values;
+      kt::vector<ThrowOnMove> values;
       values.emplace_back(1);
       values.emplace_back(2);
       int copy_before = ThrowOnMove::copy_constructs;
@@ -289,7 +289,7 @@ void test_sfinae_paths(TestContext &Context) {
 
    NoThrowMover::reset();
    {
-      pf::vector<NoThrowMover> values;
+      kt::vector<NoThrowMover> values;
       values.emplace_back(3);
       values.emplace_back(4);
       int copy_before = NoThrowMover::copy_constructs;
@@ -362,7 +362,7 @@ void test_insertion_lifecycle_management(TestContext &Context) {
    // Test single element insertion at various positions
    LifecycleTracker::reset();
    {
-      pf::vector<LifecycleTracker> vec;
+      kt::vector<LifecycleTracker> vec;
 
       // Initial elements to establish a baseline
       vec.emplace_back(1);
@@ -405,7 +405,7 @@ void test_insertion_lifecycle_management(TestContext &Context) {
    // Test range insertion lifecycle management
    LifecycleTracker::reset();
    {
-      pf::vector<LifecycleTracker> vec;
+      kt::vector<LifecycleTracker> vec;
       vec.emplace_back(10);
       vec.emplace_back(20);
 
@@ -439,7 +439,7 @@ void test_insertion_lifecycle_management(TestContext &Context) {
    // Test insertion with capacity expansion
    LifecycleTracker::reset();
    {
-      pf::vector<LifecycleTracker> small_vec(2); // Small initial capacity
+      kt::vector<LifecycleTracker> small_vec(2); // Small initial capacity
       small_vec.emplace_back(1);
       small_vec.emplace_back(2);
 

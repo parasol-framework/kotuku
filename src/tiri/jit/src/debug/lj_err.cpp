@@ -308,7 +308,7 @@ LJ_NOINLINE static void unwindstack(lua_State *L, TValue *Top)
 
 static bool check_try_handler(lua_State *L, int errcode)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Starting check: try_stack.depth=%u, L->base=%p, errcode=%d", L->try_stack.depth, L->base, errcode);
 
    if (L->try_stack.depth IS 0) {
@@ -448,7 +448,7 @@ static bool check_try_handler(lua_State *L, int errcode)
 
 extern "C" void setup_try_handler(lua_State *L)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Activated try handler.");
 
    if (L->try_stack.depth IS 0) return;
@@ -562,7 +562,7 @@ extern "C" void setup_try_handler(lua_State *L)
 
 void * err_unwind(lua_State *L, void *StopCatchFrame, int errcode)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Check for try-except handlers first, unless we're aborting JIT trace recording.
    // If JIT tracing is being aborted then this is not an error that originates from the code - the trace recording
@@ -1055,7 +1055,7 @@ LJ_NOINLINE void lj_err_throw(lua_State *L, int errcode)
    global_State* g = G(L);
 
    auto J = G2J(g);
-   pf::Log(__FUNCTION__).detail("Throwing error: code=%d, Abort: %d, Top: %p, Base: %p, Valid Stack: %d", errcode, J->abort_in_progress, L->top, L->base, L->top >= L->base);
+   kt::Log(__FUNCTION__).detail("Throwing error: code=%d, Abort: %d, Top: %p, Base: %p, Valid Stack: %d", errcode, J->abort_in_progress, L->top, L->base, L->top >= L->base);
 
    lj_trace_abort(g);
    L->status = LUA_OK;

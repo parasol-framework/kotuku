@@ -42,20 +42,20 @@ static constexpr uint32_t HASH_state         = strhash("state");
 
 struct tag_view {
    const XTag *Source = nullptr;
-   const pf::vector<XMLAttrib> *AttribPtr = nullptr;
+   const kt::vector<XMLAttrib> *AttribPtr = nullptr;
    int ID = 0;
    int ParentID = 0;
    int LineNo = 0;
    XTF Flags = XTF::NIL;
    uint32_t NamespaceID = 0;
-   const pf::vector<XMLAttrib> &Attribs;
+   const kt::vector<XMLAttrib> &Attribs;
    const objXML::TAGS &Children;
 
    explicit tag_view(const XTag &Tag) :
       Source(&Tag), AttribPtr(&Tag.Attribs), ID(Tag.ID), ParentID(Tag.ParentID), LineNo(Tag.LineNo),
       Flags(Tag.Flags), NamespaceID(Tag.NamespaceID), Attribs(Tag.Attribs), Children(Tag.Children) { }
 
-   tag_view(const XTag &Tag, const pf::vector<XMLAttrib> &PreparedAttribs) :
+   tag_view(const XTag &Tag, const kt::vector<XMLAttrib> &PreparedAttribs) :
       Source(&Tag), AttribPtr(&PreparedAttribs), ID(Tag.ID), ParentID(Tag.ParentID), LineNo(Tag.LineNo),
       Flags(Tag.Flags), NamespaceID(Tag.NamespaceID), Attribs(PreparedAttribs), Children(Tag.Children) { }
 
@@ -136,7 +136,7 @@ struct parser {
    struct xq_value_binding {
       XPathValue value;
       xq_xml_owner owned_xml;
-      pf::vector<objXML *> node_owners; // Aligned with value.node_set so preserved node sequences can reuse owner lookups.
+      kt::vector<objXML *> node_owners; // Aligned with value.node_set so preserved node sequences can reuse owner lookups.
 
       xq_value_binding() : value(XPVT::String) { }
       explicit xq_value_binding(const XPathValue &Value) : value(Value) {
@@ -206,7 +206,7 @@ struct parser {
    objXML *m_xml;
    objXML *m_source_xml = nullptr;
    objXML *m_doc_xml = nullptr;
-   pf::vector<objXML *> m_doc_xml_history; // Retain replaced $doc trees until parse end so stored XQuery values stay valid.
+   kt::vector<objXML *> m_doc_xml_history; // Retain replaced $doc trees until parse end so stored XQuery values stay valid.
    ankerl::unordered_dense::map<std::string, objXQuery *> m_xq_query_cache; // Compiled XQuery cache keyed by final statement.
 
    RSTREAM *m_stream;                 // Generated stream content
@@ -214,8 +214,8 @@ struct parser {
    objXML *m_inject_xml = nullptr;
    const objXML::TAGS *m_inject_tag = nullptr, *m_header_tag = nullptr, *m_footer_tag = nullptr, *m_body_tag = nullptr;
    objTime *m_time = nullptr;
-   pf::vector<loop_frame> m_loop_stack;
-   pf::vector<xq_context_frame> m_xq_context_stack; // Active XQuery context overrides for <for-each>.
+   kt::vector<loop_frame> m_loop_stack;
+   kt::vector<xq_context_frame> m_xq_context_stack; // Active XQuery context overrides for <for-each>.
    ankerl::unordered_dense::map<std::string, xq_value_binding> m_state_values; // Lexical bindings exposed through $state.
    uint16_t m_paragraph_depth = 0;     // Incremented when inside <p> tags
    char  m_in_template = 0;
@@ -403,7 +403,7 @@ struct parser {
 
    inline void emit_diagnostic_log(doc_diag_severity Severity, const std::string &Message) const
    {
-      pf::Log log("Parser");
+      kt::Log log("Parser");
       if (Severity IS doc_diag_severity::HINT) log.msg("Hint: %s", Message.c_str());
       else if (Severity IS doc_diag_severity::WARNING) log.warning("%s", Message.c_str());
       else log.warning("%s", Message.c_str());
@@ -541,7 +541,7 @@ struct parser {
 
 void parser::process_page(objXML *pXML)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Page: %s", Self->PageName.c_str());
 
@@ -602,7 +602,7 @@ void parser::process_page(objXML *pXML)
       }
 
       if (m_body_tag) {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.traceBranch("Processing this page through the body tag.");
 
          auto xml = m_inject_xml;
@@ -618,7 +618,7 @@ void parser::process_page(objXML *pXML)
          m_inject_xml = xml;
       }
       else {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          auto page_name = page->attrib("name");
          log.traceBranch("Processing page '%s'.", page_name ? page_name->c_str() : "");
          insert_xml(Self, m_stream, m_xml, page->Children, m_stream->size(), STYLE::RESET_STYLE);
@@ -662,7 +662,7 @@ void parser::process_page(objXML *pXML)
          }
          else if (trigger.isC()) {
             auto routine = (void (*)(APTR, extDocument *, APTR))trigger.Routine;
-            pf::SwitchContext context(trigger.Context);
+            kt::SwitchContext context(trigger.Context);
             routine(trigger.Context, Self, trigger.Meta);
          }
       }
@@ -679,7 +679,7 @@ void parser::process_page(objXML *pXML)
 
 TRF parser::parse_tag(const XTag &Tag, IPF &Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Self->Error != ERR::Okay) {
       log.traceWarning("Error field is set, returning immediately.");
@@ -708,8 +708,8 @@ TRF parser::parse_tag(const XTag &Tag, IPF &Flags)
       return result;
    }
 
-   pf::vector<XMLAttrib> prepared_attribs;
-   const pf::vector<XMLAttrib> *active_attribs = &Tag.Attribs;
+   kt::vector<XMLAttrib> prepared_attribs;
+   const kt::vector<XMLAttrib> *active_attribs = &Tag.Attribs;
    if (auto err = xq_prepare_tag(this, Tag, prepared_attribs, active_attribs); err != ERR::Okay) {
       Self->Error = err;
       return TRF::NIL;
@@ -745,7 +745,7 @@ TRF parser::parse_tag(const XTag &Tag, IPF &Flags)
          m_inject_tag = &resolved_tag.Children;
          m_in_template++;
 
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.traceBranch("Executing template '%.*s'.", int(tagname.size()), tagname.data());
 
          Self->TemplateArgs.push_back({ &Tag, active_attribs });
@@ -1271,7 +1271,7 @@ void parser::tag_advance(const tag_view &Tag)
 
 void parser::tag_body(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    static const int MAX_BODY_MARGIN = 500;
 
@@ -1416,7 +1416,7 @@ void parser::tag_body(const tag_view &Tag)
 
 void parser::tag_call(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objScript *script = Self->DefaultScript;
 
    std::string function;
@@ -1447,7 +1447,7 @@ void parser::tag_call(const tag_view &Tag)
    }
 
    {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.traceBranch("Calling script #%d function '%s'", script->UID, function.c_str());
 
       if (Tag.Attribs.size() > 2) {
@@ -1524,7 +1524,7 @@ static const char glButtonSVG[] = R"-(
 
 void parser::tag_button(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    bc_button &widget = m_stream->emplace<bc_button>(m_index);
 
@@ -1625,7 +1625,7 @@ void parser::tag_button(const tag_view &Tag)
 
 void parser::tag_checkbox(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    bc_checkbox &widget = m_stream->emplace<bc_checkbox>(m_index);
 
@@ -1721,7 +1721,7 @@ void parser::tag_checkbox(const tag_view &Tag)
 
 void parser::tag_combobox(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    bc_combobox &widget = m_stream->emplace<bc_combobox>(m_index);
 
@@ -1841,7 +1841,7 @@ void parser::tag_combobox(const tag_view &Tag)
 
 void parser::tag_input(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    bc_input &widget = m_stream->emplace<bc_input>(m_index);
 
@@ -1902,7 +1902,7 @@ void parser::tag_debug(const tag_view &Tag) const
 
 void parser::tag_svg(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Self->SVG) {
       log_error(&Tag, ERR::AlreadyDefined, "doc.duplicate-svg", "Illegal attempt to declare <svg/> more than once.");
@@ -1961,7 +1961,7 @@ void parser::tag_use(const tag_view &Tag)
 
 void parser::tag_div(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto new_style = m_style;
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
@@ -1998,7 +1998,7 @@ void parser::tag_div(const tag_view &Tag)
 
 void parser::tag_editdef(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    doc_edit edit;
    std::string name;
@@ -2063,31 +2063,31 @@ void parser::tag_head(const tag_view &Tag)
       if ("title" IS name) {
          if (scan.hasContent()) {
             if (Self->Title) FreeResource(Self->Title);
-            Self->Title = pf::strclone(scan.Children[0].Attribs[0].Value);
+            Self->Title = kt::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if ("author" IS name) {
          if (scan.hasContent()) {
             if (Self->Author) FreeResource(Self->Author);
-            Self->Author = pf::strclone(scan.Children[0].Attribs[0].Value);
+            Self->Author = kt::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if ("copyright" IS name) {
          if (scan.hasContent()) {
             if (Self->Copyright) FreeResource(Self->Copyright);
-            Self->Copyright = pf::strclone(scan.Children[0].Attribs[0].Value);
+            Self->Copyright = kt::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if ("keywords" IS name) {
          if (scan.hasContent()) {
             if (Self->Keywords) FreeResource(Self->Keywords);
-            Self->Keywords = pf::strclone(scan.Children[0].Attribs[0].Value);
+            Self->Keywords = kt::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if ("description" IS name) {
          if (scan.hasContent()) {
             if (Self->Description) FreeResource(Self->Description);
-            Self->Description = pf::strclone(scan.Children[0].Attribs[0].Value);
+            Self->Description = kt::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else log_hint(&scan, "doc.unknown-head-tag", "Unknown head tag '{}'.", name);
@@ -2099,7 +2099,7 @@ void parser::tag_head(const tag_view &Tag)
 
 void parser::tag_include(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    bool found_src = false;
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
@@ -2139,7 +2139,7 @@ void parser::tag_include(const tag_view &Tag)
 
 void parser::tag_image(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    bc_image img;
    img.def_size = DUNIT(0.9, DU::FONT_SIZE);
@@ -2243,7 +2243,7 @@ void parser::tag_image(const tag_view &Tag)
 
 void parser::tag_index(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    uint32_t name = 0;
    bool visible = true;
@@ -2294,7 +2294,7 @@ void parser::tag_index(const tag_view &Tag)
 
 void parser::tag_link(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    bc_link link;
    bool select = false;
@@ -2368,7 +2368,7 @@ void parser::tag_link(const tag_view &Tag)
 
 void parser::tag_list(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    bc_list list;
 
    list.fill     = m_style.fill; // Default fill matches the current font colour
@@ -2425,7 +2425,7 @@ void parser::tag_list(const tag_view &Tag)
 
 void parser::tag_paragraph(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    m_paragraph_depth++;
 
@@ -2479,7 +2479,7 @@ void parser::tag_paragraph(const tag_view &Tag)
 
 void parser::tag_template(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (m_in_template) return;
 
@@ -2516,7 +2516,7 @@ void parser::tag_template(const tag_view &Tag)
 
 void parser::tag_font(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto new_style = m_style;
    bool preformat = false;
@@ -2570,7 +2570,7 @@ void parser::tag_pre(const objXML::TAGS &Children)
 
 void parser::tag_script(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objScript *script;
    ERR error;
 
@@ -2769,7 +2769,7 @@ void parser::tag_font_style(const objXML::TAGS &Children, FSO StyleFlag, std::st
 
 void parser::tag_li(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (m_list_stack.empty()) {
       log_warning(&Tag, "doc.li-outside-list", "<li> was not used inside a <list> tag.");
@@ -2843,7 +2843,7 @@ void parser::tag_li(const tag_view &Tag)
 //********************************************************************************************************************
 void parser::tag_repeat(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    std::string index_name;
    int loop_start = 0, loop_end = 0, count = 0, step = 0;
@@ -2961,7 +2961,7 @@ void parser::tag_repeat(const tag_view &Tag)
 
 void parser::tag_table(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto &table = m_stream->emplace<bc_table>(m_index);
    table.min_width  = DUNIT(1, DU::PIXEL);
@@ -3085,7 +3085,7 @@ void parser::tag_table(const tag_view &Tag)
 
 void parser::tag_row(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (m_table_stack.empty()) {
       log_error(&Tag, ERR::InvalidData, "doc.row-outside-table", "<row> is not defined inside a <table> section.");
@@ -3125,7 +3125,7 @@ void parser::tag_row(const tag_view &Tag)
 
 void parser::tag_cell(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto new_style = m_style;
    static uint8_t edit_recurse = 0;
 
@@ -3141,7 +3141,7 @@ void parser::tag_cell(const tag_view &Tag)
       switch (strhash(Tag.Attribs[i].Name)) {
          case HASH_border: {
             std::vector<std::string> list;
-            pf::split(Tag.Attribs[i].Value, std::back_inserter(list));
+            kt::split(Tag.Attribs[i].Value, std::back_inserter(list));
 
             for (auto &v : list) {
                if ("all" IS v)         cell.border = CB::ALL;
@@ -3263,7 +3263,7 @@ void parser::tag_cell(const tag_view &Tag)
 
 void parser::tag_page(const tag_view &Tag) const
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    if (auto name = Tag.attrib("name")) {
       auto page_name = std::string_view(*name);
       if (not std::ranges::all_of(page_name, [](char Character) {
@@ -3280,7 +3280,7 @@ void parser::tag_page(const tag_view &Tag) const
 
 void parser::tag_trigger(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    DRT trigger_code;
    objScript *script;
    int64_t function_id;

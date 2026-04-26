@@ -29,7 +29,7 @@ static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
    auto view_height = get_parent_height(Vector);
 
    if (Vector->Points.size() >= 2) {
-      pf::POINT<double> p = { Vector->Points[0].X, Vector->Points[0].Y };
+      kt::POINT<double> p = { Vector->Points[0].X, Vector->Points[0].Y };
       if (Vector->Points[0].XScaled) p.x *= view_width;
       if (Vector->Points[0].YScaled) p.y *= view_height;
       Path.move_to(p.x, p.y);
@@ -92,7 +92,7 @@ static ERR read_points(extVectorPoly *Self, std::string_view Value)
    }
 
    if (Self->Points.size() < 2) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.traceWarning("List of points requires a minimum of 2 number pairs.");
       Self->Points.clear();
       return log.warning(ERR::InvalidValue);
@@ -116,7 +116,7 @@ Move: Moves a polygon to a new position.
 
 static ERR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -151,7 +151,7 @@ The operation will abort if any of the points in the polygon are discovered to b
 
 static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -210,7 +210,7 @@ If a Width and/or Height value of zero is passed, no scaling on the associated a
 
 static ERR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 

@@ -23,7 +23,7 @@ class extWaveFunctionFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::WAVEFUNCTIONFX;
    static constexpr CSTRING CLASS_NAME = "WaveFunctionFX";
-   using create = pf::Create<extWaveFunctionFX>;
+   using create = kt::Create<extWaveFunctionFX>;
 
    std::vector<std::vector<double>> psi;
    std::vector<GradientStop> Stops;
@@ -390,7 +390,7 @@ static ERR WAVEFUNCTIONFX_SET_Stops(extWaveFunctionFX *Self, GradientStop *Value
       return ERR::Okay;
    }
    else {
-      pf::Log log;
+      kt::Log log;
       log.warning("Array size %d < 2", Elements);
       return ERR::InvalidValue;
    }

@@ -15,7 +15,7 @@ namespace xpath::accessor {
 [[nodiscard]] static bool attribute_is_xml_base(const XMLAttrib &Attribute)
 {
    if (Attribute.Name.empty()) return false;
-   return pf::iequals(Attribute.Name, "xml:base");
+   return kt::iequals(Attribute.Name, "xml:base");
 }
 
 //********************************************************************************************************************
@@ -198,16 +198,16 @@ std::optional<std::string> resolve_document_base_directory(std::string_view Base
    std::string prefix(name.substr(0, colon));
    std::string local(name.substr(colon + 1));
 
-   if (not pf::iequals(local, "nil")) return false;
+   if (not kt::iequals(local, "nil")) return false;
 
-   if (pf::iequals(prefix, "xml")) return false;
-   if (pf::iequals(prefix, "xmlns")) return false;
+   if (kt::iequals(prefix, "xml")) return false;
+   if (kt::iequals(prefix, "xmlns")) return false;
 
    std::string uri;
    if (Document) uri = find_in_scope_namespace(Scope, Document, prefix);
    if (uri.empty()) return false;
 
-   return pf::iequals(uri, "http://www.w3.org/2001/XMLSchema-instance");
+   return kt::iequals(uri, "http://www.w3.org/2001/XMLSchema-instance");
 }
 
 //********************************************************************************************************************

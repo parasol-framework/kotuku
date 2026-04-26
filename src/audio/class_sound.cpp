@@ -86,7 +86,7 @@ static ERR win32_audio_stream(extSound *, int64_t, int64_t);
 static void sound_stopped_event(extSound *Self)
 {
    if (Self->OnStop.isC()) {
-      pf::SwitchContext context(Self->OnStop.Context);
+      kt::SwitchContext context(Self->OnStop.Context);
       auto routine = (void (*)(extSound *, APTR))Self->OnStop.Routine;
       routine(Self, Self->OnStop.Meta);
    }
@@ -126,7 +126,7 @@ static void onstop_event(int SampleHandle)
 #ifdef _WIN32
 static ERR timer_playback_ended(extSound *Self, int64_t Elapsed, int64_t CurrentTime)
 {
-   pf::Log log;
+   kt::Log log;
    log.trace("Sound streaming completed.");
    sound_stopped_event(Self);
    Self->PlaybackTimer = 0;
@@ -143,7 +143,7 @@ static ERR timer_playback_ended(extSound *Self, int64_t Elapsed, int64_t Current
 static ERR set_playback_trigger(extSound *Self)
 {
    if (Self->OnStop.defined()) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       const int bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
       const double playback_time = double((Self->Length - Self->Position) / bytes_per_sample) / double(Self->Playback);
       if (playback_time < 0.01) {
@@ -168,8 +168,8 @@ extern "C" void end_of_stream(OBJECTPTR Object, int BytesRemaining)
    if (Object->Class->BaseClassID IS CLASSID::SOUND) {
       auto Self = (extSound *)Object;
       if (Self->OnStop.defined()) {
-         pf::Log log(__FUNCTION__);
-         pf::SwitchContext context(Object);
+         kt::Log log(__FUNCTION__);
+         kt::SwitchContext context(Object);
          const int bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
          const double playback_time = (double(BytesRemaining / bytes_per_sample) / double(Self->Playback)) + 0.01;
 
@@ -205,7 +205,7 @@ extern "C" void end_of_stream(OBJECTPTR Object, int BytesRemaining)
 
 [[maybe_unused]] static ERR snd_init_audio(extSound *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (FindObject("SystemAudio", CLASSID::AUDIO, FOF::NIL, &Self->AudioID) IS ERR::Okay) return ERR::Okay;
 
@@ -242,7 +242,7 @@ Activate: Plays the audio sample.
 
 static ERR SOUND_Activate(extSound *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.traceBranch("Position: %" PF64, (long long)Self->Position);
 
@@ -299,7 +299,7 @@ static ERR SOUND_Activate(extSound *Self)
    }
 
    if (Self->AudioID) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          sndVolume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
       }
@@ -367,7 +367,7 @@ static ERR SOUND_Activate(extSound *Self)
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
 
-         pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
+         kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
          if (audio.granted()) {
             if (Action(snd::AddStream::id, *audio, &stream) IS ERR::Okay) {
                Self->Handle = stream.Result;
@@ -416,7 +416,7 @@ static ERR SOUND_Activate(extSound *Self)
             add.Data         = buffer;
             add.DataSize     = Self->Length;
 
-            pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
+            kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
             if (audio.granted()) {
                if (Action(snd::AddSample::id, *audio, &add) IS ERR::Okay) {
                   Self->Handle = add.Result;
@@ -435,7 +435,7 @@ static ERR SOUND_Activate(extSound *Self)
 
    Self->Active = true;
 
-   pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
+   kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
       // Restricted and streaming audio can be played on only one channel at any given time.  This search will check
       // if the sound object is already active on one of our channels.
@@ -507,7 +507,7 @@ Deactivate: Stops the audio sample and resets the playback position.
 
 static ERR SOUND_Deactivate(extSound *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
 
@@ -520,7 +520,7 @@ static ERR SOUND_Deactivate(extSound *Self)
    sndStop((PlatformData *)Self->PlatformData);
 #else
    if (Self->ChannelIndex) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) { // Stop the sample if it's live.
          if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
             if (channel->SampleHandle IS Self->Handle) snd::MixStop(*audio, Self->ChannelIndex);
@@ -541,7 +541,7 @@ Disable: Disable playback of an active audio sample, equivalent to pausing.
 
 static ERR SOUND_Disable(extSound *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
 
@@ -550,7 +550,7 @@ static ERR SOUND_Disable(extSound *Self)
 #else
    if (!Self->ChannelIndex) return ERR::Okay;
 
-   pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
+   kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
          if (channel->SampleHandle IS Self->Handle) snd::MixStop(*audio, Self->ChannelIndex);
@@ -570,7 +570,7 @@ Enable: Continues playing a sound if it has been disabled.
 
 static ERR SOUND_Enable(extSound *Self)
 {
-   pf::Log log;
+   kt::Log log;
    log.branch();
 
 #ifdef USE_WIN32_PLAYBACK
@@ -582,7 +582,7 @@ static ERR SOUND_Enable(extSound *Self)
 #else
    if (!Self->ChannelIndex) return ERR::Okay;
 
-   pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
+   kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
          if (channel->SampleHandle IS Self->Handle) snd::MixContinue(*audio, Self->ChannelIndex);
@@ -613,7 +613,7 @@ static ERR SOUND_Free(extSound *Self)
    Self->deactivate();
 
    if ((Self->Handle) and (Self->AudioID)) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
          audio->removeSample(Self->Handle);
          Self->Handle = 0;
@@ -667,7 +667,7 @@ Init: Prepares a sound object for usage.
 
 static ERR SOUND_Init(extSound *Self)
 {
-   pf::Log log;
+   kt::Log log;
    int id, len;
    ERR error;
 
@@ -680,7 +680,7 @@ static ERR SOUND_Init(extSound *Self)
    // Open channels for sound sample playback.
 
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
          if (audio->openChannels(audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
@@ -773,7 +773,7 @@ static ERR SOUND_Init(extSound *Self)
 
 static ERR SOUND_Init(extSound *Self)
 {
-   pf::Log log;
+   kt::Log log;
    int id, len, result, pos;
    ERR error;
 
@@ -784,7 +784,7 @@ static ERR SOUND_Init(extSound *Self)
    // Open channels for sound sample playback.
 
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
          if (audio->openChannels(audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
@@ -925,7 +925,7 @@ is determined by the #Position value.
 
 static ERR SOUND_Read(extSound *Self, struct acRead *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -958,7 +958,7 @@ SaveToObject: Saves audio sample data to an object.
 
 static ERR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    // Divert this call if the developer is trying to save the sound data as a specific subclass type.
 
@@ -1039,7 +1039,7 @@ Read action.  If the sample is in active playback at the time of the call, the p
 
 static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    // NB: Sub-classes may divert their functionality to this routine if the sample is fully buffered.
 
@@ -1061,7 +1061,7 @@ static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
 
    log.traceBranch("Seek to %" PF64 " + %d", (long long)Self->Position, Self->DataOffset);
 
-   pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
+   kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
       if ((Self->File) and (!Self->isSubClass())) {
          Self->File->seekStart(Self->DataOffset + Self->Position);
@@ -1118,7 +1118,7 @@ Active: Returns `true` if the sound sample is being played back.
 static ERR SOUND_GET_Active(extSound *Self, int *Value)
 {
 #ifdef USE_WIN32_PLAYBACK
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Active) {
       int16_t status = sndCheckActivity((PlatformData *)Self->PlatformData);
@@ -1137,7 +1137,7 @@ static ERR SOUND_GET_Active(extSound *Self, int *Value)
    *Value = FALSE;
 
    if (Self->ChannelIndex) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
          if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
             if (!channel->isStopped()) *Value = TRUE;
@@ -1247,7 +1247,7 @@ value by the #BytesPerSecond field.
 
 static ERR SOUND_SET_Length(extSound *Self, int Value)
 {
-   pf::Log log;
+   kt::Log log;
    if (Value >= 0) {
       Self->Length = Value;
 
@@ -1258,7 +1258,7 @@ static ERR SOUND_SET_Length(extSound *Self, int Value)
          return ERR::Okay;
       #else
          if ((Self->Handle) and (Self->AudioID)) {
-            pf::ScopedObjectLock<objAudio> audio(Self->AudioID);
+            kt::ScopedObjectLock<objAudio> audio(Self->AudioID);
             if (audio.granted()) {
                return audio->setSampleLength(Self->Handle, Value);
             }
@@ -1374,7 +1374,7 @@ static ERR SOUND_GET_Note(extSound *Self, CSTRING *Value)
 
 static ERR SOUND_SET_Note(extSound *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!*Value) return ERR::Okay;
 
@@ -1449,7 +1449,7 @@ static ERR SOUND_SET_Note(extSound *Self, CSTRING Value)
    }
 #else
    if (Self->ChannelIndex) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          snd::MixFrequency(*audio, Self->ChannelIndex, Self->Playback);
       }
@@ -1538,7 +1538,7 @@ static ERR SOUND_SET_Pan(extSound *Self, double Value)
    }
 #else
    if (Self->ChannelIndex) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          snd::MixPan(*audio, Self->ChannelIndex, Self->Pan);
       }
@@ -1567,7 +1567,7 @@ static ERR SOUND_GET_Path(extSound *Self, STRING *Value)
 
 static ERR SOUND_SET_Path(extSound *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
@@ -1594,7 +1594,7 @@ any time, including during audio playback if real-time adjustments to a sample's
 
 static ERR SOUND_SET_Playback(extSound *Self, int Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Value < 0) or (Value > 500000)) return ERR::OutOfRange;
 
@@ -1608,7 +1608,7 @@ static ERR SOUND_SET_Playback(extSound *Self, int Value)
    }
 #else
    if (Self->ChannelIndex) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          snd::MixFrequency(*audio, Self->ChannelIndex, Self->Playback);
       }
@@ -1694,14 +1694,14 @@ static ERR SOUND_SET_Volume(extSound *Self, double Value)
 
 #ifdef USE_WIN32_PLAYBACK
    if (Self->initialised()) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          sndVolume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
       }
    }
 #else
    if (Self->ChannelIndex) {
-      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          snd::MixVolume(*audio, Self->ChannelIndex, Self->Volume);
       }
@@ -1735,7 +1735,7 @@ static ERR find_chunk(extSound *Self, objFile *File, std::string_view ChunkName)
 #ifdef USE_WIN32_PLAYBACK
 static ERR win32_audio_stream(extSound *Self, int64_t Elapsed, int64_t CurrentTime)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // See snd::StreamAudio() for further information on streaming in Win32
 

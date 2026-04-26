@@ -1127,7 +1127,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             if (State->c IS '>') { lex_next(State); return TK_arrow; }
             if (State->c IS '=') {
                lex_next(State);
-               pf::Log("Tiri").warning("%s:%d: Deprecated '==' operator, use 'is' instead",
+               kt::Log("Tiri").warning("%s:%d: Deprecated '==' operator, use 'is' instead",
                   strdata(State->chunk_name), State->effective_line().lineNumber());
                return TK_eq;
             }
@@ -1189,7 +1189,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             lex_next(State);
             if (State->c IS '=') {
                lex_next(State);
-               pf::Log("Tiri").warning("%s:%d: Deprecated '~=' operator, use '!=' instead",
+               kt::Log("Tiri").warning("%s:%d: Deprecated '~=' operator, use '!=' instead",
                   strdata(State->chunk_name), State->effective_line().lineNumber());
                return TK_ne;
             }

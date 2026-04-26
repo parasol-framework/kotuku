@@ -173,7 +173,7 @@ void SceneRenderer::ClipBuffer::draw_viewport(SceneRenderer &Render)
 void SceneRenderer::ClipBuffer::draw(SceneRenderer &Scene)
 {
    if (!m_clip->Viewport->Child) {
-      pf::Log log;
+      kt::Log log;
       log.warning("Clipping viewport has no assigned children.");
       return;
    }

@@ -135,7 +135,7 @@ static bool delete_selected(extDocument *Self)
 
 static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, int Unicode)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((Flags & KQ::PRESSED) IS KQ::NIL) return ERR::Okay;
 
@@ -172,7 +172,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, int Unico
          case KEY::TAB: {
             log.branch("Key: Tab");
             if (Self->TabFocusID) {
-               pf::ScopedObjectLock tab(Self->TabFocusID);
+               kt::ScopedObjectLock tab(Self->TabFocusID);
                if (tab.granted()) acFocus(*tab);
             }
             else if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
@@ -307,7 +307,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, int Unico
       case KEY::TAB:
          log.branch("Key: Tab");
          if (Self->TabFocusID) {
-            pf::ScopedObjectLock tab(Self->TabFocusID);
+            kt::ScopedObjectLock tab(Self->TabFocusID);
             if (tab.granted()) acFocus(*tab);
          }
          else if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
@@ -395,7 +395,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, int Unico
 
 static void error_dialog(const std::string Title, const std::string Message)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.warning("%s", Message.c_str());
 
@@ -442,7 +442,7 @@ static void error_dialog(const std::string Title, ERR Error)
 
 static ERR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char CursorIndex)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((CellIndex < 0) or (CellIndex >= INDEX(Self->Stream.size()))) return log.warning(ERR::OutOfRange);
 
@@ -524,7 +524,7 @@ static ERR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char Cu
 
 static void deactivate_edit(extDocument *Self, bool Redraw)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Self->ActiveEditDef) return;
 
@@ -587,7 +587,7 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
 #if 0
 static void check_mouse_click(extDocument *Self, double X, double Y)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    Self->ClickX = X;
    Self->ClickY = Y;
@@ -798,7 +798,7 @@ static int find_tabfocus(extDocument *Self, TT Type, BYTECODE Reference)
 
 static int add_tabfocus(extDocument *Self, TT Type, BYTECODE Reference)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    //log.branch("Type: %d, Ref: %d", LONG(Type), Reference);
 
@@ -820,7 +820,7 @@ static int add_tabfocus(extDocument *Self, TT Type, BYTECODE Reference)
 
 static ERR link_callback(objVector *Vector, InputEvent *Event)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto Self = (extDocument *)CurrentContext();
 
@@ -916,7 +916,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
 
 static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Self->Tabs.empty()) return;
 
@@ -958,7 +958,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
       if (Self->HasFocus) {
          CLASSID class_id = GetClassID(std::get<OBJECTID>(Self->Tabs[Index].ref));
          if (class_id IS CLASSID::VECTORTEXT) {
-            pf::ScopedObjectLock focus(std::get<OBJECTID>(Self->Tabs[Index].ref));
+            kt::ScopedObjectLock focus(std::get<OBJECTID>(Self->Tabs[Index].ref));
             if (focus.granted()) {
                acFocus(*focus);
                //if ((input->get(FID_UserInput, text) IS ERR::Okay) and (text)) {
@@ -1000,7 +1000,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
 
 static bool view_area(extDocument *Self, double Left, double Top, double Right, double Bottom)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    double hgap = Self->VPWidth * 0.1, vgap = Self->VPHeight * 0.1;
    double view_x = -Self->XPosition, view_y = -Self->YPosition;
@@ -1053,7 +1053,7 @@ static bool view_area(extDocument *Self, double Left, double Top, double Right, 
 
 static void advance_tabfocus(extDocument *Self, int8_t Direction)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Self->Tabs.empty()) return;
 
@@ -1121,7 +1121,7 @@ static ERR flash_cursor(extDocument *Self, int64_t TimeElapsed, int64_t CurrentT
 
 static void reset_cursor(extDocument *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.function();
 
@@ -1367,7 +1367,7 @@ static ERR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *Ev
 
 static ERR resolve_fontx_by_index(extDocument *Self, stream_char Char, double &CharX)
 {
-   pf::Log log("resolve_fontx");
+   kt::Log log("resolve_fontx");
 
    log.branch("Index: %d", Char.index);
 

@@ -20,7 +20,7 @@ NOTE: For the rendering of vectors as flattened images, use @VectorPattern.
 
 static ERR IMAGE_Init(extVectorImage *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->Bitmap) return log.warning(ERR::FieldNotSet);
 
@@ -73,7 +73,7 @@ algorithm.  The source bitmap must be in a 32-bit graphics format.
 static ERR IMAGE_SET_Bitmap(extVectorImage *Self, objBitmap *Value)
 {
    if (Value->BitsPerPixel < 32) {
-      pf::Log log;
+      kt::Log log;
       log.warning("The source image must be 32 bit, not %d bit.", Value->BitsPerPixel);
       return ERR::InvalidData;
    }
@@ -111,7 +111,7 @@ static ERR IMAGE_SET_Picture(extVectorImage *Self, objPicture *Value)
    if (!Value->Bitmap) return ERR::InvalidData;
 
    if (Value->Bitmap->BitsPerPixel < 32) {
-      pf::Log log;
+      kt::Log log;
       log.warning("The source image must be 32 bit, not %d bit.", Value->Bitmap->BitsPerPixel);
       return ERR::InvalidData;
    }

@@ -13,7 +13,7 @@ This program tests the locking of memory between threads.
 #include <kotuku/startup.h>
 #include <kotuku/strings.hpp>
 
-using namespace pf;
+using namespace kt;
 
 CSTRING ProgName = "MemoryLocking";
 static volatile MEMORYID glMemoryID = 0;
@@ -32,7 +32,7 @@ struct thread_info{
 
 static void * test_locking(void *Arg)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto info = (thread_info *)Arg;
 
    info->index = GetResource(RES::THREAD_ID);
@@ -114,7 +114,7 @@ int main(int argc, CSTRING *argv)
       return -1;
    }
 
-   pf::vector<std::string> *args;
+   kt::vector<std::string> *args;
    if ((CurrentTask()->get(FID_Parameters, args) IS ERR::Okay) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
          if (iequals(args[0][i], "-threads")) {

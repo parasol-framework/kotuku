@@ -41,7 +41,7 @@ struct resolve_buffer {
       ptr       += sizeof(ERR);
       *(IPAddress *)ptr = IP;
       ptr       += sizeof(IPAddress);
-      if (!Address.empty()) pf::copymem(Address.data(), ptr, Address.size() + 1);
+      if (!Address.empty()) kt::copymem(Address.data(), ptr, Address.size() + 1);
       return ser;
    }
 
@@ -74,13 +74,13 @@ static void resolve_callback(extNetLookup *, ERR, const std::string & = "", std:
 
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    resolve_buffer r((int8_t *)Message);
 
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s", int(MsgID), int(MsgType), r.Address.c_str());
 
-   if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {
+   if (kt::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {
       bool found = false;
       DNSEntry cached;
       {
@@ -105,13 +105,13 @@ static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Mes
 
 static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    resolve_buffer r((int8_t *)Message);
 
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s", int(MsgID), MsgType, r.Address.c_str());
 
-   if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {
+   if (kt::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {
       bool found = false;
       DNSEntry cached;
       {
@@ -163,7 +163,7 @@ Failed: The address could not be resolved
 
 static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nl::BlockingResolveAddress *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args->Address) return log.warning(ERR::NullArgs);
 
@@ -209,7 +209,7 @@ Failed:
 
 static ERR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nl::ResolveName *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args->HostName) return log.error(ERR::NullArgs);
 
@@ -288,7 +288,7 @@ Failed: The address could not be resolved
 
 static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddress *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args->Address) return log.warning(ERR::NullArgs);
    if (Self->Callback.Type IS CALL::NIL) return log.warning(ERR::FieldNotSet);
@@ -355,7 +355,7 @@ Failed:
 
 static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args->HostName) return log.error(ERR::NullArgs);
 
@@ -475,7 +475,7 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntr
       if (!(Key = Host->h_name)) return ERR::Args;
    }
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.detail("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
 
@@ -521,7 +521,7 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEnt
       if (!(Key = Host->ai_canonname)) return ERR::Args;
    }
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.detail("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->ai_addr, (Host->ai_family == AF_INET6));
 
    DNSEntry cache;
@@ -591,7 +591,7 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry &Info)
          .sin6_flowinfo = 0,
          .sin6_scope_id = 0
       };
-      pf::copymem(IP->Data, (APTR)sa.sin6_addr.s6_addr, 16);
+      kt::copymem(IP->Data, (APTR)sa.sin6_addr.s6_addr, 16);
       result = getnameinfo((struct sockaddr *)&sa, sizeof(sa), host_name, sizeof(host_name), service, sizeof(service), NI_NAMEREQD);
    }
 
@@ -626,7 +626,7 @@ static ERR cache_host_from_addrinfo(HOSTMAP &Store, CSTRING Key, struct addrinfo
       if (!(Key = Host->ai_canonname)) return ERR::Args;
    }
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.detail("Key: %s, Addresses: %p (IPv6: %d)", Key, Host->ai_addr, (Host->ai_family IS AF_INET6));
 
    DNSEntry cache;
@@ -680,10 +680,10 @@ static ERR resolve_name(CSTRING HostName, DNSEntry &Info)
    // Use getaddrinfo() on both Linux and Windows for proper IPv4 and IPv6 (AAAA record) support
    struct addrinfo hints, *servinfo;
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.detail("Resolving hostname: %s using getaddrinfo", HostName);
 
-   pf::clearmem(&hints, sizeof hints);
+   kt::clearmem(&hints, sizeof hints);
    hints.ai_family   = AF_UNSPEC;     // Allow both IPv4 and IPv6
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_flags    = AI_CANONNAME;
@@ -718,11 +718,11 @@ static ERR resolve_name(CSTRING HostName, DNSEntry &Info)
 
 static void resolve_callback(extNetLookup *Self, ERR Error, const std::string &HostName, std::vector<IPAddress> &Addresses)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("Host: %s", HostName.c_str());
 
    if (Self->Callback.isC()) {
-      pf::SwitchContext context(Self->Callback.Context);
+      kt::SwitchContext context(Self->Callback.Context);
       auto routine = (ERR (*)(extNetLookup *, ERR, const std::string &, const std::vector<IPAddress> &, APTR))(Self->Callback.Routine);
       routine(Self, Error, HostName, Addresses, Self->Callback.Meta);
    }

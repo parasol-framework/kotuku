@@ -142,7 +142,7 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
          mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use scaled coordinates.
       }
 
-      pf::ScopedObjectLock<objSurface> surface(Self->SurfaceID);
+      kt::ScopedObjectLock<objSurface> surface(Self->SurfaceID);
       if (surface.granted()) surface->scheduleRedraw();
    }
 }
@@ -200,7 +200,7 @@ UnsupportedOwner: The definition is not owned by the scene.
 
 static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Name) or (!Args->Def)) return log.warning(ERR::NullArgs);
 
@@ -261,9 +261,9 @@ Okay:
 
 static ERR VECTORSCENE_Debug(extVectorScene *Self)
 {
-   pf::Log log("debug_tree");
+   kt::Log log("debug_tree");
 
-   pf::vector<ChildEntry> list;
+   kt::vector<ChildEntry> list;
    if ((ListChildren(Self->UID, &list) IS ERR::Okay) and (list.size() > 1)) {
       log.msg("Scene #%d has %d children:", Self->UID, int(std::ssize(list)-1));
       for (auto &rec : list) {
@@ -299,7 +299,7 @@ FieldNotSet: The Bitmap field is NULL.
 static ERR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 {
    if (!Self->Bitmap) {
-      pf::Log log;
+      kt::Log log;
       return log.warning(ERR::FieldNotSet);
    }
 
@@ -334,7 +334,7 @@ Search: A definition with the given Name was not found.
 
 static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct sc::FindDef *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
@@ -445,7 +445,7 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
    // match the width and height of the surface at all times when in this mode.
 
    if (Self->SurfaceID) {
-      pf::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 5000);
+      kt::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 5000);
       if (surface.granted()) {
          surface->addCallback(C_FUNCTION(render_to_surface));
 
@@ -814,7 +814,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
       }
 
       if ((no_focus) or (lost_focus_to_child) or (was_child_now_primary)) {
-         pf::ScopedObjectLock<extVector> vec(fgv, 1000);
+         kt::ScopedObjectLock<extVector> vec(fgv, 1000);
          if (vec.granted()) {
             send_feedback((extVector *)fgv, focus_event, Vector);
             focus_event = FM::CHILD_HAS_FOCUS;
@@ -828,7 +828,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
       auto copy = glVectorFocusList; // Take a copy of the list in case it gets modified on feedback.
       for (auto const fv : copy) {
          if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
-            pf::ScopedObjectLock<extVector> vec(fv, 1000);
+            kt::ScopedObjectLock<extVector> vec(fv, 1000);
             if (vec.granted()) send_feedback(fv, FM::LOST_FOCUS, Vector);
          }
          else break;
@@ -852,7 +852,7 @@ static void process_resize_msgs(extVectorScene *Self)
             auto vector = sub.first;
             auto func   = sub.second;
             if (func.isC()) {
-               pf::SwitchContext ctx(func.Context);
+               kt::SwitchContext ctx(func.Context);
                auto callback = (ERR (*)(extVectorViewport *, objVector *, double, double, double, double, APTR))func.Routine;
                result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight, func.Meta);
             }
@@ -882,7 +882,7 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
       ERR result = ERR::Terminate;
       auto &sub = *it;
       if (sub.Callback.isC()) {
-         pf::SwitchContext ctx(sub.Callback.Context);
+         kt::SwitchContext ctx(sub.Callback.Context);
          auto callback = (ERR (*)(objVector *, KQ, KEY, int, APTR))sub.Callback.Routine;
          result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode, sub.Callback.Meta);
       }

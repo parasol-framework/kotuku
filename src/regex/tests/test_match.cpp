@@ -11,7 +11,7 @@ Test for Regex matching
 JUMPTABLE_REGEX
 static OBJECTPTR modRegex;
 
-using namespace pf;
+using namespace kt;
 
 CSTRING ProgName = "RegexMatch";
 
@@ -496,7 +496,7 @@ static void test_named_capture_lookup(int &TotalTests, int &PassedTests)
    printf("\nTest 17: Named capture lookup\n");
    Regex *regex;
    if (rx::Compile("(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})", REGEX::NIL, nullptr, &regex) IS ERR::Okay) {
-      pf::vector<int> indices;
+      kt::vector<int> indices;
 
       if (rx::GetCaptureIndex(regex, "month", &indices) IS ERR::Okay) {
          if ((indices.size() IS 1) and (indices[0] IS 2)) {
@@ -535,7 +535,7 @@ static void test_null_pointer_handling(int &TotalTests, int &PassedTests)
 
 int main(int argc, CSTRING *argv)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (auto msg = init_kotuku(argc, argv)) {
       printf("%s", msg);

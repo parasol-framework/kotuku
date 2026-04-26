@@ -277,7 +277,7 @@ NullArgs
 
 static ERR VECTORPATH_AddCommand(extVectorPath *Self, struct vp::AddCommand *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Commands)) return log.warning(ERR::NullArgs);
 
@@ -316,7 +316,7 @@ OutOfRange
 
 static ERR VECTORPATH_GetCommand(extVectorPath *Self, struct vp::GetCommand *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if ((Args->Index < 0) or ((size_t)Args->Index >= Self->Commands.size())) return log.warning(ERR::OutOfRange);
@@ -347,7 +347,7 @@ NothingDone
 
 static ERR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vp::RemoveCommand *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return ERR::NullArgs;
    if ((Args->Index < 0) or ((size_t)Args->Index > Self->Commands.size()-1)) return log.warning(ERR::OutOfRange);
@@ -384,7 +384,7 @@ BufferOverflow
 
 static ERR VECTORPATH_SetCommand(extVectorPath *Self, struct vp::SetCommand *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Command)) return ERR::NullArgs;
    if (Args->Index < 0) return log.warning(ERR::OutOfRange);
@@ -423,7 +423,7 @@ Args
 
 static ERR VECTORPATH_SetCommandList(extVectorPath *Self, struct vp::SetCommandList *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Size)) return log.warning(ERR::NullArgs);
 
@@ -567,7 +567,7 @@ static ERR VECTORPATH_GET_TotalCommands(extVectorPath *Self, int *Value)
 
 static ERR VECTORPATH_SET_TotalCommands(extVectorPath *Self, int Value)
 {
-   pf::Log log;
+   kt::Log log;
    if (Value < 0) return log.warning(ERR::OutOfRange);
    Self->Commands.resize(Value);
    Self->modified();

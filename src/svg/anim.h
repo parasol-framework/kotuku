@@ -72,7 +72,7 @@ constexpr ROTATE operator * (const ROTATE &lhs, const double &Num) {
 
 //********************************************************************************************************************
 
-template <class T = double> double dist(const pf::POINT<T> &A, const pf::POINT<T> &B)
+template <class T = double> double dist(const kt::POINT<T> &A, const kt::POINT<T> &B)
 {
    if (A == B) return 0;
    double a = std::abs(B.x - A.x);
@@ -90,10 +90,10 @@ private:
 
 public:
    struct spline_point {
-      pf::POINT<float> point;
+      kt::POINT<float> point;
       float angle;
       float cos_angle;
-      spline_point(pf::POINT<float> pPoint, float pAngle) : point(pPoint), angle(pAngle) { }
+      spline_point(kt::POINT<float> pPoint, float pAngle) : point(pPoint), angle(pAngle) { }
    };
 
    using DISTANCES = std::vector<float>;
@@ -117,7 +117,7 @@ public:
    std::string target_attrib;       // Name of the target attribute affected by the From and To values.
    std::string target_attrib_orig;  // Original value of the target attribute (if not freezing)
    std::string id;                  // Identifier for the animation
-   std::vector< std::pair<pf::POINT<double>, pf::POINT<double> > > splines; // Key splines
+   std::vector< std::pair<kt::POINT<double>, kt::POINT<double> > > splines; // Key splines
    std::vector<spline_path> spline_paths;
    std::vector<double> begin_series; // List of valid start times for the animation
    double begin_offset = 0;    // Start animating after this much time (in seconds) has elapsed.
@@ -203,8 +203,8 @@ public:
    double rotate = 0; // Fixed angle rotation
    objVector *mpath = nullptr; // External vector path (untracked)
    VectorMatrix *matrix = nullptr;
-   pf::GuardedObject<objVector> path; // Client provided path sequence
-   std::vector<pf::POINT<float>> points;
+   kt::GuardedObject<objVector> path; // Client provided path sequence
+   std::vector<kt::POINT<float>> points;
    std::vector<float> angles; // Precalc'd angles for rotation along paths
    int path_timestamp = 0;
 
@@ -238,6 +238,6 @@ public:
 
 //********************************************************************************************************************
 
-template <class T = float> double get_angle(pf::POINT<T> &A, pf::POINT<T> &B) {
+template <class T = float> double get_angle(kt::POINT<T> &A, kt::POINT<T> &B) {
    return std::atan2(B.y - A.y, B.x - A.x) * RAD2DEG;
 }

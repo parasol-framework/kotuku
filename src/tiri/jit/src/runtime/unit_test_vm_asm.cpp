@@ -41,7 +41,7 @@ namespace {
 
 struct TestCase {
    const char* name;
-   bool (*fn)(pf::Log& Log);
+   bool (*fn)(kt::Log& Log);
 };
 
 // Helper to check if two doubles are equal (handling NaN and signed zero)
@@ -170,7 +170,7 @@ static void capture_registers(RegisterSnapshot* Snap)
    asm_capture_registers(Snap);
 }
 
-static bool verify_registers(const RegisterSnapshot* Before, const RegisterSnapshot* After, pf::Log& Log,
+static bool verify_registers(const RegisterSnapshot* Before, const RegisterSnapshot* After, kt::Log& Log,
    uint32_t IgnoreMask = 0)
 {
    int result = asm_verify_registers(Before, After);
@@ -234,7 +234,7 @@ static void capture_registers(RegisterSnapshot* Snap)
    );
 }
 
-static bool verify_registers(const RegisterSnapshot* Before, const RegisterSnapshot* After, pf::Log& Log,
+static bool verify_registers(const RegisterSnapshot* Before, const RegisterSnapshot* After, kt::Log& Log,
    uint32_t IgnoreMask = 0)
 {
    bool passed = true;
@@ -316,7 +316,7 @@ static void capture_registers(RegisterSnapshot* Snap)
    );
 }
 
-static bool verify_registers(const RegisterSnapshot* Before, const RegisterSnapshot* After, pf::Log& Log,
+static bool verify_registers(const RegisterSnapshot* Before, const RegisterSnapshot* After, kt::Log& Log,
    uint32_t IgnoreMask = 0)
 {
    bool passed = true;
@@ -352,14 +352,14 @@ struct RegisterSnapshot { int dummy; };
 static constexpr bool glHasRegisterCapture = false;
 enum RegisterBit : uint32_t { REG_RBP = 1 << 1 };  // Define for compatibility
 static void capture_registers(RegisterSnapshot*) {}
-static bool verify_registers(const RegisterSnapshot*, const RegisterSnapshot*, pf::Log&, uint32_t = 0) { return true; }
+static bool verify_registers(const RegisterSnapshot*, const RegisterSnapshot*, kt::Log&, uint32_t = 0) { return true; }
 
 #endif
 
 //********************************************************************************************************************
 // lj_vm_floor tests
 
-static bool test_floor_positive_fraction(pf::Log& Log)
+static bool test_floor_positive_fraction(kt::Log& Log)
 {
    double input = 3.7;
    double expected = 3.0;
@@ -376,7 +376,7 @@ static bool test_floor_positive_fraction(pf::Log& Log)
    return true;
 }
 
-static bool test_floor_negative_fraction(pf::Log& Log)
+static bool test_floor_negative_fraction(kt::Log& Log)
 {
    double input = -3.7;
    double expected = -4.0;
@@ -393,7 +393,7 @@ static bool test_floor_negative_fraction(pf::Log& Log)
    return true;
 }
 
-static bool test_floor_positive_integer(pf::Log& Log)
+static bool test_floor_positive_integer(kt::Log& Log)
 {
    double input = 5.0;
    double expected = 5.0;
@@ -410,7 +410,7 @@ static bool test_floor_positive_integer(pf::Log& Log)
    return true;
 }
 
-static bool test_floor_negative_integer(pf::Log& Log)
+static bool test_floor_negative_integer(kt::Log& Log)
 {
    double input = -5.0;
    double expected = -5.0;
@@ -427,7 +427,7 @@ static bool test_floor_negative_integer(pf::Log& Log)
    return true;
 }
 
-static bool test_floor_positive_zero(pf::Log& Log)
+static bool test_floor_positive_zero(kt::Log& Log)
 {
    double input = 0.0;
    double expected = 0.0;
@@ -444,7 +444,7 @@ static bool test_floor_positive_zero(pf::Log& Log)
    return true;
 }
 
-static bool test_floor_negative_zero(pf::Log& Log)
+static bool test_floor_negative_zero(kt::Log& Log)
 {
    double input = -0.0;
    double expected = -0.0;
@@ -461,7 +461,7 @@ static bool test_floor_negative_zero(pf::Log& Log)
    return true;
 }
 
-static bool test_floor_large_value(pf::Log& Log)
+static bool test_floor_large_value(kt::Log& Log)
 {
    // Test value at 2^52 boundary (where IEEE754 doubles become integer-only)
    double input = 4503599627370496.5;  // 2^52 + 0.5
@@ -479,7 +479,7 @@ static bool test_floor_large_value(pf::Log& Log)
    return true;
 }
 
-static bool test_floor_infinity(pf::Log& Log)
+static bool test_floor_infinity(kt::Log& Log)
 {
    double pos_inf = std::numeric_limits<double>::infinity();
    double neg_inf = -std::numeric_limits<double>::infinity();
@@ -498,7 +498,7 @@ static bool test_floor_infinity(pf::Log& Log)
    return true;
 }
 
-static bool test_floor_nan(pf::Log& Log)
+static bool test_floor_nan(kt::Log& Log)
 {
    double nan_val = std::numeric_limits<double>::quiet_NaN();
    double result = lj_vm_floor(nan_val);
@@ -511,7 +511,7 @@ static bool test_floor_nan(pf::Log& Log)
    return true;
 }
 
-static bool test_floor_register_preservation(pf::Log& Log)
+static bool test_floor_register_preservation(kt::Log& Log)
 {
    if constexpr (not glHasRegisterCapture) {
       Log.msg("register capture not available on this platform, skipping");
@@ -535,7 +535,7 @@ static bool test_floor_register_preservation(pf::Log& Log)
 //********************************************************************************************************************
 // lj_vm_ceil tests
 
-static bool test_ceil_positive_fraction(pf::Log& Log)
+static bool test_ceil_positive_fraction(kt::Log& Log)
 {
    double input = 3.2;
    double expected = 4.0;
@@ -552,7 +552,7 @@ static bool test_ceil_positive_fraction(pf::Log& Log)
    return true;
 }
 
-static bool test_ceil_negative_fraction(pf::Log& Log)
+static bool test_ceil_negative_fraction(kt::Log& Log)
 {
    double input = -3.2;
    double expected = -3.0;
@@ -569,7 +569,7 @@ static bool test_ceil_negative_fraction(pf::Log& Log)
    return true;
 }
 
-static bool test_ceil_positive_integer(pf::Log& Log)
+static bool test_ceil_positive_integer(kt::Log& Log)
 {
    double input = 5.0;
    double expected = 5.0;
@@ -586,7 +586,7 @@ static bool test_ceil_positive_integer(pf::Log& Log)
    return true;
 }
 
-static bool test_ceil_negative_integer(pf::Log& Log)
+static bool test_ceil_negative_integer(kt::Log& Log)
 {
    double input = -5.0;
    double expected = -5.0;
@@ -603,7 +603,7 @@ static bool test_ceil_negative_integer(pf::Log& Log)
    return true;
 }
 
-static bool test_ceil_negative_zero(pf::Log& Log)
+static bool test_ceil_negative_zero(kt::Log& Log)
 {
    double input = -0.0;
    double expected = -0.0;  // ceil(-0.0) should preserve -0.0
@@ -620,7 +620,7 @@ static bool test_ceil_negative_zero(pf::Log& Log)
    return true;
 }
 
-static bool test_ceil_register_preservation(pf::Log& Log)
+static bool test_ceil_register_preservation(kt::Log& Log)
 {
    if constexpr (not glHasRegisterCapture) {
       Log.msg("register capture not available on this platform, skipping");
@@ -645,7 +645,7 @@ static bool test_ceil_register_preservation(pf::Log& Log)
 
 #if LJ_HASJIT
 
-static bool test_trunc_positive_fraction(pf::Log& Log)
+static bool test_trunc_positive_fraction(kt::Log& Log)
 {
    double input = 3.9;
    double expected = 3.0;
@@ -662,7 +662,7 @@ static bool test_trunc_positive_fraction(pf::Log& Log)
    return true;
 }
 
-static bool test_trunc_negative_fraction(pf::Log& Log)
+static bool test_trunc_negative_fraction(kt::Log& Log)
 {
    double input = -3.9;
    double expected = -3.0;  // trunc rounds toward zero
@@ -679,7 +679,7 @@ static bool test_trunc_negative_fraction(pf::Log& Log)
    return true;
 }
 
-static bool test_trunc_negative_zero(pf::Log& Log)
+static bool test_trunc_negative_zero(kt::Log& Log)
 {
    double input = -0.0;
    double expected = -0.0;
@@ -696,7 +696,7 @@ static bool test_trunc_negative_zero(pf::Log& Log)
    return true;
 }
 
-static bool test_trunc_register_preservation(pf::Log& Log)
+static bool test_trunc_register_preservation(kt::Log& Log)
 {
    if constexpr (not glHasRegisterCapture) {
       Log.msg("register capture not available on this platform, skipping");
@@ -723,7 +723,7 @@ static bool test_trunc_register_preservation(pf::Log& Log)
 
 #if LJ_HASJIT && !(LJ_TARGET_ARM || LJ_TARGET_ARM64 || LJ_TARGET_PPC)
 
-static bool test_modi_positive_positive(pf::Log& Log)
+static bool test_modi_positive_positive(kt::Log& Log)
 {
    int32_t a = 17;
    int32_t b = 5;
@@ -737,7 +737,7 @@ static bool test_modi_positive_positive(pf::Log& Log)
    return true;
 }
 
-static bool test_modi_negative_positive(pf::Log& Log)
+static bool test_modi_negative_positive(kt::Log& Log)
 {
    // Lua modulo: result has same sign as divisor
    int32_t a = -17;
@@ -752,7 +752,7 @@ static bool test_modi_negative_positive(pf::Log& Log)
    return true;
 }
 
-static bool test_modi_positive_negative(pf::Log& Log)
+static bool test_modi_positive_negative(kt::Log& Log)
 {
    // Lua modulo: result has same sign as divisor
    int32_t a = 17;
@@ -767,7 +767,7 @@ static bool test_modi_positive_negative(pf::Log& Log)
    return true;
 }
 
-static bool test_modi_negative_negative(pf::Log& Log)
+static bool test_modi_negative_negative(kt::Log& Log)
 {
    int32_t a = -17;
    int32_t b = -5;
@@ -781,7 +781,7 @@ static bool test_modi_negative_negative(pf::Log& Log)
    return true;
 }
 
-static bool test_modi_zero_dividend(pf::Log& Log)
+static bool test_modi_zero_dividend(kt::Log& Log)
 {
    int32_t a = 0;
    int32_t b = 5;
@@ -795,7 +795,7 @@ static bool test_modi_zero_dividend(pf::Log& Log)
    return true;
 }
 
-static bool test_modi_exact_divisor(pf::Log& Log)
+static bool test_modi_exact_divisor(kt::Log& Log)
 {
    int32_t a = 15;
    int32_t b = 5;
@@ -814,7 +814,7 @@ static bool test_modi_exact_divisor(pf::Log& Log)
 //********************************************************************************************************************
 // lj_vm_cpuid tests (x86/x64 only)
 
-static bool test_cpuid_vendor_string(pf::Log& Log)
+static bool test_cpuid_vendor_string(kt::Log& Log)
 {
    uint32_t res[4] = {0};
 
@@ -847,7 +847,7 @@ static bool test_cpuid_vendor_string(pf::Log& Log)
    return true;
 }
 
-static bool test_cpuid_feature_flags(pf::Log& Log)
+static bool test_cpuid_feature_flags(kt::Log& Log)
 {
    uint32_t res[4] = {0};
 
@@ -887,7 +887,7 @@ static bool test_cpuid_feature_flags(pf::Log& Log)
    return true;
 }
 
-static bool test_cpuid_register_preservation(pf::Log& Log)
+static bool test_cpuid_register_preservation(kt::Log& Log)
 {
    if constexpr (not glHasRegisterCapture) {
       Log.msg("register capture not available on this platform, skipping");
@@ -1005,7 +1005,7 @@ static bool run_lua_test_with_capture(RegisterSnapshot& Before, RegisterSnapshot
 // See vm_x64.dasc line ~1882: .ffunc string_byte
 
 // Tests the assembly fast-path: string.byte with 1 arg returns first char byte
-static bool test_asm_string_byte_first_char(pf::Log& Log)
+static bool test_asm_string_byte_first_char(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1039,7 +1039,7 @@ static bool test_asm_string_byte_first_char(pf::Log& Log)
 }
 
 // Tests assembly handling of empty string (should return no results)
-static bool test_asm_string_byte_empty_string(pf::Log& Log)
+static bool test_asm_string_byte_empty_string(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1071,7 +1071,7 @@ static bool test_asm_string_byte_empty_string(pf::Log& Log)
 }
 
 // Tests single-byte string (boundary case)
-static bool test_asm_string_byte_single_byte(pf::Log& Log)
+static bool test_asm_string_byte_single_byte(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1100,7 +1100,7 @@ static bool test_asm_string_byte_single_byte(pf::Log& Log)
 }
 
 // Tests high byte value (255)
-static bool test_asm_string_byte_high_value(pf::Log& Log)
+static bool test_asm_string_byte_high_value(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1130,7 +1130,7 @@ static bool test_asm_string_byte_high_value(pf::Log& Log)
 }
 
 // Tests null byte (0)
-static bool test_asm_string_byte_null_byte(pf::Log& Log)
+static bool test_asm_string_byte_null_byte(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1164,7 +1164,7 @@ static bool test_asm_string_byte_null_byte(pf::Log& Log)
 // See vm_x64.dasc line ~1896: .ffunc string_char
 
 // Tests assembly fast-path: single char in valid range
-static bool test_asm_string_char_single(pf::Log& Log)
+static bool test_asm_string_char_single(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1197,7 +1197,7 @@ static bool test_asm_string_char_single(pf::Log& Log)
 }
 
 // Tests boundary value 0 (null byte)
-static bool test_asm_string_char_zero(pf::Log& Log)
+static bool test_asm_string_char_zero(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1226,7 +1226,7 @@ static bool test_asm_string_char_zero(pf::Log& Log)
 }
 
 // Tests boundary value 255 (max byte)
-static bool test_asm_string_char_max(pf::Log& Log)
+static bool test_asm_string_char_max(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1256,7 +1256,7 @@ static bool test_asm_string_char_max(pf::Log& Log)
 }
 
 // Tests value just below boundary (254)
-static bool test_asm_string_char_254(pf::Log& Log)
+static bool test_asm_string_char_254(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1290,7 +1290,7 @@ static bool test_asm_string_char_254(pf::Log& Log)
 // See vm_x64.dasc line ~1926: .ffunc string_sub
 
 // Tests basic substring (assembly path)
-static bool test_asm_string_sub_basic(pf::Log& Log)
+static bool test_asm_string_sub_basic(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1324,7 +1324,7 @@ static bool test_asm_string_sub_basic(pf::Log& Log)
 }
 
 // Tests empty string input (assembly handles len==0 case)
-static bool test_asm_string_sub_empty_input(pf::Log& Log)
+static bool test_asm_string_sub_empty_input(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1354,7 +1354,7 @@ static bool test_asm_string_sub_empty_input(pf::Log& Log)
 }
 
 // Tests negative start index (assembly handles negative index conversion)
-static bool test_asm_string_sub_negative_start(pf::Log& Log)
+static bool test_asm_string_sub_negative_start(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1384,7 +1384,7 @@ static bool test_asm_string_sub_negative_start(pf::Log& Log)
 }
 
 // Tests negative end index (assembly handles via label 5)
-static bool test_asm_string_sub_negative_end(pf::Log& Log)
+static bool test_asm_string_sub_negative_end(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1414,7 +1414,7 @@ static bool test_asm_string_sub_negative_end(pf::Log& Log)
 }
 
 // Tests end > length (assembly handles overflow via label 6)
-static bool test_asm_string_sub_end_overflow(pf::Log& Log)
+static bool test_asm_string_sub_end_overflow(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1444,7 +1444,7 @@ static bool test_asm_string_sub_end_overflow(pf::Log& Log)
 }
 
 // Tests start > end (assembly handles via fff_emptystr)
-static bool test_asm_string_sub_empty_result(pf::Log& Log)
+static bool test_asm_string_sub_empty_result(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1474,7 +1474,7 @@ static bool test_asm_string_sub_empty_result(pf::Log& Log)
 }
 
 // Tests single character extraction
-static bool test_asm_string_sub_single_char(pf::Log& Log)
+static bool test_asm_string_sub_single_char(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1504,7 +1504,7 @@ static bool test_asm_string_sub_single_char(pf::Log& Log)
 }
 
 // Tests 2-arg form (start to end of string)
-static bool test_asm_string_sub_to_end(pf::Log& Log)
+static bool test_asm_string_sub_to_end(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1534,7 +1534,7 @@ static bool test_asm_string_sub_to_end(pf::Log& Log)
 }
 
 // Tests both indices negative
-static bool test_asm_string_sub_both_negative(pf::Log& Log)
+static bool test_asm_string_sub_both_negative(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1563,7 +1563,7 @@ static bool test_asm_string_sub_both_negative(pf::Log& Log)
 }
 
 // Tests start = 0 (first character, 0-based)
-static bool test_asm_string_sub_from_zero(pf::Log& Log)
+static bool test_asm_string_sub_from_zero(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1593,7 +1593,7 @@ static bool test_asm_string_sub_from_zero(pf::Log& Log)
 }
 
 // Tests underflow (start < -len, should clamp to 0)
-static bool test_asm_string_sub_start_underflow(pf::Log& Log)
+static bool test_asm_string_sub_start_underflow(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -1667,7 +1667,7 @@ extern void vm_asm_unit_tests(int &Passed, int &Total)
    } };
 
    for (const TestCase& Test : Tests) {
-      pf::Log Log("VmAsmTests");
+      kt::Log Log("VmAsmTests");
       Log.branch("Running %s", Test.name);
       ++Total;
       if (Test.fn(Log)) {
@@ -1691,7 +1691,7 @@ extern void vm_asm_unit_tests(int &Passed, int &Total)
    } };
 
    for (const TestCase& Test : ModiTests) {
-      pf::Log Log("VmAsmTests");
+      kt::Log Log("VmAsmTests");
       Log.branch("Running %s", Test.name);
       ++Total;
       if (Test.fn(Log)) {
@@ -1706,7 +1706,7 @@ extern void vm_asm_unit_tests(int &Passed, int &Total)
 
 #else
    // Non-x86/x64 platforms
-   pf::Log Log("VmAsmTests");
+   kt::Log Log("VmAsmTests");
    Log.msg("VM assembly tests only available on x86/x64 platforms");
 #endif
 
@@ -1744,7 +1744,7 @@ extern void vm_asm_unit_tests(int &Passed, int &Total)
          } };
 
          for (const TestCase& Test : StringAsmTests) {
-            pf::Log Log("VmAsmTests");
+            kt::Log Log("VmAsmTests");
             Log.branch("Running %s", Test.name);
             ++Total;
             if (Test.fn(Log)) {

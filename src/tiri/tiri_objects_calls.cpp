@@ -122,7 +122,7 @@ static int object_method_call(lua_State *Lua)
 
 ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *argbuffer, int *ResultCount)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    int top = lua_gettop(Lua);
 
@@ -324,7 +324,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
 
 static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *ArgBuf)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int i;
 
    RMSG("get_results(%p)", ArgBuf);

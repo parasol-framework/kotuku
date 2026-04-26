@@ -84,7 +84,7 @@ static ERR FONT_Free(extFont *Self)
       Self->BmpCache->OpenCount--;
       if (!Self->BmpCache->OpenCount) {
          if (!glCacheTimer) {
-            pf::SwitchContext ctx(modFont);
+            kt::SwitchContext ctx(modFont);
             SubscribeTimer(60.0, C_FUNCTION(bitmap_cache_cleaner), &glCacheTimer);
          }
       }
@@ -99,7 +99,7 @@ static ERR FONT_Free(extFont *Self)
 
 static ERR FONT_Init(extFont *Self)
 {
-   pf::Log log;
+   kt::Log log;
    int diff;
    FTF style;
    ERR error;
@@ -335,7 +335,7 @@ convenience - we recommend that you set the Style field for determining font sty
 static ERR GET_Bold(extFont *Self, int *Value)
 {
    if ((Self->Flags & FTF::BOLD) != FTF::NIL) *Value = TRUE;
-   else if (pf::strisearch("bold", Self->prvStyle) != -1) *Value = TRUE;
+   else if (kt::strisearch("bold", Self->prvStyle) != -1) *Value = TRUE;
    else *Value = FALSE;
    return ERR::Okay;
 }
@@ -486,7 +486,7 @@ convenience only - we recommend that you set the #Style field for determining fo
 static ERR GET_Italic(extFont *Self, int *Value)
 {
    if ((Self->Flags & FTF::ITALIC) != FTF::NIL) *Value = TRUE;
-   else if (pf::strisearch("italic", Self->prvStyle) != -1) *Value = TRUE;
+   else if (kt::strisearch("italic", Self->prvStyle) != -1) *Value = TRUE;
    else *Value = FALSE;
    return ERR::Okay;
 }
@@ -770,7 +770,7 @@ static ERR GET_YOffset(extFont *Self, int *Value)
 
 static ERR draw_bitmap_font(extFont *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objBitmap *bitmap;
    RGB8 rgb;
    static const uint8_t table[] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };

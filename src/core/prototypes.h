@@ -24,7 +24,7 @@ extern "C" CLASSID GetClassID(OBJECTID Object);
 extern "C" OBJECTID GetOwnerID(OBJECTID Object);
 extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState();
-extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List);
+extern "C" ERR ListChildren(OBJECTID Object, kt::vector<ChildEntry> * List);
 extern "C" ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 extern "C" ERR ResolvePath(const std::string_view & Path, RSF Flags, std::string * Result);
 extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, int Size);

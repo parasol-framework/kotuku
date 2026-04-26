@@ -23,7 +23,7 @@ extern struct CoreBase *CoreBase;
 
 static std::string glProcedure;
 static objSurface *glTarget = nullptr;
-pf::vector<std::string> *glArgs;
+kt::vector<std::string> *glArgs;
 static int glArgsIndex = 0;
 //static STRING glAllow = nullptr;
 static std::string glTargetFile;
@@ -86,60 +86,60 @@ if glRunFile then obj.new('script', { src = glRunFile }).acActivate() end
 
 static ERR process_args(void)
 {
-   pf::Log log("Origo");
+   kt::Log log("Origo");
 
    if ((glTask->get(FID_Parameters, glArgs) IS ERR::Okay) and (glArgs)) {
-      pf::vector<std::string> &args = *glArgs;
+      kt::vector<std::string> &args = *glArgs;
       for (unsigned i=0; i < args.size(); i++) {
-         if (pf::iequals(args[i], "--help")) { // Print help for the user
+         if (kt::iequals(args[i], "--help")) { // Print help for the user
             printf("%s", glHelp.c_str());
             return ERR::Terminate;
          }
-         else if (pf::iequals(args[i], "--version")) { // Print version information
+         else if (kt::iequals(args[i], "--version")) { // Print version information
             printf("%s\n", KOTUKU_VERSION);
             printf("%s:%s\n", KOTUKU_GIT_BRANCH, KOTUKU_GIT_COMMIT);
             printf("Build Type: %s\n", KOTUKU_BUILD_TYPE);
             return ERR::Terminate;
          }
-         else if (pf::iequals(args[i], "--verify")) { // Dummy option for verifying installs
+         else if (kt::iequals(args[i], "--verify")) { // Dummy option for verifying installs
             return ERR::Terminate;
          }
-         else if (pf::iequals(args[i], "--sandbox")) {
+         else if (kt::iequals(args[i], "--sandbox")) {
             glSandbox = true;
          }
-         else if (pf::iequals(args[i], "--time")) {
+         else if (kt::iequals(args[i], "--time")) {
             glTime = true;
          }
-         else if (pf::iequals(args[i], "--dialog")) {
+         else if (kt::iequals(args[i], "--dialog")) {
             // Display a file dialog for choosing a script manually
             glDialog = true;
          }
-         else if (pf::iequals(args[i], "--relaunch")) {
+         else if (kt::iequals(args[i], "--relaunch")) {
             // Internal argument to detect relaunching at an altered security level
             glRelaunched = true;
          }
-         else if (pf::iequals(args[i], "--backstage")) {
+         else if (kt::iequals(args[i], "--backstage")) {
             glBackstage = true;
             if (i + 1 < args.size()) i++;
          }
-         else if (pf::iequals(args[i], "--procedure")) {
+         else if (kt::iequals(args[i], "--procedure")) {
             if (i + 1 < args.size()) {
                glProcedure.assign(args[i+1]);
                i++;
             }
          }
-         else if (pf::iequals(args[i], "--statement") or (pf::iequals(args[i], "-c")) or (pf::iequals(args[i], "-e"))) {
+         else if (kt::iequals(args[i], "--statement") or (kt::iequals(args[i], "-c")) or (kt::iequals(args[i], "-e"))) {
             // NB: The support for -c and -e exists only for AI agents that like to use this syntax for whatever reason...
             if (i + 1 < args.size()) {
                glStatement.assign(args[i+1]);
                i++;
             }
          }
-         else if (pf::iequals(args[i], "--jit-options")) {
+         else if (kt::iequals(args[i], "--jit-options")) {
             // Handled by the Tiri module, we just need to skip the next argument.
             if (i + 1 < args.size()) i++;
          }
-         else if (pf::startswith("--", args[i])) {
+         else if (kt::startswith("--", args[i])) {
             // Unrecognised argument beginning with '--', ignore it.
          }
          else { // If argument not recognised, assume this arg is the target file.
@@ -162,7 +162,7 @@ static ERR process_args(void)
 
 extern "C" int main(int argc, char **argv)
 {
-   pf::Log log("Origo");
+   kt::Log log("Origo");
 
    if (auto msg = init_kotuku(argc, (CSTRING *)argv)) {
       for (int i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
