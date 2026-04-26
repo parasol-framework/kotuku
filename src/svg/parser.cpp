@@ -15,7 +15,7 @@ ERR svgState::set_paint_server(objVector *Vector, FIELD Field, const std::string
             if (Self->IDs.contains(lookup)) {
                auto tag = Self->IDs[lookup];
 
-               switch(strihash(tag->name())) {
+               switch(svg_tag_hash(*tag)) {
                   case SVF_CONTOURGRADIENT:  proc_contourgradient(*tag); break;
                   case SVF_RADIALGRADIENT:   proc_radialgradient(*tag); break;
                   case SVF_DIAMONDGRADIENT:  proc_diamondgradient(*tag); break;
@@ -303,7 +303,7 @@ void svgState::process_shape_children(XTag &Tag, OBJECTPTR Vector) noexcept
    for (auto &child : Tag.Children) {
       if (!child.isTag()) continue;
 
-      switch(strihash(child.name())) {
+      switch(svg_tag_hash(child)) {
          case SVF_ANIMATE:          proc_animate(child, Tag, Vector); break;
          case SVF_ANIMATECOLOR:     proc_animate_colour(child, Tag, Vector); break;
          case SVF_ANIMATETRANSFORM: proc_animate_transform(child, Vector); break;
@@ -619,7 +619,7 @@ ERR svgState::parse_fe_merge(objVectorFilter *Filter, XTag &Tag) noexcept
 
    std::vector<MergeSource> list;
    for (auto &child : Tag.Children) {
-      if (iequals("feMergeNode", child.name())) {
+      if (svg_tag_hash(child) IS kt::strihash("feMergeNode")) {
          for (int a=1; a < std::ssize(child.Attribs); a++) {
             if (iequals("in", child.Attribs[a].Name)) {
                switch (strihash(child.Attribs[a].Value)) {
@@ -900,7 +900,7 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XTag &Tag, LT Type) noe
    if (!Tag.Children.empty()) {
       ERR error;
       auto &child = Tag.Children[0];
-      if (std::string_view("feDistantLight") == child.name()) {
+      if (svg_tag_is(child, SVF_FEDISTANTLIGHT)) {
          double azimuth = 0, elevation = 0;
 
          for (int a=1; a < std::ssize(child.Attribs); a++) {
@@ -912,7 +912,7 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XTag &Tag, LT Type) noe
 
          error = fx->setDistantLight(azimuth, elevation);
       }
-      else if (std::string_view("fePointLight") == child.name()) {
+      else if (svg_tag_is(child, SVF_FEPOINTLIGHT)) {
          double x = 0, y = 0, z = 0;
 
          for (int a=1; a < std::ssize(child.Attribs); a++) {
@@ -925,7 +925,7 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XTag &Tag, LT Type) noe
 
          error = fx->setPointLight(x, y, z);
       }
-      else if (std::string_view("feSpotLight") == child.name()) {
+      else if (svg_tag_is(child, SVF_FESPOTLIGHT)) {
          double x = 0, y = 0, z = 0, px = 0, py = 0, pz = 0;
          double exponent = 1, cone_angle = 0;
 
@@ -1096,9 +1096,10 @@ ERR svgState::parse_fe_component_xfer(objVectorFilter *Filter, XTag &Tag) noexce
    }
 
    for (auto &child : Tag.Children) {
-      if (wildcmp("feFunc?", child.name())) {
+      auto child_name = svg_local_name(child);
+      if (wildcmp("feFunc?", std::string(child_name).c_str())) {
          auto cmp = CMP::NIL;
-         switch(child.name()[6]) {
+         switch(child_name[6]) {
             case 'R': cmp = CMP::RED; break;
             case 'G': cmp = CMP::GREEN; break;
             case 'B': cmp = CMP::BLUE; break;
@@ -1646,7 +1647,7 @@ void svgState::proc_filter(XTag &Tag) noexcept
          for (auto child : Tag.Children) {
             log.trace("Parsing filter element '%s'", child.name());
 
-            switch(strihash(child.name())) {
+            switch(svg_tag_hash(child)) {
                case SVF_FEBLUR:              parse_fe_blur(filter, child); break;
                case SVF_FEGAUSSIANBLUR:      parse_fe_blur(filter, child); break;
                case SVF_FEOFFSET:            parse_fe_offset(filter, child); break;
@@ -1847,7 +1848,7 @@ ERR svgState::process_tag(XTag &Tag, XTag &ParentTag, OBJECTPTR Parent, objVecto
 
    log.traceBranch("%s", Tag.name());
 
-   switch(strihash(Tag.name())) {
+   switch(svg_tag_hash(Tag)) {
       case SVF_USE:              proc_use(Tag, Parent); break;
       case SVF_A:                proc_link(Tag, Parent, Vector); break;
       case SVF_SWITCH:           proc_switch(Tag, Parent, Vector); break;
@@ -1924,6 +1925,8 @@ ERR svgState::process_tag(XTag &Tag, XTag &ParentTag, OBJECTPTR Parent, objVecto
       }
 
       case SVF_DESC: break; // Ignore descriptions
+
+      case 0: break;
 
       default: log.warning("Failed to interpret tag <%s/> @ line %d", Tag.name(), Tag.LineNo); return ERR::NoSupport;
    }
@@ -2191,7 +2194,7 @@ ERR svgState::proc_defs(XTag &Tag, OBJECTPTR Parent) noexcept
    state.applyTag(Tag); // Apply all attribute values to the current state.
 
    for (auto &child : Tag.Children) {
-      switch (strihash(child.name())) {
+      switch (svg_tag_hash(child)) {
          case SVF_CONTOURGRADIENT: state.proc_contourgradient(child); break;
          case SVF_RADIALGRADIENT:  state.proc_radialgradient(child); break;
          case SVF_DIAMONDGRADIENT: state.proc_diamondgradient(child); break;
@@ -2349,7 +2352,7 @@ void svgState::proc_morph(XTag &Tag, OBJECTPTR Parent) noexcept
    auto tagref = Self->IDs[uri];
 
    auto class_id = CLASSID::NIL;
-   switch (strihash(tagref->name())) {
+   switch (svg_tag_hash(*tagref)) {
       case SVF_PATH:          class_id = CLASSID::VECTORPATH; break;
       case SVF_RECT:          class_id = CLASSID::VECTORRECTANGLE; break;
       case SVF_ELLIPSE:       class_id = CLASSID::VECTORELLIPSE; break;
@@ -2886,7 +2889,7 @@ void svgState::proc_svg(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexce
       if (child.isTag()) {
          log.traceBranch("Processing <%s/>", child.name());
 
-         switch(strihash(child.name())) {
+         switch(svg_tag_hash(child)) {
             case SVF_DEFS: state.proc_defs(child, viewport); break;
             default:       state.process_tag(child, Tag, viewport, sibling);  break;
          }
@@ -3093,7 +3096,7 @@ ERR svgState::proc_animate_motion(XTag &Tag, OBJECTPTR Parent) noexcept
       // Search for mpath references, e.g. <mpath xlink:href="#mpathRef"/>
 
       for (auto &child : Tag.Children) {
-         if ((child.isTag()) and (iequals("mpath", child.name()))) {
+         if ((child.isTag()) and (svg_tag_hash(child) IS kt::strihash("mpath"))) {
             auto href = child.attrib("xlink:href");
             if (!href) href = child.attrib("href");
 

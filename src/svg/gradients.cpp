@@ -39,7 +39,7 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XTag &Tag
    double last_stop = 0;
    std::vector<GradientStop> stops;
    for (auto &scan : Tag.Children) {
-      if (iequals("stop", scan.name())) {
+      if (svg_tag_hash(scan) IS kt::strihash("stop")) {
          GradientStop stop;
          double stop_opacity = 1.0;
          stop.Offset = 0;
@@ -168,16 +168,16 @@ void svgState::parse_lineargradient(const XTag &Tag, objVectorGradient *Gradient
             }
             else if (auto other = find_href_tag(Self, val)) {
                std::string dummy;
-               if (iequals("radialGradient", other->name())) {
+               if (svg_tag_is(*other, SVF_RADIALGRADIENT)) {
                   parse_radialgradient(*other, *Gradient, dummy);
                }
-               else if (iequals("linearGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_LINEARGRADIENT)) {
                   parse_lineargradient(*other, Gradient, dummy);
                }
-               else if (iequals("diamondGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_DIAMONDGRADIENT)) {
                   parse_diamondgradient(*other, Gradient, dummy);
                }
-               else if (iequals("contourGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_CONTOURGRADIENT)) {
                   parse_contourgradient(*other, Gradient, dummy);
                }
             }
@@ -248,16 +248,16 @@ void svgState::parse_radialgradient(const XTag &Tag, objVectorGradient &Gradient
             }
             else if (auto other = find_href_tag(Self, val)) {
                std::string dummy;
-               if (iequals("radialGradient", other->name())) {
+               if (svg_tag_is(*other, SVF_RADIALGRADIENT)) {
                   parse_radialgradient(*other, Gradient, dummy);
                }
-               else if (iequals("linearGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_LINEARGRADIENT)) {
                   parse_lineargradient(*other, &Gradient, dummy);
                }
-               else if (iequals("diamondGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_DIAMONDGRADIENT)) {
                   parse_diamondgradient(*other, &Gradient, dummy);
                }
-               else if (iequals("contourGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_CONTOURGRADIENT)) {
                   parse_contourgradient(*other, &Gradient, dummy);
                }
             }
@@ -324,16 +324,16 @@ void svgState::parse_diamondgradient(const XTag &Tag, objVectorGradient *Gradien
             }
             else if (auto other = find_href_tag(Self, val)) {
                std::string dummy;
-               if (iequals("radialGradient", other->name())) {
+               if (svg_tag_is(*other, SVF_RADIALGRADIENT)) {
                   parse_radialgradient(*other, *Gradient, dummy);
                }
-               else if (iequals("linearGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_LINEARGRADIENT)) {
                   parse_lineargradient(*other, Gradient, dummy);
                }
-               else if (iequals("diamondGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_DIAMONDGRADIENT)) {
                   parse_diamondgradient(*other, Gradient, dummy);
                }
-               else if (iequals("contourGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_CONTOURGRADIENT)) {
                   parse_contourgradient(*other, Gradient, dummy);
                }
             }
@@ -397,16 +397,16 @@ void svgState::parse_contourgradient(const XTag &Tag, objVectorGradient *Gradien
             }
             else if (auto other = find_href_tag(Self, val)) {
                std::string dummy;
-               if (iequals("radialGradient", other->name())) {
+               if (svg_tag_is(*other, SVF_RADIALGRADIENT)) {
                   parse_radialgradient(*other, *Gradient, dummy);
                }
-               else if (iequals("linearGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_LINEARGRADIENT)) {
                   parse_lineargradient(*other, Gradient, dummy);
                }
-               else if (iequals("diamondGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_DIAMONDGRADIENT)) {
                   parse_diamondgradient(*other, Gradient, dummy);
                }
-               else if (iequals("contourGradient", other->name())) {
+               else if (svg_tag_is(*other, SVF_CONTOURGRADIENT)) {
                   parse_contourgradient(*other, Gradient, dummy);
                }
             }

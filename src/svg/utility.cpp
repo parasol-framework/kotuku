@@ -168,7 +168,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 
    std::vector<Transition> stops;
    for (auto &scan : Tags) {
-      if (iequals("stop", scan.name())) {
+      if (svg_tag_hash(scan) IS kt::strihash("stop")) {
          Transition stop;
          stop.Offset = 0;
          stop.Transform = nullptr;
@@ -470,6 +470,8 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
    objXML *xml;
    ERR error = ERR::Okay;
    if (NewLocalObject(CLASSID::XML, &xml) IS ERR::Okay) {
+      xml->setFlags(XMF::NAMESPACE_AWARE);
+
       objTask *task = CurrentTask();
       std::string working_path;
 
@@ -518,7 +520,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          objVector *sibling = nullptr;
          for (auto &scan : xml->Tags) {
-            if (iequals("svg", scan.name())) {
+            if (svg_tag_is(scan, SVF_SVG)) {
                svgState state(Self);
 
                // Parse all tags with an 'id' reference so that href's can target them even when

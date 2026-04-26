@@ -283,6 +283,50 @@ inline void track_object(extSVG *SVG, OBJECTPTR Object)
    }
 }
 
+static constexpr auto glSVGNamespace = kt::strhash("http://www.w3.org/2000/svg");
+static constexpr auto glKotukuNamespace = kt::strhash("http://www.kotuku.dev/namespaces/kotuku");
+static constexpr auto glKotukuSVGNamespace = kt::strhash("http://www.kotuku.dev/xmlns/svg");
+
+//********************************************************************************************************************
+
+static std::string_view svg_local_name(const XTag &Tag) noexcept
+{
+   std::string_view name(Tag.name());
+
+   if (auto colon = name.find(':'); colon != std::string_view::npos) return name.substr(colon + 1);
+   else return name;
+}
+
+//********************************************************************************************************************
+
+static uint32_t svg_tag_hash(const XTag &Tag) noexcept
+{
+   if ((Tag.NamespaceID) and (Tag.NamespaceID != glSVGNamespace) and (Tag.NamespaceID != glKotukuNamespace) and
+       (Tag.NamespaceID != glKotukuSVGNamespace)) return 0;
+
+   if ((Tag.NamespaceID IS glKotukuNamespace) or (Tag.NamespaceID IS glKotukuSVGNamespace)) {
+      switch (kt::strihash(svg_local_name(Tag))) {
+         case kt::strihash("morph"):          return SVF_KOTUKU_MORPH;
+         case kt::strihash("pathTransition"): return SVF_KOTUKU_PATHTRANSITION;
+         case kt::strihash("shape"):          return SVF_KOTUKU_SHAPE;
+         case SVF_SPIRAL:                     return SVF_KOTUKU_SPIRAL;
+         case SVF_TRANSITION:                 return SVF_KOTUKU_TRANSITION;
+         case kt::strihash("wave"):           return SVF_KOTUKU_WAVE;
+         default:                             return 0;
+      }
+   }
+
+   if (!Tag.NamespaceID) return kt::strihash(Tag.name());
+   else return kt::strihash(svg_local_name(Tag));
+}
+
+//********************************************************************************************************************
+
+static bool svg_tag_is(const XTag &Tag, uint32_t Hash) noexcept
+{
+   return svg_tag_hash(Tag) IS Hash;
+}
+
 //********************************************************************************************************************
 
 #include "funit.cpp"

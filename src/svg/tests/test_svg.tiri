@@ -89,6 +89,7 @@ end
 @Test global function Basics28() hashTestSVG('basics/w3-shapes-rect-05-f.svg', 0x7d1676f1) end
 @Test global function Basics29() hashTestSVG('basics/w3-shapes-rect-06-f.svg', 0xc68886ef) end
 @Test global function Basics30() hashTestSVG('basics/w3-shapes-rect-07-f.svg', 0x88f9e343) end
+@Test(name='NamespaceAware') global function BasicsNamespaceAware() hashTestSVG('basics/namespace-aware.svg', 0xcf55497a) end
 
 @Test global function Circles()         hashTestSVG('paths/circles.svg', 0x5bab0903) end
 @Test global function Morph()           hashTestSVG('paths/morph.svg', 0x90bf1a66) end
