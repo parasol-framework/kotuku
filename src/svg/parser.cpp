@@ -2828,11 +2828,11 @@ void svgState::proc_svg(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexce
 
          case SVF_ENABLE_BACKGROUND: // Deprecated in favour of 'isolated'
             log.warning("enable-background is deprecated in favour of the isolated attribute.");
-            if (iequals("new", val)) viewport->setFlags(Vector->Flags | VF::ISOLATED);
+            if (iequals("new", val)) viewport->setFlags(viewport->Flags | VF::ISOLATED);
             break;
 
          case SVF_ISOLATION_MODE:
-            if (iequals("isolated", val)) viewport->setFlags(Vector->Flags | VF::ISOLATED);
+            if (iequals("isolated", val)) viewport->setFlags(viewport->Flags | VF::ISOLATED);
             break;
 
          case SVF_ZOOMANDPAN:
@@ -2848,14 +2848,16 @@ void svgState::proc_svg(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexce
 
          case SVF_MASK: {
             OBJECTPTR clip;
-            if (Self->Scene->findDef(val.c_str(), &clip) IS ERR::Okay) viewport->set(FID_Mask, clip);
+            auto ref = uri_name(val);
+            if (Self->Scene->findDef(ref.c_str(), &clip) IS ERR::Okay) viewport->set(FID_Mask, clip);
             else log.warning("Unable to find mask '%s'", val.c_str());
             break;
          }
 
          case SVF_CLIP_PATH: {
             OBJECTPTR clip;
-            if (Self->Scene->findDef(val.c_str(), &clip) IS ERR::Okay) viewport->set(FID_Mask, clip);
+            auto ref = uri_name(val);
+            if (Self->Scene->findDef(ref.c_str(), &clip) IS ERR::Okay) viewport->set(FID_Mask, clip);
             else log.warning("Unable to find clip-path '%s'", val.c_str());
             break;
          }
@@ -3748,7 +3750,8 @@ ERR svgState::set_property(objVector *Vector, uint32_t Hash, XTag &Tag, const st
 
       case SVF_MASK: {
          OBJECTPTR clip;
-         if (Self->Scene->findDef(StrValue.c_str(), &clip) IS ERR::Okay) {
+         auto ref = uri_name(StrValue);
+         if (Self->Scene->findDef(ref.c_str(), &clip) IS ERR::Okay) {
             Vector->set(FID_Mask, clip);
          }
          else {
@@ -3760,7 +3763,8 @@ ERR svgState::set_property(objVector *Vector, uint32_t Hash, XTag &Tag, const st
 
       case SVF_CLIP_PATH: {
          OBJECTPTR clip;
-         if (Self->Scene->findDef(StrValue.c_str(), &clip) IS ERR::Okay) {
+         auto ref = uri_name(StrValue);
+         if (Self->Scene->findDef(ref.c_str(), &clip) IS ERR::Okay) {
             Vector->set(FID_Mask, clip);
          }
          else {
