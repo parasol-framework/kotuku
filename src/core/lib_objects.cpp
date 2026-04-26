@@ -1193,6 +1193,42 @@ ERR CheckObjectExists(OBJECTID ObjectID)
 /*********************************************************************************************************************
 
 -FUNCTION-
+ClassDatabase: Returns an array of all classes known to the system.
+
+Call ClassDatabase() to obtain an array of all classes known to the system.
+
+-INPUT-
+!array(struct(*ClassRecord)) Classes: A pointer to an array of class records is returned here.
+
+-ERRORS-
+Okay
+
+*********************************************************************************************************************/
+
+ERR ClassDatabase(ClassRecord ***Classes)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (not Classes) return log.warning(ERR::NullArgs);
+
+   *Classes = nullptr;
+   if (auto lock = std::unique_lock{glmClassDB, 3s}) {
+      ClassRecord **array = nullptr;
+      if (AllocMemory(sizeof(struct ClassRecord *) * (glClassDB.size() + 1), MEM::DATA|MEM::NO_CLEAR, &array) IS ERR::Okay) {
+         int i = 0;
+         for (auto &entry : glClassDB) array[i++] = &entry.second;
+         array[i++] = nullptr;
+         *Classes = array;
+         return ERR::Okay;
+      }
+      else return log.warning(ERR::AllocMemory);
+   }
+   else return log.warning(ERR::SystemLocked);
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 CurrentContext: Returns a pointer to the object that has the current context.
 
 This function returns a pointer to the object that has the current context.  Context is primarily used to manage

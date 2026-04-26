@@ -355,11 +355,11 @@ ERR CLASS_Init(extMetaClass *Self)
                while ((i > 0) and (Self->Path[i] != '/') and (Self->Path[i] != '\\') and (Self->Path[i] != ':')) i--;
                if (i > 0) i++; // Skip folder separator.
 
-               return ClassRecord(Self, make_optional(Self->Path.substr(i)));
+               return extClassRecord(Self, make_optional(Self->Path.substr(i)));
             }
-            else return ClassRecord(Self);
+            else return extClassRecord(Self);
          #else
-            return ClassRecord(Self);
+            return extClassRecord(Self);
          #endif
       }();
    }
