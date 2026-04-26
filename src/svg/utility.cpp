@@ -347,8 +347,8 @@ static double read_unit(std::string_view &Value, int64_t *FieldID)
       else if (Value.starts_with("em")) { Value.remove_prefix(2); return fv * 12.0 * (4.0 / 3.0); } // Multiply the current font's pixel height by the provided em value
       else if (Value.starts_with("ex")) { Value.remove_prefix(2); return fv * 6.0 * (4.0 / 3.0); } // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
       else if (Value.starts_with("in")) { Value.remove_prefix(2); return fv * dpi; } // Inches
-      else if (Value.starts_with("cm")) { Value.remove_prefix(2); return fv * (1.0 / 2.56) * dpi; } // Centimetres
-      else if (Value.starts_with("mm")) { Value.remove_prefix(2); return fv * (1.0 / 20.56) * dpi; } // Millimetres
+      else if (Value.starts_with("cm")) { Value.remove_prefix(2); return fv * (1.0 / 2.54) * dpi; } // Centimetres
+      else if (Value.starts_with("mm")) { Value.remove_prefix(2); return fv * (1.0 / 25.4) * dpi; } // Millimetres
       else if (Value.starts_with("pt")) { Value.remove_prefix(2); return fv * (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
       else if (Value.starts_with("pc")) { Value.remove_prefix(2); return fv * (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
       else if (Value.starts_with("px")) { Value.remove_prefix(2); return fv; } // Pixel

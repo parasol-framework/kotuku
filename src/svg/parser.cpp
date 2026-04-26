@@ -1893,14 +1893,18 @@ ERR svgState::process_tag(XTag &Tag, XTag &ParentTag, OBJECTPTR Parent, objVecto
          break;
 
       case SVF_LINE:
-         proc_shape(CLASSID::VECTORPOLYGON, Tag, Parent, Vector);
-         Vector->set(FID_Closed, FALSE);
-         break;
+         if (auto error = proc_shape(CLASSID::VECTORPOLYGON, Tag, Parent, Vector); error IS ERR::Okay) {
+            Vector->set(FID_Closed, FALSE);
+            break;
+         }
+         else return error;
 
       case SVF_POLYLINE:
-         proc_shape(CLASSID::VECTORPOLYGON, Tag, Parent, Vector);
-         Vector->set(FID_Closed, FALSE);
-         break;
+         if (auto error = proc_shape(CLASSID::VECTORPOLYGON, Tag, Parent, Vector); error IS ERR::Okay) {
+            Vector->set(FID_Closed, FALSE);
+            break;
+         }
+         else return error;
 
       case SVF_TEXT: {
          if (proc_shape(CLASSID::VECTORTEXT, Tag, Parent, Vector) IS ERR::Okay) {
