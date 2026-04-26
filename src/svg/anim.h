@@ -150,6 +150,9 @@ public:
    double get_total_dist();
    double get_dimension(objVector &, FIELD);
    double get_numeric_value(objVector &, FIELD);
+   static double interval_seek(double, double, double) noexcept;
+   static double mod_seek(double, int) noexcept;
+   static double spline_seek(const spline_path &, double) noexcept;
    std::string get_string();
    FRGB get_colour_value(objVector &, FIELD);
    bool started(double);

@@ -1782,19 +1782,9 @@ void svgState::proc_pattern(XTag &Tag) noexcept
       if (!x.empty()) UNIT(FID_X, x, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
       if (!y.empty()) UNIT(FID_Y, y, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
 
-      if (!width.empty()) {
-         if (pattern->ContentUnits IS VUNIT::BOUNDING_BOX) {
-            UNIT(FID_Width, width, DU::SCALED).set(pattern);
-         }
-         else UNIT(FID_Width, width, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
-      }
+      if (!width.empty()) UNIT(FID_Width, width, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
 
-      if (!height.empty()) {
-         if (pattern->ContentUnits IS VUNIT::BOUNDING_BOX) {
-            UNIT(FID_Height, height, DU::SCALED).set(pattern);
-         }
-         else UNIT(FID_Height, height, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
-      }
+      if (!height.empty()) UNIT(FID_Height, height, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
 
       if (id.empty()) {
          FreeResource(pattern);
@@ -3101,7 +3091,7 @@ ERR svgState::proc_animate_motion(XTag &Tag, OBJECTPTR Parent) noexcept
       for (auto &child : Tag.Children) {
          if ((child.isTag()) and (iequals("mpath", child.name()))) {
             auto href = child.attrib("xlink:href");
-            if (!href) child.attrib("href");
+            if (!href) href = child.attrib("href");
 
             if (href) {
                objVector *path;
@@ -3710,7 +3700,7 @@ ERR svgState::set_property(objVector *Vector, uint32_t Hash, XTag &Tag, const st
       case SVF_FILTER:       Vector->setFilter(StrValue); break;
 
       case SVF_COLOR:
-         if (StrValue != "inherit") Vector->setFill(StrValue);
+         // Handled by svgState::applyTag() for inherited currentColor.
          break;
 
       case SVF_STROKE:

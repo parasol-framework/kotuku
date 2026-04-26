@@ -312,9 +312,9 @@ static double read_time(const std::string_view Value)
          }
       }
       else if (Value.ends_with("h")) return units[0] * 60 * 60;
-      else if (Value.ends_with("s")) return units[0];
       else if (Value.ends_with("min")) return units[0] * 60;
       else if (Value.ends_with("ms")) return double(units[0]) / 1000.0;
+      else if (Value.ends_with("s")) return units[0];
       else return units[0];
    }
    else return 0;
