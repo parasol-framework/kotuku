@@ -138,7 +138,7 @@ class extLightingFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::LIGHTINGFX;
    static constexpr CSTRING CLASS_NAME = "LightingFX";
-   using create = pf::Create<extLightingFX>;
+   using create = kt::Create<extLightingFX>;
 
    FRGB   Colour;           // Colour of the light source.
    FRGB   LinearColour;     // Colour of the light source in linear sRGB space.
@@ -696,7 +696,7 @@ NullArgs:
 
 static ERR LIGHTINGFX_SetDistantLight(extLightingFX *Self, struct lt::SetDistantLight *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -735,7 +735,7 @@ NullArgs:
 
 static ERR LIGHTINGFX_SetPointLight(extLightingFX *Self, struct lt::SetPointLight *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -782,7 +782,7 @@ NullArgs:
 
 static ERR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct lt::SetSpotLight *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 

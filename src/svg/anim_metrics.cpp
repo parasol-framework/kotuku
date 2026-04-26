@@ -7,7 +7,7 @@ void anim_base::set_orig_value(svgState &State)
 {
    if ((freeze and not from.empty()) or target_attrib.empty()) return;
 
-   pf::ScopedObjectLock<objVector> obj(target_vector);
+   kt::ScopedObjectLock<objVector> obj(target_vector);
    if (obj.granted()) {
       auto fid = strihash(target_attrib);
       switch(fid) {

@@ -51,7 +51,7 @@ static ERR save_binary(objScript *, OBJECTPTR);
 
 [[maybe_unused]] static void dump_global_table(objScript *Self, STRING Global)
 {
-   pf::Log log("print_env");
+   kt::Log log("print_env");
    lua_State *lua = ((prvTiri *)Self->ChildPrivate)->Lua;
    lua_getglobal(lua, Global);
    if (lua_istable(lua, -1) ) {
@@ -89,7 +89,7 @@ static const FieldDef clJitOptions[] = {
 
 static ERR GET_JitOptions(objScript *, JOF *);
 static ERR SET_JitOptions(objScript *, JOF);
-static ERR GET_Procedures(objScript *, pf::vector<std::string> **, int *);
+static ERR GET_Procedures(objScript *, kt::vector<std::string> **, int *);
 
 static const FieldArray clFields[] = {
    { "JitOptions", FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, GET_JitOptions, SET_JitOptions, &clJitOptions },
@@ -135,7 +135,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    }
    else Self->Error = ERR::Exception; // Unspecified exception, e.g. an error() or assert().  The result string will indicate detail.
 
-   pf::Log log;
+   kt::Log log;
    auto str = lua_tostring(prv->Lua, -1);
    lua_pop(prv->Lua, 1);  // pop returned value
    Self->setErrorMessage(str);
@@ -162,7 +162,7 @@ void process_error(objScript *Self, CSTRING Procedure)
 
 static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *args, int8_t *Buffer)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not args) return ERR::Okay;
 
@@ -229,7 +229,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
          int depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
          {
-            pf::Log log;
+            kt::Log log;
 
             log.msg(VLF::BRANCH|VLF::DETAIL, "Action notification for object #%d, action %d.  Top: %d", Object->UID, int(ActionID), lua_gettop(prv->Lua));
 
@@ -289,7 +289,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 
 static ERR TIRI_Activate(objScript *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Self->String) or (not Self->String[0])) return log.warning(ERR::FieldNotSet);
 
@@ -315,7 +315,7 @@ static ERR TIRI_Activate(objScript *Self)
          // The Lua script needs to have been executed at least once in order for the procedures to be initialised and recognised.
 
          if (Self->ActivationCount IS 0) {
-            pf::Log log;
+            kt::Log log;
             log.traceBranch("Collecting functions prior to procedure call...");
 
             if (lua_pcall(prv->Lua, 0, 0, 0)) {
@@ -333,7 +333,7 @@ static ERR TIRI_Activate(objScript *Self)
 
       if (prv->Lua) {
          if (lua_gc(prv->Lua, LUA_GCISRUNNING, 0)) {
-            pf::Log log;
+            kt::Log log;
             log.traceBranch("Collecting garbage.");
             lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
          }
@@ -351,7 +351,7 @@ static ERR TIRI_Activate(objScript *Self)
 
 static ERR TIRI_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return ERR::NullArgs;
 
@@ -417,7 +417,7 @@ static ERR TIRI_DataFeed(objScript *Self, struct acDataFeed *Args)
       }
 
       if (lua_gc(prv->Lua, LUA_GCISRUNNING, 0)) {
-         pf::Log log;
+         kt::Log log;
          log.traceBranch("Collecting garbage.");
          lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
       }
@@ -446,7 +446,7 @@ static ERR TIRI_Free(objScript *Self)
 
 static ERR TIRI_Init(objScript *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Path) {
       if (not wildcmp("*.tiri|*.tbc", Self->Path)) {
@@ -614,7 +614,7 @@ Introspection of available procedures will be limited until the script is activa
 
 static ERR TIRI_Query(objScript *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Self->String) or (not Self->String[0])) return log.warning(ERR::FieldNotSet);
 
@@ -625,9 +625,9 @@ static ERR TIRI_Query(objScript *Self)
    if (not prv->MainChunkRef) {
       log.branch("Target: %d, Procedure: %s / ID #%" PRId64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
-      auto cleanup = pf::Defer([&]() {
+      auto cleanup = kt::Defer([&]() {
          if (prv->Lua) {
-            pf::Log().traceBranch("Collecting garbage.");
+            kt::Log().traceBranch("Collecting garbage.");
             lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
          }
       });
@@ -742,7 +742,7 @@ usage.
 
 static ERR TIRI_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Dest)) return log.warning(ERR::NullArgs);
 
@@ -793,7 +793,7 @@ static ERR SET_JitOptions(objScript *Self, JOF Value)
 {
    if (auto prv = (prvTiri *)Self->ChildPrivate) {
       if (prv->Recurse) {
-         pf::Log().warning("Changing JIT options after parsing is ineffective.");
+         kt::Log().warning("Changing JIT options after parsing is ineffective.");
          return ERR::InvalidState;
       }
       prv->JitOptions = Value;
@@ -813,7 +813,7 @@ It will otherwise return an empty array.
 
 *********************************************************************************************************************/
 
-static ERR GET_Procedures(objScript *Self, pf::vector<std::string> **Value, int *Elements)
+static ERR GET_Procedures(objScript *Self, kt::vector<std::string> **Value, int *Elements)
 {
    if (auto prv = (prvTiri *)Self->ChildPrivate) {
       prv->Procedures.clear();
@@ -846,7 +846,7 @@ static ERR save_binary(objScript *Self, OBJECTPTR Target)
 
 static ERR run_script(objScript *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto prv = (prvTiri *)Self->ChildPrivate;
 
@@ -966,7 +966,7 @@ static ERR run_script(objScript *Self)
          log.warning("%s", str.c_str());
 
          #ifndef NDEBUG
-            pf::vector<std::string> *list;
+            kt::vector<std::string> *list;
             int total_procedures;
             if (GET_Procedures(Self, &list, &total_procedures) IS ERR::Okay) {
                for (int i=0; i < total_procedures; i++) log.trace("%s", list[0][i]);
@@ -1041,7 +1041,7 @@ static ERR run_script(objScript *Self)
 
 static ERR register_interfaces(objScript *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.traceBranch("Registering Kotuku and Tiri interfaces with Lua.");
 

@@ -16,7 +16,7 @@ static void free_alsa(extAudio *Self)
 
 static ERR init_audio(extAudio *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    struct snd::SetVolume setvol;
    snd_pcm_hw_params_t *hwparams;
    snd_pcm_stream_t stream;

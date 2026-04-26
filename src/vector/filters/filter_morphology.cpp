@@ -30,7 +30,7 @@ class extMorphologyFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::MORPHOLOGYFX;
    static constexpr CSTRING CLASS_NAME = "MorphologyFX";
-   using create = pf::Create<extMorphologyFX>;
+   using create = kt::Create<extMorphologyFX>;
 
    int RadiusX, RadiusY;
    MOP Operator;

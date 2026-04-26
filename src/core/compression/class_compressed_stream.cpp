@@ -49,7 +49,7 @@ static ERR CSTREAM_Free(extCompressedStream *Self)
 
 static ERR CSTREAM_Init(extCompressedStream *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Self->Input) and (!Self->Output)) return log.warning(ERR::FieldNotSet);
 
@@ -78,7 +78,7 @@ Read: Decompress data from the input stream and write it to the supplied buffer.
 
 static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
@@ -195,7 +195,7 @@ Seek: For use in decompressing streams only.  Seeks to a position within the str
 
 static ERR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return ERR::NullArgs;
 
@@ -236,7 +236,7 @@ Write: Compress raw data in a buffer and write it to the Output object.
 
 static ERR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);

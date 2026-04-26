@@ -66,7 +66,7 @@ class extConvolveFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::CONVOLVEFX;
    static constexpr CSTRING CLASS_NAME = "ConvolveFX";
-   using create = pf::Create<extConvolveFX>;
+   using create = kt::Create<extConvolveFX>;
 
    double UnitX, UnitY;
    double Divisor;
@@ -232,7 +232,7 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
 
 static ERR CONVOLVEFX_Init(extConvolveFX *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->UnitY) Self->UnitY = Self->UnitX;
 
@@ -330,7 +330,7 @@ static ERR CONVOLVEFX_GET_Divisor(extConvolveFX *Self, double *Value)
 
 static ERR CONVOLVEFX_SET_Divisor(extConvolveFX *Self, double Value)
 {
-   pf::Log log;
+   kt::Log log;
    if (Value <= 0) return log.warning(ERR::InvalidValue);
    Self->Divisor = Value;
    return ERR::Okay;
@@ -377,7 +377,7 @@ static ERR CONVOLVEFX_GET_Matrix(extConvolveFX *Self, double **Value, int *Eleme
 
 static ERR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, double *Value, int Elements)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Elements > 0) and (Elements <= std::ssize(Self->Matrix))) {
       Self->MatrixSize = Elements;
@@ -406,7 +406,7 @@ static ERR CONVOLVEFX_GET_MatrixRows(extConvolveFX *Self, int *Value)
 
 static ERR CONVOLVEFX_SET_MatrixRows(extConvolveFX *Self, int Value)
 {
-   pf::Log log;
+   kt::Log log;
    if (Value <= 0) return log.warning(ERR::InvalidValue);
 
    Self->MatrixRows = Value;
@@ -432,7 +432,7 @@ static ERR CONVOLVEFX_GET_MatrixColumns(extConvolveFX *Self, int *Value)
 
 static ERR CONVOLVEFX_SET_MatrixColumns(extConvolveFX *Self, int Value)
 {
-   pf::Log log;
+   kt::Log log;
    if (Value <= 0) return log.warning(ERR::InvalidValue);
 
    Self->MatrixColumns = Value;
@@ -479,7 +479,7 @@ static ERR CONVOLVEFX_GET_TargetX(extConvolveFX *Self, int *Value)
 static ERR CONVOLVEFX_SET_TargetX(extConvolveFX *Self, int Value)
 {
    if (Self->initialised()) {
-      pf::Log log;
+      kt::Log log;
       if ((Value < 0) or (Value >= Self->MatrixColumns)) return log.warning(ERR::OutOfRange);
    }
 
@@ -508,7 +508,7 @@ static ERR CONVOLVEFX_GET_TargetY(extConvolveFX *Self, int *Value)
 static ERR CONVOLVEFX_SET_TargetY(extConvolveFX *Self, int Value)
 {
    if (Self->initialised()) {
-      pf::Log log;
+      kt::Log log;
       if ((Value < 0) or (Value >= Self->MatrixRows)) return log.warning(ERR::OutOfRange);
    }
 

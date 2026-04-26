@@ -72,23 +72,23 @@ std::shared_mutex glConstantMutex;
 
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
 
-constexpr auto HASH_TRACE_TOKENS         = pf::strhash("trace-tokens");
-constexpr auto HASH_TRACE_EXPECT         = pf::strhash("trace-expect");
-constexpr auto HASH_TRACE_BOUNDARY       = pf::strhash("trace-boundary");
-constexpr auto HASH_TRACE_OPERATORS      = pf::strhash("trace-operators");
-constexpr auto HASH_TRACE_REGISTERS      = pf::strhash("trace-registers");
-constexpr auto HASH_TRACE_CFG            = pf::strhash("trace-cfg");
-constexpr auto HASH_TRACE_ASSIGNMENTS    = pf::strhash("trace-assignments");
-constexpr auto HASH_TRACE_VALUE_CATEGORY = pf::strhash("trace-value-category");
-constexpr auto HASH_TRACE_TYPES          = pf::strhash("trace-types");
-constexpr auto HASH_DIAGNOSE             = pf::strhash("diagnose");
-constexpr auto HASH_DUMP_BYTECODE        = pf::strhash("dump-bytecode");
-constexpr auto HASH_PROFILE              = pf::strhash("profile");
-constexpr auto HASH_TRACE                = pf::strhash("trace");
-constexpr auto HASH_TOP_TIPS             = pf::strhash("top-tips");
-constexpr auto HASH_TIPS                 = pf::strhash("tips");
-constexpr auto HASH_ALL_TIPS             = pf::strhash("all-tips");
-constexpr auto HASH_OFF                  = pf::strhash("off");
+constexpr auto HASH_TRACE_TOKENS         = kt::strhash("trace-tokens");
+constexpr auto HASH_TRACE_EXPECT         = kt::strhash("trace-expect");
+constexpr auto HASH_TRACE_BOUNDARY       = kt::strhash("trace-boundary");
+constexpr auto HASH_TRACE_OPERATORS      = kt::strhash("trace-operators");
+constexpr auto HASH_TRACE_REGISTERS      = kt::strhash("trace-registers");
+constexpr auto HASH_TRACE_CFG            = kt::strhash("trace-cfg");
+constexpr auto HASH_TRACE_ASSIGNMENTS    = kt::strhash("trace-assignments");
+constexpr auto HASH_TRACE_VALUE_CATEGORY = kt::strhash("trace-value-category");
+constexpr auto HASH_TRACE_TYPES          = kt::strhash("trace-types");
+constexpr auto HASH_DIAGNOSE             = kt::strhash("diagnose");
+constexpr auto HASH_DUMP_BYTECODE        = kt::strhash("dump-bytecode");
+constexpr auto HASH_PROFILE              = kt::strhash("profile");
+constexpr auto HASH_TRACE                = kt::strhash("trace");
+constexpr auto HASH_TOP_TIPS             = kt::strhash("top-tips");
+constexpr auto HASH_TIPS                 = kt::strhash("tips");
+constexpr auto HASH_ALL_TIPS             = kt::strhash("all-tips");
+constexpr auto HASH_OFF                  = kt::strhash("off");
 
 #include "module_def.cpp"
 
@@ -129,14 +129,14 @@ OBJECTPTR access_object(GCobject *Object)
          Object->set_locked(true);
       }
       else if (error IS ERR::DoesNotExist) {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.trace("Object #%d has been terminated.", Object->uid);
          Object->ptr = nullptr;
          Object->uid = 0;
       }
    }
    else if (auto error = Object->ptr->lock(); error != ERR::Okay) {
-      pf::Log("access_object").warning("#%d lock() failed: %s, Queue: %d", Object->uid, GetErrorMsg(error), Object->ptr->Queue.load());
+      kt::Log("access_object").warning("#%d lock() failed: %s, Queue: %d", Object->uid, GetErrorMsg(error), Object->ptr->Queue.load());
       return nullptr;
    }
 
@@ -164,8 +164,8 @@ void release_object(GCobject *Object)
          else {
             #ifndef NDEBUG
             if (Object->ptr->Queue.load() <= 0) {
-               pf::Log("release_object").warning("#%d Queue underflow before unlock: Queue: %d, ThreadID: %d, OurThread: %d",
-                  Object->uid, Object->ptr->Queue.load(), Object->ptr->ThreadID.load(), pf::_get_thread_id());
+               kt::Log("release_object").warning("#%d Queue underflow before unlock: Queue: %d, ThreadID: %d, OurThread: %d",
+                  Object->uid, Object->ptr->Queue.load(), Object->ptr->ThreadID.load(), kt::_get_thread_id());
                DEBUG_BREAK
             }
             #endif
@@ -193,14 +193,14 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
          luaL_error(Lua, error, "Failed to process module '%s' for class '%s'", module_name, MetaClass->ClassName);
       }
    }
-   else pf::Log(__FUNCTION__).traceWarning("Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));
+   else kt::Log(__FUNCTION__).traceWarning("Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));
 }
 
 //********************************************************************************************************************
 
 [[nodiscard]] static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   pf::Log log;
+   kt::Log log;
 
    CoreBase = argCoreBase;
 
@@ -217,12 +217,12 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
       glActionLookup[glActions[action_id].Name] = AC(action_id);
    }
 
-   pf::vector<std::string> *pargs;
+   kt::vector<std::string> *pargs;
    auto task = CurrentTask();
    if ((task->get(FID_Parameters, pargs) IS ERR::Okay) and (pargs)) {
-      pf::vector<std::string> &args = *pargs;
+      kt::vector<std::string> &args = *pargs;
       for (int i=0; i < std::ssize(args); i++) {
-         if (pf::startswith(args[i], "--jit-options")) {
+         if (kt::startswith(args[i], "--jit-options")) {
             // Parse --jit-options [csv] parameter
             // Use in conjunction with --log-api to see the log messages.
             // These options are system-wide, alternatively you can set JitOptions in the Script object.
@@ -236,14 +236,14 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
             if (not value.empty()) {
                // Split the CSV string and set appropriate global variables
                std::vector<std::string> options;
-               pf::split(value, std::back_inserter(options), ',');
+               kt::split(value, std::back_inserter(options), ',');
 
                glJitOptions = JOF::NIL;
                for (const auto &option : options) {
                   std::string trimmed = option;
-                  pf::trim(trimmed);
+                  kt::trim(trimmed);
 
-                  auto hash = pf::strhash(trimmed);
+                  auto hash = kt::strhash(trimmed);
                   if (hash IS HASH_TRACE_VALUE_CATEGORY)   glJitOptions |= JOF::TRACE_VALUE_CATEGORY;
                   else if (hash IS HASH_TRACE_ASSIGNMENTS) glJitOptions |= JOF::TRACE_ASSIGNMENTS;
                   else if (hash IS HASH_TRACE_OPERATORS) glJitOptions |= JOF::TRACE_OPERATORS;
@@ -313,32 +313,32 @@ static void MODTest(CSTRING Options, int *Passed, int *Total)
 {
 #ifdef ENABLE_UNIT_TESTS
    {
-      pf::Log log("TiriTests");
+      kt::Log log("TiriTests");
       log.branch("Running indexing unit tests...");
       indexing_unit_tests(*Passed, *Total);
    }
    {
-      pf::Log log("TiriTests");
+      kt::Log log("TiriTests");
       log.branch("Running parser unit tests...");
       parser_unit_tests(*Passed, *Total);
    }
    {
-      pf::Log log("TiriTests");
+      kt::Log log("TiriTests");
       log.branch("Running VM assembly unit tests...");
       vm_asm_unit_tests(*Passed, *Total);
    }
    {
-      pf::Log log("TiriTests");
+      kt::Log log("TiriTests");
       log.branch("Running JIT frame unit tests...");
       jit_frame_unit_tests(*Passed, *Total);
    }
    {
-      pf::Log log("TiriTests");
+      kt::Log log("TiriTests");
       log.branch("Running array unit tests...");
       array_unit_tests(*Passed, *Total);
    }
 #else
-   pf::Log("TiriTests").warning("Unit tests are disabled in this build.");
+   kt::Log("TiriTests").warning("Unit tests are disabled in this build.");
 #endif
 }
 
@@ -376,7 +376,7 @@ ObjectCorrupt: Privately maintained memory has become inaccessible.
 namespace fl {
 ERR SetVariable(objScript *Script, CSTRING Name, int Type, ...)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    prvTiri *prv;
    va_list list;
 
@@ -409,7 +409,7 @@ ERR SetVariable(objScript *Script, CSTRING Name, int Type, ...)
 
 void hook_debug(lua_State *Lua, lua_Debug *Info)
 {
-   pf::Log log("Lua");
+   kt::Log log("Lua");
 
    if (Info->event IS LUA_HOOKCALL) {
       if (lua_getinfo(Lua, "nSl", Info)) {
@@ -438,7 +438,7 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
 
 void make_array(lua_State *Lua, AET Type, int Elements, CPTR Data, std::string_view StructName)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Type: $%.8x, Elements: %d, Data: %p", int(Type), Elements, Data);
 
@@ -493,7 +493,7 @@ void make_array(lua_State *Lua, AET Type, int Elements, CPTR Data, std::string_v
 
 void make_struct_ptr_array(lua_State *Lua, std::string_view StructName, int Elements, CPTR *Values)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.trace("%.*s, Elements: %d, Values: %p", int(StructName.size()), StructName.data(), Elements, Values);
 
@@ -537,7 +537,7 @@ void make_struct_ptr_array(lua_State *Lua, std::string_view StructName, int Elem
 
 void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int Elements, CPTR Input)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Elements < 0) Elements = 0; // The total number of structs is a hard requirement.
 
@@ -623,11 +623,11 @@ void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 
 int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 {
-   pf::Log log("code_writer");
+   kt::Log log("code_writer");
 
    if (Size <= 0) return 0; // Ignore bad size requests
 
-   pf::ScopedObjectLock file((MAXINT)FileID);
+   kt::ScopedObjectLock file((MAXINT)FileID);
    if (file.granted()) {
       if (acWrite(*file, (APTR)Data, Size) IS ERR::Okay) return 0;
    }
@@ -637,7 +637,7 @@ int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 
 int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Size <= 0) return 0; // Ignore bad size requests
 

@@ -21,7 +21,7 @@ constexpr int SIZE_READ = 1024;
 #include "lj_state.h"
 #include "lauxlib.h"
 
-using namespace pf;
+using namespace kt;
 
 template <class T> T ALIGN64(T a) { return (((a) + 7) & (~7)); }
 template <class T> T ALIGN32(T a) { return (((a) + 3) & (~3)); }
@@ -204,7 +204,7 @@ struct actionmonitor {
 
    ~actionmonitor() {
       if (ObjectID) {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.trace("Unsubscribe action %s from object #%d", glActions[int(ActionID)].Name, ObjectID);
          OBJECTPTR obj;
          if (AccessObject(ObjectID, 3000, &obj) IS ERR::Okay) {
@@ -290,7 +290,7 @@ struct prvTiri {
    std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
    std::vector<datarequest> Requests;     // For drag and drop requests
    ankerl::unordered_dense::map<OBJECTID, int> StateMap;
-   pf::vector<std::string> Procedures;
+   kt::vector<std::string> Procedures;
    std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
    std::shared_ptr<SharedPool> Pool;     // Thread-safe shared pool for async.pool (created on first use, shared with child scripts)
    APTR     FocusEventHandle;
@@ -376,15 +376,15 @@ struct module {
 };
 
 constexpr uint32_t simple_hash(CSTRING String, uint32_t Hash = 0) {
-   auto crc = pf::detail::crc32c_finalise(Hash);
-   while (auto c = *String++) crc = pf::detail::crc32c_byte(crc, uint8_t(c));
-   return pf::detail::crc32c_finalise(crc);
+   auto crc = kt::detail::crc32c_finalise(Hash);
+   while (auto c = *String++) crc = kt::detail::crc32c_byte(crc, uint8_t(c));
+   return kt::detail::crc32c_finalise(crc);
 }
 
 constexpr uint32_t char_hash(char Char, uint32_t Hash = 0) {
-   auto crc = pf::detail::crc32c_finalise(Hash);
-   crc = pf::detail::crc32c_byte(crc, uint8_t(Char));
-   return pf::detail::crc32c_finalise(crc);
+   auto crc = kt::detail::crc32c_finalise(Hash);
+   crc = kt::detail::crc32c_byte(crc, uint8_t(Char));
+   return kt::detail::crc32c_finalise(crc);
 }
 
 //********************************************************************************************************************

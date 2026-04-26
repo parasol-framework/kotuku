@@ -86,7 +86,7 @@ static AAssetManager * get_asset_manager(void);
 
 ERR add_asset_class(void)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    OpenInfo *openinfo;
    CSTRING classname;
    int i;
@@ -199,14 +199,14 @@ static ERR ASSET_Free(objFile *Self)
 
 static ERR ASSET_Init(objFile *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    prvFileAsset *prv;
 
    if (!Self->Path) return ERR::FieldNotSet;
 
    log.trace("Path: %s", Self->Path);
 
-   if (!pf::startswith("assets:", Self->Path)) return ERR::NoSupport;
+   if (!kt::startswith("assets:", Self->Path)) return ERR::NoSupport;
 
    if (Self->Flags & (FL::NEW|FL::WRITE)) return log.warning(ERR::ReadOnly);
 
@@ -272,7 +272,7 @@ static ERR ASSET_Move(objFile *Self, struct mtFileMove *Args)
 
 static ERR ASSET_Read(objFile *Self, struct acRead *Args)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    prvFileAsset *prv;
 
    if (!(prv = Self->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
@@ -370,7 +370,7 @@ static ERR GET_Size(objFile *Self, int64_t *Value)
 
 static ERR open_dir(DirInfo *Dir)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    AAssetManager *mgr;
    int len;
 
@@ -463,7 +463,7 @@ static ERR close_dir(DirInfo *Dir)
 
 static ERR get_info(std::string_view Path, FileInfo *Info, int InfoSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int8_t dir;
    int i, len;
 
@@ -474,7 +474,7 @@ static ERR get_info(std::string_view Path, FileInfo *Info, int InfoSize)
    if (mgr) {
       AAsset *asset;
       AAssetDir *assetdir;
-      if (pf::startswith("assets:", Path)) { // Just a sanity check - the Path is always meant to be resolved.
+      if (kt::startswith("assets:", Path)) { // Just a sanity check - the Path is always meant to be resolved.
          if ((asset = AAssetManager_open(mgr, Path+LEN_ASSETS, AASSET_MODE_UNKNOWN))) {
             Info->Size = AAsset_getLength(asset);
             AAsset_close(asset);
@@ -526,7 +526,7 @@ static ERR get_info(std::string_view Path, FileInfo *Info, int InfoSize)
 
 static ERR test_path(std::string &Path, int Flags, LOC *Type)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    AAssetManager *mgr;
    AAsset *asset;
    AAssetDir *dir;

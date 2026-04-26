@@ -39,7 +39,7 @@ class extTurbulenceFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::TURBULENCEFX;
    static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
-   using create = pf::Create<extTurbulenceFX>;
+   using create = kt::Create<extTurbulenceFX>;
 
    objBitmap *Bitmap;
    double Gradient[GSIZE][LSIZE][GSUBSIZE];

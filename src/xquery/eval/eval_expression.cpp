@@ -290,7 +290,7 @@ static ERR resolve_variable_callback(XPathEvaluator &Evaluator, std::string_view
    resolved_public.reset();
 
    {
-      pf::SwitchContext ctx(Evaluator.query->ResolveVariable.Context);
+      kt::SwitchContext ctx(Evaluator.query->ResolveVariable.Context);
       auto error = routine(Evaluator.query, Name, &resolved_public, Evaluator.query->ResolveVariable.Meta);
       if (error IS ERR::Search) {
          Evaluator.missing_callback_variables.insert(std::move(cache_key));
@@ -740,7 +740,7 @@ static void append_value_to_sequence(const XPathVal &Value, std::vector<Sequence
    }
 
    std::string text = Value.to_string();
-   pf::vector<XMLAttrib> text_attribs;
+   kt::vector<XMLAttrib> text_attribs;
    text_attribs.emplace_back("", text);
 
    XTag text_node(NextConstructedNodeId--, 0, text_attribs);
@@ -1066,7 +1066,7 @@ ERR XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Curr
          if (closing != std::string::npos) {
             module_uri = name.substr(2, closing - 2);
             imported_local_name = name.substr(closing + 1);
-            if (not module_uri.empty()) namespace_hash = pf::strhash(module_uri);
+            if (not module_uri.empty()) namespace_hash = kt::strhash(module_uri);
          }
       }
 
@@ -1093,7 +1093,7 @@ ERR XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Curr
       const XQueryModuleImport *matched_import = nullptr;
       if (namespace_hash != 0) {
          for (const auto &import : prolog->module_imports) {
-            if (pf::strhash(import.target_namespace) IS namespace_hash) {
+            if (kt::strhash(import.target_namespace) IS namespace_hash) {
                matched_import = &import;
                if (module_uri.empty()) module_uri = import.target_namespace;
                break;
@@ -1447,7 +1447,7 @@ XPathVal XPathEvaluator::handle_empty_sequence(const XPathNode *Node, uint32_t C
 {
    (void)Node;
    (void)CurrentPrefix;
-   return XPathVal(pf::vector<XTag *>{});
+   return XPathVal(kt::vector<XTag *>{});
 }
 
 //********************************************************************************************************************
@@ -1632,7 +1632,7 @@ XPathVal XPathEvaluator::evaluate_type_constructor(
    size_t item_count = sequence_item_count(operand);
 
    if (item_count IS 0) {
-      pf::vector<XTag *> empty_nodes;
+      kt::vector<XTag *> empty_nodes;
       return XPathVal(empty_nodes);
    }
 
@@ -1900,7 +1900,7 @@ XPathVal XPathEvaluator::handle_cast_expression(const XPathNode *Node, uint32_t 
    if (operand_value.Type IS XPVT::NodeSet) {
       size_t item_count = operand_value.node_set.size();
       if (item_count IS 0) {
-         if (target_info.allows_empty) return XPathVal(pf::vector<XTag *>{});
+         if (target_info.allows_empty) return XPathVal(kt::vector<XTag *>{});
          auto message = std::format("XPTY0004: Cast to '{}' requires a single item, but the operand was empty.",
             target_descriptor->type_name);
          record_error(message, Node, true);
@@ -3154,7 +3154,7 @@ XPathVal XPathEvaluator::handle_binary_op(const XPathNode *Node, uint32_t Curren
       op_kind = map_binary_operation(operation);
       binary_operator_cache_fallbacks++;
       if (is_trace_enabled()) {
-         pf::Log log("XPath");
+         kt::Log log("XPath");
          log.msg(VLF::TRACE, "Binary operator cache miss for '%.*s'", (int)operation.size(), operation.data());
       }
    }
@@ -3462,7 +3462,7 @@ XPathVal XPathEvaluator::handle_binary_sequence(const XPathNode *Node, const XPa
 XPathVal XPathEvaluator::nodeset_from_sequence_entries(const std::vector<SequenceEntry> &Entries)
 {
    if (Entries.empty()) {
-      return XPathVal(pf::vector<XTag *>{});
+      return XPathVal(kt::vector<XTag *>{});
    }
 
    NODES combined_nodes;
@@ -3493,7 +3493,7 @@ XPathVal XPathEvaluator::nodeset_from_sequence_entries(const std::vector<Sequenc
 XPathVal XPathEvaluator::materialise_sequence_value(const XPathValueSequence &Sequence)
 {
    if (Sequence.items.empty()) {
-      return XPathVal(pf::vector<XTag *>{});
+      return XPathVal(kt::vector<XTag *>{});
    }
 
    if (Sequence.items.size() IS 1) {
@@ -3516,7 +3516,7 @@ XPathVal XPathEvaluator::materialise_sequence_value(const XPathValueSequence &Se
 XPathVal XPathEvaluator::concatenate_sequence_values(const std::vector<XPathVal> &Values)
 {
    if (Values.empty()) {
-      return XPathVal(pf::vector<XTag *>{});
+      return XPathVal(kt::vector<XTag *>{});
    }
 
    if (Values.size() IS 1) {
@@ -3598,7 +3598,7 @@ XPathVal XPathEvaluator::lookup_map_value(const XPathVal &BaseValue, const XPath
    uint32_t CurrentPrefix, const XPathNode *ContextNode)
 {
    auto storage = BaseValue.map_storage;
-   if (!storage) return XPathVal(pf::vector<XTag *>{});
+   if (!storage) return XPathVal(kt::vector<XTag *>{});
 
    if (Specifier.kind IS XPathLookupSpecifierKind::Wildcard) {
       std::vector<XPathVal> concatenated;
@@ -3638,7 +3638,7 @@ XPathVal XPathEvaluator::lookup_map_value(const XPathVal &BaseValue, const XPath
       }
    }
 
-   return XPathVal(pf::vector<XTag *>{});
+   return XPathVal(kt::vector<XTag *>{});
 }
 
 //********************************************************************************************************************
@@ -3648,7 +3648,7 @@ XPathVal XPathEvaluator::lookup_array_value(const XPathVal &BaseValue, const XPa
    uint32_t CurrentPrefix, const XPathNode *ContextNode)
 {
    auto storage = BaseValue.array_storage;
-   if (!storage) return XPathVal(pf::vector<XTag *>{});
+   if (!storage) return XPathVal(kt::vector<XTag *>{});
 
    if (Specifier.kind IS XPathLookupSpecifierKind::Wildcard) {
       std::vector<XPathVal> concatenated;
@@ -3778,7 +3778,7 @@ XPathVal XPathEvaluator::lookup_nodeset_value(const XPathVal &BaseValue, const X
       }
    }
 
-   if (matched_entries.empty()) return XPathVal(pf::vector<XTag *>{});
+   if (matched_entries.empty()) return XPathVal(kt::vector<XTag *>{});
 
    return nodeset_from_sequence_entries(matched_entries);
 }
@@ -4007,7 +4007,7 @@ XPathVal XPathEvaluator::handle_unary_op(const XPathNode *Node, uint32_t Current
       op_kind = map_unary_operation(operation);
       unary_operator_cache_fallbacks++;
       if (is_trace_enabled()) {
-         pf::Log log("XPath");
+         kt::Log log("XPath");
          log.msg(VLF::TRACE, "Unary operator cache miss for '%.*s'", (int)operation.size(), operation.data());
       }
    }
@@ -4093,7 +4093,7 @@ XPathVal XPathEvaluator::handle_variable_reference(const XPathNode *Node, uint32
    }
    else if (error != ERR::Search) return XPathVal();
 
-   pf::Log log("XPath");
+   kt::Log log("XPath");
 
    if (is_trace_enabled()) {
       log.msg(VLF::TRACE, "Variable lookup failed for '%s'", Node->value.c_str());
@@ -4225,7 +4225,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    }
 
    if (is_trace_enabled()) {
-      pf::Log log("XPath");
+      kt::Log log("XPath");
       log.msg(VLF::TRACE, "Unsupported expression node type: %d", int(ExprNode->type));
    }
 

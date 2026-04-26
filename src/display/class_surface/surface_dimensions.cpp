@@ -24,7 +24,7 @@ static ERR GET_AbsX(extSurface *Self, int *Value)
 
 static ERR SET_AbsX(extSurface *Self, int Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->initialised()) {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
@@ -64,7 +64,7 @@ static ERR GET_AbsY(extSurface *Self, int *Value)
 
 static ERR SET_AbsY(extSurface *Self, int Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->initialised()) {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
@@ -242,7 +242,7 @@ static ERR GET_Height(extSurface *Self, Unit *Value)
 
 static ERR SET_Height(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    auto value = Value->Value;
 
@@ -326,7 +326,7 @@ static ERR SET_MaxHeight(extSurface *Self, int Value)
    Self->MaxHeight = Value;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
+      kt::ScopedObjectLock<extDisplay> display(Self->DisplayID);
       if (display.granted()) display->sizeHints(-1, -1,
          (Self->MaxWidth > 0) ? (Self->MaxWidth) : -1,
          (Self->MaxHeight > 0) ? (Self->MaxHeight) : -1,
@@ -353,7 +353,7 @@ static ERR SET_MaxWidth(extSurface *Self, int Value)
    Self->MaxWidth = Value;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
+      if (kt::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
          display->sizeHints(-1, -1,
             (Self->MaxWidth > 0) ? (Self->MaxWidth) : -1,
             (Self->MaxHeight > 0) ? (Self->MaxHeight) : -1,
@@ -383,7 +383,7 @@ static ERR SET_MinHeight(extSurface *Self, int Value)
    if (Self->MinHeight < 1) Self->MinHeight = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
+      if (kt::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
          display->sizeHints(Self->MinWidth, Self->MinHeight,
             -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
       }
@@ -411,7 +411,7 @@ static ERR SET_MinWidth(extSurface *Self, int Value)
    if (Self->MinWidth < 1) Self->MinWidth = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
+      if (kt::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
          display->sizeHints(Self->MinWidth, Self->MinHeight,
             -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
       }
@@ -751,7 +751,7 @@ an X coordinate calculated from the formula `X = ContainerWidth - SurfaceWidth -
 
 static ERR GET_XOffset(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
+   kt::Log log;
    double value;
 
    if (Value->scaled()) {

@@ -52,7 +52,7 @@ JUMPTABLE_CORE
 struct regex_engine : public srell::u8cregex {
    using srell::u8cregex::u8cregex;
 
-   bool resolve_named_capture(const std::string_view &Name, pf::vector<int> *Indices) const
+   bool resolve_named_capture(const std::string_view &Name, kt::vector<int> *Indices) const
    {
       using view_type = typename srell::re_detail::groupname_mapper<char>::view_type;
       view_type name_view(Name.data(), Name.size());
@@ -198,7 +198,7 @@ Syntax
 
 ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg, Regex **Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Pattern: '%.*s', Flags: $%.8x", int(Pattern.size()), Pattern.data(), int(Flags));
 
@@ -262,9 +262,9 @@ Search: The provided name does not exist within the regex.
 
 *********************************************************************************************************************/
 
-ERR GetCaptureIndex(Regex *Regex, const std::string_view &Name, pf::vector<int> *Indices)
+ERR GetCaptureIndex(Regex *Regex, const std::string_view &Name, kt::vector<int> *Indices)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Regex) or (not Indices)) return log.warning(ERR::NullArgs);
 
@@ -330,7 +330,7 @@ static void append_named_capture(std::string *Output, const srell::u8ccmatch &Ma
 {
    if ((not Output) or (not Engine) or Name.empty()) return;
 
-   pf::vector<int> indices;
+   kt::vector<int> indices;
    if (not Engine->resolve_named_capture(Name, &indices)) return;
 
    for (size_t i = 0; i < indices.size(); ++i) {
@@ -439,7 +439,7 @@ static void append_replacement(std::string *Output, const std::string_view &Text
 
 ERR Replace(Regex *Regex, const std::string_view &Text, const std::string_view &Replacement, std::string *Output, RMATCH Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Regex) or (not Output)) return log.warning(ERR::NullArgs);
 
@@ -529,7 +529,7 @@ Search: No matches were found.
 
 ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *Callback)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Regex) return log.warning(ERR::NullArgs);
 
@@ -559,7 +559,7 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
 
          ERR error;
          if (Callback->isC()) {
-            pf::SwitchContext ctx(Callback->Context);
+            kt::SwitchContext ctx(Callback->Context);
             auto routine = (ERR(*)(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, APTR))Callback->Routine;
             error = routine(match_index, captures, match_start, match_end, Callback->Meta);
             if (error IS ERR::Terminate) break;
@@ -602,9 +602,9 @@ NullArgs: One or more required input arguments were null.
 
 *********************************************************************************************************************/
 
-ERR Split(Regex *Regex, const std::string_view &Text, pf::vector<std::string> *Output, RMATCH Flags)
+ERR Split(Regex *Regex, const std::string_view &Text, kt::vector<std::string> *Output, RMATCH Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Regex) or (not Output)) return log.warning(ERR::NullArgs);
 

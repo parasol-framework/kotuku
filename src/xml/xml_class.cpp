@@ -41,7 +41,7 @@ Successfully parsed XML data is accessible through the #Tags field, which contai
 structures.  Each XTag represents a complete XML element including its attributes, content and child elements.
 The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.
 
-C++ developers benefit from direct access to the Tags field, represented as `pf::vector&lt;XTag&gt;`.  This provides
+C++ developers benefit from direct access to the Tags field, represented as `kt::vector&lt;XTag&gt;`.  This provides
 efficient iteration and element access with standard STL semantics.  Altering tag attributes is permitted and methods
 to do so are provided in the C++ header for `objXML` and `XTag`, with additional functions in the `xml` namespace.
 Check the header for details.
@@ -155,7 +155,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 
 static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -212,7 +212,7 @@ A pointer to a std::string as a result would be better, but not supported by TDL
 
 static ERR XML_Evaluate(extXML *Self, struct xml::Evaluate *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Statement)) return log.warning(ERR::NullArgs);
 
@@ -224,7 +224,7 @@ static ERR XML_Evaluate(extXML *Self, struct xml::Evaluate *Args)
       if (auto error = xq->init(); error IS ERR::Okay) {
          if (error = xq->evaluate(Self, 0, XEF::NIL); error IS ERR::Okay) {
             CSTRING result;
-            if (xq->get(FID_ResultString, result) IS ERR::Okay) Args->Result = pf::strclone(result);
+            if (xq->get(FID_ResultString, result) IS ERR::Okay) Args->Result = kt::strclone(result);
             FreeResource(xq);
             if (!Args->Result) return log.warning(ERR::AllocMemory);
             return ERR::Okay;
@@ -271,7 +271,7 @@ Search: No matching tag could be found for the specified XPath expression.
 
 static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->XPath)) return log.warning(ERR::NullArgs);
 
@@ -352,7 +352,7 @@ Search: No matching tag could be found for the specified expression.
 
 static ERR XML_Search(extXML *Self, struct xml::Search *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    Self->ErrorMsg.clear();
 
@@ -463,7 +463,7 @@ NotFound: Either the specified tag Index does not exist, or the named attribute 
 
 static ERR XML_GetAttrib(extXML *Self, struct xml::GetAttrib *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -476,7 +476,7 @@ static ERR XML_GetAttrib(extXML *Self, struct xml::GetAttrib *Args)
    }
 
    for (auto &attrib : tag->Attribs) {
-      if (pf::iequals(Args->Attrib, attrib.Name)) {
+      if (kt::iequals(Args->Attrib, attrib.Name)) {
          Args->Value = attrib.Value.c_str();
          log.trace("Attrib %s = %s", Args->Attrib, Args->Value);
          return ERR::Okay;
@@ -536,7 +536,7 @@ BufferOverflow: The buffer was not large enough to hold the complete content.  T
 
 static ERR XML_GetContent(extXML *Self, struct xml::GetContent *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Buffer)) return log.warning(ERR::NullArgs);
    if (Args->Length < 1) return log.warning(ERR::Args);
@@ -549,7 +549,7 @@ static ERR XML_GetContent(extXML *Self, struct xml::GetContent *Args)
             if (scan.Attribs.empty()) continue; // Sanity check (there should always be at least 1 attribute)
 
             if (scan.Attribs[0].isContent()) {
-               j += pf::strcopy(scan.Attribs[0].Value, Args->Buffer+j, Args->Length-j);
+               j += kt::strcopy(scan.Attribs[0].Value, Args->Buffer+j, Args->Length-j);
                if (j >= Args->Length) return ERR::BufferOverflow;
             }
          }
@@ -583,7 +583,7 @@ Search: No matching entity could be found for the specified name.
 
 static ERR XML_GetEntity(extXML *Self, struct xml::GetEntity *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
 
@@ -608,7 +608,7 @@ Deprecated.  Use the Evaluate() method instead.
 
 static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
    if ((not Args->Key) or (not Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
@@ -624,7 +624,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
       if (auto error = xq->init(); error IS ERR::Okay) {
          if (error = xq->evaluate(Self, 0, XEF::NIL); error IS ERR::Okay) {
             auto result = xq->get<CSTRING>(FID_ResultString);
-            if (result) pf::strcopy(result, Args->Value, Args->Size);
+            if (result) kt::strcopy(result, Args->Value, Args->Size);
             FreeResource(xq);
             return ERR::Okay;
          }
@@ -667,7 +667,7 @@ Search: No namespace found for the specified UID.
 
 static ERR XML_GetNamespaceURI(extXML *Self, struct xml::GetNamespaceURI *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -702,7 +702,7 @@ Search: No matching notation could be found for the specified name.
 
 static ERR XML_GetNotation(extXML *Self, struct xml::GetNotation *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
 
@@ -735,7 +735,7 @@ NotFound: The Index is not recognised.
 
 static ERR XML_GetTag(extXML *Self, struct xml::GetTag *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -747,7 +747,7 @@ static ERR XML_GetTag(extXML *Self, struct xml::GetTag *Args)
 
 static ERR XML_Init(extXML *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->isSubClass()) return ERR::Okay; // Break here for sub-classes to perform initialisation
 
@@ -815,7 +815,7 @@ Args: The Where parameter specifies an invalid insertion position.
 
 static ERR XML_InsertContent(extXML *Self, struct xml::InsertContent *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Content)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
@@ -881,7 +881,7 @@ NoData: The provided XML statement parsed to an empty result.
 
 static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
@@ -963,7 +963,7 @@ ReadOnly: The XML object is in read-only mode and cannot be modified.
 
 ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->XPath) or (not Args->XML)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
@@ -1039,7 +1039,7 @@ SanityCheckFailed: An internal consistency check failed during the move operatio
 
 static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
@@ -1143,7 +1143,7 @@ Failed: The URI was empty or invalid.
 
 static ERR XML_RegisterNamespace(extXML *Self, struct xml::RegisterNamespace *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->URI)) return log.warning(ERR::NullArgs);
 
@@ -1184,7 +1184,7 @@ ReadOnly: The XML object is in read-only mode and cannot be modified.
 
 static ERR XML_RemoveTag(extXML *Self, struct xml::RemoveTag *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
@@ -1248,7 +1248,7 @@ NoData: The XML document contains no data to process.
 
 static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
 
@@ -1273,7 +1273,7 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
 
             if (not opt.attrib.empty()) { // Remove an attribute
                auto it = std::ranges::find_if(tag->Attribs, [&](const auto& a) {
-                  return pf::iequals(opt.attrib, a.Name);
+                  return kt::iequals(opt.attrib, a.Name);
                });
                if (it != tag->Attribs.end()) tag->Attribs.erase(it);
             }
@@ -1351,7 +1351,7 @@ Search: The prefix could not be resolved in any accessible scope.
 
 static ERR XML_ResolvePrefix(extXML *Self, struct xml::ResolvePrefix *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Prefix)) return log.warning(ERR::NullArgs);
 
@@ -1366,7 +1366,7 @@ SaveToObject: Saves XML data to a storage object (e.g. @File).
 
 static ERR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Dest)) return log.warning(ERR::NullArgs);
    if (Self->Tags.size() <= 0) return ERR::Okay;
@@ -1408,7 +1408,7 @@ AllocMemory: Failed to allocate memory for the XML string result.
 
 static ERR XML_Serialise(extXML *Self, struct xml::Serialise *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Tags.empty()) return log.warning(ERR::NoData);
    if (not Args) return log.warning(ERR::NullArgs);
@@ -1444,8 +1444,8 @@ static ERR XML_Serialise(extXML *Self, struct xml::Serialise *Args)
    }
    else serialise_xml(*tag, buffer, Args->Flags);
 
-   pf::SwitchContext ctx(ParentContext());
-   if ((Args->Result = pf::strclone(buffer.str()))) return ERR::Okay;
+   kt::SwitchContext ctx(ParentContext());
+   if ((Args->Result = kt::strclone(buffer.str()))) return ERR::Okay;
    else return log.warning(ERR::AllocMemory);
 }
 
@@ -1483,7 +1483,7 @@ ReadOnly: The XML object is read-only.
 
 static ERR XML_SetAttrib(extXML *Self, struct xml::SetAttrib *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
@@ -1496,7 +1496,7 @@ static ERR XML_SetAttrib(extXML *Self, struct xml::SetAttrib *Args)
    auto cmd = Args->Attrib;
    if ((cmd IS XMS::UPDATE) or (cmd IS XMS::UPDATE_ONLY)) {
       auto it = std::ranges::find_if(tag->Attribs, [&](const auto& a) {
-         return pf::iequals(Args->Name, a.Name);
+         return kt::iequals(Args->Name, a.Name);
       });
 
       if (it != tag->Attribs.end()) {
@@ -1564,7 +1564,7 @@ Search: Failed to find the tag referenced by the XPath.
 
 static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Key)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
@@ -1584,7 +1584,7 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 
             if (not opt.attrib.empty()) { // Updating or adding an attribute
                auto it = std::ranges::find_if(tag->Attribs, [&](const auto& a) {
-                  return pf::iequals(opt.attrib, a.Name);
+                  return kt::iequals(opt.attrib, a.Name);
                });
 
                if (it != tag->Attribs.end()) it->Value = Args->Value; // Modify existing
@@ -1651,7 +1651,7 @@ NotFound: The specified tag was not found.
 
 static ERR XML_SetTagNamespace(extXML *Self, struct xml::SetTagNamespace *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -1694,7 +1694,7 @@ ReadOnly: The XML object is in read-only mode and cannot be modified.
 
 static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Sort)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
@@ -1777,12 +1777,12 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
       for (auto &filter : filters) {
          XTag *tag = nullptr;
          // Check for matching tag name, either at the current tag or in one of the child tags underneath it.
-         if (pf::wildcmp(filter.first, scan.Attribs[0].Name)) {
+         if (kt::wildcmp(filter.first, scan.Attribs[0].Name)) {
             tag = &scan;
          }
          else {
             auto child_it = std::ranges::find_if(scan.Children, [&](const auto& child) {
-               return pf::wildcmp(filter.first, child.Attribs[0].Name);
+               return kt::wildcmp(filter.first, child.Attribs[0].Name);
             });
             if (child_it != scan.Children.end()) tag = &(*child_it);
          }
@@ -1792,7 +1792,7 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
          if ((Args->Flags & XSF::CHECK_SORT) != XSF::NIL) { // Give precedence for a 'sort' attribute in the XML tag
             auto attrib_view = tag->Attribs | std::views::drop(1);
             auto attrib_it = std::ranges::find_if(attrib_view, [](const auto& a) {
-               return pf::iequals("sort", a.Name);
+               return kt::iequals("sort", a.Name);
             });
 
             if (attrib_it != attrib_view.end()) {
@@ -1810,7 +1810,7 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
          else { // Extract the sort data from the specified tag attribute
             auto attrib_view = tag->Attribs | std::views::drop(1);
             auto attrib_it = std::ranges::find_if(attrib_view, [&](const auto& a) {
-               return pf::wildcmp(filter.second, a.Name);
+               return kt::wildcmp(filter.second, a.Name);
             });
             if (attrib_it != attrib_view.end()) sortval += attrib_it->Value;
          }
@@ -1849,7 +1849,7 @@ DocType: Root element name from DOCTYPE declaration
 
 static ERR SET_DocType(extXML *Self, CSTRING Value)
 {
-   if (Value) return pf::set_string_field(Value, Self->DocType);
+   if (Value) return kt::set_string_field(Value, Self->DocType);
    else if (Self->DocType) { FreeResource(Self->DocType); Self->DocType = nullptr; }
    return ERR::Okay;
 }
@@ -1903,14 +1903,14 @@ static ERR SET_Path(extXML *Self, CSTRING Value)
    if (Self->Source) SET_Source(Self, nullptr);
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
-   if (pf::startswith("string:", Value)) {
+   if (kt::startswith("string:", Value)) {
       // If the string: path type is used then we can optimise things by setting the following path string as the
       // statement.
 
       return SET_Statement(Self, Value+7);
    }
    else if ((Value) and (*Value)) {
-      if ((Self->Path = pf::strclone(Value))) {
+      if ((Self->Path = kt::strclone(Value))) {
          if (Self->initialised()) {
             parse_source(Self);
             return Self->ParseError;
@@ -1939,7 +1939,7 @@ PublicID: Public identifier for external DTD
 
 static ERR SET_PublicID(extXML *Self, CSTRING Value)
 {
-   if (Value) return pf::set_string_field(Value, Self->PublicID);
+   if (Value) return kt::set_string_field(Value, Self->PublicID);
    else if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
    return ERR::Okay;
 }
@@ -1953,7 +1953,7 @@ SystemID: System identifier for external DTD
 
 static ERR SET_SystemID(extXML *Self, CSTRING Value)
 {
-   if (Value) return pf::set_string_field(Value, Self->SystemID);
+   if (Value) return kt::set_string_field(Value, Self->SystemID);
    else if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
    return ERR::Okay;
 }
@@ -2033,11 +2033,11 @@ the base path for relative references.
 
 static ERR GET_Statement(extXML *Self, STRING *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Self->initialised()) {
       if (not Self->Statement.empty()) {
-         *Value = pf::strclone(Self->Statement);
+         *Value = kt::strclone(Self->Statement);
          return ERR::Okay;
       }
       else return ERR::FieldNotSet;
@@ -2059,7 +2059,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
    }
    else return log.warning(ERR::NoData); // NB: If there are tags, tag 0 should always exist, so this indicates a parsing issue
 
-   if ((*Value = pf::strclone(buffer.str()))) {
+   if ((*Value = kt::strclone(buffer.str()))) {
       return ERR::Okay;
    }
    else return ERR::AllocMemory;
@@ -2139,11 +2139,11 @@ CreateObject: The file in Path could not be processed as XML content.
 
 static ERR XML_LoadSchema(extXML *Self, struct xml::LoadSchema *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Path)) return log.warning(ERR::NullArgs);
 
-   pf::Create<extXML> schema({ fl::Path(Args->Path), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
+   kt::Create<extXML> schema({ fl::Path(Args->Path), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
    if (schema.ok()) {
       if (schema->Tags.empty()) return log.warning(ERR::NoData);
 
@@ -2189,7 +2189,7 @@ Search: The schema does not define the root element present in the document.
 
 static ERR XML_ValidateDocument(extXML *Self, void *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    Self->ErrorMsg.clear();
 
@@ -2287,7 +2287,7 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
       if (!prefix_attribute.empty()) {
          for (size_t index = 1u; index < document_root->Attribs.size(); ++index) {
             const auto &attrib = document_root->Attribs[index];
-            if (pf::iequals(attrib.Name, prefix_attribute)) {
+            if (kt::iequals(attrib.Name, prefix_attribute)) {
                assign_root_namespace(attrib.Value);
                break;
             }
@@ -2297,7 +2297,7 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
       if (!root_has_namespace) {
          for (size_t index = 1u; index < document_root->Attribs.size(); ++index) {
             const auto &attrib = document_root->Attribs[index];
-            if (pf::iequals(attrib.Name, "xmlns")) {
+            if (kt::iequals(attrib.Name, "xmlns")) {
                assign_root_namespace(attrib.Value);
                break;
             }

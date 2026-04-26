@@ -38,7 +38,7 @@ class objSVG : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::SVG;
    static constexpr CSTRING CLASS_NAME = "SVG";
 
-   using create = pf::Create<objSVG>;
+   using create = kt::Create<objSVG>;
 
    OBJECTPTR Target;    // Destination container for the generated SVG scene graph elements.
    STRING    Path;      // File system path to the source SVG document.

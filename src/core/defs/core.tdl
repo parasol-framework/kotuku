@@ -566,7 +566,7 @@ __export struct ModHeader ModHeader;
 #define MOD_NAME nullptr
 #endif
 
-namespace pf {
+namespace kt {
 
 #ifdef PRINTF64I
   #define PF64 "I64d"
@@ -617,7 +617,7 @@ inline void nextutf8(T *&Str) noexcept {
 
 //********************************************************************************************************************
 
-namespace pf {
+namespace kt {
 
 class FloatRect {
    public:
@@ -1174,7 +1174,7 @@ typedef KEYVALUE ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
 
-namespace pf {
+namespace kt {
 
 inline void copymem(const void *Src, APTR Dest, std::size_t Length) {
    memmove(Dest, Src, Length);
@@ -1502,7 +1502,7 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
   nil,
   [[
    static ERR load(std::string Name, OBJECTPTR *Module = nullptr, APTR Functions = nullptr) {
-      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
+      if (auto module = objModule::create::global(kt::FieldValue(FID_Name, Name.c_str()))) {
          #ifdef KOTUKU_STATIC
             if (Module) *Module = module;
             if (Functions) ((APTR *)Functions)[0] = nullptr;
@@ -1592,7 +1592,7 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
 #include <pthread.h>
 #endif
 
-namespace pf {
+namespace kt {
 
 #ifdef __system__
    struct ActionMessage {

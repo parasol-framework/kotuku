@@ -685,7 +685,7 @@ static bool detect_obj_new_call(const ExprNode &Callee, const ExprNodeList &Argu
 
    // Compute CLASSID from class name (case-insensitive hash)
    std::string_view class_name(strdata(literal.string_value), literal.string_value->len);
-   ClassID = CLASSID(pf::strihash(class_name));
+   ClassID = CLASSID(kt::strihash(class_name));
    return true;
 }
 

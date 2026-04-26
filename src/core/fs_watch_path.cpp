@@ -64,7 +64,7 @@ ERR fs_watch_path(extFile *File)
       return ERR::Okay;
    }
    else {
-      pf::Log log;
+      kt::Log log;
       log.warning("%s", strerror(errno));
       return ERR::SystemCall;
    }
@@ -76,7 +76,7 @@ static void path_monitor(HOSTHANDLE Handle, extFile *File);
 
 ERR fs_watch_path(extFile *File)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    HOSTHANDLE handle;
    int winflags;
    ERR error;
@@ -114,7 +114,7 @@ ERR fs_watch_path(extFile *File)
 #ifdef __linux__
 void path_monitor(HOSTHANDLE FD, OBJECTPTR)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    static thread_local bool recursion = false; // Recursion avoidance is essential for correct queuing
    if (recursion) return;
    recursion = true;
@@ -190,7 +190,7 @@ void path_monitor(HOSTHANDLE FD, OBJECTPTR)
          if (flags != MFF::NIL) {
             if (file->prvWatch->Routine.isC()) {
                auto routine = (ERR (*)(extFile *, std::string_view, MFF, APTR))file->prvWatch->Routine.Routine;
-               pf::SwitchContext context(file->prvWatch->Routine.Context);
+               kt::SwitchContext context(file->prvWatch->Routine.Context);
                error = routine(file, path, flags, file->prvWatch->Routine.Meta);
             }
             else if (file->prvWatch->Routine.isScript()) {
@@ -233,7 +233,7 @@ static std::string_view watched_filename(const extFile *File)
 
 static void path_monitor(HOSTHANDLE Handle, extFile *File)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    static thread_local bool recursion = false; // Recursion avoidance is essential for correct queuing
    if ((recursion) or (!File->prvWatch)) return;
@@ -272,7 +272,7 @@ static void path_monitor(HOSTHANDLE Handle, extFile *File)
          if ((!File->isFolder) and (!iequals(event_path, watched_filename(File)))) continue;
 
          if (File->prvWatch->Routine.isC()) {
-            pf::SwitchContext context(File->prvWatch->Routine.Context);
+            kt::SwitchContext context(File->prvWatch->Routine.Context);
             auto routine = (ERR (*)(extFile *, std::string_view, MFF, APTR))File->prvWatch->Routine.Routine;
             error = routine(File, event_path, MFF(status), File->prvWatch->Routine.Meta);
          }
@@ -298,7 +298,7 @@ static void path_monitor(HOSTHANDLE Handle, extFile *File)
    }
    else if (File->prvWatch->Routine.isC()) {
       auto routine = (ERR (*)(extFile *, CSTRING, MFF, APTR))File->prvWatch->Routine.Routine;
-      pf::SwitchContext context(File->prvWatch->Routine.Context);
+      kt::SwitchContext context(File->prvWatch->Routine.Context);
       error = routine(File, File->Path.c_str(), MFF::NIL, File->prvWatch->Routine.Meta);
 
       if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);

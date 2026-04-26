@@ -28,8 +28,8 @@ namespace xml::schema
       // Determines whether the supplied string value represents a valid boolean literal.
       bool is_valid_boolean(std::string_view Value)
       {
-         if (pf::iequals(Value, "true")) return true;
-         if (pf::iequals(Value, "false")) return true;
+         if (kt::iequals(Value, "true")) return true;
+         if (kt::iequals(Value, "false")) return true;
          if (Value.length() IS 1) return (Value[0] IS '0') or (Value[0] IS '1');
          return false;
       }

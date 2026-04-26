@@ -32,7 +32,7 @@ static ERR save_vectorpath(extSVG *Self, objXML *XML, objVector *Vector, int Par
 
 static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, int Parent)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    ankerl::unordered_dense::map<std::string, OBJECTPTR> *defs;
 
    if (Scene->get(FID_Defs, defs) IS ERR::Okay) {
@@ -225,7 +225,7 @@ static ERR save_svg_transform(VectorMatrix *Transform, std::stringstream &Buffer
 
 static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, int TagID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    char buffer[160];
    CSTRING str;
    float *colour;
@@ -387,7 +387,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, int T
 
 static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, int Parent)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    int new_index = -1;
 

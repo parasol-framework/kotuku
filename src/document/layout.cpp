@@ -441,7 +441,7 @@ static inline bool range_has_segment_merge_barrier(RSTREAM *Stream, stream_char 
 
 CELL layout::lay_cell(bc_table *Table)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    bool vertical_repass = false;
 
@@ -731,7 +731,7 @@ WRAP layout::place_widget(widget_mgr &Widget)
 
 WRAP layout::lay_button(bc_button &Button)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Button.inner_padding.configured) {
       // A default for padding is required if the client hasn't defined any.
@@ -856,7 +856,7 @@ int layout::compute_word_width(const std::string &Str, const word_token &Token, 
 
 WRAP layout::lay_text()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto wrap_result = WRAP::DO_NOTHING; // Needs to change to WRAP::EXTEND_PAGE if a word is > width
 
    m_align_edge = wrap_edge(); // TODO: Not sure about this following the switch to embedded TEXT structures
@@ -1000,7 +1000,7 @@ bool layout::lay_list_end()
 
 void layout::lay_index()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto escindex = &m_stream->lookup<bc_index>(idx);
    escindex->y = m_cursor_y;
@@ -1033,7 +1033,7 @@ void layout::lay_index()
 
 void layout::lay_row_end(bc_table *Table)
 {
-   pf::Log log;
+   kt::Log log;
 
    auto Row = m_row;
    auto values = resolve_table_layout(*this, *Table);
@@ -1131,7 +1131,7 @@ void layout::lay_paragraph()
    m_font = para.font.layout_font(*this);
 
    if (!m_font) {
-      pf::Log log;
+      kt::Log log;
       DLAYOUT("Failed to lookup font for %s:%d", para.font.face.c_str(), para.font.pixel_size);
       Self->Error = ERR::Failed;
       return;
@@ -1197,7 +1197,7 @@ void layout::lay_paragraph_end()
 
 TE layout::lay_table_end(bc_table &Table, double TopMargin, double BottomMargin, double &Height, double &Width)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    double min_height;
    auto values = resolve_table_layout(*this, Table);
@@ -1383,7 +1383,7 @@ TE layout::lay_table_end(bc_table &Table, double TopMargin, double BottomMargin,
 
 void layout::new_segment(const stream_char Start, const stream_char Stop, double Y, double Width, double AlignWidth)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    Self->LayoutMetrics.new_segment_calls++;
 
    if (Width > AlignWidth) {
@@ -1498,7 +1498,7 @@ void layout::new_code_segment()
    stream_char start(idx), stop(idx + 1);
 
 #ifdef DBG_STREAM
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch("#%d %d:0 [%s]", int(m_segments.size()), start.index, std::string(strCodes[int(m_stream[0][idx].code)]).c_str());
 #endif
 
@@ -1530,7 +1530,7 @@ void layout::new_code_segment()
 
 static void layout_doc(extDocument *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Self->UpdatingLayout) return;
 
@@ -1644,7 +1644,7 @@ static void layout_doc(extDocument *Self)
          }
          else if (trigger.isC()) {
             auto routine = (void (*)(APTR, extDocument *, int, int, int, int, APTR))trigger.Routine;
-            pf::SwitchContext context(trigger.Context);
+            kt::SwitchContext context(trigger.Context);
             routine(trigger.Context, Self, Self->VPWidth, Self->VPHeight, Self->CalcWidth, Self->PageHeight, trigger.Meta);
          }
       }
@@ -1667,7 +1667,7 @@ static void layout_doc(extDocument *Self)
 
 ERR layout::do_layout(font_entry **Font, double &Width, double &Height, bool &VerticalRepass)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    Self->LayoutMetrics.do_layout_calls++;
 
    if ((m_stream->data.empty()) or (!Font) or (!Font[0])) {
@@ -2170,7 +2170,7 @@ exit:
 
 void layout::end_line(NL NewLine, stream_char Next, size_t ClipLimit)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!m_line.height) and (m_word_width)) {
       // If this is a one-word line, the line height will not have been defined yet
@@ -2247,7 +2247,7 @@ void layout::end_line(NL NewLine, stream_char Next, size_t ClipLimit)
 WRAP layout::check_wordwrap(stream_char Cursor, double &X, double &Y, double Width, double Height, bool Floating,
    size_t ClipLimit)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    Self->LayoutMetrics.check_wordwrap_calls++;
 
    if (m_break_loop <= 0) return WRAP::DO_NOTHING;
@@ -2391,7 +2391,7 @@ WTC layout::wrap_through_clips(double X, double Y, double Width, double Height, 
 
 double layout::calc_page_height()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (m_segments.empty()) return 0;
 
@@ -2425,7 +2425,7 @@ double layout::calc_page_height()
 
 font_entry * bc_font::layout_font(layout &Layout)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    {
       std::lock_guard lk(glFontsMutex);

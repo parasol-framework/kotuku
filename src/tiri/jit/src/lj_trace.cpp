@@ -37,7 +37,7 @@
 void lj_trace_err(jit_State *J, TraceError e)
 {
 #ifdef LUA_USE_ASSERT
-   pf::Log(__FUNCTION__).msg("Aborting JIT trace.");
+   kt::Log(__FUNCTION__).msg("Aborting JIT trace.");
 #endif
 
    // Mark that we're aborting trace recording. This flag survives through Windows SEH unwinding
@@ -66,7 +66,7 @@ void lj_trace_err(jit_State *J, TraceError e)
 void lj_trace_err_info(jit_State *J, TraceError e)
 {
 #ifdef LUA_USE_ASSERT
-   pf::Log(__FUNCTION__).msg("Aborting JIT trace.");
+   kt::Log(__FUNCTION__).msg("Aborting JIT trace.");
 #endif
 
    J->abort_in_progress = true; // Mark that we're aborting trace recording.
@@ -779,7 +779,7 @@ retry:
 void lj_trace_ins(jit_State *J, const BCIns *pc)
 {
    // Note: J->L must already be set. pc is the true bytecode PC here.
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    J->pc = pc;
    J->fn = curr_func(J->L);
@@ -815,7 +815,7 @@ void lj_trace_hot(jit_State *J, const BCIns *pc)
    // Note: pc is the interpreter bytecode PC here. It's offset by 1.
    ERRNO_SAVE
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    const BCIns *actual_pc = pc - 1;  // Location of instruction
 

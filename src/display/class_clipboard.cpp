@@ -96,7 +96,7 @@ void clean_clipboard(void)
 //********************************************************************************************************************
 
 ClipRecord::~ClipRecord() {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Datatype != CLIPTYPE::FILE) {
       log.branch("Deleting clip files for %s datatype.", get_datatype(Datatype).c_str());
@@ -128,7 +128,7 @@ static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
 
 static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Items, bool Cut)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & CPF::DRAG_DROP) != CPF::NIL) return ERR::NoSupport;
 
@@ -176,7 +176,7 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
 
 static ERR add_text_to_host(objClipboard *Self, CSTRING String, int Length = 0x7fffffff)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((Self->Flags & CPF::DRAG_DROP) != CPF::NIL) return ERR::NoSupport;
 
@@ -241,7 +241,7 @@ MissingPath: The Files argument was not correctly specified.
 
 static ERR CLIPBOARD_AddFile(objClipboard *Self, struct clip::AddFile *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if ((!Args->Path) or (!Args->Path[0])) return log.warning(ERR::MissingPath);
@@ -291,7 +291,7 @@ Args
 
 static ERR CLIPBOARD_AddObjects(objClipboard *Self, struct clip::AddObjects *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Objects) or (!Args->Objects[0])) return log.warning(ERR::NullArgs);
 
@@ -303,7 +303,7 @@ static ERR CLIPBOARD_AddObjects(objClipboard *Self, struct clip::AddObjects *Arg
 
    std::vector<ClipItem> items;
    for (unsigned i=0; Args->Objects[i]; i++) {
-      pf::ScopedObjectLock<Object> object(Args->Objects[i], 5000);
+      kt::ScopedObjectLock<Object> object(Args->Objects[i], 5000);
       if (object.granted()) {
          if (classid IS CLASSID::NIL) classid = object.obj->classID();
 
@@ -353,7 +353,7 @@ CreateFile
 
 static ERR CLIPBOARD_AddText(objClipboard *Self, struct clip::AddText *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->String)) return log.warning(ERR::NullArgs);
    if (!Args->String[0]) return ERR::Okay;
@@ -395,7 +395,7 @@ given data type.
 
 static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -422,7 +422,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       ERR error = ERR::Okay;
       if (Self->RequestHandler.isC()) {
          auto routine = (ERR (*)(objClipboard *, OBJECTPTR, int, char *, APTR))Self->RequestHandler.Routine;
-         pf::SwitchContext ctx(Self->RequestHandler.Context);
+         kt::SwitchContext ctx(Self->RequestHandler.Context);
          error = routine(Self, Args->Object, request->Item, request->Preference, Self->RequestHandler.Meta);
       }
       else if (Self->RequestHandler.isScript()) {
@@ -496,7 +496,7 @@ NoData: No clip was available that matched the requested data type.
 
 static ERR CLIPBOARD_GetFiles(objClipboard *Self, struct clip::GetFiles *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -604,7 +604,7 @@ AccessMemory: The clipboard memory data was not accessible.
 
 static ERR CLIPBOARD_Remove(objClipboard *Self, struct clip::Remove *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (Args->Datatype IS CLIPTYPE::NIL)) return log.warning(ERR::NullArgs);
 
@@ -672,7 +672,7 @@ static ERR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
 
 static ERR add_clip(CLIPTYPE Datatype, const std::vector<ClipItem> &Items, CEF Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Datatype: $%x, Flags: $%x, Total Items: %d", int(Datatype), int(Flags), int(Items.size()));
 
@@ -713,12 +713,12 @@ static ERR add_clip(CLIPTYPE Datatype, const std::vector<ClipItem> &Items, CEF F
 
 static ERR add_clip(CSTRING String)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch();
 
    std::vector<ClipItem> items = { std::string("clipboard:") + glProcessID + "_text" + std::to_string(glCounter++) + ".000" };
    if (auto error = add_clip(CLIPTYPE::TEXT, items); error IS ERR::Okay) {
-      pf::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT::READ|PERMIT::WRITE) };
+      kt::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT::READ|PERMIT::WRITE) };
       if (file.ok()) {
          file->write(String, strlen(String), 0);
          return ERR::Okay;
@@ -734,7 +734,7 @@ static ERR add_clip(CSTRING String)
 #ifdef _WIN32
 extern "C" void report_windows_clip_text(CSTRING String)
 {
-   pf::Log log("Clipboard");
+   kt::Log log("Clipboard");
    log.branch("Application has detected text on the clipboard.");
 
    add_clip(String);
@@ -746,7 +746,7 @@ extern "C" void report_windows_clip_text(CSTRING String)
 
 extern "C" void report_windows_files(APTR Data, int CutOperation)
 {
-   pf::Log log("Clipboard");
+   kt::Log log("Clipboard");
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
    std::vector<ClipItem> items;
@@ -762,7 +762,7 @@ extern "C" void report_windows_files(APTR Data, int CutOperation)
 
 extern "C" void report_windows_hdrop(const char *Data, int CutOperation, char WideChar)
 {
-   pf::Log log("Clipboard");
+   kt::Log log("Clipboard");
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
    std::vector<ClipItem> items;
@@ -824,7 +824,7 @@ extern "C" void report_windows_hdrop(const char *Data, int CutOperation, char Wi
 
 extern "C" void report_windows_clip_utf16(uint16_t *String)
 {
-   pf::Log log("Clipboard");
+   kt::Log log("Clipboard");
    log.branch("Application has detected unicode text on the clipboard.");
 
    std::stringstream buffer;
@@ -856,7 +856,7 @@ extern "C" void report_windows_clip_utf16(uint16_t *String)
 
 extern "C" void win_clipboard_updated()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch();
    if (glHistoryLimit <= 1) return;
    winCopyClipboard();

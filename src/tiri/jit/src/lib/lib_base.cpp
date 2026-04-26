@@ -590,7 +590,7 @@ LJLIB_CF(error)
 
 LJLIB_CF(collectgarbage)
 {
-   pf::Log("collectgarbage").warning("DEPRECATED - Use processing.collect()");
+   kt::Log("collectgarbage").warning("DEPRECATED - Use processing.collect()");
    return 0;
 }
 

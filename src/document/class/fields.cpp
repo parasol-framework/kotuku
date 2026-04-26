@@ -154,7 +154,7 @@ static ERR GET_Path(extDocument *Self, CSTRING *Value)
 
 static ERR SET_Path(extDocument *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
    static int8_t recursion = 0;
 
    if (recursion) return log.warning(ERR::Recursion);
@@ -189,7 +189,7 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
       }
       else if (trigger.isC()) {
          auto routine = (void (*)(APTR, extDocument *, CSTRING, CSTRING, APTR))trigger.Routine;
-         pf::SwitchContext context(trigger.Context);
+         kt::SwitchContext context(trigger.Context);
          routine(trigger.Context, Self, Self->Path.c_str(), newpath.c_str(), trigger.Meta);
       }
    }
@@ -285,7 +285,7 @@ static ERR GET_PageWidth(extDocument *Self, Unit *Value)
 static ERR SET_PageWidth(extDocument *Self, Unit *Value)
 {
    if (Value->Value <= 0) {
-      pf::Log log;
+      kt::Log log;
       return log.warning(ERR::OutOfRange);
    }
 
@@ -391,7 +391,7 @@ The client can manually change the working path by setting the #Origin field wit
 
 static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Path.empty()) {
       log.warning("Document has no defined Path.");
@@ -418,7 +418,7 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
       if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
    }
 
-   pf::SwitchContext context(Self);
+   kt::SwitchContext context(Self);
 
    CSTRING task_path;
    if (path) { // Extract absolute path

@@ -93,7 +93,7 @@ void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg Ex
       }
 
       if (this->func_state->freereg > ExpectedTop.raw()) {
-         pf::Log("Parser").warning("Register depth mismatch, %d != %d, function @ line %d - "
+         kt::Log("Parser").warning("Register depth mismatch, %d != %d, function @ line %d - "
             "RegisterSpan was created with freereg=%d but released as %d. "
             "This indicates intermediate operations modified freereg or cleanup is out of order.",
             ExpectedTop.raw(), this->func_state->freereg, this->func_state->linedefined.lineNumber(),
@@ -102,7 +102,7 @@ void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg Ex
 
       // Check for span size mismatch
       if (Start.raw() + Count.raw() != ExpectedTop.raw()) {
-         pf::Log("Parser").warning("Span size mismatch: start=%u count=%u expected_top=%u at line %d",
+         kt::Log("Parser").warning("Span size mismatch: start=%u count=%u expected_top=%u at line %d",
             Start.raw(), Count.raw(), ExpectedTop.raw(), this->func_state->linedefined.lineNumber());
       }
 
@@ -110,7 +110,7 @@ void RegisterAllocator::release_span_internal(BCReg Start, BCReg Count, BCReg Ex
 
       // Check that after release, freereg equals the span start
       if (this->func_state->freereg != Start.raw()) {
-         pf::Log("Parser").warning("Bad regfree: freereg=%u should equal start=%u at line %d",
+         kt::Log("Parser").warning("Bad regfree: freereg=%u should equal start=%u at line %d",
             this->func_state->freereg, Start.raw(), this->func_state->linedefined.lineNumber());
       }
 
@@ -821,7 +821,7 @@ void RegisterAllocator::verify_no_leaks(const char* Context) const
    BCREG freereg = this->func_state->freereg;
 
    if (freereg > total_locals) {
-      pf::Log("Parser").warning("Register leak at %s: %d temporary registers not released (total locals=%d, free reg=%d)",
+      kt::Log("Parser").warning("Register leak at %s: %d temporary registers not released (total locals=%d, free reg=%d)",
          Context, int(freereg - total_locals), int(total_locals), int(freereg));
    }
 }
@@ -830,7 +830,7 @@ void RegisterAllocator::trace_allocation(BCReg Start, BCReg Count, const char* C
 {
    auto prv = (prvTiri *)this->func_state->L->script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
-      pf::Log("Parser").msg("Regalloc: reserve R%d..R%d (%d slots) at %s",
+      kt::Log("Parser").msg("Regalloc: reserve R%d..R%d (%d slots) at %s",
          int(Start.raw()), int(Start.raw() + Count.raw() - 1), int(Count.raw()), Context);
    }
 }
@@ -839,7 +839,7 @@ void RegisterAllocator::trace_release(BCReg Start, BCReg Count, const char* Cont
 {
    auto prv = (prvTiri *)this->func_state->L->script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_REGISTERS) != JOF::NIL) {
-      pf::Log("Parser").msg("Regalloc: release R%d..R%d (%d slots) at %s",
+      kt::Log("Parser").msg("Regalloc: release R%d..R%d (%d slots) at %s",
          int(Start.raw()), int(Start.raw() + Count.raw() - 1), int(Count.raw()), Context);
    }
 }

@@ -153,7 +153,7 @@ struct XPathValue {
    XPVT Type;              // Type identifier (NodeSet, Boolean, Number, String, Date, Time, DateTime)
    double NumberValue;     // For Number and Boolean types
    std::string StringValue; // For String type
-   pf::vector<XTag *> node_set; // For NodeSet type
+   kt::vector<XTag *> node_set; // For NodeSet type
 }
 ```
 

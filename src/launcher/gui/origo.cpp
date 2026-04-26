@@ -63,7 +63,7 @@ Available commands:\n\
 
 extern "C" void program(void)
 {
-   pf::Log log;
+   kt::Log log;
 
    int i, j;
 
@@ -215,7 +215,7 @@ exit:
 
 ERROR prep_environment(int WindowHandle, int Width, int Height)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Win: %d, Size: %dx%d", WindowHandle, Width, Height);
 

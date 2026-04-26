@@ -66,7 +66,7 @@ void apply_transition(extVectorTransition *Self, double Index, agg::trans_affine
          //log.trace("Index: %.2f, Scale: %.2f, Left: %d, Right: %d, TotalStops: %d", Index, scale, left, right, Self->TotalStops);
       }
       else {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.warning("Invalid transition.  Index: %.2f, Left: %d, Right: %d, TotalStops: %d", Index, left, right, Self->TotalStops);
       }
    }
@@ -112,7 +112,7 @@ void apply_transition_xy(extVectorTransition *Self, double Index, double *X, dou
 
 static ERR set_stop_transform(extVectorTransition *Self, TransitionStop *Stop, CSTRING Commands)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.traceBranch("%s", Commands);
 
@@ -149,7 +149,7 @@ static ERR TRANSITION_Free(extVectorTransition *Self)
 
 static ERR TRANSITION_Init(extVectorTransition *Self)
 {
-   pf::Log log;
+   kt::Log log;
    if (Self->TotalStops < 2) return log.warning(ERR::FieldNotSet);
    return ERR::Okay;
 }
@@ -177,7 +177,7 @@ a transform string.  The Transition structure consists of the following fields:
 
 static ERR TRANSITION_SET_Stops(extVectorTransition *Self, Transition *Value, int Elements)
 {
-   pf::Log log;
+   kt::Log log;
    if ((Elements >= 2) and (Elements < MAX_TRANSITION_STOPS)) {
       Self->TotalStops = Elements;
       double last_offset = 0;

@@ -511,7 +511,7 @@ class objBitmap : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::BITMAP;
    static constexpr CSTRING CLASS_NAME = "Bitmap";
 
-   using create = pf::Create<objBitmap>;
+   using create = kt::Create<objBitmap>;
 
    struct RGBPalette * Palette;                                    // Points to a bitmap's colour palette.
    struct ColourFormat * ColourFormat;                             // Describes the colour format used to construct each bitmap pixel.
@@ -894,7 +894,7 @@ class objDisplay : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::DISPLAY;
    static constexpr CSTRING CLASS_NAME = "Display";
 
-   using create = pf::Create<objDisplay>;
+   using create = kt::Create<objDisplay>;
 
    double   RefreshRate;  // This field manages the display refresh rate.
    objBitmap * Bitmap;    // Reference to the display's bitmap information.
@@ -1129,7 +1129,7 @@ class objClipboard : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::CLIPBOARD;
    static constexpr CSTRING CLASS_NAME = "Clipboard";
 
-   using create = pf::Create<objClipboard>;
+   using create = kt::Create<objClipboard>;
 
    CPF Flags;    // Optional flags.
 
@@ -1195,7 +1195,7 @@ class objController : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::CONTROLLER;
    static constexpr CSTRING CLASS_NAME = "Controller";
 
-   using create = pf::Create<objController>;
+   using create = kt::Create<objController>;
 
    double LeftTrigger;    // Left trigger value between 0.0 and 1.0.
    double RightTrigger;   // Right trigger value between 0.0 and 1.0.
@@ -1230,7 +1230,7 @@ class objPointer : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::POINTER;
    static constexpr CSTRING CLASS_NAME = "Pointer";
 
-   using create = pf::Create<objPointer>;
+   using create = kt::Create<objPointer>;
 
    double   Speed;         // Speed multiplier for pointer movement.
    double   Acceleration;  // The rate of acceleration for relative pointer movement.
@@ -1366,7 +1366,7 @@ class objSurface : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::SURFACE;
    static constexpr CSTRING CLASS_NAME = "Surface";
 
-   using create = pf::Create<objSurface>;
+   using create = kt::Create<objSurface>;
 
    OBJECTID DragID;     // This object-based field is used to control the dragging of objects around the display.
    OBJECTID BufferID;   // The ID of the bitmap that manages the surface's graphics.
@@ -1859,7 +1859,7 @@ extern ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback);
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
 
 namespace fl {
-   using namespace pf;
+   using namespace kt;
 
 constexpr FieldValue WindowType(SWIN Value) { return FieldValue(FID_WindowType, int(Value)); }
 

@@ -475,7 +475,7 @@ static ERR xq_resolve_runtime_scope(objXQuery *Query, std::string_view Name, XPa
 static ERR xq_document_object_exists(objXQuery *, std::string_view, const std::vector<XPathValue> &Input,
    XPathValue &Result, APTR Meta)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto Parser = (parser *)Meta;
    Result = XPathValue(XPVT::Boolean);
@@ -645,7 +645,7 @@ static ERR xq_get_object_field(OBJECTID ObjectID, std::string_view FieldName, st
    auto access = AccessObject(ObjectID, 2000, &object);
    if (access != ERR::Okay) return access;
 
-   auto cleanup = pf::Defer([&]() {
+   auto cleanup = kt::Defer([&]() {
       if (object) ReleaseObject(object);
    });
 
@@ -746,7 +746,7 @@ static ERR xq_document_key(objXQuery *, std::string_view, const std::vector<XPat
    auto access = AccessObject(object_id, 2000, &object);
    if (access != ERR::Okay) return access;
 
-   auto cleanup = pf::Defer([&]() {
+   auto cleanup = kt::Defer([&]() {
       if (object) ReleaseObject(object);
    });
 
@@ -824,7 +824,7 @@ static ERR xq_prepare_query(parser *Parser, std::string_view Expression, XQEval 
 static ERR xq_execute_query(parser *Parser, objXML *XMLContext, const XTag *ContextTag, std::string_view Expression,
    XQEval Mode, std::string *OutString, bool *OutBoolean, XPathValue *OutValue, bool *OutHasValue)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    objXQuery *query = nullptr;
    XPathValue raw_value(XPVT::String);
@@ -1298,7 +1298,7 @@ static ERR xq_parse_selected_nodes(parser *Parser, const XPathValue &Value)
       if (not node_xml) return ERR::InvalidData;
 
       auto old_xml = Parser->change_xml(node_xml);
-      auto restore_xml = pf::Defer([&]() {
+      auto restore_xml = kt::Defer([&]() {
          Parser->change_xml(old_xml);
       });
 
@@ -1370,8 +1370,8 @@ static ERR xq_select_to_xml_fragment(parser *Parser, const XPathValue &Value, st
 static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *ContextTag, std::string_view Input,
    std::string &Output);
 
-static ERR xq_prepare_tag(parser *Parser, const XTag &Tag, pf::vector<XMLAttrib> &PreparedAttribs,
-   const pf::vector<XMLAttrib> *&ActiveAttribs)
+static ERR xq_prepare_tag(parser *Parser, const XTag &Tag, kt::vector<XMLAttrib> &PreparedAttribs,
+   const kt::vector<XMLAttrib> *&ActiveAttribs)
 {
    ActiveAttribs = &Tag.Attribs;
 
@@ -1423,7 +1423,7 @@ static ERR xq_prepare_tag(parser *Parser, const XTag &Tag, pf::vector<XMLAttrib>
 static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *ContextTag, std::string_view Input,
    std::string &Output)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    Output.clear();
 
    size_t pos = 0;
@@ -1495,7 +1495,7 @@ static ERR xq_expand_avt(parser *Parser, objXML *XMLContext, const XTag *Context
 
 static bool check_tag_conditions(parser *Parser, const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto name = std::string_view(Tag.Attribs[i].Name);
@@ -1528,7 +1528,7 @@ static bool check_tag_conditions(parser *Parser, const tag_view &Tag)
 
 void parser::tag_data(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto select = find_attrib(Tag, "select");
    if (not select) {
@@ -1590,7 +1590,7 @@ void parser::tag_data(const tag_view &Tag)
 
 void parser::tag_parse(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // The value attribute will contain XML.  We will parse the XML as if it were part of the document source.  This feature
    // is typically used when pulling XML information out of an object field.
@@ -1682,7 +1682,7 @@ void parser::tag_parse(const tag_view &Tag)
 
 void parser::tag_print(const tag_view &Tag)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Copy the content from the value attribute into the document stream.  If used inside an object, the data is sent
    // to that object as XML.
@@ -1744,7 +1744,7 @@ void parser::tag_print(const tag_view &Tag)
 
 TRF parser::tag_let(const tag_view &Tag, IPF &Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Tag.Children.empty()) {
       log_error(&Tag, ERR::InvalidData, "doc.let-missing-content", "<let> requires child content.");
@@ -1797,7 +1797,7 @@ TRF parser::tag_let(const tag_view &Tag, IPF &Flags)
 
 TRF parser::tag_for_each(const tag_view &Tag, IPF &Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto select = find_attrib(Tag, "select");
    if (not select) {

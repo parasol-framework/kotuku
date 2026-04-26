@@ -1255,7 +1255,7 @@ inline ERR SubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
 } // namespace
 
 namespace fl {
-   using namespace pf;
+   using namespace kt;
 
 constexpr FieldValue Flags(VCLF Value) { return FieldValue(FID_Flags, int(Value)); }
 
@@ -1276,11 +1276,11 @@ inline FieldValue Sequence(std::string &Value) { return FieldValue(FID_Sequence,
 constexpr FieldValue FontStyle(CSTRING Value) { return FieldValue(FID_FontStyle, Value); }
 inline FieldValue FontStyle(std::string &Value) { return FieldValue(FID_FontStyle, Value.c_str()); }
 
-template <pf::NumericOrScale T> FieldValue RoundX(T Value) {
+template <kt::NumericOrScale T> FieldValue RoundX(T Value) {
    return FieldValue(FID_RoundX, Value);
 }
 
-template <pf::NumericOrScale T> FieldValue RoundY(T Value) {
+template <kt::NumericOrScale T> FieldValue RoundY(T Value) {
    return FieldValue(FID_RoundY, Value);
 }
 

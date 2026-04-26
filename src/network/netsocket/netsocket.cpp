@@ -185,7 +185,7 @@ static ERR connect_timeout_handler(OBJECTPTR, int64_t, int64_t);
 
 static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Address) or (Args->Port <= 0) or (Args->Port >= 65536)) return log.warning(ERR::Args);
 
@@ -204,7 +204,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 
    if (Args->Address != Self->Address) {
       if (Self->Address) FreeResource(Self->Address);
-      Self->Address = pf::strclone(Args->Address);
+      Self->Address = kt::strclone(Args->Address);
    }
    Self->Port = Args->Port;
 
@@ -251,7 +251,7 @@ static void connect_name_resolved_nl(objNetLookup *NetLookup, ERR Error, const s
 
 static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::string &HostName, const std::vector<IPAddress> &IPs)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    struct sockaddr_in server_address;
 
    if (Error != ERR::Okay) {
@@ -303,10 +303,10 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
    if (addr->Type IS IPADDR::V6) { // Pure IPv6 connection
       #ifdef _WIN32
          struct sockaddr_in6 server_address6;
-         pf::clearmem(&server_address6, sizeof(server_address6));
+         kt::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
          server_address6.sin6_port = htons(Socket->Port);
-         pf::copymem((void *)addr->Data, &server_address6.sin6_addr.s6_addr, 16);
+         kt::copymem((void *)addr->Data, &server_address6.sin6_addr.s6_addr, 16);
 
          if ((Socket->Error = win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6))) != ERR::Okay) {
             if (Socket->Error IS ERR::BufferOverflow) {
@@ -326,10 +326,10 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          return;
       #else
          struct sockaddr_in6 server_address6;
-         pf::clearmem(&server_address6, sizeof(server_address6));
+         kt::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
          server_address6.sin6_port = htons(Socket->Port);
-         pf::copymem((void *)addr->Data, &server_address6.sin6_addr.s6_addr, 16);
+         kt::copymem((void *)addr->Data, &server_address6.sin6_addr.s6_addr, 16);
 
          int result = connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6));
 
@@ -365,7 +365,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       // Use IPv4-mapped IPv6 address for dual-stack socket
       #ifdef __linux__
          struct sockaddr_in6 server_address6;
-         pf::clearmem(&server_address6, sizeof(server_address6));
+         kt::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
          server_address6.sin6_port = htons(Socket->Port);
 
@@ -403,7 +403,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       #elif _WIN32
          // Windows IPv6 dual-stack socket connecting to IPv4 address
          struct sockaddr_in6 server_address6;
-         pf::clearmem(&server_address6, sizeof(server_address6));
+         kt::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
          server_address6.sin6_port = htons(Socket->Port);
 
@@ -426,7 +426,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
    }
 
    // Pure IPv4 connection
-   pf::clearmem(&server_address, sizeof(struct sockaddr_in));
+   kt::clearmem(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
    server_address.sin_port = htons(Socket->Port);
    server_address.sin_addr.s_addr = htonl(addr->Data[0]);
@@ -477,7 +477,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 
 static ERR connect_timeout_handler(OBJECTPTR Subscriber, int64_t TimeElapsed, int64_t CurrentTime)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto socket = (extNetSocket *)Subscriber;
 
    log.msg("Connection timeout triggered.");
@@ -503,7 +503,7 @@ static ERR connect_timeout_handler(OBJECTPTR Subscriber, int64_t TimeElapsed, in
 
 static ERR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -525,7 +525,7 @@ Failed: Shutdown operation failed.
 
 static ERR NETSOCKET_Disable(extNetSocket *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.trace("");
 
@@ -567,7 +567,7 @@ WrongClass: The Client object is not of type `NetClient`.
 
 static ERR NETSOCKET_DisconnectClient(extNetSocket *Self, struct ns::DisconnectClient *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Client)) return ERR::NullArgs;
 
@@ -601,7 +601,7 @@ NullArgs
 
 static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectSocket *Args)
 {
-   pf::Log log;
+   kt::Log log;
    if ((!Args) or (!Args->Socket)) return log.warning(ERR::NullArgs);
    if (Args->Socket->classID() != CLASSID::CLIENTSOCKET) return log.warning(ERR::WrongClass);
    FreeResource(Args->Socket); // Disconnects & sends a Feedback message
@@ -643,7 +643,7 @@ static ERR NETSOCKET_FreeWarning(extNetSocket *Self)
 {
    if (Self->InUse) {
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
-         pf::Log().msg("NetSocket in use, cannot free yet (request delayed).");
+         kt::Log().msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = true;
          SendMessage(MSGID::FREE, MSF::NIL, &Self->UID, sizeof(OBJECTID));
       }
@@ -673,7 +673,7 @@ Failed
 
 static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIPAddress *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.traceBranch();
 
@@ -693,7 +693,7 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
    if (!result) {
       if (addr_storage.ss_family IS AF_INET6) {
          auto addr6 = (struct sockaddr_in6 *)&addr_storage;
-         pf::copymem(Args->Address->Data, &addr6->sin6_addr.s6_addr, 16);
+         kt::copymem(Args->Address->Data, &addr6->sin6_addr.s6_addr, 16);
          Args->Address->Type = IPADDR::V6;
       }
       else if (addr_storage.ss_family IS AF_INET) {
@@ -718,7 +718,7 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
 
 static ERR parse_bind_address(CSTRING Address, bool IPv6, void *AddrOut)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Address) or (!AddrOut)) return log.warning(ERR::NullArgs);
 
@@ -727,7 +727,7 @@ static ERR parse_bind_address(CSTRING Address, bool IPv6, void *AddrOut)
       if (ip.Type IS IPADDR::V4) {
          if (IPv6) { // IPv4 -> IPv6-mapped
             auto out = (sockaddr_in6 *)AddrOut;
-            pf::clearmem(out, sizeof(sockaddr_in6));
+            kt::clearmem(out, sizeof(sockaddr_in6));
             out->sin6_family = AF_INET6;
             out->sin6_addr.s6_addr[10] = 0xff;
             out->sin6_addr.s6_addr[11] = 0xff;
@@ -735,7 +735,7 @@ static ERR parse_bind_address(CSTRING Address, bool IPv6, void *AddrOut)
          }
          else { // IPv4 -> IPv4
             auto addr = (sockaddr_in *)AddrOut;
-            pf::clearmem(addr, sizeof(struct sockaddr_in));
+            kt::clearmem(addr, sizeof(struct sockaddr_in));
             addr->sin_family = AF_INET;
             addr->sin_addr.s_addr = htonl(ip.Data[0]); // Convert from host to network byte order
          }
@@ -743,9 +743,9 @@ static ERR parse_bind_address(CSTRING Address, bool IPv6, void *AddrOut)
       else if (ip.Type IS IPADDR::V6) {
          if (IPv6) { // IPv6 -> IPv6
             auto out = (sockaddr_in6 *)AddrOut;
-            pf::clearmem(out, sizeof(struct sockaddr_in6));
+            kt::clearmem(out, sizeof(struct sockaddr_in6));
             out->sin6_family = AF_INET6;
-            pf::copymem(ip.Data, &out->sin6_addr, 16);
+            kt::copymem(ip.Data, &out->sin6_addr, 16);
          }
          else {
             log.warning("Address is IPv6 but socket is IPv4");
@@ -768,7 +768,7 @@ static ERR parse_bind_address(CSTRING Address, bool IPv6, void *AddrOut)
 
 static ERR NETSOCKET_Init(extNetSocket *Self)
 {
-   pf::Log log;
+   kt::Log log;
    ERR error;
 
    if (Self->Handle.is_valid()) return ERR::Okay; // The socket has been pre-configured by the developer
@@ -896,7 +896,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                addr.sin6_port = net::HostToShort(Self->Port);
             }
             else {
-               pf::clearmem(&addr, sizeof(addr));
+               kt::clearmem(&addr, sizeof(addr));
                addr.sin6_family = AF_INET6;
                addr.sin6_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
                addr.sin6_addr   = in6addr_any;   // Must be passed in in network byte order
@@ -930,7 +930,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                addr.sin6_port = net::HostToShort(Self->Port);
             }
             else {
-               pf::clearmem(&addr, sizeof(addr));
+               kt::clearmem(&addr, sizeof(addr));
                addr.sin6_family = AF_INET6;
                addr.sin6_port   = net::HostToShort(Self->Port);
                addr.sin6_addr   = in6addr_any;
@@ -970,7 +970,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             addr.sin_port = net::HostToShort(Self->Port);
          }
          else {
-            pf::clearmem(&addr, sizeof(addr));
+            kt::clearmem(&addr, sizeof(addr));
             addr.sin_family = AF_INET;
             addr.sin_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
             addr.sin_addr.s_addr   = INADDR_ANY;   // Must be passed in in network byte order
@@ -1058,7 +1058,7 @@ Failed: Failed to join multicast group.
 
 static ERR NETSOCKET_JoinMulticastGroup(extNetSocket *Self, struct ns::JoinMulticastGroup *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return ERR::NoSupport;
    if (!Args->Group) return ERR::Args;
@@ -1130,7 +1130,7 @@ Failed: Failed to leave multicast group.
 
 static ERR NETSOCKET_LeaveMulticastGroup(extNetSocket *Self, struct ns::LeaveMulticastGroup *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return ERR::NoSupport;
    if (!Args->Group) return ERR::Args;
@@ -1215,7 +1215,7 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
 
@@ -1356,7 +1356,7 @@ and automatically send it once the first connection has been made.
 
 static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -1444,7 +1444,7 @@ BufferOverflow: Receive buffer is too small for the incoming packet.
 
 static ERR NETSOCKET_RecvFrom(extNetSocket *Self, struct ns::RecvFrom *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return log.warning(ERR::NoSupport);
    if ((!Args->Buffer) or (!Args->BufferSize) or (!Args->Source)) return log.warning(ERR::NullArgs);
@@ -1537,7 +1537,7 @@ NetworkUnreachable: The destination network is unreachable.
 
 static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return log.warning(ERR::InvalidState);
    if ((!Args->Dest) or (!Args->Data) or (!Args->Length)) return log.warning(ERR::NullArgs);

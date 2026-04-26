@@ -246,7 +246,7 @@ ERR CLASS_Free(extMetaClass *Self)
    if (!Self->SubClasses.empty()) {
       // Sanity check - if a base has sub-classes present then there is an issue that requires resolution.
       // Note that for static builds there is no way to control termination order, so these controls are disabled.
-      pf::Log log;
+      kt::Log log;
       log.warning("Out-of-order termination: Base-class %s has %d active sub-classes.", Self->ClassName, int(Self->SubClasses.size()));
    }
 
@@ -263,7 +263,7 @@ ERR CLASS_Free(extMetaClass *Self)
 
 ERR CLASS_Init(extMetaClass *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->ClassName) return log.warning(ERR::MissingClassName);
 
@@ -665,7 +665,7 @@ static ERR GET_Methods(extMetaClass *Self, const MethodEntry **Methods, int *Ele
 
 static ERR SET_Methods(extMetaClass *Self, const MethodEntry *Methods, int Elements)
 {
-   pf::Log log;
+   kt::Log log;
 
    Self->Methods.clear();
    if (!Methods) return ERR::Okay;
@@ -733,7 +733,7 @@ The resulting array must be terminated with ~FreeResource() after use.
 
 static ERR GET_Objects(extMetaClass *Self, OBJECTID **Array, int *Elements)
 {
-   pf::Log log;
+   kt::Log log;
    std::list<OBJECTID> objlist;
 
    if (auto lock = std::unique_lock{glmMemory}) {
@@ -1027,7 +1027,7 @@ static void register_fields(std::vector<Field> &Fields)
 
 static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const FieldArray &Source, uint16_t &Offset)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto &field = Fields.emplace_back(
       Source.Arg,
@@ -1113,7 +1113,7 @@ static ERR OBJECT_GetOwner(OBJECTPTR Self, OBJECTID *OwnerID)
 
 static ERR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (OwnerID) {
       ScopedObjectLock new_owner(OwnerID);
@@ -1147,7 +1147,7 @@ static ERR OBJECT_SetName(OBJECTPTR Self, CSTRING Name)
 #ifndef KOTUKU_STATIC
 void scan_classes(void)
 {
-   pf::Log log("Core");
+   kt::Log log("Core");
 
    log.branch("Scanning for available classes.");
 
@@ -1162,10 +1162,10 @@ void scan_classes(void)
 
          if ((list->Flags & RDF::FILE) != RDF::NIL) {
             #ifdef __ANDROID__
-               if (pf::startswith("libshim.", list->Name)) continue;
-               if (pf::startswith("libcore.", list->Name)) continue;
+               if (kt::startswith("libshim.", list->Name)) continue;
+               if (kt::startswith("libcore.", list->Name)) continue;
             #else
-               if (pf::startswith("core.", list->Name)) continue;
+               if (kt::startswith("core.", list->Name)) continue;
             #endif
 
             auto modules = std::string("modules:") + list->Name;

@@ -8,7 +8,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR, int &Level) __attribute__ ((
 
 static void debug_branch(CSTRING Header, OBJECTPTR Vector, int &Level)
 {
-   pf::Log log(Header);
+   kt::Log log(Header);
 
    auto spacing = std::string(Level + 1, ' ');
    Level++;
@@ -149,7 +149,7 @@ static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input,
             Effect->set(RefField, Self->Effects[Input]);
          }
          else {
-            pf::Log log;
+            kt::Log log;
             log.warning("Unrecognised input '%s'", Input.c_str());
          }
          break;
@@ -162,7 +162,7 @@ static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input,
 
 static std::vector<Transition> process_transition_stops(extSVG *Self, const objXML::TAGS &Tags)
 {
-   pf::Log log("process_stops");
+   kt::Log log("process_stops");
 
    log.traceBranch();
 
@@ -231,7 +231,7 @@ static void parse_transform(objVector *Vector, const std::string Value, int Tag)
          matrix->Tag = Tag;
       }
       else {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.warning("Failed to create vector transform matrix.");
       }
    }
@@ -453,7 +453,7 @@ static void parse_ids(extSVG *Self, XTag &Tag)
 
 static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Path) and (!Buffer)) return ERR::NullArgs;
 
@@ -565,7 +565,7 @@ end:
 
 static void convert_styles(objXML::TAGS &Tags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (auto &tag : Tags) {
       for (int style=1; style < std::ssize(tag.Attribs); style++) {

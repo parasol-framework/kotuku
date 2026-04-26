@@ -41,7 +41,7 @@ using CELL_ID = uint32_t;
 static BYTECODE glByteCodeID = 1;
 static uint32_t glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
 
-using namespace pf;
+using namespace kt;
 
 JUMPTABLE_CORE
 JUMPTABLE_FONT
@@ -260,7 +260,7 @@ inline doc_edit * find_editdef(extDocument *Self, std::string_view Name)
 inline void layout_doc_fast(extDocument *Self)
 {
 #ifndef RETAIN_LOG_LEVEL
-   pf::LogLevel level(2);
+   kt::LogLevel level(2);
 #endif
 
    layout_doc(Self);

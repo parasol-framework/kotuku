@@ -27,9 +27,9 @@
    #define PF_HAS_HW_CRC32C 1
 #endif
 
-namespace pf {
+namespace kt {
 
-// USAGE: std::vector<std::string> list; pf::split(value, std::back_inserter(list));
+// USAGE: std::vector<std::string> list; kt::split(value, std::back_inserter(list));
 
 template <class InType, class OutIt>
 void split(InType Input, OutIt Output, char Sep = ',') noexcept

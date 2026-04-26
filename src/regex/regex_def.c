@@ -4,8 +4,8 @@ namespace rx {
 extern ERR Compile(const std::string_view & Pattern, REGEX Flags, std::string * ErrorMsg, struct Regex ** Result);
 extern ERR Search(struct Regex * Regex, const std::string_view & Text, RMATCH Flags, FUNCTION * Callback);
 extern ERR Replace(struct Regex * Regex, const std::string_view & Text, const std::string_view & Replacement, std::string * Output, RMATCH Flags);
-extern ERR Split(struct Regex * Regex, const std::string_view & Text, pf::vector<std::string> * Output, RMATCH Flags);
-extern ERR GetCaptureIndex(struct Regex * Regex, const std::string_view & Name, pf::vector<int> * Indices);
+extern ERR Split(struct Regex * Regex, const std::string_view & Text, kt::vector<std::string> * Output, RMATCH Flags);
+extern ERR GetCaptureIndex(struct Regex * Regex, const std::string_view & Name, kt::vector<int> * Indices);
 
 } // namespace
 #ifndef FDEF

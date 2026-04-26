@@ -120,7 +120,7 @@ Activate: Opens the file.  Performed automatically if `NEW`, `READ` or `WRITE` f
 
 static ERR FILE_Activate(extFile *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Handle != -1) return ERR::Okay;
    if ((Self->Flags & (FL::NEW|FL::READ|FL::WRITE)) IS FL::NIL) return log.warning(ERR::NothingDone);
@@ -271,7 +271,7 @@ Read: Failed to read the file content.
 
 static ERR FILE_BufferContent(extFile *Self)
 {
-   pf::Log log;
+   kt::Log log;
    int len;
 
    if (Self->Buffer) return ERR::Okay;
@@ -346,7 +346,7 @@ Streaming data of any type to a file will result in the content being written to
 
 static ERR FILE_DataFeed(extFile *Self, struct acDataFeed *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Buffer)) return log.warning(ERR::NullArgs);
 
@@ -419,7 +419,7 @@ BufferOverflow: The file path string is too long.
 
 static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Path.empty()) return log.warning(ERR::MissingPath);
 
@@ -492,7 +492,7 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
 
 static ERR FILE_Free(extFile *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->prvWatch) Action(fl::Watch::id, Self, nullptr);
 
@@ -571,7 +571,7 @@ NoPermission: Permission was denied when accessing or creating the file.
 
 static ERR FILE_Init(extFile *Self)
 {
-   pf::Log log;
+   kt::Log log;
    ERR error;
 
    // If the BUFFER flag is set then the file will be located in RAM.  Very little initialisation is needed for this.
@@ -597,7 +597,7 @@ static ERR FILE_Init(extFile *Self)
 
    if (glDefaultPermissions != PERMIT::NIL) Self->Permissions = glDefaultPermissions;
 
-   if (pf::startswith("string:", Self->Path)) {
+   if (kt::startswith("string:", Self->Path)) {
       Self->Size = Self->Path.size() - 7;
 
       if (Self->Size > 0) {
@@ -610,7 +610,7 @@ static ERR FILE_Init(extFile *Self)
       }
       else return log.warning(ERR::InvalidPath);
    }
-   else if (pf::startswith("std:", Self->Path)) {
+   else if (kt::startswith("std:", Self->Path)) {
       // Special accessors for direct access to standard input/output/error streams.
 
       Self->Flags &= ~(FL::NEW|FL::READ|FL::WRITE);
@@ -826,7 +826,7 @@ InvalidPath: Attempted to move a volume.
 
 static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Dest) or (not Args->Dest[0])) return log.warning(ERR::NullArgs);
    if (Self->Path.empty()) return log.warning(ERR::FieldNotSet);
@@ -912,7 +912,7 @@ DirEmpty: The index has reached the end of the file list.
 
 static ERR FILE_NextFile(extFile* Self, struct fl::Next* Args) // Not to be confused with acNext()
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
    if ((Self->Flags & FL::FOLDER) IS FL::NIL) return log.warning(ERR::ExpectedFolder);
@@ -991,7 +991,7 @@ Failed: The file object refers to a folder, or the object is corrupt.
 
 static ERR FILE_Read(extFile *Self, struct acRead *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Buffer)) return log.warning(ERR::NullArgs);
    else if (Args->Length == 0) return ERR::Okay;
@@ -1088,7 +1088,7 @@ NoData: There is no more data left to read.
 
 static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
    if ((Self->Flags & FL::READ) IS FL::NIL) return log.warning(ERR::FileReadFlag);
@@ -1148,7 +1148,7 @@ Rename: Changes the name of a file.
 
 static ERR FILE_Rename(extFile *Self, struct acRename *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Name) or (not Args->Name[0])) return log.warning(ERR::NullArgs);
    if (Self->Path.empty()) return log.warning(ERR::FieldNotSet);
@@ -1220,7 +1220,7 @@ Seek: Seeks to a new read/write position within a file.
 
 static ERR FILE_Seek(extFile *Self, struct acSeek *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    int64_t oldpos = Self->Position;
 
@@ -1295,7 +1295,7 @@ NoSupport: The platform does not support file date setting.
 
 static ERR FILE_SetDate(extFile *Self, struct fl::SetDate *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -1395,7 +1395,7 @@ NoSupport: The file is not streamed.
 
 static ERR FILE_StartStream(extFile *Self, struct fl::StartStream *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->SubscriberID)) return log.warning(ERR::NullArgs);
 
@@ -1460,7 +1460,7 @@ NullArgs
 
 static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch("%s, Flags: $%.8x", Self->Path.c_str(), (Args) ? int(Args->Flags) : 0);
 
@@ -1544,7 +1544,7 @@ LimitedSuccess: Only some of the data was written to the file.  Check the Result
 
 static ERR FILE_Write(extFile *Self, struct acWrite *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
    if (Args->Length <= 0) return ERR::Args;
@@ -1667,7 +1667,7 @@ To simplify time management, information is read and set via a !DateTime structu
 
 static ERR GET_Created(extFile *Self, DateTime **Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    *Value = 0;
 
@@ -1742,7 +1742,7 @@ Information is read and set using a standard !DateTime structure.
 
 static ERR GET_Date(extFile *Self, DateTime **Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    *Value = 0;
 
@@ -1808,7 +1808,7 @@ static ERR GET_Date(extFile *Self, DateTime **Value)
 
 ERR SET_Date(extFile *Self, DateTime *Date)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Date) return log.warning(ERR::NullArgs);
 
@@ -1912,7 +1912,7 @@ static ERR GET_Group(extFile *Self, int *Value)
 static ERR SET_Group(extFile *Self, int Value)
 {
 #ifdef __unix__
-   pf::Log log;
+   kt::Log log;
    if (Self->initialised()) {
       log.msg("Changing group to #%d", Value);
       if (not fchown(Self->Handle, -1, Value)) return ERR::Okay;
@@ -1958,7 +1958,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       return ERR::Okay;
    }
 
-   pf::SwitchContext context(Self);
+   kt::SwitchContext context(Self);
 
    if (Self->Path.empty()) {
       Self->prvIcon = "icons:filetypes/empty";
@@ -2049,7 +2049,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       return ERR::Okay;
    }
 
-   if (not pf::startswith("icons:", icon)) Self->prvIcon = "icons:" + icon;
+   if (not kt::startswith("icons:", icon)) Self->prvIcon = "icons:" + icon;
    else Self->prvIcon = icon;
 
    *Value = Self->prvIcon.c_str();
@@ -2069,7 +2069,7 @@ folder containing the link will need to be taken into consideration when calcula
 static ERR GET_Link(extFile *Self, STRING *Value)
 {
 #ifdef __unix__
-   pf::Log log;
+   kt::Log log;
    std::string path;
 
    if (not Self->prvLink.empty()) { // The link has already been read previously, just re-use it
@@ -2142,7 +2142,7 @@ static ERR GET_Path(extFile *Self, CSTRING *Value)
 
 static ERR SET_Path(extFile *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->initialised()) return log.warning(ERR::Immutable);
 
@@ -2159,7 +2159,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
 
    if ((Value) and (*Value)) {
       std::string_view val;
-      if (pf::startswith("string:", Value)) {
+      if (kt::startswith("string:", Value)) {
          int len;
          for (len=0; (Value[len]) and (Value[len] != '|'); len++);
          Self->Path.assign(Value, 0, len);
@@ -2206,7 +2206,7 @@ Lookup: PERMIT
 
 static ERR GET_Permissions(extFile *Self, PERMIT *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    *Value = PERMIT::NIL;
 
@@ -2267,7 +2267,7 @@ static ERR SET_Permissions(extFile *Self, PERMIT Value)
 
 static ERR set_permissions(extFile *Self, PERMIT Permissions)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 #ifdef __unix__
 
    if (Self->Handle != -1) {
@@ -2407,7 +2407,7 @@ position being set to the end of the file.
 
 static ERR GET_Size(extFile *Self, int64_t *Size)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & FL::FOLDER) != FL::NIL) {
       *Size = 0;
@@ -2441,7 +2441,7 @@ static ERR GET_Size(extFile *Self, int64_t *Size)
 
 static ERR SET_Size(extFile *Self, int64_t Size)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Size IS Self->Size) return ERR::Okay;
    if (Size < 0) return log.warning(ERR::OutOfRange);
@@ -2562,7 +2562,7 @@ for comparison to the time stamps of other files.  For a parsed time structure, 
 
 static ERR GET_TimeStamp(extFile *Self, int64_t *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    *Value = 0;
 
@@ -2645,7 +2645,7 @@ static ERR GET_User(extFile *Self, int *Value)
 static ERR SET_User(extFile *Self, int Value)
 {
 #ifdef __unix__
-   pf::Log log;
+   kt::Log log;
    if (Self->initialised()) {
       log.msg("Changing user to #%d", Value);
       if (not fchown(Self->Handle, Value, -1)) {

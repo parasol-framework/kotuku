@@ -107,7 +107,7 @@ static ERR MODExpunge(void)
 
 static void debug_tree(objXML *Self)
 {
-   pf::Log log("Tree");
+   kt::Log log("Tree");
    int i, j;
    char buffer[1000];
 
@@ -169,7 +169,7 @@ static ERR next_item(int &Line, CSTRING &Input)
 
 static ERR JSON_Init(objXML *Self)
 {
-   pf::Log log;
+   kt::Log log;
    CSTRING location = nullptr, statement = nullptr;
 
    log.trace("Attempting JSON interpretation of source data.");
@@ -219,7 +219,7 @@ static ERR JSON_SaveToObject(objXML *Self, struct acSaveToObject *Args)
 
 static ERR txt_to_json(objXML *Self, CSTRING Text)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Self) or (!Text)) return ERR::NullArgs;
 
@@ -264,7 +264,7 @@ static ERR txt_to_json(objXML *Self, CSTRING Text)
 
 static ERR extract_item(int &Line, CSTRING *Input, objXML::TAGS &Tags, int &TagID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Line: %d, %.20s", Line, *Input);
 
@@ -622,7 +622,7 @@ static ERR extract_item(int &Line, CSTRING *Input, objXML::TAGS &Tags, int &TagI
 
       number_tag.Children.emplace_back(XTag(TagID++, Line, { { "", numbuf } }));
    }
-   else if (pf::startswith("null", str)) { // Evaluates to <item name="item_name" type="null"/>
+   else if (kt::startswith("null", str)) { // Evaluates to <item name="item_name" type="null"/>
       str += 4;
 
       Tags.emplace_back(XTag(TagID++, Line, {

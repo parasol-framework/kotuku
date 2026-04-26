@@ -26,7 +26,7 @@ static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value
 
 GRADIENT_TABLE * get_fill_gradient_table(extPainter &Painter, double Opacity)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    GradientColours *cols = ((extVectorGradient *)Painter.Gradient)->Colours;
    if (!cols) {
@@ -62,7 +62,7 @@ GRADIENT_TABLE * get_fill_gradient_table(extPainter &Painter, double Opacity)
 
 GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    GradientColours *cols = ((extVectorGradient *)Vector.Stroke.Gradient)->Colours;
    if (!cols) {
@@ -171,7 +171,7 @@ static ERR VECTORGRADIENT_Free(extVectorGradient *Self)
 
 static ERR VECTORGRADIENT_Init(extVectorGradient *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((int(Self->SpreadMethod) <= 0) or (int(Self->SpreadMethod) >= int(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
@@ -285,7 +285,7 @@ static ERR VECTORGRADIENT_GET_Colour(extVectorGradient *Self, float **Value, int
 
 static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, float *Value, int Elements)
 {
-   pf::Log log;
+   kt::Log log;
    if (Value) {
       if (Elements >= 3) {
          Self->Colour.Red   = Value[0];
@@ -662,7 +662,7 @@ static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value
       return ERR::Okay;
    }
    else {
-      pf::Log log;
+      kt::Log log;
       log.warning("Array size %d < 2", Elements);
       return ERR::InvalidValue;
    }
@@ -692,7 +692,7 @@ A transform can be applied to the gradient by setting this field with an SVG com
 
 static ERR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Commands)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Commands) return log.warning(ERR::InvalidValue);
 

@@ -5,7 +5,7 @@ class ScintillaKTK;
 #include <kotuku/modules/scintilla.h>
 #include "../link/unicode.h"
 
-using namespace pf;
+using namespace kt;
 
 class extScintilla : public objScintilla {
    public:

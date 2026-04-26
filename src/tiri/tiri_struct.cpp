@@ -147,7 +147,7 @@ void destroy_struct_cpp_strings(const struct_record &StructDef, APTR Address)
 
 [[nodiscard]] ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Result) return ERR::NullArgs;
    *Result = NULL;
@@ -220,7 +220,7 @@ void destroy_struct_cpp_strings(const struct_record &StructDef, APTR Address)
 
 [[nodiscard]] ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_record &StructDef, CPTR Address)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Struct: %s, Data: %p", StructDef.Name.c_str(), Address);
 
@@ -254,8 +254,8 @@ void destroy_struct_cpp_strings(const struct_record &StructDef, APTR Address)
       auto type = field.Type;
 
       if (type & FD_ARRAY) {
-         if (type & FD_CPP) { // pf::vector<ANY>
-            auto vector = (pf::vector<int> *)(address); // Uses int as a placeholder
+         if (type & FD_CPP) { // kt::vector<ANY>
+            auto vector = (kt::vector<int> *)(address); // Uses int as a placeholder
             if (type & FD_STRUCT) {
                if (glStructs.contains(std::string_view(field.StructRef))) {
                   make_any_array(Lua, type, field.StructRef, vector->size(), vector->data());
@@ -327,7 +327,7 @@ void destroy_struct_cpp_strings(const struct_record &StructDef, APTR Address)
 
 struct fstruct * push_struct(objScript *Self, APTR Address, std::string_view StructName, bool Deallocate, bool AllowEmpty)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Struct: %s, Address: %p, Deallocate: %d", StructName.data(), Address, Deallocate);
 
@@ -419,7 +419,7 @@ static void make_camel_case(std::string &String)
 [[nodiscard]] static ERR generate_structdef(objScript *Self, const std::string_view StructName, const std::string Sequence,
    struct_record &Record, int *StructSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    size_t pos = 0;
    int offset = 0;
@@ -515,8 +515,8 @@ static void make_camel_case(std::string &String)
       if (Sequence[pos] IS '[') {
          pos++;
          type |= FD_ARRAY;
-         if (type & FD_CPP) { // In the case of pf::vector, fixed array sizes are meaningless
-            field_size = sizeof(pf::vector<int>);
+         if (type & FD_CPP) { // In the case of kt::vector, fixed array sizes are meaningless
+            field_size = sizeof(kt::vector<int>);
          }
          else if ((Sequence[pos] >= '0') and (Sequence[pos] <= '9')) { // Sanity check
             array_size = strtol(Sequence.c_str() + pos, nullptr, 0);
@@ -562,7 +562,7 @@ static void make_camel_case(std::string &String)
 
 [[nodiscard]] ERR make_struct(objScript *Self, std::string_view StructName, CSTRING Sequence)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Sequence) {
       log.warning("Missing struct name and/or definition.");
@@ -655,7 +655,7 @@ static int struct_new(lua_State *Lua)
          fs->Deallocate  = false;
 
          if (lua_istable(Lua, 2)) {
-            pf::Log log(__FUNCTION__);
+            kt::Log log(__FUNCTION__);
             log.trace("struct.new(%p, fields: %d)", record, record.Fields.size());
             ERR field_error = ERR::Okay;
             lua_pushnil(Lua);  // Access first key for lua_next()
@@ -758,7 +758,7 @@ static int struct_get(lua_State *Lua)
                if (((APTR *)address)[0]) {
                   if (field.Type & FD_ARRAY) { // Array of pointers to structures.
                      if (field.Type & FD_CPP) {
-                        auto vector = (pf::vector<int> *)(address);
+                        auto vector = (kt::vector<int> *)(address);
                         lua_createarray(Lua, vector->size(), ff_to_element(field.Type), (APTR *)vector->data(), ARRAY_CACHED, field.StructRef);
                      }
                      else lua_createarray(Lua, array_size, ff_to_element(field.Type), (APTR *)address, ARRAY_CACHED, field.StructRef);
@@ -773,7 +773,7 @@ static int struct_get(lua_State *Lua)
             else if (field.Type & FD_STRING) {
                if (field.Type & FD_ARRAY) {
                   if (field.Type & FD_CPP) {
-                     auto vector = (pf::vector<std::string> *)(address);
+                     auto vector = (kt::vector<std::string> *)(address);
                      lua_createarray(Lua, vector->size(), AET::STR_CPP, (APTR *)vector->data(), ARRAY_CACHED);
                   }
                   else lua_createarray(Lua, array_size, AET::CSTR, (APTR *)address, ARRAY_CACHED);
@@ -851,7 +851,7 @@ static int struct_set(lua_State *Lua)
 
          if (auto field_opt = find_field(fs, ref)) {
             auto &field = field_opt->get();
-            pf::Log log;
+            kt::Log log;
             log.trace("struct.set() %s, Offset %d, $%.8x", ref, field.Offset, field.Type);
 
             APTR address = (int8_t *)fs->Data + field.Offset;
@@ -917,7 +917,7 @@ static const luaL_Reg structlib_methods[] = {
 
 void register_struct_class(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Registering struct interface.");
 
    luaL_newmetatable(Lua, "Tiri.struct");

@@ -28,7 +28,7 @@ NoPermission: An attempt to delete a system volume was denied.
 
 ERR DeleteVolume(CSTRING Name)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Name) or (!Name[0])) return ERR::NullArgs;
 
@@ -60,7 +60,7 @@ RenameVolume: Renames a volume.
 
 ERR RenameVolume(CSTRING Volume, CSTRING Name)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (auto lock = std::unique_lock{glmVolumes, 6s}) {
       int i;
@@ -124,7 +124,7 @@ LockFailed:
 
 ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Name) or (!Path)) return log.warning(ERR::NullArgs);
 
@@ -207,7 +207,7 @@ using CALL_WATCH_PATH      = ERR (*)(extFile*);
 
 ERR VirtualVolume(CSTRING Name, ...)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Name) or (!Name[0])) return log.warning(ERR::NullArgs);
 

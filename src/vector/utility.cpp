@@ -134,7 +134,7 @@ static void update_dpi(void)
 
 ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    PathCommand path;
 
@@ -253,7 +253,7 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 void calc_aspectratio(CSTRING Caller, ARF AspectRatio, double TargetWidth, double TargetHeight,
    double SourceWidth, double SourceHeight, double &X, double &Y, double &XScale, double &YScale)
 {
-   pf::Log log(Caller);
+   kt::Log log(Caller);
 
    // Prevent division by zero errors.  Note that the client can legitimately set these values to zero, so we cannot
    // treat such situations as an error on the client's part.
@@ -425,7 +425,7 @@ std::string weight_to_style(CSTRING Style, int Weight)
 
 //********************************************************************************************************************
 
-ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, common_font **Handle)
+ERR get_font(kt::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, common_font **Handle)
 {
    Log.branch("Family: %s, Style: %s, Weight: %d, Size: %d", Family, Style, Weight, Size);
 

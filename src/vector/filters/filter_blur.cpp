@@ -77,7 +77,7 @@ class extBlurFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::BLURFX;
    static constexpr CSTRING CLASS_NAME = "BlurFX";
-   using create = pf::Create<extBlurFX>;
+   using create = kt::Create<extBlurFX>;
 
    double SX, SY;
 };

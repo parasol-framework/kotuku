@@ -47,7 +47,7 @@ private:
 
 struct TestCase {
    const char* name;
-   bool (*fn)(pf::Log& Log);
+   bool (*fn)(kt::Log& Log);
 };
 
 // Execute Lua code and check result
@@ -69,7 +69,7 @@ static bool run_lua_test(lua_State* L, std::string_view Code, std::string& Error
 //********************************************************************************************************************
 // Core indexing tests - validate 0-based indexing
 
-static bool test_array_first_element_access(pf::Log& Log)
+static bool test_array_first_element_access(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -99,7 +99,7 @@ static bool test_array_first_element_access(pf::Log& Log)
    return false;
 }
 
-static bool test_table_length_operator(pf::Log& Log)
+static bool test_table_length_operator(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -122,7 +122,7 @@ static bool test_table_length_operator(pf::Log& Log)
    return false;
 }
 
-static bool test_ipairs_starting_index(pf::Log& Log)
+static bool test_ipairs_starting_index(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -187,7 +187,7 @@ static bool test_ipairs_starting_index(pf::Log& Log)
    return false;
 }
 
-static bool test_table_insert_position(pf::Log& Log)
+static bool test_table_insert_position(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -224,7 +224,7 @@ static bool test_table_insert_position(pf::Log& Log)
    return false;
 }
 
-static bool test_string_find_returns_correct_index(pf::Log& Log)
+static bool test_string_find_returns_correct_index(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -248,7 +248,7 @@ static bool test_string_find_returns_correct_index(pf::Log& Log)
    return false;
 }
 
-static bool test_string_byte_default_start(pf::Log& Log)
+static bool test_string_byte_default_start(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -271,7 +271,7 @@ static bool test_string_byte_default_start(pf::Log& Log)
    return false;
 }
 
-static bool test_table_concat_default_range(pf::Log& Log)
+static bool test_table_concat_default_range(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -294,7 +294,7 @@ static bool test_table_concat_default_range(pf::Log& Log)
    return false;
 }
 
-static bool test_table_sort_operates_on_sequence(pf::Log& Log)
+static bool test_table_sort_operates_on_sequence(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -325,7 +325,7 @@ static bool test_table_sort_operates_on_sequence(pf::Log& Log)
    return false;
 }
 
-static bool test_empty_table_length(pf::Log& Log)
+static bool test_empty_table_length(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -348,7 +348,7 @@ static bool test_empty_table_length(pf::Log& Log)
    return false;
 }
 
-static bool test_negative_string_indices_unchanged(pf::Log& Log)
+static bool test_negative_string_indices_unchanged(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -374,7 +374,7 @@ static bool test_negative_string_indices_unchanged(pf::Log& Log)
 //********************************************************************************************************************
 // Low-level table API tests
 
-static bool test_lj_tab_getint_semantic_index(pf::Log& Log)
+static bool test_lj_tab_getint_semantic_index(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -401,7 +401,7 @@ static bool test_lj_tab_getint_semantic_index(pf::Log& Log)
    return false;
 }
 
-static bool test_lj_tab_len_returns_element_count(pf::Log& Log)
+static bool test_lj_tab_len_returns_element_count(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -448,7 +448,7 @@ extern void indexing_unit_tests(int& Passed, int& Total)
    if (Action(AC::Init, glTestScript, nullptr) != ERR::Okay) return;
 
    for (const TestCase& Test : Tests) {
-      pf::Log Log("IndexingTests");
+      kt::Log Log("IndexingTests");
       Log.branch("Running %s", Test.name);
       ++Total;
       if (Test.fn(Log)) {

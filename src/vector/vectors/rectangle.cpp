@@ -174,7 +174,7 @@ Move: Moves the vector to a new position.
 
 static ERR RECTANGLE_Move(extVectorRectangle *Self, struct acMove *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -192,7 +192,7 @@ MoveToPoint: Moves the vector to a new fixed position.
 
 static ERR RECTANGLE_MoveToPoint(extVectorRectangle *Self, struct acMoveToPoint *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -220,7 +220,7 @@ Resize: Changes the rectangle dimensions.
 
 static ERR RECTANGLE_Resize(extVectorRectangle *Self, struct acResize *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 

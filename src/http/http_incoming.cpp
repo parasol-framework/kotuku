@@ -139,7 +139,7 @@ constexpr std::vector<std::pair<std::string_view, std::string_view>> parse_auth_
 
 static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not ((Self->CurrentState IS HGS::READING_HEADER) or (Self->CurrentState IS HGS::AUTHENTICATING))) {
       return log.warning(ERR::SanityCheckFailed);
@@ -279,7 +279,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 
             std::string &authenticate = Self->ResponseKeys["WWW-Authenticate"];
             if (not authenticate.empty()) {
-               if (pf::startswith("Digest", authenticate)) {
+               if (kt::startswith("Digest", authenticate)) {
                   log.trace("Digest authentication mode.");
 
                   Self->Realm.clear();
@@ -329,7 +329,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                }
             }
             else if (not Self->Password.empty()) {
-               pf::Log log(__FUNCTION__);
+               kt::Log log(__FUNCTION__);
                log.branch("Reattempting request with preset password.");
                Self->setCurrentState(HGS::AUTHENTICATING);
                // NB: This cancels the reading of any content that followed the header.
@@ -361,7 +361,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
             Self->Chunk.resize(len > CHUNK_BUFFER_SIZE ? len : CHUNK_BUFFER_SIZE);
             if (len > 0) {
                if (header_end + len <= std::ssize(Self->Response)) {
-                  pf::copymem(Self->Response.data() + header_end, Self->Chunk.data(), len);
+                  kt::copymem(Self->Response.data() + header_end, Self->Chunk.data(), len);
                }
                else return log.warning(ERR::BufferOverflow);
             }
@@ -432,7 +432,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
    }
 
    for (int count = max_passes; count > 0; count--) { // Make multiple passes in case there's more data than fits in the buffer
-      pf::Log log("http_incoming");
+      kt::Log log("http_incoming");
       log.traceBranch("Receiving content (chunk mode) Index: %d/%d/%d, Remaining: %d", Self->ChunkIndex, Self->ChunkBuffered, int(Self->Chunk.size()), Self->ChunkRemaining);
 
       // Compress or clear the buffer
@@ -440,7 +440,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
       if (Self->ChunkIndex > 0) {
          if (Self->ChunkBuffered > Self->ChunkIndex) {
             log.trace("Compressing the chunk buffer.");
-            pf::copymem(Self->Chunk.data() + Self->ChunkIndex, Self->Chunk.data(), Self->ChunkBuffered - Self->ChunkIndex);
+            kt::copymem(Self->Chunk.data() + Self->ChunkIndex, Self->Chunk.data(), Self->ChunkBuffered - Self->ChunkIndex);
             Self->ChunkBuffered -= Self->ChunkIndex;
          }
          else Self->ChunkBuffered = 0;
@@ -575,7 +575,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
 
 static ERR read_incoming_content(extHTTP *Self, objNetSocket *Socket)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    std::vector<char> buffer(BUFFER_READ_SIZE);
 
@@ -645,7 +645,7 @@ static ERR read_incoming_content(extHTTP *Self, objNetSocket *Socket)
 
 static ERR parse_response(extHTTP *Self, std::string_view Response)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    Self->ResponseKeys.clear();
 
@@ -716,7 +716,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
 
    if (auto it = Self->ResponseKeys.find("transfer-encoding"); it != Self->ResponseKeys.end()) {
       auto &value = it->second;
-      if (pf::iequals(value, "chunked")) {
+      if (kt::iequals(value, "chunked")) {
          if ((Self->Flags & HTF::RAW) IS HTF::NIL) Self->Chunked = true;
          Self->ContentLength = -1;
       }
@@ -735,10 +735,10 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
       // being pro-active and disconnecting our side early will keep things predictable.
 
       auto &value = it->second;
-      if (pf::iequals(value, "close")) {
+      if (kt::iequals(value, "close")) {
          Self->KeepAlive = false;
       }
-      else if (pf::iequals(value, "keep-alive")) {
+      else if (kt::iequals(value, "keep-alive")) {
          Self->KeepAlive = true;
       }
    }
@@ -751,7 +751,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
 
 static ERR output_incoming_data(extHTTP *Self, APTR Buffer, int Length)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.trace("Buffer: %p, Length: %d", Buffer, Length);
 
@@ -810,7 +810,7 @@ static ERR output_incoming_data(extHTTP *Self, APTR Buffer, int Length)
       if (error > ERR::ExceptionThreshold) Self->Error = error;
 
       if (error IS ERR::Terminate) {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.branch("Client changing state to HGS::TERMINATED.");
          Self->setCurrentState(HGS::TERMINATED);
       }
@@ -818,11 +818,11 @@ static ERR output_incoming_data(extHTTP *Self, APTR Buffer, int Length)
 
    if (Self->OutputObjectID) {
       if (Self->ObjectMode IS HOM::DATA_FEED) {
-         pf::ScopedObjectLock output(Self->OutputObjectID);
+         kt::ScopedObjectLock output(Self->OutputObjectID);
          if (output.granted()) acDataFeed(*output, Self, Self->Datatype, Buffer, Length);
       }
       else if (Self->ObjectMode IS HOM::READ_WRITE) {
-         pf::ScopedObjectLock output(Self->OutputObjectID);
+         kt::ScopedObjectLock output(Self->OutputObjectID);
          if (output.granted()) acWrite(*output, Buffer, Length);
       }
    }
@@ -835,7 +835,7 @@ static ERR output_incoming_data(extHTTP *Self, APTR Buffer, int Length)
 
 static ERR socket_incoming(objNetSocket *Socket)
 {
-   pf::Log log("http_incoming");
+   kt::Log log("http_incoming");
 
    auto Self = (extHTTP *)Socket->ClientData;
 

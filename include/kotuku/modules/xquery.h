@@ -148,7 +148,7 @@ class objXQuery : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::XQUERY;
    static constexpr CSTRING CLASS_NAME = "XQuery";
 
-   using create = pf::Create<objXQuery>;
+   using create = kt::Create<objXQuery>;
 
    // Action stubs
 

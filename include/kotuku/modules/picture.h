@@ -36,7 +36,7 @@ class objPicture : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::PICTURE;
    static constexpr CSTRING CLASS_NAME = "Picture";
 
-   using create = pf::Create<objPicture>;
+   using create = kt::Create<objPicture>;
 
    objBitmap * Bitmap;    // Represents a picture's image data.
    objBitmap * Mask;      // Refers to a Bitmap that imposes a mask on the image.
@@ -186,7 +186,7 @@ class objPicture : public Object {
 };
 
 namespace fl {
-   using namespace pf;
+   using namespace kt;
 constexpr FieldValue DisplayWidth(int Value) { return FieldValue(FID_DisplayWidth, Value); }
 constexpr FieldValue DisplayHeight(int Value) { return FieldValue(FID_DisplayHeight, Value); }
 }

@@ -36,7 +36,7 @@ static objModule *modDriver = nullptr;
 
 static int scrUnsupported(void)
 {
-   pf::Log log("Display");
+   kt::Log log("Display");
    log.warning("Unhandled display function called - driver is not complete.");
    return 0;
 }
@@ -117,7 +117,7 @@ Function JumpTable[] = {
 #if defined(__linux__) && !defined(__ANDROID__)
 static int test_x11(STRING Path)
 {
-   pf::Log log("test_x11_socket");
+   kt::Log log("test_x11_socket");
    struct sockaddr_un sockname;
    int namelen, fd, err;
    int16_t i;

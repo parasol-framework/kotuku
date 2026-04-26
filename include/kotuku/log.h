@@ -2,7 +2,7 @@
 
 // For extremely verbose debug logs, run cmake with -DKOTUKU_VLOG=ON
 
-namespace pf {
+namespace kt {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-zero-length"

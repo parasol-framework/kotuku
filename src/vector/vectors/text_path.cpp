@@ -191,7 +191,7 @@ _close:
 
 static void generate_text(extVectorText *Vector, agg::path_storage &Path)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Vector->txHandle) {
       if (reset_font(Vector) != ERR::Okay) return;

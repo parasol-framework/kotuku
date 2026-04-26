@@ -1,7 +1,7 @@
 
 static ERR parse_spline(APTR Path, int Index, int Command, double X, double Y, anim_base::SPLINE_POINTS &Meta)
 {
-   Meta.emplace_back(pf::POINT<float> { float(X), float(Y) }, 0);
+   Meta.emplace_back(kt::POINT<float> { float(X), float(Y) }, 0);
 
    if (Meta.size() > 1) {
       Meta[Meta.size()-2].angle = std::atan2(Meta.back().point.y - Meta[Meta.size()-2].point.y, Meta.back().point.x - Meta[Meta.size()-2].point.x);

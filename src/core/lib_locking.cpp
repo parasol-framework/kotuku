@@ -12,7 +12,7 @@ that is distributed with this package.  Please refer to it for further informati
 #include <array>
 #include <mutex>
 
-using namespace pf;
+using namespace kt;
 using namespace std::chrono;
 
 #ifdef _WIN32
@@ -50,7 +50,7 @@ private:
 
          if (alloc_public_waitlock(&new_lock, nullptr) IS ERR::Okay) {
             if (thread_locks[index].compare_exchange_weak(expected, new_lock, std::memory_order_acquire)) {
-               pf::Log log("ThreadLockManager");
+               kt::Log log("ThreadLockManager");
                log.trace("Allocated thread-lock #%d for thread #%d", index, get_thread_id());
                return new_lock;
             }
@@ -239,7 +239,7 @@ ERR init_sleep(THREADID OtherThreadID, int ResourceID, int ResourceType)
    #endif
 
    if (would_deadlock(our_thread, OtherThreadID)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.warning("Deadlock: Thread %d contends with thread %d for resource #%d.", int(our_thread), int(OtherThreadID), ResourceID);
       glWaitLocks[glWLIndex].notWaiting();
       return ERR::DeadLock;
@@ -254,7 +254,7 @@ ERR init_sleep(THREADID OtherThreadID, int ResourceID, int ResourceType)
 
 void remove_process_waitlocks(void)
 {
-   pf::Log log("Shutdown");
+   kt::Log log("Shutdown");
    log.trace("Removing process waitlocks...");
 
    auto const our_thread = get_thread_id();
@@ -331,7 +331,7 @@ MemoryDoesNotExist: The supplied `Memory` ID does not refer to an existing memor
 
 ERR AccessMemory(MEMORYID MemoryID, MEM Flags, int MilliSeconds, APTR *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not MemoryID) or (not Result)) return log.warning(ERR::NullArgs);
    if (MilliSeconds <= 0) return log.warning(ERR::Args);
@@ -420,7 +420,7 @@ direct calls to AccessObject().  The following example illustrates lock acquisit
 
 <pre>
 {
-   pf::ScopedObjectLock&lt;OBJECTPTR&gt; obj(my_object_id, 1000);
+   kt::ScopedObjectLock&lt;OBJECTPTR&gt; obj(my_object_id, 1000);
    if (lock.granted()) {
       obj.acDraw();
    }
@@ -445,7 +445,7 @@ SystemLocked
 
 ERR AccessObject(OBJECTID ObjectID, int MilliSeconds, OBJECTPTR *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Result) or (not ObjectID)) return log.warning(ERR::NullArgs);
    if (MilliSeconds <= 0) log.warning(ERR::Args); // Warn but do not fail
@@ -564,7 +564,7 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
    else (void)lock.try_lock_for(std::chrono::milliseconds(Timeout));
 
    if (lock.owns_lock()) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
 
       //log.function("TID: %d, Sleeping on #%d, Timeout: %d, Queue: %d, Locked By: %d", our_thread, Object->UID, Timeout, Object->Queue, Object->ThreadID);
 
@@ -665,7 +665,7 @@ SystemLocked
 
 ERR ReleaseMemory(MEMORYID MemoryID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not MemoryID) return log.warning(ERR::NullArgs);
 
@@ -722,7 +722,7 @@ void ReleaseObject(OBJECTPTR Object)
 
    #ifndef NDEBUG
    if (Object->Queue.load(std::memory_order_relaxed) <= 0) {
-      pf::Log("ReleaseObject").warning("Queue underflow on #%d (%s), Queue: %d, ThreadID: %d, OurThread: %d",
+      kt::Log("ReleaseObject").warning("Queue underflow on #%d (%s), Queue: %d, ThreadID: %d, OurThread: %d",
          Object->UID, Object->className(), Object->Queue.load(), Object->ThreadID.load(), int(get_thread_id()));
       DEBUG_BREAK
    }
@@ -731,7 +731,7 @@ void ReleaseObject(OBJECTPTR Object)
    if (Object->Queue.fetch_sub(1, std::memory_order_release) > 1) return;
 
    if (Object->SleepQueue > 0) { // Other threads are waiting on this object
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.traceBranch("Waking %d threads for this object.", Object->SleepQueue.load());
 
       if (auto lock = std::unique_lock{glmObjectLocking}) {

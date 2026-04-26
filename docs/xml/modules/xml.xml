@@ -33,10 +33,10 @@
   <function>
     <name>XValueNodes</name>
     <comment>For node-set XPathValue objects, returns the node-set as an array.</comment>
-    <prototype>ERR xml::XValueNodes(struct XPathValue * Value, pf::vector&lt;struct XTag *&gt; * Result)</prototype>
+    <prototype>ERR xml::XValueNodes(struct XPathValue * Value, kt::vector&lt;struct XTag *&gt; * Result)</prototype>
     <input>
       <param type="struct XPathValue *" name="Value">The XPathValue to convert.</param>
-      <param type="pf::vector&lt;struct XTag *&gt; *" name="Result">The node-set is returned here as an array of <st>XTag</st> structures.</param>
+      <param type="kt::vector&lt;struct XTag *&gt; *" name="Result">The node-set is returned here as an array of <st>XTag</st> structures.</param>
     </input>
     <description>
 <p>If an XPathValue represents a node-set (type <code>XPVT::NODE_SET</code>) then XValueToNodes() will return a direct pointer to the node-set array.</p>
@@ -162,8 +162,8 @@
       <field name="Flags" type="XTF" lookup="XTF">Optional flags</field>
       <field name="NamespaceID" type="UINT">Hash of namespace URI or 0 for no namespace</field>
       <field name="Reserved" type="INT">Private</field>
-      <field name="Attribs" type="pf::vector&lt;XMLAttrib&gt;">Array of attributes for this tag</field>
-      <field name="Children" type="pf::vector&lt;XTag&gt;">Array of child tags</field>
+      <field name="Attribs" type="kt::vector&lt;XMLAttrib&gt;">Array of attributes for this tag</field>
+      <field name="Children" type="kt::vector&lt;XTag&gt;">Array of child tags</field>
     </struct>
 
   </structs>

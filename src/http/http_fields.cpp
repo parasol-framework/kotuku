@@ -103,7 +103,7 @@ On completion of an HTTP request, the state will be changed to either `COMPLETED
 
 static ERR SET_CurrentState(extHTTP *Self, HGS Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((int(Value) < 0) or (int(Value) >= int(HGS::END))) return log.warning(ERR::OutOfRange);
 
@@ -195,7 +195,7 @@ The HTTP server to target for HTTP requests is defined here.  To change the host
 static ERR SET_Host(extHTTP *Self, CSTRING Value)
 {
    if (Self->Host) { FreeResource(Self->Host); Self->Host = nullptr; }
-   Self->Host = pf::strclone(Value);
+   Self->Host = kt::strclone(Value);
    return ERR::Okay;
 }
 
@@ -261,7 +261,7 @@ Multiple files can be specified in the InputFile field by separating each file p
 
 static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.trace("InputFile: %.80s", Value);
 
@@ -270,7 +270,7 @@ static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
    Self->MultipleInput = false;
    Self->InputPos = 0;
    if ((Value) and (*Value)) {
-      Self->InputFile = pf::strclone(Value);
+      Self->InputFile = kt::strclone(Value);
 
       // Check if the path contains multiple inputs, separated by the pipe symbol.
 
@@ -333,7 +333,7 @@ static ERR GET_Location(extHTTP *Self, STRING *Value)
 
 static ERR SET_Location(extHTTP *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->initialised()) {
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
@@ -353,8 +353,8 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 
    Self->Port = 80;
 
-   if (pf::startswith("http://", str)) str += 7;
-   else if (pf::startswith("https://", str)) {
+   if (kt::startswith("http://", str)) str += 7;
+   else if (kt::startswith("https://", str)) {
       str += 8;
       Self->Port = 443;
       Self->Flags |= HTF::SSL;
@@ -372,7 +372,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
       return ERR::AllocMemory;
    }
 
-   pf::copymem(str, Self->Host, len);
+   kt::copymem(str, Self->Host, len);
    Self->Host[len] = 0;
 
    str += len;
@@ -387,7 +387,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
          if (Self->Port IS 443) Self->Flags |= HTF::SSL;
       }
       else {
-         pf::Log log;
+         kt::Log log;
          log.warning("Invalid port number %ld, using default 80", port_long);
          Self->Port = 80;
       }
@@ -480,7 +480,7 @@ been set in the #Flags field.
 static ERR SET_OutputFile(extHTTP *Self, CSTRING Value)
 {
    if (Self->OutputFile) { FreeResource(Self->OutputFile); Self->OutputFile = nullptr; }
-   Self->OutputFile = pf::strclone(Value);
+   Self->OutputFile = kt::strclone(Value);
    return ERR::Okay;
 }
 
@@ -539,7 +539,7 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
    std::string encoded_path = encode_url_path(Value);
 
    if (AllocMemory(encoded_path.length() + 1, MEM::STRING|MEM::NO_CLEAR, &Self->Path) IS ERR::Okay) {
-      pf::strcopy(encoded_path, Self->Path, encoded_path.length() + 1);
+      kt::strcopy(encoded_path, Self->Path, encoded_path.length() + 1);
 
       // Check if this path has been authenticated against the server yet by comparing it to AuthPath.  We need to
       // do this if a PUT instruction is executed against the path and we're not authenticated yet.
@@ -588,7 +588,7 @@ that the proxy server uses to receive requests, see the #ProxyPort field.
 static ERR SET_ProxyServer(extHTTP *Self, CSTRING Value)
 {
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = nullptr; }
-   if ((Value) and (Value[0])) Self->ProxyServer = pf::strclone(Value);
+   if ((Value) and (Value[0])) Self->ProxyServer = kt::strclone(Value);
    Self->ProxyDefined = true;
    return ERR::Okay;
 }
@@ -699,7 +699,7 @@ This field describes the `user-agent` value that will be sent in HTTP requests. 
 static ERR SET_UserAgent(extHTTP *Self, CSTRING Value)
 {
    if (Self->UserAgent) { FreeResource(Self->UserAgent); Self->UserAgent = nullptr; }
-   Self->UserAgent = pf::strclone(Value);
+   Self->UserAgent = kt::strclone(Value);
    return ERR::Okay;
 }
 

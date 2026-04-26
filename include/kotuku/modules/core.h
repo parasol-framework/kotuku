@@ -1625,7 +1625,7 @@ __export struct ModHeader ModHeader;
 #define MOD_NAME nullptr
 #endif
 
-namespace pf {
+namespace kt {
 
 #ifdef PRINTF64I
   #define PF64 "I64d"
@@ -1676,7 +1676,7 @@ inline void nextutf8(T *&Str) noexcept {
 
 //********************************************************************************************************************
 
-namespace pf {
+namespace kt {
 
 class FloatRect {
    public:
@@ -2061,7 +2061,7 @@ struct CoreBase {
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
    ERR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
    const struct SystemState * (*_GetSystemState)(void);
-   ERR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> *List);
+   ERR (*_ListChildren)(OBJECTID Object, kt::vector<ChildEntry> *List);
    ERR (*_RegisterFD)(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
    ERR (*_ResolvePath)(const std::string_view & Path, RSF Flags, std::string *Result);
    ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo *MemInfo, int Size);
@@ -2161,7 +2161,7 @@ inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
 inline ERR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
-inline ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List) { return CoreBase->_ListChildren(Object,List); }
+inline ERR ListChildren(OBJECTID Object, kt::vector<ChildEntry> *List) { return CoreBase->_ListChildren(Object,List); }
 inline ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
 inline ERR ResolvePath(const std::string_view & Path, RSF Flags, std::string *Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, int Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
@@ -2256,7 +2256,7 @@ extern "C" CLASSID GetClassID(OBJECTID Object);
 extern "C" OBJECTID GetOwnerID(OBJECTID Object);
 extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState(void);
-extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List);
+extern "C" ERR ListChildren(OBJECTID Object, kt::vector<ChildEntry> *List);
 extern "C" ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 extern "C" ERR ResolvePath(const std::string_view & Path, RSF Flags, std::string *Result);
 extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, int Size);
@@ -2399,7 +2399,7 @@ typedef KEYVALUE ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
 
-namespace pf {
+namespace kt {
 
 inline void copymem(const void *Src, APTR Dest, std::size_t Length) {
    memmove(Dest, Src, Length);
@@ -2490,7 +2490,7 @@ class objMetaClass : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::METACLASS;
    static constexpr CSTRING CLASS_NAME = "MetaClass";
 
-   using create = pf::Create<objMetaClass>;
+   using create = kt::Create<objMetaClass>;
 
    double  ClassVersion;                // The version number of the class.
    const struct FieldArray * Fields;    // Points to a FieldArray that describes the class' object structure.
@@ -2633,7 +2633,7 @@ class objStorageDevice : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::STORAGEDEVICE;
    static constexpr CSTRING CLASS_NAME = "StorageDevice";
 
-   using create = pf::Create<objStorageDevice>;
+   using create = kt::Create<objStorageDevice>;
 
    DEVICE  DeviceFlags;   // These read-only flags identify the type of device and its features.
    int64_t DeviceSize;    // The storage size of the device in bytes, without accounting for the file system format.
@@ -2679,7 +2679,7 @@ class objFile : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::FILE;
    static constexpr CSTRING CLASS_NAME = "File";
 
-   using create = pf::Create<objFile>;
+   using create = kt::Create<objFile>;
 
    int64_t  Position;   // The current read/write byte position in a file.
    FL       Flags;      // File flags and options.
@@ -2900,7 +2900,7 @@ class objConfig : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::CONFIG;
    static constexpr CSTRING CLASS_NAME = "Config";
 
-   using create = pf::Create<objConfig>;
+   using create = kt::Create<objConfig>;
 
    STRING Path;         // Set this field to the location of the source configuration file.
    STRING KeyFilter;    // Set this field to enable key filtering.
@@ -3064,7 +3064,7 @@ class objScript : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::SCRIPT;
    static constexpr CSTRING CLASS_NAME = "Script";
 
-   using create = pf::Create<objScript>;
+   using create = kt::Create<objScript>;
 
    OBJECTID TargetID;  // Reference to the default container that new script objects will be initialised to.
    SCF      Flags;     // Optional flags.
@@ -3254,7 +3254,7 @@ class objTask : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::TASK;
    static constexpr CSTRING CLASS_NAME = "Task";
 
-   using create = pf::Create<objTask>;
+   using create = kt::Create<objTask>;
 
    double TimeOut;    // Limits the amount of time to wait for a launched process to return.
    TSF    Flags;      // Optional flags.
@@ -3360,7 +3360,7 @@ class objTask : public Object {
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
-   inline ERR setParameters(pf::vector<std::string> *Value) noexcept {
+   inline ERR setParameters(kt::vector<std::string> *Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08805300, Value, int(Value->size()));
@@ -3438,7 +3438,7 @@ class objThread : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::THREAD;
    static constexpr CSTRING CLASS_NAME = "Thread";
 
-   using create = pf::Create<objThread>;
+   using create = kt::Create<objThread>;
 
    APTR Data;       // Pointer to initialisation data for the thread.
    int  DataSize;   // The size of the buffer referenced in the Data field.
@@ -3494,7 +3494,7 @@ class objModule : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::MODULE;
    static constexpr CSTRING CLASS_NAME = "Module";
 
-   using create = pf::Create<objModule>;
+   using create = kt::Create<objModule>;
 
    const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
    APTR ModBase;                            // The Module's function base (jump table) must be read from this field.
@@ -3503,7 +3503,7 @@ class objModule : public Object {
    MOF  Flags;                              // Optional flags.
    public:
    static ERR load(std::string Name, OBJECTPTR *Module = nullptr, APTR Functions = nullptr) {
-      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
+      if (auto module = objModule::create::global(kt::FieldValue(FID_Name, Name.c_str()))) {
          #ifdef KOTUKU_STATIC
             if (Module) *Module = module;
             if (Functions) ((APTR *)Functions)[0] = nullptr;
@@ -3581,7 +3581,7 @@ class objTime : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::TIME;
    static constexpr CSTRING CLASS_NAME = "Time";
 
-   using create = pf::Create<objTime>;
+   using create = kt::Create<objTime>;
 
    int64_t SystemTime;    // Represents the system time when the time object was last queried.
    int     Year;          // Year (-ve for BC, +ve for AD).
@@ -3691,7 +3691,7 @@ class objCompression : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::COMPRESSION;
    static constexpr CSTRING CLASS_NAME = "Compression";
 
-   using create = pf::Create<objCompression>;
+   using create = kt::Create<objCompression>;
 
    int64_t  TotalOutput;   // The total number of bytes that have been output during the compression or decompression of streamed data.
    OBJECTID OutputID;      // Resulting messages will be sent to the object referred to in this field.
@@ -3837,7 +3837,7 @@ class objCompressedStream : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::COMPRESSEDSTREAM;
    static constexpr CSTRING CLASS_NAME = "CompressedStream";
 
-   using create = pf::Create<objCompressedStream>;
+   using create = kt::Create<objCompressedStream>;
 
    int64_t   TotalOutput;  // A live counter of total bytes that have been output by the stream.
    OBJECTPTR Input;        // An input object that will supply data for decompression.
@@ -3885,7 +3885,7 @@ class objCompressedStream : public Object {
 #include <pthread.h>
 #endif
 
-namespace pf {
+namespace kt {
 
 #ifdef __system__
    struct ActionMessage {

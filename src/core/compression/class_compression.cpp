@@ -273,7 +273,7 @@ static const uint8_t glTail[TAIL_LENGTH] = {
 
 ERR convert_zip_error(struct z_stream_s *Stream, int Result)
 {
-   pf::Log log;
+   kt::Log log;
 
    ERR error;
    switch(Result) {
@@ -333,7 +333,7 @@ BufferOverflow: The output buffer is not large enough.
 
 static ERR COMPRESSION_CompressBuffer(extCompression *Self, struct cmp::CompressBuffer *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Input) or (Args->InputSize <= 0) or (!Args->Output) or (Args->OutputSize <= 8)) {
       return log.warning(ERR::Args);
@@ -400,7 +400,7 @@ NoSupport: The sub-class does not support this method.
 
 static ERR COMPRESSION_CompressFile(extCompression *Self, struct cmp::CompressFile *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Location) or (!*Args->Location)) return log.warning(ERR::NullArgs);
    if (!Self->FileIO) return log.warning(ERR::MissingPath);
@@ -532,7 +532,7 @@ Failed: Failed to initialise the decompression process.
 
 static ERR COMPRESSION_CompressStreamStart(extCompression *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Deflating) {
       deflateEnd(&Self->DeflateStream);
@@ -625,7 +625,7 @@ Retry: Please recall the method using a larger output buffer.
 
 static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::CompressStream *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
@@ -680,7 +680,7 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::Compress
          log.trace("%d bytes (total %" PF64 ") were compressed.", len, Self->TotalOutput);
 
          if (Args->Callback->isC()) {
-            pf::SwitchContext context(Args->Callback->Context);
+            kt::SwitchContext context(Args->Callback->Context);
             auto routine = (ERR (*)(extCompression *, APTR, int, APTR))Args->Callback->Routine;
             error = routine(Self, output, len, Args->Callback->Meta);
          }
@@ -733,7 +733,7 @@ BufferOverflow: The supplied Output buffer is not large enough (check the #MinOu
 
 static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::CompressStreamEnd *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
    if (!Self->Deflating) return ERR::Okay;
@@ -769,7 +769,7 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::Compr
       Self->TotalOutput += outputsize - Self->DeflateStream.avail_out;
 
       if (Args->Callback->isC()) {
-         pf::SwitchContext context(Args->Callback->Context);
+         kt::SwitchContext context(Args->Callback->Context);
          auto routine = (ERR (*)(extCompression *, APTR, int, APTR Meta))Args->Callback->Routine;
          error = routine(Self, output, outputsize - Self->DeflateStream.avail_out, Args->Callback->Meta);
       }
@@ -818,7 +818,7 @@ Failed: Failed to initialise the decompression process.
 
 static ERR COMPRESSION_DecompressStreamStart(extCompression *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Inflating) { inflateEnd(&Self->InflateStream); Self->Inflating = false; }
 
@@ -872,7 +872,7 @@ BufferOverflow: The output buffer is not large enough.
 
 static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmp::DecompressStream *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR::NullArgs);
    if (!Self->Inflating) return ERR::Okay; // Decompression is complete
@@ -920,7 +920,7 @@ static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmp::Decomp
       int len = outputsize - Self->InflateStream.avail_out;
       if (len > 0) {
          if (Args->Callback->isC()) {
-            pf::SwitchContext context(Args->Callback->Context);
+            kt::SwitchContext context(Args->Callback->Context);
             auto routine = (ERR (*)(extCompression *, APTR, int, APTR))Args->Callback->Routine;
             error = routine(Self, output, len, Args->Callback->Meta);
          }
@@ -1005,7 +1005,7 @@ BufferOverflow: The output buffer is not large enough to hold the decompressed i
 
 static ERR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmp::DecompressBuffer *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Input) or (!Args->Output) or (Args->OutputSize <= 0)) {
       return log.warning(ERR::NullArgs);
@@ -1070,7 +1070,7 @@ Failed
 
 static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::DecompressFile *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Files.empty()) return ERR::NoData;
 
@@ -1455,7 +1455,7 @@ Failed
 
 static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::DecompressObject *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Path) or (!Args->Path[0])) return log.warning(ERR::NullArgs);
    if (!Args->Object) return log.warning(ERR::NullArgs);
@@ -1662,7 +1662,7 @@ static thread_local CompressedItem glFindMeta;
 
 static ERR COMPRESSION_Find(extCompression *Self, struct cmp::Find *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR::NullArgs);
    if (Self->isSubClass()) return ERR::NoSupport;
@@ -1763,7 +1763,7 @@ static ERR COMPRESSION_Free(extCompression *Self)
 
 static ERR COMPRESSION_Init(extCompression *Self)
 {
-   pf::Log log;
+   kt::Log log;
    auto path = Self->get<STRING>(FID_Path);
 
    if (!path) {
@@ -1793,7 +1793,7 @@ static ERR COMPRESSION_Init(extCompression *Self)
       bool exists = ((AnalysePath(path, &type) IS ERR::Okay) and (type IS LOC::FILE));
 
       if (exists) {
-         pf::Create<objFile> file({
+         kt::Create<objFile> file({
             fl::Path(path),
             fl::Flags(FL::READ|FL::APPROXIMATE|(((Self->Flags & CMF::READ_ONLY) != CMF::NIL) ? FL::NIL : FL::WRITE))
          }, NF::LOCAL);
@@ -1862,7 +1862,7 @@ static ERR COMPRESSION_Init(extCompression *Self)
 
 static ERR COMPRESSION_NewObject(extCompression *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Output, nullptr) IS ERR::Okay) {
       if (AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Input, nullptr) IS ERR::Okay) {
@@ -1910,7 +1910,7 @@ NoSupport
 
 static ERR COMPRESSION_RemoveFile(extCompression *Self, struct cmp::RemoveFile *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR::NullArgs);
 
@@ -1970,7 +1970,7 @@ NullArgs
 
 static ERR COMPRESSION_Scan(extCompression *Self, struct cmp::Scan *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
@@ -2018,7 +2018,7 @@ static ERR COMPRESSION_Scan(extCompression *Self, struct cmp::Scan *Args)
 
       {
          if (Args->Callback->isC()) {
-            pf::SwitchContext context(Args->Callback->Context);
+            kt::SwitchContext context(Args->Callback->Context);
             auto routine = (ERR (*)(extCompression *, CompressedItem *, APTR))Args->Callback->Routine;
             error = routine(Self, &meta, Args->Callback->Meta);
          }

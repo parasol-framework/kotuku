@@ -93,7 +93,7 @@ work if the user is logged in as the administrator.
 static ERR TIME_SetTime(objTime *Self)
 {
 #ifdef __unix__
-   pf::Log log;
+   kt::Log log;
    struct timeval tmday;
    struct tm time;
    int fd;

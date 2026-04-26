@@ -102,7 +102,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
                }
             }
             else { // AET::STR_CPP
-               pf::vector<std::string> &strings = ((pf::vector<std::string> *)Data)[0];
+               kt::vector<std::string> &strings = ((kt::vector<std::string> *)Data)[0];
                for (uint32_t i = 0; i < Length; i++) {
                   content_size += strings[i].size() + 1;
                }
@@ -128,7 +128,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
                }
             }
             else { // AET::STR_CPP
-               pf::vector<std::string> &strings = ((pf::vector<std::string> *)Data)[0];
+               kt::vector<std::string> &strings = ((kt::vector<std::string> *)Data)[0];
                for (uint32_t i = 0; i < Length; i++) {
                   ptr_array[i] = cache_ptr;
                   std::memcpy(cache_ptr, strings[i].c_str(), strings[i].size() + 1);

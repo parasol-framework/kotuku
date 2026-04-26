@@ -4,7 +4,7 @@
 
 static void raster_text_to_bitmap(extVectorText *Vector)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Vector->txBitmapFont) {
       reset_font(Vector);

@@ -171,7 +171,7 @@ class extVectorText : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORTEXT;
    static constexpr CSTRING CLASS_NAME = "VectorText";
-   using create = pf::Create<extVectorText>;
+   using create = kt::Create<extVectorText>;
 
    std::vector<TextLine> txLines;
    FUNCTION txValidateInput;
@@ -257,7 +257,7 @@ inline void report_change(extVectorText *Self)
 {
    if (Self->txOnChange.isC()) {
       auto routine = (void (*)(extVectorText *))Self->txOnChange.Routine;
-      pf::SwitchContext context(Self->txOnChange.Context);
+      kt::SwitchContext context(Self->txOnChange.Context);
       routine(Self);
    }
    else if (Self->txOnChange.isScript()) {
@@ -366,7 +366,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
    if (Self->txKeyEvent)     { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = nullptr; }
 
    if (Self->txFocusID) {
-      if (pf::ScopedObjectLock<extVector> focus(Self->txFocusID, 5000); focus.granted()) {
+      if (kt::ScopedObjectLock<extVector> focus(Self->txFocusID, 5000); focus.granted()) {
          focus->subscribeFeedback(FM::NIL, C_FUNCTION(text_focus_event));
       }
    }
@@ -383,7 +383,7 @@ static ERR VECTORTEXT_Init(extVectorText *Self)
          if (Self->ParentView) Self->txFocusID = Self->ParentView->UID;
       }
 
-      if (pf::ScopedObjectLock<extVector> focus(Self->txFocusID, 5000); focus.granted()) {
+      if (kt::ScopedObjectLock<extVector> focus(Self->txFocusID, 5000); focus.granted()) {
          focus->subscribeFeedback(FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(text_focus_event));
       }
 
@@ -1453,7 +1453,7 @@ static ERR reset_font(extVectorText *Vector, bool Force)
 {
    if ((not Vector->initialised()) and (not Force)) return ERR::NotInitialised;
 
-   pf::Log log;
+   kt::Log log;
    if (auto error = get_font(log, Vector->txFamily, Vector->txFontStyle, Vector->txWeight, Vector->txFontSize, &Vector->txHandle); error IS ERR::Okay) {
       if (Vector->txHandle->type IS CF_BITMAP) {
          Vector->txBitmapFont = ((bmp_font *)Vector->txHandle)->font;
@@ -1470,7 +1470,7 @@ static ERR reset_font(extVectorText *Vector, bool Force)
 static ERR cursor_timer(extVectorText *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    if (((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) and (Self->txCursor.vector)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       Self->txCursor.flash ^= 1;
       Self->txCursor.vector->setVisibility(Self->txCursor.flash ? VIS::VISIBLE : VIS::HIDDEN);
       acDraw(Self);
@@ -1556,7 +1556,7 @@ static ERR text_input_events(extVector *Vector, const InputEvent *Events)
 {
    auto Self = (extVectorText *)CurrentContext();
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (; Events; Events = Events->Next) {
       if ((Events->Type IS JET::LMB) and ((Events->Flags & JTYPE::REPEATED) IS JTYPE::NIL) and (Events->Value IS 1)) {
@@ -1653,7 +1653,7 @@ static void key_event(evKey *Event, int Size, extVectorText *Self)
 {
    if ((Event->Qualifiers & KQ::PRESSED) IS KQ::NIL) return;
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.trace("$%.8x, Value: %d", int(Event->Qualifiers), int(Event->Code));
 

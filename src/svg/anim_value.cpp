@@ -3,11 +3,11 @@
 
 void anim_value::perform()
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((end_time) and (!freeze)) return;
 
-   pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
+   kt::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
       if (vector->classID() IS CLASSID::VECTORGROUP) {
          // Groups are a special case because they act as a placeholder and aren't guaranteed to propagate all
@@ -22,7 +22,7 @@ void anim_value::perform()
                // We can't override attributes that were defined by the client.
                if (child.attrib(target_attrib)) continue;
 
-               pf::ScopedObjectLock<objVector> cv(std::stoi(*si), 1000);
+               kt::ScopedObjectLock<objVector> cv(std::stoi(*si), 1000);
                if (cv.granted()) set_value(**cv);
             }
          }

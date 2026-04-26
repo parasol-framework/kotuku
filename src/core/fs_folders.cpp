@@ -89,7 +89,7 @@ private:
 
 static ERR folder_free(APTR Address)
 {
-   pf::Log log("CloseDir");
+   kt::Log log("CloseDir");
    auto folder = (extDirInfo *)Address;
 
    // Note: Virtual file systems should focus on destroying handles as fs_closedir() will take care of memory and list
@@ -142,7 +142,7 @@ AllocMemory
 
 ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Path) or (not Result)) return log.warning(ERR::NullArgs);
 
@@ -234,7 +234,7 @@ DirEmpty: There are no more items to scan.
 
 ERR ScanDir(DirInfo *Dir)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Dir) return log.warning(ERR::NullArgs);
 

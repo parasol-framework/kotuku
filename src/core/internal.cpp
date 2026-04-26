@@ -11,7 +11,7 @@ Functions that are internal to the Core.
 
 #include "defs.h"
 
-using namespace pf;
+using namespace kt;
 
 //********************************************************************************************************************
 
@@ -56,10 +56,10 @@ CLASSID lookup_class_by_ext(CLASSID Filter, std::string_view Ext)
       for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
          if (auto &rec = it->second; !rec.Extension.empty()) {
             std::vector<std::string> list;
-            pf::split(rec.Extension, std::back_inserter(list), '|');
+            kt::split(rec.Extension, std::back_inserter(list), '|');
             for (auto & wild : list) {
                if (wild.starts_with("*.")) {
-                  glWildClassMap.emplace(pf::strihash(wild.c_str() + 2), it->first);
+                  glWildClassMap.emplace(kt::strihash(wild.c_str() + 2), it->first);
                }
             }
          }
@@ -68,7 +68,7 @@ CLASSID lookup_class_by_ext(CLASSID Filter, std::string_view Ext)
       glWildClassMapTotal = glClassDB.size();
    }
 
-   auto hash = pf::strihash(Ext);
+   auto hash = kt::strihash(Ext);
 
    if (Filter IS CLASSID::NIL) {
       if (auto search = glWildClassMap.find(hash); search != glWildClassMap.end()) {
@@ -98,7 +98,7 @@ ERR process_janitor(OBJECTID SubscriberID, int Elapsed, int TotalElapsed)
    }
 
 #ifdef __unix__
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Call waitpid() to check for zombie processes first.  This covers all processes within our own context, so our child processes, children of those children etc.
 
@@ -169,7 +169,7 @@ public|untracked and private memory flags as necessary.  Example:
 
 ERR copy_args(const FunctionField *Args, int ArgsSize, int8_t *Parameters, std::vector<int8_t> &Buffer)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Args) or (!Parameters)) return ERR::NullArgs;
 

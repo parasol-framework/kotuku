@@ -1,7 +1,7 @@
 
 #include "base64.h"
 
-namespace pf {
+namespace kt {
 
 typedef enum { step_a=0, step_b, step_c, step_d } base64_decodestep;
 typedef enum { step_A=0, step_B, step_C } base64_encodestep;
@@ -236,4 +236,4 @@ static int base64_decode_block(CSTRING code_in, int length_in, char * plaintext_
    return plainchar - plaintext_out;
 }
 
-} // namespace pf
+} // namespace kt

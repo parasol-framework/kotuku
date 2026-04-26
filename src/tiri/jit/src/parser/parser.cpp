@@ -114,7 +114,7 @@ static void flush_non_fatal_errors(ParserContext &Context)
 
 static void trace_ast_boundary(ParserContext &Context, const BlockStmt &Chunk, CSTRING Stage)
 {
-   pf::Log log("AST-Boundary");
+   kt::Log log("AST-Boundary");
 
    auto prv = (prvTiri *)Context.lua().script->ChildPrivate;
    if ((prv->JitOptions & JOF::TRACE_BOUNDARY) IS JOF::NIL) return;
@@ -220,7 +220,7 @@ static ParserConfig make_parser_config(lua_State &State)
 
 extern GCproto * lj_parse(LexState *State)
 {
-   pf::Log log("Parser");
+   kt::Log log("Parser");
    FuncScope bl;
    GCproto   *pt;
    lua_State *L = State->L;

@@ -391,7 +391,7 @@ LogReturn: Revert to the previous branch in the application logging tree.
 Status: Internal
 
 Use LogReturn() to reverse any previous log message that created an indented branch.  This function is considered
-internal, and clients must use the scope-managed `pf::Log` class for branched log output.
+internal, and clients must use the scope-managed `kt::Log` class for branched log output.
 
 -END-
 

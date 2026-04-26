@@ -42,7 +42,7 @@ void doc_menu::define_font(font_entry *Font)
 
 objSurface * doc_menu::create(double Width)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch();
 
@@ -91,7 +91,7 @@ objSurface * doc_menu::create(double Width)
 
 void doc_menu::refresh()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    const double HGAP = std::trunc(m_font_size * 0.2);
    int total_icons = 0;
@@ -195,7 +195,7 @@ void doc_menu::reposition(objVectorViewport *RelativeViewport)
    DISPLAYINFO *display;
    gfx::GetDisplayInfo(0, &display);
 
-   pf::ScopedObjectLock<objSurface> lk_surface(RelativeViewport->Scene->SurfaceID); // Window surface
+   kt::ScopedObjectLock<objSurface> lk_surface(RelativeViewport->Scene->SurfaceID); // Window surface
    if (lk_surface.granted()) {
       auto w_absx = lk_surface->get<double>(FID_AbsX);
       auto w_absy = lk_surface->get<double>(FID_AbsY);
@@ -219,7 +219,7 @@ void doc_menu::reposition(objVectorViewport *RelativeViewport)
 
 void doc_menu::toggle(objVectorViewport *Relative)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch();
 
    const double time_lapse = 20000; // Amount of time that must elapse to trigger the toggle.
@@ -258,7 +258,7 @@ static void menu_hidden(OBJECTPTR Surface, ACTIONID ActionID, ERR Error, APTR Ar
 
 static ERR menu_doc_events(extDocument *DocMenu, DEF Event, KEYVALUE *EventData, entity *Entity, APTR Meta)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (((Event & DEF::ON_CLICK) != DEF::NIL) or ((Event & DEF::LINK_ACTIVATED) != DEF::NIL)) {
       auto menu = (doc_menu *)DocMenu->CreatorMeta;

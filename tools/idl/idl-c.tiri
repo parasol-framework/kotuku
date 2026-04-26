@@ -268,7 +268,7 @@ global function outputClassHeader(class:table, Private:str, Custom:str)
    output(f'   static constexpr CLASSID CLASS_ID = CLASSID::{class.name:upper()};')
    output(f'   static constexpr CSTRING CLASS_NAME = "{class.name}";')
    output('')
-   output('   using create = pf::Create<obj' .. class.name .. '>;')
+   output('   using create = kt::Create<obj' .. class.name .. '>;')
 
    if physicalFields then
       output('')

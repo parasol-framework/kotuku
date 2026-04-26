@@ -31,7 +31,7 @@ Name: Memory
 
 #define freemem(a)  free(a)
 
-using namespace pf;
+using namespace kt;
 
 // Align to 64-byte cache line boundaries for better performance on modern CPUs
 constexpr size_t CACHE_LINE_SIZE = 64;
@@ -88,7 +88,7 @@ SystemLocked: Memory management system is currently locked by another thread.
 
 ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((Size <= 0) or ((!Address) and (!MemoryID))) {
       log.warning("Bad args - Size %d, Address %p, MemoryID %p", Size, Address, MemoryID);
@@ -135,7 +135,7 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
       if (start_mem) {
          Flags |= MEM::PROTECTED; // Mark as protected for proper cleanup
          if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) {
-            if ((Flags & MEM::WRITE) != MEM::NIL) pf::clearmem(start_mem, full_size);
+            if ((Flags & MEM::WRITE) != MEM::NIL) kt::clearmem(start_mem, full_size);
             else log.trace("Note: Read-only memory will not be cleared.");
          }
       }
@@ -151,7 +151,7 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
       #endif
 
       if (start_mem) {
-         if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) pf::clearmem(start_mem, full_size);
+         if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) kt::clearmem(start_mem, full_size);
       }
    }
 
@@ -321,7 +321,7 @@ InUse: The memory block is a busy managed resource.  The removal behaviour rules
 
 ERR FreeResource(MEMORYID MemoryID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (auto lock = std::unique_lock{glmMemory}) {
       auto it = glPrivateMemory.find(MemoryID);
@@ -454,7 +454,7 @@ SystemLocked
 
 ERR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, int Size)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!MemInfo) or (!MemoryID)) return log.warning(ERR::NullArgs);
    if ((size_t)Size < sizeof(MemInfo)) return log.warning(ERR::Args);
@@ -513,7 +513,7 @@ MemoryDoesNotExist
 
 ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, int Size)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!MemInfo) or (!Memory)) return log.warning(ERR::NullArgs);
    if ((size_t)Size < sizeof(MemInfo)) return log.warning(ERR::Args);
@@ -567,7 +567,7 @@ SystemCall: A system call failed.
 
 ERR ProtectMemory(APTR Address, MEM Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Address) return ERR::NullArgs;
    if ((Flags & (MEM::READ | MEM::WRITE)) == MEM::NIL) return ERR::Args;
@@ -641,7 +641,7 @@ Memory: The memory block to be re-allocated is invalid.
 
 ERR ReallocMemory(APTR Address, uint32_t NewSize, APTR *Memory, MEMORYID *MemoryID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Memory) *Memory = Address; // If we fail, the result must be the same memory block
 

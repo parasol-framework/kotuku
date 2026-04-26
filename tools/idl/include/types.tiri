@@ -85,23 +85,23 @@ global function getFieldType(Def:table, Type:num, CustomName:str, Option:any)
 
       if Type & FD_CPP != 0 then
          if Type & FD_BYTE != 0 then
-            Def.type = 'pf::vector<int8_t>'
+            Def.type = 'kt::vector<int8_t>'
          elseif Type & FD_WORD != 0 then
-            Def.type = 'pf::vector<int16_t>'
+            Def.type = 'kt::vector<int16_t>'
          elseif Type & FD_INT != 0 then
-            Def.type = 'pf::vector<int>'
+            Def.type = 'kt::vector<int>'
          elseif Type & FD_FLOAT != 0 then
-            Def.type = 'pf::vector<float>'
+            Def.type = 'kt::vector<float>'
          elseif Type & FD_DOUBLE != 0 then
-            Def.type = 'pf::vector<double>'
+            Def.type = 'kt::vector<double>'
          elseif Type & FD_STRING != 0 then
-            Def.type = 'pf::vector<std::string>'
+            Def.type = 'kt::vector<std::string>'
          elseif Type & FD_POINTER != 0 then
-            Def.type = 'pf::vector<APTR>'
+            Def.type = 'kt::vector<APTR>'
          elseif Type & FD_STRUCT != 0 then
-            Def.type = 'pf::vector<STRUCT>'
+            Def.type = 'kt::vector<STRUCT>'
          else
-            Def.type = 'pf::vector<>'
+            Def.type = 'kt::vector<>'
          end
       else
          if Type & FD_BYTE != 0 then
@@ -545,7 +545,7 @@ global function cType(Field:table, Origin:str):table
             Field.arraySize = 0
             Field = cType(Field, Origin)
             if Field.cpp then
-               Field.type = 'pf::vector<' .. (Field.struct ? Field.struct :> Field.type) .. '>'
+               Field.type = 'kt::vector<' .. (Field.struct ? Field.struct :> Field.type) .. '>'
             else
                Field.type ..= ' *'
             end
@@ -567,7 +567,7 @@ global function cType(Field:table, Origin:str):table
          Field.type    = array_type
          Field = cType(Field, Origin)
          if Field.cpp then
-            Field.type = 'pf::vector<' .. (Field.struct ? Field.struct :> Field.type) .. '>'
+            Field.type = 'kt::vector<' .. (Field.struct ? Field.struct :> Field.type) .. '>'
          else
             Field.type ..= ' *'
          end

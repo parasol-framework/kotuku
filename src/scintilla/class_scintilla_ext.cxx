@@ -57,7 +57,7 @@ static const struct styledef c_styles[] = {
 
 void ScintillaKTK::SetStyles(const struct styledef *Def, int Total)
 {
-   pf::Log log("SetStyles");
+   kt::Log log("SetStyles");
    int i, index;
 
    log.branch("%d", Total);
@@ -120,7 +120,7 @@ ScintillaKTK::~ScintillaKTK()
 
 void ScintillaKTK::Finalise()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.trace("");
 
@@ -132,7 +132,7 @@ void ScintillaKTK::Finalise()
 
 void ScintillaKTK::CreateCallTipWindow(Scintilla::PRectangle rc)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("");
 }
 
@@ -140,7 +140,7 @@ void ScintillaKTK::CreateCallTipWindow(Scintilla::PRectangle rc)
 
 void ScintillaKTK::AddToPopUp(const char *label, int cmD, bool enabled)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("%s", label);
 
    // The one and only Menu object is a member of ScintillaBase: Menu popup;
@@ -158,7 +158,7 @@ void ScintillaKTK::AddToPopUp(const char *label, int cmD, bool enabled)
 
 void ScintillaKTK::SetVerticalScrollPos()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("%d", topLine);
 
@@ -179,7 +179,7 @@ void ScintillaKTK::SetVerticalScrollPos()
 
 void ScintillaKTK::SetHorizontalScrollPos()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("%d", xOffset);
 
@@ -201,7 +201,7 @@ void ScintillaKTK::SetHorizontalScrollPos()
 
 bool ScintillaKTK::ModifyScrollBars(int nMax, int nPage)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (scintilla->ScrollLocked) return FALSE;
 #if 0
@@ -254,7 +254,7 @@ bool ScintillaKTK::ModifyScrollBars(int nMax, int nPage)
 
 void ScintillaKTK::ReconfigureScrollBars()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch();
 
 /*
@@ -272,7 +272,7 @@ void ScintillaKTK::ReconfigureScrollBars()
 
 void ScintillaKTK::CopyToClipboard(const Scintilla::SelectionText &selectedText)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch();
 
    auto clipboard = objClipboard::create { };
@@ -289,7 +289,7 @@ void ScintillaKTK::CopyToClipboard(const Scintilla::SelectionText &selectedText)
 
 void ScintillaKTK::Cut()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch();
 
    if (SendScintilla(SCI_GETSELECTIONSTART) != SendScintilla(SCI_GETSELECTIONEND)) {
@@ -306,7 +306,7 @@ void ScintillaKTK::Cut()
 
 void ScintillaKTK::Copy()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch();
 
    if (SendScintilla(SCI_GETSELECTIONSTART) != SendScintilla(SCI_GETSELECTIONEND)) {
@@ -320,7 +320,7 @@ void ScintillaKTK::Copy()
 
 void ScintillaKTK::Paste()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch();
 
@@ -369,7 +369,7 @@ void ScintillaKTK::Paste()
 
 void ScintillaKTK::ClaimSelection()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch();
    if (!SelectionEmpty()) primarySelection = true;
    else primarySelection = false;
@@ -388,7 +388,7 @@ void ScintillaKTK::NotifyChange()
 
 void ScintillaKTK::NotifyParent(Scintilla::SCNotification scn)
 {
-   pf::Log log("SciMsg");
+   kt::Log log("SciMsg");
    int code;
 
    if (!(code = scn.nmhdr.code)) return;
@@ -648,7 +648,7 @@ void ScintillaKTK::ScrollText(int linesToMove)
    ActionMsg(drw::MoveContent, surfaceid, &movecontent);
 */
    Scintilla::PRectangle rect = GetClientRectangle();
-   pf::ScopedObjectLock surface(surfaceid);
+   kt::ScopedObjectLock surface(surfaceid);
    if (surface.granted()) acDrawArea(*surface, rect.left, rect.top, rect.Width(), rect.Height());
 }
 
@@ -656,7 +656,7 @@ void ScintillaKTK::ScrollText(int linesToMove)
 
 void ScintillaKTK::SetTicking(bool On)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("State: %d", On);
 
    if (!On) ticking_on = false;
@@ -672,7 +672,7 @@ void ScintillaKTK::SetTicking(bool On)
 
 void ScintillaKTK::SetMouseCapture(bool On)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("State: %d", On);
    captured_mouse = On;
 }
@@ -727,7 +727,7 @@ sptr_t ScintillaKTK::DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lPa
 
 void ScintillaKTK::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    Scintilla::PRectangle rcClient;
    Scintilla::Surface *surface;
 
@@ -768,7 +768,7 @@ void ScintillaKTK::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
 
 void ScintillaKTK::panFontChanged(void *Font, void *BoldFont, void *ItalicFont, void *BIFont)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch();
 
    glFont       = (OBJECTPTR)Font;
@@ -784,7 +784,7 @@ void ScintillaKTK::panFontChanged(void *Font, void *BoldFont, void *ItalicFont, 
 
 void ScintillaKTK::panWordwrap(int Value)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("%d", Value);
 
 //   int bytepos = SendScintilla(SCI_POSITIONFROMLINE, topLine);
@@ -858,7 +858,7 @@ int ScintillaKTK::KeyDefault(int key, int modifiers)
 
 void ScintillaKTK::panMousePress(JET Button, double x, double y)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("%.0fx%.0f", x, y);
 
@@ -889,7 +889,7 @@ void ScintillaKTK::panMouseMove(double x, double y)
 
 void ScintillaKTK::panMouseRelease(JET Button, double x, double y)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    Scintilla::Point point((int)x, (int)y);
 
    log.trace("%.0fx%.0f", x, y);
@@ -903,7 +903,7 @@ void ScintillaKTK::panMouseRelease(JET Button, double x, double y)
 
 void ScintillaKTK::panResized()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch();
    ChangeSize();
 }
@@ -912,7 +912,7 @@ void ScintillaKTK::panResized()
 
 void ScintillaKTK::panScrollToX(double x)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("%.2f", x);
    HorizontalScrollTo((int)(x));
 }
@@ -921,7 +921,7 @@ void ScintillaKTK::panScrollToX(double x)
 
 void ScintillaKTK::panScrollToY(double y)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("%.2f", y);
    ScrollTo((int)(y / vs.lineHeight));
 }
@@ -930,7 +930,7 @@ void ScintillaKTK::panScrollToY(double y)
 #if 0
 void ScintillaKTK::SetSelectedTextStyle(int style)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("Style: %d", style);
 
    WndProc(SCI_STARTSTYLING, SelectionStart(), 0x1f);//mask - only overwrite the 5 style bits
@@ -973,7 +973,7 @@ void ScintillaKTK::panGetCursorPosition(int *line, int *index)
 
 void ScintillaKTK::panSetCursorPosition(int line, int index)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int pos, eol;
 
    log.trace("Line: %d, Index: %d", line, index);
@@ -1001,7 +1001,7 @@ void ScintillaKTK::panEnsureLineVisible(int line)
 
 void ScintillaKTK::SetLexer(uptr_t LexID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch("Using lexer %d", (int)LexID);
 
 //   SendScintilla(SCI_STYLERESETDEFAULT);

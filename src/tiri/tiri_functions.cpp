@@ -60,13 +60,13 @@ static int lua_load(lua_State *Lua, class objFile *File, CSTRING SourceName)
 // Where Args is a named array containing the event parameters.  If the event is not known to Tiri, then no Args will
 // be provided.
 
-static void receive_event(pf::Event *Info, int InfoSize, APTR CallbackMeta)
+static void receive_event(kt::Event *Info, int InfoSize, APTR CallbackMeta)
 {
    auto Script = (objScript *)CurrentContext();
    auto prv = (prvTiri *)Script->ChildPrivate;
    if (not prv) return;
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Received event $%.8x%.8x", (int)((Info->EventID>>32) & 0xffffffff), (int)(Info->EventID & 0xffffffff));
 
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, intptr_t(CallbackMeta));
@@ -91,7 +91,7 @@ int fcmd_unsubscribe_event(lua_State *Lua)
    if (not prv) return 0;
 
    if (auto handle = lua_touserdata(Lua, 1)) {
-      pf::Log log("unsubscribe_event");
+      kt::Log log("unsubscribe_event");
       if ((Lua->script->Flags & SCF::LOG_ALL) != SCF::NIL) log.msg("Handle: %p", handle);
 
       auto erased = std::erase_if(prv->EventList, [&](const auto& event) {
@@ -221,7 +221,7 @@ int fcmd_msg(lua_State *Lua)
       if (not s) luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
 
       {
-         pf::Log log("Tiri");
+         kt::Log log("Tiri");
          log.msg("%s", s);
       }
 
@@ -247,7 +247,7 @@ int fcmd_print(lua_State *Lua)
 
       #ifdef __ANDROID__
          {
-            pf::Log log("Tiri");
+            kt::Log log("Tiri");
             log.msg("%s", s);
          }
       #else
@@ -313,7 +313,7 @@ int fcmd_loadfile(lua_State *Lua)
    ERR error = ERR::Okay;
 
    if (auto path = lua_tostring(Lua, 1)) {
-      pf::Log log("loadfile");
+      kt::Log log("loadfile");
 
       log.branch("%s", path);
 
@@ -363,7 +363,7 @@ int fcmd_loadfile(lua_State *Lua)
             int len, i;
             char header[256];
             if (file->read(header, sizeof(header), &len) IS ERR::Okay) {
-               if (pf::startswith(LUA_COMPILED, std::string_view(header, sizeof(header)))) {
+               if (kt::startswith(LUA_COMPILED, std::string_view(header, sizeof(header)))) {
                   recompile = false; // Do not recompile that which is already compiled
                   for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
                   if (not header[i]) i++;
@@ -452,12 +452,12 @@ int fcmd_exec(lua_State *Lua)
       CSTRING error_msg = nullptr;
 
       {
-         pf::Log log("exec");
+         kt::Log log("exec");
          log.branch();
 
          // Check for the presence of a compiled header and skip it if present
 
-         if (pf::startswith(LUA_COMPILED, std::string_view(statement, len))) {
+         if (kt::startswith(LUA_COMPILED, std::string_view(statement, len))) {
             size_t i;
             for (i=sizeof(LUA_COMPILED)-1; statement[i]; i++);
             statement += i + 1;

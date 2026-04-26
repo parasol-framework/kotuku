@@ -109,7 +109,7 @@ static int processing_new(lua_State *Lua)
 
 static int processing_sleep(lua_State *Lua)
 {
-   pf::Log log;
+   kt::Log log;
    static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
    ERR error;
@@ -136,7 +136,7 @@ static int processing_sleep(lua_State *Lua)
       // Always collect your garbage before going to sleep.  Can be prevented with processing.stopCollector() if
       // absolutely necessary.
       if (lua_gc(Lua, LUA_GCISRUNNING, 0)) {
-         pf::Log log;
+         kt::Log log;
          log.traceBranch("Collecting garbage.");
          lua_gc(Lua, LUA_GCCOLLECT, 0);
       }
@@ -358,7 +358,7 @@ static MsgHandler *delayed_call_handle;
 
 static ERR msg_handler(APTR Meta, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   if (MsgSize != sizeof(int)) return pf::Log(__FUNCTION__).warning(ERR::Args);
+   if (MsgSize != sizeof(int)) return kt::Log(__FUNCTION__).warning(ERR::Args);
 
    auto lua = (lua_State *)Meta;
    auto prv = (prvTiri *)lua->script->ChildPrivate;
@@ -425,7 +425,7 @@ static const luaL_Reg processinglib_methods[] = {
 
 void register_processing_class(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Registering processing interface.");
 
    luaL_newmetatable(Lua, "Tiri.processing");

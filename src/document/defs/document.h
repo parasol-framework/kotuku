@@ -519,7 +519,7 @@ public:
          if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
       }
 
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.error("A font_index is -1."); // An index of -1 means a call to layout_font() is missing.
       return &glFonts[0];
    }
@@ -664,7 +664,7 @@ struct doc_clip {
       left(pLeft), top(pTop), right(pRight), bottom(pBottom), index(pIndex), transparent(pTransparent), name(pName) {
 
       if ((right - left > 20000) or (bottom - top > 20000)) {
-         pf::Log log;
+         kt::Log log;
          log.warning("%s set invalid clip dimensions: %.0f,%.0f,%.0f,%.0f", name.c_str(), left, top, right, bottom);
          right = left;
          bottom = top;
@@ -1285,7 +1285,7 @@ class extDocument : public objDocument {
    std::array<std::vector<FUNCTION>, size_t(DRT::END)> Triggers;
    struct template_arg_view {
       const XTag *Tag = nullptr;
-      const pf::vector<XMLAttrib> *Attribs = nullptr;
+      const kt::vector<XMLAttrib> *Attribs = nullptr;
    };
 
    std::vector<template_arg_view> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it

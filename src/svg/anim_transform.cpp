@@ -5,7 +5,7 @@ void anim_transform::perform()
 
    if ((end_time) and (!freeze)) return;
 
-   pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
+   kt::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
       vec::ResetMatrix(&matrix);
       switch(type) {

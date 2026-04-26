@@ -51,7 +51,7 @@ static XCursor XCursors[] = {
 
 static Cursor create_blank_cursor(void)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    Pixmap data_pixmap, mask_pixmap;
    XColor black = { 0, 0, 0, 0 };
    Window rootwindow;
@@ -80,7 +80,7 @@ static Cursor create_blank_cursor(void)
 
 static Cursor get_x11_cursor(PTC CursorID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (int16_t i=0; i < std::ssize(XCursors); i++) {
       if (XCursors[i].CursorID IS CursorID) return XCursors[i].XCursor;
@@ -115,7 +115,7 @@ HCURSOR GetWinCursor(PTC CursorID)
       if (winCursors[i].CursorID IS CursorID) return winCursors[i].WinCursor;
    }
 
-   pf::Log log;
+   kt::Log log;
    log.warning("Cursor #%d is not a recognised cursor ID.", int(CursorID));
    return winCursors[0].WinCursor;
 }
@@ -229,7 +229,7 @@ ERR GetCursorPos(double *X, double *Y)
       return ERR::Okay;
    }
    else {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       return log.warning(ERR::AccessObject);
    }
 }
@@ -257,7 +257,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 ERR GetRelativeCursorPos(OBJECTID SurfaceID, double *X, double *Y)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int absx, absy;
 
    if (get_surface_abs(SurfaceID, &absx, &absy, 0, 0) != ERR::Okay) {
@@ -327,7 +327,7 @@ Args
 
 ERR RestoreCursor(PTC Cursor, OBJECTID OwnerID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (auto pointer = (extPointer *)gfx::AccessPointer()) {
 /*
@@ -402,7 +402,7 @@ NothingDone
 
 ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID OwnerID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    extPointer *pointer;
    CRF flags;
 
@@ -700,7 +700,7 @@ InUse: A drag and drop operation has already been started.
 
 ERR StartCursorDrag(OBJECTID Source, int Item, CSTRING Datatypes, OBJECTID Surface)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Source: %d, Item: %d, Surface: %d", Source, Item, Surface);
 
@@ -730,7 +730,7 @@ ERR StartCursorDrag(OBJECTID Source, int Item, CSTRING Datatypes, OBJECTID Surfa
       if (Surface) {
          log.trace("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
 
-         pf::ScopedObjectLock surface(Surface);
+         kt::ScopedObjectLock surface(Surface);
          if (surface.granted()) {
             acMoveToPoint(*surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF::X|MTF::Y);
             acShow(*surface);
@@ -765,7 +765,7 @@ ResourceNotLocked: The pointer is not anchored to the given Surface.
 
 ERR UnlockCursor(OBJECTID SurfaceID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!SurfaceID) return log.warning(ERR::NullArgs);
 

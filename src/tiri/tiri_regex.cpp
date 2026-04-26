@@ -48,7 +48,7 @@ static ERR load_regex(void)
 {
 #ifndef KOTUKU_STATIC
    if (not modRegex) {
-      pf::SwitchContext ctx(glTiriContext);
+      kt::SwitchContext ctx(glTiriContext);
       if (objModule::load("regex", &modRegex, &RegexBase) != ERR::Okay) return ERR::InitModule;
    }
 #endif
@@ -202,7 +202,7 @@ static ERR match_none(int Index, std::vector<std::string_view> &Captures, size_t
 
 static int regex_new(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (auto error = load_regex(); error != ERR::Okay) {
       luaL_error(Lua, error, "Failed to load regex module");
@@ -466,7 +466,7 @@ static int regex_split(lua_State *Lua)
    auto text = luaL_checklstring(Lua, 1, &text_len);
    auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
-   pf::vector<std::string> parts;
+   kt::vector<std::string> parts;
    rx::Split(r->regex_obj, std::string_view(text, text_len), &parts, flags);
 
    // Create array with exact size
@@ -510,23 +510,23 @@ static int regex_test(lua_State *Lua)
 //********************************************************************************************************************
 // Property and method access: __index
 
-constexpr auto HASH_pattern   = pf::strhash("pattern");
-constexpr auto HASH_flags     = pf::strhash("flags");
-constexpr auto HASH_error     = pf::strhash("error");
-constexpr auto HASH_test      = pf::strhash("test");
-constexpr auto HASH_match     = pf::strhash("match");
-constexpr auto HASH_search    = pf::strhash("search");
-constexpr auto HASH_replace   = pf::strhash("replace");
-constexpr auto HASH_split     = pf::strhash("split");
-constexpr auto HASH_extract   = pf::strhash("extract");
-constexpr auto HASH_findFirst = pf::strhash("findFirst");
-constexpr auto HASH_findAll   = pf::strhash("findAll");
+constexpr auto HASH_pattern   = kt::strhash("pattern");
+constexpr auto HASH_flags     = kt::strhash("flags");
+constexpr auto HASH_error     = kt::strhash("error");
+constexpr auto HASH_test      = kt::strhash("test");
+constexpr auto HASH_match     = kt::strhash("match");
+constexpr auto HASH_search    = kt::strhash("search");
+constexpr auto HASH_replace   = kt::strhash("replace");
+constexpr auto HASH_split     = kt::strhash("split");
+constexpr auto HASH_extract   = kt::strhash("extract");
+constexpr auto HASH_findFirst = kt::strhash("findFirst");
+constexpr auto HASH_findAll   = kt::strhash("findAll");
 
 static int regex_get(lua_State *Lua)
 {
    if (auto r = (struct fregex *)luaL_checkudata(Lua, 1, "Tiri.regex")) {
       if (auto field = luaL_checkstring(Lua, 2)) {
-         const auto hash = pf::strhash(field);
+         const auto hash = kt::strhash(field);
 
          switch(hash) {
             case HASH_pattern: lua_pushstring(Lua, r->pattern.c_str()); return 1;
@@ -628,7 +628,7 @@ void register_regex_class(lua_State *Lua)
       { nullptr, nullptr }
    };
 
-   pf::Log(__FUNCTION__).trace("Registering regex interface");
+   kt::Log(__FUNCTION__).trace("Registering regex interface");
 
    // Create metatable
    luaL_newmetatable(Lua, "Tiri.regex");

@@ -115,7 +115,7 @@ class objDocument : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::DOCUMENT;
    static constexpr CSTRING CLASS_NAME = "Document";
 
-   using create = pf::Create<objDocument>;
+   using create = kt::Create<objDocument>;
 
    STRING   Description;            // A description of the document, provided by its author.
    STRING   Title;                  // The title of the document.
@@ -296,7 +296,7 @@ class objDocument : public Object {
 };
 
 namespace fl {
-   using namespace pf;
+   using namespace kt;
 
 constexpr FieldValue EventCallback(const FUNCTION &Value) { return FieldValue(FID_EventCallback, &Value); }
 constexpr FieldValue EventCallback(APTR Value) { return FieldValue(FID_EventCallback, Value); }

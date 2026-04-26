@@ -31,7 +31,7 @@ void anim_motion::precalc_angles()
 
 static ERR motion_callback(objVector *Vector, int Index, int Cmd, double X, double Y, anim_motion &Motion)
 {
-   Motion.points.push_back(pf::POINT<float> { float(X), float(Y) });
+   Motion.points.push_back(kt::POINT<float> { float(X), float(Y) });
    return ERR::Okay;
 };
 
@@ -45,7 +45,7 @@ void anim_motion::perform()
 
    if ((end_time) and (!freeze)) return;
 
-   pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
+   kt::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (!vector.granted()) return;
 
    // Note that the order of processing here is important, and matches the priorities documented for SVG's
@@ -188,7 +188,7 @@ void anim_motion::perform()
       else vec::Translate(matrix, b.x, b.y);
    }
    else { // CMODE::LINEAR
-      pf::POINT<double> final { a.x + ((b.x - a.x) * seek_to), a.y + ((b.y - a.y) * seek_to) };
+      kt::POINT<double> final { a.x + ((b.x - a.x) * seek_to), a.y + ((b.y - a.y) * seek_to) };
       vec::Translate(matrix, final.x, final.y);
    }
 }

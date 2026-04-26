@@ -13,7 +13,7 @@ struct struct_field {
    int  ArraySize = 0;    // Set if the field is an array
 
    uint32_t nameHash() {
-      if (!NameHash) NameHash = pf::strihash(Name);
+      if (!NameHash) NameHash = kt::strihash(Name);
       return NameHash;
    }
 

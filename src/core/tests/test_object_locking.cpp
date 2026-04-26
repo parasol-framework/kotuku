@@ -14,7 +14,7 @@ This program tests the locking of private objects between threads.
 #include <kotuku/vector.hpp>
 #include <kotuku/strings.hpp>
 
-using namespace pf;
+using namespace kt;
 
 CSTRING ProgName = "ObjectLocking";
 static volatile OBJECTPTR glConfig = nullptr;
@@ -34,7 +34,7 @@ struct thread_info{
 
 static void * thread_entry(void *Arg)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    ERR error;
 
    auto info = (thread_info *)Arg;
@@ -93,8 +93,8 @@ static void * thread_entry(void *Arg)
 
 int main(int argc, CSTRING *argv)
 {
-   pf::Log log;
-   pf::vector<std::string> *args;
+   kt::Log log;
+   kt::vector<std::string> *args;
 
    if (auto msg = init_kotuku(argc, argv)) {
       printf("%s\n", msg);

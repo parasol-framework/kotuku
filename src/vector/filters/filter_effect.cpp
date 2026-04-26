@@ -34,7 +34,7 @@ static ERR FILTEREFFECT_Free(extFilterEffect *Self)
 
 static ERR FILTEREFFECT_Init(extFilterEffect *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->Filter) return log.warning(ERR::UnsupportedOwner);
 
@@ -202,7 +202,7 @@ This field is the SVG equivalent to `in2`.  It does nothing if the effect does n
 
 static ERR FILTEREFFECT_SET_Mix(extFilterEffect *Self, extFilterEffect *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Value IS Self) return log.warning(ERR::InvalidValue);
 

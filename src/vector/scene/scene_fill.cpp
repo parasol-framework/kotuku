@@ -548,7 +548,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
          if ((page_width < 1) or (page_height < 1) or (page_width > 8192) or (page_height > 8192)) {
             // Dimensions in excess of reasonable values can occur if the user is confused over the application
             // of bounding-box values that are being scaled.
-            pf::Log log(__FUNCTION__);
+            kt::Log log(__FUNCTION__);
             log.warning("Invalid pattern dimensions of %dx%d detected.", page_width, page_height);
             page_width  = 1;
             page_height = 1;

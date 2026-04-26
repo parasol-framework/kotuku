@@ -55,7 +55,7 @@ static ankerl::unordered_dense::map<uint32_t, std::string> glEventNames;
 
 void free_events(void)
 {
-   pf::Log log("Core");
+   kt::Log log("Core");
 
    log.function("Freeing the event list.");
 
@@ -97,16 +97,16 @@ NullArgs
 
 ERR BroadcastEvent(APTR Event, int EventSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
-   if ((!Event) or ((size_t)EventSize < sizeof(pf::Event))) return ERR::NullArgs;
+   if ((!Event) or ((size_t)EventSize < sizeof(kt::Event))) return ERR::NullArgs;
 
-   int groupmask = 1<<((((pf::Event *)Event)->EventID>>56) & 0xff);
+   int groupmask = 1<<((((kt::Event *)Event)->EventID>>56) & 0xff);
 
    if (glEventMask & groupmask) {
       log.trace("Broadcasting event $%.8x%.8x",
-         (uint32_t)(((pf::Event *)Event)->EventID>>32 & 0xffffffff),
-         (uint32_t)(((pf::Event *)Event)->EventID));
+         (uint32_t)(((kt::Event *)Event)->EventID>>32 & 0xffffffff),
+         (uint32_t)(((kt::Event *)Event)->EventID));
       SendMessage(MSGID::EVENT, MSF::NIL, Event, EventSize);
    }
 
@@ -143,7 +143,7 @@ large: The event ID is returned as a 64-bit integer.
 
 int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Group IS EVG::NIL) return 0;
 
@@ -199,7 +199,7 @@ AllocMemory
 
 ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Callback) or (!EventID) or (!Handle)) return ERR::NullArgs;
 
@@ -262,7 +262,7 @@ ptr Handle: An event handle returned from ~SubscribeEvent()
 
 void UnsubscribeEvent(APTR Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Handle) return;
    if (!glEventList) return; // All events have already been freed (i.e. Core is closing)
@@ -300,11 +300,11 @@ void UnsubscribeEvent(APTR Handle)
 
 ERR msg_event(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
-   if ((!Message) or ((size_t)MsgSize < sizeof(pf::Event))) return ERR::Okay;
+   if ((!Message) or ((size_t)MsgSize < sizeof(kt::Event))) return ERR::Okay;
 
-   pf::Event *event_msg = (pf::Event *)Message;
+   kt::Event *event_msg = (kt::Event *)Message;
 
    log.msg(VLF::DETAIL|VLF::BRANCH, "Event $%.8x%8x has been received.", (int)((event_msg->EventID>>32)& 0xffffffff),
       (int)(event_msg->EventID & 0xffffffff));
@@ -322,9 +322,9 @@ restart:
 
          glEventListAltered = false;
 
-         pf::ScopedObjectLock lock(event->ContextID, 3000);
+         kt::ScopedObjectLock lock(event->ContextID, 3000);
          if (lock.granted()) {
-            pf::SwitchContext ctx(lock.obj);
+            kt::SwitchContext ctx(lock.obj);
             event->Callback(Message, MsgSize, event->CallbackMeta);
          }
 

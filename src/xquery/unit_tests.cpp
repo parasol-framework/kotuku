@@ -24,7 +24,7 @@ static int pass_count = 0;
 static int fail_count = 0;
 
 static void test_assert(bool Condition, CSTRING TestName, CSTRING Message) {
-   pf::Log log("XQueryTests");
+   kt::Log log("XQueryTests");
    test_count++;
    if (Condition) {
       pass_count++;
@@ -197,7 +197,7 @@ static ERR search_query_text(extXQuery &Query, extXML *XML, std::string_view Sta
 // XQueryProlog API Tests
 
 static void test_prolog_api() {
-   pf::Log log("PrologTests");
+   kt::Log log("PrologTests");
 
    // Test 1: Create empty prolog
    {
@@ -306,7 +306,7 @@ static const char *token_type_name(XPathTokenType Type)
 
 static void test_tokeniser_prolog_keywords()
 {
-   pf::Log log("TokeniserTests");
+   kt::Log log("TokeniserTests");
 
    // Progress marker (2024-10-17): capturing current behaviour before adding DECLARE/FUNCTION/VARIABLE tokens.
 
@@ -412,7 +412,7 @@ static void test_tokeniser_prolog_keywords()
 
 static void test_tokeniser_map_array_lookup()
 {
-   pf::Log log("TokeniserMapArray");
+   kt::Log log("TokeniserMapArray");
 
    XPathTokeniser tokeniser;
 
@@ -452,7 +452,7 @@ static void test_tokeniser_map_array_lookup()
 
 static void test_parser_operator_cache_population()
 {
-   pf::Log log("OperatorTests");
+   kt::Log log("OperatorTests");
 
    XPathTokeniser tokeniser;
    auto token_block = tokeniser.tokenize("1 + 2 * 3 and not(-$flag)");
@@ -512,7 +512,7 @@ static void test_parser_operator_cache_population()
 
 static void test_resolve_variable_callback()
 {
-   pf::Log log("ResolveVariableTests");
+   kt::Log log("ResolveVariableTests");
 
    {
       extXQuery query;
@@ -649,7 +649,7 @@ static void test_resolve_variable_callback()
    }
 
    {
-      auto xml = pf::Create<objXML>({ fl::Statement("<root><item id='a'/><item id='b'/><item id='c'/></root>") });
+      auto xml = kt::Create<objXML>({ fl::Statement("<root><item id='a'/><item id='b'/><item id='c'/></root>") });
       bool xml_ok = xml.ok() and (*xml);
       test_assert(xml_ok, "ResolveVariable search XML setup", "Search integration test requires a valid XML document");
 
@@ -715,7 +715,7 @@ static void test_resolve_variable_callback()
 
 static void test_registered_function_qname_normalisation()
 {
-   pf::Log log("RegisteredFunctionTests");
+   kt::Log log("RegisteredFunctionTests");
 
    {
       extXQuery query;
@@ -770,7 +770,7 @@ static void test_registered_function_qname_normalisation()
 
 static void test_parser_map_array_lookup_nodes()
 {
-   pf::Log log("ParserMapArrayNodes");
+   kt::Log log("ParserMapArrayNodes");
 
    {
       XPathTokeniser tokeniser;
@@ -835,7 +835,7 @@ static void test_parser_map_array_lookup_nodes()
 
 static void test_prolog_in_xpath()
 {
-   pf::Log log("PrologInXPath");
+   kt::Log log("PrologInXPath");
 
    // Test 1: Check if prolog structure can be accessed
    {
@@ -888,7 +888,7 @@ static void test_prolog_in_xpath()
 
 static void run_unit_tests(CSTRING Options, int &Passed, int &Total)
 {
-   pf::Log log("XQueryTests");
+   kt::Log log("XQueryTests");
    std::string_view options = Options ? std::string_view(Options) : std::string_view();
 
    test_count = 0;

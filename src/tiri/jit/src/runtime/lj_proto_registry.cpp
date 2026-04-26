@@ -108,7 +108,7 @@ static fprototype * alloc_prototype(std::initializer_list<TiriType> ResultTypes,
 ERR reg_func_prototype(std::string_view Name, std::initializer_list<TiriType> ResultTypes,
    std::initializer_list<TiriType> ParamTypes, FProtoFlags Flags)
 {
-   ProtoKey key{ 0, pf::strhash(Name) };
+   ProtoKey key{ 0, kt::strhash(Name) };
 
    { // Fast path: check under shared lock first (common case after first script init)
       std::shared_lock read_lock(glRegistryMutex);
@@ -128,7 +128,7 @@ ERR reg_func_prototype(std::string_view Name, std::initializer_list<TiriType> Re
 ERR reg_iface_prototype(std::string_view Interface, std::string_view Method, std::initializer_list<TiriType> ResultTypes,
    std::initializer_list<TiriType> ParamTypes, FProtoFlags Flags)
 {
-   ProtoKey key{ pf::strhash(Interface), pf::strhash(Method) };
+   ProtoKey key{ kt::strhash(Interface), kt::strhash(Method) };
 
    {
       std::shared_lock read_lock(glRegistryMutex);
@@ -147,12 +147,12 @@ ERR reg_iface_prototype(std::string_view Interface, std::string_view Method, std
 
 const fprototype * get_prototype(std::string_view Interface, std::string_view Method)
 {
-   return get_prototype_by_hash(pf::strhash(Interface), pf::strhash(Method));
+   return get_prototype_by_hash(kt::strhash(Interface), kt::strhash(Method));
 }
 
 const fprototype * get_func_prototype(std::string_view Name)
 {
-   return get_func_prototype_by_hash(pf::strhash(Name));
+   return get_func_prototype_by_hash(kt::strhash(Name));
 }
 
 //********************************************************************************************************************

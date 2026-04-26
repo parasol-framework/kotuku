@@ -52,7 +52,7 @@ Name: System
 
 #include "defs.h"
 
-using namespace pf;
+using namespace kt;
 
 //********************************************************************************************************************
 
@@ -102,7 +102,7 @@ int: A unique ID matching the requested type will be returned.  This function ca
 
 int AllocateID(IDTYPE Type)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Type IS IDTYPE::MESSAGE) {
       auto id = ++glMessageIDCount;
@@ -591,7 +591,7 @@ ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR
 ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #endif
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Note that FD's < -1 are permitted for the registering of functions marked with RFD::ALWAYS_CALL
 
@@ -664,7 +664,7 @@ NullArgs:
 
 ERR SetResourcePath(RP PathType, CSTRING Path)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.function("Type: %d, Path: %s", int(PathType), Path);
 
@@ -739,7 +739,7 @@ large: Returns the previous value of the `Resource`.  If the `Resource` value is
 
 int64_t SetResource(RES Resource, int64_t Value)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
 #ifdef __unix__
    static int16_t privileged = 0;
@@ -855,7 +855,7 @@ SystemLocked:
 
 ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Interval) or (not Callback)) return log.warning(ERR::NullArgs);
    if (Interval < 0) return log.warning(ERR::Args);
@@ -918,7 +918,7 @@ Search:
 
 ERR UpdateTimer(APTR Subscription, double Interval)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Subscription) return log.warning(ERR::NullArgs);
 

@@ -149,13 +149,13 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 void XPathEvaluator::record_error(std::string_view Message, bool Force)
 {
    expression_unsupported = true;
-   pf::Log("XPath").warning("%.*s", (int)Message.size(), Message.data());
+   kt::Log("XPath").warning("%.*s", (int)Message.size(), Message.data());
    if (Force or parse_context->error_msg.empty()) parse_context->error_msg.assign(Message);
 }
 
 void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Node, bool Force)
 {
-   pf::Log log("XPath");
+   kt::Log log("XPath");
 
    expression_unsupported = true;
 

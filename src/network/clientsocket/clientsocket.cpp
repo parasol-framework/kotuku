@@ -26,7 +26,7 @@ static CSTRING clientsocket_state(NTC Value);
 
 static void disconnect(extClientSocket *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Disconnecting socket handle %d", Self->Handle.int_value());
 
@@ -47,7 +47,7 @@ static void disconnect(extClientSocket *Self)
 
 static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t BufferSize, size_t *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!BufferSize) return ERR::Okay;
 
@@ -175,7 +175,7 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
 
 static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocket *client)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    if (!client->Client) return;
    auto Server = (extNetSocket *)(client->Client->Owner);
 
@@ -184,7 +184,7 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
       return;
    }
 
-   pf::ScopedObjectLock lock(client); // Acquire a lock in case a callback tries to free the object.
+   kt::ScopedObjectLock lock(client); // Acquire a lock in case a callback tries to free the object.
 
 #ifndef DISABLE_SSL
    #ifdef _WIN32
@@ -252,7 +252,7 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
    auto error = ERR::Okay;
    if (Server->Incoming.defined()) {
       if (Server->Incoming.isC()) {
-         pf::SwitchContext context(Server->Incoming.Context);
+         kt::SwitchContext context(Server->Incoming.Context);
          auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))Server->Incoming.Routine;
          error = routine(Server, client, Server->Incoming.Meta);
       }
@@ -284,7 +284,7 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
 
 static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *ClientSocket)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto Server = (extNetSocket *)(ClientSocket->Client->Owner);
 
    if (Server->Terminating) return;
@@ -346,7 +346,7 @@ static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *Cli
       if (Server->Outgoing.defined()) {
          if (Server->Outgoing.isC()) {
             auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))(Server->Outgoing.Routine);
-            pf::SwitchContext context(Server->Outgoing.Context);
+            kt::SwitchContext context(Server->Outgoing.Context);
             error = routine(Server, ClientSocket, Server->Outgoing.Meta);
          }
          else if (Server->Outgoing.isScript()) {
@@ -390,7 +390,7 @@ Deactivate: Disconnects the socket and changes the #State to `DISCONNECTED`.
 
 static ERR CLIENTSOCKET_Deactivate(extClientSocket *Self)
 {
-   pf::Log log;
+   kt::Log log;
    log.branch();
    disconnect(Self);
    return ERR::Okay;
@@ -400,7 +400,7 @@ static ERR CLIENTSOCKET_Deactivate(extClientSocket *Self)
 
 static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
 #ifndef DISABLE_SSL
    sslDisconnect(Self);
@@ -409,7 +409,7 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
    disconnect(Self);
 
    if (Self->Client) { // If undefined, ClientSocket was never initialised
-      pf::ScopedObjectLock lock(Self->Client);
+      kt::ScopedObjectLock lock(Self->Client);
       if (lock.granted()) {
          if (Self->Prev) {
             Self->Prev->Next = Self->Next;
@@ -437,11 +437,11 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 
 static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->Client) return log.warning(ERR::FieldNotSet);
 
-   pf::ScopedObjectLock lock(Self->Client);
+   kt::ScopedObjectLock lock(Self->Client);
    if (!lock.granted()) return ERR::Lock;
 
 #ifdef __linux__
@@ -555,7 +555,7 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 {
-   pf::Log log;
+   kt::Log log;
    if ((!Args) or (!Args->Buffer)) return log.error(ERR::NullArgs);
    if (Self->Handle.is_invalid()) {
       // Lack of a handle means that disconnection has already been processed, so the client code
@@ -590,7 +590,7 @@ governed by the @NetSocket.MsgLimit value.
 
 static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    // Note that this code is essentially a copy of the NetSocket write code.
 
@@ -666,7 +666,7 @@ client sockets.  Each @ClientSocket carries its own independent State value for 
 
 static ERR CS_SET_State(extClientSocket *Self, NTC Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Value != Self->State) {
       auto server = (extNetSocket *)(Self->Client->Owner);
@@ -677,7 +677,7 @@ static ERR CS_SET_State(extClientSocket *Self, NTC Value)
 
       if (server->Feedback.defined()) {
          if (server->Feedback.isC()) {
-            pf::SwitchContext context(server->Feedback.Context);
+            kt::SwitchContext context(server->Feedback.Context);
             auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))server->Feedback.Routine;
             if (routine) routine(server, Self, Self->State, server->Feedback.Meta);
          }

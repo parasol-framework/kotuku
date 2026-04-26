@@ -3,7 +3,7 @@ void copy_bkgd(const SURFACELIST &, int, int, int, ClipRectangle &, extBitmap *,
 
 ERR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, int index, int X, int Y, int Width, int Height, EXF Flags)
 {
-   pf::Log log("expose_surface");
+   kt::Log log("expose_surface");
    int i, j;
    bool skip;
    OBJECTID parent_id;
@@ -87,7 +87,7 @@ ERR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, int index, int 
       if (cursor < int(List.size())) {
          if ((List[cursor].SurfaceID) and (List[cursor].Bottom < abs.Bottom) and (List[cursor].Bottom > abs.Top) and
              (List[cursor].Right > abs.Left) and (List[cursor].Left < abs.Right)) {
-            pf::Log log("expose_surface");
+            kt::Log log("expose_surface");
             log.traceBranch("Splitting cursor.");
             _expose_surface(SurfaceID, List, index, abs.Left, abs.Top, abs.Right, List[cursor].Bottom, EXF::CURSOR_SPLIT|EXF::ABSOLUTE|Flags);
             _expose_surface(SurfaceID, List, index, abs.Left, List[cursor].Bottom, abs.Right, abs.Bottom, EXF::CURSOR_SPLIT|EXF::ABSOLUTE|Flags);
@@ -202,7 +202,7 @@ ERR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, int index, int 
          while ((i < int(List.size())) and (List[i].BitmapID IS List[index].BitmapID)) i++;
       }
 
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.traceBranch("Redraw volatiles from idx %d, area %dx%d,%dx%d", i, abs.Left, abs.Top, abs.Right - abs.Left, abs.Bottom - abs.Top);
 
       if (i < tlVolatileIndex) i = tlVolatileIndex; // Volatile index allows the starting point to be specified
@@ -244,7 +244,7 @@ ERR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, int index, int 
          if ((List[i].Right > abs.Left) and (List[i].Bottom > abs.Top) and
              (List[i].Left < abs.Right) and (List[i].Top < abs.Bottom)) {
 
-            pf::Log log(__FUNCTION__);
+            kt::Log log(__FUNCTION__);
             log.traceBranch("Redrawing/Exposing cursor.");
 
             if ((List[i].Flags & RNF::COMPOSITE) IS RNF::NIL) { // Composites never require redrawing because they are not completely volatile
@@ -291,7 +291,7 @@ the surface area first).</li>
 
 ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    // If the Surface object is invisible, return immediately
 
@@ -540,7 +540,7 @@ static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drw::InvalidateRegi
 
 void move_layer(extSurface *Self, int X, int Y)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // If the coordinates are unchanged, do nothing
 
@@ -640,7 +640,7 @@ void move_layer(extSurface *Self, int X, int Y)
 void prepare_background(extSurface *Self, const SURFACELIST &List, int Index, extBitmap *DestBitmap,
    const ClipRectangle &clip, int8_t Stage)
 {
-   pf::Log log("prepare_bkgd");
+   kt::Log log("prepare_bkgd");
 
    log.traceBranch("%d Position: %dx%d,%dx%d", List[Index].SurfaceID, clip.Left, clip.Top, clip.Right - clip.Left, clip.Bottom - clip.Top);
 
@@ -725,7 +725,7 @@ void prepare_background(extSurface *Self, const SURFACELIST &List, int Index, ex
 void copy_bkgd(const SURFACELIST &List, int Index, int End, int Master, ClipRectangle &Area,
    extBitmap *DestBitmap, extBitmap *SrcBitmap, int16_t Opacity, bool Pervasive)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Scan for overlapping parent/sibling regions and avoid them
 
