@@ -1067,6 +1067,9 @@ if(WIN32 AND NOT DISABLE_CPACK)
 
    # Add custom SFX generation target if 7-Zip is available
    if(SEVENZIP_EXECUTABLE)
+      set(SFX_STAGING_DIR "${CMAKE_BINARY_DIR}/sfx_temp")
+      set(SFX_PACKAGE_DIR "Kotuku-${PROJECT_VERSION}")
+
       # Create SFX configuration file
       set(SFX_CONFIG_FILE "${CMAKE_BINARY_DIR}/sfx_config.txt")
       file(WRITE ${SFX_CONFIG_FILE}
@@ -1077,20 +1080,23 @@ ExtractTitle=\"Extracting Kotuku...\"
 ExtractDialogText=\"Please wait while Kotuku is extracted.\"
 InstallPath=\"%ProgramFiles%\\\\Kotuku\"
 OverwriteMode=2
-ExecuteFile=\"origo.exe\"
+ExecuteFile=\"${SFX_PACKAGE_DIR}\\\\origo.exe\"
 ExecuteParameters=\"\"
 ;!@InstallEnd@!
 ")
 
       add_custom_target(package_sfx
          COMMAND ${CMAKE_COMMAND} -E echo "Creating Self-Extracting Archive..."
-         COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_BINARY_DIR}/sfx_temp"
-         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/sfx_temp"
-         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_INSTALL_PREFIX}" "${CMAKE_BINARY_DIR}/sfx_temp"
-         COMMAND ${SEVENZIP_EXECUTABLE} a -t7z -mx9 "${CMAKE_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}-sfx.exe" "${CMAKE_BINARY_DIR}/sfx_temp/*" -sfx
-         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+         COMMAND ${CMAKE_COMMAND} -E remove_directory "${SFX_STAGING_DIR}"
+         COMMAND ${CMAKE_COMMAND} -E make_directory "${SFX_STAGING_DIR}/${SFX_PACKAGE_DIR}"
+         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_INSTALL_PREFIX}" "${SFX_STAGING_DIR}/${SFX_PACKAGE_DIR}"
+         COMMAND ${CMAKE_COMMAND} -E chdir "${SFX_STAGING_DIR}"
+            ${SEVENZIP_EXECUTABLE} a -t7z -mx9 "${CMAKE_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}-sfx.exe"
+            "${SFX_PACKAGE_DIR}" -sfx
+         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
          COMMENT "Creating Self-Extracting Archive: ${CPACK_PACKAGE_FILE_NAME}-sfx.exe"
          DEPENDS install
+         VERBATIM
       )
 
       message(STATUS "SFX target 'package_sfx' created - use 'cmake --build . --target package_sfx' to generate SFX")
