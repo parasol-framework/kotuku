@@ -33,6 +33,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <katana.h>
 #include <math.h>
 #include "../link/base64.h"
+#include "../xml/uri_utils.h"
 
 using namespace kt;
 

@@ -81,6 +81,11 @@ static ARF parse_aspect_ratio(std::string_view Value)
 {
    Value.remove_prefix(std::min(Value.find_first_not_of(" \t\r\n"), Value.size()));
 
+   if (startswith("defer", Value)) {
+      Value.remove_prefix(5);
+      Value.remove_prefix(std::min(Value.find_first_not_of(" \t\r\n"), Value.size()));
+   }
+
    if (iequals("none", Value)) return ARF::NONE;
 
    ARF flags = ARF::NIL;
@@ -97,6 +102,7 @@ static ARF parse_aspect_ratio(std::string_view Value)
    if (startswith("meet", Value)) { flags |= ARF::MEET; }
    else if (startswith("slice", Value)) { flags |= ARF::SLICE; }
 
+   if (flags IS ARF::NIL) return ARF::X_MID|ARF::Y_MID|ARF::MEET;
    return flags;
 }
 
@@ -1933,6 +1939,81 @@ ERR svgState::process_tag(XTag &Tag, XTag &ParentTag, OBJECTPTR Parent, objVecto
 //********************************************************************************************************************
 // The Width/Height can be zero if the original image dimensions are desired.
 
+static const std::string * xml_base_attrib(const XTag &Tag)
+{
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
+      if (iequals(Tag.Attribs[a].Name, "xml:base")) return &Tag.Attribs[a].Value;
+   }
+   return nullptr;
+}
+
+//********************************************************************************************************************
+
+static bool has_kotuku_volume(const std::string &Path)
+{
+   auto volume_end = Path.find(':');
+   if ((volume_end IS std::string::npos) or (volume_end IS 0)) return false;
+   if (Path.find_first_of("/\\", 0, volume_end) != std::string::npos) return false;
+
+   auto volume = Path.substr(0, volume_end + 1);
+
+   static std::mutex cache_lock;
+   static ankerl::unordered_dense::map<std::string, bool> volume_cache;
+
+   {
+      const std::lock_guard<std::mutex> lock(cache_lock);
+      if (auto cached = volume_cache.find(volume); cached != volume_cache.end()) return cached->second;
+   }
+
+   // AnalysePath() confirms that the leading "<volume>:" prefix names a registered Kotuku volume.
+   LOC type = LOC::NIL;
+   const bool is_volume = (AnalysePath(volume.c_str(), &type) IS ERR::Okay) and (type IS LOC::VOLUME);
+
+   const std::lock_guard<std::mutex> lock(cache_lock);
+   volume_cache[volume] = is_volume;
+   return is_volume;
+}
+
+//********************************************************************************************************************
+
+static std::string resolve_image_href(extSVG *Self, XTag &Tag, const std::string &Path)
+{
+   // Embedded, Kotuku volume and already absolute image references are complete as provided.
+   if (Path.empty() or Path.starts_with("data:") or has_kotuku_volume(Path) or xml::uri::is_absolute_uri(Path)) {
+      return Path;
+   }
+
+   // Walk from the image tag to the root so inherited xml:base declarations can be applied in document order.
+   std::vector<XTag *> chain;
+   XTag *scan = &Tag;
+   while (scan) {
+      chain.push_back(scan);
+      if (!scan->ParentID or (!Self->XML)) break;
+
+      XTag *parent = nullptr;
+      if (Self->XML->getTag(scan->ParentID, &parent) != ERR::Okay) break;
+      scan = parent;
+   }
+
+   std::string base;
+   if (auto doc_folder = folder(Self)) base = xml::uri::normalise_uri_separators(doc_folder);
+
+   // xml:base values are themselves relative to the active base URI at the point where they are declared.
+   for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+      if (auto attrib = xml_base_attrib(**it)) {
+         if (base.empty()) base = *attrib;
+         else base = xml::uri::resolve_relative_uri(*attrib, base);
+         base = xml::uri::normalise_uri_separators(std::move(base));
+      }
+   }
+
+   // No base URI is available for statement-only SVG content, so keep the original relative path.
+   if (base.empty()) return Path;
+   return xml::uri::resolve_relative_uri(Path, base);
+}
+
+//********************************************************************************************************************
+
 static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, double Width = 0, double Height = 0)
 {
    kt::Log log(__FUNCTION__);
@@ -2049,7 +2130,7 @@ void svgState::proc_def_image(XTag &Tag) noexcept
 
       if ((!id.empty()) and (!src.empty())) {
          objPicture *pic;
-         if (load_pic(Self, src, &pic, width, height) IS ERR::Okay) {
+         if (load_pic(Self, resolve_image_href(Self, Tag, src), &pic, width, height) IS ERR::Okay) {
             image->set(FID_Picture, pic);
             if (InitObject(image) IS ERR::Okay) {
                if (!Self->Cloning) {
@@ -2127,7 +2208,7 @@ ERR svgState::proc_image(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexc
       // do so would be inconsistent with all other scene graph members being true path-based objects.
 
       objPicture *pic = nullptr;
-      load_pic(Self, src, &pic, width, height);
+      load_pic(Self, resolve_image_href(Self, Tag, src), &pic, width, height);
 
       if (pic) {
          if (auto image = objVectorImage::create::global(

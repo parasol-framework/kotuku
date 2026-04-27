@@ -470,7 +470,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
    objXML *xml;
    ERR error = ERR::Okay;
    if (NewLocalObject(CLASSID::XML, &xml) IS ERR::Okay) {
-      xml->setFlags(XMF::NAMESPACE_AWARE);
+      xml->setFlags(XMF::NAMESPACE_AWARE|XMF::WELL_FORMED);
 
       objTask *task = CurrentTask();
       std::string working_path;
