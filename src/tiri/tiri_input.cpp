@@ -326,7 +326,7 @@ static void key_event(evKey *, int, struct finput *);
          input->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
       }
       else {
-         lua_getglobal(Lua, (STRING)lua_tostring(Lua, 1));
+         lua_getglobal(Lua, (STRING)lua_tostring(Lua, 4));
          input->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
       }
 

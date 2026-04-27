@@ -185,7 +185,7 @@ static ERR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, int Va
       case LUA_TSTRING: {
          OBJECTID id;
          if (FindObject(lua_tostring(Lua, ValueIndex), CLASSID::NIL, FOF::NIL, &id) IS ERR::Okay) {
-            Object->set(Field->FieldID, id);
+            return Object->set(Field->FieldID, id);
          }
          else {
             kt::Log log;
@@ -417,7 +417,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, uint32_t FieldHash, i
                OBJECTPTR ptr_obj;
                if (obj_ref->ptr) return target->set(field->FieldID, obj_ref->ptr);
                else if ((ptr_obj = (OBJECTPTR)access_object(obj_ref))) {
-                  ERR error = target->set(field->FieldID, obj_ref->ptr);
+                  ERR error = target->set(field->FieldID, ptr_obj);
                   release_object(obj_ref);
                   return error;
                }
@@ -486,7 +486,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, uint32_t FieldHash, i
             case LUA_TSTRING: {
                OBJECTID id;
                if (FindObject(lua_tostring(Lua, ValueIndex), CLASSID::NIL, FOF::NIL, &id) IS ERR::Okay) {
-                  target->set(field->FieldID, id);
+                  return target->set(field->FieldID, id);
                }
                else {
                   log.warning("Object \"%s\" could not be found.", lua_tostring(Lua, ValueIndex));

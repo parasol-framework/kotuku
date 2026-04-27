@@ -585,3 +585,18 @@ end
       assert(rejected, f'Expected error for arg type {type(arg)}, got none')
    end
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify that async.action() passes user arguments after the fixed Object, Action, Callback and Key parameters.
+
+@Test(priority=28) function ActionArgumentOffset()
+   script = obj.new('script', { statement=[[ ]] })
+
+   async.action(script, 'SetKey', function(ActionID, Object, Error, Key)
+      check Error
+   end, 123, 'AsyncName', 'AsyncValue')
+
+   check async.wait(script, 3.0)
+
+   assert(script.getKey('AsyncName') is 'AsyncValue', 'async.action() did not pass SetKey arguments correctly.')
+end

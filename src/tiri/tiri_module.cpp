@@ -183,7 +183,6 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
    bool process_constants = false;
    if (not glLoadedConstants.contains(Module)) {
       process_constants = true;
-      glLoadedConstants.insert(Module);
    }
 
    if (process_constants) {
@@ -197,6 +196,8 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
          else error = ERR::CreateObject;
 
       AdjustLogLevel(-1);
+
+      if (error IS ERR::Okay) glLoadedConstants.insert(Module);
    }
 
    return error;
@@ -306,18 +307,25 @@ static int module_load(lua_State *Lua)
    }
 
    if (auto loaded_mod = objModule::create::global(fl::Name(modname))) {
+      ERR defs_error = ERR::Okay;
       {
          std::unique_lock lock(glConstantMutex); // Required to update the constant registry
 
          bool process_constants = false;
          if (not glLoadedConstants.contains(modname)) {
             process_constants = true;
-            glLoadedConstants.insert(modname);
          }
 
          if (process_constants) {
-            process_module_defs(Lua->script, loaded_mod, modname);
+            if ((defs_error = process_module_defs(Lua->script, loaded_mod, modname)) IS ERR::Okay) {
+               glLoadedConstants.insert(modname);
+            }
          }
+      }
+
+      if (defs_error != ERR::Okay) {
+         luaL_error(Lua, defs_error, "Failed to process definitions for the %s module.", modname);
+         return 0;
       }
 
       new_module(Lua, loaded_mod);
@@ -447,7 +455,11 @@ static int module_call(lua_State *Lua)
    APTR function = mod->Functions[index].Address;
    FUNCTION func;
    ffi_cif cif;
-   ffi_arg rc;
+   union {
+      ffi_arg Arg;
+      double  Double;
+      int64_t Int64;
+   } rc = { };
    ffi_type *arg_types[MAX_MODULE_ARGS];
    void * arg_values[MAX_MODULE_ARGS];
    int in = 0;
@@ -636,9 +648,10 @@ static int module_call(lua_State *Lua)
 
          if (lua_type(Lua, i) IS LUA_TARRAY) {
             GCarray *arr = arrayV(Lua, i);
-            arg_values[in] = arr->arraydata();
+            ((APTR *)(buffer + j))[0] = arr->arraydata();
+            arg_values[in] = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
-            j += sizeof(APTR); // Dummy increment
+            j += sizeof(APTR);
 
             if (args[i+1].Type & (FD_BUFSIZE|FD_ARRAYSIZE)) {
                if (args[i+1].Type & FD_RESULT) {
@@ -897,17 +910,17 @@ static int module_call(lua_State *Lua)
 
       // Process the result based on the return type
       if (restype & FD_STR) {
-         lua_pushstring(Lua, (CSTRING)rc);
+         lua_pushstring(Lua, (CSTRING)rc.Arg);
       }
       else if (restype & FD_OBJECT) {
-         if ((OBJECTPTR)rc) {
-            push_object(Lua, (OBJECTPTR)rc,  (restype & FD_ALLOC) ? false : true);
+         if ((OBJECTPTR)rc.Arg) {
+            push_object(Lua, (OBJECTPTR)rc.Arg,  (restype & FD_ALLOC) ? false : true);
          }
          else lua_pushnil(Lua);
       }
       else if (restype & FD_PTR) {
          if (restype & FD_STRUCT) {
-            if (auto structptr = (APTR)rc) {
+            if (auto structptr = (APTR)rc.Arg) {
                ERR error;
                // A structure marked as a resource will be returned as an accessible struct pointer.  This is typically
                // needed when a struct's use is beyond informational and can be passed to other functions.
@@ -930,27 +943,27 @@ static int module_call(lua_State *Lua)
             else lua_pushnil(Lua);
          }
          else {
-            if ((APTR)rc) lua_pushlightuserdata(Lua, (APTR)rc);
+            if ((APTR)rc.Arg) lua_pushlightuserdata(Lua, (APTR)rc.Arg);
             else lua_pushnil(Lua);
          }
       }
       else if (restype & (FD_INT|FD_ERROR)) {
          if (restype & FD_UNSIGNED) {
-            lua_pushnumber(Lua, (uint32_t)rc);
+            lua_pushnumber(Lua, (uint32_t)rc.Arg);
          }
          else {
-            lua_pushinteger(Lua, (int)rc);
-            if ((restype & FD_ERROR) and (rc >= int(ERR::ExceptionThreshold)) and in_try_immediate_scope(Lua)) {
+            lua_pushinteger(Lua, (int)rc.Arg);
+            if ((restype & FD_ERROR) and (rc.Arg >= int(ERR::ExceptionThreshold)) and in_try_immediate_scope(Lua)) {
                // Scope isolation: Only throw exceptions for direct calls within the try block.
-               luaL_error(Lua, ERR(rc));
+               luaL_error(Lua, ERR(rc.Arg));
             }
          }
       }
       else if (restype & FD_DOUBLE) {
-         lua_pushnumber(Lua, (double)rc);
+         lua_pushnumber(Lua, rc.Double);
       }
       else if (restype & FD_INT64) {
-         lua_pushnumber(Lua, (int64_t)rc);
+         lua_pushnumber(Lua, rc.Int64);
       }
       // Void functions don't push anything to the stack
    }
