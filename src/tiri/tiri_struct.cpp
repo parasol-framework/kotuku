@@ -181,7 +181,7 @@ void destroy_struct_cpp_strings(const struct_record &StructDef, APTR Address)
                   else if (field.ArraySize IS - 1); // Pointer to a null-terminated array
                   else if (lua_istable(Lua, -1) and (type & (FD_FLOAT|FD_DOUBLE|FD_INT64|FD_INT|FD_WORD|FD_BYTE))) { // Embedded, fixed size array
                      for (int i = 0; i < field.ArraySize; i++) {
-                        lua_pushinteger(Lua, i + 1); // Lua arrays are 1-based
+                        lua_pushinteger(Lua, i);
                         lua_gettable(Lua, -2); // Get value at index
                         if (type & FD_FLOAT)       ((float *)address)[i]   = lua_tonumber(Lua, -1);
                         else if (type & FD_DOUBLE) ((double *)address)[i]  = lua_tonumber(Lua, -1);
@@ -267,7 +267,7 @@ void destroy_struct_cpp_strings(const struct_record &StructDef, APTR Address)
          else if (field.ArraySize IS -1) { // Pointer to a null-terminated array.
             if (type & FD_STRUCT) {
                if (glStructs.contains(std::string_view(field.StructRef))) {
-                  if (((CPTR *)address)[0]) make_any_array(Lua, type, field.StructRef, -1, address);
+                  if (((CPTR *)address)[0]) make_any_array(Lua, type, field.StructRef, -1, ((CPTR *)address)[0]);
                   else lua_pushnil(Lua);
                }
                else lua_pushnil(Lua);

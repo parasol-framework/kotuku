@@ -208,6 +208,11 @@ static int processing_signal(lua_State *Lua)
 static int processing_flush(lua_State *Lua)
 {
    Lua->script->clearFlag(NF::SIGNALLED);
+   if (auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Tiri.processing")) {
+      for (auto &entry : *fp->Signals) {
+         entry.Object->clearFlag(NF::SIGNALLED);
+      }
+   }
    return 0;
 }
 
@@ -345,13 +350,9 @@ static int processing_get(lua_State *Lua)
          return 1;
       }
       else if (std::string_view("flush") IS fieldname) {
-         Lua->script->clearFlag(NF::SIGNALLED);
-         if (auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Tiri.processing")) {
-            for (auto &entry : *fp->Signals) {
-               entry.Object->clearFlag(NF::SIGNALLED);
-            }
-         }
-         return 0;
+         lua_pushvalue(Lua, 1);
+         lua_pushcclosure(Lua, &processing_flush, 1);
+         return 1;
       }
       else luaL_error(Lua, "Unrecognised index '%s'", fieldname);
    }

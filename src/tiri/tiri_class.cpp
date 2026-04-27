@@ -412,6 +412,7 @@ static ERR TIRI_DataFeed(objScript *Self, struct acDataFeed *Args)
                      process_error(Self, "Data Receipt Callback");
                   }
                }
+               else lua_pop(prv->Lua, 2);
 
             SetResource(RES::LOG_DEPTH, step);
 
@@ -1082,7 +1083,7 @@ static ERR register_interfaces(objScript *Self)
    reg_func_prototype("include", {}, { TiriType::Str }, FProtoFlags::Variadic);
    reg_func_prototype("require", { TiriType::Table }, { TiriType::Str });
    reg_func_prototype("msg", {}, { TiriType::Str }, FProtoFlags::Variadic);
-   reg_func_prototype("subscribeEvent", { TiriType::Any, TiriType::Num }, { TiriType::Str, TiriType::Func });
+   reg_func_prototype("subscribeEvent", { TiriType::Num, TiriType::Any }, { TiriType::Str, TiriType::Func });
    reg_func_prototype("unsubscribeEvent", {}, { TiriType::Any });
    reg_func_prototype("MAKESTRUCT", { TiriType::Any }, { TiriType::Str });
 

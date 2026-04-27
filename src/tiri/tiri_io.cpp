@@ -613,7 +613,9 @@ static int file_close(lua_State *Lua)
 static int file_flush(lua_State *Lua)
 {
    if (auto handle = check_file_handle(Lua, 1)) {
-      acFlush(GetObjectPtr(handle->file_id));
+      auto file = GetObjectPtr(handle->file_id);
+      if (not file) luaL_error(Lua, ERR::InvalidState);
+      acFlush(file);
       lua_pushboolean(Lua, 1);
       return 1;
    }
