@@ -162,7 +162,7 @@ public:
    void stop(double);
 
    uint32_t hash_id() {
-      _hash_id = strihash(id);
+      _hash_id = strhash(id);
       return _hash_id;
    }
 

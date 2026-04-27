@@ -137,13 +137,13 @@ static void parse_result(extSVG *Self, objFilterEffect *Effect, std::string Valu
 
 static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input, FIELD SourceField, FIELD RefField)
 {
-   switch (strihash(Input)) {
-      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, int(VSF::GRAPHIC)); break;
-      case SVF_SOURCEALPHA:     Effect->set(SourceField, int(VSF::ALPHA)); break;
-      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, int(VSF::BKGD)); break;
-      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, int(VSF::BKGD_ALPHA)); break;
-      case SVF_FILLPAINT:       Effect->set(SourceField, int(VSF::FILL)); break;
-      case SVF_STROKEPAINT:     Effect->set(SourceField, int(VSF::STROKE)); break;
+   switch (strhash(Input)) {
+      case SVF_SourceGraphic:   Effect->set(SourceField, int(VSF::GRAPHIC)); break;
+      case SVF_SourceAlpha:     Effect->set(SourceField, int(VSF::ALPHA)); break;
+      case SVF_BackgroundImage: Effect->set(SourceField, int(VSF::BKGD)); break;
+      case SVF_BackgroundAlpha: Effect->set(SourceField, int(VSF::BKGD_ALPHA)); break;
+      case SVF_FillPaint:       Effect->set(SourceField, int(VSF::FILL)); break;
+      case SVF_StrokePaint:     Effect->set(SourceField, int(VSF::STROKE)); break;
       default:  {
          if (Self->Effects.contains(Input)) {
             Effect->set(RefField, Self->Effects[Input]);
@@ -168,7 +168,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 
    std::vector<Transition> stops;
    for (auto &scan : Tags) {
-      if (svg_tag_hash(scan) IS kt::strihash("stop")) {
+      if (svg_tag_hash(scan) IS kt::strhash("stop")) {
          Transition stop;
          stop.Offset = 0;
          stop.Transform = nullptr;
@@ -520,7 +520,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          objVector *sibling = nullptr;
          for (auto &scan : xml->Tags) {
-            if (svg_tag_is(scan, SVF_SVG)) {
+            if (svg_tag_is(scan, SVF_svg)) {
                svgState state(Self);
 
                // Parse all tags with an 'id' reference so that href's can target them even when

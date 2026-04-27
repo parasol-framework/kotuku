@@ -57,39 +57,39 @@ void anim_base::set_orig_value(svgState &State)
 
    kt::ScopedObjectLock<objVector> obj(target_vector);
    if (obj.granted()) {
-      auto fid = strihash(target_attrib);
+      auto fid = strhash(target_attrib);
       switch(fid) {
-         case SVF_DISPLAY:
+         case SVF_display:
             if (obj->Visibility IS VIS::HIDDEN) target_attrib_orig = "none";
             else if (obj->Visibility IS VIS::INHERIT) target_attrib_orig = "inherit";
             else if (obj->Visibility IS VIS::VISIBLE) target_attrib_orig = "inline";
             break;
 
-         case SVF_STROKE_WIDTH:
+         case SVF_stroke_width:
             target_attrib_orig.assign(std::to_string(obj->get<double>(FID_StrokeWidth)));
             break;
 
-         case SVF_FILL: {
+         case SVF_fill: {
             CSTRING val;
             if ((obj->get(FID_Fill, val) IS ERR::Okay) and (val)) target_attrib_orig = val;
             else target_attrib_orig = State.m_fill;
             break;
          }
 
-         case SVF_STROKE: {
+         case SVF_stroke: {
             CSTRING val;
             if ((obj->get(FID_Stroke, val) IS ERR::Okay) and (val)) target_attrib_orig = val;
             else target_attrib_orig = State.m_stroke;
             break;
          }
 
-         case SVF_FILL_OPACITY:
+         case SVF_fill_opacity:
             if (obj->FillOpacity != 1.0) target_attrib_orig = obj->FillOpacity;
             else if (State.m_fill_opacity != -1) target_attrib_orig = State.m_fill_opacity;
             else target_attrib_orig = 1.0;
             break;
 
-         case SVF_OPACITY:
+         case SVF_opacity:
             if (obj->Opacity != 1.0) target_attrib_orig = obj->Opacity;
             else if (State.m_opacity != -1) target_attrib_orig = State.m_opacity;
             else target_attrib_orig = 1.0;
