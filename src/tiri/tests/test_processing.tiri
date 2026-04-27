@@ -147,6 +147,12 @@ end
    -- If we get here without error, the test passes
 end
 
+@Test function ProcessingObjectFlushExists()
+   proc = processing.new()
+   assert(type(proc.flush) is 'function', 'proc.flush should be a function')
+   proc.flush()
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 @Test function TaskReturnsObject()

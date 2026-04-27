@@ -43,7 +43,7 @@ static int append_dump_chunk([[maybe_unused]] lua_State *, const void *Chunk, si
    if ((not bytes) or (not Chunk)) return 1;
    if (not Size) return 0; // End of dump signaled.
 
-   std::span<const uint8_t> data_span(static_cast<const uint8_t *>(Chunk), Size);
+   std::span<const uint8_t> data_span((const uint8_t *)Chunk, Size);
    bytes->insert(bytes->end(), data_span.begin(), data_span.end());
    return 0;
 }
@@ -720,6 +720,12 @@ static ERR TIRI_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args)
    }
 
    lua_getglobal(prv->Lua, Args->Procedure);
+   if (not lua_isfunction(prv->Lua, -1)) {
+      lua_pop(prv->Lua, 1);
+      log.warning("Failed to resolve function name '%s' to an ID.", Args->Procedure);
+      return ERR::NotFound;
+   }
+
    auto id = luaL_ref(prv->Lua, LUA_REGISTRYINDEX);
    if ((id != LUA_REFNIL) and (id != LUA_NOREF)) {
       Args->ProcedureID = id;

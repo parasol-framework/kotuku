@@ -72,7 +72,8 @@ static void receive_event(kt::Event *Info, int InfoSize, APTR CallbackMeta)
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, intptr_t(CallbackMeta));
 
    lua_pushnumber(prv->Lua, Info->EventID);
-   if (lua_pcall(prv->Lua, 1, 0, 0)) {
+   lua_newtable(prv->Lua);
+   if (lua_pcall(prv->Lua, 2, 0, 0)) {
       process_error(Script, "Event Subscription");
    }
 
@@ -194,12 +195,13 @@ int fcmd_subscribe_event(lua_State *Lua)
       if (auto error = SubscribeEvent(event_id, C_FUNCTION(receive_event, client_function), &handle); error IS ERR::Okay) {
          auto prv = (prvTiri *)Lua->script->ChildPrivate;
          prv->EventList.emplace_back(client_function, event_id, handle);
-         lua_pushlightuserdata(Lua, handle); // 1: Handle
-         lua_pushinteger(Lua, int(error)); // 2: Error code
+         lua_pushinteger(Lua, int(error)); // 1: Error code
+         lua_pushlightuserdata(Lua, handle); // 2: Handle
       }
       else {
-         lua_pushnil(Lua); // Handle
+         luaL_unref(Lua, LUA_REGISTRYINDEX, client_function);
          lua_pushinteger(Lua, int(error)); // Error code
+         lua_pushnil(Lua); // Handle
       }
       return 2;
    }

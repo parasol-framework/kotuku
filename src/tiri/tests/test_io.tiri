@@ -228,6 +228,20 @@ end
    file:close()
 end
 
+@Test(labels=['io', 'file']) function FileFlushClosedHandle()
+   test_path = glTestFolder .. 'test_flush_closed.txt'
+   file = io.open(test_path, 'w')
+   assert(file, 'Failed to open file for closed flush test')
+   glTestFiles:push(test_path)
+
+   file:close()
+   try
+      file:flush()
+   success
+      error('file:flush() on a closed handle should throw an error')
+   end
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Lines iteration tests
 

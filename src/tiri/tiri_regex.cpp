@@ -66,7 +66,7 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t
       const std::string_view &full_match = Captures[0];
       const std::string_view &first_group = Captures[1];
 
-      if ((full_match.size() == first_group.size()) and (full_match.size() > 0) and (MatchStart <= Meta.subject.size())) {
+      if ((full_match.size() > 1) and (full_match.size() IS first_group.size()) and (MatchStart <= Meta.subject.size())) {
          auto preceding_char = (uint8_t)Meta.subject[MatchStart - 1];
          auto match_char = (uint8_t)full_match.front();
 

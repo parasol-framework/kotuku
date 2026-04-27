@@ -152,6 +152,11 @@ end
    assert(all_matches[1][0] is '456', "Second match should be '456'")
    assert(all_matches[1][1] is '456', "Second capture group should be '456'")
 
+   captured_char = regex.new('(b)').search(' ab')
+   assert(#captured_char is 1, 'Should find captured character preceded by alphabetic text')
+   assert(captured_char[0][0] is 'b', "Full match should be 'b'")
+   assert(captured_char[0][1] is 'b', "Capture group should be 'b'")
+
    -- Test with no matches
    no_matches = digit_regex.search('hello world')
    assert(no_matches is nil, "Should return nil for no matches")
