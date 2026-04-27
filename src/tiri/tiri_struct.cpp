@@ -761,7 +761,7 @@ static int struct_get(lua_State *Lua)
                         auto vector = (kt::vector<int> *)(address);
                         lua_createarray(Lua, vector->size(), ff_to_element(field.Type), (APTR *)vector->data(), ARRAY_CACHED, field.StructRef);
                      }
-                     else lua_createarray(Lua, array_size, ff_to_element(field.Type), ((APTR *)address)[0], ARRAY_CACHED, field.StructRef);
+                     else lua_createarray(Lua, array_size, ff_to_element(field.Type), (APTR *)address, ARRAY_CACHED, field.StructRef);
                   }
                   else push_struct(Lua->script, ((APTR *)address)[0], field.StructRef, false, false);
                }
