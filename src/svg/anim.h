@@ -150,6 +150,9 @@ public:
    double get_total_dist();
    double get_dimension(objVector &, FIELD);
    double get_numeric_value(objVector &, FIELD);
+   static double interval_seek(double, double, double) noexcept;
+   static double mod_seek(double, int) noexcept;
+   static double spline_seek(const spline_path &, double) noexcept;
    std::string get_string();
    FRGB get_colour_value(objVector &, FIELD);
    bool started(double);
@@ -159,14 +162,14 @@ public:
    void stop(double);
 
    uint32_t hash_id() {
-      _hash_id = strihash(id);
+      _hash_id = strhash(id);
       return _hash_id;
    }
 
    virtual void perform() = 0;
 
    virtual bool is_valid() {
-      if (!values.empty()) return true;
+      if (values.size() >= 2) return true;
       if ((!to.empty()) or (!by.empty())) return true;
       return false;
    }
@@ -217,7 +220,7 @@ public:
    double get_total_dist();
 
    bool is_valid() {
-      if (!values.empty()) return true;
+      if (values.size() >= 2) return true;
       if (path.id) return true;
       if (mpath) return true;
       if ((!to.empty()) or (!by.empty())) return true;

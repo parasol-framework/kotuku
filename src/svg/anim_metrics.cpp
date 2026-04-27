@@ -3,45 +3,93 @@
 
 //********************************************************************************************************************
 
+double anim_base::interval_seek(double Position, double Start, double End) noexcept
+{
+   const double delta = End - Start;
+   if (std::abs(delta) <= DBL_EPSILON) return (Position >= End) ? 1.0 : 0.0;
+
+   const double result = (Position - Start) / delta;
+   if (!std::isfinite(result)) return 0.0;
+   return std::clamp(result, 0.0, 1.0);
+}
+
+//********************************************************************************************************************
+
+double anim_base::mod_seek(double Seek, int Size) noexcept
+{
+   if (Size < 2) return 0.0;
+
+   const double mod = 1.0 / double(Size - 1);
+   if (Seek >= 1.0) return 1.0;
+
+   const double result = fmod(Seek, mod) / mod;
+   if (!std::isfinite(result)) return 0.0;
+   return std::clamp(result, 0.0, 1.0);
+}
+
+//********************************************************************************************************************
+
+double anim_base::spline_seek(const spline_path &Path, double X) noexcept
+{
+   if (Path.points.empty()) return 0.0;
+
+   int si;
+   for (si=0; (si < std::ssize(Path.points)-1) and (Path.points[si+1].point.x < X); si++);
+
+   const double mod_x = X - Path.points[si].point.x;
+   const double cos_angle = Path.points[si].cos_angle;
+   if (std::abs(cos_angle) <= DBL_EPSILON) return std::clamp<double>(Path.points[si].point.y, 0.0, 1.0);
+
+   const double c = mod_x / cos_angle;
+   const double radicand = (c * c) - (mod_x * mod_x);
+   if (!std::isfinite(radicand)) return std::clamp<double>(Path.points[si].point.y, 0.0, 1.0);
+
+   const double result = Path.points[si].point.y + std::sqrt(std::max(0.0, radicand));
+   if (!std::isfinite(result)) return std::clamp<double>(Path.points[si].point.y, 0.0, 1.0);
+   return std::clamp(result, 0.0, 1.0);
+}
+
+//********************************************************************************************************************
+
 void anim_base::set_orig_value(svgState &State)
 {
    if ((freeze and not from.empty()) or target_attrib.empty()) return;
 
    kt::ScopedObjectLock<objVector> obj(target_vector);
    if (obj.granted()) {
-      auto fid = strihash(target_attrib);
+      auto fid = strhash(target_attrib);
       switch(fid) {
-         case SVF_DISPLAY:
+         case SVF_display:
             if (obj->Visibility IS VIS::HIDDEN) target_attrib_orig = "none";
             else if (obj->Visibility IS VIS::INHERIT) target_attrib_orig = "inherit";
             else if (obj->Visibility IS VIS::VISIBLE) target_attrib_orig = "inline";
             break;
 
-         case SVF_STROKE_WIDTH:
+         case SVF_stroke_width:
             target_attrib_orig.assign(std::to_string(obj->get<double>(FID_StrokeWidth)));
             break;
 
-         case SVF_FILL: {
+         case SVF_fill: {
             CSTRING val;
             if ((obj->get(FID_Fill, val) IS ERR::Okay) and (val)) target_attrib_orig = val;
             else target_attrib_orig = State.m_fill;
             break;
          }
 
-         case SVF_STROKE: {
+         case SVF_stroke: {
             CSTRING val;
             if ((obj->get(FID_Stroke, val) IS ERR::Okay) and (val)) target_attrib_orig = val;
             else target_attrib_orig = State.m_stroke;
             break;
          }
 
-         case SVF_FILL_OPACITY:
+         case SVF_fill_opacity:
             if (obj->FillOpacity != 1.0) target_attrib_orig = obj->FillOpacity;
             else if (State.m_fill_opacity != -1) target_attrib_orig = State.m_fill_opacity;
             else target_attrib_orig = 1.0;
             break;
 
-         case SVF_OPACITY:
+         case SVF_opacity:
             if (obj->Opacity != 1.0) target_attrib_orig = obj->Opacity;
             else if (State.m_opacity != -1) target_attrib_orig = State.m_opacity;
             else target_attrib_orig = 1.0;
@@ -190,14 +238,11 @@ double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
       if (timing.size() IS values.size()) {
          seek *= timing.back(); // In discrete mode the last time doesn't have to be 1.0
          for (i=0; (i < std::ssize(timing)-1) and (timing[i+1] < seek); i++);
-         const double delta = timing[i+1] - timing[i];
-         seek_to = (seek - timing[i]) / delta;
+         seek_to = interval_seek(seek, timing[i], timing[i+1]);
       }
       else {
          i = std::clamp<int>(int((values.size()-1) * seek), 0, values.size() - 2);
-         // Recompute the seek position to fit between the two values
-         const double mod = 1.0 / double(values.size() - 1);
-         seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+         seek_to = mod_seek(seek, values.size());
       }
 
       read_numseq(values[i], { &from_val });
@@ -282,7 +327,7 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
       if (calc_mode IS CMODE::PACED) {
          const auto dist_pos = seek * get_total_dist();
          for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
-         seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
+         seek_to = interval_seek(dist_pos, distances[i], distances[i+1]);
          // keyTiming is not permitted in PACED mode.
       }
       else if (calc_mode IS CMODE::SPLINE) {
@@ -308,12 +353,7 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
 
          const double x = (seek >= 1.0) ? 1.0 : fmod(seek, 1.0 / double(std::ssize(spline_paths))) * std::ssize(spline_paths);
 
-         int si;
-         for (si=0; (si < std::ssize(sp.points)-1) and (sp.points[si+1].point.x < x); si++);
-
-         const double mod_x = x - sp.points[si].point.x;
-         const double c = mod_x / sp.points[si].cos_angle;
-         seek_to = std::clamp(sp.points[si].point.y + std::sqrt((c * c) - (mod_x * mod_x)), 0.0, 1.0);
+         seek_to = spline_seek(sp, x);
       }
       else { // CMODE::LINEAR
          if (timing.size() IS values.size()) {
@@ -321,13 +361,11 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
 
             for (i=0; (i < std::ssize(timing)-1) and (timing[i+1] < seek); i++);
             i = std::clamp<int>(i, 0, timing.size() - 2);
-            const double delta = timing[i+1] - timing[i];
-            seek_to = (seek - timing[i]) / delta;
+            seek_to = interval_seek(seek, timing[i], timing[i+1]);
          }
          else {
             i = std::clamp<int>(int((values.size()-1) * seek), 0, values.size() - 2);
-            const double mod = 1.0 / double(values.size() - 1);
-            seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+            seek_to = mod_seek(seek, values.size());
          }
       }
 
@@ -398,8 +436,7 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
          vec::ReadPainter(nullptr, values[vi].c_str(), &from_col, nullptr);
          vec::ReadPainter(nullptr, values[vi+1].c_str(), &to_col, nullptr);
 
-         const double mod = 1.0 / double(values.size() - 1);
-         seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+         seek_to = mod_seek(seek, values.size());
       }
       else if (values.size() IS 1) { // Equivalent to a single 'to'
          vec::ReadPainter(nullptr, target_attrib_orig.c_str(), &from_col, nullptr);
