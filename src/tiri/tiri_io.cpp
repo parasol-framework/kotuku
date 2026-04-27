@@ -864,6 +864,8 @@ void register_io_class(lua_State *Lua)
    lua_pushnumber(Lua, CONST_STDERR);
    lua_setfield(Lua, -2, "stderr");
 
+   lua_pop(Lua, 3); // Drop the Tiri.file metatable, Tiri.io metatable, and io library table
+
    // Register io interface prototypes for compile-time type inference
    reg_iface_prototype("io", "open", { TiriType::Any }, { TiriType::Str, TiriType::Str });
    reg_iface_prototype("io", "close", { TiriType::Bool }, { TiriType::Any });

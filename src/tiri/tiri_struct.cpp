@@ -929,4 +929,6 @@ void register_struct_class(lua_State *Lua)
    luaL_openlib(Lua, nullptr, structlib_methods, 0);
 
    luaL_openlib(Lua, "struct", structlib_functions, 0);
+
+   lua_pop(Lua, 2); // Drop the Tiri.struct metatable and the struct library table
 }

@@ -166,6 +166,8 @@ static int number_tostring(lua_State *Lua)
 
 void register_number_class(lua_State *Lua)
 {
+   kt::Log log(__FUNCTION__);
+
    static const luaL_Reg numlib_functions[] = {
       { "int",    number_i32 },
       { "int64",  number_i64 },
@@ -183,8 +185,9 @@ void register_number_class(lua_State *Lua)
       { nullptr, nullptr }
    };
 
-   kt::Log log(__FUNCTION__);
    log.trace("Registering number interface.");
+
+   int stack_top = lua_gettop(Lua);
 
    luaL_newmetatable(Lua, "Tiri.num");
    lua_pushstring(Lua, "Tiri.num");
@@ -195,4 +198,9 @@ void register_number_class(lua_State *Lua)
 
    luaL_openlib(Lua, nullptr, numlib_methods, 0);
    luaL_openlib(Lua, "num", numlib_functions, 0);
+
+   lua_pop(Lua, 2); // Drop the Tiri.num metatable and the num library table
+
+   int stack_delta = lua_gettop(Lua) - stack_top;
+   if (stack_delta) log.warning("Number registration left %d value(s) on the Lua stack.", stack_delta);
 }

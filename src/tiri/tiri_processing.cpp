@@ -457,6 +457,8 @@ void register_processing_class(lua_State *Lua)
 
    luaL_openlib(Lua, "processing", processinglib_functions, 0);
 
+   lua_pop(Lua, 2); // Drop the Tiri.processing metatable and the processing library table
+
    // Register processing interface prototypes for compile-time type inference
    reg_iface_prototype("processing", "new", { TiriType::Any }, { TiriType::Table });
    reg_iface_prototype("processing", "collect", { TiriType::Num }, { TiriType::Str, TiriType::Table });

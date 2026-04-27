@@ -533,6 +533,8 @@ void register_input_class(lua_State *Lua)
    luaL_openlib(Lua, nullptr, inputlib_methods, 0);
    luaL_openlib(Lua, "input", inputlib_functions, 0);
 
+   lua_pop(Lua, 2); // Drop the Tiri.input metatable and the input library table
+
    // Register input interface prototypes for compile-time type inference
    reg_iface_prototype("input", "subscribe", { TiriType::Any }, { TiriType::Num, TiriType::Any, TiriType::Num, TiriType::Func });
    reg_iface_prototype("input", "keyboard", { TiriType::Any }, { TiriType::Any, TiriType::Func });
