@@ -35,8 +35,15 @@ static int processing_new(lua_State *Lua)
       // Default configuration
       fp->Timeout = -1;
       fp->Signals = 0;
+      fp->SignalRefs = 0;
 
       if (not (fp->Signals = new (std::nothrow) std::list<ObjectSignal>)) {
+         luaL_error(Lua, ERR::Memory);
+      }
+
+      if (not (fp->SignalRefs = new (std::nothrow) std::list<int>)) {
+         delete fp->Signals;
+         fp->Signals = nullptr;
          luaL_error(Lua, ERR::Memory);
       }
 
@@ -59,8 +66,11 @@ static int processing_new(lua_State *Lua)
                            for (MSize i = 0; i < arr->len; i++) {
                               if (gcref(refs[i])) {
                                  auto obj = gco_to_object(gcref(refs[i]));
-                                 ObjectSignal sig = { .Object = obj->ptr };
+                                 ObjectSignal sig = { .Object = obj->ptr ? obj->ptr : GetObjectPtr(obj->uid) };
+                                 if (not sig.Object) luaL_error(Lua, ERR::AccessObject, "Signal object at index %d is not available.", i);
                                  fp->Signals->push_back(sig);
+                                 setobjectV(Lua, Lua->top++, obj);
+                                 fp->SignalRefs->push_back(luaL_ref(Lua, LUA_REGISTRYINDEX));
                               }
                               else luaL_error(Lua, ERR::InvalidType, "Nil entry at index %d in signal array.", i);
                            }
@@ -384,7 +394,10 @@ static int processing_delayed_call(lua_State *Lua)
 
    if (lua_type(Lua, 1) IS LUA_TFUNCTION) {
       int ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
-      SendMessage(msgid, MSF::NIL, &ref, sizeof(ref));
+      if (SendMessage(msgid, MSF::NIL, &ref, sizeof(ref)) != ERR::Okay) {
+         luaL_unref(Lua, LUA_REGISTRYINDEX, ref);
+         luaL_error(Lua, ERR::MessageOperation);
+      }
    }
    else luaL_error(Lua, "Expected a function to register as a message hook.");
    return 0;
@@ -396,6 +409,11 @@ static int processing_delayed_call(lua_State *Lua)
 static int processing_destruct(lua_State *Lua)
 {
    auto fp = (fprocessing *)luaL_checkudata(Lua, 1, "Tiri.processing");
+   if (fp->SignalRefs) {
+      for (auto ref : *fp->SignalRefs) luaL_unref(Lua, LUA_REGISTRYINDEX, ref);
+      delete fp->SignalRefs;
+      fp->SignalRefs = nullptr;
+   }
    if (fp->Signals) { delete fp->Signals; fp->Signals = nullptr; }
    return 0;
 }

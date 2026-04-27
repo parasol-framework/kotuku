@@ -670,12 +670,12 @@ static int struct_new(lua_State *Lua)
                         // In order to set strings, we'd need make a copy of the string received from
                         // Lua and free it when the field changes or the structure is destroyed.
                      }
-                     else if (field.Type & FD_OBJECT) ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, 3);
-                     else if (field.Type & FD_INT)    ((int *)address)[0]       = lua_tointeger(Lua, 3);
-                     else if (field.Type & FD_WORD)   ((int16_t *)address)[0]   = lua_tointeger(Lua, 3);
-                     else if (field.Type & FD_BYTE)   ((int8_t *)address)[0]    = lua_tointeger(Lua, 3);
-                     else if (field.Type & FD_DOUBLE) ((double *)address)[0]    = lua_tonumber(Lua, 3);
-                     else if (field.Type & FD_FLOAT)  ((float *)address)[0]     = lua_tonumber(Lua, 3);
+                     else if (field.Type & FD_OBJECT) ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, -1);
+                     else if (field.Type & FD_INT)    ((int *)address)[0]       = lua_tointeger(Lua, -1);
+                     else if (field.Type & FD_WORD)   ((int16_t *)address)[0]   = lua_tointeger(Lua, -1);
+                     else if (field.Type & FD_BYTE)   ((int8_t *)address)[0]    = lua_tointeger(Lua, -1);
+                     else if (field.Type & FD_DOUBLE) ((double *)address)[0]    = lua_tonumber(Lua, -1);
+                     else if (field.Type & FD_FLOAT)  ((float *)address)[0]     = lua_tonumber(Lua, -1);
                      else log.warning("Cannot set unsupported field type for %s", field_name);
                   }
                   else field_error = ERR::UnsupportedField;

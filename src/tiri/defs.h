@@ -248,12 +248,24 @@ struct eventsub {
       if (EventHandle) UnsubscribeEvent(EventHandle);
    }
 
+   eventsub(const eventsub &) = delete;
+   eventsub& operator=(const eventsub &) = delete;
+
    eventsub(eventsub &&move) noexcept :
       Function(move.Function), EventID(move.EventID), EventHandle(move.EventHandle) {
       move.EventHandle = nullptr;
    }
 
-   eventsub& operator=(eventsub &&move) = default;
+   eventsub& operator=(eventsub &&move) noexcept {
+      if (this != &move) {
+         if (EventHandle) UnsubscribeEvent(EventHandle);
+         Function = move.Function;
+         EventID = move.EventID;
+         EventHandle = move.EventHandle;
+         move.EventHandle = nullptr;
+      }
+      return *this;
+   }
 };
 
 //********************************************************************************************************************
@@ -319,6 +331,7 @@ struct fstruct {
 struct fprocessing {
    double Timeout;
    std::list<ObjectSignal> *Signals;
+   std::list<int> *SignalRefs;
 };
 
 class fregex {

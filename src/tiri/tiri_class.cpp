@@ -168,6 +168,7 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
 
    log.traceBranch("Args: %p, Buffer: %p", args, Buffer);
 
+   int of = 0;
    for (int i=0; args[i].Name; i++) {
       std::string name(args[i].Name);
       std::ranges::transform(name, name.begin(), [](unsigned char c) { return std::tolower(c); });
@@ -179,26 +180,30 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
       // action notifications.
 
       if (args[i].Type & FD_STR) {
-         if (ObjectID > 0) lua_pushstring(Lua, ((STRING *)Buffer)[0]);
+         if (sizeof(APTR) IS 8) of = ALIGN64(of);
+         if (ObjectID > 0) lua_pushstring(Lua, ((STRING *)(Buffer + of))[0]);
          else lua_pushnil(Lua);
-         Buffer += sizeof(STRING);
+         of += sizeof(STRING);
       }
       else if (args[i].Type & FD_PTR) {
-         if (ObjectID > 0) lua_pushlightuserdata(Lua, ((APTR *)Buffer)[0]);
+         if (sizeof(APTR) IS 8) of = ALIGN64(of);
+         if (ObjectID > 0) lua_pushlightuserdata(Lua, ((APTR *)(Buffer + of))[0]);
          else lua_pushnil(Lua);
-         Buffer += sizeof(APTR);
+         of += sizeof(APTR);
       }
       else if (args[i].Type & FD_INT) {
-         lua_pushinteger(Lua, ((int *)Buffer)[0]);
-         Buffer += sizeof(int);
+         lua_pushinteger(Lua, ((int *)(Buffer + of))[0]);
+         of += sizeof(int);
       }
       else if (args[i].Type & FD_DOUBLE) {
-         lua_pushnumber(Lua, ((double *)Buffer)[0]);
-         Buffer += sizeof(double);
+         if (sizeof(APTR) IS 8) of = ALIGN64(of);
+         lua_pushnumber(Lua, ((double *)(Buffer + of))[0]);
+         of += sizeof(double);
       }
       else if (args[i].Type & FD_INT64) {
-         lua_pushnumber(Lua, ((int64_t *)Buffer)[0]);
-         Buffer += sizeof(int64_t);
+         if (sizeof(APTR) IS 8) of = ALIGN64(of);
+         lua_pushnumber(Lua, ((int64_t *)(Buffer + of))[0]);
+         of += sizeof(int64_t);
       }
       else {
          log.warning("Unsupported arg %s, flags $%.8x, aborting now.", args[i].Name, args[i].Type);

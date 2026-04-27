@@ -183,7 +183,6 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
    bool process_constants = false;
    if (not glLoadedConstants.contains(Module)) {
       process_constants = true;
-      glLoadedConstants.insert(Module);
    }
 
    if (process_constants) {
@@ -197,6 +196,8 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
          else error = ERR::CreateObject;
 
       AdjustLogLevel(-1);
+
+      if (error IS ERR::Okay) glLoadedConstants.insert(Module);
    }
 
    return error;
@@ -306,18 +307,25 @@ static int module_load(lua_State *Lua)
    }
 
    if (auto loaded_mod = objModule::create::global(fl::Name(modname))) {
+      ERR defs_error = ERR::Okay;
       {
          std::unique_lock lock(glConstantMutex); // Required to update the constant registry
 
          bool process_constants = false;
          if (not glLoadedConstants.contains(modname)) {
             process_constants = true;
-            glLoadedConstants.insert(modname);
          }
 
          if (process_constants) {
-            process_module_defs(Lua->script, loaded_mod, modname);
+            if ((defs_error = process_module_defs(Lua->script, loaded_mod, modname)) IS ERR::Okay) {
+               glLoadedConstants.insert(modname);
+            }
          }
+      }
+
+      if (defs_error != ERR::Okay) {
+         luaL_error(Lua, defs_error, "Failed to process definitions for the %s module.", modname);
+         return 0;
       }
 
       new_module(Lua, loaded_mod);
