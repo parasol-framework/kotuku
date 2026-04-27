@@ -1152,6 +1152,8 @@ void register_module_class(lua_State *Lua)
 
    log.trace("Registering module interface.");
 
+   int stack_top = lua_gettop(Lua);
+
    luaL_newmetatable(Lua, "Tiri.mod");
    lua_pushstring(Lua, "Tiri.mod");
    lua_setfield(Lua, -2, "__name");
@@ -1161,6 +1163,11 @@ void register_module_class(lua_State *Lua)
 
    luaL_openlib(Lua, nullptr, modlib_methods, 0);
    luaL_openlib(Lua, "mod", modlib_functions, 0);
+
+   lua_pop(Lua, 2); // Drop the Tiri.mod metatable and the mod library table
+
+   int stack_delta = lua_gettop(Lua) - stack_top;
+   if (stack_delta) log.warning("Module registration left %d value(s) on the Lua stack.", stack_delta);
 
    // Register mod interface prototypes for compile-time type inference
    reg_iface_prototype("mod", "load", { TiriType::Any }, { TiriType::Str });

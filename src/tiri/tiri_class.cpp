@@ -1053,14 +1053,18 @@ static ERR register_interfaces(objScript *Self)
 
    auto prv = (prvTiri *)Self->ChildPrivate;
 
+#ifndef NDEBUG
+   int stack_top = lua_gettop(prv->Lua);
+#endif
+
    register_io_class(prv->Lua);
    register_module_class(prv->Lua);
    register_regex_class(prv->Lua);
    register_struct_class(prv->Lua);
    register_async_class(prv->Lua);
-   #ifndef DISABLE_DISPLAY
-      register_input_class(prv->Lua);
-   #endif
+#ifndef DISABLE_DISPLAY
+   register_input_class(prv->Lua);
+#endif
    register_number_class(prv->Lua);
    register_processing_class(prv->Lua);
 
@@ -1088,6 +1092,11 @@ static ERR register_interfaces(objScript *Self)
    reg_func_prototype("MAKESTRUCT", { TiriType::Any }, { TiriType::Str });
 
    load_include(Self, "core");
+
+#ifndef NDEBUG
+   int stack_delta = lua_gettop(prv->Lua) - stack_top;
+   if (stack_delta) log.warning("Lua initialisation left %d value(s) on the Lua stack.", stack_delta);
+#endif
 
    return ERR::Okay;
 }

@@ -684,7 +684,9 @@ void register_regex_class(lua_State *Lua)
       lua_setfield(Lua, -2, "REPLACE_FIRST_ONLY");
    }
 
-   lua_pop(Lua, 1); // Remove regex table from stack
+   lua_pop(Lua, 1); // Remove regex table fetched via lua_getglobal
+
+   lua_pop(Lua, 2); // Drop the Tiri.regex metatable and the regex library table
 
    // Register regex interface prototypes for compile-time type inference
    reg_iface_prototype("regex", "new", { TiriType::Any }, { TiriType::Str, TiriType::Num });
