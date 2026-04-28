@@ -12,6 +12,7 @@
 #include "lj_obj.h"
 #include "lj_gc.h"
 #include "lj_array.h"
+#include "lj_str.h"
 #include "lj_tab.h"
 #include "lj_vmarray.h"
 
@@ -451,6 +452,129 @@ static bool tv_is_integer(cTValue* o, int32_t expected)
    if (tvisint(o)) return intV(o) IS expected;
    if (tvisnum(o)) return numberVint(o) IS expected;
    return false;
+}
+
+static bool test_any_array_nil_initialisation(kt::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   GCarray* arr = lj_array_new(L, 129, AET::ANY);
+   TValue *slots = arr->get<TValue>();
+
+   for (MSize i = 0; i < arr->len; i++) {
+      if (not tvisnil(&slots[i])) {
+         Log.error("ANY array slot %d is not nil after creation", int(i));
+         return false;
+      }
+   }
+   return true;
+}
+
+static bool test_any_array_grow_nil_initialisation(kt::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   GCarray* arr = lj_array_new(L, 2, AET::ANY);
+   TValue *slots = arr->get<TValue>();
+   setintV(&slots[0], 17);
+   setnumV(&slots[1], 25.0);
+
+   if (not lj_array_grow(L, arr, 129)) {
+      Log.error("ANY array grow failed");
+      return false;
+   }
+
+   slots = arr->get<TValue>();
+   if (not tv_is_integer(&slots[0], 17) or not tvisnum(&slots[1])) {
+      Log.error("ANY array grow damaged existing values");
+      return false;
+   }
+
+   for (MSize i = 2; i < arr->capacity; i++) {
+      if (not tvisnil(&slots[i])) {
+         Log.error("ANY array grown slot %d is not nil", int(i));
+         return false;
+      }
+   }
+   return true;
+}
+
+static bool test_any_array_bulk_copy_overlap(kt::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   GCarray* arr = lj_array_new(L, 140, AET::ANY);
+   TValue *slots = arr->get<TValue>();
+   for (int32_t i = 0; i < 140; i++) setintV(&slots[i], i);
+
+   lj_array_copy(L, arr, 2, arr, 0, 129);
+   slots = arr->get<TValue>();
+   for (int32_t i = 0; i < 129; i++) {
+      if (not tv_is_integer(&slots[i + 2], i)) {
+         Log.error("ANY array overlapping copy failed at slot %d", int(i + 2));
+         return false;
+      }
+   }
+   return true;
+}
+
+static bool test_any_array_to_table_mixed_values(kt::Log &Log)
+{
+   LuaStateHolder Holder;
+   lua_State *L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+   luaL_openlibs(L);
+
+   GCarray* arr = lj_array_new(L, 4, AET::ANY);
+   TValue *slots = arr->get<TValue>();
+   setnilV(&slots[0]);
+   setintV(&slots[1], 42);
+   setnumV(&slots[2], 3.5);
+   GCstr *str = lj_str_newz(L, "bulk");
+   setstrV(L, &slots[3], str);
+   lj_gc_objbarrier(L, arr, str);
+
+   GCtab *table = lj_array_to_table(L, arr);
+   TValue *array_part = tvref(table->array);
+
+   if (not tvisnil(&array_part[0])) {
+      Log.error("ANY table slot 0 is not nil");
+      return false;
+   }
+   if (not tv_is_integer(&array_part[1], 42)) {
+      Log.error("ANY table slot 1 is not 42");
+      return false;
+   }
+   if (not tvisnum(&array_part[2]) or not (numV(&array_part[2]) IS 3.5)) {
+      Log.error("ANY table slot 2 is not 3.5");
+      return false;
+   }
+   if (not tvisstr(&array_part[3]) or not (strV(&array_part[3]) IS str)) {
+      Log.error("ANY table slot 3 is not the source string");
+      return false;
+   }
+   return true;
 }
 
 static bool test_arr_getidx_int32(kt::Log &Log)
@@ -934,7 +1058,7 @@ static bool test_lib_array_double_type(kt::Log &Log)
 
 void array_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 25> Tests = { {
+   constexpr std::array<TestCase, 29> Tests = { {
       // Core Data Structures
       { "array_creation_byte", test_array_creation_byte },
       { "array_creation_int32", test_array_creation_int32 },
@@ -955,6 +1079,10 @@ void array_unit_tests(int &Passed, int &Total)
       { "arr_setidx_double", test_arr_setidx_double },
       { "arr_roundtrip", test_arr_roundtrip },
       { "arr_byte_type", test_arr_byte_type },
+      { "any_array_nil_initialisation", test_any_array_nil_initialisation },
+      { "any_array_grow_nil_initialisation", test_any_array_grow_nil_initialisation },
+      { "any_array_bulk_copy_overlap", test_any_array_bulk_copy_overlap },
+      { "any_array_to_table_mixed_values", test_any_array_to_table_mixed_values },
       // Library Functions (basic integration - detailed tests in test_array.tiri)
       { "lib_array_new", test_lib_array_new },
       { "lib_array_index", test_lib_array_index },

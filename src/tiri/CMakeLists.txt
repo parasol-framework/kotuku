@@ -199,6 +199,8 @@ if (MSVC)
    list(FILTER JIT_LIB_SOURCES EXCLUDE REGEX "lib_.*\\.cpp$")
    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX "lib\\.cpp$|load\\.cpp$|lj_parse\\.cpp$|lj_lex\\.cpp$|parser_unit_tests\\.cpp$")
 
+   set_source_files_properties("${JIT_SRC}/runtime/lj_bulk_avx2.cpp" PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
+
    file(GLOB JIT_DEP_LJ_H
       "${JIT_SRC}/bytecode/lj_*.h"
       "${JIT_SRC}/debug/lj_*.h"
@@ -561,10 +563,15 @@ else ()
       set(OBJECT_FILE "${JIT_BUILD_DIR}/${FILENAME}.o")
       list(APPEND JIT_OBJECT_FILES ${OBJECT_FILE})
 
+      set(JIT_SOURCE_CXXFLAGS ${JIT_COMMON_CXXFLAGS})
+      if (JIT_TARGET_ARCH STREQUAL "x64" AND FILENAME STREQUAL "lj_bulk_avx2")
+         list(APPEND JIT_SOURCE_CXXFLAGS -mavx2)
+      endif ()
+
       # Create custom command to compile each source file with explicit flags
       add_custom_command(
          OUTPUT ${OBJECT_FILE}
-         COMMAND ${CMAKE_CXX_COMPILER} ${JIT_COMMON_CXXFLAGS}
+         COMMAND ${CMAKE_CXX_COMPILER} ${JIT_SOURCE_CXXFLAGS}
             -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
             ${JIT_NON_MSVC_DEFS}
             ${JIT_LIBRARY_DEFS}
@@ -672,6 +679,7 @@ if (ENABLE_UNIT_TESTS)
    list (APPEND TIRI_SOURCES "${JIT_SRC}/runtime/unit_test_vm_asm.cpp")
    list (APPEND TIRI_SOURCES "${JIT_SRC}/runtime/unit_tests_arrays.cpp")
    list (APPEND TIRI_SOURCES "${JIT_SRC}/runtime/unit_tests_allocator.cpp")
+   list (APPEND TIRI_SOURCES "${JIT_SRC}/runtime/unit_tests_bulk.cpp")
    list (APPEND TIRI_SOURCES "${JIT_SRC}/jit/jit_unit_tests.cpp")
 
    # Add MASM assembly file for register capture on MSVC x64
