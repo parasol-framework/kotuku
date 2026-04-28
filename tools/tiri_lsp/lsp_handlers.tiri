@@ -51,7 +51,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Replace strings and comments with spaces while preserving byte offsets for range calculations.
 
-function maskNonCode(LineText:str, InBlockComment:bool):<str, bool>
+global function maskNonCode(LineText:str, InBlockComment:bool):<str, bool>
    result = ''
    pos = 0
    len = #LineText
@@ -303,7 +303,9 @@ global function registerCoreHandlers(Self)
                -- Folding ranges for code folding
                foldingRangeProvider = true,
                -- Hover information
-               hoverProvider = true
+               hoverProvider = true,
+               -- Go to Definition
+               definitionProvider = true
             },
             serverInfo = {
                name = 'Tiri LSP Server',
@@ -666,6 +668,44 @@ global function registerCoreHandlers(Self)
                ['end'] = { line = position.line, character = tokenInfo.endCol }
             }
          }
+      }
+   end
+
+   -------------------------------------------------------------------------------------------------------------------
+   -- Go to Definition
+
+   -- textDocument/definition: Return definition locations for the symbol at cursor
+
+   Self._handlers['textDocument/definition'] = function(Msg, State)
+      uri = Msg.params.textDocument.uri
+      position = Msg.params.position
+      doc = glDocuments[uri]
+
+      if not doc then
+         logMessage(Self, 'Definition requested for unknown document: ' .. uri)
+         return {
+            jsonrpc = '2.0',
+            id = Msg.id,
+            result = json.null
+         }
+      end
+
+      locations = resolveDefinition(doc, position)
+
+      if not locations or #locations is 0 then
+         return {
+            jsonrpc = '2.0',
+            id = Msg.id,
+            result = json.null
+         }
+      end
+
+      logVerbose(Self, 'Returning ' .. #locations .. ' definition location(s)')
+
+      return {
+         jsonrpc = '2.0',
+         id = Msg.id,
+         result = locations
       }
    end
 end

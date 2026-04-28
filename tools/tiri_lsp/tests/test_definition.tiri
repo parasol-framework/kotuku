@@ -1,0 +1,136 @@
+global glDefinitionTestUri = nil
+
+@BeforeAll function SetupDefinitionTests(State)
+   local err, sdk_path = mSys.ResolvePath(State.folder .. '../../../')
+   assert(err is ERR_Okay, 'Failed to resolve SDK path for LSP definition tests.')
+   mSys.SetVolume('sdk', sdk_path)
+
+   loadFile('sdk:tools/tiri_lsp/lsp_lib.tiri')
+   assert(lspInitDocs('sdk:docs/xml/'), 'Failed to initialise LSP documentation cache.')
+   glDefinitionTestUri = lspPathToUri('sdk:tools/tiri_lsp/tests/test_definition.tiri')
+   assert(glDefinitionTestUri, 'Failed to create test document URI.')
+end
+
+function makeDoc(Content:str):table
+   return {
+      uri = glDefinitionTestUri,
+      languageId = 'tiri',
+      version = 1,
+      content = Content,
+      lineIndex = nil
+   }
+end
+
+function assertLocationLine(Locations:array, Line:num, Message:str)
+   assert(Locations and #Locations > 0, Message .. ': expected at least one location.')
+   assert(Locations[0].range.start.line is Line,
+      f'{Message}: expected line {Line}, got {Locations[0].range.start.line}')
+end
+
+function assertUriContains(Locations:array, Needle:str, Message:str)
+   assert(Locations and #Locations > 0, Message .. ': expected at least one location.')
+   uri = Locations[0].uri:replace('\\', '/'):lower()
+   assert(uri:find(Needle:lower(), 0, true), f'{Message}: expected URI to contain {Needle}, got {Locations[0].uri}')
+end
+
+@Test function CurrentDocumentFunction()
+   doc = makeDoc('local function alpha(Value)\n   return Value\nend\n\nresult = alpha(5)\n')
+   locations = resolveDefinition(doc, { line = 4, character = 10 })
+   assertLocationLine(locations, 0, 'Function call should resolve to local function definition')
+end
+
+@Test function CurrentDocumentVariable()
+   doc = makeDoc('local answer = 42\nprint(answer)\n')
+   locations = resolveDefinition(doc, { line = 1, character = 7 })
+   assertLocationLine(locations, 0, 'Variable use should resolve to local declaration')
+end
+
+@Test function CurrentDocumentImplicitVariable()
+   doc = makeDoc('win = gui.window({ title = "Test" })\nprint(win)\n')
+   locations = resolveDefinition(doc, { line = 1, character = 7 })
+   assertLocationLine(locations, 0, 'Implicit variable use should resolve to assignment declaration')
+end
+
+@Test function TableKeyNotTreatedAsDeclaration()
+   doc = makeDoc('y = 10\ntbl = {\n   y = y,\n}\nprint(y)\n')
+   locations = resolveDefinition(doc, { line = 4, character = 7 })
+   assertLocationLine(locations, 0, 'Variable use should resolve to the top-level assignment, not the table key')
+end
+
+@Test function CurrentDocumentParameter()
+   doc = makeDoc('function sample(Input)\n   print(Input)\nend\n')
+   locations = resolveDefinition(doc, { line = 1, character = 10 })
+   assertLocationLine(locations, 0, 'Parameter use should resolve to function parameter')
+end
+
+@Test function UnknownIdentifier()
+   doc = makeDoc('print(missing_symbol)\n')
+   locations = resolveDefinition(doc, { line = 0, character = 8 })
+   assert(not locations, 'Unknown identifiers should not resolve.')
+end
+
+@Test function ImportScriptResolution()
+   doc = makeDoc("import 'json'\n")
+   locations = resolveDefinition(doc, { line = 0, character = 9 })
+   assertUriContains(locations, '/scripts/json.tiri', 'Import should resolve to SDK script')
+end
+
+@Test function ImportNestedScriptResolution()
+   doc = makeDoc("import 'gui/window'\n")
+   locations = resolveDefinition(doc, { line = 0, character = 12 })
+   assertUriContains(locations, '/scripts/gui/window.tiri', 'Nested import should resolve to SDK script')
+end
+
+@Test function IncludeModuleResolution()
+   doc = makeDoc("include 'network'\n")
+   locations = resolveDefinition(doc, { line = 0, character = 10 })
+   assertUriContains(locations, '/docs/xml/modules/network.xml', 'Include should resolve to module documentation')
+end
+
+@Test function ObjectClassResolution()
+   doc = makeDoc("xml = obj.new('xml')\n")
+   locations = resolveDefinition(doc, { line = 0, character = 16 })
+   assertUriContains(locations, '/docs/xml/modules/classes/xml.xml', 'obj.new class literal should resolve to class docs')
+end
+
+@Test function ObjectActionResolution()
+   doc = makeDoc("xml = obj.new('xml')\nxml.acClear()\n")
+   locations = resolveDefinition(doc, { line = 1, character = 6 })
+   assertUriContains(locations, '/docs/xml/modules/classes/xml.xml', 'Object action should resolve to class docs')
+   assert(locations[0].range.start.line > 30, 'Object action should resolve below the XML class info section.')
+end
+
+@Test function ModuleFunctionResolution()
+   doc = makeDoc('mSys.WaitTime(0.1)\n')
+   locations = resolveDefinition(doc, { line = 0, character = 7 })
+   assertUriContains(locations, '/docs/xml/modules/core.xml', 'Module function should resolve to module docs')
+end
+
+@Test function HandlerAdvertisesAndResolvesDefinition()
+   server = {
+      _handlers = {},
+      verbose = false,
+      logMessage = function(Message) end
+   }
+   registerCoreHandlers(server)
+
+   init = server._handlers['initialize']({ jsonrpc = '2.0', id = 1, params = {} }, {})
+   assert(init.result.capabilities.definitionProvider is true, 'Server must advertise definitionProvider.')
+
+   doc = makeDoc('local function beta()\nend\n\nbeta()\n')
+   glDocuments[doc.uri] = doc
+
+   response = server._handlers['textDocument/definition']({
+      jsonrpc = '2.0',
+      id = 2,
+      params = {
+         textDocument = { uri = doc.uri },
+         position = { line = 3, character = 1 }
+      }
+   }, {})
+
+   glDocuments[doc.uri] = nil
+
+   assert(response.result and #response.result > 0, 'Definition handler should return a location array.')
+   assert(response.result[0].range.start.line is 0, 'Definition handler should resolve through resolver.')
+end
