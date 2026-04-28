@@ -54,15 +54,19 @@ configure_file(
 )
 
 # Generate versioned manifest and resource files
+set (KOTUKU_ICON_PATH "${PROJECT_SOURCE_DIR}/src/link/kotuku.ico")
+set (KOTUKU_MANIFEST_PATH "${CMAKE_CURRENT_BINARY_DIR}/kotuku.manifest")
+set (KOTUKU_RESOURCE_PATH "${CMAKE_CURRENT_BINARY_DIR}/resource.rc")
+
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/link/kotuku.manifest.in"
-    "${PROJECT_SOURCE_DIR}/src/link/kotuku.manifest"
+    "${KOTUKU_MANIFEST_PATH}"
     @ONLY
 )
 
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/link/resource.rc.in"
-    "${PROJECT_SOURCE_DIR}/src/link/resource.rc"
+    "${KOTUKU_RESOURCE_PATH}"
     @ONLY
 )
 
@@ -74,10 +78,10 @@ endif ()
 
 if (WIN32)
    if (ORIGO_CONSOLE)
-      add_executable (origo_cmd "origo.cpp" "sandbox-win.cpp" "${PROJECT_SOURCE_DIR}/src/link/resource.rc")
+      add_executable (origo_cmd "origo.cpp" "sandbox-win.cpp" "${KOTUKU_RESOURCE_PATH}")
    else ()
       # WIN32 keyword sets the Windows subsystem to GUI (no console window)
-      add_executable (origo_cmd WIN32 "origo.cpp" "sandbox-win.cpp" "${PROJECT_SOURCE_DIR}/src/link/resource.rc")
+      add_executable (origo_cmd WIN32 "origo.cpp" "sandbox-win.cpp" "${KOTUKU_RESOURCE_PATH}")
    endif ()
 
    # Disable automatic manifest generation since we provide our own

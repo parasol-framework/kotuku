@@ -72,7 +72,7 @@ int UTF8Copy(CSTRING String, STRING Dest, int Chars, int Size)
 
       // Check if there's enough room to accept the number of bytes and the null byte
 
-      if (i + copy + 1 >= Size) break;
+      if (i + copy + 1 > Size) break;
 
       // Do the copy
 
