@@ -90,7 +90,7 @@ global function getLine(Doc:table, LineNo:num):str
    if LineNo < 0 or LineNo >= total_lines then return '' end
 
    idx = LineNo * 2
-   return Doc.content:substr(Doc.lineIndex[idx], Doc.lineIndex[idx + 1])
+   return Doc.content:substr(Doc.lineIndex[idx], Doc.lineIndex[idx + 1] + 1)
 end
 
 -- Mark line N and subsequent lines for recomputation.  Currently we are very lazy about this...
@@ -433,10 +433,11 @@ global function computeDiagnostics(Doc:table)
    return { uri = Doc.uri, version = Doc.version, diagnostics = lsp_diags }
 end
 
-   import './lsp_parsing'
-   import './lsp_handlers'
    import './lsp_cache'
    import './lsp_hover'
+   import './lsp_definition'
+   import './lsp_parsing'
+   import './lsp_handlers'
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Public API
@@ -453,7 +454,20 @@ global function lspInitDocs(DocPath)
    end
 
    -- Load static definitions (builtins, keywords)
-   defsPath = glSelf.workingPath .. 'lsp_defs.tiri'
+   defsPath = nil
+   try
+      defsPath = glSelf.workingPath .. 'lsp_defs.tiri'
+   end
+   if not defsPath or mSys.AnalysePath(defsPath) != ERR_Okay then
+      try
+         defsPath = glSelf.workingPath .. '../lsp_defs.tiri'
+      except ex
+         defsPath = nil
+      end
+   end
+   if not defsPath or mSys.AnalysePath(defsPath) != ERR_Okay then
+      defsPath = 'sdk:tools/tiri_lsp/lsp_defs.tiri'
+   end
    local result
    try
       result = loadFile(defsPath)

@@ -750,6 +750,8 @@ add_subdirectory (src/regex)
 
 add_subdirectory (src/launcher)
 
+add_subdirectory (tools/tiri_lsp)
+
 # --------------------------------------------------------------------------------------------------------------------
 # Create a combined static library that links all modules together
 # This breaks the circular dependencies by having a separate target own all the inter-module linkage
