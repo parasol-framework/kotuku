@@ -51,7 +51,7 @@
 #include <array>
 #include <span>
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) and LJ_TARGET_X86ORX64
 #include <xmmintrin.h>
 #endif
 
@@ -78,7 +78,7 @@ static inline void gc_prefetch(const void *Address) noexcept
 {
 #if defined(__GNUC__)
    __builtin_prefetch(Address, 0, 1);
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) and LJ_TARGET_X86ORX64
    _mm_prefetch((const char *)Address, _MM_HINT_T0);
 #else
    (void)Address;
