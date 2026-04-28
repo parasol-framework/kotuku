@@ -270,9 +270,9 @@ Counts the number of non-overlapping occurrences of `Keyword` in `String`.  Retu
 [[sec-string-find]]
 ==== string.find()
 
-[.api]`start, stop = string.find(String, Needle, [Start])`
+[.api]`start, stop = string.find(String, Keyword, [Start])`
 
-Searches for the literal string `Needle` within `String`, beginning at index `Start` (default `0`).  Negative `Start` values count from the end of the string.
+Searches for the literal string `Keyword` within `String`, beginning at index `Start` (default `0`).  Negative `Start` values count from the end of the string.
 
 If found, returns two values: the zero-based start index and the end index (inclusive).  If not found, returns `nil`.
 
