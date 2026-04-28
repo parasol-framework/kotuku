@@ -57,6 +57,12 @@ end
    assertLocationLine(locations, 0, 'Variable use should resolve to the top-level assignment, not the table key')
 end
 
+@Test function LastTableKeyNotTreatedAsDeclaration()
+   doc = makeDoc('y = 10\ntbl = {\n   x = 1,\n   y = y\n}\nprint(y)\n')
+   locations = resolveDefinition(doc, { line = 5, character = 7 })
+   assertLocationLine(locations, 0, 'Variable use should ignore the final table key without a trailing comma')
+end
+
 @Test function CurrentDocumentParameter()
    doc = makeDoc('function sample(Input)\n   print(Input)\nend\n')
    locations = resolveDefinition(doc, { line = 1, character = 10 })

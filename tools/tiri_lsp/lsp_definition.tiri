@@ -5,7 +5,6 @@ rx_def_func = <{ regex.new([[\bfunction\s+([A-Za-z_][A-Za-z0-9_:.]*)\s*\(([^\)]*
 rx_def_decl = <{ regex.new([[\b(local|global)\s+([A-Za-z_][A-Za-z0-9_]*)]]) }>
 rx_def_assign_func = <{ regex.new([[\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*function\s*\(([^\)]*)\)]]) }>
 rx_def_assign          = <{ regex.new([[^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=]]) }>
-rx_def_trailing_comma  = <{ regex.new([[,\s*$]]) }>
 rx_def_param = <{ regex.new([[([A-Za-z_][A-Za-z0-9_]*)]]) }>
 rx_def_loader_before = <{ regex.new([[\b(import|require|include)\s*(?:\(\s*)?$]]) }>
 rx_def_obj_new_before = <{ regex.new([[obj\.new\s*\(\s*$]]) }>
@@ -264,14 +263,31 @@ function addFunctionParameters(Symbols:array, Params:str, LineText:str, Line:num
    end
 end
 
+function updateTableDepth(LineCode:str, TableDepth:num):num
+   depth = TableDepth or 0
+
+   for i = 0, #LineCode - 1 do
+      c = LineCode:sub(i, i + 1)
+      if c is '{' then
+         depth++
+      elseif c is '}' and depth > 0 then
+         depth--
+      end
+   end
+
+   return depth
+end
+
 global function extractDefinitionSymbols(Doc:table):array
    symbols = array<table>
    total_lines = getTotalLines(Doc)
    in_block_comment = false
+   table_depth = 0
 
    for line_num = 0, total_lines - 1 do
       line_text = getLine(Doc, line_num)
       line_code, in_block_comment = maskNonCode(line_text, in_block_comment)
+      in_table_literal = table_depth > 0
 
       for start, stop, cap in rx_def_func.findAll(line_code) do
          name = cap[0]
@@ -307,7 +323,7 @@ global function extractDefinitionSymbols(Doc:table):array
 
       for start, stop, cap in rx_def_assign.findAll(line_code) do
          name = cap[0]
-         if name and name != 'local' and name != 'global' and not rx_def_trailing_comma.test(line_code) then
+         if name and name != 'local' and name != 'global' and not in_table_literal then
             name_start = line_text:find(name, start, true) or start
             eq_pos = line_text:find('=', name_start + #name, true)
             next_char = eq_pos and line_text:sub(eq_pos + 1, eq_pos + 2) or ''
@@ -317,6 +333,8 @@ global function extractDefinitionSymbols(Doc:table):array
             end
          end
       end
+
+      table_depth = updateTableDepth(line_code, table_depth)
    end
 
    return symbols
