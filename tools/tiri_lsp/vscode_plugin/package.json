@@ -3,7 +3,7 @@
    "displayName": "Tiri Language Support",
    "description": "Language support for Tiri programs",
    "version": "0.1.0",
-   "publisher": "Paul Manias",
+   "publisher": "kotuku",
    "repository": {
       "type": "git",
       "url": "https://github.com/parasol-framework/kotuku.git",
