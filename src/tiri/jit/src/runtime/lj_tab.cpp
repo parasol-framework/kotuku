@@ -11,6 +11,7 @@
 #include "lj_gc.h"
 #include "lj_err.h"
 #include "lj_tab.h"
+#include "lj_bulk.h"
 
 //********************************************************************************************************************
 // Hash an arbitrary key and return its anchor position in the hash table.
@@ -172,11 +173,11 @@ GCtab * lj_tab_dup(lua_State *L, const GCtab *kt)
    if (asize > 0) {
       TValue *array = tvref(t->array);
       TValue *karray = tvref(kt->array);
-      if (asize < 64) {  // An inlined loop beats memcpy for < 512 bytes.
+      if (asize < 64) {
          uint32_t i;
          for (i = 0; i < asize; i++) copyTV(L, &array[i], &karray[i]);
       }
-      else memcpy(array, karray, asize * sizeof(TValue));
+      else lj_bulk_copy_tvalue(array, karray, asize);
    }
 
    hmask = kt->hmask;
@@ -234,21 +235,19 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
    uint32_t oldhmask = t->hmask;
    if (asize > oldasize) {  // Array part grows?
       TValue *array;
-      uint32_t i;
       if (asize > LJ_MAX_ASIZE) lj_err_msg(L, ErrMsg::TABOV);
       if (LJ_MAX_COLOSIZE != 0 and t->colo > 0) {
          // A colocated array must be separated and copied.
          TValue *oarray = tvref(t->array);
          array = lj_mem_newvec(L, asize, TValue);
          t->colo = (int8_t)(t->colo | 0x80);  //  Mark as separated (colo < 0).
-         for (i = 0; i < oldasize; i++) copyTV(L, &array[i], &oarray[i]);
+         lj_bulk_copy_tvalue(array, oarray, oldasize);
       }
       else array = (TValue*)lj_mem_realloc(L, tvref(t->array), oldasize * sizeof(TValue), asize * sizeof(TValue));
 
       setmref(t->array, array);
       t->asize = asize;
-      for (i = oldasize; i < asize; i++)  //  Clear newly allocated slots.
-         setnilV(&array[i]);
+      lj_bulk_nil_tvalue(&array[oldasize], asize - oldasize); // Clear newly allocated slots.
    }
 
    // Create new (empty) hash part.
