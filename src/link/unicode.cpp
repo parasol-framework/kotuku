@@ -72,7 +72,7 @@ int UTF8Copy(CSTRING String, STRING Dest, int Chars, int Size)
 
       // Check if there's enough room to accept the number of bytes and the null byte
 
-      if (i + copy + 1 >= Size) break;
+      if (i + copy + 1 > Size) break;
 
       // Do the copy
 
@@ -125,40 +125,56 @@ uint32_t UTF8ReadValue(CSTRING String, int *Length)
       return *str;
    }
    else if ((*str & 0xe0) IS 0xc0) {
+      if ((str[1] & 0xc0) != 0x80) {
+         if (Length) *Length = 0;
+         return 0;
+      }
       if (Length) *Length = 2;
       return ((str[0] & 0x1f)<<6) | (str[1] & 0x3f);
    }
    else if ((*str & 0xf0) IS 0xe0) {
-      if (Length) *Length = 3;
       code = *str & 0x0f;
       for (int16_t i=1; i < 3; i++) {
-         if ((str[i] & 0xc0) != 0x80) return 0;
+         if ((str[i] & 0xc0) != 0x80) {
+            if (Length) *Length = 0;
+            return 0;
+         }
          code = (code<<6) | (str[i] & 0x3f);
       }
+      if (Length) *Length = 3;
    }
    else if ((*str & 0xf8) IS 0xf0) {
-      if (Length) *Length = 4;
       code = *str & 0x07;
       for (int16_t i=1; i < 4; i++) {
-         if ((str[i] & 0xc0) != 0x80) return 0;
+         if ((str[i] & 0xc0) != 0x80) {
+            if (Length) *Length = 0;
+            return 0;
+         }
          code = (code<<6) | (str[i] & 0x3f);
       }
+      if (Length) *Length = 4;
    }
    else if ((*str & 0xfc) IS 0xf8) {
-      if (Length) *Length = 5;
       code = *str & 0x03;
       for (int16_t i=1; i < 5; i++) {
-         if ((str[i] & 0xc0) != 0x80) return 0;
+         if ((str[i] & 0xc0) != 0x80) {
+            if (Length) *Length = 0;
+            return 0;
+         }
          code = (code<<6) | (str[i] & 0x3f);
       }
+      if (Length) *Length = 5;
    }
    else if ((*str & 0xfc) IS 0xfc) {
-      if (Length) *Length = 6;
       code = *str & 0x01;
       for (int16_t i=1; i < 6; i++) {
-         if ((str[i] & 0xc0) != 0x80) return 0;
+         if ((str[i] & 0xc0) != 0x80) {
+            if (Length) *Length = 0;
+            return 0;
+         }
          code = (code<<6) | (str[i] & 0x3f);
       }
+      if (Length) *Length = 6;
    }
    else {
       if (Length) *Length = 1;
@@ -388,6 +404,8 @@ int: Returns the total amount of characters written to the string buffer.
 
 int UTF8WriteValue(int Value, STRING String, int StringSize)
 {
+   if ((!String) or (StringSize < 1)) return 0;
+
    if (Value < 128) {
       if (Value < 0) return 0;
       *String = (uint8_t)Value;
