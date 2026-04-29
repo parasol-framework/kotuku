@@ -7,7 +7,7 @@
     <type>class</type>
     <module>XML</module>
     <comment>Provides an interface for the management of structured data.</comment>
-    <fileExtension>*.xml</fileExtension>
+    <fileExtension>xml</fileExtension>
     <fileDescription>Extendable Markup Language (XML)</fileDescription>
     <version>1</version>
     <id>6293d85f</id>

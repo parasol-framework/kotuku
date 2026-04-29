@@ -7,7 +7,7 @@
     <type>class</type>
     <module>Font</module>
     <comment>Draws bitmap fonts and manages font meta information.</comment>
-    <fileExtension>*.font|*.fnt|*.ttf|*.fon</fileExtension>
+    <fileExtension>font|fnt|ttf|fon</fileExtension>
     <fileDescription>Font</fileDescription>
     <version>1</version>
     <id>58644726</id>

@@ -7,7 +7,7 @@
     <type>class</type>
     <module>Audio</module>
     <comment>High-level audio sample playback interface with intelligent resource management and format detection.</comment>
-    <fileExtension>*.wav|*.wave|*.snd</fileExtension>
+    <fileExtension>wav|wave|snd</fileExtension>
     <fileDescription>Sound Sample</fileDescription>
     <version>1</version>
     <id>825a6b79</id>

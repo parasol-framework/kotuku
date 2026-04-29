@@ -7,7 +7,7 @@
     <type>class</type>
     <module>Core</module>
     <comment>Manages the loading of system libraries.</comment>
-    <fileExtension>*.mod|*.so|*.dll</fileExtension>
+    <fileExtension>mod|so|dll</fileExtension>
     <fileDescription>System Module</fileDescription>
     <version>1</version>
     <id>cd79e511</id>

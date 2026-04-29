@@ -243,7 +243,7 @@ ERR CLASS_Free(extMetaClass *Self)
    if (Self->Location) { FreeResource(Self->Location); Self->Location = nullptr; }
 
 #ifndef KOTUKU_STATIC
-   if (!Self->SubClasses.empty()) {
+   if (not Self->SubClasses.empty()) {
       // Sanity check - if a base has sub-classes present then there is an issue that requires resolution.
       // Note that for static builds there is no way to control termination order, so these controls are disabled.
       kt::Log log;

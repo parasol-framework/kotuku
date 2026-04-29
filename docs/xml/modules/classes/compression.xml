@@ -7,7 +7,7 @@
     <type>class</type>
     <module>Core</module>
     <comment>Compresses data into archives, supporting a variety of compression formats.</comment>
-    <fileExtension>*.zip</fileExtension>
+    <fileExtension>zip</fileExtension>
     <fileDescription>ZIP File</fileDescription>
     <version>1</version>
     <id>2aebea46</id>
