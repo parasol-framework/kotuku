@@ -23,6 +23,7 @@ This documentation is intended for technical reference and is not suitable as an
 #include <stdlib.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <string.h>
 
 #ifdef _MSC_VER
  #include <io.h>
@@ -76,13 +77,18 @@ This documentation is intended for technical reference and is not suitable as an
 #include "defs.h"
 #include <kotuku/modules/core.h>
 
+static FILE *log_output(void)
+{
+   return glLogFile ? glLogFile : stderr;
+}
+
 #ifndef NDEBUG // KMSG() prints straight to stderr without going through the log.
 #define KMSG(...) //fprintf(stderr, __VA_ARGS__)
 #else
 #define KMSG(...)
 #endif
 
-#define KERR(...) fprintf(stderr, __VA_ARGS__)
+#define KERR(...) fprintf(log_output(), __VA_ARGS__)
 
 #ifdef __unix__
 [[maybe_unused]] static void CrashHandler(int, siginfo_t *, APTR);
@@ -113,6 +119,7 @@ int InitCore(void);
 __export void CloseCore(void);
 __export ERR OpenCore(OpenInfo *, struct CoreBase **);
 static ERR init_volumes(const std::forward_list<std::string> &);
+static ERR set_log_file(CSTRING);
 
 #ifdef _WIN32
 #define DLLCALL // __declspec(dllimport)
@@ -139,6 +146,26 @@ static void print_class_list(void)
       out << v.Name << " ";
    }
    log.msg("Total: %d, %s", (int)glClassDB.size(), out.str().c_str());
+}
+
+//********************************************************************************************************************
+
+static ERR set_log_file(CSTRING Path)
+{
+   if ((!Path) or (!Path[0])) {
+      fprintf(stderr, "No path specified for --log-file.\n");
+      return ERR::Args;
+   }
+
+   FILE *file = fopen(Path, "w");
+   if (!file) {
+      fprintf(stderr, "Failed to open log file '%s': %s\n", Path, strerror(errno));
+      return ERR::OpenFile;
+   }
+
+   if (glLogFile) fclose(glLogFile);
+   glLogFile = file;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -169,7 +196,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    tlMainThread = true;
    glCodeIndex  = 0; // Reset the code index so that CloseCore() will work.
 
-   if (glProcessID) fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
+   if (glProcessID) fprintf(log_output(), "Core module has already been initialised (OpenCore() called more than once.)\n");
 
 #ifdef __unix__
    // Record the 'original' user id and group id, which we need to know in case the binary has been run with the suid
@@ -248,7 +275,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          if (winGetExeDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
          else if (winGetCurrentDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
          else {
-            fprintf(stderr, "Failed to determine root folder.\n");
+            fprintf(log_output(), "Failed to determine root folder.\n");
             return ERR::SystemCall;
          }
          if (glRootPath.back() != '\\') glRootPath += '\\';
@@ -322,6 +349,19 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          }
          else if ((iequals(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);
+         }
+         else if (iequals(arg, "log-file")) {
+            if (i+1 >= Info->ArgCount) {
+               fprintf(stderr, "No path specified for --log-file.\n");
+               return ERR::Args;
+            }
+
+            if (auto error = set_log_file(Info->Args[++i]); error != ERR::Okay) return error;
+            if (glLogLevel < 5) glLogLevel = 5;
+         }
+         else if (startswith("log-file=", arg)) {
+            if (auto error = set_log_file(arg + 9); error != ERR::Okay) return error;
+            if (glLogLevel < 5) glLogLevel = 5;
          }
          else if (iequals(arg, "no-crash-handler")) glEnableCrashHandler = false;
          else if (iequals(arg, "sync"))        glSync = true;
@@ -695,7 +735,7 @@ void print_diagnosis(int Signal)
 
    //if (glLogLevel <= 1) return;
 
-   fd = stderr;
+   fd = log_output();
    fprintf(fd, "Diagnostic Information:\n\n");
 
    // Print details of the object context at the time of the crash.  If this code fails, it indicates that the object context is corrupt.
@@ -762,15 +802,16 @@ void print_diagnosis(int Signal)
 #ifndef _WIN32
    // If the output was to a file, now print that file to stderr
 
-   if (fd != stderr) {
+   if ((not (fd IS stderr)) and (not (fd IS glLogFile))) {
       char buffer[4096];
 
       rewind(fd);
       if (auto len = fread(buffer, 1, sizeof(buffer)-1, fd); len > 0) {
          buffer[len] = 0;
+         auto out = log_output();
          fflush(nullptr);
-         fsync(STDERR_FILENO);
-         fprintf(stderr, "%s", buffer);
+         if (out IS stderr) fsync(STDERR_FILENO);
+         fprintf(out, "%s", buffer);
 
          // Copy process status to the output file
 
@@ -809,7 +850,7 @@ static void CrashHandler(int SignalNumber, siginfo_t *Info, APTR Context)
 
    if (glCrashStatus > 1) {
       if ((glCodeIndex) and (glCodeIndex IS glLastCodeIndex)) {
-         fprintf(stderr, "Unable to recover - exiting immediately.\n");
+         fprintf(log_output(), "Unable to recover - exiting immediately.\n");
          exit(255);
       }
 
@@ -832,9 +873,9 @@ static void CrashHandler(int SignalNumber, siginfo_t *Info, APTR Context)
          log.msg("Process terminated.\n");
       }
       else if ((SignalNumber > 0) and (SignalNumber < std::ssize(signals))) {
-         fprintf(stderr, "\nProcess terminated, signal %s.\n\n", signals[SignalNumber]);
+         fprintf(log_output(), "\nProcess terminated, signal %s.\n\n", signals[SignalNumber]);
       }
-      else fprintf(stderr, "\nProcess terminated, signal %d.\n\n", SignalNumber);
+      else fprintf(log_output(), "\nProcess terminated, signal %d.\n\n", SignalNumber);
 
       if ((SignalNumber IS SIGILL) or (SignalNumber IS SIGFPE) or
           (SignalNumber IS SIGSEGV) or (SignalNumber IS SIGBUS)) {
@@ -843,7 +884,7 @@ static void CrashHandler(int SignalNumber, siginfo_t *Info, APTR Context)
       else glPageFault = 0;
    }
    else {
-      fprintf(stderr, "Secondary crash or hangup request at code index %d (last %d).\n", glCodeIndex, glLastCodeIndex);
+      fprintf(log_output(), "Secondary crash or hangup request at code index %d (last %d).\n", glCodeIndex, glLastCodeIndex);
       kill(getpid(), SIGKILL);
       exit(255);
    }
@@ -937,7 +978,7 @@ static int CrashHandler(int Code, APTR Address, int Continuable, int *Info)
 
    if (glCrashStatus > 1) {
       if ((glCodeIndex) and (glCodeIndex IS glLastCodeIndex)) {
-         fprintf(stderr, "Unable to recover - exiting immediately.\n");
+         fprintf(log_output(), "Unable to recover - exiting immediately.\n");
          fflush(nullptr);
          return 1;
       }
@@ -949,25 +990,25 @@ static int CrashHandler(int Code, APTR Address, int Continuable, int *Info)
          if (glLogLevel >= 5) {
             log.warning("CRASH!"); // Using LogF is helpful because branched output can indicate where the crash occurred.
          }
-         else fprintf(stderr, "\n\nCRASH!");
+         else fprintf(log_output(), "\n\nCRASH!");
 
-         fprintf(stderr, "\n%s (%s), at address: %p\n", ExceptionTable[Code], (Continuable) ? "Continuable" : "Fatal", Address);
+         fprintf(log_output(), "\n%s (%s), at address: %p\n", ExceptionTable[Code], (Continuable) ? "Continuable" : "Fatal", Address);
          if ((Code IS EXP_ACCESS_VIOLATION) and (Info)) {
             CSTRING type;
             if (Info[0] IS 1) type = "write";
             else if (Info[0] IS 0) type = "read";
             else if (Info[0] IS 8) type = "execution";
             else type = "access";
-            fprintf(stderr, "Attempted %s on address %p\n", type, ((void **)(Info+1))[0]);
+            fprintf(log_output(), "Attempted %s on address %p\n", type, ((void **)(Info+1))[0]);
          }
-         fprintf(stderr, "\n");
+         fprintf(log_output(), "\n");
       }
       else {
-         fprintf(stderr, "Recovering from secondary crash (%s) at code index %d.\n", ExceptionTable[Code], glCodeIndex);
+         fprintf(log_output(), "Recovering from secondary crash (%s) at code index %d.\n", ExceptionTable[Code], glCodeIndex);
          return 1;
       }
    }
-   else fprintf(stderr, "\n\nCRASH!  Exception code of %d is unrecognised.\n\n", Code);
+   else fprintf(log_output(), "\n\nCRASH!  Exception code of %d is unrecognised.\n\n", Code);
 
    glCrashStatus = 2;
 
@@ -1018,7 +1059,7 @@ static void BreakHandler(void)
    if (glLogLevel >= 5) {
       log.warning("USER BREAK"); // Using log is helpful for branched output to indicate where the crash occurred
    }
-   else fprintf(stderr, "\nUSER BREAK");
+   else fprintf(log_output(), "\nUSER BREAK");
 
    glCrashStatus = 1;
 

@@ -87,6 +87,7 @@ constexpr int DRIVETYPE_USB       = 5;
 #include <kotuku/system/registry.h>
 
 #include <stdarg.h>
+#include <stdio.h>
 
 struct ChildEntry;
 struct ObjectInfo;
@@ -741,6 +742,7 @@ extern const CSTRING glMessages[int(ERR::END)+1];       // Read-only table of er
 extern const int glTotalMessages;
 extern "C" int glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
+extern FILE *glLogFile;
 extern int glStdErrFlags; // Read only
 extern int glValidateProcessID; // Used by core thread only.
 extern size_t glPageSize;

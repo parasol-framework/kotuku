@@ -56,6 +56,7 @@ The following options can be used when executing script files:
  --log-api       Activates run-time log messages at API level.
  --log-info      Activates run-time log messages at INFO level.
  --log-error     Activates run-time log messages at ERROR level.
+ --log-file      Write log output to the given file path.
  --jit-options   Development options that control the behaviour of the compiler.
  --version       Prints the version number on line 1 and git commit on line 2.
 )";
@@ -136,8 +137,8 @@ static ERR process_args(void)
                i++;
             }
          }
-         else if (kt::iequals(args[i], "--jit-options")) {
-            // Handled by the Tiri module, we just need to skip the next argument.
+         else if ((kt::iequals(args[i], "--jit-options")) or (kt::iequals(args[i], "--log-file"))) {
+            // For some system parameters we need to skip the next argument.
             if (i + 1 < args.size()) i++;
          }
          else if (kt::startswith("--", args[i])) {

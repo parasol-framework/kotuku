@@ -148,6 +148,7 @@ size_t glPageSize = 4096; // Overwritten on opening the Core
 #endif
 
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()
+FILE *glLogFile = nullptr;
 
 int64_t glTimeLog    = 0;
 int16_t glCrashStatus   = 0;
