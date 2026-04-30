@@ -305,42 +305,54 @@ extern "C" void activate_console(int8_t AllowOpenConsole)
    if (!activated) {
       HANDLE current_out = GetStdHandle(STD_OUTPUT_HANDLE);
       HANDLE current_err = GetStdHandle(STD_ERROR_HANDLE);
+      const bool out_valid = (current_out) and (current_out != INVALID_HANDLE_VALUE);
+      const bool err_valid = (current_err) and (current_err != INVALID_HANDLE_VALUE);
+      const bool out_console = out_valid and is_console(current_out);
+      const bool err_console = err_valid and is_console(current_err);
 
-      if (((current_out) and (current_out != INVALID_HANDLE_VALUE)) or
-          ((current_err) and (current_err != INVALID_HANDLE_VALUE))) {
+      if ((out_valid and not out_console) or (err_valid and not err_console)) {
+         if (out_console or err_console) {
+            SetConsoleOutputCP(CP_UTF8);
+            SetConsoleCP(CP_UTF8);
+         }
+
          activated = true;
          return;
       }
 
-      char value[8];
-      if (GetEnvironmentVariable("TERM", value, sizeof(value)) or
-          GetEnvironmentVariable("PROMPT", value, sizeof(value))) { // TERM defined by Cygwin, Mingw, PROMPT defined by cmd.exe
+      if (out_console or err_console) {
+         // Already attached to a console; keep the inherited handles and update the code page below.
+      }
+      else {
+         char value[8];
+         if (GetEnvironmentVariable("TERM", value, sizeof(value)) or
+             GetEnvironmentVariable("PROMPT", value, sizeof(value))) { // TERM defined by Cygwin, Mingw, PROMPT defined by cmd.exe
 
-         auto stdout_fd = _fileno(stdout);
-         auto stderr_fd = _fileno(stderr);
+            auto stdout_fd = _fileno(stdout);
+            auto stderr_fd = _fileno(stderr);
 
-         if (((stdout_fd >= 0) and (not _isatty(stdout_fd))) or ((stderr_fd >= 0) and (not _isatty(stderr_fd))) or
-             ((current_out) and (current_out != INVALID_HANDLE_VALUE) and (not is_console(current_out))) or
-             ((current_err) and (current_err != INVALID_HANDLE_VALUE) and (not is_console(current_err)))) {
-            activated = true;
-            return;
+            if (((stdout_fd >= 0) and (not _isatty(stdout_fd))) or ((stderr_fd >= 0) and (not _isatty(stderr_fd))) or
+                (out_valid and not out_console) or (err_valid and not err_console)) {
+               activated = true;
+               return;
+            }
+
+            AttachConsole(ATTACH_PARENT_PROCESS);
+
+            // Double-check if we're attached to the console with is_console() because the parent process may have
+            // redirected the std* descriptors to a file for instance.  If we freopen() blindly then we otherwise
+            // revert output back to the console.
+
+            if (is_console(current_out)) freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
+            if (is_console(current_err)) freopen("CON", "w", stderr);
          }
-
-         AttachConsole(ATTACH_PARENT_PROCESS);
-
-         // Double-check if we're attached to the console with is_console() because the parent process may have
-         // redirected the std* descriptors to a file for instance.  If we freopen() blindly then we otherwise
-         // revert output back to the console.
-
-         if (is_console(current_out)) freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
-         if (is_console(current_err)) freopen("CON", "w", stderr);
+         else if (AllowOpenConsole) { // Assume that executable was launched from desktop without a console
+            AllocConsole();
+            freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
+            freopen("CON", "w", stderr);
+         }
+         else return;
       }
-      else if (AllowOpenConsole) { // Assume that executable was launched from desktop without a console
-         AllocConsole();
-         freopen("CON", "w", stdout);  // Redirect stdout and stderr descriptors to the attached console.
-         freopen("CON", "w", stderr);
-      }
-      else return;
 
       // Set console mode to handle UTF-8 properly
 
