@@ -38,6 +38,7 @@ if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output
       "${DOCS}/modules/classes/display.xml"
       "${DOCS}/modules/classes/pointer.xml"
       "${DOCS}/modules/classes/surface.xml"
+      ${COMMAND_LIST}
       COMMAND ${ORIGO_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${MOD}.tdl" "sdk=${PROJECT_SOURCE_DIR}"
               "output-proto=prototypes.h" "output-defs=module_def.c" "files={" ${FUNCTIONS} "lib_surfaces.cpp" "}"
       COMMAND ${ORIGO_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${MOD}.tdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
