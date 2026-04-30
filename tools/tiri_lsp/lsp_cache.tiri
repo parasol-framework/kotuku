@@ -4,11 +4,11 @@
 -- Builds an index of Kotuku API documentation from XML files.
 -- Stores top-level info (names, comments, prototypes) plus byte offsets for on-demand detail retrieval.
 --
--- Compact string format uses \0 as field separator:
---   Fields:  'A:access\0L:start,end\0T:type\0C:comment'
---   Methods: 'L:start,end\0P:prototype\0C:comment'
---   Actions: 'L:start,end\0P:prototype\0C:comment'
---   Functions: 'L:start,end\0P:prototype\0C:comment'
+-- Compact string format uses \t as field separator:
+--   Fields:  'A:access\tL:start,end\tT:type\tC:comment'
+--   Methods: 'L:start,end\tP:prototype\tC:comment'
+--   Actions: 'L:start,end\tP:prototype\tC:comment'
+--   Functions: 'L:start,end\tP:prototype\tC:comment'
 
    import 'io/filesearch'
 
@@ -18,12 +18,12 @@ rx_source_file_plain = <{ regex.new([[<file>([^<]+)<\/file>]]) }>
 
 -- Encode a field entry to compact string format
 function encodeField(Access, Type, ByteStart, ByteEnd, Comment)
-   return f'A:{Access or "R"}\0L:{ByteStart},{ByteEnd}\0T:{Type or ""}\0C:{Comment or ""}'
+   return f'A:{Access or "R"}\tL:{ByteStart},{ByteEnd}\tT:{Type or ""}\tC:{Comment or ""}'
 end
 
 -- Encode a method/action/function entry to compact string format
 function encodeMethod(Prototype, ByteStart, ByteEnd, Comment)
-   return f'L:{ByteStart},{ByteEnd}\0P:{Prototype or ""}\0C:{Comment or ""}'
+   return f'L:{ByteStart},{ByteEnd}\tP:{Prototype or ""}\tC:{Comment or ""}'
 end
 
 -- Decode a field from compact string format
@@ -31,7 +31,7 @@ global function decodeField(Str:any):table
    if type(Str) != 'string' then return Str end  -- Already decoded or nil
 
    result = {}
-   for field in values(Str:split('\0')) do
+   for field in values(Str:split('\t')) do
       key = field:sub(0, 1)
       value = field:sub(2)
       if key is 'A' then
@@ -57,7 +57,7 @@ global function decodeMethod(Str:any):table
    if type(Str) is 'table' then return Str end  -- Already decoded or nil
 
    result = {}
-   for field in values(Str:split('\0')) do
+   for field in values(Str:split('\t')) do
       key = field:sub(0, 1)
       value = field:sub(2)
       if key is 'L' then

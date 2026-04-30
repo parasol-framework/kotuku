@@ -579,30 +579,29 @@ global function lspStart(Options)
    if self.port is 0 then
       self.stdioTextOutput = true
       runStdioServer(self)
-      return self
-   end
+   else
+      logMessage(self, 'Starting Tiri LSP Server on port ' .. self.port)
 
-   logMessage(self, 'Starting Tiri LSP Server on port ' .. self.port)
-
-   -- Create TCP server socket
-   self._socket = obj.new('netsocket', {
-      port = self.port,
-      flags = 'SERVER|MULTI_CONNECT',
-      feedback = function(Server, ClientSocket, State)
-         if State is NTC_CONNECTED then
-            logMessage(self, 'LSP client connected')
-         elseif State is NTC_DISCONNECTED then
-            logMessage(self, 'LSP client disconnected')
+      -- Create TCP server socket
+      self._socket = obj.new('netsocket', {
+         port = self.port,
+         flags = 'SERVER|MULTI_CONNECT',
+         feedback = function(Server, ClientSocket, State)
+            if State is NTC_CONNECTED then
+               logMessage(self, 'LSP client connected')
+            elseif State is NTC_DISCONNECTED then
+               logMessage(self, 'LSP client disconnected')
+            end
+         end,
+         incoming = function(Server, ClientSocket)
+            processIncoming(self, ClientSocket)
          end
-      end,
-      incoming = function(Server, ClientSocket)
-         processIncoming(self, ClientSocket)
-      end
-   })
+      })
 
-   logMessage(self, 'Tiri LSP Server listening on port ' .. self.port)
-   if self.verbose then
-      logMessage(self, 'Verbose logging enabled')
+      logMessage(self, 'Tiri LSP Server listening on port ' .. self.port)
+      if self.verbose then
+         logMessage(self, 'Verbose logging enabled')
+      end
    end
 
    return self
