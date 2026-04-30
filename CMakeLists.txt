@@ -310,10 +310,14 @@ function (idl_gen)
          list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
       endif ()
 
+      list (APPEND COMMAND_LIST COMMAND ${CMAKE_COMMAND} -E echo
+         "[idl_gen] ${ORIGO_CMD} ${IDL_C_SCRIPT} --log-warning src=${ARGV0} output=${IDLC_OUTPUT} sdk=${PROJECT_SOURCE_DIR} ${IDLC_ARGS}")
       list (APPEND COMMAND_LIST COMMAND ${ORIGO_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${ARGV0}"
          "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS})
 
       if (DEFINED IDLC_APPEND_IDL)
+         list (APPEND COMMAND_LIST COMMAND ${CMAKE_COMMAND} -E echo
+            "[idl_gen] ${ORIGO_CMD} ${IDL_COMPILE_SCRIPT} --log-warning src=${ARGV0} output=${IDLC_APPEND_IDL} sdk=${PROJECT_SOURCE_DIR} format=c append")
          list (APPEND COMMAND_LIST COMMAND ${ORIGO_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${ARGV0}"
             "output=${IDLC_APPEND_IDL}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" "append")
       endif ()
@@ -348,6 +352,8 @@ function (idl_compile)
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
+         COMMAND ${CMAKE_COMMAND} -E echo
+            "[idl_compile] ${ORIGO_CMD} ${IDL_COMPILE_SCRIPT} --log-warning src=${ARGV0} output=${IDLC_OUTPUT} sdk=${PROJECT_SOURCE_DIR} format=c ${IDLC_ARGS}"
          COMMAND "${ORIGO_CMD}" "${IDL_COMPILE_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}

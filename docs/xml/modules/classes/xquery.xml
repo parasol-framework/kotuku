@@ -7,7 +7,7 @@
     <type>class</type>
     <module>XQuery</module>
     <comment>Provides an interface for XQuery evaluation and execution.</comment>
-    <fileExtension>*.xqm|*.xq</fileExtension>
+    <fileExtension>xqm|xq</fileExtension>
     <fileDescription>XQuery Module</fileDescription>
     <version>1</version>
     <id>58128f50</id>

@@ -7,7 +7,7 @@
     <type>class</type>
     <module>Core</module>
     <comment>System processes are managed by the Task class.</comment>
-    <fileExtension>*.exe|*.bat|*.com</fileExtension>
+    <fileExtension>exe|bat|com</fileExtension>
     <fileDescription>Executable File</fileDescription>
     <version>1</version>
     <id>56332d91</id>

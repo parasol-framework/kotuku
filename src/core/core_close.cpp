@@ -8,17 +8,17 @@ static void free_classes(void)
    #ifdef __ANDROID__
    if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = 0; }
    #endif
-   if (glCompressedStreamClass) { FreeResource(glCompressedStreamClass); glCompressedStreamClass  = 0; }
-   if (glArchiveClass)      { FreeResource(glArchiveClass);      glArchiveClass      = 0; }
-   if (glCompressionClass)  { FreeResource(glCompressionClass);  glCompressionClass  = 0; }
-   if (glScriptClass)       { FreeResource(glScriptClass);       glScriptClass       = 0; }
-   if (glFileClass)         { FreeResource(glFileClass);         glFileClass         = 0; }
-   if (glStorageClass)      { FreeResource(glStorageClass);      glStorageClass      = 0; }
-   if (glConfigClass)       { FreeResource(glConfigClass);       glConfigClass       = 0; }
-   if (glTimeClass)         { FreeResource(glTimeClass);         glTimeClass         = 0; }
-   if (glModuleClass)       { FreeResource(glModuleClass);       glModuleClass       = 0; }
-   if (glThreadClass)       { FreeResource(glThreadClass);       glThreadClass       = 0; }
-   if (glRootModuleClass)   { FreeResource(glRootModuleClass);   glRootModuleClass   = 0; }
+   if (glCompressedStreamClass) { FreeResource(glCompressedStreamClass); glCompressedStreamClass  = nullptr; }
+   if (glArchiveClass)      { FreeResource(glArchiveClass);      glArchiveClass      = nullptr; }
+   if (glCompressionClass)  { FreeResource(glCompressionClass);  glCompressionClass  = nullptr; }
+   if (glScriptClass)       { FreeResource(glScriptClass);       glScriptClass       = nullptr; }
+   if (glFileClass)         { FreeResource(glFileClass);         glFileClass         = nullptr; }
+   if (glStorageClass)      { FreeResource(glStorageClass);      glStorageClass      = nullptr; }
+   if (glConfigClass)       { FreeResource(glConfigClass);       glConfigClass       = nullptr; }
+   if (glTimeClass)         { FreeResource(glTimeClass);         glTimeClass         = nullptr; }
+   if (glModuleClass)       { FreeResource(glModuleClass);       glModuleClass       = nullptr; }
+   if (glThreadClass)       { FreeResource(glThreadClass);       glThreadClass       = nullptr; }
+   if (glRootModuleClass)   { FreeResource(glRootModuleClass);   glRootModuleClass   = nullptr; }
 }
 
 //********************************************************************************************************************
@@ -334,10 +334,22 @@ __export void Expunge(int16_t Force)
                auto mem = glPrivateMemory.find(id);
                if (mem IS glPrivateMemory.end()) continue;
 
-               auto mc = (extMetaClass *)mem->second.Address;
-               if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
-                  log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name.c_str(), mc->ClassName, mc->OpenCount);
-                  class_in_use = true;
+               if (auto mc = (extMetaClass *)mem->second.Address; (mc) and (mc->classID() IS CLASSID::METACLASS)) {
+                  if (mc->OpenCount > 0) {
+                     log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name.c_str(), mc->ClassName, mc->OpenCount);
+                     class_in_use = true;
+                  }
+                  else if (not mc->SubClasses.empty()) {
+                     int ext_count = 0;
+                     for (auto & sc : mc->SubClasses) {
+                        if (sc->ownerID() != mod_master->UID) ext_count++;
+                     }
+
+                     if (ext_count > 0) {
+                        log.msg("Module %s manages a class with active sub-classes - Class: %s, Count: %d.", mod_master->Name.c_str(), mc->ClassName, ext_count);
+                        class_in_use = true;
+                     }
+                  }
                }
             }
 

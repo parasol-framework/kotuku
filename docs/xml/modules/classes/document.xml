@@ -7,7 +7,7 @@
     <type>class</type>
     <module>Document</module>
     <comment>Provides document display and editing facilities.</comment>
-    <fileExtension>*.rpl|*.ripple|*.ripl</fileExtension>
+    <fileExtension>rpl|ripple|ripl</fileExtension>
     <version>1</version>
     <id>9989342d</id>
     <idstring>DOCUMENT</idstring>

@@ -7,8 +7,8 @@
     <type>class</type>
     <module>Picture</module>
     <comment>Loads and saves picture files in a variety of different data formats.</comment>
-    <fileExtension>*.png</fileExtension>
-    <fileDescription>PNG Picture</fileDescription>
+    <fileExtension>png</fileExtension>
+    <fileDescription>PNG Image</fileDescription>
     <version>1</version>
     <id>4f77ddf7</id>
     <idstring>PICTURE</idstring>

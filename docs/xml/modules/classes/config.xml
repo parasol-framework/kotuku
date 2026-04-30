@@ -7,7 +7,7 @@
     <type>class</type>
     <module>Core</module>
     <comment>Manages the reading and writing of configuration files.</comment>
-    <fileExtension>*.cfg|*.cnf|*.config</fileExtension>
+    <fileExtension>cfg|cnf|config</fileExtension>
     <fileDescription>Config File</fileDescription>
     <version>1</version>
     <id>abba1e78</id>
