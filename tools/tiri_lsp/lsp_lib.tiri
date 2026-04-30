@@ -437,6 +437,7 @@ end
    import './lsp_hover'
    import './lsp_definition'
    import './lsp_parsing'
+   import './lsp_symbols'
    import './lsp_handlers'
 
 ----------------------------------------------------------------------------------------------------------------------

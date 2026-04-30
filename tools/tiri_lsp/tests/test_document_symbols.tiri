@@ -1,0 +1,183 @@
+global glDocumentSymbolsTestUri = nil
+
+@BeforeAll function SetupDocumentSymbolTests(State)
+   local err, sdk_path = mSys.ResolvePath(State.folder .. '../../../')
+   assert(err is ERR_Okay, 'Failed to resolve SDK path for LSP document symbol tests.')
+   mSys.SetVolume('sdk', sdk_path)
+
+   loadFile('sdk:tools/tiri_lsp/lsp_lib.tiri')
+   glDocumentSymbolsTestUri = lspPathToUri('sdk:tools/tiri_lsp/tests/test_document_symbols.tiri')
+   assert(glDocumentSymbolsTestUri, 'Failed to create test document URI.')
+end
+
+function makeDoc(Content:str):table
+   return {
+      uri = glDocumentSymbolsTestUri,
+      languageId = 'tiri',
+      version = 1,
+      content = Content,
+      lineIndex = nil
+   }
+end
+
+function findSymbol(Symbols:array, Name:str):table
+   for symbol in values(Symbols) do
+      if symbol.name is Name then return symbol end
+   end
+end
+
+function findChild(Symbol:table, Name:str):table
+   for child in values(Symbol.children or array<table>) do
+      if child.name is Name then return child end
+   end
+end
+
+function hasTag(Symbol:table, Tag:num):bool
+   for tag in values(Symbol.tags or array<int>) do
+      if tag is Tag then return true end
+   end
+   return false
+end
+
+@Test function HandlerAdvertisesDocumentSymbols()
+   server = {
+      _handlers = {},
+      verbose = false,
+      logMessage = function(Message) end
+   }
+   registerCoreHandlers(server)
+
+   init = server._handlers['initialize']({ jsonrpc = '2.0', id = 1, params = {} }, {})
+   assert(init.result.capabilities.documentSymbolProvider is true, 'Server must advertise documentSymbolProvider.')
+
+   doc = makeDoc('function alpha()\nend\n')
+   glDocuments[doc.uri] = doc
+
+   response = server._handlers['textDocument/documentSymbol']({
+      jsonrpc = '2.0',
+      id = 2,
+      params = {
+         textDocument = { uri = doc.uri }
+      }
+   }, {})
+
+   glDocuments[doc.uri] = nil
+
+   assert(response.result and #response.result is 1, 'Document symbol handler should return symbols.')
+   assert(response.result[0].name is 'alpha', 'Handler should return the parsed function symbol.')
+end
+
+@Test function TopLevelFunctionsHaveRanges()
+   doc = makeDoc('local function alpha(Value)\n   return Value\nend\n')
+   symbols = extractDocumentSymbols(doc)
+   alpha = findSymbol(symbols, 'alpha')
+
+   assert(alpha, 'Top-level local function should be listed.')
+   assert(alpha.kind is SYMBOL_KIND.FUNCTION, 'Named function should use function kind.')
+   assert(alpha.detail is 'local', 'Local function detail should include scope.')
+   assert(alpha.range.start.line is 0, 'Function range should start on declaration line.')
+   assert(alpha.range['end'].line is 2, 'Function range should end at matching end.')
+   assert(alpha.selectionRange.start.character is 15, 'Selection range should start at the function name.')
+   assert(alpha.selectionRange['end'].character is 20, 'Selection range should end after the function name.')
+end
+
+@Test function ModuleScopeVariablesAndTables()
+   doc = makeDoc([[
+local glFolderFill
+TBID <const> = {
+   ROOT = 1
+}
+global glName = 'value'
+]])
+   symbols = extractDocumentSymbols(doc)
+
+   local_var = findSymbol(symbols, 'glFolderFill')
+   table_symbol = findSymbol(symbols, 'TBID')
+   global_var = findSymbol(symbols, 'glName')
+
+   assert(local_var and local_var.kind is SYMBOL_KIND.VARIABLE, 'Module-scope local should be a variable symbol.')
+   assert(local_var.detail is 'local', 'Module-scope local detail should include scope.')
+   assert(table_symbol and table_symbol.kind is SYMBOL_KIND.OBJECT, 'Module-scope table should be an object symbol.')
+   assert(table_symbol.detail is 'table', 'Table detail should identify table symbols.')
+   assert(global_var and global_var.detail is 'global', 'Module-scope global should include scope detail.')
+end
+
+@Test function AssignedFunctionsAndNestedMethods()
+   doc = makeDoc([[
+gui.fileview = function(Options)
+   function loadPrefs()
+   end
+
+   self.refresh = function()
+   end
+end
+]])
+   symbols = extractDocumentSymbols(doc)
+   factory = findSymbol(symbols, 'gui.fileview')
+   load_prefs = findChild(factory, 'loadPrefs')
+   refresh = findChild(factory, 'self.refresh')
+
+   assert(factory, 'Assigned factory function should be listed.')
+   assert(factory.kind is SYMBOL_KIND.METHOD, 'Dotted assigned function should use method kind.')
+   assert(factory.detail is 'method', 'Dotted assigned function detail should identify methods.')
+   assert(load_prefs and load_prefs.kind is SYMBOL_KIND.FUNCTION, 'Nested named function should be a child symbol.')
+   assert(refresh and refresh.kind is SYMBOL_KIND.METHOD, 'Nested self assignment should be a child method.')
+   assert(factory.range['end'].line is 6, 'Factory range should close on its matching end.')
+end
+
+@Test function AnnotationDetailsAndDeprecatedTag()
+   doc = makeDoc([[
+@Test(priority=1)
+@Disabled; @Private
+function annotated()
+end
+
+@Deprecated(message='Use replacement')
+global function oldApi()
+end
+]])
+   symbols = extractDocumentSymbols(doc)
+   annotated = findSymbol(symbols, 'annotated')
+   old_api = findSymbol(symbols, 'oldApi')
+
+   assert(annotated, 'Annotated function should be listed.')
+   assert(annotated.detail:find('@Test', 0, true), 'Detail should include @Test.')
+   assert(annotated.detail:find('@Disabled', 0, true), 'Detail should include @Disabled.')
+   assert(annotated.detail:find('@Private', 0, true), 'Detail should include @Private.')
+
+   assert(old_api, 'Deprecated function should be listed.')
+   assert(old_api.detail:find('global', 0, true), 'Deprecated global function should retain scope detail.')
+   assert(old_api.detail:find('@Deprecated', 0, true), 'Deprecated function detail should include annotation.')
+   assert(hasTag(old_api, 1), 'Deprecated function should use the LSP deprecated tag.')
+end
+
+@Test function IgnoresCommentsStringsAndTableKeys()
+   doc = makeDoc([[
+-- function commentOnly()
+text = "function stringOnly()"
+items = {
+   key = 1,
+   callback = function()
+   end
+}
+]])
+   symbols = extractDocumentSymbols(doc)
+
+   assert(not findSymbol(symbols, 'commentOnly'), 'Commented function text should not become a symbol.')
+   assert(not findSymbol(symbols, 'stringOnly'), 'Function-looking string content should not become a symbol.')
+   assert(not findSymbol(symbols, 'key'), 'Table keys should not become module variable symbols.')
+
+   items = findSymbol(symbols, 'items')
+   callback = findChild(items, 'callback')
+   assert(items and items.kind is SYMBOL_KIND.OBJECT, 'Top-level table should be listed.')
+   assert(callback and callback.kind is SYMBOL_KIND.FUNCTION, 'Assigned table callback should be nested below the table.')
+end
+
+@Test function IncompleteFunctionFallsBackToLastLine()
+   doc = makeDoc('function unfinished()\n   print("still typing")\n')
+   symbols = extractDocumentSymbols(doc)
+   unfinished = findSymbol(symbols, 'unfinished')
+
+   assert(unfinished, 'Incomplete function should still be listed.')
+   assert(unfinished.range['end'].line is 1, 'Incomplete function should end at the last known line.')
+end

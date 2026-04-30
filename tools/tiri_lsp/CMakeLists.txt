@@ -52,3 +52,4 @@ else ()
 endif ()
 
 flute_test(tiri_lsp_definition "${TIRI_LSP_DIR}/tests/test_definition.tiri")
+flute_test(tiri_lsp_document_symbols "${TIRI_LSP_DIR}/tests/test_document_symbols.tiri")

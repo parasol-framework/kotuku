@@ -7,7 +7,7 @@
       "name": "tiri-lsp",
       "description": "Tiri language server for code intelligence",
       "version": "1.0.0",
-      "source": "./plugins/tiri-lsp",
+      "source": "./claude-plugins/tiri-lsp",
       "category": "development",
       "lspServers": {
         "tiri": {
