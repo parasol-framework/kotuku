@@ -62,6 +62,7 @@
 
 #include <cctype>       // For isalnum, isdigit
 #include <cstdlib>      // For strtod
+#include <string>       // For std::string
 #include <string_view>  // For std::string_view
 #include <charconv>     // For std::from_chars
 
@@ -192,13 +193,37 @@ static bool parse_annotation_value(lua_State *L, std::string_view& sv)
       sv.remove_prefix(1);
 
       size_t end_pos = 0;
-      while (end_pos < sv.size() and sv[end_pos] != quote) {
-         if (sv[end_pos] IS '\\' and end_pos + 1 < sv.size()) end_pos++;  // Skip escaped characters
+      std::string decoded;
+
+      while (end_pos < sv.size()) {
+         char c = sv[end_pos];
+         if (c IS quote) break;
+
+         if (c IS '\\' and end_pos + 1 < sv.size()) {
+            char escaped = sv[end_pos + 1];
+            switch (escaped) {
+               case 'n':  decoded += '\n'; break;
+               case 'r':  decoded += '\r'; break;
+               case 't':  decoded += '\t'; break;
+               case '\\': decoded += '\\'; break;
+               case '"':  decoded += '"';  break;
+               case '\'': decoded += '\''; break;
+               default:
+                  decoded += '\\';
+                  decoded += escaped;
+                  break;
+            }
+            end_pos += 2;
+            continue;
+         }
+
+         decoded += c;
          end_pos++;
       }
+
       if (end_pos >= sv.size()) return false;  // Unterminated string
 
-      lua_pushlstring(L, sv.data(), end_pos);
+      lua_pushlstring(L, decoded.data(), decoded.size());
       sv.remove_prefix(end_pos + 1);  // Skip content and closing quote
       return true;
    }

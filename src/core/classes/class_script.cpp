@@ -21,7 +21,7 @@ Terminating the script will not remove objects that are outside its resource hie
 
 *********************************************************************************************************************/
 
-#define PRV_SCRIPT 1
+#define PRV_SCRIPT
 #include "../defs.h"
 #include <kotuku/main.h>
 

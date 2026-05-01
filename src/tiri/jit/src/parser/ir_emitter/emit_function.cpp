@@ -639,6 +639,59 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
 // This generates code equivalent to: debug.anno.set(func, "@Anno...", source, name)
 // The function reference is expected to be in the specified register.
 
+static void append_annotation_string_literal(std::string &Out, GCstr *Value)
+{
+   Out += "\"";
+
+   if (Value) {
+      std::string_view text(strdata(Value), Value->len);
+
+      for (char c : text) {
+         switch (c) {
+            case '\\': Out += "\\\\"; break;
+            case '"':  Out += "\\\""; break;
+            case '\n': Out += "\\n";  break;
+            case '\r': Out += "\\r";  break;
+            case '\t': Out += "\\t";  break;
+            default:   Out += c;      break;
+         }
+      }
+   }
+
+   Out += "\"";
+}
+
+static void append_annotation_value(std::string &Out, const AnnotationArgValue &Value)
+{
+   switch (Value.type) {
+      case AnnotationArgValue::Type::Bool:
+         Out += Value.bool_value ? "true" : "false";
+         break;
+      case AnnotationArgValue::Type::Number:
+         Out += std::to_string(Value.number_value);
+         break;
+      case AnnotationArgValue::Type::String:
+         append_annotation_string_literal(Out, Value.string_value);
+         break;
+      case AnnotationArgValue::Type::Array: {
+         Out += "[";
+         bool first_elem = true;
+
+         for (const auto &elem : Value.array_value) {
+            if (not first_elem) Out += ",";
+            first_elem = false;
+            append_annotation_value(Out, elem);
+         }
+
+         Out += "]";
+         break;
+      }
+      default:
+         Out += "nil";
+         break;
+   }
+}
+
 ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, const std::vector<AnnotationEntry>& Annotations, GCstr* Funcname)
 {
    if (Annotations.empty()) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
@@ -662,43 +715,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, 
             first_arg = false;
             if (key) anno_str.append(strdata(key), key->len);
             anno_str += "=";
-            switch (value.type) {
-               case AnnotationArgValue::Type::Bool:
-                  anno_str += value.bool_value ? "true" : "false";
-                  break;
-               case AnnotationArgValue::Type::Number:
-                  anno_str += std::to_string(value.number_value);
-                  break;
-               case AnnotationArgValue::Type::String:
-                  anno_str += "\"";
-                  if (value.string_value) anno_str.append(strdata(value.string_value), value.string_value->len);
-                  anno_str += "\"";
-                  break;
-               case AnnotationArgValue::Type::Array: {
-                  anno_str += "[";
-                  bool first_elem = true;
-                  for (const auto& elem : value.array_value) {
-                     if (not first_elem) anno_str += ",";
-                     first_elem = false;
-                     if (elem.type IS AnnotationArgValue::Type::String and elem.string_value) {
-                        anno_str += "\"";
-                        anno_str.append(strdata(elem.string_value), elem.string_value->len);
-                        anno_str += "\"";
-                     }
-                     else if (elem.type IS AnnotationArgValue::Type::Number) {
-                        anno_str += std::to_string(elem.number_value);
-                     }
-                     else if (elem.type IS AnnotationArgValue::Type::Bool) {
-                        anno_str += elem.bool_value ? "true" : "false";
-                     }
-                  }
-                  anno_str += "]";
-                  break;
-               }
-               default:
-                  anno_str += "nil";
-                  break;
-            }
+            append_annotation_value(anno_str, value);
          }
          anno_str += ")";
       }
