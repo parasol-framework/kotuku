@@ -1,5 +1,5 @@
 ---
-name: documentation-enhancer
+name: doc-enhancer
 description: >-
   Use when improving, rewriting, or reviewing Kotuku technical documentation, including embedded C++ API
   documentation sections marked with -FUNCTION-, -CLASS-, -ACTION-, -METHOD-, or -FIELD-, and markdown technical
