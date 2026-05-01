@@ -143,9 +143,9 @@ end
 
       -- Increment and decrement
       a++
-      b--
+      b -= 1
       c++
-      d--
+      d -= 1
 
       -- Reset periodically to avoid overflow/underflow
       if i % 1000 is 0 then

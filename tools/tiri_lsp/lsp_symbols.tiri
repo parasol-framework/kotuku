@@ -1,0 +1,460 @@
+----------------------------------------------------------------------------------------------------------------------
+-- Document Symbol Support
+
+rx_symbol_trim            = <{ regex.new([[^\s*(.*)]], regex.DOT_ALL) }>
+rx_symbol_named_function  = <{ regex.new([[\s*(local\s+|global\s+)?(function|thunk)\s+([A-Za-z_][A-Za-z0-9_:.]*)\s*\(]]) }>
+rx_symbol_assign_function = <{ regex.new([[\s*(local\s+|global\s+)?([A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*)\s*=\s*(function|thunk)\s*\(]]) }>
+rx_symbol_decl            = <{ regex.new([[\s*(local|global)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(<const>)?]]) }>
+rx_symbol_assign          = <{ regex.new([[\s*([A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*)\s*(<const>)?\s*=]]) }>
+
+----------------------------------------------------------------------------------------------------------------------
+
+function symbolIsIdentStart(Char:str):bool
+   return (Char >= 'a' and Char <= 'z') or (Char >= 'A' and Char <= 'Z') or Char is '_'
+end
+
+function symbolIsIdentChar(Char:str):bool
+   return symbolIsIdentStart(Char) or (Char >= '0' and Char <= '9')
+end
+
+function symbolIsBlockTokenChar(Char:str):bool
+   return symbolIsIdentChar(Char)
+end
+
+function symbolCountBlockKeyword(LineCode:str, Keyword:str):num
+   count = 0
+   pos = 0
+   len = #LineCode
+
+   while pos < len do
+      c = LineCode:sub(pos, pos + 1)
+      if symbolIsBlockTokenChar(c) then
+         token_start = pos
+         pos++
+
+         while pos < len and symbolIsBlockTokenChar(LineCode:sub(pos, pos + 1)) do
+            pos++
+         end
+
+         if LineCode:sub(token_start, pos) is Keyword then
+            count++
+         end
+      else
+         pos++
+      end
+   end
+
+   return count
+end
+
+function symbolCountChar(LineCode:str, Char:str):num
+   count = 0
+   for i = 0, #LineCode - 1 do
+      if LineCode:sub(i, i + 1) is Char then count++ end
+   end
+   return count
+end
+
+function symbolCurrentParent(Stack:array):table
+   for i = #Stack - 1, 0, -1 do
+      if Stack[i].symbol then return Stack[i].symbol end
+   end
+   return nil
+end
+
+function symbolAddChild(Roots:array, Stack:array, Symbol:table)
+   parent = symbolCurrentParent(Stack)
+   if parent then
+      parent.children:push(Symbol)
+   else
+      Roots:push(Symbol)
+   end
+end
+
+function symbolCloseFrame(Frame:table, LineNo:num, LineText:str)
+   if Frame and Frame.symbol then
+      Frame.symbol.range['end'].line = LineNo
+      Frame.symbol.range['end'].character = #LineText
+   end
+end
+
+function symbolMakeRange(LineNo:num, StartChar:num, EndChar:num):table
+   return {
+      start = { line = LineNo, character = StartChar },
+      ['end'] = { line = LineNo, character = EndChar }
+   }
+end
+
+function symbolAnnotationLabels(Annotations:array):array
+   labels = array<string>
+   for anno in values(Annotations or array<table>) do
+      labels:push('@' .. anno.name)
+   end
+   return labels
+end
+
+function symbolHasAnnotation(Annotations:array, Name:str):bool
+   for anno in values(Annotations or array<table>) do
+      if anno.name is Name then return true end
+   end
+   return false
+end
+
+function symbolBuildDetail(Base:str, Annotations:array):str
+   parts = array<string>
+   if Base and Base != '' then parts:push(Base) end
+   for label in values(symbolAnnotationLabels(Annotations)) do
+      parts:push(label)
+   end
+   if #parts is 0 then return nil end
+   return parts:join(' ')
+end
+
+function symbolMergeAnnotations(Left:array, Right:array):array
+   merged = array<table>
+   for anno in values(Left or array<table>) do merged:push(anno) end
+   for anno in values(Right or array<table>) do merged:push(anno) end
+   return merged
+end
+
+function symbolSkipSpaces(Text:str, Pos:num):num
+   while Pos < #Text do
+      c = Text:sub(Pos, Pos + 1)
+      if c != ' ' and c != '\t' then break end
+      Pos++
+   end
+   return Pos
+end
+
+function symbolReadAnnotationArgs(Text:str, Pos:num):<str,num>
+   start_pos = Pos
+   depth = 0
+
+   while Pos < #Text do
+      c = Text:sub(Pos, Pos + 1)
+
+      if c is '"' or c is "'" then
+         quote = c
+         Pos++
+         while Pos < #Text do
+            sc = Text:sub(Pos, Pos + 1)
+            if sc is '\\' and Pos + 1 < #Text then
+               Pos += 2
+            elseif sc is quote then
+               Pos++
+               break
+            else
+               Pos++
+            end
+         end
+      elseif c is '(' then
+         depth++
+         Pos++
+      elseif c is ')' then
+         depth -= 1
+         Pos++
+         if depth <= 0 then
+            return Text:sub(start_pos + 1, Pos - 1), Pos
+         end
+      else
+         Pos++
+      end
+   end
+
+   return Text:sub(start_pos + 1), Pos
+end
+
+function symbolParseAnnotationPrefix(LineText:str):<array,num>
+   annotations = array<table>
+   pos = 0
+
+   while pos < #LineText do
+      pos = symbolSkipSpaces(LineText, pos)
+      if pos < #LineText and LineText:sub(pos, pos + 1) is ';' then
+         pos++
+         continue
+      end
+      if pos >= #LineText or LineText:sub(pos, pos + 1) != '@' then break end
+
+      pos++
+      name_start = pos
+      if pos >= #LineText or not symbolIsIdentStart(LineText:sub(pos, pos + 1)) then break end
+
+      pos++
+      while pos < #LineText and symbolIsIdentChar(LineText:sub(pos, pos + 1)) do
+         pos++
+      end
+
+      name = LineText:sub(name_start, pos)
+      args = nil
+      pos = symbolSkipSpaces(LineText, pos)
+      if pos < #LineText and LineText:sub(pos, pos + 1) is '(' then
+         args, pos = symbolReadAnnotationArgs(LineText, pos)
+      end
+
+      annotations:push({ name = name, args = args })
+      pos = symbolSkipSpaces(LineText, pos)
+
+      if pos < #LineText and LineText:sub(pos, pos + 1) is ';' then
+         pos++
+      end
+   end
+
+   return annotations, pos
+end
+
+function symbolMakeDocumentSymbol(Name:str, Kind:num, LineNo:num, LineText:str, NameStart:num, Detail:str, Annotations:array):table
+   name_start = NameStart or 0
+   symbol = {
+      name = Name,
+      kind = Kind,
+      range = {
+         start = { line = LineNo, character = 0 },
+         ['end'] = { line = LineNo, character = #LineText }
+      },
+      selectionRange = symbolMakeRange(LineNo, name_start, name_start + #Name),
+      children = array<table>
+   }
+
+   if Detail then symbol.detail = Detail end
+   if symbolHasAnnotation(Annotations, 'Deprecated') then
+      symbol.tags = array<int> { 1 }
+   end
+
+   return symbol
+end
+
+function symbolDetectFunction(LineCode:str, LineText:str, LineNo:num, Annotations:array):table
+   start_pos, stop_pos, cap = rx_symbol_named_function.findFirst(LineCode)
+   if start_pos then
+      scope = nil
+      if cap[0] then
+         prefix = cap[0]:trim()
+         if prefix is 'local' or prefix is 'global' then scope = prefix end
+      end
+
+      name = cap[2]
+      name_start = LineText:find(name, start_pos, true) or start_pos
+      kind = name:find(':', 0, true) and SYMBOL_KIND.METHOD or SYMBOL_KIND.FUNCTION
+      detail = symbolBuildDetail(scope, Annotations)
+      return symbolMakeDocumentSymbol(name, kind, LineNo, LineText, name_start, detail, Annotations)
+   end
+
+   start_pos, stop_pos, cap = rx_symbol_assign_function.findFirst(LineCode)
+   if start_pos then
+      scope = nil
+      if cap[0] then
+         prefix = cap[0]:trim()
+         if prefix is 'local' or prefix is 'global' then scope = prefix end
+      end
+
+      name = cap[1]
+      name_start = LineText:find(name, start_pos, true) or start_pos
+      kind = name:find('.', 0, true) and SYMBOL_KIND.METHOD or SYMBOL_KIND.FUNCTION
+      if name:find(':', 0, true) then kind = SYMBOL_KIND.METHOD end
+
+      detail_base = scope
+      if kind is SYMBOL_KIND.METHOD then detail_base = scope and (scope .. ' method') or 'method' end
+      detail = symbolBuildDetail(detail_base, Annotations)
+      return symbolMakeDocumentSymbol(name, kind, LineNo, LineText, name_start, detail, Annotations)
+   end
+
+   return nil
+end
+
+function symbolDetectModuleValue(LineCode:str, LineText:str, LineNo:num):table
+   start_pos, stop_pos, cap = rx_symbol_decl.findFirst(LineCode)
+   if start_pos then
+      scope = cap[0]
+      name = cap[1]
+      if name is 'function' then return nil end
+
+      name_start = LineText:find(name, start_pos, true) or start_pos
+      is_const = cap[2] and cap[2] != ''
+      detail = is_const and (scope .. ' const') or scope
+      kind = is_const and SYMBOL_KIND.CONSTANT or SYMBOL_KIND.VARIABLE
+      return symbolMakeDocumentSymbol(name, kind, LineNo, LineText, name_start, detail, nil)
+   end
+
+   start_pos, stop_pos, cap = rx_symbol_assign.findFirst(LineCode)
+   if start_pos then
+      line_start = symbolSkipSpaces(LineCode, 0)
+      if start_pos != line_start then return nil end
+
+      name = cap[0]
+      is_const = cap[1] and cap[1] != ''
+      name_start = LineText:find(name, start_pos, true) or start_pos
+
+      eq_pos = stop_pos - 1
+      if eq_pos > 0 then
+         prev_char = LineCode:sub(eq_pos - 1, eq_pos)
+         if prev_char is '=' or prev_char is '<' or prev_char is '>' or prev_char is '!' or prev_char is '~' then return nil end
+      end
+      if eq_pos + 1 < #LineCode then
+         next_char = LineCode:sub(eq_pos + 1, eq_pos + 2)
+         if next_char is '=' then return nil end
+      end
+
+      after_assign = LineCode:sub(stop_pos)
+      is_table = rx_symbol_trim.extract(after_assign):startsWith('{')
+      kind = is_table and SYMBOL_KIND.OBJECT or (is_const and SYMBOL_KIND.CONSTANT or SYMBOL_KIND.VARIABLE)
+      detail = is_table and 'table' or (is_const and 'const' or nil)
+      return symbolMakeDocumentSymbol(name, kind, LineNo, LineText, name_start, detail, nil)
+   end
+
+   return nil
+end
+
+function symbolPushBlockFrames(Stack:array, LineCode:str, FunctionFrame:table)
+   function_count = symbolCountBlockKeyword(LineCode, 'function') + symbolCountBlockKeyword(LineCode, 'thunk')
+   if FunctionFrame and function_count > 0 then function_count -= 1 end
+
+   for i = 1, function_count do
+      Stack:push({ kind = 'function' })
+   end
+
+   if symbolCountBlockKeyword(LineCode, 'then') > 0 then
+      if_count = symbolCountBlockKeyword(LineCode, 'if')
+      for i = 1, if_count do
+         Stack:push({ kind = 'block' })
+      end
+   end
+
+   if symbolCountBlockKeyword(LineCode, 'do') > 0 then
+      for_count = symbolCountBlockKeyword(LineCode, 'for')
+      while_count = symbolCountBlockKeyword(LineCode, 'while')
+      for i = 1, for_count do
+         Stack:push({ kind = 'block' })
+      end
+      for i = 1, while_count do
+         Stack:push({ kind = 'block' })
+      end
+   end
+
+   repeat_count = symbolCountBlockKeyword(LineCode, 'repeat')
+   for i = 1, repeat_count do
+      Stack:push({ kind = 'repeat' })
+   end
+
+   defer_count = symbolCountBlockKeyword(LineCode, 'defer')
+   for i = 1, defer_count do
+      Stack:push({ kind = 'block' })
+   end
+end
+
+function symbolCloseBlockFrames(Stack:array, LineCode:str, LineNo:num, LineText:str)
+   close_count = symbolCountBlockKeyword(LineCode, 'end') + symbolCountBlockKeyword(LineCode, 'until')
+   for i = 1, close_count do
+      if #Stack > 0 then
+         frame = Stack:pop()
+         symbolCloseFrame(frame, LineNo, LineText)
+      end
+   end
+end
+
+function symbolFindTopTableFrame(Stack:array):table
+   for i = #Stack - 1, 0, -1 do
+      frame = Stack[i]
+      if frame.kind is 'table' then
+         return frame
+      end
+   end
+   return nil
+end
+
+function symbolCloseTables(Stack:array, LineCode:str, LineNo:num, LineText:str)
+   table_frame = symbolFindTopTableFrame(Stack)
+   if not table_frame then return end
+
+   table_frame.brace_depth += symbolCountChar(LineCode, '{') - symbolCountChar(LineCode, '}')
+   if table_frame.brace_depth > 0 then return end
+
+   for i = #Stack - 1, 0, -1 do
+      frame = Stack[i]
+      if frame.kind is 'table' then
+         Stack:remove(i)
+         symbolCloseFrame(frame, LineNo, LineText)
+         break
+      end
+   end
+end
+
+function symbolLastContentLine(Doc:table, TotalLines:num):num
+   line_no = TotalLines > 0 and TotalLines - 1 or 0
+   while line_no > 0 and getLine(Doc, line_no) is '' do
+      line_no -= 1
+   end
+   return line_no
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Extract document symbols from Tiri source.
+
+global function extractDocumentSymbols(Doc:table):array
+   symbols = array<table>
+   total_lines = getTotalLines(Doc)
+   stack = array<table>
+   in_block_comment = false
+   pending_annotations = array<table>
+
+   for line_num = 0, total_lines - 1 do
+      line_text = getLine(Doc, line_num)
+      line_code, in_block_comment = maskNonCode(line_text, in_block_comment)
+      trimmed = rx_symbol_trim.extract(line_code)
+
+      if trimmed is '' then
+         pending_annotations = array<table>
+         continue
+      end
+
+      inline_annotations, annotation_end = symbolParseAnnotationPrefix(line_text)
+      line_annotations = pending_annotations
+      symbol_code = line_code
+
+      if #inline_annotations > 0 then
+         line_annotations = symbolMergeAnnotations(pending_annotations, inline_annotations)
+         symbol_code = line_code:sub(annotation_end)
+
+         if rx_symbol_trim.extract(symbol_code) is '' then
+            pending_annotations = line_annotations
+            continue
+         end
+      end
+
+      current_symbol = symbolDetectFunction(symbol_code, line_text, line_num, line_annotations)
+      function_frame = nil
+
+      if current_symbol then
+         symbolAddChild(symbols, stack, current_symbol)
+         function_frame = { kind = 'function', symbol = current_symbol }
+         stack:push(function_frame)
+         pending_annotations = array<table>
+      elseif #stack is 0 then
+         module_symbol = symbolDetectModuleValue(symbol_code, line_text, line_num)
+         if module_symbol then
+            symbolAddChild(symbols, stack, module_symbol)
+            open_count = symbolCountChar(symbol_code, '{')
+            close_count = symbolCountChar(symbol_code, '}')
+            if module_symbol.kind is SYMBOL_KIND.OBJECT and open_count > close_count then
+               stack:push({ kind = 'table', symbol = module_symbol, brace_depth = 0 })
+            end
+         end
+         pending_annotations = array<table>
+      else
+         pending_annotations = array<table>
+      end
+
+      symbolPushBlockFrames(stack, symbol_code, function_frame)
+      symbolCloseBlockFrames(stack, symbol_code, line_num, line_text)
+      symbolCloseTables(stack, symbol_code, line_num, line_text)
+   end
+
+   last_line = symbolLastContentLine(Doc, total_lines)
+   last_text = getLine(Doc, last_line)
+   while #stack > 0 do
+      frame = stack:pop()
+      symbolCloseFrame(frame, last_line, last_text)
+   end
+
+   return symbols
+end

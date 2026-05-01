@@ -10,6 +10,7 @@ A Language Server Protocol (LSP) implementation for Tiri scripting, providing ID
    - [Semantic Highlighting](#semantic-highlighting)
    - [Hover Information](#hover-information)
    - [Document Symbols](#document-symbols)
+   - [Annotation Markers](#annotation-markers)
    - [Code Folding](#code-folding)
    - [Code Hints](#code-hints)
 3. [Getting Started](#getting-started)
@@ -65,6 +66,41 @@ Outline view showing:
 - Global and local functions
 - Function scope (global/local/thunk)
 - Nested function support
+
+### Annotation Markers
+
+Document symbols include annotation markers that appear directly before a function or thunk declaration.  The marker
+name is shown in the symbol detail, and `@Deprecated` is also reported with the LSP deprecated tag so supporting editors
+can render it as deprecated.
+
+Annotations can be written on their own line, inline with a declaration, or chained with semicolons:
+
+```lua
+@Deprecated(message='Use newApi() instead', since='2.0')
+function oldApi()
+end
+
+@Test(priority=1); @Requires(network=true) function NetworkRoundTrip()
+end
+```
+
+The LSP recognises any marker in the form `@Name` or `@Name(...)` for document-symbol display.  The standard markers
+used by Tiri tooling are:
+
+|Marker|Arguments|Purpose|
+|-|-|-|
+|`@Deprecated`|`message:str`, `since:str`|Marks a function as deprecated.|
+|`@Override`|(none)|Documents that a function overrides another implementation.|
+|`@SuppressWarnings`|warning flags|Suppresses selected tooling warnings.|
+|`@Test`|`name:str`, `timeout:num`, `priority:num`, `labels:array`, `hotpath:num/bool`|Marks a Flute test function.|
+|`@BeforeAll`|(none)|Runs once before all Flute tests in a file.|
+|`@AfterAll`|(none)|Runs once after all Flute tests in a file.|
+|`@BeforeEach`|optional defaults such as `hotpath`|Runs before each Flute test.|
+|`@AfterEach`|(none)|Runs after each Flute test.|
+|`@Disabled`|`reason:str`|Skips a Flute test.|
+|`@Requires`|capability flags|Skips a Flute test unless requirements match.|
+
+`@Requires` capability flags are `audio`, `display`, `font`, `network`, and `ssl`.
 
 ### Code Folding
 

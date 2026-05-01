@@ -271,7 +271,7 @@ function updateTableDepth(LineCode:str, TableDepth:num):num
       if c is '{' then
          depth++
       elseif c is '}' and depth > 0 then
-         depth--
+         depth -= 1
       end
    end
 
