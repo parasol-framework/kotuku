@@ -151,7 +151,7 @@ function symbolReadAnnotationArgs(Text:str, Pos:num):<str,num>
          depth++
          Pos++
       elseif c is ')' then
-         depth--
+         depth -= 1
          Pos++
          if depth <= 0 then
             return Text:sub(start_pos + 1, Pos - 1), Pos

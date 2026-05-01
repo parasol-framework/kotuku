@@ -151,6 +151,24 @@ end
    assert(hasTag(old_api, 1), 'Deprecated function should use the LSP deprecated tag.')
 end
 
+@Test function InlineAnnotationArgumentsKeepDeclarationVisible()
+   doc = makeDoc([[
+@Tag() function emptyArgs()
+end
+
+@Tag(x=1) function valueArgs()
+end
+]])
+   symbols = extractDocumentSymbols(doc)
+   empty_args = findSymbol(symbols, 'emptyArgs')
+   value_args = findSymbol(symbols, 'valueArgs')
+
+   assert(empty_args, 'Inline annotation with empty parentheses should not hide the function symbol.')
+   assert(empty_args.detail:find('@Tag', 0, true), 'Inline empty annotation detail should include @Tag.')
+   assert(value_args, 'Inline annotation with arguments should not hide the function symbol.')
+   assert(value_args.detail:find('@Tag', 0, true), 'Inline value annotation detail should include @Tag.')
+end
+
 @Test function IgnoresCommentsStringsAndTableKeys()
    doc = makeDoc([[
 -- function commentOnly()
