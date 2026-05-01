@@ -25,33 +25,33 @@ struct ParsedDocText {
    std::vector<ParserDocErrorMetadata> errors;
 };
 
-static std::string gcstr_to_string(GCstr *Value)
+inline std::string gcstr_to_string(GCstr *Value)
 {
    if (Value IS nullptr) return {};
    return std::string(strdata(Value), Value->len);
 }
 
-static std::string type_to_string(TiriType Type)
+inline std::string type_to_string(TiriType Type)
 {
    if (Type IS TiriType::Unknown) return {};
    return std::string(type_name(Type));
 }
 
-static std::string trim_left(std::string_view Text)
+inline std::string trim_left(std::string_view Text)
 {
    size_t pos = 0;
    while (pos < Text.size() and std::isspace((unsigned char)Text[pos])) pos++;
    return std::string(Text.substr(pos));
 }
 
-static std::string trim_right(std::string_view Text)
+inline std::string trim_right(std::string_view Text)
 {
    size_t end = Text.size();
    while (end > 0 and std::isspace((unsigned char)Text[end - 1])) end--;
    return std::string(Text.substr(0, end));
 }
 
-static std::string trim(std::string_view Text)
+inline std::string trim(std::string_view Text)
 {
    return trim_right(trim_left(Text));
 }
@@ -245,14 +245,14 @@ static ParsedDocText parse_marker_doc_text(std::string_view Text, const std::vec
    return parsed;
 }
 
-static ParsedDocText parse_doc_text(std::string_view Text)
+inline ParsedDocText parse_doc_text(std::string_view Text)
 {
    std::vector<std::string> lines = normalise_doc_lines(Text);
    if (doc_uses_compact_form(lines)) return parse_compact_doc_text(Text, lines);
    return parse_marker_doc_text(Text, lines);
 }
 
-static bool annotation_name_is(const AnnotationEntry &Annotation, std::string_view Name)
+inline bool annotation_name_is(const AnnotationEntry &Annotation, std::string_view Name)
 {
    if (Annotation.name IS nullptr) return false;
    return std::string_view(strdata(Annotation.name), Annotation.name->len) IS Name;
@@ -280,7 +280,7 @@ static std::string annotation_value_to_string(const AnnotationArgValue &Value)
    }
 }
 
-static const AnnotationArgValue * find_annotation_arg(const AnnotationEntry &Annotation, std::string_view Name)
+inline const AnnotationArgValue * find_annotation_arg(const AnnotationEntry &Annotation, std::string_view Name)
 {
    for (const auto &[key, value] : Annotation.args) {
       if (key and std::string_view(strdata(key), key->len) IS Name) return &value;
@@ -319,7 +319,7 @@ static std::vector<ParserAnnotationMetadata> collect_annotations(const std::vect
    return result;
 }
 
-static std::string identifier_to_string(const Identifier &Identifier)
+inline std::string identifier_to_string(const Identifier &Identifier)
 {
    return gcstr_to_string(Identifier.symbol);
 }
@@ -451,7 +451,7 @@ static void add_results(ParserSymbolMetadata &Symbol, const FunctionExprPayload 
    }
 }
 
-static SourceSpan end_span_for(const FunctionExprPayload &Function)
+inline SourceSpan end_span_for(const FunctionExprPayload &Function)
 {
    if (Function.body) return Function.body->span;
    return {};
@@ -486,7 +486,7 @@ static ParserSymbolMetadata make_function_symbol(const std::string &Name, const 
 
 static void collect_from_block(ParserSymbolCollection &Collection, const BlockStmt &Block);
 
-static void collect_nested_function_body(ParserSymbolCollection &Collection, const FunctionExprPayload &Function)
+inline void collect_nested_function_body(ParserSymbolCollection &Collection, const FunctionExprPayload &Function)
 {
    if (Function.body) collect_from_block(Collection, *Function.body);
 }
@@ -621,7 +621,7 @@ static void collect_from_statement(ParserSymbolCollection &Collection, const Stm
    }
 }
 
-static void collect_from_block(ParserSymbolCollection &Collection, const BlockStmt &Block)
+inline void collect_from_block(ParserSymbolCollection &Collection, const BlockStmt &Block)
 {
    for (const StmtNode &statement : Block.view()) collect_from_statement(Collection, statement);
 }
