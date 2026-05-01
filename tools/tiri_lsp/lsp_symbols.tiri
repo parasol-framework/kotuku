@@ -352,12 +352,29 @@ function symbolCloseBlockFrames(Stack:array, LineCode:str, LineNo:num, LineText:
    end
 end
 
+function symbolFindTopTableFrame(Stack:array):table
+   for i = #Stack - 1, 0, -1 do
+      frame = Stack[i]
+      if frame.kind is 'table' then
+         return frame
+      end
+   end
+   return nil
+end
+
 function symbolCloseTables(Stack:array, LineCode:str, LineNo:num, LineText:str)
-   close_count = symbolCountChar(LineCode, '}')
-   for i = 1, close_count do
-      if #Stack > 0 and Stack[#Stack - 1].kind is 'table' then
-         frame = Stack:pop()
+   table_frame = symbolFindTopTableFrame(Stack)
+   if not table_frame then return end
+
+   table_frame.brace_depth += symbolCountChar(LineCode, '{') - symbolCountChar(LineCode, '}')
+   if table_frame.brace_depth > 0 then return end
+
+   for i = #Stack - 1, 0, -1 do
+      frame = Stack[i]
+      if frame.kind is 'table' then
+         Stack:remove(i)
          symbolCloseFrame(frame, LineNo, LineText)
+         break
       end
    end
 end
@@ -416,8 +433,10 @@ global function extractDocumentSymbols(Doc:table):array
          module_symbol = symbolDetectModuleValue(symbol_code, line_text, line_num)
          if module_symbol then
             symbolAddChild(symbols, stack, module_symbol)
-            if module_symbol.kind is SYMBOL_KIND.OBJECT and symbolCountChar(symbol_code, '{') > symbolCountChar(symbol_code, '}') then
-               stack:push({ kind = 'table', symbol = module_symbol })
+            open_count = symbolCountChar(symbol_code, '{')
+            close_count = symbolCountChar(symbol_code, '}')
+            if module_symbol.kind is SYMBOL_KIND.OBJECT and open_count > close_count then
+               stack:push({ kind = 'table', symbol = module_symbol, brace_depth = 0 })
             end
          end
          pending_annotations = array<table>
