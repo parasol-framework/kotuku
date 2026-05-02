@@ -26,12 +26,14 @@
       <name>Disable</name>
       <comment>Disabling a vector can be used to trigger style changes and prevent user input.</comment>
       <prototype>ERR acDisable(*Object)</prototype>
+      <tiriPrototype>err = Object.acDisable()</tiriPrototype>
     </action>
 
     <action>
       <name>Draw</name>
       <comment>Draws the surface associated with the vector.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <tiriPrototype>err = Object.acDraw(X:num, Y:num, Width:num, Height:num)</tiriPrototype>
       <input>
         <param type="INT" name="X">The X position of the region to be drawn.</param>
         <param type="INT" name="Y">The Y position of the region to be drawn.</param>
@@ -47,30 +49,35 @@
       <name>Enable</name>
       <comment>Reverses the effects of disabling the vector.</comment>
       <prototype>ERR acEnable(*Object)</prototype>
+      <tiriPrototype>err = Object.acEnable()</tiriPrototype>
     </action>
 
     <action>
       <name>Hide</name>
       <comment>Changes the vector's visibility setting to hidden.</comment>
       <prototype>ERR acHide(*Object)</prototype>
+      <tiriPrototype>err = Object.acHide()</tiriPrototype>
     </action>
 
     <action>
       <name>MoveToBack</name>
       <comment>Move a vector to the back of its stack.</comment>
       <prototype>ERR acMoveToBack(*Object)</prototype>
+      <tiriPrototype>err = Object.acMoveToBack()</tiriPrototype>
     </action>
 
     <action>
       <name>MoveToFront</name>
       <comment>Move a vector to the front of its stack.</comment>
       <prototype>ERR acMoveToFront(*Object)</prototype>
+      <tiriPrototype>err = Object.acMoveToFront()</tiriPrototype>
     </action>
 
     <action>
       <name>Show</name>
       <comment>Changes the vector's visibility setting to visible.</comment>
       <prototype>ERR acShow(*Object)</prototype>
+      <tiriPrototype>err = Object.acShow()</tiriPrototype>
     </action>
 
   </actions>

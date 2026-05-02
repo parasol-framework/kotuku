@@ -46,12 +46,14 @@ print('The Action class is located at ' .. str)
       <name>Clear</name>
       <comment>Clears all configuration data.</comment>
       <prototype>ERR acClear(*Object)</prototype>
+      <tiriPrototype>err = Object.acClear()</tiriPrototype>
     </action>
 
     <action>
       <name>DataFeed</name>
       <comment>Data can be added to a Config object through this action.</comment>
       <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, INT Size)</prototype>
+      <tiriPrototype>err = Object.acDataFeed(Object:obj, Datatype:DATA, Buffer:str)</tiriPrototype>
       <input>
         <param type="OBJECTID" name="Object">Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.</param>
         <param type="DATA" name="Datatype" lookup="DATA">The type of data being sent.</param>
@@ -67,12 +69,14 @@ print('The Action class is located at ' .. str)
       <name>Flush</name>
       <comment>Diverts to <action>SaveSettings</action>.</comment>
       <prototype>ERR acFlush(*Object)</prototype>
+      <tiriPrototype>err = Object.acFlush()</tiriPrototype>
     </action>
 
     <action>
       <name>SaveSettings</name>
       <comment>Saves data to the file that the configuration data was loaded from.</comment>
       <prototype>ERR acSaveSettings(*Object)</prototype>
+      <tiriPrototype>err = Object.acSaveSettings()</tiriPrototype>
       <description>
 <p>This action will save the configuration data back to its original file source (assuming the <fl>Path</fl> remains unchanged).</p>
       </description>
@@ -82,6 +86,7 @@ print('The Action class is located at ' .. str)
       <name>SaveToObject</name>
       <comment>Saves configuration data to an object, using standard config text format.</comment>
       <prototype>ERR acSaveToObject(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <tiriPrototype>err = Object.acSaveToObject(Dest:obj, ClassID:num)</tiriPrototype>
       <input>
         <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded data.</param>
         <param type="CLASSID" name="ClassID">Can refer to a sub-class that should be used when encoding the data.</param>

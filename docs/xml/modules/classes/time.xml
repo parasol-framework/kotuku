@@ -25,6 +25,7 @@
       <name>Query</name>
       <comment>Updates the values in a time object with the current system date and time.</comment>
       <prototype>ERR acQuery(*Object)</prototype>
+      <tiriPrototype>err = Object.acQuery()</tiriPrototype>
     </action>
 
   </actions>

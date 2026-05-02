@@ -30,18 +30,21 @@
       <name>Activate</name>
       <comment>Shows a surface object on the display.</comment>
       <prototype>ERR acActivate(*Object)</prototype>
+      <tiriPrototype>err = Object.acActivate()</tiriPrototype>
     </action>
 
     <action>
       <name>Disable</name>
       <comment>Disables a surface object.</comment>
       <prototype>ERR acDisable(*Object)</prototype>
+      <tiriPrototype>err = Object.acDisable()</tiriPrototype>
     </action>
 
     <action>
       <name>Draw</name>
       <comment>Redraws the contents of a surface object.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <tiriPrototype>err = Object.acDraw(X:num, Y:num, Width:num, Height:num)</tiriPrototype>
       <input>
         <param type="INT" name="X">The X position of the region to be drawn.</param>
         <param type="INT" name="Y">The Y position of the region to be drawn.</param>
@@ -71,30 +74,35 @@ the surface area first).</li>
       <name>Enable</name>
       <comment>Enables a disabled surface object.</comment>
       <prototype>ERR acEnable(*Object)</prototype>
+      <tiriPrototype>err = Object.acEnable()</tiriPrototype>
     </action>
 
     <action>
       <name>Focus</name>
       <comment>Changes the primary user focus to the surface object.</comment>
       <prototype>ERR acFocus(*Object)</prototype>
+      <tiriPrototype>err = Object.acFocus()</tiriPrototype>
     </action>
 
     <action>
       <name>Hide</name>
       <comment>Hides a surface object from the display.</comment>
       <prototype>ERR acHide(*Object)</prototype>
+      <tiriPrototype>err = Object.acHide()</tiriPrototype>
     </action>
 
     <action>
       <name>LostFocus</name>
       <comment>Informs a surface object that it has lost the user focus.</comment>
       <prototype>ERR acLostFocus(*Object)</prototype>
+      <tiriPrototype>err = Object.acLostFocus()</tiriPrototype>
     </action>
 
     <action>
       <name>Move</name>
       <comment>Moves a surface object to a new display position.</comment>
       <prototype>ERR acMove(*Object, DOUBLE DeltaX, DOUBLE DeltaY, DOUBLE DeltaZ)</prototype>
+      <tiriPrototype>err = Object.acMove(DeltaX:num, DeltaY:num, DeltaZ:num)</tiriPrototype>
       <input>
         <param type="DOUBLE" name="DeltaX">The number of units to move along the X axis.</param>
         <param type="DOUBLE" name="DeltaY">The number of units to move along the Y axis.</param>
@@ -106,18 +114,21 @@ the surface area first).</li>
       <name>MoveToBack</name>
       <comment>Moves a surface object to the back of its container.</comment>
       <prototype>ERR acMoveToBack(*Object)</prototype>
+      <tiriPrototype>err = Object.acMoveToBack()</tiriPrototype>
     </action>
 
     <action>
       <name>MoveToFront</name>
       <comment>Moves a surface object to the front of its container.</comment>
       <prototype>ERR acMoveToFront(*Object)</prototype>
+      <tiriPrototype>err = Object.acMoveToFront()</tiriPrototype>
     </action>
 
     <action>
       <name>MoveToPoint</name>
       <comment>Moves a surface object to an absolute coordinate.</comment>
       <prototype>ERR acMoveToPoint(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags)</prototype>
+      <tiriPrototype>err = Object.acMoveToPoint(X:num, Y:num, Z:num, Flags:MTF)</tiriPrototype>
       <input>
         <param type="DOUBLE" name="X">The new X position to move the object to.</param>
         <param type="DOUBLE" name="Y">The new Y position to move the object to.</param>
@@ -130,6 +141,7 @@ the surface area first).</li>
       <name>Redimension</name>
       <comment>Moves and resizes a surface object in a single action call.</comment>
       <prototype>ERR acRedimension(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <tiriPrototype>err = Object.acRedimension(X:num, Y:num, Z:num, Width:num, Height:num, Depth:num)</tiriPrototype>
       <input>
         <param type="DOUBLE" name="X">The new X position to apply to the target object.</param>
         <param type="DOUBLE" name="Y">The new Y position to apply to the target object.</param>
@@ -144,6 +156,7 @@ the surface area first).</li>
       <name>Resize</name>
       <comment>Alters the dimensions of a surface object.</comment>
       <prototype>ERR acResize(*Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <tiriPrototype>err = Object.acResize(Width:num, Height:num, Depth:num)</tiriPrototype>
       <input>
         <param type="DOUBLE" name="Width">The new width of the object.</param>
         <param type="DOUBLE" name="Height">The new height of the object.</param>
@@ -155,6 +168,7 @@ the surface area first).</li>
       <name>SaveImage</name>
       <comment>Saves the graphics of a surface object.</comment>
       <prototype>ERR acSaveImage(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <tiriPrototype>err = Object.acSaveImage(Dest:obj, ClassID:num)</tiriPrototype>
       <input>
         <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded image data.</param>
         <param type="CLASSID" name="ClassID">The Picture class to use for encoding the image data.</param>
@@ -169,6 +183,7 @@ the surface area first).</li>
       <name>Show</name>
       <comment>Shows a surface object on the display.</comment>
       <prototype>ERR acShow(*Object)</prototype>
+      <tiriPrototype>err = Object.acShow()</tiriPrototype>
     </action>
 
   </actions>

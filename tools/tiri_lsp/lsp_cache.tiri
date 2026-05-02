@@ -26,8 +26,7 @@ function encodeMethod(Prototype, TiriPrototype, ByteStart, ByteEnd, Comment, Par
    return {
       byteStart = ByteStart,
       byteEnd = ByteEnd,
-      prototype = Prototype or '',
-      tiriPrototype = TiriPrototype or '',
+      prototype = (TiriPrototype or Prototype) or '',
       comment = Comment or '',
       params = Params or array<table>
    }

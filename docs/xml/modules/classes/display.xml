@@ -24,18 +24,21 @@
       <name>Activate</name>
       <comment>Activating a display has the same effect as calling the Show action.</comment>
       <prototype>ERR acActivate(*Object)</prototype>
+      <tiriPrototype>err = Object.acActivate()</tiriPrototype>
     </action>
 
     <action>
       <name>Clear</name>
       <comment>Clears a display's image data and hardware buffers (e.g. OpenGL)</comment>
       <prototype>ERR acClear(*Object)</prototype>
+      <tiriPrototype>err = Object.acClear()</tiriPrototype>
     </action>
 
     <action>
       <name>Disable</name>
       <comment>Disables the display (goes into power saving mode).</comment>
       <prototype>ERR acDisable(*Object)</prototype>
+      <tiriPrototype>err = Object.acDisable()</tiriPrototype>
       <description>
 <p>Disabling a display will put the display into power saving mode.  The DPMS mode is determined by the user's system settings and cannot be changed by the developer.  The display will remain off until the Enable action is called.</p>
 <p>This action does nothing if the display is in hosted mode.</p>
@@ -50,6 +53,7 @@
       <name>Draw</name>
       <comment>Draws object graphics to drawable areas.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <tiriPrototype>err = Object.acDraw(X:num, Y:num, Width:num, Height:num)</tiriPrototype>
       <input>
         <param type="INT" name="X">The X position of the region to be drawn.</param>
         <param type="INT" name="Y">The Y position of the region to be drawn.</param>
@@ -62,24 +66,28 @@
       <name>Enable</name>
       <comment>Restores the screen display from power saving mode.</comment>
       <prototype>ERR acEnable(*Object)</prototype>
+      <tiriPrototype>err = Object.acEnable()</tiriPrototype>
     </action>
 
     <action>
       <name>Flush</name>
       <comment>Flush pending graphics operations to the display.</comment>
       <prototype>ERR acFlush(*Object)</prototype>
+      <tiriPrototype>err = Object.acFlush()</tiriPrototype>
     </action>
 
     <action>
       <name>Focus</name>
       <comment>Focus on this object in the user interface.</comment>
       <prototype>ERR acFocus(*Object)</prototype>
+      <tiriPrototype>err = Object.acFocus()</tiriPrototype>
     </action>
 
     <action>
       <name>GetKey</name>
       <comment>Retrieve formatted information from the display.</comment>
       <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
+      <tiriPrototype>err = Object.acGetKey(Key:str, Value:str, Size:num)</tiriPrototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
@@ -91,6 +99,7 @@
       <name>Hide</name>
       <comment>Hides a display from the user's view.</comment>
       <prototype>ERR acHide(*Object)</prototype>
+      <tiriPrototype>err = Object.acHide()</tiriPrototype>
       <description>
 <p>Calling this action will hide a display from the user's view.  If the hidden display was at the front of the display and there is a display object behind it, then the next underlying display will be displayed.  If there are no other displays available then the user's viewport will be blank after calling this action.</p>
       </description>
@@ -100,6 +109,7 @@
       <name>Move</name>
       <comment>Move the display to a new display position (relative coordinates).</comment>
       <prototype>ERR acMove(*Object, DOUBLE DeltaX, DOUBLE DeltaY, DOUBLE DeltaZ)</prototype>
+      <tiriPrototype>err = Object.acMove(DeltaX:num, DeltaY:num, DeltaZ:num)</tiriPrototype>
       <input>
         <param type="DOUBLE" name="DeltaX">The number of units to move along the X axis.</param>
         <param type="DOUBLE" name="DeltaY">The number of units to move along the Y axis.</param>
@@ -111,18 +121,21 @@
       <name>MoveToBack</name>
       <comment>Move the display to the back of the display list.</comment>
       <prototype>ERR acMoveToBack(*Object)</prototype>
+      <tiriPrototype>err = Object.acMoveToBack()</tiriPrototype>
     </action>
 
     <action>
       <name>MoveToFront</name>
       <comment>Move the display to the front of the display list.</comment>
       <prototype>ERR acMoveToFront(*Object)</prototype>
+      <tiriPrototype>err = Object.acMoveToFront()</tiriPrototype>
     </action>
 
     <action>
       <name>MoveToPoint</name>
       <comment>Move the display to a new position.</comment>
       <prototype>ERR acMoveToPoint(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags)</prototype>
+      <tiriPrototype>err = Object.acMoveToPoint(X:num, Y:num, Z:num, Flags:MTF)</tiriPrototype>
       <input>
         <param type="DOUBLE" name="X">The new X position to move the object to.</param>
         <param type="DOUBLE" name="Y">The new Y position to move the object to.</param>
@@ -140,6 +153,7 @@
       <name>Redimension</name>
       <comment>Moves and resizes a display object in a single action call.</comment>
       <prototype>ERR acRedimension(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <tiriPrototype>err = Object.acRedimension(X:num, Y:num, Z:num, Width:num, Height:num, Depth:num)</tiriPrototype>
       <input>
         <param type="DOUBLE" name="X">The new X position to apply to the target object.</param>
         <param type="DOUBLE" name="Y">The new Y position to apply to the target object.</param>
@@ -154,6 +168,7 @@
       <name>Resize</name>
       <comment>Resizes the dimensions of a display object.</comment>
       <prototype>ERR acResize(*Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <tiriPrototype>err = Object.acResize(Width:num, Height:num, Depth:num)</tiriPrototype>
       <input>
         <param type="DOUBLE" name="Width">The new width of the object.</param>
         <param type="DOUBLE" name="Height">The new height of the object.</param>
@@ -168,6 +183,7 @@
       <name>SaveImage</name>
       <comment>Saves the image of a display to a data object.</comment>
       <prototype>ERR acSaveImage(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <tiriPrototype>err = Object.acSaveImage(Dest:obj, ClassID:num)</tiriPrototype>
       <input>
         <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded image data.</param>
         <param type="CLASSID" name="ClassID">The Picture class to use for encoding the image data.</param>
@@ -178,12 +194,14 @@
       <name>SaveSettings</name>
       <comment>Saves the current display settings as the default.</comment>
       <prototype>ERR acSaveSettings(*Object)</prototype>
+      <tiriPrototype>err = Object.acSaveSettings()</tiriPrototype>
     </action>
 
     <action>
       <name>Show</name>
       <comment>Presents a display object to the user.</comment>
       <prototype>ERR acShow(*Object)</prototype>
+      <tiriPrototype>err = Object.acShow()</tiriPrototype>
       <description>
 <p>This method presents a display object to the user.  On a hosted platform, this will result in a window appearing on screen.  By default the window will be hosted within a window border which may contain regular window gadgets such as a titlebar and buttons for close, maximise and minimise operations.  The position of the window is determined by the <fl>X</fl> and <fl>Y</fl> fields.  In Kōtuku's native environment, the user's screen display will be altered to match the required resolution and the graphics of the display's <fl>Bitmap</fl> object will take up the entirety of the screen.</p>
 <p>If the <code>BORDERLESS</code> flag has been set in the <fl>Flags</fl> field, the window will appear without the surrounding border and gadgets normally associated with new windows.</p>

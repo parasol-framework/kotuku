@@ -33,12 +33,14 @@ if (thread.ok()) thread-&gt;activate();
       <name>Activate</name>
       <comment>Spawn a new thread that calls the function referenced in the <fl>Routine</fl> field.</comment>
       <prototype>ERR acActivate(*Object)</prototype>
+      <tiriPrototype>err = Object.acActivate()</tiriPrototype>
     </action>
 
     <action>
       <name>Deactivate</name>
       <comment>Stops a thread.</comment>
       <prototype>ERR acDeactivate(*Object)</prototype>
+      <tiriPrototype>err = Object.acDeactivate()</tiriPrototype>
       <description>
 <p>Deactivating an active thread will cause it to stop immediately.  Stopping a thread in this manner is dangerous and could result in an unstable application.</p>
       </description>
@@ -48,6 +50,7 @@ if (thread.ok()) thread-&gt;activate();
       <name>Free</name>
       <comment>Remove the object and its resources.</comment>
       <prototype>ERR FreeResource(*Object)</prototype>
+      <tiriPrototype>err = Object.acFree()</tiriPrototype>
       <description>
 <p>Terminating a thread object will destroy the object unless the thread is currently active.  If an attempt to free an active thread is made then it will be marked for termination so as to avoid the risk of system corruption.</p>
       </description>

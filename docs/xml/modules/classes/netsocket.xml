@@ -62,6 +62,7 @@ netsocket = obj.new('netsocket', {
       <name>Disable</name>
       <comment>Disables sending and receiving on the socket.</comment>
       <prototype>ERR acDisable(*Object)</prototype>
+      <tiriPrototype>err = Object.acDisable()</tiriPrototype>
       <description>
 <p>This method will stop all sending and receiving of data over the socket.  This is irreversible.</p>
       </description>
@@ -75,6 +76,7 @@ netsocket = obj.new('netsocket', {
       <name>Read</name>
       <comment>Read information from the socket.</comment>
       <prototype>ERR acRead(*Object, APTR Buffer, INT Length, INT *Result)</prototype>
+      <tiriPrototype>err, Result:num = Object.acRead(Buffer:str, Length:num)</tiriPrototype>
       <input>
         <param type="APTR" name="Buffer">Points a buffer that will receive the data.</param>
         <param type="INT" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
@@ -97,6 +99,7 @@ netsocket = obj.new('netsocket', {
       <name>Write</name>
       <comment>Writes data to the socket.</comment>
       <prototype>ERR acWrite(*Object, APTR Buffer, INT Length, INT Result)</prototype>
+      <tiriPrototype>err, Result:num = Object.acWrite(Buffer:str, Length:num)</tiriPrototype>
       <input>
         <param type="APTR" name="Buffer">A buffer containing the data that will be written to the object.</param>
         <param type="INT" name="Length">The total number of bytes to write to the object.</param>

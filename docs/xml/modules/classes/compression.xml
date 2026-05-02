@@ -44,6 +44,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       <name>Flush</name>
       <comment>Flushes all pending actions.</comment>
       <prototype>ERR acFlush(*Object)</prototype>
+      <tiriPrototype>err = Object.acFlush()</tiriPrototype>
     </action>
 
   </actions>

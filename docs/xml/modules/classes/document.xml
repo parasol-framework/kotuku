@@ -28,6 +28,7 @@
       <name>Activate</name>
       <comment>Activates all child objects of the document.</comment>
       <prototype>ERR acActivate(*Object)</prototype>
+      <tiriPrototype>err = Object.acActivate()</tiriPrototype>
       <description>
 <p>Calling the Activate() action on a document object will forward Activate() calls to its child objects.</p>
       </description>
@@ -37,6 +38,7 @@
       <name>Clear</name>
       <comment>Clears all content from the object.</comment>
       <prototype>ERR acClear(*Object)</prototype>
+      <tiriPrototype>err = Object.acClear()</tiriPrototype>
       <description>
 <p>Using the Clear() action will delete all of the document's content.  The UI will be updated to reflect a clear document.</p>
       </description>
@@ -46,6 +48,7 @@
       <name>Clipboard</name>
       <comment>Full support for clipboard activity is provided through this action.</comment>
       <prototype>ERR acClipboard(*Object, OBJECTID Clipboard, CLIPMODE Mode)</prototype>
+      <tiriPrototype>err = Object.acClipboard(Clipboard:obj, Mode:CLIPMODE)</tiriPrototype>
       <input>
         <param type="CLIPMODE" name="Mode" lookup="CLIPMODE">The mode that will be used to shift data between the target object and clipboard system.</param>
       </input>
@@ -55,6 +58,7 @@
       <name>DataFeed</name>
       <comment>Document data can be sent and consumed via feeds.</comment>
       <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, INT Size)</prototype>
+      <tiriPrototype>err = Object.acDataFeed(Object:obj, Datatype:DATA, Buffer:str)</tiriPrototype>
       <input>
         <param type="OBJECTID" name="Object">Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.</param>
         <param type="DATA" name="Datatype" lookup="DATA">The type of data being sent.</param>
@@ -76,12 +80,14 @@
       <name>Disable</name>
       <comment>Disables user interactivity.</comment>
       <prototype>ERR acDisable(*Object)</prototype>
+      <tiriPrototype>err = Object.acDisable()</tiriPrototype>
     </action>
 
     <action>
       <name>Draw</name>
       <comment>Force a page layout update (if changes are pending) and redraw to the display.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <tiriPrototype>err = Object.acDraw(X:num, Y:num, Width:num, Height:num)</tiriPrototype>
       <input>
         <param type="INT" name="X">The X position of the region to be drawn.</param>
         <param type="INT" name="Y">The Y position of the region to be drawn.</param>
@@ -94,18 +100,21 @@
       <name>Enable</name>
       <comment>Enables object functionality.</comment>
       <prototype>ERR acEnable(*Object)</prototype>
+      <tiriPrototype>err = Object.acEnable()</tiriPrototype>
     </action>
 
     <action>
       <name>Focus</name>
       <comment>Sets the user focus on the document page.</comment>
       <prototype>ERR acFocus(*Object)</prototype>
+      <tiriPrototype>err = Object.acFocus()</tiriPrototype>
     </action>
 
     <action>
       <name>GetKey</name>
       <comment>Retrieves global variables and URI parameters.</comment>
       <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
+      <tiriPrototype>err = Object.acGetKey(Key:str, Value:str, Size:num)</tiriPrototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
@@ -121,12 +130,14 @@
       <name>Refresh</name>
       <comment>Reloads the document data from the original source location.</comment>
       <prototype>ERR acRefresh(*Object)</prototype>
+      <tiriPrototype>err = Object.acRefresh()</tiriPrototype>
     </action>
 
     <action>
       <name>SaveToObject</name>
       <comment>Use this action to save edited information as an XML document file.</comment>
       <prototype>ERR acSaveToObject(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <tiriPrototype>err = Object.acSaveToObject(Dest:obj, ClassID:num)</tiriPrototype>
       <input>
         <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded data.</param>
         <param type="CLASSID" name="ClassID">Can refer to a sub-class that should be used when encoding the data.</param>
@@ -137,6 +148,7 @@
       <name>SetKey</name>
       <comment>Set a global key-value in the document.</comment>
       <prototype>ERR acSetKey(*Object, CSTRING Key, CSTRING Value)</prototype>
+      <tiriPrototype>err = Object.acSetKey(Key:str, Value:str)</tiriPrototype>
       <input>
         <param type="CSTRING" name="Key">The name of the target key.</param>
         <param type="CSTRING" name="Value">The string value to associate with Key.</param>

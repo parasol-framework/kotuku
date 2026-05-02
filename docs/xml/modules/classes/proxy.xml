@@ -26,6 +26,7 @@
       <name>Disable</name>
       <comment>Marks a proxy as disabled.</comment>
       <prototype>ERR acDisable(*Object)</prototype>
+      <tiriPrototype>err = Object.acDisable()</tiriPrototype>
       <description>
 <p>Calling the Disable() action will mark the proxy as disabled.  Disabled proxies remain in the system but are ignored by programs that scan the database for active proxies.</p>
 <p>The change will not come into effect until the proxy record is saved.</p>
@@ -36,6 +37,7 @@
       <name>Enable</name>
       <comment>Enables a proxy.</comment>
       <prototype>ERR acEnable(*Object)</prototype>
+      <tiriPrototype>err = Object.acEnable()</tiriPrototype>
       <description>
 <p>Calling the Enable() action will mark the proxy as enabled.  The change will not come into effect until the proxy record is saved.</p>
       </description>
@@ -45,6 +47,7 @@
       <name>SaveSettings</name>
       <comment>Permanently saves user configurable settings for a proxy.</comment>
       <prototype>ERR acSaveSettings(*Object)</prototype>
+      <tiriPrototype>err = Object.acSaveSettings()</tiriPrototype>
       <description>
 <p>This action saves a user's settings for a proxy. Saving the proxy settings will make them available to the user on subsequent logins.</p>
 <p>Settings are saved to the user's local account under <code>user:config/network/proxies.cfg</code>.  It is possible for the administrator to define proxy settings as the default for all users by copying the <code>proxies.cfg</code> file to the <code>system:users/default/config/network/</code> folder.</p>
