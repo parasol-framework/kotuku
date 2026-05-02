@@ -12,6 +12,8 @@ When writing new sections in the manual, refer to the @docs/wiki/Tiri-Reference-
 
 Refer to the actual implementation of the Tiri module and the LuaJIT compiler as necessary at `src/tiri/`.
 
+There is no word-wrapping requirement when writing AsciiDoc files.  Column width restrictions only apply to pre-formatted text sections.
+
 ## Version Maintenance
 
 It is the responsibility of the project maintainer to add a `VERIFIED` comment with a date to the top of each `*.adoc` file once reviewed and considered fit to publish.  If updating an adoc file that has been previously verified, add a comment to the top of file to indicate your changes.  This will help the maintainer review your changes for resubmission, and they can then update the verification date.
