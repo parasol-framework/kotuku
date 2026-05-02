@@ -1,4 +1,7 @@
 
+@BeforeEach(hotpath=3)
+function enforce_hotpath() end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
 -- Also ensures that the garbage collector doesn't collect the script while it's running.
