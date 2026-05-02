@@ -16,12 +16,13 @@
 // Parses optional return type annotation after parameters for all functions.
 // If is_thunk is true, validates thunk-specific constraints.
 
-ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &function_token, bool is_thunk)
+ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(
+   const Token &FunctionToken, bool IsThunk, GCstr *FunctionName)
 {
    auto params = this->parse_parameter_list(false);
    if (not params.ok()) return ParserResult<ExprNodePtr>::failure(params.error_ref());
 
-   if (is_thunk and params.value_ref().is_vararg) {
+   if (IsThunk and params.value_ref().is_vararg) {
       return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
          "thunk functions do not support varargs");
    }
@@ -33,19 +34,20 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(const Token &functi
 
    // For thunk compatibility: extract single return type for thunk_return_type field
    TiriType thunk_return_type = TiriType::Any;
-   if (is_thunk and return_types.count > 0) {
+   if (IsThunk and return_types.count > 0) {
       thunk_return_type = return_types.types[0];
    }
 
    const TokenKind terms[] = { TokenKind::EndToken };
+   FunctionNameScope function_name_scope(*this, FunctionName);
    ++this->function_depth_;
    auto body = this->parse_block(terms);
    --this->function_depth_;
    if (not body.ok()) return ParserResult<ExprNodePtr>::failure(body.error_ref());
 
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
-   ExprNodePtr node = make_function_expr(function_token.span(), std::move(params.value_ref().parameters),
-      params.value_ref().is_vararg, std::move(body.value_ref()), is_thunk, thunk_return_type, return_types);
+   ExprNodePtr node = make_function_expr(FunctionToken.span(), std::move(params.value_ref().parameters),
+      params.value_ref().is_vararg, std::move(body.value_ref()), IsThunk, thunk_return_type, return_types);
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
 

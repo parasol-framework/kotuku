@@ -176,6 +176,15 @@ function formatKeywordHover(Keyword, KeywordDoc)
    return md
 end
 
+function formatParserAnnotationHover(AnnotationName, AnnotationDoc)
+   md = f'**@{AnnotationName}** _(Parser annotation)_\n\n'
+   if AnnotationDoc.prototype?? then
+      md ..= '```lua\n' .. AnnotationDoc.prototype .. '\n```\n\n'
+   end
+   md ..= AnnotationDoc.comment
+   return md
+end
+
 @Doc(text="Resolve hover content for a token")
 global function resolveHoverContent(TokenInfo, Doc)
    -- Priority: keywords, builtins, class names, module functions, object methods/fields
@@ -188,6 +197,11 @@ global function resolveHoverContent(TokenInfo, Doc)
    -- Check for keywords
    if glDefs?.keywords?[token] then
       return formatKeywordHover(token, glDefs.keywords[token])
+   end
+
+   -- Check parser intrinsic annotations
+   if glDefs?.parserAnnotations?[token] then
+      return formatParserAnnotationHover(token, glDefs.parserAnnotations[token])
    end
 
    -- Check for built-in functions

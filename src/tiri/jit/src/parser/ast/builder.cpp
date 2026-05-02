@@ -154,6 +154,41 @@ AstBuilder::AstBuilder(ParserContext &Context) : ctx(Context)
 {
 }
 
+AstBuilder::FunctionNameScope::FunctionNameScope(AstBuilder &Builder, GCstr *FunctionName) : builder(Builder)
+{
+   this->builder.function_name_stack.push_back(FunctionName ? FunctionName : this->builder.anonymous_function_name());
+}
+
+AstBuilder::FunctionNameScope::~FunctionNameScope()
+{
+   this->builder.function_name_stack.pop_back();
+}
+
+GCstr *AstBuilder::anonymous_function_name()
+{
+   return this->ctx.lex().keepstr("Anonymous");
+}
+
+GCstr *AstBuilder::current_function_name()
+{
+   if (this->function_name_stack.empty()) return this->ctx.lex().keepstr("Main");
+   return this->function_name_stack.back();
+}
+
+GCstr *AstBuilder::current_source_file()
+{
+   const char *chunk_arg = this->ctx.lex().chunk_arg;
+   if (not chunk_arg) return this->ctx.lex().keepstr("<runtime>");
+
+   std::string source_file(chunk_arg);
+   if (not source_file.empty() and (source_file[0] IS '@' or source_file[0] IS '=')) {
+      source_file.erase(0, 1);
+   }
+
+   if (source_file.empty()) source_file = "<runtime>";
+   return this->ctx.lex().keepstr(source_file);
+}
+
 //********************************************************************************************************************
 // Main entry point for parsing a chunk (entire source file).
 

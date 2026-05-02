@@ -210,6 +210,13 @@ global FLUID_CONSTANTS = {
    ['true'] = true, ['false'] = true, ['nil'] = true
 }
 
+-- Parser intrinsic annotations that can be used as expressions.
+global FLUID_PARSER_ANNOTATIONS = {
+   ['FunctionName'] = true,
+   ['SourceFile'] = true,
+   ['SourceLine'] = true
+}
+
 -- Built-in functions (default library)
 global FLUID_BUILTINS = {
    -- Output
