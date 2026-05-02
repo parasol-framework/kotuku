@@ -238,6 +238,25 @@ glKeywords = {
 }
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Parser Intrinsic Annotations
+
+glParserAnnotations = {
+   ['FunctionName'] = {
+      comment = 'Expands at parse time to the current function name as a string.  Top-level code resolves to ' ..
+         '"Main"; anonymous functions resolve to "Anonymous".',
+      prototype = '@FunctionName'
+   },
+   ['SourceFile'] = {
+      comment = 'Expands at parse time to the current source file path as a string.',
+      prototype = '@SourceFile'
+   },
+   ['SourceLine'] = {
+      comment = 'Expands at parse time to the current 1-based source line number.',
+      prototype = '@SourceLine'
+   }
+}
+
+----------------------------------------------------------------------------------------------------------------------
 -- Module prefixes mapping
 
 glModulePrefixes = {
@@ -257,5 +276,6 @@ glModulePrefixes = {
    return {
       builtins = glBuiltins,
       keywords = glKeywords,
+      parserAnnotations = glParserAnnotations,
       modulePrefixes = glModulePrefixes
    }

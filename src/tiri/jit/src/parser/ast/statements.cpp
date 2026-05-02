@@ -34,7 +34,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
          Token function_token = local_token;  // Use local_token as span start
          auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
          if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
-         auto fn = this->parse_function_literal(function_token, is_thunk);
+         GCstr *funcname = name_token.value_ref().identifier();
+         auto fn = this->parse_function_literal(function_token, is_thunk, funcname);
          if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
          ExprNodePtr function_expr = std::move(fn.value_ref());
          auto stmt = std::make_unique<StmtNode>(AstNodeKind::LocalFunctionStmt, this->span_from(local_token, name_token.value_ref()));
@@ -121,7 +122,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
       Token function_token = global_token;
       auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
       if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
-      auto fn = this->parse_function_literal(function_token, is_thunk);
+      GCstr *funcname = name_token.value_ref().identifier();
+      auto fn = this->parse_function_literal(function_token, is_thunk, funcname);
       if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
       ExprNodePtr function_expr = std::move(fn.value_ref());
 
@@ -225,7 +227,15 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
       path.method = make_identifier(seg.value_ref());
    }
 
-   auto fn = this->parse_function_literal(func_token, is_thunk);
+   GCstr *funcname = nullptr;
+   if (path.method.has_value() and path.method->symbol) {
+      funcname = path.method->symbol;
+   }
+   else if (not path.segments.empty()) {
+      funcname = path.segments.back().symbol;
+   }
+
+   auto fn = this->parse_function_literal(func_token, is_thunk, funcname);
    if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
    ExprNodePtr function_expr = std::move(fn.value_ref());
 

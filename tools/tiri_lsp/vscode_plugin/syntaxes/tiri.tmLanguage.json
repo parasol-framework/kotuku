@@ -5,6 +5,7 @@
    "patterns": [
       { "include": "#comments" },
       { "include": "#strings" },
+      { "include": "#annotations" },
       { "include": "#functions" },
       { "include": "#keywords" },
       { "include": "#operators" },
@@ -23,6 +24,18 @@
             {
                "name": "comment.line.double-dash.tiri",
                "match": "--.*$"
+            }
+         ]
+      },
+      "annotations": {
+         "patterns": [
+            {
+               "name": "support.constant.parser-annotation.tiri",
+               "match": "@(FunctionName|SourceFile|SourceLine)\\b"
+            },
+            {
+               "name": "entity.name.function.annotation.tiri",
+               "match": "@[A-Za-z_][A-Za-z0-9_]*"
             }
          ]
       },
@@ -129,6 +142,7 @@
                "patterns": [
                   { "include": "#comments" },
                   { "include": "#strings" },
+                  { "include": "#annotations" },
                   { "include": "#functions" },
                   { "include": "#keywords" },
                   { "include": "#operators" },

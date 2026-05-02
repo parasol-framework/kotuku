@@ -275,6 +275,34 @@ global function tokenizeTiri(Source:str):array
             col = save_col
             line = save_line
          end
+      elseif c is '@' then
+         anno_start = col
+         pos++
+         col++
+
+         if pos < len and isIdentStart(Source:sub(pos, pos + 1)) then
+            name_start = col
+            name_pos = pos
+            while pos < len and isIdentChar(Source:sub(pos, pos + 1)) do
+               pos++
+               col++
+            end
+
+            anno_name = Source:sub(name_pos, pos)
+            token_type = 3
+            token_mod = 0
+            if FLUID_PARSER_ANNOTATIONS[anno_name] then
+               token_type = 12
+               token_mod = 4
+            elseif FLUID_KEYWORDS[anno_name] then
+               token_type = 0
+               token_mod = 0
+            end
+            addToken(line, anno_start, 1, 12, 4) -- @ marker
+            addToken(line, name_start, col - name_start, token_type, token_mod)
+         else
+            addToken(line, anno_start, 1, 12, 4)
+         end
       elseif c is '?' then -- Symbolic operators (multi-character first, then single-character)
          op_start = col
          if pos + 2 < len and Source:sub(pos + 1, pos + 3) is '?=' then

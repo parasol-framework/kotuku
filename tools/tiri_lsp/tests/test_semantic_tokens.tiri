@@ -1,0 +1,70 @@
+global glSemanticTokensTestUri = nil
+
+@BeforeAll function SetupSemanticTokenTests(State)
+   local err, sdk_path = mSys.ResolvePath(State.folder .. '../../../')
+   assert(err is ERR_Okay, 'Failed to resolve SDK path for LSP semantic token tests.')
+   mSys.SetVolume('sdk', sdk_path)
+
+   loadFile('sdk:tools/tiri_lsp/lsp_lib.tiri')
+   assert(lspInitDocs('sdk:docs/xml/'), 'Failed to initialise LSP documentation cache.')
+   glSemanticTokensTestUri = lspPathToUri('sdk:tools/tiri_lsp/tests/test_semantic_tokens.tiri')
+   assert(glSemanticTokensTestUri, 'Failed to create test document URI.')
+end
+
+function makeDoc(Content:str):table
+   return {
+      uri = glSemanticTokensTestUri,
+      languageId = 'tiri',
+      version = 1,
+      content = Content,
+      lineIndex = nil
+   }
+end
+
+function findToken(Tokens:array, Line:num, Char:num, Text:str):table
+   for token in values(Tokens) do
+      if token.line is Line and token.char is Char and token.length is #Text then
+         return token
+      end
+   end
+end
+
+@Test function ParserAnnotationsReceiveSemanticTokens()
+   source = 'value = @SourceFile\n' ..
+      'line = @SourceLine\n' ..
+      'name = @FunctionName\n' ..
+      '@Test function sample()\n' ..
+      '@if(debug=true)\n' ..
+      '@end\n' ..
+      'end\n'
+
+   tokens = tokenizeTiri(source)
+
+   source_file = findToken(tokens, 0, 9, 'SourceFile')
+   source_line = findToken(tokens, 1, 8, 'SourceLine')
+   function_name = findToken(tokens, 2, 8, 'FunctionName')
+   test_annotation = findToken(tokens, 3, 1, 'Test')
+   compile_if = findToken(tokens, 4, 1, 'if')
+   compile_end = findToken(tokens, 5, 1, 'end')
+
+   assert(source_file and source_file.type is 12, '@SourceFile should be highlighted as a macro token.')
+   assert(source_line and source_line.type is 12, '@SourceLine should be highlighted as a macro token.')
+   assert(function_name and function_name.type is 12, '@FunctionName should be highlighted as a macro token.')
+   assert(test_annotation and test_annotation.type is 3, 'Declaration annotations should remain function tokens.')
+   assert(compile_if and compile_if.type is 0, '@if should retain keyword highlighting.')
+   assert(compile_end and compile_end.type is 0, '@end should retain keyword highlighting.')
+
+   assert((source_file.modifiers & 4) != 0, '@SourceFile should be marked readonly.')
+   assert((source_line.modifiers & 4) != 0, '@SourceLine should be marked readonly.')
+   assert((function_name.modifiers & 4) != 0, '@FunctionName should be marked readonly.')
+end
+
+@Test function ParserAnnotationHoverDocumentation()
+   doc = makeDoc('value = @SourceFile\n')
+   token = getTokenAtPosition(doc, 0, 10)
+   hover = resolveHoverContent(token, doc)
+
+   assert(token and token.text is 'SourceFile', 'Hover token extraction should identify SourceFile.')
+   assert(hover and hover:find('@SourceFile', 0, true), 'Hover should document @SourceFile.')
+   assert(hover:find('Parser annotation', 0, true), 'Hover should identify parser annotations.')
+end
