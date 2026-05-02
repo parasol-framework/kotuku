@@ -44,7 +44,7 @@ rendered image size.
 
 #include "picture.h"
 
-using namespace pf;
+using namespace kt;
 
 static OBJECTPTR clPicture = nullptr;
 static OBJECTPTR modDisplay = nullptr;
@@ -128,7 +128,7 @@ object is permitted.
 
 static ERR PICTURE_Activate(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Bitmap->initialised()) return ERR::Okay;
 
@@ -355,7 +355,7 @@ with a registered data format, an error code of `ERR::NoSupport` is returned.  Y
 
 static ERR PICTURE_Init(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->prvPath.empty()) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       // If no path has been specified, assume that the picture is being created from scratch (e.g. to save an
@@ -447,7 +447,7 @@ static ERR PICTURE_NewPlacement(extPicture *Self)
 
 static ERR PICTURE_Query(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
    CSTRING path;
    png_uint_32 width, height;
    int bit_depth, color_type;
@@ -549,7 +549,7 @@ If no destination is specified then the image will be saved as a new file target
 
 static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
-   pf::Log log;
+   kt::Log log;
    CSTRING path;
    int y, i;
    png_bytep row_pointers;
@@ -807,7 +807,7 @@ SaveToObject: Saves the picture image to a data object.
 
 static ERR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
 {
-   pf::Log log;
+   kt::Log log;
    ERR (**routine)(OBJECTPTR, APTR);
 
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::PICTURE)) {
@@ -1187,14 +1187,14 @@ void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_da
 
 static void png_error_hook(png_structp png_ptr, png_const_charp message)
 {
-   pf::Log log;
+   kt::Log log;
    log.warning("%s", message);
    tlError = true;
 }
 
 static void png_warning_hook(png_structp png_ptr, png_const_charp message)
 {
-   pf::Log log;
+   kt::Log log;
    log.msg("libpng: %s", message); // PNG warnings aren't serious enough to warrant logging beyond the info level
 }
 
@@ -1213,7 +1213,7 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
    png_bytep row_pointers;
    RGB8 rgb;
    int i;
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Read the image data into our Bitmap
 
@@ -1355,8 +1355,8 @@ static ERR create_picture_class(void)
       fl::Name("Picture"),
       fl::Category(CCF::GRAPHICS),
       fl::Flags(CLF::INHERIT_LOCAL),
-      fl::FileExtension("*.png"),
-      fl::FileDescription("PNG Picture"),
+      fl::FileExtension("png"),
+      fl::FileDescription("PNG Image"),
       fl::FileHeader("[0:$89504e470d0a1a0a]"),
       fl::Icon("filetypes/image"),
       fl::Actions(clPictureActions),
@@ -1371,4 +1371,3 @@ static ERR create_picture_class(void)
 
 KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_picture_module() { return &ModHeader; }
-

@@ -39,7 +39,7 @@ static ERR CLIP_Free(extVectorClip *Self)
 
 static ERR CLIP_Init(extVectorClip *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((int(Self->Units) <= 0) or (int(Self->Units) >= int(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
@@ -75,7 +75,7 @@ static ERR CLIP_Init(extVectorClip *Self)
 static ERR CLIP_NewChild(extVectorClip *Self, struct acNewChild *Args)
 {
    if (Self->initialised()) {
-      pf::Log log;
+      kt::Log log;
       log.warning("Child objects not supported - assign this %s to Viewport instead.", Args->Object->className());
       return ERR::NoSupport;
    }

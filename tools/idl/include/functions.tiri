@@ -320,21 +320,11 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- TDL function
 
-global function hash(Prefix:str, Format:str, ...)
-   for v in values({...}) do
-      hash_name = rx_non_word.replace(v, '_')
-      -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-      hash_id = string.format('%08x', v:hash()):sub(-8)
-      output(f'#define {Prefix}_{hash_name} {string.format(Format, hash_id)}')
-   end
-   output()
-end
-
 global function calcFieldHash(String:str):num
-   local hash = 5381
+   out = array<char>
    k = 0
    while (k < #String) and (String[k] >= 'A') and (String[k] <= 'Z') do
-      hash = (hash<<5) + hash + (String[k]:lower():byte())
+      out:push(String[k]:lower():byte())
       k++
       if k >= #String then break end
       if not ((k + 1 >= #String) or ((String[k+1] >= 'A') and (String[k+1] <= 'Z'))) then
@@ -343,10 +333,11 @@ global function calcFieldHash(String:str):num
    end
 
    while k < #String do
-      hash = (hash<<5) + hash + String[k]:byte()
+      out:push(String[k]:byte())
       k++
    end
-   return hash
+
+   return out:getString():hash(true)
 end
 
 global function fieldHash(Prefix:str, Format:str, ...)
@@ -372,6 +363,16 @@ global function typedHash(Prefix:str, Type:str, ...)
       output(f'   {hash_name} = {string.format("0x%sUL", hash_id)},')
    end
    output('};')
+   output()
+end
+
+global function hash(Prefix:str, Format:str, ...)
+   for v in values({...}) do
+      hash_name = rx_non_word.replace(v, '_')
+      -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
+      hash_id = string.format('%08x', v:hash()):sub(-8)
+      output(f'#define {Prefix}_{hash_name} {string.format(Format, hash_id)}')
+   end
    output()
 end
 

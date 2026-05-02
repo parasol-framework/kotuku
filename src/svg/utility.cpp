@@ -8,7 +8,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR, int &Level) __attribute__ ((
 
 static void debug_branch(CSTRING Header, OBJECTPTR Vector, int &Level)
 {
-   pf::Log log(Header);
+   kt::Log log(Header);
 
    auto spacing = std::string(Level + 1, ' ');
    Level++;
@@ -137,19 +137,19 @@ static void parse_result(extSVG *Self, objFilterEffect *Effect, std::string Valu
 
 static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input, FIELD SourceField, FIELD RefField)
 {
-   switch (strihash(Input)) {
-      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, int(VSF::GRAPHIC)); break;
-      case SVF_SOURCEALPHA:     Effect->set(SourceField, int(VSF::ALPHA)); break;
-      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, int(VSF::BKGD)); break;
-      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, int(VSF::BKGD_ALPHA)); break;
-      case SVF_FILLPAINT:       Effect->set(SourceField, int(VSF::FILL)); break;
-      case SVF_STROKEPAINT:     Effect->set(SourceField, int(VSF::STROKE)); break;
+   switch (strhash(Input)) {
+      case SVF_SourceGraphic:   Effect->set(SourceField, int(VSF::GRAPHIC)); break;
+      case SVF_SourceAlpha:     Effect->set(SourceField, int(VSF::ALPHA)); break;
+      case SVF_BackgroundImage: Effect->set(SourceField, int(VSF::BKGD)); break;
+      case SVF_BackgroundAlpha: Effect->set(SourceField, int(VSF::BKGD_ALPHA)); break;
+      case SVF_FillPaint:       Effect->set(SourceField, int(VSF::FILL)); break;
+      case SVF_StrokePaint:     Effect->set(SourceField, int(VSF::STROKE)); break;
       default:  {
          if (Self->Effects.contains(Input)) {
             Effect->set(RefField, Self->Effects[Input]);
          }
          else {
-            pf::Log log;
+            kt::Log log;
             log.warning("Unrecognised input '%s'", Input.c_str());
          }
          break;
@@ -162,13 +162,13 @@ static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input,
 
 static std::vector<Transition> process_transition_stops(extSVG *Self, const objXML::TAGS &Tags)
 {
-   pf::Log log("process_stops");
+   kt::Log log("process_stops");
 
    log.traceBranch();
 
    std::vector<Transition> stops;
    for (auto &scan : Tags) {
-      if (iequals("stop", scan.name())) {
+      if (svg_tag_hash(scan) IS kt::strhash("stop")) {
          Transition stop;
          stop.Offset = 0;
          stop.Transform = nullptr;
@@ -231,7 +231,7 @@ static void parse_transform(objVector *Vector, const std::string Value, int Tag)
          matrix->Tag = Tag;
       }
       else {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.warning("Failed to create vector transform matrix.");
       }
    }
@@ -241,16 +241,17 @@ static void parse_transform(objVector *Vector, const std::string Value, int Tag)
 
 static const std::string uri_name(const std::string Ref)
 {
-   int skip = 0;
-   while ((Ref[skip]) and (Ref[skip] <= 0x20)) skip++;
+   std::size_t skip = 0;
+   while ((skip < Ref.size()) and (Ref[skip] <= 0x20)) skip++;
+   if (skip >= Ref.size()) return std::string("");
 
    if (Ref[skip] IS '#') {
       return Ref.substr(skip+1);
    }
    else if (startswith("url(#", Ref.c_str() + skip)) {
-      int i;
+      std::size_t i;
       skip += 5;
-      for (i=0; (Ref[skip+i] != ')') and (skip+i < int(Ref.size())); i++);
+      for (i=0; ((skip + i) < Ref.size()) and (Ref[skip+i] != ')'); i++);
       return Ref.substr(skip, i);
    }
    else return Ref.substr(skip);
@@ -311,9 +312,9 @@ static double read_time(const std::string_view Value)
          }
       }
       else if (Value.ends_with("h")) return units[0] * 60 * 60;
-      else if (Value.ends_with("s")) return units[0];
       else if (Value.ends_with("min")) return units[0] * 60;
       else if (Value.ends_with("ms")) return double(units[0]) / 1000.0;
+      else if (Value.ends_with("s")) return units[0];
       else return units[0];
    }
    else return 0;
@@ -346,8 +347,8 @@ static double read_unit(std::string_view &Value, int64_t *FieldID)
       else if (Value.starts_with("em")) { Value.remove_prefix(2); return fv * 12.0 * (4.0 / 3.0); } // Multiply the current font's pixel height by the provided em value
       else if (Value.starts_with("ex")) { Value.remove_prefix(2); return fv * 6.0 * (4.0 / 3.0); } // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
       else if (Value.starts_with("in")) { Value.remove_prefix(2); return fv * dpi; } // Inches
-      else if (Value.starts_with("cm")) { Value.remove_prefix(2); return fv * (1.0 / 2.56) * dpi; } // Centimetres
-      else if (Value.starts_with("mm")) { Value.remove_prefix(2); return fv * (1.0 / 20.56) * dpi; } // Millimetres
+      else if (Value.starts_with("cm")) { Value.remove_prefix(2); return fv * (1.0 / 2.54) * dpi; } // Centimetres
+      else if (Value.starts_with("mm")) { Value.remove_prefix(2); return fv * (1.0 / 25.4) * dpi; } // Millimetres
       else if (Value.starts_with("pt")) { Value.remove_prefix(2); return fv * (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
       else if (Value.starts_with("pc")) { Value.remove_prefix(2); return fv * (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
       else if (Value.starts_with("px")) { Value.remove_prefix(2); return fv; } // Pixel
@@ -453,7 +454,7 @@ static void parse_ids(extSVG *Self, XTag &Tag)
 
 static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Path) and (!Buffer)) return ERR::NullArgs;
 
@@ -463,11 +464,14 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
    AdjustLogLevel(1);
 #endif
 
+   Self->IDs.clear();
    if (Self->XML) { FreeResource(Self->XML); Self->XML = nullptr; }
 
    objXML *xml;
    ERR error = ERR::Okay;
    if (NewLocalObject(CLASSID::XML, &xml) IS ERR::Okay) {
+      xml->setFlags(XMF::NAMESPACE_AWARE|XMF::WELL_FORMED);
+
       objTask *task = CurrentTask();
       std::string working_path;
 
@@ -516,7 +520,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          objVector *sibling = nullptr;
          for (auto &scan : xml->Tags) {
-            if (iequals("svg", scan.name())) {
+            if (svg_tag_is(scan, SVF_svg)) {
                svgState state(Self);
 
                // Parse all tags with an 'id' reference so that href's can target them even when
@@ -565,7 +569,7 @@ end:
 
 static void convert_styles(objXML::TAGS &Tags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (auto &tag : Tags) {
       for (int style=1; style < std::ssize(tag.Attribs); style++) {

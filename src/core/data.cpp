@@ -81,6 +81,10 @@ std::unordered_map<int, std::shared_ptr<ThreadRecord>> glThreadRegistry;
 
 std::list<CoreTimer> glTimers; // Locked with glmTimer.  std::list maintains stable pointers to elements.
 std::list<FDRecord> glFDTable;
+#ifdef __linux__
+std::mutex glmInotifyLookup;
+std::unordered_map<int, OBJECTID> glInotifyLookup;
+#endif
 
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 std::unordered_map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup; // Name lookups
@@ -98,7 +102,7 @@ std::timed_mutex glmObjectLocking;
 std::timed_mutex glmVolumes;
 
 ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
-ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB;
+ankerl::unordered_dense::map<CLASSID, extClassRecord> glClassDB;
 ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
 std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 std::unordered_map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory;
@@ -144,6 +148,7 @@ size_t glPageSize = 4096; // Overwritten on opening the Core
 #endif
 
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()
+FILE *glLogFile = nullptr;
 
 int64_t glTimeLog    = 0;
 int16_t glCrashStatus   = 0;
@@ -163,7 +168,9 @@ bool glSync         = false;
 bool glLogThreads   = false;
 int8_t glProgramStage = STAGE_STARTUP;
 TSTATE glTaskState  = TSTATE::RUNNING;
+#ifdef __linux__
 int glInotify = -1;
+#endif
 
 const struct virtual_drive glFSDefault = {
    0, 0, ":",
@@ -190,6 +197,7 @@ const struct virtual_drive glFSDefault = {
    fs_createlink
 };
 
+std::mutex glmVirtual;
 ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 
 #ifdef __unix__
@@ -209,17 +217,17 @@ thread_local int16_t tlPrivateLockCount = 0; // Count of private *memory* locks 
 Object glDummyObject;
 
 #if defined(__MINGW32__) || defined(__MINGW64__)
-thread_local pf::vector<ObjectContext> *tlContextPtr = nullptr; // Lazy init via tls_get_context()
+thread_local kt::vector<ObjectContext> *tlContextPtr = nullptr; // Lazy init via tls_get_context()
 #else
-static pf::vector<ObjectContext> make_initial_context()
+static kt::vector<ObjectContext> make_initial_context()
 {
-   pf::vector<ObjectContext> v;
+   kt::vector<ObjectContext> v;
    v.reserve(16);
    v.emplace_back(ObjectContext { &glDummyObject, nullptr, AC::NIL });
    return v;
 }
 
-thread_local pf::vector<ObjectContext> tlContext = make_initial_context();
+thread_local kt::vector<ObjectContext> tlContext = make_initial_context();
 #endif
 
 objTime *glTime = nullptr;

@@ -75,7 +75,7 @@ class Component {
       Intercept = pIntercept;
 
       for (size_t i=0; i < sizeof(Lookup); i++) {
-         uint32_t c = int((double(i) * pSlope) + pIntercept * 255.0);
+         auto c = std::clamp(int((double(i) * pSlope) + pIntercept * 255.0), 0, 255);
          Lookup[i] = c;
          ILookup[i] = glLinearRGB.invert(c);
       }
@@ -89,14 +89,15 @@ class Component {
 
       for (size_t i=0; i < sizeof(Lookup); i++) {
          double pe = pow(double(i) * (1.0/255.0), pExponent);
-         uint32_t c = int(((pAmplitude * pe) + pOffset) * 255.0);
-         Lookup[i]  = (c < 255) ? c : 255;
-         ILookup[i] = glLinearRGB.invert((c < 255) ? c : 255);
+         auto c = std::clamp(int(((pAmplitude * pe) + pOffset) * 255.0), 0, 255);
+         Lookup[i]  = c;
+         ILookup[i] = glLinearRGB.invert(c);
       }
    }
 
    void select_discrete(const double *pValues, const int pSize) {
       Type = RFT_DISCRETE;
+      Table.clear();
       Table.insert(Table.end(), pValues, pValues + pSize);
 
       uint32_t n = Table.size();
@@ -112,6 +113,7 @@ class Component {
 
    void select_table(const double *pValues, const int pSize) {
       Type = RFT_TABLE;
+      Table.clear();
       Table.insert(Table.end(), pValues, pValues + pSize);
 
       uint32_t n = Table.size();
@@ -130,7 +132,7 @@ class extRemapFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::REMAPFX;
    static constexpr CSTRING CLASS_NAME = "RemapFX";
-   using create = pf::Create<extRemapFX>;
+   using create = kt::Create<extRemapFX>;
 
    Component Red;
    Component Green;
@@ -189,6 +191,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
                out[A] = Self->Alpha.Lookup[a];
                dp[0] = ((uint32_t *)out)[0];
             }
+            else dp[0] = 0;
             dp++;
             sp += 4;
          }
@@ -203,6 +206,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
                out[A] = Self->Alpha.Lookup[a];
                dp[0] = ((uint32_t *)out)[0];
             }
+            else dp[0] = 0;
             dp++;
             sp += 4;
          }
@@ -252,7 +256,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectDiscrete(extRemapFX *Self, struct rf::SelectDiscrete *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Values)) return log.warning(ERR::NullArgs);
    if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR::Args);
@@ -284,7 +288,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectIdentity(extRemapFX *Self, struct rf::SelectIdentity *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -318,7 +322,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectGamma(extRemapFX *Self, struct rf::SelectGamma *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -352,7 +356,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectInvert(extRemapFX *Self, struct rf::SelectInvert *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -386,7 +390,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectLinear(extRemapFX *Self, struct rf::SelectLinear *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if (Args->Slope < 0) return log.warning(ERR::Args);
@@ -423,7 +427,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectMask(extRemapFX *Self, struct rf::SelectMask *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -459,7 +463,7 @@ NullArgs:
 
 static ERR REMAPFX_SelectTable(extRemapFX *Self, struct rf::SelectTable *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Values)) return log.warning(ERR::NullArgs);
    if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR::Args);

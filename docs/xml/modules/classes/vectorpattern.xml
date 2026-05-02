@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Provides support for the filling and stroking of vectors with patterns.</comment>
     <version>1</version>
-    <id>09eaa136</id>
+    <id>53c90050</id>
     <idstring>VECTORPATTERN</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

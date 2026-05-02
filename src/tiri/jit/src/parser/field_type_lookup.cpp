@@ -36,7 +36,7 @@ static std::optional<FieldTypeInfo> lookup_field_type(CLASSID ClassID, uint32_t 
 
    auto *meta_class = FindClass(ClassID);
    if (not meta_class) { // This should never happen - caller probably used an uninitialised variable
-      pf::Log(__FUNCTION__).warning("Class ID $%.8x is invalid.", uint32_t(ClassID));
+      kt::Log(__FUNCTION__).warning("Class ID $%.8x is invalid.", uint32_t(ClassID));
       return std::nullopt;
    }
 

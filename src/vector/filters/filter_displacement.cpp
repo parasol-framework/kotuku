@@ -47,7 +47,7 @@ class extDisplacementFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::DISPLACEMENTFX;
    static constexpr CSTRING CLASS_NAME = "DisplacementFX";
-   using create = pf::Create<extDisplacementFX>;
+   using create = kt::Create<extDisplacementFX>;
 
    double Scale;
    CMP XChannel, YChannel;
@@ -63,7 +63,7 @@ Draw: Render the effect to the target bitmap.
 
 static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    // SVG rules state that the Input texture is pre-multiplied.  The Mix displacement map is not.  In practice however,
    // this should not make any difference to Input because the pixels are copied verbatim (not-withstanding pixel
@@ -94,6 +94,8 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    const int mix_height = mixBmp->Clip.Bottom - mixBmp->Clip.Top;
    const int in_width   = inBmp->Clip.Right   - inBmp->Clip.Left;
    const int in_height  = inBmp->Clip.Bottom  - inBmp->Clip.Top;
+   const int draw_width = (mix_width < width) ? mix_width : width;
+   const int draw_height = (mix_height < height) ? mix_height : height;
 
    auto &client = Self->Filter->ClientVector;
    const double c_width  = client->Bounds.width();
@@ -122,16 +124,16 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    //log.warning("X Channel: %d, Y Channel: %d; Scale: %.2f / %.2f -> %.2f,%.2f; WH: %dx%d", Self->XChannel, Self->YChannel, Self->Scale, scale_against, sx, sy, width, height);
 
    static const double HALF8BIT = 255.0 * 0.5;
-   for (int y=0; y < height; y++) {
+   for (int y=0; y < draw_height; y++) {
       auto m = mix;
       auto d = (uint32_t *)dest;
-      for (int x=0; x < width; x++, m += mixBmp->BytesPerPixel, d++) {
+      for (int x=0; x < draw_width; x++, m += mixBmp->BytesPerPixel, d++) {
          auto dx = m[x_type];
          auto dy = m[y_type];
          // TODO: SVG recommends using interpolation between pixels rather than the dropping the fractional part
          // as done here.
-         const int cx = x + F2I(sx * (double(dx) - HALF8BIT));
-         const int cy = y + F2I(sy * (double(dy) - HALF8BIT));
+         const int cx = x + std::lrint(sx * (double(dx) - HALF8BIT));
+         const int cy = y + std::lrint(sy * (double(dy) - HALF8BIT));
          if ((cx < 0) or (cx >= in_width) or (cy < 0) or (cy >= in_height)) {
             // The source pixel is outside of retrievable bounds
             *d = 0;

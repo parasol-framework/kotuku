@@ -32,10 +32,12 @@ gui.dialog.file = function(Options)
 
    function processFeedback()
       list = self.fileview.view.selectedItems()
-      if not list?? and self.filebox then
+
+      if (#list <= 1) and self.filebox then
+         -- The filebox has priority over single list selections
          local file = self.filebox.text.string
          if file?? then
-            list:push({ filename = file })
+            list = array<table> { { filename = file } }
          end
       end
 
@@ -183,17 +185,19 @@ gui.dialog.file = function(Options)
 
    fv_filters = array<table>
    if Options.filterList and (#Options.filterList > 0) then
-      -- Pick the first item as being selected if none other is chosen.
+      if Options.strictFilter then
+         -- Pick the first item as being selected if none other is chosen.
 
-      selection = false
-      for item in values(Options.filterList) do
-         if item.selected then
-            selection = true
-            break
+         selection = false
+         for item in values(Options.filterList) do
+            if item.selected then
+               selection = true
+               break
+            end
          end
-      end
 
-      if not selection then Options.filterList[0].selected = true end
+         if not selection then Options.filterList[0].selected = true end
+      end
 
       for filter in values(Options.filterList) do
          fv_filters:push(filter)
@@ -214,6 +218,7 @@ gui.dialog.file = function(Options)
       target        = viewRegion,
       path          = self.currentPath,
       filterList    = fv_filters,
+      strictFilter  = Options.strictFilter,
       sysKeys       = true,
       fileSelected  = processFeedback,
       style         = 'column', -- column, list, tree
@@ -250,7 +255,8 @@ end
       selectFolder = arg('selectFolder'),
       multiSelect  = arg('multiSelect'),
       userInput    = arg('userInput'),
-      allowNew     = arg('allowNew')
+      allowNew     = arg('allowNew'),
+      strictFilter = arg('strictFilter')
    })
 
    return dlg.windowID

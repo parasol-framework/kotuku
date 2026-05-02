@@ -4,7 +4,7 @@
 
 ERR exec_source(std::string TargetFile, int ShowTime, const std::string Procedure)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    ERR error;
 
    log.msg("Identifying file '%s'", TargetFile.c_str());
@@ -12,7 +12,7 @@ ERR exec_source(std::string TargetFile, int ShowTime, const std::string Procedur
    FindClass(CLASSID::TIRI);
 
    CLASSID class_id, subclass;
-   if (pf::startswith("STRING:", TargetFile)) {
+   if (kt::startswith("STRING:", TargetFile)) {
       subclass = CLASSID::SCRIPT;
       class_id = CLASSID::SCRIPT;
    }
@@ -25,7 +25,7 @@ ERR exec_source(std::string TargetFile, int ShowTime, const std::string Procedur
    if (class_id IS CLASSID::PARC) glSandbox = true;
 
    if (glSandbox) {
-      pf::vector<std::string> *params = nullptr;
+      kt::vector<std::string> *params = nullptr;
       glTask->get(FID_Parameters, params);
 
       #ifdef _WIN32
@@ -47,9 +47,9 @@ ERR exec_source(std::string TargetFile, int ShowTime, const std::string Procedur
             if (GetResource(RES::LOG_LEVEL) >= 5) cmdline << " --log-debug";
             else if (GetResource(RES::LOG_LEVEL) >= 3) cmdline << "--log-info";
 
-            pf::vector<std::string> &args = *params;
+            kt::vector<std::string> &args = *params;
             for (int a=0; a < std::ssize(args); a++) {
-               if (pf::iequals("--sandbox", args[a])) continue;
+               if (kt::iequals("--sandbox", args[a])) continue;
                cmdline << " \"";
                if (args[a].find('"') != std::string::npos) {
                   std::string sub = args[a];
@@ -123,7 +123,7 @@ ERR exec_source(std::string TargetFile, int ShowTime, const std::string Procedur
       if (!Procedure.empty()) glScript->setProcedure(Procedure);
 
       if (glArgsIndex) {
-         pf::vector<std::string> &args = *glArgs;
+         kt::vector<std::string> &args = *glArgs;
 
          for (unsigned i=glArgsIndex; i < args.size(); i++) {
             auto eq = args[i].find('=');

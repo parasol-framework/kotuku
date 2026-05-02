@@ -154,7 +154,7 @@ static ERR GET_Path(extDocument *Self, CSTRING *Value)
 
 static ERR SET_Path(extDocument *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
    static int8_t recursion = 0;
 
    if (recursion) return log.warning(ERR::Recursion);
@@ -162,20 +162,21 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    if ((!Value) or (!*Value)) return ERR::NoData;
 
    Self->Error = ERR::Okay;
+   auto value = std::string_view(Value);
 
    std::string newpath;
-   if ((Value[0] IS '#') or (Value[0] IS '?')) {
+   if ((value[0] IS '#') or (value[0] IS '?')) {
       if (!Self->Path.empty()) {
          unsigned i;
-         if (Value[0] IS '?') for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '?'); i++);
+         if (value[0] IS '?') for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '?'); i++);
          else for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '#'); i++);
 
          newpath.assign(Self->Path, 0, i);
-         newpath.append(Value);
+         newpath.append(value);
       }
-      else newpath.assign(Value);
+      else newpath.assign(value);
    }
-   else newpath = Value;
+   else newpath.assign(value);
 
    log.branch("%s (vs %s)", newpath.c_str(), Self->Path.c_str());
 
@@ -188,7 +189,7 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
       }
       else if (trigger.isC()) {
          auto routine = (void (*)(APTR, extDocument *, CSTRING, CSTRING, APTR))trigger.Routine;
-         pf::SwitchContext context(trigger.Context);
+         kt::SwitchContext context(trigger.Context);
          routine(trigger.Context, Self, Self->Path.c_str(), newpath.c_str(), trigger.Meta);
       }
    }
@@ -284,7 +285,7 @@ static ERR GET_PageWidth(extDocument *Self, Unit *Value)
 static ERR SET_PageWidth(extDocument *Self, Unit *Value)
 {
    if (Value->Value <= 0) {
-      pf::Log log;
+      kt::Log log;
       return log.warning(ERR::OutOfRange);
    }
 
@@ -390,7 +391,7 @@ The client can manually change the working path by setting the #Origin field wit
 
 static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Path.empty()) {
       log.warning("Document has no defined Path.");
@@ -417,7 +418,7 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
       if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
    }
 
-   pf::SwitchContext context(Self);
+   kt::SwitchContext context(Self);
 
    CSTRING task_path;
    if (path) { // Extract absolute path

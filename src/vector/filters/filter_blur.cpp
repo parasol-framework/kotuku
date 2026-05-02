@@ -77,7 +77,7 @@ class extBlurFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::BLURFX;
    static constexpr CSTRING CLASS_NAME = "BlurFX";
-   using create = pf::Create<extBlurFX>;
+   using create = kt::Create<extBlurFX>;
 
    double SX, SY;
 };
@@ -126,6 +126,21 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    }
 
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::NoData;
+   if ((Self->SourceType IS VSF::REFERENCE) and (Self->Input)) {
+      objBitmap *copy_bmp;
+      if (auto error = get_banked_bitmap(Self->Filter, &copy_bmp); error IS ERR::Okay) {
+         gfx::CopyArea(inBmp, copy_bmp, BAF::NIL,
+            inBmp->Clip.Left,
+            inBmp->Clip.Top,
+            inBmp->Clip.Right - inBmp->Clip.Left,
+            inBmp->Clip.Bottom - inBmp->Clip.Top,
+            copy_bmp->Clip.Left,
+            copy_bmp->Clip.Top);
+
+         inBmp = copy_bmp;
+      }
+      else return error;
+   }
 
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) inBmp->convertToLinear();
 

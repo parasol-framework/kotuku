@@ -11,7 +11,7 @@ This file provides the same interface as ssl.cpp but uses the Windows SSL wrappe
 template <class T> void sslDisconnect(T *Self)
 {
    if (Self->SSLHandle) {
-      pf::Log(__FUNCTION__).traceBranch("Closing SSL connection.");
+      kt::Log(__FUNCTION__).traceBranch("Closing SSL connection.");
       ssl_free_context(Self->SSLHandle);
       Self->SSLHandle = nullptr;
    }
@@ -22,7 +22,7 @@ template <class T> void sslDisconnect(T *Self)
 
 extern "C" void ssl_debug_to_kotuku_log(const char* message, int level)
 {
-   pf::Log log("SSL");
+   kt::Log log("SSL");
 
    switch (level) {
       case SSL_DEBUG_ERROR:   log.warning("%s", message); break;
@@ -38,7 +38,7 @@ extern "C" void ssl_debug_to_kotuku_log(const char* message, int level)
 
 static ERR sslSetup(extNetSocket *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Self->SSLHandle) return ERR::Okay;
 
@@ -97,7 +97,7 @@ static ERR sslSetup(extNetSocket *Self)
 
 template <class T> ERR sslHandshakeReceived(T *Self, const void *Data, int Length)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Self->SSLHandle or !Data or Length <= 0) return ERR::Args;
 
@@ -135,7 +135,7 @@ template <class T> ERR sslHandshakeReceived(T *Self, const void *Data, int Lengt
 
 template <class T> ERR sslConnect(T *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Attempting SSL handshake.");
 

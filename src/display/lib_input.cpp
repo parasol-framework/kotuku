@@ -94,7 +94,7 @@ NullArgs:
 ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, int *Handle)
 {
    static int counter = 1;
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Callback) or (!Handle)) return log.warning(ERR::NullArgs);
 
@@ -135,7 +135,7 @@ NotFound
 
 ERR UnsubscribeInput(int Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Handle) return log.warning(ERR::NullArgs);
 
@@ -212,9 +212,9 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
    for (auto &sub : input_buffer) {
       auto &cb = sub.callback;
       if (sub.callback.isC()) {
-         pf::ScopedObjectLock lock(OBJECTPTR(cb.Context), 2000); // Ensure that the object can't be removed until after input processing
+         kt::ScopedObjectLock lock(OBJECTPTR(cb.Context), 2000); // Ensure that the object can't be removed until after input processing
          if (lock.granted()) {
-            pf::SwitchContext ctx(cb.Context);
+            kt::SwitchContext ctx(cb.Context);
             auto func = (ERR (*)(InputEvent *, int, APTR))cb.Routine;
             func(sub.events.data(), sub.handle, cb.Meta);
          }

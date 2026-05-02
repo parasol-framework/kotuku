@@ -17,11 +17,18 @@ static std::optional<std::string> true_path(CSTRING Path)
 #ifdef _WIN32
    std::string buffer;
    buffer.resize(256);
-   if (auto size = winGetFullPathName(Path, buffer.size(), buffer.data(), nullptr); size > 0) {
-      buffer.resize(size);
-      return std::make_optional<std::string>(buffer);
+   while (true) {
+      auto size = winGetFullPathName(Path, (int)buffer.size(), buffer.data(), nullptr);
+      if (size <= 0) break;
+      if ((size_t)size < buffer.size()) {
+         buffer.resize(size);
+         return std::make_optional<std::string>(buffer);
+      }
+
+      buffer.resize(size + 1);
    }
-   else return std::nullopt;
+
+   return std::nullopt;
 #else
    if (char *rp = realpath(Path, nullptr)) {
       std::string p(rp);
@@ -88,7 +95,7 @@ static thread_local bool tlClassLoaded;
 
 ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("%s, Flags: $%.8x", pPath.data(), int(Flags));
 
@@ -324,7 +331,7 @@ static ERR resolve_object_path(const std::string &, const std::string &, std::st
 
 static ERR resolve(const std::string &Source, std::string &Dest, RSF Flags)
 {
-   pf::Log log("ResolvePath");
+   kt::Log log("ResolvePath");
 
    if (&Source IS &Dest) return log.warning(ERR::SanityCheckFailed);
 
@@ -452,7 +459,7 @@ static ERR resolve(const std::string &Source, std::string &Dest, RSF Flags)
 
 static ERR resolve_object_path(const std::string &Path, const std::string &Source, std::string &Dest)
 {
-   pf::Log log("ResolvePath");
+   kt::Log log("ResolvePath");
    ERR (*resolve_virtual)(OBJECTPTR, const std::string &, std::string &);
    ERR error = ERR::VirtualVolume;
 

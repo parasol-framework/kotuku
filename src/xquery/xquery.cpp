@@ -39,7 +39,7 @@ extern "C" ERR load_regex(void)
 {
 #ifndef KOTUKU_STATIC
    if (not modRegex) {
-      pf::SwitchContext ctx(glContext);
+      kt::SwitchContext ctx(glContext);
       if (objModule::load("regex", &modRegex, &RegexBase) != ERR::Okay) return ERR::InitModule;
    }
 #endif
@@ -78,7 +78,7 @@ static void MODTest(CSTRING Options, int *Passed, int *Total)
 #ifdef ENABLE_UNIT_TESTS
    run_unit_tests(Options, *Passed, *Total);
 #else
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.warning("Unit tests are disabled in this build.");
 #endif
 }

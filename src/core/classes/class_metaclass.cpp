@@ -55,6 +55,7 @@ static ERR GET_Module(extMetaClass *, CSTRING *);
 static ERR GET_Objects(extMetaClass *, OBJECTID **, int *);
 static ERR GET_RootModule(extMetaClass *, class RootModule **);
 static ERR GET_Dictionary(extMetaClass *, struct Field **, int *);
+static ERR GET_SubClasses(extMetaClass *, extMetaClass ***, int *);
 static ERR GET_SubFields(extMetaClass *, const FieldArray **, int *);
 
 static ERR SET_Actions(extMetaClass *, const ActionArray *);
@@ -109,9 +110,10 @@ static const std::vector<Field> glMetaFieldsPreset = {
    { 0, (ERR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(Object), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
    { 0, (ERR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(Object), 20, FDF_STRING|FDF_R },
    { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(Object), 21, FDF_ARRAY|FDF_INT|FDF_ALLOC|FDF_R },
-   { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
-   { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule, sizeof(Object), 23, FDF_OBJECT|FDF_R },
-   { 0, (ERR (*)(APTR, APTR))OBJECT_GetID, 0,     writeval_default,   "ID",                FID_ID,              sizeof(Object), 24, FDF_INT|FDF_SYSTEM|FDF_R },
+   { MAXINT(CLASSID::METACLASS), (ERR (*)(APTR, APTR))GET_SubClasses, nullptr, writeval_default, "SubClasses", FID_SubClasses, sizeof(Object), 22, FDF_ARRAY|FD_OBJECT|FDF_R },
+   { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 23, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule, sizeof(Object), 24, FDF_OBJECT|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))OBJECT_GetID, 0,     writeval_default,   "ID",                FID_ID,              sizeof(Object), 25, FDF_INT|FDF_SYSTEM|FDF_R },
    { 0, 0, 0, nullptr, "", 0, 0, 0,  0 }
 };
 
@@ -138,6 +140,7 @@ static const FieldArray glMetaFields[] = {
    { "Name",            FDF_STRING|FDF_SYSTEM|FDF_RI, GET_ClassName, SET_ClassName },
    { "Module",          FDF_STRING|FDF_R, GET_Module },
    { "Objects",         FDF_ARRAY|FDF_INT|FDF_ALLOC|FDF_R, GET_Objects },
+   { "SubClasses",      FDF_ARRAY|FD_OBJECT|FDF_R, GET_SubClasses, nullptr, CLASSID::METACLASS },
    { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, GET_SubFields, nullptr, "FieldArray" },
    { "RootModule",      FDF_OBJECT|FDF_R, GET_RootModule, nullptr, CLASSID::ROOTMODULE },
    { "ID",              FDF_INT|FDF_SYSTEM|FDF_R, OBJECT_GetID },
@@ -239,18 +242,15 @@ ERR CLASS_Free(extMetaClass *Self)
    if (Self->ClassID != CLASSID::NIL) glClassMap.erase(Self->ClassID);
    if (Self->Location) { FreeResource(Self->Location); Self->Location = nullptr; }
 
-#ifndef KOTUKU_STATIC
-   if (!Self->SubClasses.empty()) {
+   if (not Self->SubClasses.empty()) {
       // Sanity check - if a base has sub-classes present then there is an issue that requires resolution.
       // Note that for static builds there is no way to control termination order, so these controls are disabled.
-      pf::Log log;
-      log.warning("Out-of-order termination: Base-class %s has %d active sub-classes.", Self->ClassName, int(Self->SubClasses.size()));
+      kt::Log().warning("Out-of-order termination: Base-class %s has %d active sub-classes.", Self->ClassName, int(Self->SubClasses.size()));
    }
 
    if (Self->Base) {
       std::erase_if(Self->Base->SubClasses, [Self](extMetaClass *Cmp) { return Cmp IS Self; });
    }
-#endif
 
    Self->~extMetaClass();
    return ERR::Okay;
@@ -260,7 +260,7 @@ ERR CLASS_Free(extMetaClass *Self)
 
 ERR CLASS_Init(extMetaClass *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->ClassName) return log.warning(ERR::MissingClassName);
 
@@ -352,11 +352,11 @@ ERR CLASS_Init(extMetaClass *Self)
                while ((i > 0) and (Self->Path[i] != '/') and (Self->Path[i] != '\\') and (Self->Path[i] != ':')) i--;
                if (i > 0) i++; // Skip folder separator.
 
-               return ClassRecord(Self, make_optional(Self->Path.substr(i)));
+               return extClassRecord(Self, make_optional(Self->Path.substr(i)));
             }
-            else return ClassRecord(Self);
+            else return extClassRecord(Self);
          #else
-            return ClassRecord(Self);
+            return extClassRecord(Self);
          #endif
       }();
    }
@@ -662,7 +662,7 @@ static ERR GET_Methods(extMetaClass *Self, const MethodEntry **Methods, int *Ele
 
 static ERR SET_Methods(extMetaClass *Self, const MethodEntry *Methods, int Elements)
 {
-   pf::Log log;
+   kt::Log log;
 
    Self->Methods.clear();
    if (!Methods) return ERR::Okay;
@@ -730,7 +730,7 @@ The resulting array must be terminated with ~FreeResource() after use.
 
 static ERR GET_Objects(extMetaClass *Self, OBJECTID **Array, int *Elements)
 {
-   pf::Log log;
+   kt::Log log;
    std::list<OBJECTID> objlist;
 
    if (auto lock = std::unique_lock{glmMemory}) {
@@ -789,6 +789,23 @@ RootModule: Returns a direct reference to the RootModule object that hosts the c
 static ERR GET_RootModule(extMetaClass *Self, class RootModule **Value)
 {
    *Value = Self->Root;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+SubClasses: Returns a list of all sub-classes of the class.
+
+This field returns an array listing all active sub-classes of the class (classes that have not been loaded are not
+included).  This feature applies to base-classes only.
+
+*********************************************************************************************************************/
+
+static ERR GET_SubClasses(extMetaClass *Self, extMetaClass ***Values, int *Elements)
+{
+   *Values = Self->SubClasses.data();
+   *Elements = int(Self->SubClasses.size());
    return ERR::Okay;
 }
 
@@ -1007,7 +1024,7 @@ static void register_fields(std::vector<Field> &Fields)
 
 static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const FieldArray &Source, uint16_t &Offset)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto &field = Fields.emplace_back(
       Source.Arg,
@@ -1093,7 +1110,7 @@ static ERR OBJECT_GetOwner(OBJECTPTR Self, OBJECTID *OwnerID)
 
 static ERR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (OwnerID) {
       ScopedObjectLock new_owner(OwnerID);
@@ -1127,7 +1144,7 @@ static ERR OBJECT_SetName(OBJECTPTR Self, CSTRING Name)
 #ifndef KOTUKU_STATIC
 void scan_classes(void)
 {
-   pf::Log log("Core");
+   kt::Log log("Core");
 
    log.branch("Scanning for available classes.");
 
@@ -1142,10 +1159,10 @@ void scan_classes(void)
 
          if ((list->Flags & RDF::FILE) != RDF::NIL) {
             #ifdef __ANDROID__
-               if (pf::startswith("libshim.", list->Name)) continue;
-               if (pf::startswith("libcore.", list->Name)) continue;
+               if (kt::startswith("libshim.", list->Name)) continue;
+               if (kt::startswith("libcore.", list->Name)) continue;
             #else
-               if (pf::startswith("core.", list->Name)) continue;
+               if (kt::startswith("core.", list->Name)) continue;
             #endif
 
             auto modules = std::string("modules:") + list->Name;

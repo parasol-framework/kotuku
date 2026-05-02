@@ -4,30 +4,40 @@
 -- Builds an index of Kotuku API documentation from XML files.
 -- Stores top-level info (names, comments, prototypes) plus byte offsets for on-demand detail retrieval.
 --
--- Compact string format uses \0 as field separator:
---   Fields:  'A:access\0L:start,end\0T:type\0C:comment'
---   Methods: 'L:start,end\0P:prototype\0C:comment'
---   Actions: 'L:start,end\0P:prototype\0C:comment'
---   Functions: 'L:start,end\0P:prototype\0C:comment'
+-- Compact string format uses \t as field separator for fields:
+--   Fields:  'A:access\tL:start,end\tT:type\tC:comment'
+-- Methods, actions and functions are cached as tables so signature help can reuse parameter documentation.
 
-local rx_pos_pair = <{ regex.new([[(\d+),(\d+)]]) }>
+   import 'io/filesearch'
 
--- Encode a field entry to compact string format
+rx_pos_pair = <{ regex.new([[(\d+),(\d+)]]) }>
+rx_source_file_path = <{ regex.new([[<file\s+path="([^"]*)">([^<]+)<\/file>]]) }>
+rx_source_file_plain = <{ regex.new([[<file>([^<]+)<\/file>]]) }>
+rx_input_param = <{ regex.new([[<param\s+([^>]*)>(.*?)<\/param>]], regex.DOT_ALL) }>
+rx_xml_attr = <{ regex.new([=[([A-Za-z_][A-Za-z0-9_]*)="([^"]*)"]=]) }>
+
+@Doc(text='Encode a field entry to compact string format')
 function encodeField(Access, Type, ByteStart, ByteEnd, Comment)
-   return f'A:{Access or "R"}\0L:{ByteStart},{ByteEnd}\0T:{Type or ""}\0C:{Comment or ""}'
+   return f'A:{Access or "R"}\tL:{ByteStart},{ByteEnd}\tT:{Type or ""}\tC:{Comment or ""}'
 end
 
--- Encode a method/action/function entry to compact string format
-function encodeMethod(Prototype, ByteStart, ByteEnd, Comment)
-   return f'L:{ByteStart},{ByteEnd}\0P:{Prototype or ""}\0C:{Comment or ""}'
+@Doc(text='Encode a method/action/function entry.')
+function encodeMethod(Prototype, TiriPrototype, ByteStart, ByteEnd, Comment, Params)
+   return {
+      byteStart = ByteStart,
+      byteEnd = ByteEnd,
+      prototype = (TiriPrototype or Prototype) or '',
+      comment = Comment or '',
+      params = Params or array<table>
+   }
 end
 
--- Decode a field from compact string format
+@Doc(text='Decode a field from compact string format')
 global function decodeField(Str:any):table
    if type(Str) != 'string' then return Str end  -- Already decoded or nil
 
    result = {}
-   for field in values(Str:split('\0')) do
+   for field in values(Str:split('\t')) do
       key = field:sub(0, 1)
       value = field:sub(2)
       if key is 'A' then
@@ -53,7 +63,7 @@ global function decodeMethod(Str:any):table
    if type(Str) is 'table' then return Str end  -- Already decoded or nil
 
    result = {}
-   for field in values(Str:split('\0')) do
+   for field in values(Str:split('\t')) do
       key = field:sub(0, 1)
       value = field:sub(2)
       if key is 'L' then
@@ -62,6 +72,8 @@ global function decodeMethod(Str:any):table
          result.byteEnd = tonumber(end_pos)
       elseif key is 'P' then
          result.prototype = value
+      elseif key is 'T' then
+         result.tiriPrototype = value
       elseif key is 'C' then
          result.comment = value
       else
@@ -70,6 +82,16 @@ global function decodeMethod(Str:any):table
    end
 
    return result
+end
+
+function extractAttrFromText(Text:str, AttrName:str):str
+   for start, stop, cap in rx_xml_attr.findAll(Text or '') do
+      if cap[0] is AttrName then
+         value = cap[1]
+         value?:unescapeXML()
+         return value
+      end
+   end
 end
 
 function parseAccessString(ReadAttr:str, WriteAttr:str):str
@@ -123,6 +145,47 @@ function extractChildAttr(Content:str, TagName:str, AttrName:str):str
    return content
 end
 
+function extractSources(Content:str):array
+   sources = array<table>
+   sourceMatch = extractXMLElement(Content, 'source', 0)
+   sourceMatch ?? return sources
+
+   for start, stop, cap in rx_source_file_path.findAll(sourceMatch.content) do
+      sources:push({
+         path = cap[0] or '',
+         file = cap[1] or ''
+      })
+   end
+
+   for start, stop, cap in rx_source_file_plain.findAll(sourceMatch.content) do
+      sources:push({
+         path = '',
+         file = cap[0] or ''
+      })
+   end
+
+   return sources
+end
+
+function extractInputParams(Content:str):array
+   params = array<table>
+   inputMatch = extractXMLElement(Content, 'input', 0)
+   inputMatch ?? return params
+
+   for start, stop, cap in rx_input_param.findAll(inputMatch.content) do
+      attrs = cap[0] or ''
+      comment = cap[1] or ''
+      comment = comment:unescapeXML()
+      params:push({
+         name = extractAttrFromText(attrs, 'name') or '',
+         type = extractAttrFromText(attrs, 'type') or '',
+         doc = comment
+      })
+   end
+
+   return params
+end
+
 function processModuleXML(FilePath:str, DocPath:str):<str,table>
    -- Process a module XML file and extract function information
    content = io.readAll(FilePath)
@@ -139,7 +202,10 @@ function processModuleXML(FilePath:str, DocPath:str):<str,table>
 
    modEntry = {
       file = relativePath,
+      byteStart = infoMatch.byteStart,
+      byteEnd = infoMatch.byteEnd,
       comment = extractChildText(infoMatch.content, 'comment') or '',
+      sources = extractSources(infoMatch.content),
       functions = {}
    }
 
@@ -153,9 +219,11 @@ function processModuleXML(FilePath:str, DocPath:str):<str,table>
       if funcName then
          modEntry.functions[funcName] = encodeMethod(
             extractChildText(funcMatch.content, 'prototype') or '',
+            extractChildText(funcMatch.content, 'tiriPrototype') or '',
             funcMatch.byteStart,
             funcMatch.byteEnd,
-            extractChildText(funcMatch.content, 'comment') or ''
+            extractChildText(funcMatch.content, 'comment') or '',
+            extractInputParams(funcMatch.content)
          )
       end
 
@@ -183,8 +251,11 @@ function processClassXML(FilePath, DocPath)
 
    classEntry = {
       file = relativePath,
+      byteStart = infoMatch.byteStart,
+      byteEnd = infoMatch.byteEnd,
       module = extractChildText(infoMatch.content, 'module') or '',
       comment = extractChildText(infoMatch.content, 'comment') or '',
+      sources = extractSources(infoMatch.content),
       methods = {},
       actions = {},
       fields = {}
@@ -200,9 +271,11 @@ function processClassXML(FilePath, DocPath)
       if methodName then
          classEntry.methods[methodName] = encodeMethod(
             extractChildText(methodMatch.content, 'prototype') or '',
+            extractChildText(methodMatch.content, 'tiriPrototype') or '',
             methodMatch.byteStart,
             methodMatch.byteEnd,
-            extractChildText(methodMatch.content, 'comment') or ''
+            extractChildText(methodMatch.content, 'comment') or '',
+            extractInputParams(methodMatch.content)
          )
       end
 
@@ -219,9 +292,11 @@ function processClassXML(FilePath, DocPath)
       if actionName then
          classEntry.actions[actionName] = encodeMethod(
             extractChildText(actionMatch.content, 'prototype') or '',
+            extractChildText(actionMatch.content, 'tiriPrototype') or '',
             actionMatch.byteStart,
             actionMatch.byteEnd,
-            extractChildText(actionMatch.content, 'comment') or ''
+            extractChildText(actionMatch.content, 'comment') or '',
+            extractInputParams(actionMatch.content)
          )
       end
 
@@ -256,11 +331,11 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function buildDocCache(DocPath)
+global function buildDocCache(DocPath)
    -- Build the documentation cache from XML files
 
    cache = {
-      version = 1,
+      version = 6,
       built = mSys.PreciseTime() / 1000000,
       sdkPath = DocPath,
       modules = {},
@@ -274,9 +349,8 @@ function buildDocCache(DocPath)
 
    print('Scanning modules for documentation cache; ', modulesPath)
 
-   err = file.search(modulesPath, {
-      nameFilter = [[\.xml$]],
-      nameWild = true,
+   err = io.search(modulesPath, {
+      nameFilter = regex.new([[\.xml$]]),
       maxDepth = 0,
       matchFeedback = function(Path, FileName, File)
          -- Skip if it's a directory entry for 'classes'
@@ -297,9 +371,8 @@ function buildDocCache(DocPath)
 
    print('Scanning classes for documentation cache; ', classesPath)
 
-   err = file.search(classesPath, {
-      nameFilter = [[\.xml$]],
-      nameWild = true,
+   err = io.search(classesPath, {
+      nameFilter = regex.new([[\.xml$]]),
       maxDepth = 1,
       matchFeedback = function(Path, FileName, File)
          fullPath = Path .. FileName
@@ -324,7 +397,7 @@ function serializeTable(Tbl:any, Indent):str
    Indent = Indent or ''
    nextIndent = Indent .. '   '
 
-   if type(Tbl) != 'table' then
+   if type(Tbl) != 'table' and type(Tbl) != 'array' then
       if type(Tbl) is 'string' then
          -- Escape special characters
          escaped = Tbl:replace('\\', '\\\\'):replace('\n', '\\n'):replace('\r', '\\r'):replace("'", "\\'")
@@ -349,7 +422,7 @@ function serializeTable(Tbl:any, Indent):str
       return '{}'
    end
 
-   return '{\n' .. parts.join(',\n') .. Indent .. '}'
+   return '{\n' .. parts:join(',\n') .. Indent .. '}'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -379,8 +452,17 @@ global function loadDocCache(DocPath)
       return nil
    end
 
-   if cache.version != 1 then msg('Unsupported version'); return nil end
+   if cache.version != 6 then msg('Unsupported version'); return nil end
    if cache.sdkPath != DocPath then msg('Path mismatch: ' .. cache.sdkPath .. ' != ' .. DocPath); return nil end
+
+   module_count = 0
+   class_count = 0
+   for k, v in pairs(cache.modules or {}) do module_count++ end
+   for k, v in pairs(cache.classes or {}) do class_count++ end
+   if module_count is 0 or class_count is 0 then
+      msg('Documentation cache is empty; rebuilding.')
+      return nil
+   end
 
    return cache
 end

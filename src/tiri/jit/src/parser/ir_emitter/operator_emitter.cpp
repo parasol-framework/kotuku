@@ -644,7 +644,7 @@ OperatorEmitter::OperatorEmitter(FuncState* State, RegisterAllocator* Allocator,
 void OperatorEmitter::emit_unary(int op, ExprValue operand)
 {
    if (should_trace_operators(this->func_state)) {
-      pf::Log("Parser").msg("[%d] operator %s: operand kind=%s", this->func_state->ls->linenumber.lineNumber(),
+      kt::Log("Parser").msg("[%d] operator %s: operand kind=%s", this->func_state->ls->linenumber.lineNumber(),
          get_unop_name(BCOp(op)), get_expkind_name(operand.kind()));
    }
 
@@ -662,14 +662,14 @@ void OperatorEmitter::emit_bitnot(ExprValue operand)
    // Try constant folding first
    if (foldbitnot(e)) {
       if (should_trace_operators(this->func_state)) {
-         pf::Log("Parser").msg("[%d] operator ~: constant-folded to %d", this->func_state->ls->linenumber.lineNumber(),
+         kt::Log("Parser").msg("[%d] operator ~: constant-folded to %d", this->func_state->ls->linenumber.lineNumber(),
             int32_t(e->number_value()));
       }
       return;
    }
 
    if (should_trace_operators(this->func_state)) {
-      pf::Log("Parser").msg("[%d] operator ~: calling bit.bnot, operand kind=%s", this->func_state->ls->linenumber.lineNumber(),
+      kt::Log("Parser").msg("[%d] operator ~: calling bit.bnot, operand kind=%s", this->func_state->ls->linenumber.lineNumber(),
          get_expkind_name(operand.kind()));
    }
 
@@ -713,7 +713,7 @@ void OperatorEmitter::emit_binop_left(BinOpr opr, ExprValue left)
 void OperatorEmitter::emit_binary_arith(BinOpr opr, ExprValue left, ExpDesc right)
 {
    if (should_trace_operators(this->func_state)) {
-      pf::Log("Parser").msg("[%d] operator %s: left kind=%s, right kind=%s", this->func_state->ls->linenumber.lineNumber(),
+      kt::Log("Parser").msg("[%d] operator %s: left kind=%s, right kind=%s", this->func_state->ls->linenumber.lineNumber(),
          get_binop_name(opr), get_expkind_name(left.kind()), get_expkind_name(right.k));
    }
 
@@ -726,7 +726,7 @@ void OperatorEmitter::emit_binary_arith(BinOpr opr, ExprValue left, ExpDesc righ
 void OperatorEmitter::emit_comparison(BinOpr opr, ExprValue left, ExpDesc right)
 {
    if (should_trace_operators(this->func_state)) {
-      pf::Log("Parser").msg("[%d] operator %s: left kind=%s, right kind=%s", this->func_state->ls->linenumber.lineNumber(),
+      kt::Log("Parser").msg("[%d] operator %s: left kind=%s, right kind=%s", this->func_state->ls->linenumber.lineNumber(),
          get_binop_name(opr), get_expkind_name(left.kind()), get_expkind_name(right.k));
    }
 
@@ -744,7 +744,7 @@ void OperatorEmitter::emit_binary_bitwise(BinOpr opr, ExprValue left, ExpDesc ri
    // Try constant folding first
    if (foldbitwise(opr, lhs, &right)) {
       if (should_trace_operators(this->func_state)) {
-         pf::Log("Parser").msg("[%d] operator %s: constant-folded to %d", this->func_state->ls->linenumber.lineNumber(),
+         kt::Log("Parser").msg("[%d] operator %s: constant-folded to %d", this->func_state->ls->linenumber.lineNumber(),
             get_binop_name(opr), int32_t(lhs->number_value()));
       }
       return;
@@ -754,7 +754,7 @@ void OperatorEmitter::emit_binary_bitwise(BinOpr opr, ExprValue left, ExpDesc ri
    size_t op_name_len = priority[int(opr)].name_len;
 
    if (should_trace_operators(this->func_state)) {
-      pf::Log("Parser").msg("[%d] operator %s: calling bit.%.*s, left kind=%s, right kind=%s",
+      kt::Log("Parser").msg("[%d] operator %s: calling bit.%.*s, left kind=%s, right kind=%s",
          this->func_state->ls->linenumber.lineNumber(), get_binop_name(opr), int(op_name_len), op_name, get_expkind_name(left.kind()),
          get_expkind_name(right.k));
    }
@@ -810,7 +810,7 @@ void OperatorEmitter::prepare_bitwise(ExprValue left)
    left_desc->u.s.aux = frame_base;
 
    if (should_trace_operators(fs)) {
-      pf::Log("Parser").msg("[%d] prepare_bitwise: frame_base=%d, arg1=%d, freereg=%d (arg2 slot)",
+      kt::Log("Parser").msg("[%d] prepare_bitwise: frame_base=%d, arg1=%d, freereg=%d (arg2 slot)",
          fs->ls->linenumber.lineNumber(), frame_base, arg1, fs->freereg);
    }
 }
@@ -827,7 +827,7 @@ void OperatorEmitter::complete_bitwise(BinOpr opr, ExprValue left, ExpDesc right
    // Try constant folding first - if both operands are constants, we can fold
    if (foldbitwise(opr, lhs, &right)) {
       if (should_trace_operators(fs)) {
-         pf::Log("Parser").msg("[%d] complete_bitwise %s: constant-folded to %d",
+         kt::Log("Parser").msg("[%d] complete_bitwise %s: constant-folded to %d",
             fs->ls->linenumber.lineNumber(), get_binop_name(opr), int32_t(lhs->number_value()));
       }
       return;
@@ -895,7 +895,7 @@ void OperatorEmitter::complete_bitwise(BinOpr opr, ExprValue left, ExpDesc right
    *lhs = lhs_discharge.legacy();
 
    if (should_trace_operators(fs)) {
-      pf::Log("Parser").msg("[%d] complete_bitwise %s: emitted call at base=%d", fs->ls->linenumber.lineNumber(), get_binop_name(opr), base);
+      kt::Log("Parser").msg("[%d] complete_bitwise %s: emitted call at base=%d", fs->ls->linenumber.lineNumber(), get_binop_name(opr), base);
    }
 }
 
@@ -938,7 +938,7 @@ void OperatorEmitter::prepare_logical_and(ExprValue left)
    }
 
    if (should_trace_operators(this->func_state)) {
-      pf::Log("Parser").msg("[%d] operator and: prepare left kind=%s, %s", this->func_state->ls->linenumber.lineNumber(), get_expkind_name(left_desc->k),
+      kt::Log("Parser").msg("[%d] operator and: prepare left kind=%s, %s", this->func_state->ls->linenumber.lineNumber(), get_expkind_name(left_desc->k),
          will_skip_rhs ? "will skip RHS (constant false)" : "will evaluate RHS");
    }
 
@@ -979,7 +979,7 @@ void OperatorEmitter::complete_logical_and(ExprValue left, ExpDesc right)
    *right_desc = right_val.legacy();
 
    if (should_trace_operators(this->func_state)) {
-      pf::Log("Parser").msg("[%d] operator and: complete right kind=%s, merging false paths", this->func_state->ls->linenumber.lineNumber(),
+      kt::Log("Parser").msg("[%d] operator and: complete right kind=%s, merging false paths", this->func_state->ls->linenumber.lineNumber(),
          get_expkind_name(right_desc->k));
    }
 
@@ -1034,7 +1034,7 @@ void OperatorEmitter::prepare_logical_or(ExprValue left)
    }
 
    if (should_trace_operators(this->func_state)) {
-      pf::Log("Parser").msg("[%d] operator or: prepare left kind=%s, %s", this->func_state->ls->linenumber.lineNumber(),
+      kt::Log("Parser").msg("[%d] operator or: prepare left kind=%s, %s", this->func_state->ls->linenumber.lineNumber(),
          get_expkind_name(left_desc->k), will_skip_rhs ? "will skip RHS (constant true)" : "will evaluate RHS");
    }
 

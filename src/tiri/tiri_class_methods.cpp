@@ -43,7 +43,7 @@ static int append_dump_chunk([[maybe_unused]] lua_State *, const void *Chunk, si
    if ((not bytes) or (not Chunk)) return 1;
    if (not Size) return 0; // End of dump signaled.
 
-   std::span<const uint8_t> data_span(static_cast<const uint8_t *>(Chunk), Size);
+   std::span<const uint8_t> data_span((const uint8_t *)Chunk, Size);
    bytes->insert(bytes->end(), data_span.begin(), data_span.end());
    return 0;
 }
@@ -415,7 +415,7 @@ The resulting log information is returned as a string, which needs to be dealloc
 
 static ERR TIRI_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -669,7 +669,7 @@ static ERR TIRI_DebugLog(objScript *Self, struct sc::DebugLog *Args)
    if (opts.show_state) emit_state_info(prv, buf, opts.compact);
 
    const std::string result = buf.str();
-   if ((Args->Result = pf::strclone(result.c_str())) IS nullptr) return ERR::AllocMemory;
+   if ((Args->Result = kt::strclone(result.c_str())) IS nullptr) return ERR::AllocMemory;
 
    return ERR::Okay;
 }
@@ -678,7 +678,7 @@ static ERR TIRI_DebugLog(objScript *Self, struct sc::DebugLog *Args)
 
 static ERR TIRI_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return ERR::NullArgs;
 
@@ -707,7 +707,7 @@ static ERR TIRI_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
 
 static ERR TIRI_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Procedure) or (not Args->Procedure[0])) return log.warning(ERR::NullArgs);
 
@@ -720,6 +720,12 @@ static ERR TIRI_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args)
    }
 
    lua_getglobal(prv->Lua, Args->Procedure);
+   if (not lua_isfunction(prv->Lua, -1)) {
+      lua_pop(prv->Lua, 1);
+      log.warning("Failed to resolve function name '%s' to an ID.", Args->Procedure);
+      return ERR::NotFound;
+   }
+
    auto id = luaL_ref(prv->Lua, LUA_REGISTRYINDEX);
    if ((id != LUA_REFNIL) and (id != LUA_NOREF)) {
       Args->ProcedureID = id;

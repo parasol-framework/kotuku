@@ -223,7 +223,7 @@ be overwritten with new values.
 
 static ERR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -260,7 +260,7 @@ Search
 
 static ERR CONFIG_DeleteKey(extConfig *Self, struct cfg::DeleteKey *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Group) or (not Args->Key)) return ERR::NullArgs;
 
@@ -322,7 +322,7 @@ static ERR CONFIG_Flush(extConfig *Self)
 
 static ERR CONFIG_Free(extConfig *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) {
       if (Self->Path) {
@@ -366,7 +366,7 @@ NoData: There is no data loaded into the config object.
 
 static ERR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfg::GetGroupFromIndex *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (Args->Index < 0)) return log.warning(ERR::Args);
 
@@ -381,7 +381,7 @@ static ERR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfg::GetGroupFromInd
 
 static ERR CONFIG_Init(extConfig *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & CNF::NEW) != CNF::NIL) return ERR::Okay; // Do not load any data even if the path is defined.
 
@@ -450,7 +450,7 @@ File: Failed to load the source file.
 
 static ERR CONFIG_MergeFile(extConfig *Self, struct cfg::MergeFile *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Path)) return log.warning(ERR::NullArgs);
 
@@ -502,7 +502,7 @@ Search: The requested configuration entry does not exist.
 
 static ERR CONFIG_ReadValue(extConfig *Self, struct cfg::ReadValue *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -536,7 +536,7 @@ This action will save the configuration data back to its original file source (a
 
 static ERR CONFIG_SaveSettings(extConfig *Self)
 {
-   pf::Log log;
+   kt::Log log;
    log.branch();
 
    uint32_t crc = calc_crc(Self);
@@ -564,7 +564,7 @@ SaveToObject: Saves configuration data to an object, using standard config text 
 
 static ERR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.msg("Saving %d groups to object #%d.", (int)Self->Groups->size(), Args->Dest->UID);
 
@@ -650,7 +650,7 @@ static ERR CONFIG_SortByKey(extConfig *Self, struct cfg::SortByKey *Args)
       return ERR::Okay;
    }
 
-   pf::Log log;
+   kt::Log log;
 
    log.branch("Key: %s, Descending: %d", Args->Key, Args->Descending);
 
@@ -697,7 +697,7 @@ AllocMemory: The additional memory required for the new entry could not be alloc
 
 static ERR CONFIG_WriteValue(extConfig *Self, struct cfg::WriteValue *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Group) or (not Args->Key)) return log.warning(ERR::NullArgs);
    if ((not Args->Group[0]) or (not Args->Key[0])) return log.warning(ERR::EmptyString);
@@ -989,7 +989,7 @@ static FilterConfig parse_filter(std::string_view Filter, bool KeyValue = false)
 static ERR parse_config(extConfig *Self, std::string_view Buffer)
 {
    constexpr std::string_view WHITESPACE = " \t\n\r";
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Buffer.empty()) return ERR::NoData;
 
@@ -1068,7 +1068,7 @@ static ERR parse_config(extConfig *Self, std::string_view Buffer)
 
 static void apply_key_filter(extConfig *Self, std::string_view Filter)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Filter.empty()) return;
 
@@ -1100,7 +1100,7 @@ static void apply_key_filter(extConfig *Self, std::string_view Filter)
 
 static void apply_group_filter(extConfig *Self, std::string_view Filter)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Filter.empty()) return;
 
@@ -1162,7 +1162,7 @@ extern ERR add_config_class(void)
       fl::ClassVersion(VER_CONFIG),
       fl::Name("Config"),
       fl::Category(CCF::DATA),
-      fl::FileExtension("*.cfg|*.cnf|*.config"),
+      fl::FileExtension("cfg|cnf|config"),
       fl::FileDescription("Config File"),
       fl::Icon("filetypes/text"),
       fl::Actions(clConfigActions),

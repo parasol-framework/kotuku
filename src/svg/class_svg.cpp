@@ -226,7 +226,7 @@ NotFound: The specified symbol ID does not exist in the document.
 
 static ERR SVG_ParseSymbol(extSVG *Self, struct svg::ParseSymbol *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->ID) or (!Args->Viewport)) return log.warning(ERR::NullArgs);
 
@@ -339,7 +339,7 @@ SaveToObject: Saves the SVG document to a data object.
 
 static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 {
-   pf::Log log;
+   kt::Log log;
    static const char header[] =
 "<?xml version=\"1.0\" standalone=\"no\"?>\n\
 <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n";
@@ -757,7 +757,7 @@ static ERR init_svg(void)
    clSVG = objMetaClass::create::global(
       fl::ClassVersion(VER_SVG),
       fl::Name("SVG"),
-      fl::FileExtension("*.svg"),
+      fl::FileExtension("svg"),
       fl::FileDescription("Scalable Vector Graphics (SVG)"),
       fl::Icon("filetypes/vectorgfx"),
       fl::Category(CCF::GUI),

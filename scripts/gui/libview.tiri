@@ -342,31 +342,105 @@ gui.initView = function(Options, BuildUI, NewItems)
    -- Returns the graphical dimensions of an item in the view.
 
    vw.itemDimensions = function(Item)
-      return { x=0, y=0, width=0, height=0 }
+      assert(Item, 'No Item provided')
+      vp = Item._vectors?.viewport
+      if not vp then return { x=0, y=0, width=0, height=0 } end
+      return { x=vp.x ?? 0, y=vp.y ?? 0, width=vp.width ?? 0, height=vp.height ?? 0 }
    end
 
    -- Moves an item towards the bottom of the view.
 
-   vw.lowerItem = function(XPath, Item)
-
+   vw.lowerItem = function(Item)
+      assert(Item, 'No Item provided')
+      for i=0, #vw.items-2 do
+         if vw.items[i] is Item then
+            vw.items[i] = vw.items[i+1]
+            vw.items[i+1] = Item
+            vw.rebuild()
+            return
+         end
+      end
    end
 
    -- Moves an item towards the top of the view.
 
-   vw.raiseItem = function(XPath, Item)
-
+   vw.raiseItem = function(Item)
+      assert(Item, 'No Item provided')
+      for i=1, #vw.items-1 do
+         if vw.items[i] is Item then
+            vw.items[i] = vw.items[i-1]
+            vw.items[i-1] = Item
+            vw.rebuild()
+            return
+         end
+      end
    end
 
    -- Removes an item from the view.
 
-   vw.removeItem = function(XPath, Item, InvisibleRemoval)
+   vw.removeItem = function(Item)
+      assert(Item, 'No Item provided')
 
+      if Item is vw.hItem then
+         highlightItem(vw, nil)
+      end
+
+      if Item._selected then
+         deselectItem(vw, Item)
+         reportItemDeselected(vw, 'manual', Item)
+      end
+
+      if Item is vw.activeItem then
+         vw.activeItem = nil
+         reportActiveChange(vw, 'manual', nil)
+      end
+
+      for i=0, #vw.items-1 do
+         if vw.items[i] is Item then
+            table.remove(vw.items, i)
+            break
+         end
+      end
+
+      if Item._id then vw.lookup[Item._id] = nil end
+
+      Item:_free()
+
+      vw.rebuild()
    end
 
    -- Checks the visibility of an item, scrolling it into view if it is partially or fully hidden.
 
    vw.revealItem = function(Item)
+      assert(Item, 'No Item provided')
+      if not vw.scrollbar then return end
 
+      dims = vw.itemDimensions(Item)
+      if (dims.width <= 0) and (dims.height <= 0) then return end
+
+      scroll_top    = -vw.page.y
+      scroll_bottom = scroll_top + vw.frame.height
+
+      delta_y = 0
+      if dims.y < scroll_top then
+         delta_y = scroll_top - dims.y
+      elseif dims.y + dims.height > scroll_bottom then
+         delta_y = scroll_bottom - (dims.y + dims.height)
+      end
+
+      scroll_left  = -vw.page.x
+      scroll_right = scroll_left + vw.frame.width
+
+      delta_x = 0
+      if dims.x < scroll_left then
+         delta_x = scroll_left - dims.x
+      elseif dims.x + dims.width > scroll_right then
+         delta_x = scroll_right - (dims.x + dims.width)
+      end
+
+      if (delta_x != 0) or (delta_y != 0) then
+         vw.scrollbar.scrollPage(delta_x, delta_y)
+      end
    end
 
    -- Selects all items in the view for the user.
@@ -442,10 +516,14 @@ gui.initView = function(Options, BuildUI, NewItems)
       processing.collect()
    end
 
-   -- TODO: Changes the underlying attributes of any item in the view.
+   -- Changes the underlying attributes of any item in the view by setting provided key-values.
 
-   vw.setItem = function(XPath, TagIndex, Key, Value)
+   vw.setItem = function(Item:table, KV:table)
+      for k, v in pairs(KV) do
+         Item[k] = v
+      end
 
+      vw.rebuild()
    end
 
    -- Load a new set of items and display them for the user.  Any existing items will be cleared.
@@ -505,7 +583,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
       BuildUI(vw)
       cursorActivity() -- Reset the cursor
-      vw?.border?.acMoveToFront()
+      vw.border?.acMoveToFront()
       vw.scene.surface.mtScheduleRedraw()
    end
 

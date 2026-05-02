@@ -248,7 +248,7 @@ Okay
 ERR SetHostOption(HOST Option, int64_t Value)
 {
 #if defined(_WIN32) || defined(__xwindows__)
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    switch (Option) {
       case HOST::TRAY_ICON:

@@ -121,13 +121,13 @@ typedef struct XTag {
    XTF      Flags;                   // Optional flags
    uint32_t NamespaceID;             // Hash of namespace URI or 0 for no namespace
    int      Reserved;                // Private
-   pf::vector<XMLAttrib> Attribs;    // Array of attributes for this tag
-   pf::vector<XTag> Children;        // Array of child tags
+   kt::vector<XMLAttrib> Attribs;    // Array of attributes for this tag
+   kt::vector<XTag> Children;        // Array of child tags
    XTag(int pID, int pLine = 0) :
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Reserved(0)
       { }
 
-   XTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
+   XTag(int pID, int pLine, kt::vector<XMLAttrib> pAttribs) :
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Reserved(0), Attribs(pAttribs)
       { }
 
@@ -147,7 +147,7 @@ typedef struct XTag {
 
    inline const std::string * attrib(const std::string &Name) const {
       for (unsigned a=1; a < Attribs.size(); a++) {
-         if (pf::iequals(Attribs[a].Name, Name)) return &Attribs[a].Value;
+         if (kt::iequals(Attribs[a].Name, Name)) return &Attribs[a].Value;
       }
       return NULL;
    }
@@ -212,7 +212,7 @@ class objXML : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::XML;
    static constexpr CSTRING CLASS_NAME = "XML";
 
-   using create = pf::Create<objXML>;
+   using create = kt::Create<objXML>;
 
    STRING    Path;    // Set this field if the XML document originates from a file source.
    STRING    DocType; // Root element name from DOCTYPE declaration
@@ -224,7 +224,7 @@ class objXML : public Object {
    ERR       ParseError; // Private
    int       LineNo;  // Private
    public:
-   typedef pf::vector<XTag> TAGS;
+   typedef kt::vector<XTag> TAGS;
    TAGS Tags;
 
    template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XTag **Result) {
@@ -395,25 +395,25 @@ class objXML : public Object {
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setDocType(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPublic(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSystem(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -430,13 +430,13 @@ class objXML : public Object {
 
    inline ERR setReadOnly(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08800320, to_cstring(Value), 1);
    }
 
@@ -450,7 +450,7 @@ typedef struct XPathValue {
    XPVT   Type;                // Identifies the type of value stored
    double NumberValue;         // Defined if the type is Number or Boolean
    std::string StringValue;    // Defined if the type is String
-   pf::vector<XTag *> node_set; // Defined if the type is NodeSet
+   kt::vector<XTag *> node_set; // Defined if the type is NodeSet
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
@@ -461,7 +461,7 @@ typedef struct XPathValue {
 
    XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
 
-   explicit XPathValue(const pf::vector<XTag *> &Nodes,
+   explicit XPathValue(const kt::vector<XTag *> &Nodes,
       std::optional<std::string> NodeSetString = std::nullopt,
       std::vector<std::string> NodeSetStrings = {},
       std::vector<const XMLAttrib *> NodeSetAttributes = {})
@@ -541,7 +541,7 @@ namespace xml {
 inline void UpdateAttrib(XTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
 {
    for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
-      if (pf::iequals(Name, a->Name)) {
+      if (kt::iequals(Name, a->Name)) {
          a->Name  = Name;
          a->Value = Value;
          return;
@@ -596,7 +596,7 @@ struct XMLBase {
 #ifndef KOTUKU_STATIC
    ERR (*_XValueToNumber)(struct XPathValue *Value, double *Result);
    ERR (*_XValueToString)(const struct XPathValue *Value, std::string *Result);
-   ERR (*_XValueNodes)(struct XPathValue *Value, pf::vector<struct XTag *> *Result);
+   ERR (*_XValueNodes)(struct XPathValue *Value, kt::vector<struct XTag *> *Result);
 #endif // KOTUKU_STATIC
 };
 
@@ -605,13 +605,13 @@ extern struct XMLBase *XMLBase;
 namespace xml {
 inline ERR XValueToNumber(struct XPathValue *Value, double *Result) { return XMLBase->_XValueToNumber(Value,Result); }
 inline ERR XValueToString(const struct XPathValue *Value, std::string *Result) { return XMLBase->_XValueToString(Value,Result); }
-inline ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XTag *> *Result) { return XMLBase->_XValueNodes(Value,Result); }
+inline ERR XValueNodes(struct XPathValue *Value, kt::vector<struct XTag *> *Result) { return XMLBase->_XValueNodes(Value,Result); }
 } // namespace
 #else
 namespace xml {
 extern ERR XValueToNumber(struct XPathValue *Value, double *Result);
 extern ERR XValueToString(const struct XPathValue *Value, std::string *Result);
-extern ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XTag *> *Result);
+extern ERR XValueNodes(struct XPathValue *Value, kt::vector<struct XTag *> *Result);
 } // namespace
 #endif // KOTUKU_STATIC
 

@@ -19,7 +19,7 @@ static ERR add_command(objAudio* Audio, CMD Command, int Handle, tArgs&&... pArg
    auto ea = (extAudio *)(Audio);
    int index = Handle >> 16;
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    if ((index < 1) or (index >= int(ea->Sets.size()))) return log.warning(ERR::OutOfRange);
    if (ea->Sets[index].Commands.capacity() == 0) return log.warning(ERR::OutOfRange);
    if (ea->Sets[index].Commands.size() > 1024) return log.warning(ERR::BufferOverflow);
@@ -113,7 +113,7 @@ NullArgs: Required parameters are null or missing.
 
 ERR MixStartSequence(objAudio *Audio, int Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
@@ -144,7 +144,7 @@ NullArgs
 
 ERR MixEndSequence(objAudio *Audio, int Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
@@ -180,7 +180,7 @@ NullArgs
 
 ERR MixContinue(objAudio *Audio, int Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -211,7 +211,7 @@ ERR MixContinue(objAudio *Audio, int Handle)
       shadow->State = CHS::PLAYING;
    }
 
-   pf::SwitchContext context(Audio);
+   kt::SwitchContext context(Audio);
 
    if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
    else SubscribeTimer(MIX_INTERVAL, C_FUNCTION(audio_timer), &((extAudio *)Audio)->Timer);
@@ -240,7 +240,7 @@ NullArgs
 
 ERR MixMute(objAudio *Audio, int Handle, int Mute)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
@@ -280,7 +280,7 @@ NullArgs
 
 ERR MixFrequency(objAudio *Audio, int Handle, int Frequency)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
@@ -318,7 +318,7 @@ NullArgs
 
 ERR MixPan(objAudio *Audio, int Handle, double Pan)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
@@ -363,7 +363,7 @@ Failed: Channel not associated with a valid sample.
 
 ERR MixPlay(objAudio *Audio, int Handle, int Position)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
@@ -430,7 +430,7 @@ ERR MixPlay(objAudio *Audio, int Handle, int Position)
                sec = double((sample.StreamLength - sample.PlayPos)>>sample_shift(sample.SampleType)) / double(channel->Frequency);
             }
             else sec = double(sample.SampleLength - Position) / double(channel->Frequency);
-            channel->EndTime = PreciseTime() + F2I(sec * 1000000.0);
+            channel->EndTime = PreciseTime() + std::lrint(sec * 1000000.0);
          }
          else channel->EndTime = 0;
 
@@ -524,7 +524,7 @@ ERR MixPlay(objAudio *Audio, int Handle, int Position)
    fade_in((extAudio *)Audio, channel);
 
    if (channel->State IS CHS::PLAYING) {
-      pf::SwitchContext context(Audio);
+      kt::SwitchContext context(Audio);
       if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
       else SubscribeTimer(MIX_INTERVAL, C_FUNCTION(audio_timer), &((extAudio *)Audio)->Timer);
    }
@@ -554,7 +554,7 @@ NullArgs
 
 ERR MixRate(objAudio *Audio, int Handle, int Rate)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
@@ -602,7 +602,7 @@ NullArgs
 
 ERR MixSample(objAudio *Audio, int Handle, int SampleIndex)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
@@ -670,7 +670,7 @@ NullArgs
 
 ERR MixStop(objAudio *Audio, int Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -715,7 +715,7 @@ NullArgs
 
 ERR MixStopLoop(objAudio *Audio, int Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -761,7 +761,7 @@ NullArgs
 
 ERR MixVolume(objAudio *Audio, int Handle, double Volume)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 

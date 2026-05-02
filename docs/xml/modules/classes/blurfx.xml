@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Applies a Gaussian blur effect to an input source.</comment>
     <version>1</version>
-    <id>f45d03b8</id>
+    <id>36f3b651</id>
     <idstring>BLURFX</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>
@@ -25,6 +25,7 @@
       <name>Draw</name>
       <comment>Draws object graphics to drawable areas.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <tiriPrototype>err = Object.acDraw(X:num, Y:num, Width:num, Height:num)</tiriPrototype>
       <input>
         <param type="INT" name="X">The X position of the region to be drawn.</param>
         <param type="INT" name="Y">The Y position of the region to be drawn.</param>

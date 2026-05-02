@@ -27,6 +27,9 @@ set (DISPLAY_DEFS # Full paths are required for add_custom_command() dependencie
    "${CMAKE_CURRENT_SOURCE_DIR}/class_surface/surface_def.c")
 
 if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output from the TDL file
+   list (APPEND COMMAND_LIST COMMAND ${CMAKE_COMMAND} -E echo "[idl_c] ${ORIGO_CMD} ${IDL_C_SCRIPT} --log-warning src=${MOD}.tdl sdk=${PROJECT_SOURCE_DIR} output-proto=prototypes.h output-defs=module_def.c files={ ${FUNCTIONS} lib_surfaces.cpp }")
+   list (APPEND COMMAND_LIST COMMAND ${CMAKE_COMMAND} -E echo "[idl_comp] ${ORIGO_CMD} ${IDL_COMPILE_SCRIPT} --log-warning src=${MOD}.tdl output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h sdk=${PROJECT_SOURCE_DIR} format=c")
+
    add_custom_command (OUTPUT
       ${DISPLAY_DEFS}
       "${DOCS}/modules/classes/bitmap.xml"
@@ -35,6 +38,7 @@ if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output
       "${DOCS}/modules/classes/display.xml"
       "${DOCS}/modules/classes/pointer.xml"
       "${DOCS}/modules/classes/surface.xml"
+      ${COMMAND_LIST}
       COMMAND ${ORIGO_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${MOD}.tdl" "sdk=${PROJECT_SOURCE_DIR}"
               "output-proto=prototypes.h" "output-defs=module_def.c" "files={" ${FUNCTIONS} "lib_surfaces.cpp" "}"
       COMMAND ${ORIGO_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${MOD}.tdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"

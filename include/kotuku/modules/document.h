@@ -115,7 +115,7 @@ class objDocument : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::DOCUMENT;
    static constexpr CSTRING CLASS_NAME = "Document";
 
-   using create = pf::Create<objDocument>;
+   using create = kt::Create<objDocument>;
 
    STRING   Description;            // A description of the document, provided by its author.
    STRING   Title;                  // The title of the document.
@@ -230,7 +230,7 @@ class objDocument : public Object {
 
    inline ERR setViewport(objVectorViewport * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -252,51 +252,51 @@ class objDocument : public Object {
 
    inline ERR setFlags(const DCF Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setClientScript(OBJECTPTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
    inline ERR setEventCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setOrigin(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[8];
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setPageWidth(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[22];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    template <class T> inline ERR setPretext(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
 };
 
 namespace fl {
-   using namespace pf;
+   using namespace kt;
 
 constexpr FieldValue EventCallback(const FUNCTION &Value) { return FieldValue(FID_EventCallback, &Value); }
 constexpr FieldValue EventCallback(APTR Value) { return FieldValue(FID_EventCallback, Value); }

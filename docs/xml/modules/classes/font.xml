@@ -7,10 +7,10 @@
     <type>class</type>
     <module>Font</module>
     <comment>Draws bitmap fonts and manages font meta information.</comment>
-    <fileExtension>*.font|*.fnt|*.ttf|*.fon</fileExtension>
+    <fileExtension>font|fnt|ttf|fon</fileExtension>
     <fileDescription>Font</fileDescription>
     <version>1</version>
-    <id>7c96e4fc</id>
+    <id>58644726</id>
     <idstring>FONT</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 1998-2026</copyright>
@@ -39,6 +39,7 @@
       <name>Draw</name>
       <comment>Draws a font to a Bitmap.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <tiriPrototype>err = Object.acDraw(X:num, Y:num, Width:num, Height:num)</tiriPrototype>
       <input>
         <param type="INT" name="X">The X position of the region to be drawn.</param>
         <param type="INT" name="Y">The Y position of the region to be drawn.</param>

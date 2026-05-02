@@ -141,7 +141,7 @@ class objHTTP : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::HTTP;
    static constexpr CSTRING CLASS_NAME = "HTTP";
 
-   using create = pf::Create<objHTTP>;
+   using create = kt::Create<objHTTP>;
 
    double   DataTimeout;     // The data timeout value, relevant when receiving or sending data.
    double   ConnectTimeout;  // The initial connection timeout value, measured in seconds.
@@ -239,31 +239,31 @@ class objHTTP : public Object {
 
    template <class T> inline ERR setHost(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setOutputFile(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setInputFile(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[2];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setUserAgent(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[33];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -279,7 +279,7 @@ class objHTTP : public Object {
 
    inline ERR setMethod(const HTM Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -315,13 +315,13 @@ class objHTTP : public Object {
 
    inline ERR setCurrentState(const HGS Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setProxyServer(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -332,61 +332,61 @@ class objHTTP : public Object {
 
    inline ERR setBufferSize(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[34];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setAuthCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[1];
+      auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setContentType(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[35];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setLocation(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[33];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setOutgoing(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setRealm(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setStateChanged(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setUsername(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[39];
+      auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPassword(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 

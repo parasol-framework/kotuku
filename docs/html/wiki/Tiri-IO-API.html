@@ -267,25 +267,25 @@
 <p>Available options for <code>Mode</code> are as follows:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">r</td>
 <td style="text-align: left;">Read only.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">w</td>
 <td style="text-align: left;">Create new file in read/write mode.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">a</td>
 <td style="text-align: left;">Append to existing file in read/write mode. Automatically creates file if it does not exist.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">+</td>
 <td style="text-align: left;">Open existing file in read/write mode.</td>
 </tr>
@@ -399,25 +399,25 @@ syntax (e.g. <code>file:read()</code>).</p>
 separate value. If no format is provided, a single line is read.</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Format</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">*l</td>
 <td style="text-align: left;">Read a single line, stripping the newline character. This is the default.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">*a</td>
 <td style="text-align: left;">Read the entire remaining contents of the file.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">*n</td>
 <td style="text-align: left;">Read a line and convert it to a number.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;"><em>(number)</em></td>
 <td style="text-align: left;">Read the specified number of bytes.</td>
 </tr>
@@ -446,21 +446,21 @@ calls.</p>
 <p>Sets the file position for reading and writing. Returns the resulting absolute file position.</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Whence</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">set</td>
 <td style="text-align: left;">Position relative to the beginning of the file.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">cur</td>
 <td style="text-align: left;">Position relative to the current location. This is the default.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">end</td>
 <td style="text-align: left;">Position relative to the end of the file.</td>
 </tr>
@@ -503,61 +503,61 @@ io.search(&#39;documents:&#39;, {
 <p>Valid options to use when defining the search table are as follows:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">nameFilter</td>
 <td style="text-align: left;">Include file/folder names that match this filter string exactly, or provide a compiled regex for pattern matching.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">contentFilter</td>
 <td style="text-align: left;">Include files that contain this content.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">caseSensitive</td>
 <td style="text-align: left;">Enforces case-sensitive name comparisons if <code>true</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">matchFeedback</td>
 <td style="text-align: left;">Call this function each time that a matched file is discovered. Returning <code>ERR_Terminate</code> will stop the search. Synopsis: <code>function(Path, File, Attributes)</code></td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">ignoreFeedback</td>
 <td style="text-align: left;">Call this function each time that a file fails to pass filter matches.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">minSize</td>
 <td style="text-align: left;">Filter out files that do not meet or exceed this minimum size.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">maxSize</td>
 <td style="text-align: left;">Filter out files that exceed this size.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">minDate</td>
 <td style="text-align: left;">Filter out files with a modification time less than this timestamp.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">maxDate</td>
 <td style="text-align: left;">Filter out files with a modification time exceeding this timestamp.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">scanLinks</td>
 <td style="text-align: left;">Allows symbolically linked files and folders to be included in the file search.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">matchFolders</td>
 <td style="text-align: left;">Include matching folder names in the output of the search.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">ignoreFiles</td>
 <td style="text-align: left;">Do not scan files (useful only in conjunction with <code>matchFolders</code>).</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">maxDepth</td>
 <td style="text-align: left;">Maximum depth to recurse into subdirectories (0 = current directory only, 1 = one level deep, etc.).</td>
 </tr>

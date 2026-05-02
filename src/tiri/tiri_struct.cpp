@@ -40,6 +40,7 @@ terminated arrays, use [0].
 #include <kotuku/modules/tiri.h>
 #include <inttypes.h>
 #include <format>
+#include <new>
 #include <optional>
 #include <ranges>
 
@@ -52,6 +53,52 @@ terminated arrays, use [0].
 #include "defs.h"
 
 static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 100 - 400 bytes.
+
+// Handles both construction and destruction of std::string usage in a structure.
+
+static void process_struct_cpp_strings(const struct_record &StructDef, APTR Address, bool Construct)
+{
+   if (not Address) return;
+
+   for (auto field = Construct ? StructDef.Fields.begin() : StructDef.Fields.end();
+      Construct ? (field != StructDef.Fields.end()) : (field != StructDef.Fields.begin());) {
+      if (not Construct) --field;
+
+      APTR field_address = (int8_t *)Address + field->Offset;
+      auto type = field->Type;
+
+      if ((type & FD_STRUCT) and (not (type & FD_PTR)) and (not field->StructRef.empty())) {
+         auto def = glStructs.find(std::string_view(field->StructRef));
+         if (def != glStructs.end()) {
+            if ((type & FD_ARRAY) and (field->ArraySize > 0)) {
+               for (int i = Construct ? 0 : field->ArraySize; Construct ? (i < field->ArraySize) : (i > 0);) {
+                  if (not Construct) --i;
+                  process_struct_cpp_strings(def->second, (int8_t *)field_address + (def->second.Size * i), Construct);
+                  if (Construct) i++;
+               }
+            }
+            else process_struct_cpp_strings(def->second, field_address, Construct);
+         }
+      }
+
+      if ((type & FD_STRING) and (type & FD_CPP) and (not (type & FD_ARRAY))) {
+         if (Construct) new (field_address) std::string();
+         else ((std::string *)field_address)->~basic_string();
+      }
+
+      if (Construct) ++field;
+   }
+}
+
+void construct_struct_cpp_strings(const struct_record &StructDef, APTR Address)
+{
+   process_struct_cpp_strings(StructDef, Address, true);
+}
+
+void destroy_struct_cpp_strings(const struct_record &StructDef, APTR Address)
+{
+   process_struct_cpp_strings(StructDef, Address, false);
+}
 
 //********************************************************************************************************************
 // Create a standard Lua table and copy the struct values to that table.  Pushes nil if there was a conversion issue.
@@ -80,7 +127,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 
 [[nodiscard]] ERR keyvalue_to_table(lua_State *Lua, const KEYVALUE *Map)
 {
-   if (!Map) { lua_pushnil(Lua); return ERR::Okay; }
+   if (not Map) { lua_pushnil(Lua); return ERR::Okay; }
 
    lua_createtable(Lua, 0, Map->size()); // Create a new table on the stack.
 
@@ -100,12 +147,12 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 
 [[nodiscard]] ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
-   if (!Result) return ERR::NullArgs;
+   if (not Result) return ERR::NullArgs;
    *Result = NULL;
 
-   if (!lua_istable(Lua, -1)) return log.warning(ERR::WrongType);
+   if (not lua_istable(Lua, -1)) return log.warning(ERR::WrongType);
 
    auto def = glStructs.find(StructName);
    if (def IS glStructs.end()) return ERR::Search;
@@ -116,6 +163,8 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
    if (AllocMemory(struct_def.Size, MEM::DATA, &memory) != ERR::Okay) {
       return ERR::AllocMemory;
    }
+
+   construct_struct_cpp_strings(struct_def, memory);
 
    lua_pushnil(Lua); // Access first key for lua_next()
    while (lua_next(Lua, -2) != 0) { // Pops the current key and pushes the k,v pair.
@@ -132,7 +181,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
                   else if (field.ArraySize IS - 1); // Pointer to a null-terminated array
                   else if (lua_istable(Lua, -1) and (type & (FD_FLOAT|FD_DOUBLE|FD_INT64|FD_INT|FD_WORD|FD_BYTE))) { // Embedded, fixed size array
                      for (int i = 0; i < field.ArraySize; i++) {
-                        lua_pushinteger(Lua, i + 1); // Lua arrays are 1-based
+                        lua_pushinteger(Lua, i);
                         lua_gettable(Lua, -2); // Get value at index
                         if (type & FD_FLOAT)       ((float *)address)[i]   = lua_tonumber(Lua, -1);
                         else if (type & FD_DOUBLE) ((double *)address)[i]  = lua_tonumber(Lua, -1);
@@ -143,6 +192,11 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
                         lua_pop(Lua, 1); // Remove value
                      }
                   }
+               }
+               else if ((type & FD_STRING) and (type & FD_CPP)) {
+                  size_t len;
+                  auto str = lua_tolstring(Lua, -1, &len);
+                  ((std::string *)address)[0].assign(str, len);
                }
                else if (type & (FD_STRING|FD_STRUCT|FD_POINTER));
                else if (type & FD_FLOAT)  ((float *)address)[0]   = lua_tonumber(Lua, -1);
@@ -166,13 +220,13 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 
 [[nodiscard]] ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_record &StructDef, CPTR Address)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Struct: %s, Data: %p", StructDef.Name.c_str(), Address);
 
    // Do not push a Lua value in the event of an error.
 
-   if (!Address) { lua_pushnil(Lua); return ERR::Okay; }
+   if (not Address) { lua_pushnil(Lua); return ERR::Okay; }
 
    // Check if there is an existing struct table already associated with this address.  If so, return it
    // rather than creating another table.
@@ -200,8 +254,8 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
       auto type = field.Type;
 
       if (type & FD_ARRAY) {
-         if (type & FD_CPP) { // pf::vector<ANY>
-            auto vector = (pf::vector<int> *)(address);
+         if (type & FD_CPP) { // kt::vector<ANY>
+            auto vector = (kt::vector<int> *)(address); // Uses int as a placeholder
             if (type & FD_STRUCT) {
                if (glStructs.contains(std::string_view(field.StructRef))) {
                   make_any_array(Lua, type, field.StructRef, vector->size(), vector->data());
@@ -213,7 +267,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
          else if (field.ArraySize IS -1) { // Pointer to a null-terminated array.
             if (type & FD_STRUCT) {
                if (glStructs.contains(std::string_view(field.StructRef))) {
-                  if (((CPTR *)address)[0]) make_any_array(Lua, type, field.StructRef, -1, address);
+                  if (((CPTR *)address)[0]) make_any_array(Lua, type, field.StructRef, -1, ((CPTR *)address)[0]);
                   else lua_pushnil(Lua);
                }
                else lua_pushnil(Lua);
@@ -231,8 +285,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
          }
       }
       else if (type & FD_STRUCT) {
-         auto def = glStructs.find(std::string_view(field.StructRef));
-         if (def != glStructs.end()) {
+         if (auto def = glStructs.find(std::string_view(field.StructRef)); def != glStructs.end()) {
             if (type & FD_PTR) {
                if (((APTR *)address)[0]) {
                   if (struct_to_table(Lua, References, def->second, ((APTR *)address)[0]) != ERR::Okay) lua_pushnil(Lua);
@@ -274,7 +327,7 @@ static constexpr int MAX_STRUCT_DEF = 2048; // Struct definitions are typically 
 
 struct fstruct * push_struct(objScript *Self, APTR Address, std::string_view StructName, bool Deallocate, bool AllowEmpty)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("Struct: %s, Address: %p, Deallocate: %d", StructName.data(), Address, Deallocate);
 
@@ -323,8 +376,8 @@ struct fstruct * push_struct_def(lua_State *Lua, APTR Address, struct_record &St
 int MAKESTRUCT(lua_State *Lua)
 {
    CSTRING sequence, name;
-   if (!(name = lua_tostring(Lua, 1))) luaL_argerror(Lua, 1, "Structure name required.");
-   else if (!(sequence = lua_tostring(Lua, 2))) luaL_argerror(Lua, 2, "Structure definition required.");
+   if (not (name = lua_tostring(Lua, 1))) luaL_argerror(Lua, 1, "Structure name required.");
+   else if (not (sequence = lua_tostring(Lua, 2))) luaL_argerror(Lua, 2, "Structure definition required.");
    else make_struct(Lua->script, name, sequence);
    return 0;
 }
@@ -342,7 +395,7 @@ static void make_camel_case(std::string &String)
          if ((String[f] >= 'a') and (String[f] <= 'z')) break;
       }
 
-      if (!String[f]) { // Field is all upper-case
+      if (not String[f]) { // Field is all upper-case
          for (int f=0; String[f]; f++) {
             if ((String[f] >= 'A') and (String[f] <= 'Z')) String[f] = String[f] - 'A' + 'a';
          }
@@ -366,7 +419,7 @@ static void make_camel_case(std::string &String)
 [[nodiscard]] static ERR generate_structdef(objScript *Self, const std::string_view StructName, const std::string Sequence,
    struct_record &Record, int *StructSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    size_t pos = 0;
    int offset = 0;
@@ -462,8 +515,8 @@ static void make_camel_case(std::string &String)
       if (Sequence[pos] IS '[') {
          pos++;
          type |= FD_ARRAY;
-         if (type & FD_CPP) { // In the case of pf::vector, fixed array sizes are meaningless
-            field_size = sizeof(pf::vector<int>);
+         if (type & FD_CPP) { // In the case of kt::vector, fixed array sizes are meaningless
+            field_size = sizeof(kt::vector<int>);
          }
          else if ((Sequence[pos] >= '0') and (Sequence[pos] <= '9')) { // Sanity check
             array_size = strtol(Sequence.c_str() + pos, nullptr, 0);
@@ -509,9 +562,9 @@ static void make_camel_case(std::string &String)
 
 [[nodiscard]] ERR make_struct(objScript *Self, std::string_view StructName, CSTRING Sequence)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
-   if (!Sequence) {
+   if (not Sequence) {
       log.warning("Missing struct name and/or definition.");
       return ERR::NullArgs;
    }
@@ -594,6 +647,7 @@ static int struct_new(lua_State *Lua)
 
          fs->Data  = (APTR)(fs + 1);
          clearmem(fs->Data, record.Size);
+         construct_struct_cpp_strings(record, fs->Data);
 
          fs->Def         = &record;
          fs->StructSize  = record.Size;
@@ -601,7 +655,7 @@ static int struct_new(lua_State *Lua)
          fs->Deallocate  = false;
 
          if (lua_istable(Lua, 2)) {
-            pf::Log log(__FUNCTION__);
+            kt::Log log(__FUNCTION__);
             log.trace("struct.new(%p, fields: %d)", record, record.Fields.size());
             ERR field_error = ERR::Okay;
             lua_pushnil(Lua);  // Access first key for lua_next()
@@ -616,12 +670,12 @@ static int struct_new(lua_State *Lua)
                         // In order to set strings, we'd need make a copy of the string received from
                         // Lua and free it when the field changes or the structure is destroyed.
                      }
-                     else if (field.Type & FD_OBJECT) ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, 3);
-                     else if (field.Type & FD_INT)    ((int *)address)[0]       = lua_tointeger(Lua, 3);
-                     else if (field.Type & FD_WORD)   ((int16_t *)address)[0]   = lua_tointeger(Lua, 3);
-                     else if (field.Type & FD_BYTE)   ((int8_t *)address)[0]    = lua_tointeger(Lua, 3);
-                     else if (field.Type & FD_DOUBLE) ((double *)address)[0]    = lua_tonumber(Lua, 3);
-                     else if (field.Type & FD_FLOAT)  ((float *)address)[0]     = lua_tonumber(Lua, 3);
+                     else if (field.Type & FD_OBJECT) ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, -1);
+                     else if (field.Type & FD_INT)    ((int *)address)[0]       = lua_tointeger(Lua, -1);
+                     else if (field.Type & FD_WORD)   ((int16_t *)address)[0]   = lua_tointeger(Lua, -1);
+                     else if (field.Type & FD_BYTE)   ((int8_t *)address)[0]    = lua_tointeger(Lua, -1);
+                     else if (field.Type & FD_DOUBLE) ((double *)address)[0]    = lua_tonumber(Lua, -1);
+                     else if (field.Type & FD_FLOAT)  ((float *)address)[0]     = lua_tonumber(Lua, -1);
                      else log.warning("Cannot set unsupported field type for %s", field_name);
                   }
                   else field_error = ERR::UnsupportedField;
@@ -690,7 +744,7 @@ static int struct_get(lua_State *Lua)
             return 1;
          }
 
-         if (!fs->Data) {
+         if (not fs->Data) {
             luaL_error(Lua, ERR::Failed, "Cannot reference field '%s' because struct address is NULL.", fieldname);
             return 0;
          }
@@ -698,13 +752,13 @@ static int struct_get(lua_State *Lua)
          if (auto field_opt = find_field(fs, fieldname)) {
             auto &field = field_opt->get();
             APTR address = (int8_t *)fs->Data + field.Offset;
-            int array_size = (!field.ArraySize) ? -1 : field.ArraySize;
+            int array_size = (not field.ArraySize) ? -1 : field.ArraySize;
 
-            if ((field.Type & FD_STRUCT) and (field.Type & FD_PTR) and (!field.StructRef.empty())) { // Pointer to structure
+            if ((field.Type & FD_STRUCT) and (field.Type & FD_PTR) and (not field.StructRef.empty())) { // Pointer to structure
                if (((APTR *)address)[0]) {
                   if (field.Type & FD_ARRAY) { // Array of pointers to structures.
                      if (field.Type & FD_CPP) {
-                        auto vector = (pf::vector<int> *)(address);
+                        auto vector = (kt::vector<int> *)(address);
                         lua_createarray(Lua, vector->size(), ff_to_element(field.Type), (APTR *)vector->data(), ARRAY_CACHED, field.StructRef);
                      }
                      else lua_createarray(Lua, array_size, ff_to_element(field.Type), (APTR *)address, ARRAY_CACHED, field.StructRef);
@@ -719,7 +773,7 @@ static int struct_get(lua_State *Lua)
             else if (field.Type & FD_STRING) {
                if (field.Type & FD_ARRAY) {
                   if (field.Type & FD_CPP) {
-                     auto vector = (pf::vector<std::string> *)(address);
+                     auto vector = (kt::vector<std::string> *)(address);
                      lua_createarray(Lua, vector->size(), AET::STR_CPP, (APTR *)vector->data(), ARRAY_CACHED);
                   }
                   else lua_createarray(Lua, array_size, AET::CSTR, (APTR *)address, ARRAY_CACHED);
@@ -790,14 +844,14 @@ static int struct_set(lua_State *Lua)
 {
    if (auto fs = (struct fstruct *)lua_touserdata(Lua, 1)) {
       if (auto ref = luaL_checkstring(Lua, 2)) {
-         if (!fs->Data) {
+         if (not fs->Data) {
             luaL_error(Lua, "Cannot reference field '%s' because struct address is NULL.", ref);
             return 0;
          }
 
          if (auto field_opt = find_field(fs, ref)) {
             auto &field = field_opt->get();
-            pf::Log log;
+            kt::Log log;
             log.trace("struct.set() %s, Offset %d, $%.8x", ref, field.Offset, field.Type);
 
             APTR address = (int8_t *)fs->Data + field.Offset;
@@ -831,6 +885,10 @@ static int struct_set(lua_State *Lua)
 static int struct_destruct(lua_State *Lua)
 {
    if (auto fs = (fstruct *)luaL_checkudata(Lua, 1, "Tiri.struct")) {
+      if (fs->Def and fs->Data and ((fs->Deallocate) or (fs->Data IS (APTR)(fs + 1)))) {
+         destroy_struct_cpp_strings(*fs->Def, fs->Data);
+      }
+
       if (fs->Deallocate) {
          FreeResource(fs->Data);
          fs->Data = nullptr;
@@ -859,7 +917,7 @@ static const luaL_Reg structlib_methods[] = {
 
 void register_struct_class(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Registering struct interface.");
 
    luaL_newmetatable(Lua, "Tiri.struct");
@@ -871,4 +929,6 @@ void register_struct_class(lua_State *Lua)
    luaL_openlib(Lua, nullptr, structlib_methods, 0);
 
    luaL_openlib(Lua, "struct", structlib_functions, 0);
+
+   lua_pop(Lua, 2); // Drop the Tiri.struct metatable and the struct library table
 }

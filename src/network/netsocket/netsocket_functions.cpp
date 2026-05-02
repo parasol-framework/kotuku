@@ -3,7 +3,7 @@
 
 static void free_socket(extNetSocket *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Handle: %d", Self->Handle.int_value());
 
@@ -32,7 +32,7 @@ static void free_socket(extNetSocket *Self)
 
 ERR NetQueue::write(CPTR Message, size_t Length)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Message) return log.warning(ERR::NullArgs);
    if (Length <= 0) return ERR::Okay;
@@ -55,12 +55,12 @@ ERR NetQueue::write(CPTR Message, size_t Length)
 
       size_t old_size = Buffer.size();
       Buffer.resize(old_size + Length);
-      pf::copymem(Message, Buffer.data() + old_size, Length);
+      kt::copymem(Message, Buffer.data() + old_size, Length);
    }
    else {
       Buffer.resize(Length);
       Index = 0;
-      pf::copymem(Message, Buffer.data(), Length);
+      kt::copymem(Message, Buffer.data(), Length);
    }
 
    return ERR::Okay;
@@ -78,7 +78,7 @@ ERR NetQueue::write(CPTR Message, size_t Length)
 #ifdef _WIN32
 void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message, ERR Error)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    extNetSocket *Socket;
    extClientSocket *ClientSocket;
@@ -112,13 +112,13 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
 
    // Safety first
 
-   pf::ScopedObjectLock lock(Socket);
+   kt::ScopedObjectLock lock(Socket);
    if (!lock.granted()) return;
 
-   pf::ScopedObjectLock lock_client(ClientSocket); // Not locked if ClientSocket is nullptr
+   kt::ScopedObjectLock lock_client(ClientSocket); // Not locked if ClientSocket is nullptr
    if ((ClientSocket) and (!lock_client.granted())) return;
 
-   pf::SwitchContext context(Socket);
+   kt::SwitchContext context(Socket);
 
    Socket->InUse++;
 
@@ -212,13 +212,13 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
 
 static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    uint8_t ip[8];
    SocketHandle clientfd;
 
    log.traceBranch("NetSocket: #%d, FD: %" PRId64, Self->UID, int64_t(SocketFD));
 
-   pf::SwitchContext context(Self);
+   kt::SwitchContext context(Self);
 
    // Check client limit before accepting to prevent resource exhaustion
    if ((Self->TotalClients >= Self->ClientLimit) or (Self->TotalClients >= glSocketLimit)) {
@@ -411,7 +411,7 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
          if (client_socket->State IS NTC::CONNECTED) {
             if (Self->Feedback.isC()) {
-               pf::SwitchContext context(Self->Feedback.Context);
+               kt::SwitchContext context(Self->Feedback.Context);
                auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
                if (routine) routine(Self, client_socket, client_socket->State, Self->Feedback.Meta);
             }
@@ -440,7 +440,7 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
 static void free_client(extNetSocket *Socket, objNetClient *Client)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    static thread_local int8_t recursive = 0;
 
    if (!Client) return;
@@ -484,9 +484,9 @@ static void free_client(extNetSocket *Socket, objNetClient *Client)
 #ifdef __linux__
 static void netsocket_connect_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
-   pf::SwitchContext context(Self);
+   kt::SwitchContext context(Self);
 
    log.trace("Connection from server received.");
 
@@ -551,9 +551,9 @@ static void netsocket_connect_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
 static void netsocket_incoming_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
-   pf::SwitchContext context(Self); // Set context & lock
+   kt::SwitchContext context(Self); // Set context & lock
 
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) {
       if ((Self->Flags & NSF::SERVER) != NSF::NIL) { // Sanity check
@@ -571,7 +571,7 @@ static void netsocket_incoming_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 #ifndef DISABLE_SSL
   #ifdef _WIN32
    if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.traceBranch("Windows SSL handshake in progress, reading raw data.");
       size_t result;
       std::vector<uint8_t> buffer;
@@ -625,7 +625,7 @@ restart:
    if (Self->Incoming.defined()) {
       if (Self->Incoming.isC()) {
          auto routine = (ERR (*)(extNetSocket *, APTR))Self->Incoming.Routine;
-         pf::SwitchContext context(Self->Incoming.Context);
+         kt::SwitchContext context(Self->Incoming.Context);
          error = routine(Self, Self->Incoming.Meta);
       }
       else if (Self->Incoming.isScript()) {
@@ -688,9 +688,9 @@ restart:
 
 static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
-   pf::SwitchContext context(Self); // Set context & lock
+   kt::SwitchContext context(Self); // Set context & lock
 
    if (Self->Terminating) return;
 
@@ -742,7 +742,7 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       if (Self->Outgoing.defined()) {
          if (Self->Outgoing.isC()) {
             auto routine = (ERR (*)(extNetSocket *, APTR))Self->Outgoing.Routine;
-            pf::SwitchContext context(Self->Outgoing.Context);
+            kt::SwitchContext context(Self->Outgoing.Context);
             error = routine(Self, Self->Outgoing.Meta);
          }
          else if (Self->Outgoing.isScript()) {

@@ -75,6 +75,51 @@ in a file.
 
  #define open64   open
  #define lseek64  lseek
+
+ #define KOTUKU_STD_INPUT_HANDLE   ((unsigned long)-10)
+ #define KOTUKU_STD_OUTPUT_HANDLE  ((unsigned long)-11)
+ #define KOTUKU_STD_ERROR_HANDLE   ((unsigned long)-12)
+ #define KOTUKU_DUPLICATE_ACCESS   2
+
+ #ifdef _MSC_VER
+  #define KOTUKU_WINAPI __stdcall
+  #define KOTUKU_WINIMPORT __declspec(dllimport)
+ #else
+  #define KOTUKU_WINAPI
+  #define KOTUKU_WINIMPORT
+ #endif
+
+extern "C" {
+   KOTUKU_WINIMPORT WINHANDLE KOTUKU_WINAPI GetStdHandle(unsigned long);
+   KOTUKU_WINIMPORT WINHANDLE KOTUKU_WINAPI GetCurrentProcess(void);
+   KOTUKU_WINIMPORT int KOTUKU_WINAPI DuplicateHandle(WINHANDLE, WINHANDLE, WINHANDLE, WINHANDLE *, unsigned long, int, unsigned long);
+   KOTUKU_WINIMPORT int KOTUKU_WINAPI CloseHandle(WINHANDLE);
+}
+
+static int duplicate_std_handle(FILE *Stream, unsigned long StdHandle, int OpenFlags)
+{
+   auto source = GetStdHandle(StdHandle);
+   if ((source) and (source != (WINHANDLE)(intptr_t)-1)) {
+      WINHANDLE duplicate = nullptr;
+      if (DuplicateHandle(GetCurrentProcess(), source, GetCurrentProcess(), &duplicate, 0, false, KOTUKU_DUPLICATE_ACCESS)) {
+         int file = _open_osfhandle((intptr_t)duplicate, OpenFlags);
+         if (file >= 0) return file;
+
+         CloseHandle(duplicate);
+      }
+   }
+
+   int file = _fileno(Stream);
+   if (file >= 0) {
+      auto os_handle = (WINHANDLE)_get_osfhandle(file);
+      if ((os_handle) and (os_handle != (WINHANDLE)(intptr_t)-1)) {
+         auto duplicate = _dup(file);
+         if (duplicate >= 0) return duplicate;
+      }
+   }
+
+   return -1;
+}
 #endif // _WIN32
 
 #ifdef __APPLE__
@@ -98,7 +143,9 @@ in a file.
 
 #include <kotuku/main.h>
 
-extern "C" void path_monitor(HOSTHANDLE, extFile *);
+#ifdef __linux__
+extern void path_monitor(HOSTHANDLE, OBJECTPTR);
+#endif
 
 static ERR FILE_Init(extFile *);
 static ERR FILE_Watch(extFile *, struct fl::Watch *);
@@ -118,7 +165,7 @@ Activate: Opens the file.  Performed automatically if `NEW`, `READ` or `WRITE` f
 
 static ERR FILE_Activate(extFile *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Handle != -1) return ERR::Okay;
    if ((Self->Flags & (FL::NEW|FL::READ|FL::WRITE)) IS FL::NIL) return log.warning(ERR::NothingDone);
@@ -269,14 +316,14 @@ Read: Failed to read the file content.
 
 static ERR FILE_BufferContent(extFile *Self)
 {
-   pf::Log log;
+   kt::Log log;
    int len;
 
    if (Self->Buffer) return ERR::Okay;
 
    acSeek(Self, 0, SEEK::START);
 
-   if (!Self->Size) {
+   if (not Self->Size) {
       // If the file has no size, it could be a stream (or simply empty).  This routine handles this situation.
 
       char ch;
@@ -318,7 +365,7 @@ static ERR FILE_BufferContent(extFile *Self)
 
    // If the file was empty, allocate a 1-byte memory block for the Buffer field, in order to satisfy condition tests.
 
-   if (!Self->Buffer) {
+   if (not Self->Buffer) {
       if (AllocMemory(1, MEM::DATA, (APTR *)&Self->Buffer, nullptr) != ERR::Okay) {
          return log.warning(ERR::AllocMemory);
       }
@@ -344,9 +391,9 @@ Streaming data of any type to a file will result in the content being written to
 
 static ERR FILE_DataFeed(extFile *Self, struct acDataFeed *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
-   if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Buffer)) return log.warning(ERR::NullArgs);
 
    if (Args->Size) return acWrite(Self, Args->Buffer, Args->Size, nullptr);
    else return acWrite(Self, Args->Buffer, strlen((CSTRING)Args->Buffer), nullptr);
@@ -417,7 +464,7 @@ BufferOverflow: The file path string is too long.
 
 static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Path.empty()) return log.warning(ERR::MissingPath);
 
@@ -476,7 +523,7 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
 
          // Unlinking the file deletes it
 
-         if (!unlink(buffer.c_str())) return ERR::Okay;
+         if (not unlink(buffer.c_str())) return ERR::Okay;
          else {
             log.warning("unlink() failed on file \"%s\": %s", buffer.c_str(), strerror(errno));
             return convert_errno(errno, ERR::SystemCall);
@@ -490,7 +537,7 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
 
 static ERR FILE_Free(extFile *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->prvWatch) Action(fl::Watch::id, Self, nullptr);
 
@@ -524,7 +571,7 @@ static ERR FILE_Free(extFile *Self)
    }
 
 #ifdef _WIN32
-   if (((Self->Flags & FL::RESET_DATE) != FL::NIL) and (!path.empty())) {
+   if (((Self->Flags & FL::RESET_DATE) != FL::NIL) and (not path.empty())) {
       winResetDate(path.data());
    }
 #endif
@@ -569,7 +616,7 @@ NoPermission: Permission was denied when accessing or creating the file.
 
 static ERR FILE_Init(extFile *Self)
 {
-   pf::Log log;
+   kt::Log log;
    ERR error;
 
    // If the BUFFER flag is set then the file will be located in RAM.  Very little initialisation is needed for this.
@@ -579,7 +626,7 @@ static ERR FILE_Init(extFile *Self)
    if (((Self->Flags & FL::BUFFER) != FL::NIL) and (Self->Path.empty())) {
       if (Self->Size < 0) Self->Size = 0;
       Self->Flags |= FL::READ|FL::WRITE;
-      if (!Self->Buffer) {
+      if (not Self->Buffer) {
          // Allocate buffer if none specified.  An extra byte is allocated for a NULL byte on the end, in case the file
          // content is treated as a string.
 
@@ -595,7 +642,7 @@ static ERR FILE_Init(extFile *Self)
 
    if (glDefaultPermissions != PERMIT::NIL) Self->Permissions = glDefaultPermissions;
 
-   if (pf::startswith("string:", Self->Path)) {
+   if (kt::startswith("string:", Self->Path)) {
       Self->Size = Self->Path.size() - 7;
 
       if (Self->Size > 0) {
@@ -608,7 +655,7 @@ static ERR FILE_Init(extFile *Self)
       }
       else return log.warning(ERR::InvalidPath);
    }
-   else if (pf::startswith("std:", Self->Path)) {
+   else if (kt::startswith("std:", Self->Path)) {
       // Special accessors for direct access to standard input/output/error streams.
 
       Self->Flags &= ~(FL::NEW|FL::READ|FL::WRITE);
@@ -616,7 +663,7 @@ static ERR FILE_Init(extFile *Self)
       if (iequals("std:in", Self->Path)) {
          Self->Flags |= FL::READ;
          #ifdef _WIN32
-            Self->Handle = _fileno(stdin);
+            Self->Handle = duplicate_std_handle(stdin, KOTUKU_STD_INPUT_HANDLE, O_RDONLY|WIN32OPEN);
          #else
             Self->Handle = STDIN_FILENO;
          #endif
@@ -624,7 +671,7 @@ static ERR FILE_Init(extFile *Self)
       else if (iequals("std:out", Self->Path)) {
          Self->Flags |= FL::WRITE;
          #ifdef _WIN32
-            Self->Handle = _fileno(stdout);
+            Self->Handle = duplicate_std_handle(stdout, KOTUKU_STD_OUTPUT_HANDLE, O_WRONLY|WIN32OPEN);
          #else
             Self->Handle = STDOUT_FILENO;
          #endif
@@ -632,7 +679,7 @@ static ERR FILE_Init(extFile *Self)
       else if (iequals("std:err", Self->Path)) {
          Self->Flags |= FL::WRITE;
          #ifdef _WIN32
-            Self->Handle = _fileno(stderr);
+            Self->Handle = duplicate_std_handle(stderr, KOTUKU_STD_ERROR_HANDLE, O_WRONLY|WIN32OPEN);
          #else
             Self->Handle = STDERR_FILENO;
          #endif
@@ -648,7 +695,7 @@ static ERR FILE_Init(extFile *Self)
       // If the file already exists, pull the permissions from it.  Otherwise use a default set of permissions (if
       // possible, inherit permissions from the file's folder).
 
-      if (((Self->Flags & FL::NEW) != FL::NIL) and (get_file_info(Self->Path, &info, sizeof(info)) IS ERR::Okay)) {
+      if (((Self->Flags & FL::NEW) != FL::NIL) and (GetFileInfo(Self->Path, &info, sizeof(info)) IS ERR::Okay)) {
          log.msg("Using permissions of the original file.");
          Self->Permissions |= info.Permissions;
       }
@@ -678,7 +725,7 @@ static ERR FILE_Init(extFile *Self)
 
 retrydir:
    if ((Self->Flags & FL::FOLDER) != FL::NIL) {
-      if ((!Self->Path.ends_with('/')) and (!Self->Path.ends_with('\\')) and (!Self->Path.ends_with(':'))) {
+      if ((not Self->Path.ends_with('/')) and (not Self->Path.ends_with('\\')) and (not Self->Path.ends_with(':'))) {
          std::string buffer(Self->Path);
          if (Self->setPath(buffer.c_str()) != ERR::Okay) {
             return log.warning(ERR::SetField);
@@ -703,7 +750,7 @@ retrydir:
       if (error IS ERR::VirtualVolume) {
          // For virtual volumes, update the path to ensure that the volume name is referenced in the path string.
          // Then return ERR::UseSubClass to have support delegated to the correct File sub-class.
-         if (!iequals(Self->Path, Self->prvResolvedPath)) {
+         if (not iequals(Self->Path, Self->prvResolvedPath)) {
             SET_Path(Self, Self->prvResolvedPath.c_str());
          }
          log.trace("ResolvePath() reports virtual volume, will delegate to sub-class...");
@@ -724,7 +771,7 @@ retrydir:
 
    // Check if ResolvePath() resolved the path from a file string to a folder
 
-   if ((!Self->isFolder) and
+   if ((not Self->isFolder) and
        (Self->prvResolvedPath.ends_with('/') or Self->prvResolvedPath.ends_with('\\')) and
        ((Self->Flags & FL::FOLDER) IS FL::NIL)) {
       Self->Flags |= FL::FOLDER;
@@ -763,11 +810,11 @@ retrydir:
          log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath.c_str(), int(Self->Permissions));
          if (CreateFolder(Self->prvResolvedPath.c_str(), Self->Permissions) IS ERR::Okay) {
             #ifdef __unix__
-               if (!(Self->Stream = opendir(Self->prvResolvedPath.c_str()))) {
+               if (not (Self->Stream = opendir(Self->prvResolvedPath.c_str()))) {
                   log.warning("Failed to open the folder after creating it.");
                }
             #elif _WIN32
-               if (!(Self->Stream = winCheckDirectoryExists(Self->prvResolvedPath.c_str()))) {
+               if (not (Self->Stream = winCheckDirectoryExists(Self->prvResolvedPath.c_str()))) {
                   log.warning("Failed to open the folder after creating it.");
                }
             #else
@@ -824,9 +871,9 @@ InvalidPath: Attempted to move a volume.
 
 static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
-   if ((!Args) or (!Args->Dest) or (!Args->Dest[0])) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Dest) or (not Args->Dest[0])) return log.warning(ERR::NullArgs);
    if (Self->Path.empty()) return log.warning(ERR::FieldNotSet);
 
    auto src = std::string_view(Self->Path);
@@ -910,12 +957,12 @@ DirEmpty: The index has reached the end of the file list.
 
 static ERR FILE_NextFile(extFile* Self, struct fl::Next* Args) // Not to be confused with acNext()
 {
-   pf::Log log;
+   kt::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
    if ((Self->Flags & FL::FOLDER) IS FL::NIL) return log.warning(ERR::ExpectedFolder);
 
-   if (!Self->prvList) {
+   if (not Self->prvList) {
       auto flags = RDF::QUALIFY;
 
       if ((Self->Flags & FL::EXCLUDE_FOLDERS) != FL::NIL) flags |= RDF::FILE;
@@ -989,9 +1036,9 @@ Failed: The file object refers to a folder, or the object is corrupt.
 
 static ERR FILE_Read(extFile *Self, struct acRead *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
-   if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Buffer)) return log.warning(ERR::NullArgs);
    else if (Args->Length == 0) return ERR::Okay;
    else if (Args->Length < 0) return ERR::OutOfRange;
 
@@ -1086,9 +1133,9 @@ NoData: There is no more data left to read.
 
 static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
    if ((Self->Flags & FL::READ) IS FL::NIL) return log.warning(ERR::FileReadFlag);
 
    if (Self->Buffer) {
@@ -1124,7 +1171,7 @@ static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
          }
       }
 
-      if (!line_offset) return ERR::NoData;
+      if (not line_offset) return ERR::NoData;
 
       Self->Position += line_offset;
       if (Self->prvLine[line_offset] IS '\n') {
@@ -1146,9 +1193,9 @@ Rename: Changes the name of a file.
 
 static ERR FILE_Rename(extFile *Self, struct acRename *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
-   if ((!Args) or (!Args->Name) or (!Args->Name[0])) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Name) or (not Args->Name[0])) return log.warning(ERR::NullArgs);
    if (Self->Path.empty()) return log.warning(ERR::FieldNotSet);
 
    log.branch("%s to %s", Self->Path.c_str(), Args->Name);
@@ -1169,7 +1216,7 @@ static ERR FILE_Rename(extFile *Self, struct acRename *Args)
          n.append(name, 0, name.find_last_of("/\\:"));
 
          if (fs_copy(Self->Path, n, nullptr, true) IS ERR::Okay) {
-            if (!n.ends_with('/')) Self->Path = n + "/";
+            if (not n.ends_with('/')) Self->Path = n + "/";
             else Self->Path = n;
             return ERR::Okay;
          }
@@ -1218,7 +1265,7 @@ Seek: Seeks to a new read/write position within a file.
 
 static ERR FILE_Seek(extFile *Self, struct acSeek *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    int64_t oldpos = Self->Position;
 
@@ -1293,9 +1340,9 @@ NoSupport: The platform does not support file date setting.
 
 static ERR FILE_SetDate(extFile *Self, struct fl::SetDate *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
 
    log.msg("%d/%d/%d %.2d:%.2d:%.2d", Args->Day, Args->Month, Args->Year, Args->Hour, Args->Minute, Args->Second);
 
@@ -1393,9 +1440,9 @@ NoSupport: The file is not streamed.
 
 static ERR FILE_StartStream(extFile *Self, struct fl::StartStream *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
-   if ((!Args) or (!Args->SubscriberID)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->SubscriberID)) return log.warning(ERR::NullArgs);
 
    // Streaming from standard files is pointless - it's the virtual drives that provide streaming features.
 
@@ -1437,18 +1484,16 @@ are supported as targets.
 The optional !MFF Flags are used to filter events to those that are desired for monitoring.
 
 The client must provide a `Callback` that will be triggered when a monitored event is triggered.  The `Callback` must
-follow the format `ERR Routine(*File, STRING Path, INT64 Custom, INT Flags)`
+follow the format `ERR Routine(*File, std::string_view Path, MFF Flags, APTR Meta)`
 
 Each event will be delivered in the sequence that they are originally raised.  The `Flags` parameter will reflect the
-specific event that has occurred.  The `Custom` parameter is identical to the `Custom` argument originally passed to this
-method.  The `Path` is a string that is relative to the File's #Path field.
+specific event that has occurred.  The `Path` is a string that is relative to the File's #Path field.
 
 If the callback routine returns `ERR::Terminate`, the watch will be disabled.  It is also possible to disable an existing
 watch by calling this method with no parameters, or by setting the `Flags` parameter to `0`.
 
 -INPUT-
 ptr(func) Callback: The routine that will be called when a file change is triggered by the system.
-large Custom: A custom 64-bit value that will passed to the Callback routine as a parameter.
 int(MFF) Flags: Filter events to those indicated in these flags.
 
 -ERRORS-
@@ -1460,7 +1505,7 @@ NullArgs
 
 static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch("%s, Flags: $%.8x", Self->Path.c_str(), (Args) ? int(Args->Flags) : 0);
 
@@ -1468,22 +1513,25 @@ static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
 
    if (Self->prvWatch) {
       auto id = Self->prvWatch->VirtualID;
-      if (glVirtual.contains(id)) {
-         if (glVirtual[id].IgnoreFile) glVirtual[id].IgnoreFile(Self);
+      void (*ignore_file)(extFile *) = nullptr;
+      {
+         std::lock_guard<std::mutex> lock(glmVirtual);
+         if (auto it = glVirtual.find(id); it != glVirtual.end()) ignore_file = it->second.IgnoreFile;
       }
+      if (ignore_file) ignore_file(Self);
       else log.warning("Failed to find virtual volume ID $%.8x", id);
 
       FreeResource(Self->prvWatch);
       Self->prvWatch = nullptr;
    }
 
-   if ((!Args) or (!Args->Callback) or (Args->Flags IS MFF::NIL)) return ERR::Okay;
+   if ((not Args) or (not Args->Callback) or (Args->Flags IS MFF::NIL)) return ERR::Okay;
 
 #ifdef __linux__ // Initialise inotify if not done already.
+
    if (glInotify IS -1) {
       ERR error;
-      if ((glInotify = inotify_init()) != -1) {
-         fcntl(glInotify, F_SETFL, fcntl(glInotify, F_GETFL)|O_NONBLOCK);
+      if ((glInotify = inotify_init1(IN_NONBLOCK|IN_CLOEXEC)) != -1) {
          error = RegisterFD(glInotify, RFD::READ, (void (*)(HOSTHANDLE, APTR))path_monitor, nullptr);
       }
       else error = log.warning(ERR::SystemCall);
@@ -1497,18 +1545,17 @@ static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
    if ((error = GET_ResolvedPath(Self, &resolve)) IS ERR::Okay) {
       auto vd = get_fs(resolve);
 
-      if (vd->WatchPath) {
+      if (vd.WatchPath) {
          #ifdef _WIN32
          if (AllocMemory(sizeof(rkWatchPath) + winGetWatchBufferSize(), MEM::DATA, (APTR *)&Self->prvWatch, nullptr) IS ERR::Okay) {
          #else
          if (AllocMemory(sizeof(rkWatchPath), MEM::DATA, (APTR *)&Self->prvWatch, nullptr) IS ERR::Okay) {
          #endif
-            Self->prvWatch->VirtualID = vd->VirtualID;
+            Self->prvWatch->VirtualID = vd.VirtualID;
             Self->prvWatch->Routine   = *Args->Callback;
             Self->prvWatch->Flags     = Args->Flags;
-            Self->prvWatch->Custom    = Args->Custom;
 
-            error = vd->WatchPath(Self);
+            error = vd.WatchPath(Self);
          }
          else error = ERR::AllocMemory;
       }
@@ -1542,9 +1589,9 @@ LimitedSuccess: Only some of the data was written to the file.  Check the Result
 
 static ERR FILE_Write(extFile *Self, struct acWrite *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
    if (Args->Length <= 0) return ERR::Args;
    if ((Self->Flags & FL::WRITE) IS FL::NIL) return log.warning(ERR::FileWriteFlag);
 
@@ -1602,7 +1649,7 @@ static ERR FILE_Write(extFile *Self, struct acWrite *Args)
 
    // If no buffer was supplied then we will write out null values to a limit indicated by the Length field.
 
-   if (!Args->Buffer) {
+   if (not Args->Buffer) {
       uint8_t nullbyte = 0;
       Args->Result = 0;
       for (int i=0; i < Args->Length; i++) {
@@ -1665,13 +1712,13 @@ To simplify time management, information is read and set via a !DateTime structu
 
 static ERR GET_Created(extFile *Self, DateTime **Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    *Value = 0;
 
    if (Self->Handle != -1) {
       struct stat64 stats;
-      if (!fstat64(Self->Handle, &stats)) {
+      if (not fstat64(Self->Handle, &stats)) {
          // Timestamp has to match that produced by fs_getinfo()
 
          if (auto local = localtime(&stats.st_mtime)) {
@@ -1700,7 +1747,7 @@ static ERR GET_Created(extFile *Self, DateTime **Value)
          if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          struct stat64 stats;
-         if (!stat64(buffer, &stats)) {
+         if (not stat64(buffer, &stats)) {
             // Timestamp has to match that produced by fs_getinfo()
 
             if (auto local = localtime(&stats.st_mtime)) {
@@ -1740,14 +1787,14 @@ Information is read and set using a standard !DateTime structure.
 
 static ERR GET_Date(extFile *Self, DateTime **Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    *Value = 0;
 
    if (Self->Handle != -1) {
       struct stat64 stats;
       ERR error;
-      if (!fstat64(Self->Handle, &stats)) {
+      if (not fstat64(Self->Handle, &stats)) {
          // Timestamp has to match that produced by fs_getinfo()
 
          if (auto local = localtime(&stats.st_mtime)) {
@@ -1778,7 +1825,7 @@ static ERR GET_Date(extFile *Self, DateTime **Value)
          if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          struct stat64 stats;
-         if (!stat64(buffer, &stats)) {
+         if (not stat64(buffer, &stats)) {
             // Timestamp has to match that produced by fs_getinfo()
 
             if (auto local = localtime(&stats.st_mtime)) {
@@ -1806,9 +1853,9 @@ static ERR GET_Date(extFile *Self, DateTime **Value)
 
 ERR SET_Date(extFile *Self, DateTime *Date)
 {
-   pf::Log log;
+   kt::Log log;
 
-   if (!Date) return log.warning(ERR::NullArgs);
+   if (not Date) return log.warning(ERR::NullArgs);
 
 #ifdef _WIN32
    CSTRING path;
@@ -1910,10 +1957,10 @@ static ERR GET_Group(extFile *Self, int *Value)
 static ERR SET_Group(extFile *Self, int Value)
 {
 #ifdef __unix__
-   pf::Log log;
+   kt::Log log;
    if (Self->initialised()) {
       log.msg("Changing group to #%d", Value);
-      if (!fchown(Self->Handle, -1, Value)) return ERR::Okay;
+      if (not fchown(Self->Handle, -1, Value)) return ERR::Okay;
       else return log.warning(convert_errno(errno, ERR::SystemCall));
    }
    else return log.warning(ERR::NotInitialised);
@@ -1951,12 +1998,12 @@ The resulting string is returned in the format `icons:category/name` and will re
 
 static ERR GET_Icon(extFile *Self, CSTRING *Value)
 {
-   if (!Self->prvIcon.empty()) {
+   if (not Self->prvIcon.empty()) {
       *Value = Self->prvIcon.c_str();
       return ERR::Okay;
    }
 
-   pf::SwitchContext context(Self);
+   kt::SwitchContext context(Self);
 
    if (Self->Path.empty()) {
       Self->prvIcon = "icons:filetypes/empty";
@@ -1984,13 +2031,17 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
 
    FileInfo info;
    bool link = false;
-   if (get_file_info(Self->Path, &info, sizeof(info)) IS ERR::Okay) {
+   if (GetFileInfo(Self->Path, &info, sizeof(info)) IS ERR::Okay) {
       if ((info.Flags & RDF::LINK) != RDF::NIL) link = true;
 
       if ((info.Flags & RDF::VIRTUAL) != RDF::NIL) { // Virtual drives can specify custom icons, even for folders
-         Self->prvIcon = info.Tags[0]["Icon"];
-         *Value = Self->prvIcon.c_str();
-         if (*Value) return ERR::Okay;
+         if (auto tags = info.getTags(); tags) {
+            if (auto icon = tags->find("Icon"); icon != tags->end()) {
+               Self->prvIcon = icon->second;
+               *Value = Self->prvIcon.c_str();
+               if (*Value) return ERR::Okay;
+            }
+         }
       }
 
       if ((info.Flags & RDF::FOLDER) != RDF::NIL) {
@@ -2026,12 +2077,12 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       if (IdentifyFile(Self->Path.c_str(), CLASSID::NIL, &class_id, &subclass_id) IS ERR::Okay) {
          if (glClassDB.contains(subclass_id)) {
             auto &record = glClassDB[subclass_id];
-            if (!record.Icon.empty()) icon = record.Icon;
+            if (not record.Icon.empty()) icon = record.Icon;
          }
 
          if (icon.empty()) {
             auto &record = glClassDB[class_id];
-            if (!record.Icon.empty()) icon = record.Icon;
+            if (not record.Icon.empty()) icon = record.Icon;
          }
       }
    }
@@ -2043,7 +2094,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       return ERR::Okay;
    }
 
-   if (!pf::startswith("icons:", icon)) Self->prvIcon = "icons:" + icon;
+   if (not kt::startswith("icons:", icon)) Self->prvIcon = "icons:" + icon;
    else Self->prvIcon = icon;
 
    *Value = Self->prvIcon.c_str();
@@ -2063,10 +2114,10 @@ folder containing the link will need to be taken into consideration when calcula
 static ERR GET_Link(extFile *Self, STRING *Value)
 {
 #ifdef __unix__
-   pf::Log log;
+   kt::Log log;
    std::string path;
 
-   if (!Self->prvLink.empty()) { // The link has already been read previously, just re-use it
+   if (not Self->prvLink.empty()) { // The link has already been read previously, just re-use it
       *Value = Self->prvLink.data();
       return ERR::Okay;
    }
@@ -2124,7 +2175,7 @@ Access to `std*` handles is achieved by using the path strings `std:in`, `std:ou
 
 static ERR GET_Path(extFile *Self, CSTRING *Value)
 {
-   if (!Self->Path.empty()) {
+   if (not Self->Path.empty()) {
       *Value = Self->Path.c_str();
       return ERR::Okay;
    }
@@ -2136,7 +2187,7 @@ static ERR GET_Path(extFile *Self, CSTRING *Value)
 
 static ERR SET_Path(extFile *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->initialised()) return log.warning(ERR::Immutable);
 
@@ -2153,7 +2204,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
 
    if ((Value) and (*Value)) {
       std::string_view val;
-      if (pf::startswith("string:", Value)) {
+      if (kt::startswith("string:", Value)) {
          int len;
          for (len=0; (Value[len]) and (Value[len] != '|'); len++);
          Self->Path.assign(Value, 0, len);
@@ -2200,7 +2251,7 @@ Lookup: PERMIT
 
 static ERR GET_Permissions(extFile *Self, PERMIT *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    *Value = PERMIT::NIL;
 
@@ -2250,7 +2301,7 @@ static ERR GET_Permissions(extFile *Self, PERMIT *Value)
 
 static ERR SET_Permissions(extFile *Self, PERMIT Value)
 {
-   if (!Self->initialised()) {
+   if (not Self->initialised()) {
       Self->Permissions = Value;
       return ERR::Okay;
    }
@@ -2261,7 +2312,7 @@ static ERR SET_Permissions(extFile *Self, PERMIT Value)
 
 static ERR set_permissions(extFile *Self, PERMIT Permissions)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 #ifdef __unix__
 
    if (Self->Handle != -1) {
@@ -2401,7 +2452,7 @@ position being set to the end of the file.
 
 static ERR GET_Size(extFile *Self, int64_t *Size)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & FL::FOLDER) != FL::NIL) {
       *Size = 0;
@@ -2409,7 +2460,7 @@ static ERR GET_Size(extFile *Self, int64_t *Size)
    }
    else if (Self->Handle != -1) {
       struct stat64 stats;
-      if (!fstat64(Self->Handle, &stats)) {
+      if (not fstat64(Self->Handle, &stats)) {
          *Size = stats.st_size;
          return ERR::Okay;
       }
@@ -2423,7 +2474,7 @@ static ERR GET_Size(extFile *Self, int64_t *Size)
    CSTRING path;
    if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
       struct stat64 stats;
-      if (!stat64(path, &stats)) {
+      if (not stat64(path, &stats)) {
          *Size = stats.st_size;
          log.trace("The file size is %" PF64, (long long)*Size);
          return ERR::Okay;
@@ -2435,7 +2486,7 @@ static ERR GET_Size(extFile *Self, int64_t *Size)
 
 static ERR SET_Size(extFile *Self, int64_t Size)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Size IS Self->Size) return ERR::Okay;
    if (Size < 0) return log.warning(ERR::OutOfRange);
@@ -2448,7 +2499,7 @@ static ERR SET_Size(extFile *Self, int64_t Size)
       return ERR::Okay;
    }
 
-   if (!Self->initialised()) {
+   if (not Self->initialised()) {
       Self->Size = Size;
       if (Self->Position > Self->Size) acSeekStart(Self, Size);
       return ERR::Okay;
@@ -2475,9 +2526,9 @@ static ERR SET_Size(extFile *Self, int64_t Size)
 
    #ifdef __ANDROID__
    #warning Support for ftruncate64() required for Android build.
-   if (!ftruncate(Self->Handle, Size)) {
+   if (not ftruncate(Self->Handle, Size)) {
    #else
-   if (!ftruncate64(Self->Handle, Size)) {
+   if (not ftruncate64(Self->Handle, Size)) {
    #endif
       Self->Size = Size;
       if (Self->Position > Self->Size) acSeekStart(Self, Size);
@@ -2556,13 +2607,13 @@ for comparison to the time stamps of other files.  For a parsed time structure, 
 
 static ERR GET_TimeStamp(extFile *Self, int64_t *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    *Value = 0;
 
    if (Self->Handle != -1) {
       struct stat64 stats;
-      if (!fstat64(Self->Handle, &stats)) {
+      if (not fstat64(Self->Handle, &stats)) {
          // Timestamp has to match that produced by fs_getinfo()
 
          if (auto local = localtime(&stats.st_mtime)) {
@@ -2586,7 +2637,7 @@ static ERR GET_TimeStamp(extFile *Self, int64_t *Value)
       CSTRING path;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
          struct stat64 stats;
-         if (!stat64(path, &stats)) {
+         if (not stat64(path, &stats)) {
             if (auto local = localtime(&stats.st_mtime)) {
                DateTime datetime = {
                   .Year   = int16_t(1900 + local->tm_year),
@@ -2639,10 +2690,10 @@ static ERR GET_User(extFile *Self, int *Value)
 static ERR SET_User(extFile *Self, int Value)
 {
 #ifdef __unix__
-   pf::Log log;
+   kt::Log log;
    if (Self->initialised()) {
       log.msg("Changing user to #%d", Value);
-      if (!fchown(Self->Handle, Value, -1)) {
+      if (not fchown(Self->Handle, Value, -1)) {
          return ERR::Okay;
       }
       else return log.warning(convert_errno(errno, ERR::SystemCall));

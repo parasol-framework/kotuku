@@ -76,7 +76,7 @@ static std::atomic<uint32_t> glTagID = 1;
 [[nodiscard]] static bool attribute_is_xml_base(const XMLAttrib &Attribute)
 {
    if (Attribute.Name.empty()) return false;
-   return pf::iequals(Attribute.Name, "xml:base");
+   return kt::iequals(Attribute.Name, "xml:base");
 }
 
 [[nodiscard]] static std::string document_base(extXML *Document)
@@ -190,7 +190,7 @@ NullArgs
 
 ERR XValueToNumber(XPathValue *Value, double *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Value) or (not Result)) return log.warning(ERR::NullArgs);
    if (Value->Type IS XPVT::NIL) return log.warning(ERR::NoData);
@@ -221,9 +221,9 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR XValueNodes(XPathValue *Value, pf::vector<XTag *> *Result)
+ERR XValueNodes(XPathValue *Value, kt::vector<XTag *> *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    if ((not Value) or (not Result)) return log.warning(ERR::NullArgs);
    if (Value->Type IS XPVT::NIL) return log.warning(ERR::NoData);
    if (Value->Type != XPVT::NodeSet) return log.warning(ERR::Mismatch);
@@ -252,7 +252,7 @@ NullArgs
 
 ERR XValueToString(const XPathValue *Value, std::string *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Value) or (not Result)) return log.warning(ERR::NullArgs);
    if (Value->Type IS XPVT::NIL) return log.warning(ERR::NoData);

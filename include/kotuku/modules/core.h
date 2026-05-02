@@ -637,7 +637,8 @@ DEFINE_ENUM_FLAG_OPERATORS(LAYOUT)
 enum class SCF : uint32_t {
    NIL = 0,
    EXIT_ON_ERROR = 0x00000001,
-   LOG_ALL = 0x00000002,
+   PROCESS_DOC = 0x00000002,
+   LOG_ALL = 0x00000004,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(SCF)
@@ -1355,6 +1356,15 @@ struct DateTime {
    int8_t  Minute;     // Minute 0 to 59
    int8_t  Second;     // Second 0 to 59
    int8_t  TimeZone;   // TimeZone -13 to +13
+   inline void clear() {
+      Year      = 0;
+      Month     = 0;
+      Day       = 0;
+      Hour      = 0;
+      Minute    = 0;
+      Second    = 0;
+      TimeZone  = 0;
+   }
 };
 
 struct HSV {
@@ -1530,56 +1540,56 @@ struct Edges {
    int Bottom;  // Bottom coordinate
 };
 
-#define AHASH_ACTIVATE 0xdbaf4876
-#define AHASH_CLEAR 0x0f3b6d8c
-#define AHASH_FREEWARNING 0xb903ddbd
-#define AHASH_COPYDATA 0x47b0d1fa
-#define AHASH_DATAFEED 0x05e6d293
-#define AHASH_DEACTIVATE 0x1ee323ff
-#define AHASH_DRAW 0x7c95d753
-#define AHASH_FLUSH 0x0f71fd67
-#define AHASH_FOCUS 0x0f735645
-#define AHASH_FREE 0x7c96f087
-#define AHASH_GETKEY 0xff87790e
-#define AHASH_DRAGDROP 0xf69e8a58
-#define AHASH_HIDE 0x7c97e2df
-#define AHASH_INIT 0x7c988539
-#define AHASH_LOCK 0x7c9a2dce
-#define AHASH_LOSTFOCUS 0x319b8e67
-#define AHASH_MOVE 0x7c9abc9c
-#define AHASH_MOVETOBACK 0xcbdb3170
-#define AHASH_MOVETOFRONT 0x479347c8
-#define AHASH_NEWCHILD 0x7b86ebf3
-#define AHASH_NEWOWNER 0x7c68601a
-#define AHASH_NEWOBJECT 0x07f62dc6
-#define AHASH_REDO 0x7c9d4daf
-#define AHASH_QUERY 0x103db63b
-#define AHASH_READ 0x7c9d4d41
-#define AHASH_RENAME 0x192cc41d
-#define AHASH_RESET 0x10474288
-#define AHASH_RESIZE 0x192fa5b7
-#define AHASH_SAVEIMAGE 0x398f7c57
-#define AHASH_SAVETOOBJECT 0x2878872e
-#define AHASH_SEEK 0x7c9dda2d
-#define AHASH_SETKEY 0x1b85609a
-#define AHASH_SHOW 0x7c9de846
-#define AHASH_TIMER 0x106d8b86
-#define AHASH_UNLOCK 0x20ce3c11
-#define AHASH_NEXT 0x7c9b1ec4
-#define AHASH_PREV 0x7c9c6c62
-#define AHASH_WRITE 0x10a8b550
-#define AHASH_SETFIELD 0x12075f55
-#define AHASH_CLIPBOARD 0x4912a9b5
-#define AHASH_REFRESH 0x3e3db654
-#define AHASH_DISABLE 0x12c4e4b9
-#define AHASH_ENABLE 0xfb7573ac
-#define AHASH_REDIMENSION 0x08a67fa2
-#define AHASH_MOVETOPOINT 0x48467e29
-#define AHASH_SORT 0x7c9e066d
-#define AHASH_SAVESETTINGS 0x475f7165
-#define AHASH_SIGNAL 0x1bc6ade3
-#define AHASH_NEWPLACEMENT 0x9b0a0468
-#define AHASH_UNDO 0x7c9f191b
+#define AHASH_ACTIVATE 0x725d52c7
+#define AHASH_CLEAR 0xce7ed463
+#define AHASH_FREEWARNING 0x09a5a3d1
+#define AHASH_COPYDATA 0xa7a6c30c
+#define AHASH_DATAFEED 0xa6ab005e
+#define AHASH_DEACTIVATE 0x0c6900b2
+#define AHASH_DRAW 0x6046e885
+#define AHASH_FLUSH 0x05b456cd
+#define AHASH_FOCUS 0x269d690f
+#define AHASH_FREE 0x60ce1d40
+#define AHASH_GETKEY 0x603bde11
+#define AHASH_DRAGDROP 0x59fb1b5c
+#define AHASH_HIDE 0xe3b0779f
+#define AHASH_INIT 0x680cc731
+#define AHASH_LOCK 0x9f36c619
+#define AHASH_LOSTFOCUS 0xb0bab76d
+#define AHASH_MOVE 0x8ce6dbac
+#define AHASH_MOVETOBACK 0x343f4edb
+#define AHASH_MOVETOFRONT 0x3eb5005d
+#define AHASH_NEWCHILD 0x8dae9f1d
+#define AHASH_NEWOWNER 0x62155f0c
+#define AHASH_NEWOBJECT 0xa96da206
+#define AHASH_REDO 0x8e9a3422
+#define AHASH_QUERY 0x61b0e0a8
+#define AHASH_READ 0x4a3b66b2
+#define AHASH_RENAME 0xea82e4d4
+#define AHASH_RESET 0x9b741eeb
+#define AHASH_RESIZE 0x2e3cab45
+#define AHASH_SAVEIMAGE 0x1a454349
+#define AHASH_SAVETOOBJECT 0xdaa9c534
+#define AHASH_SEEK 0x87e791f2
+#define AHASH_SETKEY 0x12c2d958
+#define AHASH_SHOW 0x636562ba
+#define AHASH_TIMER 0x39967fa6
+#define AHASH_UNLOCK 0xefbb65e2
+#define AHASH_NEXT 0x8f14e8bb
+#define AHASH_PREV 0x4ee18a94
+#define AHASH_WRITE 0x7a8afad8
+#define AHASH_SETFIELD 0xb4e04798
+#define AHASH_CLIPBOARD 0xb5bbe3e7
+#define AHASH_REFRESH 0x8dbbc14f
+#define AHASH_DISABLE 0x79a1d3cd
+#define AHASH_ENABLE 0x375b100a
+#define AHASH_REDIMENSION 0xab2e92ef
+#define AHASH_MOVETOPOINT 0x4906bfe1
+#define AHASH_SORT 0xfb3c3eb5
+#define AHASH_SAVESETTINGS 0x1f35f58b
+#define AHASH_SIGNAL 0xec1cd0b6
+#define AHASH_NEWPLACEMENT 0x25d84fc8
+#define AHASH_UNDO 0x45e5725e
 
 
 typedef AC ACTIONID;
@@ -1616,11 +1626,7 @@ __export struct ModHeader ModHeader;
 #define MOD_NAME nullptr
 #endif
 
-namespace pf {
-
-template <class T> T roundup(T Num, int Alignment) {
-   return (Num + Alignment) - (Num % Alignment); // Round up to Alignment value, e.g. (14,8) = 16
-}
+namespace kt {
 
 #ifdef PRINTF64I
   #define PF64 "I64d"
@@ -1645,40 +1651,16 @@ template <class T> T roundup(T Num, int Alignment) {
  #define DEBUG_BREAK
 #endif
 
-// Fast float-2-int conversion, with rounding to the nearest integer (F2I)
-
-#if defined(__GNUC__) && defined(__x86__)
-
-constexpr int F2I(double val) noexcept {
-   if (std::is_constant_evaluated()) return (int)std::round(val);
-   // This will round if the CPU is kept in its default rounding mode
-   int ret;
-   asm ("fistpl %0" : "=m" (ret) : "t" (val) : "st");
-   return(ret);
+template <class T>
+constexpr T roundup(T Num, T Alignment) {
+   return ((Num + Alignment - 1) / Alignment) * Alignment;
 }
 
-#else
-
-inline int F2I(double val) {
-   double t = val + 6755399441055744.0;
-   return *((int *)(&t));
+[[deprecated]] inline int F2I(double val) noexcept {
+   return std::lrint(val);
 }
-
-#endif
 
 } // namespace
-
-// Structures to pass to OpenCore()
-
-struct OpenTag {
-   TOI Tag;
-   union {
-      int Int;
-      int64_t Int64;
-      APTR Pointer;
-      CSTRING String;
-   } Value;
-};
 
 #ifdef _LP64
 #define FD_PTR64 FD_POINTER
@@ -1686,11 +1668,16 @@ struct OpenTag {
 #define FD_PTR64 0
 #endif
 
-#define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
+template <class T>
+inline void nextutf8(T *&Str) noexcept {
+   if (*Str) {
+      for (++Str; (((unsigned char)*Str) & 0xc0) IS 0x80; ++Str);
+   }
+}
 
 //********************************************************************************************************************
 
-namespace pf {
+namespace kt {
 
 class FloatRect {
    public:
@@ -1706,6 +1693,16 @@ class FloatRect {
 
 }
 
+
+struct OpenTag {
+   TOI Tag;    // Tag identifier
+   union {
+      int Int;
+      int64_t Int64;
+      APTR Pointer;
+      CSTRING String;
+   } Value;
+};
 
 struct OpenInfo {
    std::string Name;                  // Program name
@@ -1926,14 +1923,36 @@ struct FileInfo {
    int64_t Size;              // The size of the file's content.
    int64_t TimeStamp;         // 64-bit time stamp - usable only for comparison (e.g. sorting).
    struct FileInfo * Next;    // Next structure in the list, or NULL.
-   STRING  Name;              // The name of the file.
+   std::string Name;          // The name of the file.
    RDF     Flags;             // Additional flags to describe the file.
    PERMIT  Permissions;       // Standard permission flags.
    int     UserID;            // User  ID (Unix systems only).
    int     GroupID;           // Group ID (Unix systems only).
    struct DateTime Created;   // The date/time of the file's creation.
    struct DateTime Modified;  // The date/time of the last file modification.
-    ankerl::unordered_dense::map<std::string, std::string> *Tags;
+   struct fi_hash {
+      using is_transparent = void;
+      [[nodiscard]] size_t operator()(std::string_view Value) const noexcept { return std::hash<std::string_view>{}(Value); }
+   };
+
+   struct fi_equal {
+      using is_transparent = void;
+      [[nodiscard]] bool operator()(const std::string_view &Lhs, const std::string_view &Rhs) const noexcept { return Lhs IS Rhs; }
+   };
+
+   using TagMap = ankerl::unordered_dense::map<std::string, std::string, fi_hash, fi_equal>;
+
+   TagMap *Tags;
+
+   inline void clearTags() { if (Tags) { delete Tags; Tags = nullptr; } }
+
+   inline TagMap * getTags() {
+      if (not Tags) {
+         Tags = new (std::nothrow) TagMap();
+         if (not Tags) return nullptr;
+      }
+      return Tags;
+   }
 };
 
 struct DirInfo {
@@ -1966,9 +1985,9 @@ struct FileFeedback {
 
 struct Field {
    MAXINT   Arg;                                                             // An option to complement the field type.  Can be a pointer or an integer value
-   ERR (*GetValue)(APTR, APTR);                                              // A virtual function that will retrieve the value for this field.
-   APTR     SetValue;                                                        // A virtual function that will set the value for this field.
-   ERR (*WriteValue)(OBJECTPTR, struct Field *, int, const void *, int);     // An internal function for writing to this field.
+   ERR (*GetValue)(APTR, APTR);                                              // A virtual function that will retrieve the value for this field
+   APTR     SetValue;                                                        // A virtual function that will set the value for this field
+   ERR (*WriteValue)(OBJECTPTR, struct Field *, int, const void *, int);     // An internal function for writing to this field
    CSTRING  Name;                                                            // The English name for the field, e.g. Width
    uint32_t FieldID;                                                         // 32-bit hash from fieldhash(). Represented by FID constants, e.g. FID_Width
    uint16_t Offset;                                                          // Field offset within the object
@@ -1976,6 +1995,18 @@ struct Field {
    uint32_t Flags;                                                           // Special flags that describe the field
    inline bool readable() { return (Flags & FD_READ) ? true : false; }
    inline bool writeable() { return (Flags & (FD_WRITE|FD_INIT)) ? true : false; }
+};
+
+struct ClassRecord {
+   CLASSID ClassID;          // Unique class identifier (hash of Name)
+   CLASSID ParentID;         // Parent class ID if this is a sub-class
+   CCF     Category;         // Assigned category
+   std::string Name;         // Name of the class
+   std::string Path;         // Path to the class file
+   std::string Extension;    // Wildcards for matching by file extension, e.g. jpeg|jpg
+   std::string Header;       // File identification instruction, e.g. [0:$89504e470d0a1a0a]
+   std::string Icon;         // Icon reference in group/name format
+   std::string Description;  // File description
 };
 
 struct ScriptArg { // For use with sc::Exec
@@ -2031,7 +2062,7 @@ struct CoreBase {
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
    ERR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
    const struct SystemState * (*_GetSystemState)(void);
-   ERR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> *List);
+   ERR (*_ListChildren)(OBJECTID Object, kt::vector<ChildEntry> *List);
    ERR (*_RegisterFD)(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
    ERR (*_ResolvePath)(const std::string_view & Path, RSF Flags, std::string *Result);
    ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo *MemInfo, int Size);
@@ -2085,7 +2116,7 @@ struct CoreBase {
    ERR (*_LockObject)(OBJECTPTR Object, int MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
    ERR (*_AsyncAction)(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback);
-   ERR (*_AddInfoTag)(struct FileInfo *Info, CSTRING Name, CSTRING Value);
+   ERR (*_AddInfoTag)(struct FileInfo *Info, const std::string_view & Name, const std::string_view & Value);
    void (*_SetDefaultPermissions)(int User, int Group, PERMIT Permissions);
    void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
    ERR (*_ReadInfoTag)(struct FileInfo *Info, CSTRING Name, CSTRING *Value);
@@ -2100,6 +2131,8 @@ struct CoreBase {
    ERR (*_AsyncCancel)(OBJECTID *Objects, int Size);
    int (*_AsyncPending)(OBJECTID Object);
    ERR (*_AsyncWait)(OBJECTID *Objects, int Size, int TimeOut);
+   ERR (*_GetFileInfo)(const std::string_view & Path, struct FileInfo *Info, int InfoSize);
+   ERR (*_ClassDatabase)(struct ClassRecord * **Classes);
 #endif // KOTUKU_STATIC
 };
 
@@ -2129,7 +2162,7 @@ inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
 inline ERR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
-inline ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List) { return CoreBase->_ListChildren(Object,List); }
+inline ERR ListChildren(OBJECTID Object, kt::vector<ChildEntry> *List) { return CoreBase->_ListChildren(Object,List); }
 inline ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
 inline ERR ResolvePath(const std::string_view & Path, RSF Flags, std::string *Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, int Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
@@ -2183,7 +2216,7 @@ inline ERR FuncError(CSTRING Header, ERR Error) { return CoreBase->_FuncError(He
 inline ERR LockObject(OBJECTPTR Object, int MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
 inline ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback) { return CoreBase->_AsyncAction(Action,Object,Args,Callback); }
-inline ERR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
+inline ERR AddInfoTag(struct FileInfo *Info, const std::string_view & Name, const std::string_view & Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline void SetDefaultPermissions(int User, int Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
 inline ERR ReadInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING *Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
@@ -2198,6 +2231,8 @@ inline ERR WakeThread(int Thread, int Stop) { return CoreBase->_WakeThread(Threa
 inline ERR AsyncCancel(OBJECTID *Objects, int Size) { return CoreBase->_AsyncCancel(Objects,Size); }
 inline int AsyncPending(OBJECTID Object) { return CoreBase->_AsyncPending(Object); }
 inline ERR AsyncWait(OBJECTID *Objects, int Size, int TimeOut) { return CoreBase->_AsyncWait(Objects,Size,TimeOut); }
+inline ERR GetFileInfo(const std::string_view & Path, struct FileInfo *Info, int InfoSize) { return CoreBase->_GetFileInfo(Path,Info,InfoSize); }
+inline ERR ClassDatabase(struct ClassRecord * **Classes) { return CoreBase->_ClassDatabase(Classes); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
@@ -2222,7 +2257,7 @@ extern "C" CLASSID GetClassID(OBJECTID Object);
 extern "C" OBJECTID GetOwnerID(OBJECTID Object);
 extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState(void);
-extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List);
+extern "C" ERR ListChildren(OBJECTID Object, kt::vector<ChildEntry> *List);
 extern "C" ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 extern "C" ERR ResolvePath(const std::string_view & Path, RSF Flags, std::string *Result);
 extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, int Size);
@@ -2276,7 +2311,7 @@ extern "C" ERR FuncError(CSTRING Header, ERR Error);
 extern "C" ERR LockObject(OBJECTPTR Object, int MilliSeconds);
 extern "C" void ReleaseObject(OBJECTPTR Object);
 extern "C" ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback);
-extern "C" ERR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value);
+extern "C" ERR AddInfoTag(struct FileInfo *Info, const std::string_view & Name, const std::string_view & Value);
 extern "C" void SetDefaultPermissions(int User, int Group, PERMIT Permissions);
 extern "C" void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args);
 extern "C" ERR ReadInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING *Value);
@@ -2291,6 +2326,8 @@ extern "C" ERR WakeThread(int Thread, int Stop);
 extern "C" ERR AsyncCancel(OBJECTID *Objects, int Size);
 extern "C" int AsyncPending(OBJECTID Object);
 extern "C" ERR AsyncWait(OBJECTID *Objects, int Size, int TimeOut);
+extern "C" ERR GetFileInfo(const std::string_view & Path, struct FileInfo *Info, int InfoSize);
+extern "C" ERR ClassDatabase(struct ClassRecord * **Classes);
 #endif // KOTUKU_STATIC
 
 
@@ -2363,7 +2400,7 @@ typedef KEYVALUE ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
 
-namespace pf {
+namespace kt {
 
 inline void copymem(const void *Src, APTR Dest, std::size_t Length) {
    memmove(Dest, Src, Length);
@@ -2454,7 +2491,7 @@ class objMetaClass : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::METACLASS;
    static constexpr CSTRING CLASS_NAME = "MetaClass";
 
-   using create = pf::Create<objMetaClass>;
+   using create = kt::Create<objMetaClass>;
 
    double  ClassVersion;                // The version number of the class.
    const struct FieldArray * Fields;    // Points to a FieldArray that describes the class' object structure.
@@ -2499,7 +2536,7 @@ class objMetaClass : public Object {
 
    inline ERR setFields(const struct FieldArray * Value, int Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
@@ -2565,20 +2602,20 @@ class objMetaClass : public Object {
 
    inline ERR setMethods(const APTR Value, int Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
    inline ERR setActions(APTR Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08000400, Value, 1);
    }
 
    template <class T> inline ERR setName(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08810500, to_cstring(Value), 1);
    }
 
@@ -2597,7 +2634,7 @@ class objStorageDevice : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::STORAGEDEVICE;
    static constexpr CSTRING CLASS_NAME = "StorageDevice";
 
-   using create = pf::Create<objStorageDevice>;
+   using create = kt::Create<objStorageDevice>;
 
    DEVICE  DeviceFlags;   // These read-only flags identify the type of device and its features.
    int64_t DeviceSize;    // The storage size of the device in bytes, without accounting for the file system format.
@@ -2612,7 +2649,7 @@ class objStorageDevice : public Object {
 
    template <class T> inline ERR setVolume(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
@@ -2634,7 +2671,7 @@ struct SetDate { int Year; int Month; int Day; int Hour; int Minute; int Second;
 struct ReadLine { STRING Result; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct BufferContent { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Next { objFile * File; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Watch { FUNCTION * Callback; int64_t Custom; MFF Flags; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Watch { FUNCTION * Callback; MFF Flags; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -2643,7 +2680,7 @@ class objFile : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::FILE;
    static constexpr CSTRING CLASS_NAME = "File";
 
-   using create = pf::Create<objFile>;
+   using create = kt::Create<objFile>;
 
    int64_t  Position;   // The current read/write byte position in a file.
    FL       Flags;      // File flags and options.
@@ -2760,8 +2797,8 @@ class objFile : public Object {
       if (File) *File = args.File;
       return(error);
    }
-   inline ERR watch(FUNCTION Callback, int64_t Custom, MFF Flags) noexcept {
-      struct fl::Watch args = { &Callback, Custom, Flags };
+   inline ERR watch(FUNCTION Callback, MFF Flags) noexcept {
+      struct fl::Watch args = { &Callback, Flags };
       return(Action(AC(-10), this, &args));
    }
 
@@ -2769,13 +2806,13 @@ class objFile : public Object {
 
    inline ERR setPosition(const int64_t Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_INT64, &Value, 1);
    }
 
    inline ERR setFlags(const FL Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -2792,49 +2829,49 @@ class objFile : public Object {
 
    inline ERR setDate(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
    inline ERR setCreated(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERR setPermissions(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setSize(const int64_t Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_INT64, &Value, 1);
    }
 
    template <class T> inline ERR setLink(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setUser(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setGroup(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -2864,7 +2901,7 @@ class objConfig : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::CONFIG;
    static constexpr CSTRING CLASS_NAME = "Config";
 
-   using create = pf::Create<objConfig>;
+   using create = kt::Create<objConfig>;
 
    STRING Path;         // Set this field to the location of the source configuration file.
    STRING KeyFilter;    // Set this field to enable key filtering.
@@ -2985,19 +3022,19 @@ class objConfig : public Object {
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setKeyFilter(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setGroupFilter(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -3028,7 +3065,7 @@ class objScript : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::SCRIPT;
    static constexpr CSTRING CLASS_NAME = "Script";
 
-   using create = pf::Create<objScript>;
+   using create = kt::Create<objScript>;
 
    OBJECTID TargetID;  // Reference to the default container that new script objects will be initialised to.
    SCF      Flags;     // Optional flags.
@@ -3037,7 +3074,7 @@ class objScript : public Object {
    int      LineOffset; // For debugging purposes, this value is added to any message referencing a line number.
 
 #ifdef PRV_SCRIPT
-   int64_t    ProcedureID;          // For callbacks
+   int64_t  ProcedureID;          // For callbacks
    KEYVALUE Vars; // Global parameters
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
@@ -3121,49 +3158,49 @@ class objScript : public Object {
 
    template <class T> inline ERR setCacheFile(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setErrorMessage(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setWorkingPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setProcedure(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setName(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08810300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERR setResults(STRING * Value, int Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[8];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08801300, Value, Elements);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -3218,7 +3255,7 @@ class objTask : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::TASK;
    static constexpr CSTRING CLASS_NAME = "Task";
 
-   using create = pf::Create<objTask>;
+   using create = kt::Create<objTask>;
 
    double TimeOut;    // Limits the amount of time to wait for a launched process to return.
    TSF    Flags;      // Optional flags.
@@ -3302,7 +3339,7 @@ class objTask : public Object {
 
    inline ERR setReturnCode(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -3314,49 +3351,49 @@ class objTask : public Object {
 
    inline ERR setAffinityMask(const int64_t Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_INT64, &Value, 1);
    }
 
    template <class T> inline ERR setArgs(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
-   inline ERR setParameters(pf::vector<std::string> *Value) noexcept {
+   inline ERR setParameters(kt::vector<std::string> *Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08805300, Value, int(Value->size()));
    }
 
    inline ERR setErrorCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setExitCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setInputCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[1];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setLaunchPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[2];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setLocation(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -3368,19 +3405,19 @@ class objTask : public Object {
 
    inline ERR setOutputCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setPriority(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -3402,7 +3439,7 @@ class objThread : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::THREAD;
    static constexpr CSTRING CLASS_NAME = "Thread";
 
-   using create = pf::Create<objThread>;
+   using create = kt::Create<objThread>;
 
    APTR Data;       // Pointer to initialisation data for the thread.
    int  DataSize;   // The size of the buffer referenced in the Data field.
@@ -3435,7 +3472,7 @@ class objThread : public Object {
 
    inline ERR setRoutine(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -3458,7 +3495,7 @@ class objModule : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::MODULE;
    static constexpr CSTRING CLASS_NAME = "Module";
 
-   using create = pf::Create<objModule>;
+   using create = kt::Create<objModule>;
 
    const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
    APTR ModBase;                            // The Module's function base (jump table) must be read from this field.
@@ -3467,7 +3504,7 @@ class objModule : public Object {
    MOF  Flags;                              // Optional flags.
    public:
    static ERR load(std::string Name, OBJECTPTR *Module = nullptr, APTR Functions = nullptr) {
-      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
+      if (auto module = objModule::create::global(kt::FieldValue(FID_Name, Name.c_str()))) {
          #ifdef KOTUKU_STATIC
             if (Module) *Module = module;
             if (Functions) ((APTR *)Functions)[0] = nullptr;
@@ -3511,7 +3548,7 @@ class objModule : public Object {
 
    inline ERR setHeader(struct ModHeader * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[1];
+      auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x08000510, Value, 1);
    }
 
@@ -3523,7 +3560,7 @@ class objModule : public Object {
 
    template <class T> inline ERR setName(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
@@ -3545,7 +3582,7 @@ class objTime : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::TIME;
    static constexpr CSTRING CLASS_NAME = "Time";
 
-   using create = pf::Create<objTime>;
+   using create = kt::Create<objTime>;
 
    int64_t SystemTime;    // Represents the system time when the time object was last queried.
    int     Year;          // Year (-ve for BC, +ve for AD).
@@ -3655,7 +3692,7 @@ class objCompression : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::COMPRESSION;
    static constexpr CSTRING CLASS_NAME = "Compression";
 
-   using create = pf::Create<objCompression>;
+   using create = kt::Create<objCompression>;
 
    int64_t  TotalOutput;   // The total number of bytes that have been output during the compression or decompression of streamed data.
    OBJECTID OutputID;      // Resulting messages will be sent to the object referred to in this field.
@@ -3741,7 +3778,7 @@ class objCompression : public Object {
 
    inline ERR setCompressionLevel(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -3762,31 +3799,31 @@ class objCompression : public Object {
 
    inline ERR setWindowBits(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setArchiveName(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setPassword(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[8];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -3801,7 +3838,7 @@ class objCompressedStream : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::COMPRESSEDSTREAM;
    static constexpr CSTRING CLASS_NAME = "CompressedStream";
 
-   using create = pf::Create<objCompressedStream>;
+   using create = kt::Create<objCompressedStream>;
 
    int64_t   TotalOutput;  // A live counter of total bytes that have been output by the stream.
    OBJECTPTR Input;        // An input object that will supply data for decompression.
@@ -3849,7 +3886,7 @@ class objCompressedStream : public Object {
 #include <pthread.h>
 #endif
 
-namespace pf {
+namespace kt {
 
 #ifdef __system__
    struct ActionMessage {
@@ -3925,14 +3962,11 @@ struct evHotplug {
       int ProductID;    // USB product or device ID
       int DeviceID;
    };
-   char  ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
-   char  Group[32];      // Group name in the config file
-   char  Class[32];      // Class identifier (USB)
-   union {
-      char Product[40];  // Name of product or the hardware device
-      char Device[40];
-   };
-   char Vendor[40];      // Name of vendor
+   char ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
+   char Group[32];      // Group name in the config file
+   char Class[32];      // Class identifier (USB)
+   char Product[40];    // Name of product or the hardware device
+   char Vendor[40];     // Name of vendor
 };
 
 // Speed efficient way of setting a string field that is managed with AllocMemory().

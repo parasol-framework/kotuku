@@ -91,7 +91,7 @@ void MsgFocusState(OBJECTID SurfaceID, int State)
 {
    //log.msg("Windows focus state for surface #%d: %d", SurfaceID, State);
 
-   pf::ScopedObjectLock surface(SurfaceID);
+   kt::ScopedObjectLock surface(SurfaceID);
    if (surface.granted()) {
       if (State) acFocus(*surface);
       else {
@@ -148,7 +148,7 @@ void MsgButtonPress(int button, int State)
 void MsgResizedWindow(OBJECTID SurfaceID, int WinX, int WinY, int WinWidth, int WinHeight,
    int ClientX, int ClientY, int ClientWidth, int ClientHeight)
 {
-   pf::Log log("ResizedWindow");
+   kt::Log log("ResizedWindow");
    //log.branch("#%d, Window: %dx%d,%dx%d, Client: %dx%d,%dx%d", SurfaceID, WinX, WinY, WinWidth, WinHeight, ClientX, ClientY, ClientWidth, ClientHeight);
 
    if ((!SurfaceID) or (WinWidth < 1) or (WinHeight < 1)) return;
@@ -185,7 +185,7 @@ void MsgResizedWindow(OBJECTID SurfaceID, int WinX, int WinY, int WinWidth, int 
 void MsgSetFocus(OBJECTID SurfaceID)
 {
    if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
-      pf::Log log;
+      kt::Log log;
       if ((!surface->hasFocus()) and (surface->visible())) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          QueueAction(AC::Focus, SurfaceID);
@@ -241,7 +241,7 @@ void CheckWindowSize(OBJECTID SurfaceID, int &Width, int &Height, int CurrentWid
 
 void RepaintWindow(OBJECTID SurfaceID, int X, int Y, int Width, int Height)
 {
-   pf::ScopedObjectLock<objSurface> surface(SurfaceID);
+   kt::ScopedObjectLock<objSurface> surface(SurfaceID);
 
    if (surface.granted()) {
       if ((Width) and (Height)) surface->exposeToDisplay(X, Y, Width, Height, EXF::CHILDREN);
@@ -260,7 +260,7 @@ void MsgTimer(void)
 
 void MsgWindowClose(OBJECTID SurfaceID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (SurfaceID) {
       const WinHook hook(SurfaceID, WH::CLOSE);
@@ -270,7 +270,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
          ERR result;
 
          if (func->isC()) {
-            pf::SwitchContext ctx(func->Context);
+            kt::SwitchContext ctx(func->Context);
             auto callback = (ERR (*)(OBJECTID SurfaceID, APTR))func->Routine;
             result = callback(SurfaceID, func->Meta);
          }
@@ -295,7 +295,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
 void MsgWindowDestroyed(OBJECTID SurfaceID)
 {
    if (SurfaceID) {
-      pf::Log log("WinMgr");
+      kt::Log log("WinMgr");
       log.branch("Freeing window surface #%d.", SurfaceID);
       FreeResource(SurfaceID);
    }
@@ -305,7 +305,7 @@ void MsgWindowDestroyed(OBJECTID SurfaceID)
 
 void MsgShowObject(OBJECTID ObjectID)
 {
-   pf::ScopedObjectLock obj(ObjectID);
+   kt::ScopedObjectLock obj(ObjectID);
    if (obj.granted()) {
       acShow(*obj);
       acMoveToFront(*obj);

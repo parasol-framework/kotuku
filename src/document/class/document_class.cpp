@@ -116,7 +116,7 @@ restart:
 
 static ERR feedback_view(objVectorViewport *View, FM Event)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
    auto width  = View->get<double>(FID_ViewWidth);
@@ -140,7 +140,7 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
       }
       else if (trigger.isC()) {
          auto routine = (void (*)(APTR, extDocument *, int, int, APTR))trigger.Routine;
-         pf::SwitchContext context(trigger.Context);
+         kt::SwitchContext context(trigger.Context);
          routine(trigger.Context, Self, Self->VPWidth, Self->VPHeight, trigger.Meta);
       }
    }
@@ -148,7 +148,7 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
    Self->UpdatingLayout = true;
 
 #ifndef RETAIN_LOG_LEVEL
-   pf::LogLevel level(2);
+   kt::LogLevel level(2);
 #endif
 
    layout_doc(Self);
@@ -167,13 +167,13 @@ Calling the Activate() action on a document object will forward Activate() calls
 
 static ERR DOCUMENT_Activate(extDocument *Self)
 {
-   pf::Log log;
+   kt::Log log;
    log.branch();
 
-   pf::vector<ChildEntry> list;
+   kt::vector<ChildEntry> list;
    if (ListChildren(Self->UID, &list) IS ERR::Okay) {
       for (unsigned i=0; i < list.size(); i++) {
-         pf::ScopedObjectLock obj(list[i].ObjectID);
+         kt::ScopedObjectLock obj(list[i].ObjectID);
          if (obj.granted()) acActivate(*obj);
       }
    }
@@ -264,7 +264,7 @@ NullArgs
 
 static ERR DOCUMENT_CallFunction(extDocument *Self, doc::CallFunction *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Function)) return log.warning(ERR::NullArgs);
 
@@ -290,7 +290,7 @@ document.
 
 static ERR DOCUMENT_Clear(extDocument *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
    unload_doc(Self);
@@ -308,7 +308,7 @@ Clipboard: Full support for clipboard activity is provided through this action.
 
 static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (Args->Mode IS CLIPMODE::NIL)) return log.warning(ERR::NullArgs);
 
@@ -393,7 +393,7 @@ Mismatch:    The data type that was passed to the action is not supported by the
 
 static ERR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Buffer)) return log.warning(ERR::NullArgs);
 
@@ -534,7 +534,7 @@ NullArgs
 
 static ERR DOCUMENT_FeedParser(extDocument *Self, doc::FeedParser *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->String)) return ERR::NullArgs;
 
@@ -575,7 +575,7 @@ Search: The index was not found.
 
 static ERR DOCUMENT_FindIndex(extDocument *Self, doc::FindIndex *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
 
@@ -702,7 +702,7 @@ Search
 
 static ERR DOCUMENT_HideIndex(extDocument *Self, doc::HideIndex *Args)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int tab;
 
    if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
@@ -721,7 +721,7 @@ static ERR DOCUMENT_HideIndex(extDocument *Self, doc::HideIndex *Args)
 
             {
                #ifndef RETAIN_LOG_LEVEL
-               pf::LogLevel level(2);
+               kt::LogLevel level(2);
                #endif
                Self->UpdatingLayout = true;
                layout_doc(Self);
@@ -738,7 +738,7 @@ static ERR DOCUMENT_HideIndex(extDocument *Self, doc::HideIndex *Args)
                else if (code IS SCODE::IMAGE) {
                   auto &vec = Self->Stream.lookup<bc_image>(i);
                   if (not vec.rect.empty()) {
-                     pf::ScopedObjectLock obj(vec.rect->UID);
+                     kt::ScopedObjectLock obj(vec.rect->UID);
                      if (obj.granted()) acHide(*obj);
                   }
 
@@ -771,7 +771,7 @@ static ERR DOCUMENT_HideIndex(extDocument *Self, doc::HideIndex *Args)
 
 static ERR DOCUMENT_Init(extDocument *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Self->Viewport) {
       if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::VECTORVIEWPORT)) {
@@ -904,7 +904,7 @@ OutOfRange
 
 static ERR DOCUMENT_InsertXML(extDocument *Self, doc::InsertXML *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->XML)) return log.warning(ERR::NullArgs);
    if ((Args->Index < -1) or (Args->Index > int(Self->Stream.size()))) return log.warning(ERR::OutOfRange);
@@ -959,7 +959,7 @@ Failed
 
 static ERR DOCUMENT_InsertText(extDocument *Self, doc::InsertText *Args)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Args) or (not Args->Text)) return log.warning(ERR::NullArgs);
    if ((Args->Index < -1) or (Args->Index > std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
@@ -973,7 +973,7 @@ static ERR DOCUMENT_InsertText(extDocument *Self, doc::InsertText *Args)
    if (index < 0) index = Self->Stream.size();
 
    stream_char sc(index, 0);
-   ERR error = insert_text(Self, &Self->Stream, sc, std::string(Args->Text), Args->Preformat);
+   ERR error = insert_text(Self, &Self->Stream, sc, Args->Text, Args->Preformat);
 
    #ifdef DBG_STREAM
       print_stream(Self->Stream);
@@ -1651,7 +1651,7 @@ NoData: Operation successful, but no data was present for extraction.
 
 static ERR DOCUMENT_ReadContent(extDocument *Self, doc::ReadContent *Args)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -1719,7 +1719,7 @@ Refresh: Reloads the document data from the original source location.
 
 static ERR DOCUMENT_Refresh(extDocument *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Processing) {
       log.msg("Recursion detected - refresh will be delayed.");
@@ -1743,7 +1743,7 @@ static ERR DOCUMENT_Refresh(extDocument *Self)
       }
       else if (trigger.isC()) {
          auto routine = (void (*)(APTR, extDocument *))trigger.Routine;
-         pf::SwitchContext context(trigger.Context);
+         kt::SwitchContext context(trigger.Context);
          routine(trigger.Context, Self);
       }
    }
@@ -1782,7 +1782,7 @@ Args
 
 static ERR DOCUMENT_RemoveContent(extDocument *Self, doc::RemoveContent *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -1855,7 +1855,7 @@ SaveToObject: Use this action to save edited information as an XML document file
 
 static ERR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -1893,7 +1893,7 @@ OutOfRange
 
 static ERR DOCUMENT_SelectLink(extDocument *Self, doc::SelectLink *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -1965,7 +1965,7 @@ Search: The index could not be found.
 
 static ERR DOCUMENT_ShowIndex(extDocument *Self, doc::ShowIndex *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
 
@@ -1985,7 +1985,7 @@ static ERR DOCUMENT_ShowIndex(extDocument *Self, doc::ShowIndex *Args)
 
             {
                #ifndef RETAIN_LOG_LEVEL
-               pf::LogLevel level(2);
+               kt::LogLevel level(2);
                #endif
                Self->UpdatingLayout = true;
                layout_doc(Self);

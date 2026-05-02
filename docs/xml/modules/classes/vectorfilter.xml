@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Constructs filter pipelines that alter rendered vector graphics.</comment>
     <version>1</version>
-    <id>8c6e727e</id>
+    <id>c28d095f</id>
     <idstring>VECTORFILTER</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>
@@ -29,6 +29,7 @@
       <name>Clear</name>
       <comment>Removes all filter effects.</comment>
       <prototype>ERR acClear(*Object)</prototype>
+      <tiriPrototype>err = Object.acClear()</tiriPrototype>
     </action>
 
   </actions>

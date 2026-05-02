@@ -278,7 +278,7 @@ end
          return self.value
       end,
       decrement = function(self)
-         self.value--
+         self.value -= 1
          return self.value
       end,
       add = function(self, n)

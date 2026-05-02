@@ -56,11 +56,11 @@ void gen_vector_tree(extVector *Vector)
 
 void gen_vector_path(extVector *Vector)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Vector->GeneratePath) and (Vector->classID() != CLASSID::VECTORVIEWPORT) and (Vector->classID() != CLASSID::VECTORGROUP)) return;
 
-   pf::SwitchContext context(Vector);
+   kt::SwitchContext context(Vector);
 
    log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Class->ClassName, Vector->UID, int(Vector->Dirty), Vector->ParentView ? Vector->ParentView->UID : 0);
 
@@ -142,7 +142,7 @@ void gen_vector_path(extVector *Vector)
       else if (dmf::hasHeight(view->vpDimensions)) view->vpFixedHeight = view->vpTargetHeight;
       else view->vpFixedHeight = parent_height;
 
-      if (dmf::hasScaledYOffset(view->vpDimensions)) {
+      if (dmf::hasScaledXOffset(view->vpDimensions)) {
          if (dmf::hasAnyX(view->vpDimensions)) {
             view->vpFixedWidth = parent_width - (parent_width * view->vpTargetXO) - view->FinalX;
          }
@@ -407,7 +407,7 @@ void gen_vector_path(extVector *Vector)
 
 void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (auto node=Start; node; node=(extVector *)get_parent(node)) {
       if (node->Class->BaseClassID != CLASSID::VECTOR) continue;

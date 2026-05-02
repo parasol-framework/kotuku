@@ -102,7 +102,7 @@ void anim_base::stop(double Time)
 
 static ERR animation_timer(extSVG *SVG, int64_t TimeElapsed, int64_t CurrentTime)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (SVG->Animations.empty()) {
       log.msg("All animations processed, timer suspended.");
@@ -129,7 +129,7 @@ static ERR animation_timer(extSVG *SVG, int64_t TimeElapsed, int64_t CurrentTime
    // Apply transforms
 
    for (auto &record : SVG->Animatrix) {
-      pf::ScopedObjectLock<objVector> vector(record.first, 1000);
+      kt::ScopedObjectLock<objVector> vector(record.first, 1000);
       if (record.second.transforms.empty()) continue;
 
       auto &vt = record.second;
@@ -154,7 +154,7 @@ static ERR animation_timer(extSVG *SVG, int64_t TimeElapsed, int64_t CurrentTime
       VectorMatrix *m = nullptr;
       if (vt.transforms.front()->additive IS ADD::REPLACE) {
          for (m = vector->Matrices; (m); m=m->Next) {
-            if (m->Tag IS MTAG_SVG_TRANSFORM) {
+            if ((unsigned int)m->Tag IS MTAG_SVG_TRANSFORM) {
                double d = 1.0 / (m->ScaleX * m->ScaleY - m->ShearY * m->ShearX);
 
                double t0 = m->ScaleY * d;
@@ -187,7 +187,7 @@ static ERR animation_timer(extSVG *SVG, int64_t TimeElapsed, int64_t CurrentTime
 
    if (SVG->FrameCallback.defined()) {
       if (SVG->FrameCallback.isC()) {
-         pf::SwitchContext context(SVG->FrameCallback.Context);
+         kt::SwitchContext context(SVG->FrameCallback.Context);
          auto routine = (void (*)(extSVG *, APTR))SVG->FrameCallback.Routine;
          routine(SVG, SVG->FrameCallback.Meta);
       }

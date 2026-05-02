@@ -76,6 +76,28 @@ enum class LINK : uint8_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(LINK)
 
+enum class doc_diag_severity : uint8_t {
+   HINT = 0,
+   WARNING = 1,
+   ERROR = 2,
+};
+
+class doc_diagnostic {
+   public:
+   doc_diag_severity severity = doc_diag_severity::WARNING;
+   ERR error = ERR::Okay;
+   std::string code;
+   std::string message;
+   std::string path;
+   std::string page_name;
+   int line_no = 0;
+   int tag_id = 0;
+   int parent_id = 0;
+   uint32_t namespace_id = 0;
+   std::string tag_name;
+   std::string attrib_name;
+};
+
 enum {
    COND_NOT_EQUAL=1,
    COND_EQUAL,
@@ -195,7 +217,7 @@ struct padding {
    padding(double pLeft, double pTop, double pRight, double pBottom) :
       left(pLeft), top(pTop), right(pRight), bottom(pBottom), configured(true) { }
 
-   void parse(const std::string &Value);
+   void parse(std::string_view Value);
 
    void scale_all() { left_scl = right_scl = top_scl = bottom_scl = true; }
 };
@@ -353,7 +375,10 @@ public:
 
 struct case_insensitive_map {
    bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+      return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
+         [](unsigned char Left, unsigned char Right) {
+            return std::tolower(Left) < std::tolower(Right);
+         });
    }
 };
 
@@ -494,7 +519,7 @@ public:
          if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
       }
 
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.error("A font_index is -1."); // An index of -1 means a call to layout_font() is missing.
       return &glFonts[0];
    }
@@ -639,7 +664,7 @@ struct doc_clip {
       left(pLeft), top(pTop), right(pRight), bottom(pBottom), index(pIndex), transparent(pTransparent), name(pName) {
 
       if ((right - left > 20000) or (bottom - top > 20000)) {
-         pf::Log log;
+         kt::Log log;
          log.warning("%s set invalid clip dimensions: %.0f,%.0f,%.0f,%.0f", name.c_str(), left, top, right, bottom);
          right = left;
          bottom = top;
@@ -1243,7 +1268,7 @@ class extDocument : public objDocument {
    FUNCTION EventCallback;
    KEYVALUE Vars;   // Variables as defined by the client program.  Transparently accessible like URI params.  Names have priority over params.
    KEYVALUE Params; // Incoming parameters provided via the URI
-   std::map<uint32_t, XTag *>   TemplateIndex;
+   std::map<uint32_t, const XTag *> TemplateIndex;
    std::vector<OBJECTID>       UIObjects;    // List of temporary objects in the UI
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
@@ -1253,11 +1278,17 @@ class extDocument : public objDocument {
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;
    std::vector<edit_cell>      EditCells;
+   std::vector<doc_diagnostic> Diagnostics;
    doc_layout_metrics          LayoutMetrics;
    ankerl::unordered_dense::map<glyph_cache_key, glyph_cache_value, glyph_cache_hash> GlyphAdvanceCache;
    ankerl::unordered_dense::map<std::string_view, doc_edit> EditDefs;
    std::array<std::vector<FUNCTION>, size_t(DRT::END)> Triggers;
-   std::vector<const XTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
+   struct template_arg_view {
+      const XTag *Tag = nullptr;
+      const kt::vector<XMLAttrib> *Attribs = nullptr;
+   };
+
+   std::vector<template_arg_view> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
    std::string WidthCacheFontFace;
    RSTREAM Stream;             // Internal stream buffer
@@ -1279,7 +1310,7 @@ class extDocument : public objDocument {
    objXQuery *Query;           // Standard XQuery object for xquery evaluations
    objSVG *SVG;                // Allocated by the <svg> tag
    objVectorRectangle *Bkgd;   // Background fill object
-   XTag    *PageTag;           // Refers to a specific page that is being processed for the layout
+   const XTag *PageTag;        // Refers to a specific page that is being processed for the layout
    objScript *ClientScript;    // Allows the developer to define a custom default script.
    objScript *DefaultScript;
    doc_edit  *ActiveEditDef; // As for ActiveEditCell, but refers to the active editing definition

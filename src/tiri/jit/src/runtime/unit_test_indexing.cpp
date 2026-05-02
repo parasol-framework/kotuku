@@ -47,8 +47,21 @@ private:
 
 struct TestCase {
    const char* name;
-   bool (*fn)(pf::Log& Log);
+   bool (*fn)(kt::Log& Log);
 };
+
+static uint32_t expected_table_hash(uint32_t Lo, uint32_t Hi)
+{
+#if LJ_TARGET_X64
+   uint64_t hash = (uint64_t(Hi) << 32) | uint64_t(Lo);
+   hash = (hash ^ (hash >> 30)) * HASH_MIX64_MUL1;
+   hash = (hash ^ (hash >> 27)) * HASH_MIX64_MUL2;
+   hash ^= hash >> 31;
+   return uint32_t(hash);
+#else
+   return hashrot(Lo, Hi);
+#endif
+}
 
 // Execute Lua code and check result
 static bool run_lua_test(lua_State* L, std::string_view Code, std::string& Error)
@@ -69,7 +82,7 @@ static bool run_lua_test(lua_State* L, std::string_view Code, std::string& Error
 //********************************************************************************************************************
 // Core indexing tests - validate 0-based indexing
 
-static bool test_array_first_element_access(pf::Log& Log)
+static bool test_array_first_element_access(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -99,7 +112,7 @@ static bool test_array_first_element_access(pf::Log& Log)
    return false;
 }
 
-static bool test_table_length_operator(pf::Log& Log)
+static bool test_table_length_operator(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -122,7 +135,7 @@ static bool test_table_length_operator(pf::Log& Log)
    return false;
 }
 
-static bool test_ipairs_starting_index(pf::Log& Log)
+static bool test_ipairs_starting_index(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -187,7 +200,7 @@ static bool test_ipairs_starting_index(pf::Log& Log)
    return false;
 }
 
-static bool test_table_insert_position(pf::Log& Log)
+static bool test_table_insert_position(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -224,7 +237,7 @@ static bool test_table_insert_position(pf::Log& Log)
    return false;
 }
 
-static bool test_string_find_returns_correct_index(pf::Log& Log)
+static bool test_string_find_returns_correct_index(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -248,7 +261,7 @@ static bool test_string_find_returns_correct_index(pf::Log& Log)
    return false;
 }
 
-static bool test_string_byte_default_start(pf::Log& Log)
+static bool test_string_byte_default_start(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -271,7 +284,7 @@ static bool test_string_byte_default_start(pf::Log& Log)
    return false;
 }
 
-static bool test_table_concat_default_range(pf::Log& Log)
+static bool test_table_concat_default_range(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -294,7 +307,7 @@ static bool test_table_concat_default_range(pf::Log& Log)
    return false;
 }
 
-static bool test_table_sort_operates_on_sequence(pf::Log& Log)
+static bool test_table_sort_operates_on_sequence(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -325,7 +338,7 @@ static bool test_table_sort_operates_on_sequence(pf::Log& Log)
    return false;
 }
 
-static bool test_empty_table_length(pf::Log& Log)
+static bool test_empty_table_length(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -348,7 +361,7 @@ static bool test_empty_table_length(pf::Log& Log)
    return false;
 }
 
-static bool test_negative_string_indices_unchanged(pf::Log& Log)
+static bool test_negative_string_indices_unchanged(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -374,7 +387,7 @@ static bool test_negative_string_indices_unchanged(pf::Log& Log)
 //********************************************************************************************************************
 // Low-level table API tests
 
-static bool test_lj_tab_getint_semantic_index(pf::Log& Log)
+static bool test_lj_tab_getint_semantic_index(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -401,7 +414,7 @@ static bool test_lj_tab_getint_semantic_index(pf::Log& Log)
    return false;
 }
 
-static bool test_lj_tab_len_returns_element_count(pf::Log& Log)
+static bool test_lj_tab_len_returns_element_count(kt::Log& Log)
 {
    LuaStateHolder Holder;
    lua_State* L = Holder.get();
@@ -424,11 +437,130 @@ static bool test_lj_tab_len_returns_element_count(pf::Log& Log)
    return false;
 }
 
+static bool test_table_hash_mixer_matches_expected(kt::Log& Log)
+{
+   constexpr std::array<uint32_t, 4> LoValues = { 0x00000000u, 0x89abcdefu, 0xffffffffu, 0x13579bdfu };
+   constexpr std::array<uint32_t, 4> HiValues = { 0x00000000u, 0x01234567u, 0x80000000u, 0xfedcba98u };
+
+   for (size_t index = 0; index < LoValues.size(); index++) {
+      const uint32_t hash = hashlohi_bits(LoValues[index], HiValues[index]);
+      const uint32_t expected = expected_table_hash(LoValues[index], HiValues[index]);
+      if (not (hash IS expected)) {
+         Log.error("hashlohi_bits mismatch at %u: got 0x%08x expected 0x%08x",
+            (unsigned)index, hash, expected);
+         return false;
+      }
+   }
+
+   return true;
+}
+
+static bool test_table_numeric_hash_keys_roundtrip(kt::Log& Log)
+{
+   LuaStateHolder Holder;
+   lua_State* L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+
+   GCtab* table = lj_tab_new(L, 0, 5);
+   constexpr std::array<lua_Number, 4> Keys = { 0.5, 1.5, 65536.5, 131072.5 };
+
+   for (size_t index = 0; index < Keys.size(); index++) {
+      TValue key;
+      TValue value;
+      setnumV(&key, Keys[index]);
+      setnumV(&value, lua_Number(index) + 10.0);
+      copyTV(L, lj_tab_set(L, table, &key), &value);
+   }
+
+   for (size_t index = 0; index < Keys.size(); index++) {
+      TValue key;
+      setnumV(&key, Keys[index]);
+      cTValue* found = lj_tab_get(L, table, &key);
+      const lua_Number expected = lua_Number(index) + 10.0;
+      if ((not found) or (not tvisnum(found)) or not (numV(found) IS expected)) {
+         Log.error("numeric hash key %u did not roundtrip", (unsigned)index);
+         return false;
+      }
+   }
+
+   return true;
+}
+
+static bool test_table_gc_hash_keys_roundtrip(kt::Log& Log)
+{
+   LuaStateHolder Holder;
+   lua_State* L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+
+   GCtab* table = lj_tab_new(L, 0, 5);
+   GCtab* key_one = lj_tab_new(L, 0, 0);
+   GCtab* key_two = lj_tab_new(L, 0, 0);
+   std::array<GCtab*, 2> Keys = { key_one, key_two };
+
+   for (size_t index = 0; index < Keys.size(); index++) {
+      TValue key;
+      TValue value;
+      settabV(L, &key, Keys[index]);
+      setnumV(&value, lua_Number(index) + 20.0);
+      copyTV(L, lj_tab_set(L, table, &key), &value);
+   }
+
+   for (size_t index = 0; index < Keys.size(); index++) {
+      TValue key;
+      settabV(L, &key, Keys[index]);
+      cTValue* found = lj_tab_get(L, table, &key);
+      const lua_Number expected = lua_Number(index) + 20.0;
+      if ((not found) or (not tvisnum(found)) or not (numV(found) IS expected)) {
+         Log.error("GC hash key %u did not roundtrip", (unsigned)index);
+         return false;
+      }
+   }
+
+   return true;
+}
+
+static bool test_table_string_hash_keys_unchanged(kt::Log& Log)
+{
+   LuaStateHolder Holder;
+   lua_State* L = Holder.get();
+   if (not L) {
+      Log.error("failed to create Lua state");
+      return false;
+   }
+
+   GCtab* table = lj_tab_new(L, 0, 5);
+   GCstr* key = lj_str_newlit(L, "hash_string_key");
+   TValue value;
+   setnumV(&value, 42.0);
+   copyTV(L, lj_tab_setstr(L, table, key), &value);
+
+   cTValue* found = lj_tab_getstr(table, key);
+   if ((not found) or (not tvisnum(found)) or not (numV(found) IS 42.0)) {
+      Log.error("string hash key did not roundtrip");
+      return false;
+   }
+
+   Node* expected_node = hashmask(table, key->sid);
+   Node* actual_node = hashstr(table, key);
+   if (not (actual_node IS expected_node)) {
+      Log.error("string hash key no longer uses interned sid");
+      return false;
+   }
+
+   return true;
+}
+
 }  // namespace
 
 extern void indexing_unit_tests(int& Passed, int& Total)
 {
-   constexpr std::array<TestCase, 12> Tests = { {
+   constexpr std::array<TestCase, 16> Tests = { {
       { "array_first_element_access", test_array_first_element_access },
       { "table_length_operator", test_table_length_operator },
       { "ipairs_starting_index", test_ipairs_starting_index },
@@ -440,7 +572,11 @@ extern void indexing_unit_tests(int& Passed, int& Total)
       { "empty_table_length", test_empty_table_length },
       { "negative_string_indices_unchanged", test_negative_string_indices_unchanged },
       { "lj_tab_getint_semantic_index", test_lj_tab_getint_semantic_index },
-      { "lj_tab_len_returns_element_count", test_lj_tab_len_returns_element_count }
+      { "lj_tab_len_returns_element_count", test_lj_tab_len_returns_element_count },
+      { "table_hash_mixer_matches_expected", test_table_hash_mixer_matches_expected },
+      { "table_numeric_hash_keys_roundtrip", test_table_numeric_hash_keys_roundtrip },
+      { "table_gc_hash_keys_roundtrip", test_table_gc_hash_keys_roundtrip },
+      { "table_string_hash_keys_unchanged", test_table_string_hash_keys_unchanged }
    } };
 
    if (NewObject(CLASSID::TIRI, &glTestScript) != ERR::Okay) return;
@@ -448,7 +584,7 @@ extern void indexing_unit_tests(int& Passed, int& Total)
    if (Action(AC::Init, glTestScript, nullptr) != ERR::Okay) return;
 
    for (const TestCase& Test : Tests) {
-      pf::Log Log("IndexingTests");
+      kt::Log Log("IndexingTests");
       Log.branch("Running %s", Test.name);
       ++Total;
       if (Test.fn(Log)) {

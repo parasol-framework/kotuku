@@ -21,7 +21,7 @@ Terminating the script will not remove objects that are outside its resource hie
 
 *********************************************************************************************************************/
 
-#define PRV_SCRIPT 1
+#define PRV_SCRIPT
 #include "../defs.h"
 #include <kotuku/main.h>
 
@@ -93,7 +93,7 @@ Args:
 
 static ERR SCRIPT_Callback(objScript *Self, struct sc::Callback *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if ((Args->TotalArgs < 0) or (Args->TotalArgs > 1024)) return log.warning(ERR::Args);
@@ -238,7 +238,7 @@ Args: The `TotalArgs` value is invalid.
 
 static ERR SCRIPT_Exec(objScript *Self, struct sc::Exec *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if ((Args->TotalArgs < 0) or (Args->TotalArgs > 32)) return log.warning(ERR::Args);
@@ -309,7 +309,7 @@ NullArgs
 
 static ERR SCRIPT_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR::NullArgs);
    Args->ProcedureID = strihash(Args->Procedure);
@@ -341,7 +341,7 @@ static ERR SCRIPT_GetKey(objScript *Self, struct acGetKey *Args)
 
 static ERR SCRIPT_Init(objScript *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->TargetID) { // Define the target if it has not been set already
       log.detail("Target not set, defaulting to owner #%d.", Self->ownerID());
@@ -395,7 +395,7 @@ static ERR SCRIPT_SetKey(objScript *Self, struct acSetKey *Args)
    if ((!Args) or (!Args->Key) or (!Args->Value)) return ERR::NullArgs;
    if (!Args->Key[0]) return ERR::NullArgs;
 
-   pf::Log log;
+   kt::Log log;
    log.trace("%s = %s", Args->Key, Args->Value);
 
    Self->Vars[Args->Key] = Args->Value;
@@ -672,7 +672,7 @@ static ERR GET_Results(objScript *Self, STRING **Value, int *Elements)
 
 static ERR SET_Results(objScript *Self, CSTRING *Value, int Elements)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Results) { FreeResource(Self->Results); Self->Results = 0; }
 
@@ -777,7 +777,7 @@ A client can manually change the working path by setting this field with a custo
 
 static ERR GET_WorkingPath(objScript *Self, STRING *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->WorkingPath) {
       if (!Self->Path) {
@@ -805,7 +805,7 @@ static ERR GET_WorkingPath(objScript *Self, STRING *Value)
       }
 
       if (path) { // Extract absolute path
-         pf::SwitchContext ctx(Self);
+         kt::SwitchContext ctx(Self);
          char save = Self->Path[j];
          Self->Path[j] = 0;
          Self->WorkingPath = strclone(Self->Path);
@@ -819,7 +819,7 @@ static ERR GET_WorkingPath(objScript *Self, STRING *Value)
             std::string buf = working_path;
             if (j > 0) buf.append(Self->Path, 0, j);
 
-            pf::SwitchContext ctx(Self);
+            kt::SwitchContext ctx(Self);
             std::string rpath;
             if (ResolvePath(buf, RSF::APPROXIMATE, &rpath) IS ERR::Okay) {
                Self->WorkingPath = strclone(rpath);

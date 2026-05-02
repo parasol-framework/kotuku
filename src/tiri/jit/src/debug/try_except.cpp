@@ -64,7 +64,7 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
 
    if (L->try_stack.depth >= LJ_MAX_TRY_DEPTH) lj_err_msg(L, ErrMsg::XNEST);  // "try blocks nested too deeply"
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Entering try block %u: L->base=%p, Base(VM)=%p, L->top=%p, depth=%u", TryBlockIndex, L->base, Base, L->top, L->try_stack.depth);
 
    // Sync L->base with the passed Base pointer.  This is critical for JIT mode where L->base may be stale (the JIT keeps the
@@ -107,7 +107,7 @@ extern "C" void lj_try_enter(lua_State *L, GCfunc *Func, TValue *Base, uint16_t 
 
 extern "C" void lj_try_leave(lua_State *L)
 {
-   pf::Log(__FUNCTION__).trace("Stack Depth: %d, Base: %p, Top: %p", L->try_stack.depth, L->base, L->top);
+   kt::Log(__FUNCTION__).trace("Stack Depth: %d, Base: %p, Top: %p", L->try_stack.depth, L->base, L->top);
 
    // NB: The setup_try_handler() also decrements the depth, so the check prevents a repeat
    if (L->try_stack.depth > 0) L->try_stack.depth--;

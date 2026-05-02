@@ -49,7 +49,7 @@ Google Fonts Knowledge page: https://fonts.google.com/knowledge
 #include <kotuku/strings.hpp>
 #include "../link/unicode.h"
 
-using namespace pf;
+using namespace kt;
 
 //********************************************************************************************************************
 // This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
@@ -171,6 +171,13 @@ static int getutf8(CSTRING Value, uint32_t *Unicode)
 }
 
 //********************************************************************************************************************
+
+template <class T>
+constexpr T tab_advance(T Num, T Alignment) {
+   return ((Num + Alignment) / Alignment) * Alignment;
+}
+
+//********************************************************************************************************************
 // Returns the global point size for font scaling.  This is set to 10 by default, but the user can change the setting
 // in the interface style values.
 
@@ -180,10 +187,10 @@ static bool glPointSet = false;
 static double global_point_size(void)
 {
    if (!glPointSet) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       OBJECTID style_id;
       if (FindObject("glStyle", CLASSID::XML, FOF::NIL, &style_id) IS ERR::Okay) {
-         pf::ScopedObjectLock<objXML> style(style_id, 3000);
+         kt::ScopedObjectLock<objXML> style(style_id, 3000);
          if (style.granted()) {
             char pointsize[20];
             glPointSet = true;
@@ -254,7 +261,7 @@ static void string_size(extFont *Font, CSTRING String, int Chars, int Wrap, int 
          if (*String IS ' ') x += Font->prvChar[' '].Advance * Font->GlyphSpacing;
          else if (*String IS '\t') {
             tabwidth = (Font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
-            if (tabwidth) x += pf::roundup(x, tabwidth);
+            if (tabwidth) x += tab_advance<int>(x, tabwidth);
          }
          else if (*String IS '\n') {
             if (lastword > longest) longest = lastword;
@@ -338,7 +345,7 @@ static objConfig *glConfig = nullptr; // Font database
 
 static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   pf::Log log;
+   kt::Log log;
 
    CoreBase = argCoreBase;
 
@@ -438,7 +445,7 @@ AccessObject: Access to the font database was denied, or the object does not exi
 
 ERR GetList(FontList **Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Result) return log.warning(ERR::NullArgs);
 
@@ -446,7 +453,7 @@ ERR GetList(FontList **Result)
 
    *Result = NULL;
 
-   pf::ScopedObjectLock<objConfig> config(glConfig, 3000);
+   kt::ScopedObjectLock<objConfig> config(glConfig, 3000);
    if (!config.granted()) return log.warning(ERR::AccessObject);
 
    size_t size = 0;
@@ -579,7 +586,7 @@ int StringWidth(objFont *Font, CSTRING String, int Chars)
       }
       else if (*str IS '\t') {
          int16_t tabwidth = (font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
-         if (tabwidth) len = pf::roundup(len, tabwidth);
+         if (tabwidth) len = tab_advance<int>(len, tabwidth);
          str++;
          Chars--;
          whitespace = 0;
@@ -633,13 +640,13 @@ Search: Unable to find a suitable font.
 
 ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("%s:%s", Name, Style);
 
    if (not Name) return log.warning(ERR::NullArgs);
 
-   pf::ScopedObjectLock<objConfig> config(glConfig, 5000);
+   kt::ScopedObjectLock<objConfig> config(glConfig, 5000);
    if (not config.granted()) return log.warning(ERR::AccessObject);
 
    ConfigGroups *groups;
@@ -668,7 +675,7 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
    };
 
    std::string style_name(Style);
-   pf::camelcase(style_name);
+   kt::camelcase(style_name);
 
    for (auto & [group, keys] : groups[0]) {
       if (!iequals(Name, keys["Name"])) continue;
@@ -716,11 +723,11 @@ AccessObject: Access to the font database was denied, or the object does not exi
 
 ERR RefreshFonts(void)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch();
 
-   pf::ScopedObjectLock<objConfig> config(glConfig, 3000);
+   kt::ScopedObjectLock<objConfig> config(glConfig, 3000);
    if (!config.granted()) return log.warning(ERR::AccessObject);
 
    acClear(glConfig); // Clear out existing font information
@@ -792,22 +799,22 @@ Search: It was not possible to resolve the String to a known font family.
 
 ERR ResolveFamilyName(CSTRING String, CSTRING *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!String) or (!Result)) return ERR::NullArgs;
 
-   pf::ScopedObjectLock<objConfig> config(glConfig, 5000);
+   kt::ScopedObjectLock<objConfig> config(glConfig, 5000);
    if (not config.granted()) return log.warning(ERR::AccessObject);
 
    ConfigGroups *groups;
    if (glConfig->get(FID_Data, groups) != ERR::Okay) return log.warning(ERR::GetField);
 
    std::vector<std::string> names;
-   pf::split(std::string(String), std::back_inserter(names));
+   kt::split(std::string(String), std::back_inserter(names));
 
    for (auto &name : names) {
-      pf::ltrim(name, "'\"");
-      pf::rtrim(name, "'\"");
+      kt::ltrim(name, "'\"");
+      kt::rtrim(name, "'\"");
 
 restart:
       if ((name[0] IS '*') and (!name[1])) {
@@ -824,7 +831,7 @@ restart:
       }
 
       for (auto & [group, keys] : groups[0]) {
-         if (pf::wildcmp(name, keys["Name"])) {
+         if (kt::wildcmp(name, keys["Name"])) {
             if (auto it = keys.find("Alias"); it != keys.end()) {
                const std::string &alias = it->second;
                if (!alias.empty()) {
@@ -849,7 +856,7 @@ restart:
 
 static void scan_truetype_folder(objConfig *Config)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Scanning for truetype fonts.");
 
@@ -897,7 +904,7 @@ static void scan_truetype_folder(objConfig *Config)
                   }
                }
 
-               pf::rtrim(group);
+               kt::rtrim(group);
 
                Config->write(group.c_str(), "Name", group);
                Config->write(group.c_str(), "Scalable", "Yes");
@@ -983,7 +990,7 @@ static void scan_truetype_folder(objConfig *Config)
 
 static void scan_fixed_folder(objConfig *Config)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Scanning for fixed fonts.");
 
@@ -1069,7 +1076,7 @@ static void scan_fixed_folder(objConfig *Config)
 
 static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<uint16_t> &Points)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    winmz_header_fields mz_header;
    winne_header_fields ne_header;
    int i, res_offset, font_offset;

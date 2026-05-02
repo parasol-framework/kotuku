@@ -114,7 +114,7 @@ static void cielab_to_painter(double L, double A, double B, float Alpha, VectorP
 
 //********************************************************************************************************************
 
-static ERR parse_url(pf::Log &Log, objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
+static ERR parse_url(kt::Log &Log, objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    if (not Scene) return Log.warning(ERR::NullArgs);
 
@@ -392,7 +392,7 @@ static ERR parse_hsv(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
    double hue, sat, val;
    parse_hsx(IRI, hue, sat, val, rgb.Alpha);
 
-   hue = hue / 60.0;
+   hue = hue * 6.0;
    int i = floor(hue);
    double f = hue - i;
 
@@ -449,7 +449,7 @@ static ERR parse_hex(CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 
 //********************************************************************************************************************
 
-static ERR parse_named_colour(pf::Log &Log, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
+static ERR parse_named_colour(kt::Log &Log, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    auto hash = strihash(IRI);
 
@@ -549,7 +549,7 @@ Failed:
 
 ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Result) *Result = nullptr;
    if ((not IRI) or (not Painter)) return ERR::NullArgs;

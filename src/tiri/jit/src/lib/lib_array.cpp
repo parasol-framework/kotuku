@@ -19,6 +19,7 @@
 #include "lj_tab.h"
 #include "lj_str.h"
 #include "lj_array.h"
+#include "lj_bulk.h"
 #include "lj_meta.h"
 #include "lib.h"
 #include "lib_range.h"
@@ -31,20 +32,20 @@
 
 #define LJLIB_MODULE_array
 
-constexpr auto HASH_INT     = pf::strhash("int");
-constexpr auto HASH_BYTE    = pf::strhash("byte");
-constexpr auto HASH_CHAR    = pf::strhash("char");
-constexpr auto HASH_INT16   = pf::strhash("int16");
-constexpr auto HASH_INT64   = pf::strhash("int64");
-constexpr auto HASH_FLOAT   = pf::strhash("float");
-constexpr auto HASH_DOUBLE  = pf::strhash("double");
-constexpr auto HASH_STRING  = pf::strhash("string");
-constexpr auto HASH_STRUCT  = pf::strhash("struct");
-constexpr auto HASH_POINTER = pf::strhash("pointer");
-constexpr auto HASH_OBJECT  = pf::strhash("object");
-constexpr auto HASH_TABLE   = pf::strhash("table");
-constexpr auto HASH_ARRAY   = pf::strhash("array");
-constexpr auto HASH_ANY     = pf::strhash("any");
+constexpr auto HASH_INT     = kt::strhash("int");
+constexpr auto HASH_BYTE    = kt::strhash("byte");
+constexpr auto HASH_CHAR    = kt::strhash("char");
+constexpr auto HASH_INT16   = kt::strhash("int16");
+constexpr auto HASH_INT64   = kt::strhash("int64");
+constexpr auto HASH_FLOAT   = kt::strhash("float");
+constexpr auto HASH_DOUBLE  = kt::strhash("double");
+constexpr auto HASH_STRING  = kt::strhash("string");
+constexpr auto HASH_STRUCT  = kt::strhash("struct");
+constexpr auto HASH_POINTER = kt::strhash("pointer");
+constexpr auto HASH_OBJECT  = kt::strhash("object");
+constexpr auto HASH_TABLE   = kt::strhash("table");
+constexpr auto HASH_ARRAY   = kt::strhash("array");
+constexpr auto HASH_ANY     = kt::strhash("any");
 
 // Forward declarations
 static int32_t find_in_array(GCarray *Arr, lua_Number Value, int32_t Start, int32_t Stop, int32_t Step);
@@ -155,7 +156,7 @@ LJLIB_CF(array_new)
       auto elem_type = AET::BYTE;
       arr = lj_array_new(L, s->len, elem_type);
 
-      pf::copymem(strdata(s), arr->get<CSTRING>(), s->len);
+      kt::copymem(strdata(s), arr->get<CSTRING>(), s->len);
    }
    else {
       auto size = lj_lib_checkint(L, 1);
@@ -725,8 +726,7 @@ LJLIB_CF(array_clear)
       for (MSize i = 0; i < arr->len; i++) setgcrefnull(refs[i]);
    }
    else if (arr->elemtype IS AET::ANY) {
-      auto slots = arr->get<TValue>();
-      for (MSize i = 0; i < arr->len; i++) setnilV(&slots[i]);
+      lj_bulk_nil_tvalue(arr->get<TValue>(), arr->len);
    }
 
    arr->len = 0;
@@ -775,8 +775,7 @@ LJLIB_CF(array_resize)
          }
 
          case AET::ANY: {
-            auto slots = arr->get<TValue>();
-            for (MSize i = old_len; i < target_len; i++) setnilV(&slots[i]);
+            lj_bulk_nil_tvalue(&arr->get<TValue>()[old_len], target_len - old_len);
             break;
          }
 
@@ -802,8 +801,7 @@ LJLIB_CF(array_resize)
          }
 
          case AET::ANY: {
-            auto slots = arr->get<TValue>();
-            for (MSize i = target_len; i < old_len; i++) setnilV(&slots[i]);
+            lj_bulk_nil_tvalue(&arr->get<TValue>()[target_len], old_len - target_len);
             break;
          }
 
@@ -2639,7 +2637,8 @@ LJLIB_CF(array_insert)
    if (shift_count > 0) {
       void *src = lj_array_index(arr, index);
       void *dst = lj_array_index(arr, index + num_values);
-      memmove(dst, src, shift_count * arr->elemsize);
+      if (arr->elemtype IS AET::ANY) lj_bulk_move_tvalue((TValue *)dst, (const TValue *)src, shift_count);
+      else memmove(dst, src, shift_count * arr->elemsize);
    }
 
    // Insert the new values
@@ -2757,7 +2756,8 @@ LJLIB_CF(array_remove)
    if (shift_count > 0) {
       void *src = lj_array_index(arr, shift_start);
       void *dst = lj_array_index(arr, index);
-      memmove(dst, src, shift_count * arr->elemsize);
+      if (arr->elemtype IS AET::ANY) lj_bulk_move_tvalue((TValue *)dst, (const TValue *)src, shift_count);
+      else memmove(dst, src, shift_count * arr->elemsize);
    }
 
    // Clear trailing elements for GC-tracked types
@@ -2768,10 +2768,7 @@ LJLIB_CF(array_remove)
       }
    }
    else if (arr->elemtype IS AET::ANY) {
-      auto slots = arr->get<TValue>();
-      for (MSize i = arr->len - MSize(count); i < arr->len; i++) {
-         setnilV(&slots[i]);
-      }
+      lj_bulk_nil_tvalue(&arr->get<TValue>()[arr->len - MSize(count)], MSize(count));
    }
 
    arr->len -= MSize(count);
@@ -2822,8 +2819,8 @@ LJLIB_CF(array_clone)
          // For any-type arrays, copy TValues and set up barriers for GC values
          auto src_slots = arr->get<TValue>();
          auto dst_slots = result->get<TValue>();
+         lj_bulk_copy_tvalue(dst_slots, src_slots, arr->len);
          for (MSize i = 0; i < arr->len; i++) {
-            copyTV(L, &dst_slots[i], &src_slots[i]);
             if (tvisgcv(&src_slots[i])) lj_gc_objbarrier(L, result, gcV(&src_slots[i]));
          }
          break;

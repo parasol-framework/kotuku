@@ -110,7 +110,7 @@
 #include "../link/linear_rgb.h"
 #include "../link/unicode.h"
 
-using namespace pf;
+using namespace kt;
 class extBitmap;
 
 #define UpdateSurfaceRecord(a) update_surface_copy(a)
@@ -277,7 +277,7 @@ extern std::vector<SurfaceRecord> glSurfaces;
 
 class extPointer : public objPointer {
    public:
-   using create = pf::Create<extPointer>;
+   using create = kt::Create<extPointer>;
 
    struct {
       int64_t LastClickTime;      // Timestamp
@@ -311,7 +311,7 @@ class extPointer : public objPointer {
 
 class extSurface : public objSurface {
    public:
-   using create = pf::Create<extSurface>;
+   using create = kt::Create<extSurface>;
 
    int64_t    LastRedimension;      // Timestamp of the last redimension call
    objBitmap *Bitmap;
@@ -346,7 +346,7 @@ class extSurface : public objSurface {
 
 class extDisplay : public objDisplay {
    public:
-   using create = pf::Create<extDisplay>;
+   using create = kt::Create<extDisplay>;
 
    double Gamma[3];          // Red, green, blue gamma radioactivity indicator
    std::vector<struct resolution> Resolutions;
@@ -569,7 +569,7 @@ inline int find_surface_list(extSurface *Surface, int Limit = -1)
 {
    if (Limit IS -1) Limit = int(glSurfaces.size());
    else if (Limit > int(glSurfaces.size())) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.warning("Invalid Limit parameter of %d (max %d)", Limit, int(glSurfaces.size()));
       Limit = int(glSurfaces.size());
    }
@@ -585,7 +585,7 @@ inline int find_surface_list(OBJECTID SurfaceID, int Limit = -1)
 {
    if (Limit IS -1) Limit = int(glSurfaces.size());
    else if (Limit > int(glSurfaces.size())) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.warning("Invalid Limit parameter of %d (max %d)", Limit, int(glSurfaces.size()));
       Limit = int(glSurfaces.size());
    }
@@ -612,7 +612,7 @@ inline int find_parent_list(const SURFACELIST &list, extSurface *Self)
 
 class extBitmap : public objBitmap {
    public:
-   using create = pf::Create<extBitmap>;
+   using create = kt::Create<extBitmap>;
 
    uint32_t  *Gradients;
    APTR   ResolutionChangeHandle;

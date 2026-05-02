@@ -250,7 +250,7 @@ NullArgs
 
 ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Bitmap) or (!Path)) return log.warning(ERR::NullArgs);
    if (StrokeWidth < 0.001) StrokeStyle = nullptr;
@@ -287,7 +287,7 @@ NullArgs:
 ERR FlushMatrix(VectorMatrix *Matrix)
 {
    if (!Matrix) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       return log.warning(ERR::NullArgs);
    }
 
@@ -343,7 +343,7 @@ AllocMemory
 
 ERR GenerateEllipse(double CX, double CY, double RX, double RY, int Vertices, APTR *Path)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Path) return log.warning(ERR::NullArgs);
 
@@ -416,7 +416,7 @@ AllocMemory
 
 ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Path) return log.warning(ERR::NullArgs);
 
@@ -529,7 +529,7 @@ NullArgs:
 
 ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Size < 1) return log.warning(ERR::Args);
 
@@ -610,7 +610,7 @@ NullArgs:
 
 ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Path) or (!Callback)) return ERR::NullArgs;
 
@@ -624,7 +624,7 @@ ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
    if (Callback->isC()) {
       auto routine = ((ERR (*)(SimpleVector *, int, int, double, double, APTR))(Callback->Routine));
 
-      pf::SwitchContext context(ParentContext());
+      kt::SwitchContext context(ParentContext());
 
       do {
          cmd = ((SimpleVector *)Path)->mPath.vertex(&x, &y);
@@ -731,7 +731,7 @@ ERR Multiply(VectorMatrix *Matrix, double ScaleX, double ShearY, double ShearX,
    double ScaleY, double TranslateX, double TranslateY)
 {
    if (!Matrix) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       return log.warning(ERR::NullArgs);
    }
 
@@ -771,7 +771,7 @@ NullArgs:
 ERR MultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
 {
    if ((!Target) or (!Source)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       return log.warning(ERR::NullArgs);
    }
 
@@ -818,7 +818,7 @@ NullArgs:
 ERR ParseTransform(VectorMatrix *Matrix, CSTRING Commands)
 {
    if ((!Matrix) or (!Commands)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       return log.warning(ERR::NullArgs);
    }
 
@@ -959,7 +959,7 @@ NullArgs:
 ERR ResetMatrix(VectorMatrix *Matrix)
 {
    if (!Matrix) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       return log.warning(ERR::NullArgs);
    }
 
@@ -1017,7 +1017,7 @@ NullArgs:
 ERR Rotate(VectorMatrix *Matrix, double Angle, double CenterX, double CenterY)
 {
    if (!Matrix) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       return log.warning(ERR::NullArgs);
    }
 
@@ -1072,7 +1072,7 @@ NullArgs
 ERR Scale(VectorMatrix *Matrix, double X, double Y)
 {
    if (!Matrix) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       return log.warning(ERR::NullArgs);
    }
 
@@ -1110,7 +1110,7 @@ OutOfRange: At least one of the angles is out of the allowable range.
 
 ERR Skew(VectorMatrix *Matrix, double X, double Y)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Matrix) return log.warning(ERR::NullArgs);
 
@@ -1210,7 +1210,7 @@ double: The pixel width of the string is returned.
 
 double StringWidth(APTR Handle, CSTRING String, int Chars)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Handle) or (!String)) { log.warning(ERR::NullArgs); return 0; }
 
@@ -1275,7 +1275,7 @@ NullArgs:
 ERR Translate(VectorMatrix *Matrix, double X, double Y)
 {
    if (!Matrix) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       return log.warning(ERR::NullArgs);
    }
 

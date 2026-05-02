@@ -3,7 +3,7 @@
 namespace xml {
 extern ERR XValueToNumber(struct XPathValue * Value, double * Result);
 extern ERR XValueToString(const struct XPathValue * Value, std::string * Result);
-extern ERR XValueNodes(struct XPathValue * Value, pf::vector<struct XTag *> * Result);
+extern ERR XValueNodes(struct XPathValue * Value, kt::vector<struct XTag *> * Result);
 
 } // namespace
 #ifndef FDEF

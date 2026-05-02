@@ -53,6 +53,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
 
   flags("SCF", { comment="Script flags" },
      "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
+     "PROCESS_DOC: Process any embedded documentation in the script.",
      "LOG_ALL: Enables execution debugging.  More information will be printed to the console in this mode.")
 
   flags("STR", { bits=32 },
@@ -566,11 +567,7 @@ __export struct ModHeader ModHeader;
 #define MOD_NAME nullptr
 #endif
 
-namespace pf {
-
-template <class T> T roundup(T Num, int Alignment) {
-   return (Num + Alignment) - (Num % Alignment); // Round up to Alignment value, e.g. (14,8) = 16
-}
+namespace kt {
 
 #ifdef PRINTF64I
   #define PF64 "I64d"
@@ -595,40 +592,16 @@ template <class T> T roundup(T Num, int Alignment) {
  #define DEBUG_BREAK
 #endif
 
-// Fast float-2-int conversion, with rounding to the nearest integer (F2I)
-
-#if defined(__GNUC__) && defined(__x86__)
-
-constexpr int F2I(double val) noexcept {
-   if (std::is_constant_evaluated()) return (int)std::round(val);
-   // This will round if the CPU is kept in its default rounding mode
-   int ret;
-   asm ("fistpl %0" : "=m" (ret) : "t" (val) : "st");
-   return(ret);
+template <class T>
+constexpr T roundup(T Num, T Alignment) {
+   return ((Num + Alignment - 1) / Alignment) * Alignment;
 }
 
-#else
-
-inline int F2I(double val) {
-   double t = val + 6755399441055744.0;
-   return *((int *)(&t));
+[[deprecated]] inline int F2I(double val) noexcept {
+   return std::lrint(val);
 }
-
-#endif
 
 } // namespace
-
-// Structures to pass to OpenCore()
-
-struct OpenTag {
-   TOI Tag;
-   union {
-      int Int;
-      int64_t Int64;
-      APTR Pointer;
-      CSTRING String;
-   } Value;
-};
 
 #ifdef _LP64
 #define FD_PTR64 FD_POINTER
@@ -636,11 +609,16 @@ struct OpenTag {
 #define FD_PTR64 0
 #endif
 
-#define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
+template <class T>
+inline void nextutf8(T *&Str) noexcept {
+   if (*Str) {
+      for (++Str; (((unsigned char)*Str) & 0xc0) IS 0x80; ++Str);
+   }
+}
 
 //********************************************************************************************************************
 
-namespace pf {
+namespace kt {
 
 class FloatRect {
    public:
@@ -658,17 +636,29 @@ class FloatRect {
 
 ]==])
 
+  struct('OpenTag', { comment='Tags for OpenInfo.Options' }, [[
+   int(TOI) Tag          # Tag identifier
+   ]],
+   [[
+   union {
+      int Int;
+      int64_t Int64;
+      APTR Pointer;
+      CSTRING String;
+   } Value;
+  ]])
+
   struct('OpenInfo', { comment='Client options for passing to Kotuku on startup' }, [[
-     cpp(str) Name             # Program name
-     cpp(str) SystemPath       # Path to system files
-     cpp(str) ModulePath       # Path to module files
-     cpp(str) RootPath         # Kotuku root directory
-     cstr *Args                # Command-line arguments
+     cpp(str) Name        # Program name
+     cpp(str) SystemPath  # Path to system files
+     cpp(str) ModulePath  # Path to module files
+     cpp(str) RootPath    # Kotuku root directory
+     cstr *Args           # Command-line arguments
      cstruct(*OpenTag) Options # Tag-list of additional options.  Typecast to va_list.
-     int(OPF) Flags        # Client flags indicating the values that have been defined in this structure.
-     int MaxDepth          # Maximum debug depth
-     int Detail            # Debug detail level (0 none - 9 trace)
-     int ArgCount          # Total arguments in Args
+     int(OPF) Flags       # Client flags indicating the values that have been defined in this structure.
+     int MaxDepth         # Maximum debug depth
+     int Detail           # Debug detail level (0 none - 9 trace)
+     int ArgCount         # Total arguments in Args
   ]])
 
   struct("ObjectSignal", { comment="Required in calls to WaitForObjects()." }, [[
@@ -789,7 +779,7 @@ using ModTest    = void (*)(CSTRING, int *, int *);
   -- Structures for defining method and action invocations.
 
   struct("ActionArray", { }, [[
-    ptr Routine     # Pointer to the function entry point
+    ptr Routine         # Pointer to the function entry point
     int(AC) ActionCode  # Action identifier
   ]],
   [[
@@ -822,10 +812,10 @@ using ModTest    = void (*)(CSTRING, int *, int *);
   ]])
 
   struct("Message", { comment="Message header." }, [[
-     large Time  # A timestamp acquired from ~Core.PreciseTime() when the message was first passed to ~Core.SendMessage().
-     int UID     # A unique identifier automatically created by ~Core.SendMessage().
+     large Time      # A timestamp acquired from ~Core.PreciseTime() when the message was first passed to ~Core.SendMessage().
+     int UID         # A unique identifier automatically created by ~Core.SendMessage().
      int(MSGID) Type # A message type identifier as defined by the client.
-     int Size    # The byte-size of the message data, or zero if no data is provided.
+     int Size        # The byte-size of the message data, or zero if no data is provided.
   ]])
 
   struct("MemInfo", { type="meminfo" }, [[
@@ -899,7 +889,7 @@ using ModTest    = void (*)(CSTRING, int *, int *);
     large Size                 # The size of the file's content.
     large TimeStamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
     struct(*FileInfo) Next     # Next structure in the list, or `NULL`.
-    str Name                   # The name of the file.
+    cpp(str) Name              # The name of the file.
     int(RDF) Flags             # Additional flags to describe the file.
     int(PERMIT) Permissions    # Standard permission flags.
     int UserID                 # User  ID (Unix systems only).
@@ -907,9 +897,31 @@ using ModTest    = void (*)(CSTRING, int *, int *);
     struct(DateTime) Created   # The date/time of the file's creation.
     struct(DateTime) Modified  # The date/time of the last file modification.
   ]],
-  [[
-    ankerl::unordered_dense::map<std::string, std::string> *Tags;
-  ]]) -- NB: Private fields can follow this structure.
+  [==[
+   struct fi_hash {
+      using is_transparent = void;
+      [[nodiscard]] size_t operator()(std::string_view Value) const noexcept { return std::hash<std::string_view>{}(Value); }
+   };
+
+   struct fi_equal {
+      using is_transparent = void;
+      [[nodiscard]] bool operator()(const std::string_view &Lhs, const std::string_view &Rhs) const noexcept { return Lhs IS Rhs; }
+   };
+
+   using TagMap = ankerl::unordered_dense::map<std::string, std::string, fi_hash, fi_equal>;
+
+   TagMap *Tags;
+
+   inline void clearTags() { if (Tags) { delete Tags; Tags = nullptr; } }
+
+   inline TagMap * getTags() {
+      if (not Tags) {
+         Tags = new (std::nothrow) TagMap();
+         if (not Tags) return nullptr;
+      }
+      return Tags;
+   }
+  ]==]) -- NB: Private fields can follow this structure.
 
   struct("DirInfo", { comment="Used by OpenDir() only" }, [[
     struct(*FileInfo) Info # Pointer to a !FileInfo structure
@@ -946,9 +958,9 @@ using ModTest    = void (*)(CSTRING, int *, int *);
 
   struct("Field", { comment="Used to describe the public fields of a class." }, [[
     maxint Arg         # An option to complement the field type.  Can be a pointer or an integer value
-    fptr(error ptr ptr) GetValue # A virtual function that will retrieve the value for this field.
-    ptr SetValue       # A virtual function that will set the value for this field.
-    fptr(error obj struct(*Field) int cptr int) WriteValue # An internal function for writing to this field.
+    fptr(error ptr ptr) GetValue # A virtual function that will retrieve the value for this field
+    ptr SetValue       # A virtual function that will set the value for this field
+    fptr(error obj struct(*Field) int cptr int) WriteValue # An internal function for writing to this field
     cstr Name          # The English name for the field, e.g. `Width`
     uint FieldID       # 32-bit hash from fieldhash(). Represented by FID constants, e.g. `FID_Width`
     ushort Offset      # Field offset within the object
@@ -959,6 +971,18 @@ using ModTest    = void (*)(CSTRING, int *, int *);
    inline bool readable() { return (Flags & FD_READ) ? true : false; }
    inline bool writeable() { return (Flags & (FD_WRITE|FD_INIT)) ? true : false; }
   ]]) -- [32/52]
+
+  struct("ClassRecord", { comment="Meta information for a class, as recorded in the class database." }, [[
+    cid ClassID          # Unique class identifier (hash of Name)
+    cid ParentID         # Parent class ID if this is a sub-class
+    int(CCF) Category    # Assigned category
+    cpp(str) Name        # Name of the class
+    cpp(str) Path        # Path to the class file
+    cpp(str) Extension   # Wildcards for matching by file extension, e.g. `jpeg|jpg`
+    cpp(str) Header      # File identification instruction, e.g. `[0:$89504e470d0a1a0a]`
+    cpp(str) Icon        # Icon reference in `group/name` format
+    cpp(str) Description # File description
+  ]])
 
   c_insert([[
 struct ScriptArg { // For use with sc::Exec
@@ -1076,7 +1100,9 @@ struct ScriptArg { // For use with sc::Exec
     "WakeThread",
     "AsyncCancel",
     "AsyncPending",
-    "AsyncWait")
+    "AsyncWait",
+    "GetFileInfo",
+    "ClassDatabase")
 
   c_insert([==[
 
@@ -1149,7 +1175,7 @@ typedef KEYVALUE ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
 
-namespace pf {
+namespace kt {
 
 inline void copymem(const void *Src, APTR Dest, std::size_t Length) {
    memmove(Dest, Src, Length);
@@ -1231,14 +1257,14 @@ typedef std::vector<obj_write> WRITE_TABLE;
 
   class("MetaClass", { src="../classes/class_metaclass.cpp" }, [[
     double ClassVersion    # Version of the class
-    cstruct(*FieldArray) Fields  # Original field array supplied by the module.
+    cstruct(*FieldArray) Fields  # Original field array supplied by the module
     array(struct(Field)) Dictionary # Field lookup by ID
     cstr ClassName         # Name of the class
-    cstr FileExtension     # File extension that is supported by this class.
+    cstr FileExtension     # File extension(s) supported by this class
     cstr FileDescription   # File description
     cstr FileHeader        # Internal file header for identifying the file
     cstr Path              # Module path to the class
-    cstr Icon              # An icon that can be used to represent class data.
+    cstr Icon              # An icon that can be used to represent class data
     int Size               # Byte-size of the class when produced as an object
     int(CLF) Flags         # Special flags
     cid ClassID            # ID of this class
@@ -1386,7 +1412,7 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
     int LineOffset       # An optional offset to use when reporting line numbers
   ]],
   [[
-   int64_t    ProcedureID;          // For callbacks
+   int64_t  ProcedureID;          // For callbacks
    KEYVALUE Vars; // Global parameters
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
@@ -1477,7 +1503,7 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
   nil,
   [[
    static ERR load(std::string Name, OBJECTPTR *Module = nullptr, APTR Functions = nullptr) {
-      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
+      if (auto module = objModule::create::global(kt::FieldValue(FID_Name, Name.c_str()))) {
          #ifdef KOTUKU_STATIC
             if (Module) *Module = module;
             if (Functions) ((APTR *)Functions)[0] = nullptr;
@@ -1567,7 +1593,7 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
 #include <pthread.h>
 #endif
 
-namespace pf {
+namespace kt {
 
 #ifdef __system__
    struct ActionMessage {
@@ -1643,14 +1669,11 @@ struct evHotplug {
       int ProductID;    // USB product or device ID
       int DeviceID;
    };
-   char  ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
-   char  Group[32];      // Group name in the config file
-   char  Class[32];      // Class identifier (USB)
-   union {
-      char Product[40];  // Name of product or the hardware device
-      char Device[40];
-   };
-   char Vendor[40];      // Name of vendor
+   char ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
+   char Group[32];      // Group name in the config file
+   char Class[32];      // Class identifier (USB)
+   char Product[40];    // Name of product or the hardware device
+   char Vendor[40];     // Name of vendor
 };
 
 // Speed efficient way of setting a string field that is managed with AllocMemory().

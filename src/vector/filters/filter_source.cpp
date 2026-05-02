@@ -24,7 +24,7 @@ class extSourceFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::SOURCEFX;
    static constexpr CSTRING CLASS_NAME = "SourceFX";
-   using create = pf::Create<extSourceFX>;
+   using create = kt::Create<extSourceFX>;
 
    objBitmap *Bitmap;     // Rendered image cache.
    objVector *Source;     // The vector branch to render as source graphic.
@@ -50,7 +50,7 @@ Draw: Render the source vector to the target bitmap.
 
 static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->Source) return ERR::Okay;
 
@@ -177,7 +177,7 @@ static ERR SOURCEFX_Free(extSourceFX *Self)
 
 static ERR SOURCEFX_Init(extSourceFX *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->Source) return log.warning(ERR::UndefinedField);
 
@@ -243,7 +243,7 @@ ownership of the same @VectorScene that the filter pipeline belongs.
 
 static ERR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
 {
-   pf::Log log;
+   kt::Log log;
    if (!Value) return log.warning(ERR::InvalidValue);
    if (Value->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::WrongClass);
 
@@ -268,9 +268,9 @@ Vectors are registered via the @VectorScene.AddDef() method.
 
 static ERR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
-   if ((!Self->Filter) or (!Self->Filter->Scene)) log.warning(ERR::UndefinedField);
+   if ((!Self->Filter) or (!Self->Filter->Scene)) return log.warning(ERR::UndefinedField);
 
    if (Self->Source) {
       UnsubscribeAction(Self->Source, AC::Free);

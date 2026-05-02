@@ -454,7 +454,7 @@ class pattern_rgb {
             else pixel = &pixel24RGB;
          }
          else {
-            pf::Log log;
+            kt::Log log;
             log.warning("pattern_rgb: Unsupported bitmap format %dbpp", Bitmap.BitsPerPixel);
          }
 
@@ -559,7 +559,7 @@ static void stroke_brush(VectorState &State, const extVectorImage &Image, agg::r
 
 void SceneRenderer::draw(objBitmap *Bitmap, objVectorViewport *Viewport)
 {
-   pf::Log log;
+   kt::Log log;
 
    mObjectCount = 0;
 
@@ -663,7 +663,7 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
 
 void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentState) {
    for (auto shape=CurrentVector; shape; shape=(extVector *)shape->Next) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       VectorState state = VectorState(ParentState);
 
       if (shape->baseClassID() != CLASSID::VECTOR) {
@@ -1102,7 +1102,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
 void SimpleVector::DrawPath(objBitmap *Bitmap, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)
 {
-   pf::Log log("draw_path");
+   kt::Log log("draw_path");
 
    agg::scanline_u8  scanline;
    agg::pixfmt_psl   format;
@@ -1286,12 +1286,12 @@ void agg::pixfmt_psl::rawBitmap(uint8_t *Data, int Width, int Height, int Stride
       }
    }
    else if (BitsPerPixel IS 24) {
-      pf::Log log;
+      kt::Log log;
       log.warning("Support for 24-bit bitmaps is deprecated.");
    }
    else if (BitsPerPixel IS 16) {
       // Deprecated.  16-bit client code should use 32-bit and downscale instead.
-      pf::Log log;
+      kt::Log log;
       log.warning("Support for 16-bit bitmaps is deprecated.");
    }
    else if (BitsPerPixel IS 8) {

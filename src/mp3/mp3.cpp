@@ -21,7 +21,7 @@ extern "C" {
 
 #include <array>
 
-using namespace pf;
+using namespace kt;
 
 #define VER_MP3 1.0
 
@@ -141,7 +141,7 @@ static int64_t calc_length(objSound *, int);
 
 static bool parse_id3v1(objSound *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto prv = (prvMP3 *)Self->ChildPrivate;
    bool processed = false;
@@ -157,19 +157,19 @@ static bool parse_id3v1(objSound *Self)
          log.detail("ID3v1 tag found.");
 
          std::string title(id3.title);
-         pf::ltrim(title, " ");
+         kt::ltrim(title, " ");
          acSetKey(Self, "Title", title.c_str());
 
          std::string artist(id3.artist);
-         pf::ltrim(artist, " ");
+         kt::ltrim(artist, " ");
          acSetKey(Self, "Author", artist.c_str());
 
          std::string album(id3.album);
-         pf::ltrim(album, " ");
+         kt::ltrim(album, " ");
          acSetKey(Self, "Album", album.c_str());
 
          std::string comment(id3.comment);
-         pf::ltrim(comment, " ");
+         kt::ltrim(comment, " ");
          acSetKey(Self, "Description", comment.c_str());
 
          if (id3.genre <= genre_table.size()) {
@@ -216,7 +216,7 @@ const int XING_SCALE        = 8; // VBR quality is indicated from 0 (best) to 10
 
 static int check_xing(objSound *Self, const uint8_t *Frame)
 {
-   pf::Log log;
+   kt::Log log;
 
    auto prv = (prvMP3 *)Self->ChildPrivate;
 
@@ -312,7 +312,7 @@ static ERR MP3_Free(objSound *Self)
 
 static ERR MP3_Init(objSound *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    CSTRING location = nullptr;
    Self->get(FID_Path, location);
@@ -401,7 +401,7 @@ static ERR MP3_Init(objSound *Self)
 
 static ERR MP3_Read(objSound *Self, struct acRead *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -545,7 +545,7 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
 
 static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
@@ -653,7 +653,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
 
 static int64_t calc_length(objSound *Self, int ReduceEnd)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int buffer_size;
    std::array<uint16_t, 16> avg;  // Used to compute the interquartile mean
    std::vector<uint16_t> fsizes;  // List of all compressed frame sizes
@@ -802,7 +802,7 @@ static int64_t calc_length(objSound *Self, int ReduceEnd)
 
 static int find_frame(objSound *Self, uint8_t *Buffer, int BufferSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int bitrate, frame_size;
    auto prv = (prvMP3 *)Self->ChildPrivate;
 
@@ -876,7 +876,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       fl::BaseClassID(CLASSID::SOUND),
       fl::ClassID(CLASSID::MP3),
       fl::ClassVersion(VER_MP3),
-      fl::FileExtension("*.mp3"),
+      fl::FileExtension("mp3"),
       fl::FileDescription("MP3 Audio Stream"),
       fl::Icon("filetypes/audio"),
       fl::Name("MP3"),

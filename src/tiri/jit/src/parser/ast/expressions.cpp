@@ -405,6 +405,40 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          break;
       }
 
+      case TokenKind::Annotate: {
+         Token at_token = this->ctx.tokens().current();
+         this->ctx.tokens().advance();
+
+         auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+         if (not name_token.ok()) return ParserResult<ExprNodePtr>::failure(name_token.error_ref());
+
+         GCstr *name = name_token.value_ref().identifier();
+         std::string_view annotation_name = name ? std::string_view(strdata(name), name->len) : std::string_view();
+
+         if (annotation_name IS "FunctionName") {
+            node = make_literal_expr(span_from(at_token, name_token.value_ref()),
+               LiteralValue::string(this->current_function_name()));
+            break;
+         }
+
+         if (annotation_name IS "SourceFile") {
+            node = make_literal_expr(span_from(at_token, name_token.value_ref()),
+               LiteralValue::string(this->current_source_file()));
+            break;
+         }
+
+         if (annotation_name IS "SourceLine") {
+            node = make_literal_expr(span_from(at_token, name_token.value_ref()),
+               LiteralValue::number(double(at_token.span().line)));
+            break;
+         }
+
+         {
+            return this->fail<ExprNodePtr>(ParserErrorCode::UnexpectedToken, name_token.value_ref(),
+               "unknown parser annotation expression '@" + std::string(annotation_name) + "'");
+         }
+      }
+
       case TokenKind::Choose: {
          auto choose_result = this->parse_choose_expr();
          if (not choose_result.ok()) return choose_result;
@@ -772,6 +806,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_arrow_function(ExprNodeList paramete
 
    std::unique_ptr<BlockStmt> body;
    FunctionReturnTypes return_types;
+   FunctionNameScope function_name_scope(*this, nullptr);
 
    if (this->ctx.check(TokenKind::DoToken)) {
       this->ctx.tokens().advance();

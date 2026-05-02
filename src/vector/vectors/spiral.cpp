@@ -14,7 +14,7 @@ class extVectorSpiral : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORSPIRAL;
    static constexpr CSTRING CLASS_NAME = "VectorSpiral";
-   using create = pf::Create<extVectorSpiral>;
+   using create = kt::Create<extVectorSpiral>;
 
    double Spacing;
    double Offset;

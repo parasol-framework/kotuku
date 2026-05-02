@@ -15,7 +15,7 @@ namespace xml::schema
    {
       bool is_named(std::string_view Name, std::string_view Expected)
       {
-         return pf::iequals(Name, Expected);
+         return kt::iequals(Name, Expected);
       }
 
       std::string make_qualified_name(std::string_view Prefix, std::string_view Local)
@@ -29,7 +29,7 @@ namespace xml::schema
       {
          for (size_t index = 1u; index < Node.Attribs.size(); ++index) {
             const auto &Attrib = Node.Attribs[index];
-            if (pf::iequals(Attrib.Name, Name)) return Attrib.Value;
+            if (kt::iequals(Attrib.Name, Name)) return Attrib.Value;
          }
          return std::string();
       }
@@ -38,7 +38,7 @@ namespace xml::schema
       size_t parse_occurs_value(const std::string &Value, size_t DefaultValue, bool AllowUnbounded)
       {
          if (Value.empty()) return DefaultValue;
-         if (AllowUnbounded and pf::iequals(Value, "unbounded")) return std::numeric_limits<size_t>::max();
+         if (AllowUnbounded and kt::iequals(Value, "unbounded")) return std::numeric_limits<size_t>::max();
 
          char *end = nullptr;
          auto parsed = std::strtoull(Value.c_str(), &end, 10);
@@ -157,7 +157,7 @@ namespace xml::schema
 
       for (size_t index = 1u; index < Root.Attribs.size(); ++index) {
          const auto &Attrib = Root.Attribs[index];
-         if (pf::iequals(Attrib.Name, "targetNamespace")) {
+         if (kt::iequals(Attrib.Name, "targetNamespace")) {
             Document.target_namespace = Attrib.Value;
             continue;
          }

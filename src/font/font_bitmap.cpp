@@ -79,7 +79,7 @@ public:
    ERR Result;
 
    BitmapCache(winfnt_header_fields &pFace, CSTRING pStyle, CSTRING pPath, objFile *pFile, winFont &pWinFont) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
 
       log.branch("Caching font %s : %d : %s", pPath, pFace.nominal_point_size, pStyle);
 
@@ -302,7 +302,7 @@ public:
 
    ~BitmapCache() {
       if (OpenCount) {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.warning("Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, int(StyleFlags), OpenCount);
       }
       if (mData) { FreeResource(mData); mData = nullptr; }
@@ -318,7 +318,7 @@ static APTR glCacheTimer = nullptr;
 
 static BitmapCache * check_bitmap_cache(extFont *Self, FTF Style)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (auto & cache : glBitmapCache) {
       if (cache.Result != ERR::Okay) continue;
@@ -342,7 +342,7 @@ static BitmapCache * check_bitmap_cache(extFont *Self, FTF Style)
 
 ERR bitmap_cache_cleaner(OBJECTPTR Subscriber, int64_t Elapsed, int64_t CurrentTime)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.msg("Checking bitmap font cache for unused fonts...");
 

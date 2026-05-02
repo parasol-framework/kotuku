@@ -223,7 +223,7 @@ inline uint8_t clipByte(int value)
 void get_resolutions(extDisplay *Self)
 {
 #if defined(__xwindows__) && defined(XRANDR_ENABLED)
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (glXRRAvailable) {
       if (!Self->Resolutions.empty()) return;
@@ -273,7 +273,7 @@ void get_resolutions(extDisplay *Self)
 #ifdef XRANDR_ENABLED
 ERR xr_set_display_mode(int *Width, int *Height)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int count, i;
    int width = *Width;
    int height = *Height;
@@ -368,7 +368,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *mutex, int Timeout)
 #ifdef _GLES_
 ERR lock_graphics_active(CSTRING Caller)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    //log.traceBranch("%s, Count: %d, State: %d, Display: $%x, Context: $%x", Caller, glLockCount, glEGLState, (LONG)glEGLDisplay, (LONG)glEGLContext); // See unlock_graphics() for the matching step.
    if (!pthread_mutex_lock(&glGraphicsMutex)) {
@@ -427,7 +427,7 @@ APTR glDGAMemory = nullptr;
 
 int x11DGAAvailable(APTR *VideoAddress, int *PixelsPerLine, int *BankSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    STRING displayname;
 
    static int checked = true;
@@ -494,7 +494,7 @@ int x11DGAAvailable(APTR *VideoAddress, int *PixelsPerLine, int *BankSize)
 
 XErrorHandler CatchRedirectError(Display *XDisplay, XErrorEvent *event)
 {
-   pf::Log log("X11");
+   kt::Log log("X11");
    log.msg("A window manager has been detected on this X11 server.");
    glX11.Manager = false;
    return 0;
@@ -522,7 +522,7 @@ const CSTRING glXProtoList[] = { nullptr,
 
 XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 {
-   pf::Log log("X11");
+   kt::Log log("X11");
    char buffer[80];
 
    if (XDisplay) {
@@ -539,7 +539,7 @@ XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 
 int CatchXIOError(Display *XDisplay)
 {
-   pf::Log log("X11");
+   kt::Log log("X11");
    log.error("A fatal XIO error occurred in relation to display \"%s\".", XDisplayName(nullptr));
    return 0;
 }
@@ -577,7 +577,7 @@ extern ERR resize_pixmap(extDisplay *Self, int Width, int Height)
 
 ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, int InfoSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
   //log.traceBranch("Display: %d, Info: %p, Size: %d", DisplayID, Info, InfoSize);
 
@@ -590,7 +590,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, int InfoSize)
 
    if (DisplayID) {
       if (glDisplayInfo.DisplayID IS DisplayID) {
-         pf::copymem(&glDisplayInfo, Info, InfoSize);
+         kt::copymem(&glDisplayInfo, Info, InfoSize);
          return ERR::Okay;
       }
       else if (ScopedObjectLock<extDisplay> display(DisplayID, 5000); display.granted()) {
@@ -757,12 +757,12 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, int InfoSize)
       }
       else return log.warning(ERR::TimeOut);
 
-      pf::copymem(&glDisplayInfo, Info, InfoSize);
+      kt::copymem(&glDisplayInfo, Info, InfoSize);
       return ERR::Okay;
 #else
 
       if (glDisplayInfo.DisplayID) {
-         pf::copymem(&glDisplayInfo, Info, InfoSize);
+         kt::copymem(&glDisplayInfo, Info, InfoSize);
          return ERR::Okay;
       }
       else {
@@ -807,7 +807,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, int InfoSize)
 
 static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    #ifdef __xwindows__
       int shmmajor, shmminor, pixmaps;
@@ -901,12 +901,13 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       else return ERR::SystemCall;
 
       // Get the X11 file descriptor (for incoming events) and tell the Core to listen to it when the task is sleeping.
-      // The FD is currently marked as a dummy because processes aren't being woken from select() if the X11 FD already
-      // contains input events.  Dummy FD routines are always called manually prior to select().
+      // Using ALWAYS_CALL here causes X11ManagerLoop() to run on every message-loop cycle, even when there are no X11
+      // events pending.  That can keep the UI thread active indefinitely.  A READ subscription is sufficient because
+      // X11ManagerLoop() drains the queued events whenever the X11 connection becomes readable.
 
       glXFD = XConnectionNumber(XDisplay);
       fcntl(glXFD, F_SETFD, 1); // FD does not duplicate across exec()
-      RegisterFD(glXFD, RFD::READ|RFD::ALWAYS_CALL, X11ManagerLoop, nullptr);
+      RegisterFD(glXFD, RFD::READ, X11ManagerLoop, nullptr);
 
       // This function checks for DGA and also maps the video memory for us
 
@@ -1076,7 +1077,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    for (int16_t iAlpha=0; iAlpha < 256; iAlpha++) {
       double fAlpha = (double)iAlpha * (1.0 / 255.0);
       for (int16_t iValue=0; iValue < 256; iValue++) {
-         glAlphaLookup[i++] = clipByte(F2I((double)iValue * fAlpha));
+         glAlphaLookup[i++] = clipByte(std::lrint((double)iValue * fAlpha));
       }
    }
 
@@ -1167,7 +1168,7 @@ static ERR MODOpen(OBJECTPTR Module)
 
 static ERR MODExpunge(void)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    ERR error = ERR::Okay;
 
    if (clDisplay) {
@@ -1295,7 +1296,7 @@ GLenum alloc_texture(int Width, int Height, GLuint *TextureID)
 
 ERR init_egl(void)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    EGLint format;
    int depth;
 
@@ -1404,7 +1405,7 @@ ERR init_egl(void)
 
 void refresh_display_from_egl(extDisplay *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("%dx%dx%d", glEGLWidth, glEGLHeight, glEGLDepth);
 
@@ -1435,7 +1436,7 @@ void refresh_display_from_egl(extDisplay *Self)
 
 void free_egl(void)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Current Display: $%x", (int)glEGLDisplay);
 

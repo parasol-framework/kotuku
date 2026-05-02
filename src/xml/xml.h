@@ -98,7 +98,7 @@ struct ParseState {
 };
 
 using TAGS = objXML::TAGS;
-using CURSOR = pf::vector<XTag>::iterator;
+using CURSOR = kt::vector<XTag>::iterator;
 
 //********************************************************************************************************************
 // Generic lookup templates with concepts
@@ -141,7 +141,7 @@ class extXML : public objXML {
    ankerl::unordered_dense::map<std::string, std::string> ParameterEntities; // For parameter entities
    ankerl::unordered_dense::map<std::string, std::string> Notations; // For notation declarations
 
-   // Namespace registry using pf::strhash() values, this allows us to store URIs in compact form in XTag structures.
+   // Namespace registry using kt::strhash() values, this allows us to store URIs in compact form in XTag structures.
    ankerl::unordered_dense::map<uint32_t, std::string> NSRegistry; // hash(URI) -> URI
 
    // Link prefixes to namespace URIs
@@ -221,7 +221,7 @@ class extXML : public objXML {
 
    inline uint32_t registerNamespace(const std::string &URI) {
       if (URI.empty()) return 0;
-      auto hash = pf::strhash(URI);
+      auto hash = kt::strhash(URI);
       NSRegistry[hash] = URI;
       return hash;
    }
@@ -247,7 +247,7 @@ class extXML : public objXML {
          });
 
          if (it != attribs_view.end()) {
-            Result = pf::strhash(it->Value);
+            Result = kt::strhash(it->Value);
             return ERR::Okay;
          }
 
@@ -386,4 +386,4 @@ constexpr std::array<char, 256> to_lower_table = []() {
    return output;
 }
 
-using NODES = pf::vector<XTag *>;
+using NODES = kt::vector<XTag *>;

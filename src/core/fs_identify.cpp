@@ -34,7 +34,7 @@ Read
 
 ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *ClassID, CLASSID *SubClassID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int i, bytes_read;
    constexpr int HEADER_SIZE = 80;
 

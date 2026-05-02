@@ -22,7 +22,7 @@ template<class... Args> void DBG_TRANSFORM(Args...) {
 #include <kotuku/modules/font.h>
 #include <kotuku/strings.hpp>
 
-using namespace pf;
+using namespace kt;
 
 #include "agg_alpha_mask_u8.h"
 #include "agg_basics.h"
@@ -242,7 +242,7 @@ public:
    };
 
    objBitmap * get_bitmap(int Width, int Height, TClipRectangle<int> &Clip, bool Debug) {
-      pf::Log log;
+      kt::Log log;
 
       if (Width < Clip.right) Width = Clip.right;
       if (Height < Clip.bottom) Height = Clip.bottom;
@@ -330,7 +330,7 @@ class extVectorTransition : public objVectorTransition, public SceneDef {
 
 class extVectorGradient : public objVectorGradient, public SceneDef {
    public:
-   using create = pf::Create<extVectorGradient>;
+   using create = kt::Create<extVectorGradient>;
 
    std::vector<GradientStop> Stops;  // An array of gradient stop colours.
    struct VectorMatrix *Matrices;
@@ -347,12 +347,12 @@ class extVectorGradient : public objVectorGradient, public SceneDef {
 
 class extVectorImage : public objVectorImage, public SceneDef {
    public:
-   using create = pf::Create<extVectorImage>;
+   using create = kt::Create<extVectorImage>;
 };
 
 class extVectorPattern : public objVectorPattern, public SceneDef {
    public:
-   using create = pf::Create<extVectorPattern>;
+   using create = kt::Create<extVectorPattern>;
 
    struct VectorMatrix *Matrices;
    objBitmap *Bitmap;
@@ -360,7 +360,7 @@ class extVectorPattern : public objVectorPattern, public SceneDef {
 
 class extVectorFilter : public objVectorFilter {
    public:
-   using create = pf::Create<extVectorFilter>;
+   using create = kt::Create<extVectorFilter>;
 
    extVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
    extVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
@@ -383,7 +383,7 @@ class extVectorFilter : public objVectorFilter {
 
 class extFilterEffect : public objFilterEffect {
    public:
-   using create = pf::Create<extFilterEffect>;
+   using create = kt::Create<extFilterEffect>;
 
    extVectorFilter *Filter; // Direct reference to the parent filter
    uint16_t UsageCount;        // Total number of other effects utilising this effect to build a pipeline
@@ -397,7 +397,7 @@ public:
 
 class extVector : public objVector {
    public:
-   using create = pf::Create<extVector>;
+   using create = kt::Create<extVector>;
 
    extPainter Fill[2], Stroke;
    double FinalX, FinalY;         // Used by Viewport to define the target X,Y; also VectorText to position the text' final position.
@@ -466,7 +466,7 @@ inline bool TabOrderedVector::operator()(const extVector *a, const extVector *b)
 
 class extVectorScene : public objVectorScene {
    public:
-   using create = pf::Create<extVectorScene>;
+   using create = kt::Create<extVectorScene>;
 
    double ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
@@ -493,7 +493,7 @@ class extVectorViewport : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORVIEWPORT;
    static constexpr CSTRING CLASS_NAME = "VectorViewport";
-   using create = pf::Create<extVectorViewport>;
+   using create = kt::Create<extVectorViewport>;
 
    FUNCTION vpDragCallback;
    double vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
@@ -521,7 +521,7 @@ class extVectorPoly : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORPOLYGON;
    static constexpr CSTRING CLASS_NAME = "VectorPolygon";
-   using create = pf::Create<extVectorPoly>;
+   using create = kt::Create<extVectorPoly>;
 
    std::vector<VectorPoint> Points;
    bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
@@ -531,7 +531,7 @@ class extVectorPath : public extVector, public SceneDef {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORPATH;
    static constexpr CSTRING CLASS_NAME = "VectorPath";
-   using create = pf::Create<extVectorPath>;
+   using create = kt::Create<extVectorPath>;
 
    std::vector<PathCommand> Commands;
 };
@@ -540,7 +540,7 @@ class extVectorRectangle : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORRECTANGLE;
    static constexpr CSTRING CLASS_NAME = "VectorRectangle";
-   using create = pf::Create<extVectorRectangle>;
+   using create = kt::Create<extVectorRectangle>;
 
    struct coord { double x, y; };
    double rX, rY, rWidth, rHeight, rXOffset, rYOffset;
@@ -563,7 +563,7 @@ class GradientColours {
 
          // For a given block of colours, compute the average colour and apply it to the entire block.
 
-         int block_size = int(resolution * table.size());
+         int block_size = std::max(1, int(resolution * int(table.size())));
          for (int i = 0; i < table.size(); i += block_size) {
 
             int red = 0, green = 0, blue = 0, alpha = 0, total = 0;
@@ -589,7 +589,7 @@ class extVectorClip : public objVectorClip, public SceneDef {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORCLIP;
    static constexpr CSTRING CLASS_NAME = "VectorClip";
-   using create = pf::Create<extVectorClip>;
+   using create = kt::Create<extVectorClip>;
 
    TClipRectangle<double> Bounds;
    OBJECTID ViewportID;
@@ -1243,9 +1243,9 @@ static int get_utf8(const std::string_view &Value, uint32_t &Unicode, std::size_
    }
 
    for (int i=1; i < len; ++i) {
-      if ((Value[i] & 0xc0) != 0x80) code = -1;
+      if ((Value[Index + i] & 0xc0) != 0x80) code = -1;
       code <<= 6;
-      code |= Value[i] & 0x3f;
+      code |= Value[Index + i] & 0x3f;
    }
 
    if (code IS -1) {

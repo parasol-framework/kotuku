@@ -544,8 +544,36 @@ bool fstring_scan_expression(LexState *State, size_t Offset, bool &NeedConcat) {
    // Scan tokens using the main lexer until we hit the closing }
 
    int brace_depth = 1;  // We've already consumed the opening {
+   int defer_depth = 0;
 
    while (brace_depth > 0) {
+      bool skipped_ws;
+      do {
+         skipped_ws = false;
+         while (State->c IS ' ' or State->c IS '\t' or State->c IS '\v' or State->c IS '\f') {
+            lex_next(State);
+            skipped_ws = true;
+         }
+         if (lex_iseol(State->c)) {
+            lex_newline(State);
+            skipped_ws = true;
+         }
+      } while (skipped_ws);
+
+      if (State->c IS '}' and not (defer_depth > 0 and State->peek_next() IS '>')) {
+         BCLine close_line = State->linenumber;
+         BCLine close_col = BCLine(State->current_offset - State->line_start_offset + 1);
+         size_t close_offset = State->current_offset;
+
+         lex_next(State);
+         lj_buf_reset(&State->sb);
+         brace_depth--;
+         if (brace_depth IS 0) break;  // End of expression, leave the next character for f-string literal scanning.
+
+         State->buffered_tokens.push_back(make_buffered_token(State, '}', close_line, close_col, close_offset));
+         continue;
+      }
+
       TValue expr_tv;
       LexToken tok = lex_scan(State, &expr_tv);
 
@@ -560,6 +588,12 @@ bool fstring_scan_expression(LexState *State, size_t Offset, bool &NeedConcat) {
 
       if (tok IS '{') { // Track brace depth
          brace_depth++;
+      }
+      else if (tok IS TK_defer_open or tok IS TK_defer_typed) {
+         defer_depth++;
+      }
+      else if (tok IS TK_defer_close and defer_depth > 0) {
+         defer_depth--;
       }
       else if (tok IS '}') {
          brace_depth--;
@@ -1127,7 +1161,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             if (State->c IS '>') { lex_next(State); return TK_arrow; }
             if (State->c IS '=') {
                lex_next(State);
-               pf::Log("Tiri").warning("%s:%d: Deprecated '==' operator, use 'is' instead",
+               kt::Log("Tiri").warning("%s:%d: Deprecated '==' operator, use 'is' instead",
                   strdata(State->chunk_name), State->effective_line().lineNumber());
                return TK_eq;
             }
@@ -1189,7 +1223,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
             lex_next(State);
             if (State->c IS '=') {
                lex_next(State);
-               pf::Log("Tiri").warning("%s:%d: Deprecated '~=' operator, use '!=' instead",
+               kt::Log("Tiri").warning("%s:%d: Deprecated '~=' operator, use '!=' instead",
                   strdata(State->chunk_name), State->effective_line().lineNumber());
                return TK_ne;
             }

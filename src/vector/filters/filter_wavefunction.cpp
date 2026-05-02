@@ -23,7 +23,7 @@ class extWaveFunctionFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::WAVEFUNCTIONFX;
    static constexpr CSTRING CLASS_NAME = "WaveFunctionFX";
-   using create = pf::Create<extWaveFunctionFX>;
+   using create = kt::Create<extWaveFunctionFX>;
 
    std::vector<std::vector<double>> psi;
    std::vector<GradientStop> Stops;
@@ -95,6 +95,7 @@ static ERR WAVEFUNCTIONFX_Draw(extWaveFunctionFX *Self, struct acDraw *Args)
    if (Self->N < 1) Self->N = 1;
    Self->L = std::clamp(Self->L, 0, Self->N - 1);
    Self->M = std::clamp(Self->M, 0, Self->L);
+   if (Self->Scale <= 0.0) return ERR::InvalidValue;
 
    if (!Self->Bitmap) {
       if (!(Self->Bitmap = objBitmap::create::local(fl::Name("wavefunction_bmp"),
@@ -118,7 +119,8 @@ static ERR WAVEFUNCTIONFX_Draw(extWaveFunctionFX *Self, struct acDraw *Args)
       auto bottom_right = (uint32_t *)(bottom + (((half_res<<1) - 1)));
 
       for (int x = 0; x < half_res; ++x, top++, bottom++, top_right--, bottom_right--) {
-         uint8_t grey = int(Self->psi[x][y] / Self->Max * 255.0);
+         uint8_t grey = 0;
+         if (Self->Max > 0.0) grey = int(Self->psi[x][y] / Self->Max * 255.0);
          uint32_t col;
          if (Self->Colours) {
             auto &rgb = Self->Colours->table[grey];
@@ -349,7 +351,7 @@ static ERR WAVEFUNCTIONFX_GET_Scale(extWaveFunctionFX *Self, double *Value)
 
 static ERR WAVEFUNCTIONFX_SET_Scale(extWaveFunctionFX *Self, double Value)
 {
-   if (Value >= 0) {
+   if (Value > 0) {
       Self->Scale = Value;
       Self->Dirty = true;
       return ERR::Okay;
@@ -388,7 +390,7 @@ static ERR WAVEFUNCTIONFX_SET_Stops(extWaveFunctionFX *Self, GradientStop *Value
       return ERR::Okay;
    }
    else {
-      pf::Log log;
+      kt::Log log;
       log.warning("Array size %d < 2", Elements);
       return ERR::InvalidValue;
    }

@@ -692,7 +692,7 @@ uint64_t AxisEvaluator::make_document_order_key(XTag *Left, XTag *Right)
 
       uintptr_t pointer_value = uintptr_t(Node);
       std::string_view pointer_bytes((char *)&pointer_value, sizeof(pointer_value));
-      return pf::strhash(pointer_bytes);
+      return kt::strhash(pointer_bytes);
    };
 
    uint32_t left_key = encode_node(Left);

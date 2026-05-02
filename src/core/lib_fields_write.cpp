@@ -78,11 +78,11 @@ static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
           else if (Flags & FD_DOUBLE) ((double *)Dest)[i]  = strtod(String, &end);
           else if (Flags & FD_STRING) {
              // Not feasible to convert a string into an array of strings
-             pf::Log().warning(ERR::InvalidType);
+             kt::Log().warning(ERR::InvalidType);
              return 0;
           }
           else {
-             pf::Log().warning(ERR::InvalidType);
+             kt::Log().warning(ERR::InvalidType);
              return 0;
           }
 
@@ -98,7 +98,7 @@ static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
 
 ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int Elements)
 {
-   pf::Log log("WriteField");
+   kt::Log log("WriteField");
 
    //log.trace("[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", Object->className(), Object->UID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
 
@@ -138,7 +138,7 @@ ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int E
 
 static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Source, int Elements)
 {
-   pf::Log log("WriteField");
+   kt::Log log("WriteField");
 
    if (not Field->writeable()) return ERR::NoFieldAccess;
 
@@ -190,7 +190,7 @@ static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Sour
 
 static ERR writeval_flags(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   pf::Log log("WriteField");
+   kt::Log log("WriteField");
    int j, int32;
 
    // Converts flags to numeric form if the source value is a string.
@@ -264,7 +264,7 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
 
 static ERR writeval_lookup(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   pf::Log log("WriteField");
+   kt::Log log("WriteField");
    int int32;
 
    if (Flags & FD_STRING) {
@@ -296,7 +296,7 @@ static ERR writeval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, i
    auto offset = (int *)((int8_t *)Object + Field->Offset);
    if (Flags & FD_INT)         *offset = *((int *)Data);
    else if (Flags & FD_INT64)  *offset = (int)(*((int64_t *)Data));
-   else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((double *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = std::lrint(*((double *)Data));
    else if (Flags & FD_STRING) *offset = strtol((STRING)Data, nullptr, 0);
    else return ERR::SetValueNotNumeric;
    return ERR::Okay;
@@ -307,7 +307,7 @@ static ERR writeval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
    auto offset = (int64_t *)((int8_t *)Object + Field->Offset);
    if (Flags & FD_INT64)      *offset = *((int64_t *)Data);
    else if (Flags & FD_INT)   *offset = *((int *)Data);
-   else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((double *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = std::lrint(*((double *)Data));
    else if (Flags & FD_STRING) *offset = strtoll((STRING)Data, nullptr, 0);
    else return ERR::SetValueNotNumeric;
    return ERR::Okay;
@@ -436,7 +436,7 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
    }
    else if (Flags & FD_STRING) {
       APTR arraybuffer;
-      if ((arraybuffer = malloc(strlen((CSTRING)Data) * 8))) {
+      if ((arraybuffer = malloc(strlen((CSTRING)(Data ? Data : "")) * 8))) {
          if (!Data) {
             if (Field->Flags & FD_RGB) {
                Data = "0,0,0,0"; // A string of nullptr will 'clear' the colour (the alpha value will be zero)
@@ -459,7 +459,7 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
       else return ERR::AllocMemory;
    }
    else {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.warning("Arrays can only be set using the FD_ARRAY type.");
       return ERR::SetValueNotArray;
    }
@@ -490,10 +490,10 @@ static ERR setval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int
 {
    int int32;
    if (Flags & FD_INT64)       int32 = (int)(*((int64_t *)Data));
-   else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = F2I(*((double *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = std::lrint(*((double *)Data));
    else if (Flags & FD_STRING) int32 = strtol((STRING)Data, nullptr, 0);
    else if (Flags & FD_INT)    int32 = *((int *)Data);
-   else if (Flags & FD_UNIT)   int32 = F2I(((Unit *)Data)->Value);
+   else if (Flags & FD_UNIT)   int32 = std::lrint(((Unit *)Data)->Value);
    else return ERR::SetValueNotNumeric;
 
    FieldContext ctx(Object, Field);
@@ -554,7 +554,7 @@ static ERR setval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
 
 void optimise_write_field(Field &Field)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Field.writeable()) return;
 

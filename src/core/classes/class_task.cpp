@@ -45,6 +45,8 @@ The task object that represents the active process can be acquired from ~Current
  #include <stdio.h>
 #endif
 
+#include <bit>
+
 #include "../defs.h"
 #include <kotuku/main.h>
 
@@ -300,7 +302,7 @@ static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, int 
 
 static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    thread_local uint8_t recursive = 0;
 
    if (recursive) return;
@@ -322,7 +324,7 @@ static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
 
 static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    thread_local uint8_t recursive = 0;
 
    if (recursive) return;
@@ -347,14 +349,14 @@ static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
 
 extern "C" void task_register_stdout(extTask *Task, WINHANDLE Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("Handle: %d", (int)(MAXINT)Handle);
    RegisterFD(Handle, RFD::READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
 }
 
 extern "C" void task_register_stderr(extTask *Task, WINHANDLE Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("Handle: %d", (int)(MAXINT)Handle);
    RegisterFD(Handle, RFD::READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
 }
@@ -392,7 +394,7 @@ static CSTRING action_id_name(ACTIONID ActionID)
 
 static ERR msg_action(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   pf::Log log("ProcessMessages");
+   kt::Log log("ProcessMessages");
    ActionMessage *action;
 
    if (not (action = (ActionMessage *)Message)) {
@@ -406,8 +408,7 @@ static ERR msg_action(APTR Custom, int MsgID, int MsgType, APTR Message, int Msg
 
    if ((action->ObjectID) and (action->ActionID != AC::NIL)) {
       OBJECTPTR obj;
-      ERR error;
-      if ((error = AccessObject(action->ObjectID, 5000, &obj)) IS ERR::Okay) {
+      if (auto error = AccessObject(action->ObjectID, 5000, &obj); error IS ERR::Okay) {
          if (action->SendArgs IS false) {
             obj->setFlag(NF::MESSAGE);
             Action(action->ActionID, obj, nullptr);
@@ -431,11 +432,9 @@ static ERR msg_action(APTR Custom, int MsgID, int MsgType, APTR Message, int Msg
             }
          }
       }
-      else {
-         if ((error != ERR::NoMatchingObject) and (error != ERR::MarkedForDeletion)) {
-            if (action->ActionID > AC::NIL) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
-            else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, int(action->ActionID));
-         }
+      else if ((error != ERR::NoMatchingObject) and (error != ERR::MarkedForDeletion)) {
+         if (action->ActionID > AC::NIL) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
+         else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, int(action->ActionID));
       }
    }
    else log.warning("Action message %s specifies an object ID of #%d.", action_id_name(action->ActionID), action->ObjectID);
@@ -447,7 +446,7 @@ static ERR msg_action(APTR Custom, int MsgID, int MsgType, APTR Message, int Msg
 
 static ERR msg_quit(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.function("Processing quit message");
    glTaskState = TSTATE::STOPPING;
    return ERR::Okay;
@@ -458,7 +457,7 @@ static ERR msg_quit(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSi
 
 extern "C" ERR validate_process(int ProcessID)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.function("PID: %d", ProcessID);
 
@@ -501,7 +500,7 @@ extern "C" ERR validate_process(int ProcessID)
 #ifdef _WIN32
 static void task_process_end(WINHANDLE FD, extTask *Task)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    winGetExitCodeProcess(Task->Platform, &Task->ReturnCode);
    if (Task->ReturnCode != 259) {
@@ -565,14 +564,14 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
 #ifdef _WIN32
 extern "C" void register_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
-   pf::Log log;
+   kt::Log log;
    log.traceBranch("Process: %d", (int)(MAXINT)ProcessHandle);
    RegisterFD(ProcessHandle, RFD::READ, (void (*)(void *, void *))&task_process_end, Self);
 }
 
 extern "C" void deregister_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
-   pf::Log log;
+   kt::Log log;
    log.traceBranch("Process: %d", (int)(MAXINT)ProcessHandle);
    if (ProcessHandle) RegisterFD(ProcessHandle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, nullptr, nullptr);
 }
@@ -613,18 +612,18 @@ TimeOut:     Can be returned if the `WAIT` flag is used.  Indicates that the pro
 
 static ERR TASK_Activate(extTask *Self)
 {
-   pf::Log log;
-   int i, j;
+   kt::Log log;
+   int i;
    ERR error;
-   #ifdef _WIN32
-      std::string launchdir;
-      bool hide_output;
-      int winerror;
-   #endif
+#ifdef _WIN32
+   std::string launchdir;
+   bool hide_output;
+   int winerror;
+#endif
 #ifdef __unix__
-      int pid;
-      int8_t privileged, shell;
-      int8_t requested_shell;
+   int pid;
+   int8_t privileged, shell;
+   int8_t requested_shell;
 #endif
 
    Self->ReturnCodeSet = false;
@@ -632,7 +631,7 @@ static ERR TASK_Activate(extTask *Self)
    if (Self->Location.empty()) return log.warning(ERR::MissingPath);
 
    if (not glJanitorActive) {
-      pf::SwitchContext ctx(glCurrentTask);
+      kt::SwitchContext ctx(glCurrentTask);
       auto call = C_FUNCTION(process_janitor);
       SubscribeTimer(60, &call, &glProcessJanitor);
       glJanitorActive = true;
@@ -727,7 +726,7 @@ static ERR TASK_Activate(extTask *Self)
             continue;
          }
          else if (final_buffer[i] IS '\'') {
-            for (j=i+1; final_buffer[j]; j++) {
+            for (auto j=i+1; final_buffer[j]; j++) {
                if (final_buffer[j] IS '\'') {
                   if (final_buffer[j+1] <= 0x20) {
                      final_buffer[i] = '"';
@@ -777,10 +776,13 @@ static ERR TASK_Activate(extTask *Self)
          //if (not glProcessBreak) glProcessBreak = AllocateID(IDTYPE_MESSAGE);
          glProcessBreak = MSGID::BREAK;
 
-         ProcessMessages(PMF::NIL, Self->TimeOut * 1000.0);
+         auto wait_error = ProcessMessages(PMF::NIL, Self->TimeOut * 1000.0);
+         if (wait_error != ERR::Okay) error = wait_error;
 
-         winGetExitCodeProcess(Self->Platform, &Self->ReturnCode);
-         if (Self->ReturnCode != 259) Self->ReturnCodeSet = true;
+         if ((!Self->ReturnCodeSet) and (Self->Platform)) {
+            winGetExitCodeProcess(Self->Platform, &Self->ReturnCode);
+            if (Self->ReturnCode != 259) Self->ReturnCodeSet = true;
+         }
       }
    }
    else {
@@ -1118,7 +1120,7 @@ static ERR TASK_Expunge(extTask *Self)
 
 static ERR TASK_Free(extTask *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
 #ifdef __unix__
    check_incoming(Self);
@@ -1198,7 +1200,7 @@ NoSupport: The platform does not support environment variables.
 
 static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
@@ -1352,7 +1354,7 @@ GetKey: Retrieves custom key values.
 
 static ERR TASK_GetKey(extTask *Self, struct acGetKey *Args)
 {
-   pf::Log log;
+   kt::Log log;
    int j;
 
    if ((!Args) or (!Args->Value) or (Args->Size <= 0)) return log.warning(ERR::NullArgs);
@@ -1375,7 +1377,7 @@ static ERR TASK_GetKey(extTask *Self, struct acGetKey *Args)
 
 static ERR TASK_Init(extTask *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not fs_initialised) { // Perform the following if this is a Task representing the current process
       Self->ProcessID = glProcessID;
@@ -1492,7 +1494,7 @@ Okay
 
 static ERR TASK_Quit(extTask *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->ProcessID) and (Self->ProcessID != glProcessID)) {
       #ifdef __unix__
@@ -1557,7 +1559,7 @@ NoSupport: The platform does not support environment variables.
 
 static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
@@ -1668,7 +1670,7 @@ process that no more data is incoming).
 
 static ERR TASK_Write(extTask *Task, struct acWrite *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -1739,7 +1741,9 @@ static ERR GET_AffinityMask(extTask *Self, int64_t *Value)
 
    // Convert cpu_set_t to bitmask
    int64_t mask = 0;
-   for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+   constexpr int max_mask_bits = sizeof(mask) * 8;
+   const int max_cpu = (CPU_SETSIZE < max_mask_bits) ? CPU_SETSIZE : max_mask_bits;
+   for (int cpu = 0; cpu < max_cpu; cpu++) {
       if (CPU_ISSET(cpu, &cpuset)) {
          mask |= (1LL << cpu);
       }
@@ -1765,10 +1769,11 @@ static ERR SET_AffinityMask(extTask *Self, int64_t Value)
    CPU_ZERO(&cpuset);
 
    // Convert bitmask to cpu_set_t
-   for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
-      if (Value & (1LL << cpu)) {
-         CPU_SET(cpu, &cpuset);
-      }
+   auto mask = uint64_t(Value);
+   while (mask) {
+      int cpu = int(std::countr_zero(mask));
+      CPU_SET(cpu, &cpuset);
+      mask &= mask - 1;
    }
 
    // Set affinity for current process
@@ -1830,7 +1835,7 @@ static ERR SET_Args(extTask *Self, CSTRING Value)
             }
          }
 
-         if (in_quotes) return pf::Log().warning(ERR::Syntax);
+         if (in_quotes) return kt::Log().warning(ERR::Syntax);
          if (*Value) while (*Value > 0x20) Value++;
          Self->addArgument(buffer.c_str());
       }
@@ -2079,7 +2084,7 @@ string.  To illustrate, the following command-line string:
 Would be represented as follows:
 
 <pre>
-pf::vector&lt;std::string&gt; Args = {
+kt::vector&lt;std::string&gt; Args = {
    "PREFS",
    "MyPrefs",
    "-file",
@@ -2091,14 +2096,14 @@ NOTE: Scripts should use the #Args field instead.
 
 *********************************************************************************************************************/
 
-static ERR GET_Parameters(extTask *Self, pf::vector<std::string> **Value, int *Elements)
+static ERR GET_Parameters(extTask *Self, kt::vector<std::string> **Value, int *Elements)
 {
    *Value = &Self->Parameters;
    *Elements = Self->Parameters.size();
    return ERR::Okay;
 }
 
-static ERR SET_Parameters(extTask *Self, const pf::vector<std::string> *Value, int Elements)
+static ERR SET_Parameters(extTask *Self, const kt::vector<std::string> *Value, int Elements)
 {
    if (Value) Self->Parameters = Value[0];
    else Self->Parameters.clear();
@@ -2135,7 +2140,7 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
 {
    std::string new_path;
 
-   pf::Log log;
+   kt::Log log;
 
    log.trace("ChDir: %s", Value);
 
@@ -2251,7 +2256,7 @@ DoesNotExist: The task is yet to be successfully launched with the #Activate() a
 
 static ERR GET_ReturnCode(extTask *Self, int *Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->ReturnCodeSet) {
       *Value = Self->ReturnCode;
@@ -2351,7 +2356,7 @@ extern ERR add_task_class(void)
       fl::ClassVersion(VER_TASK),
       fl::Name("Task"),
       fl::Category(CCF::SYSTEM),
-      fl::FileExtension("*.exe|*.bat|*.com"),
+      fl::FileExtension("exe|bat|com"),
       fl::FileDescription("Executable File"),
       fl::FileHeader("[0:$4d5a]|[0:$7f454c46]"),
       fl::Icon("items/launch"),

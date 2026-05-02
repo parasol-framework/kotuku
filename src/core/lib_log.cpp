@@ -41,6 +41,8 @@ Log levels are:
 #include "defs.h"
 
 static void fmsg(CSTRING, STRING, int8_t, int8_t);
+static FILE *log_output(void);
+static bool log_output_is_file(void);
 
 #ifdef __ANDROID__
 static const int COLUMN1 = 40;
@@ -56,6 +58,16 @@ enum { MS_NONE, MS_FUNCTION, MS_MSG };
 enum { EL_NONE=0, EL_MINOR, EL_MAJOR, EL_MAJORBOLD };
 
 static thread_local int tlBaseLine = 0;
+
+static FILE *log_output(void)
+{
+   return glLogFile ? glLogFile : stderr;
+}
+
+static bool log_output_is_file(void)
+{
+   return glLogFile;
+}
 
 /*********************************************************************************************************************
 
@@ -125,6 +137,8 @@ va_list Args: A `va_list` corresponding to the arguments referenced in `Message`
 void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 {
    if (tlLogStatus <= 0) { if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++; return; }
+   FILE *fd = log_output();
+   const bool file_output = log_output_is_file();
 
    static const VLF log_levels[10] = {
       VLF::CRITICAL,
@@ -144,25 +158,30 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
          __android_log_vprint(ANDROID_LOG_ERROR, Header ? Header : "Kotuku", Message, Args);
       #else
          #ifdef ESC_OUTPUT
-            if (!Header) Header = "";
-            #ifdef _WIN32
-               fprintf(stderr, "!%s ", Header);
-            #else
-               fprintf(stderr, "\033[1m%s ", Header);
-            #endif
+            if (file_output) {
+               if (Header) fprintf(fd, "%s ", Header);
+            }
+            else {
+               if (!Header) Header = "";
+               #ifdef _WIN32
+                  fprintf(fd, "!%s ", Header);
+               #else
+                  fprintf(fd, "\033[1m%s ", Header);
+               #endif
+            }
          #else
-            if (Header) fprintf(stderr, "%s ", Header);
+            if (Header) fprintf(fd, "%s ", Header);
          #endif
 
-         vfprintf(stderr, Message, Args);
+         vfprintf(fd, Message, Args);
 
          #ifdef ESC_OUTPUT
             #ifndef _WIN32
-               fprintf(stderr, "\033[0m");
+               if (!file_output) fprintf(fd, "\033[0m");
             #endif
          #endif
 
-         fprintf(stderr, "\n");
+         fprintf(fd, "\n");
       #endif
 
       if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++;
@@ -186,11 +205,11 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       if ((Flags & (VLF::BRANCH|VLF::FUNCTION)) != VLF::NIL) msgstate = MS_FUNCTION;
       else msgstate = MS_MSG;
 
-      if (glLogThreads) fprintf(stderr, "%.4d ", int(get_thread_id()));
+      if (glLogThreads) fprintf(fd, "%.4d ", int(get_thread_id()));
 
       #if defined(__unix__) and !defined(__ANDROID__)
          bool flushdbg;
-         if (glLogLevel >= 3) {
+         if ((fd IS stderr) and (glLogLevel >= 3)) {
             flushdbg = true;
             if (tlPublicLockCount) flushdbg = false;
             if (flushdbg) fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags & (~O_NONBLOCK));
@@ -199,12 +218,12 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       #endif
 
       #ifdef ESC_OUTPUT // Highlight errors if the log output is crowded
-         if ((glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) {
+         if ((not file_output) and (glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) {
             #ifdef _WIN32
-               fprintf(stderr, "!");
+               fprintf(fd, "!");
                adjust = 1;
             #else
-               fprintf(stderr, "\033[1m");
+               fprintf(fd, "\033[1m");
             #endif
          }
       #endif
@@ -268,31 +287,37 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
             if (glLogLevel > 5) {
                if (ctx.field) {
-                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx.field->Name);
+                  fprintf(fd, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx.field->Name);
                }
-               else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
+               else fprintf(fd, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
             }
             else if (ctx.field) {
-               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx.field->Name);
+               fprintf(fd, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx.field->Name);
             }
-            else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UID);
+            else fprintf(fd, "%s[%s:%d] ", msgheader, name, obj->UID);
          }
-         else fprintf(stderr, "%s", msgheader);
+         else fprintf(fd, "%s", msgheader);
 
-         vfprintf(stderr, Message, Args);
+         vfprintf(fd, Message, Args);
 
          #if defined(ESC_OUTPUT) and !defined(_WIN32)
-            if ((glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) fprintf(stderr, "\033[0m");
+            if ((not file_output) and (glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) fprintf(fd, "\033[0m");
          #endif
 
-         fprintf(stderr, "\n");
+         fprintf(fd, "\n");
 
          #if defined(__unix__) and !defined(__ANDROID__)
             if (flushdbg) {
-               fflush(0); // A fflush() appears to be enough - using fsync() will synchronise to disk, which we don't want by default (slow)
+               fflush(nullptr); // A fflush() appears to be enough - using fsync() will synchronise to disk, which we don't want by default (slow)
                if (glSync) fsync(STDERR_FILENO);
                fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags);
             }
+            else if (glSync) {
+               fflush(fd);
+               if (fd IS stderr) fsync(STDERR_FILENO);
+            }
+         #else
+            if (glSync) fflush(fd);
          #endif
       #endif
    }
@@ -350,11 +375,13 @@ ERR FuncError(CSTRING Header, ERR Code)
       }
       else __android_log_print(ANDROID_LOG_ERROR, Header, "%s", glMessages[Code]);
    #else
+      FILE *fd = log_output();
+      const bool file_output = log_output_is_file();
       char msgheader[COLUMN1+1];
       CSTRING histart = "", hiend = "";
 
       #ifdef ESC_OUTPUT
-         if (glLogLevel > 2) {
+         if ((not file_output) and (glLogLevel > 2)) {
             #ifdef _WIN32
                histart = "!";
             #else
@@ -370,14 +397,19 @@ ERR FuncError(CSTRING Header, ERR Code)
          CSTRING name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
          if (ctx.field) {
-            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx.field->Name, glMessages[int(Code)], hiend);
+            fprintf(fd, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx.field->Name, glMessages[int(Code)], hiend);
          }
-         else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[int(Code)], hiend);
+         else fprintf(fd, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[int(Code)], hiend);
       }
-      else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[int(Code)], hiend);
+      else fprintf(fd, "%s%s%s%s\n", histart, msgheader, glMessages[int(Code)], hiend);
 
       #if defined(__unix__) && !defined(__ANDROID__)
-         if (glSync) { fflush(0); fsync(STDERR_FILENO); }
+         if (glSync) {
+            fflush(fd);
+            if (fd IS stderr) fsync(STDERR_FILENO);
+         }
+      #else
+         if (glSync) fflush(fd);
       #endif
    #endif
 
@@ -391,7 +423,7 @@ LogReturn: Revert to the previous branch in the application logging tree.
 Status: Internal
 
 Use LogReturn() to reverse any previous log message that created an indented branch.  This function is considered
-internal, and clients must use the scope-managed `pf::Log` class for branched log output.
+internal, and clients must use the scope-managed `kt::Log` class for branched log output.
 
 -END-
 

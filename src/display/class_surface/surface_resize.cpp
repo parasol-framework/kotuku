@@ -7,7 +7,7 @@ Redimension: Moves and resizes a surface object in a single action call.
 
 static ERR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs)|ERR::Notified;
 
@@ -144,7 +144,7 @@ InvalidState: The surface is not a top-level surface object.
 
 static ERR SURFACE_SetDisplay(extSurface *Self, struct gfx::SetDisplay *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (Args->Width < 0) or (Args->Height < 0)) return log.warning(ERR::Args);
    if (Self->ParentID) return log.warning(ERR::InvalidState);

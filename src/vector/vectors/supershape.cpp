@@ -19,7 +19,7 @@ class extVectorShape : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORSHAPE;
    static constexpr CSTRING CLASS_NAME = "VectorShape";
-   using create = pf::Create<extVectorShape>;
+   using create = kt::Create<extVectorShape>;
 
    double Radius;
    double CX, CY;
@@ -93,9 +93,9 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
 
       // Prevent sub-pixel vertices from being generated.
 
-      if ((F2I(x) IS lx) and (F2I(y) IS ly)) continue;
-      lx = F2I(x);
-      ly = F2I(y);
+      if ((std::lrint(x) IS lx) and (std::lrint(y) IS ly)) continue;
+      lx = std::lrint(x);
+      ly = std::lrint(y);
 
       // If x or y is greater than the radius, we'll have to rescale the final result after the shape has been generated.
 

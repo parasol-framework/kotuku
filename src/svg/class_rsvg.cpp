@@ -50,7 +50,7 @@ static ERR RSVG_Free(extPicture *Self)
 
 static ERR RSVG_Init(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
    CSTRING path = nullptr;
 
    Self->get(FID_Path, path);
@@ -84,7 +84,7 @@ static ERR RSVG_Init(extPicture *Self)
 
 static ERR RSVG_Query(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
    prvSVG *prv;
    objBitmap *bmp;
 
@@ -218,7 +218,7 @@ static ERR init_rsvg(void)
       fl::ClassID(CLASSID::RSVG),
       fl::Name("RSVG"),
       fl::Category(CCF::GRAPHICS),
-      fl::FileExtension("*.svg|*.svgz"),
+      fl::FileExtension("svg|svgz"),
       fl::FileDescription("SVG image"),
       fl::Actions(clActions),
       fl::Path(MOD_PATH));

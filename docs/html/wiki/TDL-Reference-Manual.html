@@ -266,17 +266,17 @@
 <p>Use <code>module()</code> to declare the interface of a named module. The following key-values can be provided as <code>Options</code>:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Key</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">The name of the module.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">copyright</td>
 <td style="text-align: left;">Copyright information declaring the owner(s) of the module, recommended to be kept under 120 characters.</td>
 </tr>
@@ -288,17 +288,17 @@
 <p>Use <code>header()</code> to create a language header file that declares constant types and values. Unlike <code>module()</code>, a header is not permitted to export functional interfaces. The following key-values can be provided as <code>Options</code>:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Key</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">path</td>
 <td style="text-align: left;">A simplified path for the header file. For example, a value of <code>system/fields</code> would evaluate to <code>include/system/fields.h</code> when generated as a C++ header.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">copyright</td>
 <td style="text-align: left;">Copyright information declaring the owner(s) of the header, recommended to be kept under 120 characters.</td>
 </tr>
@@ -357,25 +357,25 @@ end)</code></pre>
 <p>Available <code>Options</code> are:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">restrict</td>
 <td style="text-align: left;">Do not output the listed flags to the language header file.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">module</td>
 <td style="text-align: left;">Output the listed flags only if <code>flags()</code> has been called from the named module.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">comment</td>
 <td style="text-align: left;">A short description that will be added to documentation for the collection.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">bits</td>
 <td style="text-align: left;">The maximum number of bits recommended for hosting the flags.</td>
 </tr>
@@ -392,29 +392,29 @@ end)</code></pre>
 <p>Available <code>Options</code> are:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">restrict</td>
 <td style="text-align: left;">Do not output the listed values to the language header file.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">module</td>
 <td style="text-align: left;">Output the listed values only if <code>enum()</code> has been called from the named module.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">comment</td>
 <td style="text-align: left;">A short description that will be added to documentation for the collection.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">start</td>
 <td style="text-align: left;">Start the count from this value, otherwise default to 0.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">type</td>
 <td style="text-align: left;">The integer type that represents the collection, typically <code>int</code>, <code>short</code> or <code>char</code>. Highly recommended for enabling strong typing.</td>
 </tr>
@@ -429,25 +429,25 @@ end)</code></pre>
 <p>Available <code>Options</code> are:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">restrict</td>
 <td style="text-align: left;">Do not output the listed values to the language header file.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">module</td>
 <td style="text-align: left;">Output the listed values only if <code>const()</code> has been called from the named module.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">comment</td>
 <td style="text-align: left;">A short description that will be added to documentation for the collection.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">type</td>
 <td style="text-align: left;">The integer type that represents the collection, typically <code>int</code>, <code>short</code> or <code>char</code>. Highly recommended for enabling strong typing.</td>
 </tr>
@@ -471,29 +471,29 @@ end)</code></pre>
 <p>Available <code>Options</code> are:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">restrict</td>
 <td style="text-align: left;">Restricts the output to a specific language. E.g. <code>restrict=&#39;c&#39;</code> will generate C header output only.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">module</td>
 <td style="text-align: left;">Output the struct only if <code>struct()</code> has been called from the named module.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">comment</td>
 <td style="text-align: left;">A short description that will be added to documentation for the collection.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">version</td>
 <td style="text-align: left;">Associates a version number (whole numbers only) with the struct.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">type</td>
 <td style="text-align: left;">For C/C++ only, adds a named <code>typedef</code> in conjunction with the struct name.</td>
 </tr>
@@ -516,45 +516,45 @@ end)</code></pre>
 <p>Available <code>Options</code> are:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">restrict</td>
 <td style="text-align: left;">Restricts the output to a specific language. E.g. <code>restrict=&#39;c&#39;</code> will generate C header output only.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">module</td>
 <td style="text-align: left;">Output the class only if <code>class()</code> has been called from the named module.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">comment</td>
 <td style="text-align: left;">A short description that will be added to documentation for the collection.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">version</td>
 <td style="text-align: left;">Associates a version number (<code>Version.Revision</code>) with the struct.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">type</td>
 <td style="text-align: left;">For C/C++ only, adds a named <code>typedef</code> in conjunction with the struct name.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">base</td>
 <td style="text-align: left;">If the spec is for a sub-class, refer to the name of its base class here.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">src</td>
 <td style="text-align: left;">A table of paths that refer to the C++ source file(s) representing the class.</td>
 </tr>
-<tr>
+<tr class="even">
 <td style="text-align: left;">references</td>
 <td style="text-align: left;">An optional table referring to flags, enums and constants that are used by the class. Only required if said references are not already declared in the Spec section.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td style="text-align: left;">output</td>
 <td style="text-align: left;">Specifying a path to an output file will generate C definitions for class methods &amp; actions declared by the class.</td>
 </tr>

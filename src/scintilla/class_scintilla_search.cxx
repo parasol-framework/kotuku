@@ -78,7 +78,7 @@ Search: The string sequence was not found.
 
 static ERR SEARCH_Find(objScintillaSearch *Self, struct ss::Find *Args)
 {
-   pf::Log log;
+   kt::Log log;
    int start, end, pos, startLine, endLine, i, targstart, targend;
 
    if (!Self->Text) return log.warning(ERR::FieldNotSet);
@@ -172,7 +172,7 @@ static ERR SEARCH_Free(objScintillaSearch *Self)
 
 static ERR SEARCH_Init(objScintillaSearch *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->Scintilla) { // Find our parent
       auto obj = Self->Owner;
@@ -211,7 +211,7 @@ Search: The string could not be found.
 
 static ERR SEARCH_Next(objScintillaSearch *Self, struct ss::Next *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -355,7 +355,7 @@ static ERR SET_Text(objScintillaSearch *Self, CSTRING Value)
 {
    if (Self->Text) { FreeResource(Self->Text); Self->Text = nullptr; }
    if (Value) {
-      if (!(Self->Text = pf::strclone(Value))) return ERR::AllocMemory;
+      if (!(Self->Text = kt::strclone(Value))) return ERR::AllocMemory;
    }
    return ERR::Okay;
 }

@@ -23,16 +23,17 @@ static inline OBJECTID get_display(Window Window)
 
 void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 {
-   pf::Log log("X11Mgr");
+   kt::Log log("X11Mgr");
    XEvent xevent;
    XEvent last_motion;
+   bool processed_events = false;
    last_motion.xany.window = 0;
 
    if (!XDisplay) return;
 
    while (XPending(XDisplay)) {
+      processed_events = true;
       XNextEvent(XDisplay, &xevent);
-      //log.trace("Event %d", xevent.type);
       if ((xevent.type != MotionNotify) and (last_motion.xany.window)) {
          // Buffered MotionNotify event detected, process it now
          process_movement(last_motion.xany.window, last_motion.xmotion.x_root, last_motion.xmotion.y_root);
@@ -56,11 +57,11 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             break;
 
          case FocusIn: {
-            pf::Log log("X11Mgr");
+            kt::Log log("X11Mgr");
             if (auto display_id = get_display(xevent.xany.window)) {
                auto surface_id = GetOwnerID(display_id);
                log.traceBranch("XFocusIn surface #%d", surface_id);
-               pf::ScopedObjectLock<objSurface> surface(surface_id);
+               kt::ScopedObjectLock<objSurface> surface(surface_id);
                if (surface.granted()) surface->focus();
             }
             else log.trace("XFocusIn Failed to get window display ID.");
@@ -68,7 +69,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          }
 
          case FocusOut: {
-            pf::Log log("X11Mgr");
+            kt::Log log("X11Mgr");
             if (auto display_id = get_display(xevent.xany.window)) {
                auto surface_id = GetOwnerID(display_id);
                log.traceBranch("XFocusOut surface #%d", surface_id);
@@ -84,7 +85,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                   for (auto &id : list) {
                      if ((!in_focus) and (id != surface_id)) continue;
                      in_focus = true;
-                     pf::ScopedObjectLock<objSurface> surface(id);
+                     kt::ScopedObjectLock<objSurface> surface(id);
                      if (surface.granted()) surface->lostFocus();
                   }
                }
@@ -104,7 +105,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                      ERR result;
 
                      if (func->isC()) {
-                        pf::SwitchContext ctx(func->Context);
+                        kt::SwitchContext ctx(func->Context);
                         auto callback = (ERR (*)(OBJECTID, APTR))func->Routine;
                         result = callback(surface_id, func->Meta);
                      }
@@ -164,11 +165,14 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
    }
 
    if (last_motion.xany.window) {
+      processed_events = true;
       process_movement(last_motion.xany.window, last_motion.xmotion.x_root, last_motion.xmotion.y_root);
    }
 
-   XFlush(XDisplay);
-   if (XDisplay) XSync(XDisplay, False);
+   if (processed_events) {
+      XFlush(XDisplay);
+      if (XDisplay) XSync(XDisplay, False);
+   }
 }
 
 //********************************************************************************************************************
@@ -248,7 +252,7 @@ void handle_button_release(XEvent *xevent)
 
 void handle_stack_change(XCirculateEvent *xevent)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Window %d stack position has changed.", (int)xevent->window);
 }
 
@@ -257,7 +261,7 @@ void handle_stack_change(XCirculateEvent *xevent)
 
 void handle_configure_notify(XConfigureEvent *xevent)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    int x = xevent->x;
    int y = xevent->y;
@@ -314,7 +318,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
 
 void handle_exposure(XExposeEvent *event)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    OBJECTID display_id;
 
    if ((display_id = get_display(event->window))) {
@@ -527,7 +531,7 @@ KEY xkeysym_to_pkey(KeySym KSym)
 
 void handle_key_press(XEvent *xevent)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    uint32_t unicode = 0;
    KeySym mod_sym; // A KeySym is an encoding of a symbol on the cap of a key.  See X11/keysym.h
    static XComposeStatus glXComposeStatus = { 0, 0 };
@@ -588,7 +592,7 @@ void handle_key_press(XEvent *xevent)
 
 void handle_key_release(XEvent *xevent)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Check if the key is -really- released (when keys are held down, X11 annoyingly generates a stream of release
    // events until it is really released).
@@ -692,4 +696,3 @@ void process_movement(Window Window, int X, int Y)
       ReleaseObject(pointer);
    }
 }
-

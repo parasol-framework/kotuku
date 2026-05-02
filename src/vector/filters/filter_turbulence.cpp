@@ -39,7 +39,7 @@ class extTurbulenceFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::TURBULENCEFX;
    static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
-   using create = pf::Create<extTurbulenceFX>;
+   using create = kt::Create<extTurbulenceFX>;
 
    objBitmap *Bitmap;
    double Gradient[GSIZE][LSIZE][GSUBSIZE];
@@ -51,13 +51,7 @@ class extTurbulenceFX : public extFilterEffect {
    bool   Stitch;
    bool   Dirty;
 
-   private:
-   int stitch_width, stitch_height;
-   int wrap_x, wrap_y;
-
-   public:
-
-   double noise2(uint8_t Channel, double VX, double VY) {
+   double noise2(uint8_t Channel, double VX, double VY, bool StitchNoise = false, int StitchWidth = 0, int StitchHeight = 0, int WrapX = 0, int WrapY = 0) {
       int bx0, bx1, by0, by1, b00, b10, b01, b11;
       double rx0, rx1, ry0, ry1, *q, sx, sy, a, b, t, u, v;
 
@@ -75,11 +69,11 @@ class extTurbulenceFX : public extFilterEffect {
 
       // If stitching, adjust lattice points accordingly.
 
-      if (Stitch) {
-         if (bx0 >= wrap_x) bx0 -= stitch_width;
-         if (bx1 >= wrap_x) bx1 -= stitch_width;
-         if (by0 >= wrap_y) by0 -= stitch_height;
-         if (by1 >= wrap_y) by1 -= stitch_height;
+      if (StitchNoise) {
+         if (bx0 >= WrapX) bx0 -= StitchWidth;
+         if (bx1 >= WrapX) bx1 -= StitchWidth;
+         if (by0 >= WrapY) by0 -= StitchHeight;
+         if (by1 >= WrapY) by1 -= StitchHeight;
       }
 
       bx0 &= BM;
@@ -129,15 +123,17 @@ class extTurbulenceFX : public extFilterEffect {
    // Stitched turbulence
 
    uint8_t turbulence_stitch(uint8_t Channel, int x, int y, double FX, double FY, int StitchWidth, int StitchHeight) {
-      wrap_x = (x % StitchWidth) * FX + PerlinN + stitch_width;
-      wrap_y = (y % StitchHeight) * FY + PerlinN + stitch_height;
+      int stitch_width = StitchWidth;
+      int stitch_height = StitchHeight;
+      int wrap_x = (x % StitchWidth) * FX + PerlinN + stitch_width;
+      int wrap_y = (y % StitchHeight) * FY + PerlinN + stitch_height;
 
       double sum = 0;
       double vx = x * FX;
       double vy = y * FY;
       double ratio = 1;
       for (int n=0; n < Octaves; n++) {
-         double noise = noise2(Channel, vx, vy);
+         double noise = noise2(Channel, vx, vy, true, stitch_width, stitch_height, wrap_x, wrap_y);
 
          if (Type IS TB::NOISE) sum += noise * ratio;
          else sum += fabs(noise) * ratio;
@@ -147,10 +143,10 @@ class extTurbulenceFX : public extFilterEffect {
          ratio *= 0.5;
          // Update stitch values. Subtracting PerlinN before the multiplication and adding it
          // afterwards simplifies to subtracting it once.
-         stitch_width  *= 2;
-         wrap_x         = 2 * wrap_x - PerlinN;
+         stitch_width *= 2;
+         wrap_x = 2 * wrap_x - PerlinN;
          stitch_height *= 2;
-         wrap_y         = 2 * wrap_y - PerlinN;
+         wrap_y = 2 * wrap_y - PerlinN;
       }
 
       int col;
@@ -187,8 +183,8 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
 {
    if (Self->Target->BytesPerPixel != 4) return ERR::InvalidState;
 
-   const int width = F2I(Self->Filter->TargetWidth);
-   const int height = F2I(Self->Filter->TargetHeight);
+   const int width = std::lrint(Self->Filter->TargetWidth);
+   const int height = std::lrint(Self->Filter->TargetHeight);
 
    if ((width <= 0) or (height <= 0)) return ERR::Okay;
 
@@ -228,8 +224,8 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
             if (Self->Stitch) {
                TClipRectangle<double> bounds = { Self->Filter->ClientViewport->vpFixedWidth, Self->Filter->ClientViewport->vpFixedHeight, 0, 0 };
                calc_full_boundary(Self->Filter->ClientVector, bounds, false, false);
-               const int tile_width  = F2I(bounds.width());
-               const int tile_height = F2I(bounds.height());
+               const int tile_width  = std::lrint(bounds.width());
+               const int tile_height = std::lrint(bounds.height());
 
                // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
 
@@ -250,8 +246,8 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
                   else fy = fHiFreq;
                }
 
-               auto stitch_width  = F2I(tile_width * fx);
-               auto stitch_height = F2I(tile_height * fy);
+               auto stitch_width  = std::lrint(tile_width * fx);
+               auto stitch_height = std::lrint(tile_height * fy);
 
                for (int y=Start; y < End; y++) {
                   uint8_t *pixel = data + (Self->Bitmap->LineWidth * y);

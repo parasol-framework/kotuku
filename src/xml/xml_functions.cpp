@@ -44,7 +44,7 @@ static void output_attribvalue(std::string_view String, std::ostringstream &Outp
 inline void assign_string(STRING &Target, const std::string_view Value)
 {
    if (Target) { FreeResource(Target); Target = nullptr; }
-   if (not Value.empty()) Target = pf::strclone(Value);
+   if (not Value.empty()) Target = kt::strclone(Value);
 }
 
 static bool ci_keyword(std::string_view &view, std::string_view keyword) noexcept
@@ -96,7 +96,7 @@ static void expand_entity_references(extXML *Self, std::string &Value,
 static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::string &Value,
    bool Parameter, ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto &stack = Parameter ? ParameterStack : EntityStack;
    if (stack.contains(Name)) return log.warning(ERR::Loop);
@@ -531,7 +531,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 {
    enum { RAW_NONE=0, RAW_CDATA, RAW_NDATA };
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("%.*s", int(State.cursor.size()), State.cursor.data());
 
@@ -780,7 +780,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       }
       else tag.Attribs.emplace_back(name_string, std::string{});
 
-      if (has_value and pf::iequals(name_string, "xml:base")) {
+      if (has_value and kt::iequals(name_string, "xml:base")) {
          std::string resolved;
 
          if (value_string.empty()) {
@@ -801,10 +801,10 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
       if (xml_instruction) {
          if (tag.Attribs.size() IS 1) {
-            is_xml_declaration = pf::iequals(tag.Attribs[0].Name, "?xml");
+            is_xml_declaration = kt::iequals(tag.Attribs[0].Name, "?xml");
          }
-         else if (is_xml_declaration and has_value and pf::iequals(name_string, "standalone")) {
-            if (pf::iequals(value_string, "yes")) Self->Flags |= XMF::STANDALONE;
+         else if (is_xml_declaration and has_value and kt::iequals(name_string, "standalone")) {
+            if (kt::iequals(value_string, "yes")) Self->Flags |= XMF::STANDALONE;
             else Self->Flags &= ~XMF::STANDALONE;
          }
       }
@@ -880,7 +880,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
 static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (&Tags IS &Self->Tags) {
       if (Self->DocType)  { FreeResource(Self->DocType); Self->DocType = nullptr; }
@@ -1029,7 +1029,7 @@ static void serialise_xml(XTag &Tag, std::ostringstream &Buffer, XMF Flags)
 
 static ERR parse_source(extXML *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    CacheFile *filecache;
 
    log.traceBranch();

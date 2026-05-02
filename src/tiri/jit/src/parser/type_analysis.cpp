@@ -192,7 +192,7 @@ void TypeAnalyser::trace_infer(BCLine Line, std::string_view Context, TiriType T
 {
    if (not this->trace_enabled()) return;
    auto type_str = type_name(Type);
-   pf::Log("TypeCheck").msg("[%d] infer %.*s -> %.*s", Line.lineNumber(), int(Context.size()), Context.data(),
+   kt::Log("TypeCheck").msg("[%d] infer %.*s -> %.*s", Line.lineNumber(), int(Context.size()), Context.data(),
       int(type_str.size()), type_str.data());
 }
 
@@ -201,7 +201,7 @@ void TypeAnalyser::trace_fix(BCLine Line, GCstr* Name, TiriType Type) const
    if (not this->trace_enabled()) return;
    std::string_view name_view = Name ? std::string_view(strdata(Name), Name->len) : std::string_view("<unknown>");
    auto type_str = type_name(Type);
-   pf::Log("TypeCheck").msg("[%d] fix '%.*s' -> %.*s", Line.lineNumber(), int(name_view.size()), name_view.data(),
+   kt::Log("TypeCheck").msg("[%d] fix '%.*s' -> %.*s", Line.lineNumber(), int(name_view.size()), name_view.data(),
       int(type_str.size()), type_str.data());
 }
 
@@ -210,7 +210,7 @@ void TypeAnalyser::trace_decl(BCLine Line, GCstr* Name, TiriType Type, bool IsFi
    if (not this->trace_enabled()) return;
    std::string_view name_view = Name ? std::string_view(strdata(Name), Name->len) : std::string_view("<unknown>");
    auto type_str = type_name(Type);
-   pf::Log("TypeCheck").msg("[%d] decl '%.*s': %.*s%s", Line.lineNumber(), int(name_view.size()), name_view.data(),
+   kt::Log("TypeCheck").msg("[%d] decl '%.*s': %.*s%s", Line.lineNumber(), int(name_view.size()), name_view.data(),
       int(type_str.size()), type_str.data(), IsFixed ? " (fixed)" : "");
 }
 

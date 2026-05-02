@@ -90,7 +90,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2026", version=1.0, tim
 
     c_insert([[
 namespace fl {
-   using namespace pf;
+   using namespace kt;
 
 constexpr FieldValue EventCallback(const FUNCTION &Value) { return FieldValue(FID_EventCallback, &Value); }
 constexpr FieldValue EventCallback(APTR Value) { return FieldValue(FID_EventCallback, Value); }

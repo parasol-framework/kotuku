@@ -501,59 +501,59 @@
 <h4 id="comparison-and-logical-operators">Comparison and Logical Operators</h4>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Unicode</th>
 <th>ASCII</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>≠</code></td>
 <td><code>!=</code></td>
 <td>Not equal</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>≤</code></td>
 <td><code>&lt;=</code></td>
 <td>Less than or equal</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>≥</code></td>
 <td><code>&gt;=</code></td>
 <td>Greater than or equal</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>«</code></td>
 <td><code>&lt;&lt;</code></td>
 <td>Left shift</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>»</code></td>
 <td><code>&gt;&gt;</code></td>
 <td>Right shift</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>‥</code></td>
 <td><code>..</code></td>
 <td>Concatenation</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>…</code></td>
 <td><code>...</code></td>
 <td>Varargs (horizontal ellipsis)</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>⁇</code></td>
 <td><code>??</code></td>
 <td>Null coalescing (if-empty)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>▷</code></td>
 <td><code>:&gt;</code></td>
 <td>Ternary separator</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>⧺</code></td>
 <td><code>++</code></td>
 <td>Increment</td>
@@ -563,24 +563,24 @@
 <h4 id="arithmetic-operators">Arithmetic Operators</h4>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Unicode</th>
 <th>ASCII</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>×</code></td>
 <td><code>*</code></td>
 <td>Multiplication</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>÷</code></td>
 <td><code>/</code></td>
 <td>Division</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>↑</code></td>
 <td><code>**</code></td>
 <td>Exponentiation (right-associative)</td>
@@ -816,57 +816,57 @@
 <p>Tiri supports optional type annotations on function parameters to surface static analysis diagnostics during parsing.
 Annotations follow the parameter name after a colon and constrain the expected argument type.</p>
 <h3 id="syntax-1">Syntax</h3>
-<div class="sourceCode" id="cb24"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> process<span class="op">(</span><span class="va">Path</span><span class="op">:</span><span class="va">str</span><span class="op">,</span> <span class="va">Count</span><span class="op">:</span><span class="va">num</span><span class="op">,</span> <span class="va">Options</span><span class="op">:</span><span class="va">table</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb24"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> process<span class="op">(</span><span class="cn">P</span><span class="va">ath</span><span class="op">:</span><span class="va">str</span><span class="op">,</span> <span class="cn">C</span><span class="va">ount</span><span class="op">:</span><span class="va">num</span><span class="op">,</span> <span class="cn">O</span><span class="va">ptions</span><span class="op">:</span><span class="va">table</span><span class="op">)</span></span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Path must be a string</span></span>
 <span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Count must be a number</span></span>
 <span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Options must be a table</span></span>
 <span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <p>Untyped parameters omit the annotation:</p>
-<div class="sourceCode" id="cb25"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> mixed<span class="op">(</span><span class="va">Untyped</span><span class="op">,</span> <span class="va">Typed</span><span class="op">:</span><span class="va">bool</span><span class="op">):</span> <span class="op">&lt;</span><span class="va">any</span><span class="op">,</span><span class="va">bool</span><span class="op">&gt;</span></span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="va">Untyped</span><span class="op">,</span> <span class="va">Typed</span></span>
+<div class="sourceCode" id="cb25"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> mixed<span class="op">(</span><span class="cn">U</span><span class="va">ntyped</span><span class="op">,</span> <span class="cn">T</span><span class="va">yped</span><span class="op">:</span><span class="va">bool</span><span class="op">):</span> <span class="op">&lt;</span><span class="va">any</span><span class="op">,</span><span class="va">bool</span><span class="op">&gt;</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="cn">U</span><span class="va">ntyped</span><span class="op">,</span> <span class="cn">T</span><span class="va">yped</span></span>
 <span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <h3 id="supported-type-names">Supported Type Names</h3>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Name</th>
 <th>Notes</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>any</code></td>
 <td>Accepts any type</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>nil</code></td>
 <td>Explicit nil</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>num</code></td>
 <td>Numeric values</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>str</code></td>
 <td>Text strings</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>bool</code></td>
 <td>Boolean values</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>table</code></td>
 <td>Tables and dictionaries</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>func</code></td>
 <td>Callable values</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>thread</code></td>
 <td>Coroutines</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>obj</code></td>
 <td>Kōtuku objects (userdata)</td>
 </tr>
@@ -946,9 +946,9 @@ nullable type annotation, while still enforcing type consistency for non-nil val
 <h3 id="function-parameters">Function Parameters</h3>
 <p>Function parameter type annotations serve as guards that validate incoming arguments. Unlike local variable type
 fixing (which is lazy), parameter annotations are checked at call-time:</p>
-<div class="sourceCode" id="cb32"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> greet<span class="op">(</span><span class="va">Name</span><span class="op">:</span> <span class="va">str</span><span class="op">,</span> <span class="va">Times</span><span class="op">:</span> <span class="va">num</span><span class="op">)</span></span>
-<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>   <span class="cf">for</span> <span class="va">i</span> <span class="kw">in</span> <span class="op">{</span><span class="dv">1.</span><span class="op">..</span><span class="va">Times</span><span class="op">}</span> <span class="cf">do</span></span>
-<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>      <span class="fu">print</span><span class="op">(</span><span class="st">&quot;Hello, &quot;</span> <span class="op">..</span> <span class="va">Name</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb32"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> greet<span class="op">(</span><span class="cn">N</span><span class="va">ame</span><span class="op">:</span> <span class="va">str</span><span class="op">,</span> <span class="cn">T</span><span class="va">imes</span><span class="op">:</span> <span class="va">num</span><span class="op">)</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>   <span class="cf">for</span> <span class="va">i</span> <span class="kw">in</span> <span class="op">{</span><span class="dv">1.</span><span class="op">..</span><span class="cn">T</span><span class="va">imes</span><span class="op">}</span> <span class="cf">do</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>      <span class="fu">print</span><span class="op">(</span><span class="st">&quot;Hello, &quot;</span> <span class="op">..</span> <span class="cn">N</span><span class="va">ame</span><span class="op">)</span></span>
 <span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
 <span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a></span>
@@ -957,7 +957,7 @@ fixing (which is lazy), parameter annotations are checked at call-time:</p>
 <p>Parameter annotations are particularly important for public APIs and library functions where input validation is
 critical. They provide documentation and runtime safety at the function boundary.</p>
 <p><strong>Mixing typed and untyped parameters:</strong></p>
-<div class="sourceCode" id="cb33"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> process<span class="op">(</span><span class="va">Data</span><span class="op">,</span> <span class="va">Count</span><span class="op">:</span> <span class="va">num</span><span class="op">,</span> <span class="va">Validate</span><span class="op">:</span> <span class="va">bool</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb33"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> process<span class="op">(</span><span class="cn">D</span><span class="va">ata</span><span class="op">,</span> <span class="cn">C</span><span class="va">ount</span><span class="op">:</span> <span class="va">num</span><span class="op">,</span> <span class="cn">V</span><span class="va">alidate</span><span class="op">:</span> <span class="va">bool</span><span class="op">)</span></span>
 <span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Data accepts any type (no annotation)</span></span>
 <span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Count must be a number</span></span>
 <span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Validate must be a boolean</span></span>
@@ -966,8 +966,8 @@ critical. They provide documentation and runtime safety at the function boundary
 <h3 id="function-return-types">Function Return Types</h3>
 <p>Tiri supports optional return type declarations on functions to enable compile-time validation of returned values. Additionally, more optimal code can be generated through the narrowing of return types. Return types are declared after the parameter list using a colon followed by the type (or a tuple of types for multiple returns).</p>
 <p><strong>Single return type:</strong></p>
-<div class="sourceCode" id="cb34"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> calculate_area<span class="op">(</span><span class="va">Radius</span><span class="op">:</span> <span class="va">num</span><span class="op">):</span> <span class="va">num</span></span>
-<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="va">math.pi</span> <span class="op">*</span> <span class="va">Radius</span> <span class="op">*</span> <span class="va">Radius</span></span>
+<div class="sourceCode" id="cb34"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> calculate_area<span class="op">(</span><span class="cn">R</span><span class="va">adius</span><span class="op">:</span> <span class="va">num</span><span class="op">):</span> <span class="va">num</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="va">math.pi</span> <span class="op">*</span> <span class="cn">R</span><span class="va">adius</span> <span class="op">*</span> <span class="cn">R</span><span class="va">adius</span></span>
 <span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> get_name<span class="op">():</span> <span class="va">str</span></span>
@@ -979,7 +979,7 @@ critical. They provide documentation and runtime safety at the function boundary
 <span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="fu">math.floor</span><span class="op">(</span><span class="cn">A</span> <span class="op">/</span> <span class="cn">B</span><span class="op">),</span> <span class="cn">A</span> <span class="op">%</span> <span class="cn">B</span>  <span class="co">-- quotient and remainder</span></span>
 <span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> parse_header<span class="op">(</span><span class="va">Line</span><span class="op">:</span> <span class="va">str</span><span class="op">):&lt;</span><span class="va">str</span><span class="op">,</span> <span class="va">str</span><span class="op">,</span> <span class="va">num</span><span class="op">&gt;</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> parse_header<span class="op">(</span><span class="cn">L</span><span class="va">ine</span><span class="op">:</span> <span class="va">str</span><span class="op">):&lt;</span><span class="va">str</span><span class="op">,</span> <span class="va">str</span><span class="op">,</span> <span class="va">num</span><span class="op">&gt;</span></span>
 <span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Returns name, value, and position</span></span>
 <span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="va">name</span><span class="op">,</span> <span class="va">value</span><span class="op">,</span> <span class="va">pos</span></span>
 <span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
@@ -996,15 +996,15 @@ critical. They provide documentation and runtime safety at the function boundary
 <li>Subsequent <code>return</code> statements must be consistent with the established types</li>
 <li>Returning <code>nil</code> is always permitted (it acts as &quot;no value&quot; and doesn&#39;t establish a type)</li>
 </ol>
-<div class="sourceCode" id="cb37"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> find_user<span class="op">(</span><span class="va">Id</span><span class="op">:</span> <span class="va">num</span><span class="op">)</span></span>
-<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">user</span> <span class="op">=</span> <span class="va">database</span><span class="op">.</span>lookup<span class="op">(</span><span class="va">Id</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb37"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> find_user<span class="op">(</span><span class="cn">I</span><span class="va">d</span><span class="op">:</span> <span class="va">num</span><span class="op">)</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">user</span> <span class="op">=</span> <span class="va">database</span><span class="op">.</span>lookup<span class="op">(</span><span class="cn">I</span><span class="va">d</span><span class="op">)</span></span>
 <span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="kw">not</span> <span class="va">user</span> <span class="cf">then</span> <span class="cf">return</span> <span class="kw">nil</span> <span class="cf">end</span>  <span class="co">-- nil doesn&#39;t establish a type</span></span>
 <span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="va">user</span>                       <span class="co">-- First non-nil return: fixes type to whatever user is</span></span>
 <span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> get_status<span class="op">(</span><span class="va">Code</span><span class="op">:</span> <span class="va">num</span><span class="op">)</span></span>
-<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">Code</span> <span class="op">&lt;</span> <span class="dv">0</span> <span class="cf">then</span> <span class="cf">return</span> <span class="kw">nil</span> <span class="cf">end</span>   <span class="co">-- nil is allowed</span></span>
-<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">Code</span> <span class="va">is</span> <span class="dv">0</span> <span class="cf">then</span> <span class="cf">return</span> <span class="st">&quot;OK&quot;</span> <span class="cf">end</span> <span class="co">-- Establishes type as &#39;str&#39;</span></span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> get_status<span class="op">(</span><span class="cn">C</span><span class="va">ode</span><span class="op">:</span> <span class="va">num</span><span class="op">)</span></span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="cn">C</span><span class="va">ode</span> <span class="op">&lt;</span> <span class="dv">0</span> <span class="cf">then</span> <span class="cf">return</span> <span class="kw">nil</span> <span class="cf">end</span>   <span class="co">-- nil is allowed</span></span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="cn">C</span><span class="va">ode</span> <span class="va">is</span> <span class="dv">0</span> <span class="cf">then</span> <span class="cf">return</span> <span class="st">&quot;OK&quot;</span> <span class="cf">end</span> <span class="co">-- Establishes type as &#39;str&#39;</span></span>
 <span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="st">&quot;Error&quot;</span>                     <span class="co">-- Must also be &#39;str&#39;</span></span>
 <span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <p><strong>Type mismatch errors:</strong></p>
@@ -1016,15 +1016,15 @@ critical. They provide documentation and runtime safety at the function boundary
 <span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <h4 id="the-any-return-type">The <code>any</code> Return Type</h4>
 <p>Use <code>any</code> to opt out of return type checking for functions that genuinely return different types:</p>
-<div class="sourceCode" id="cb39"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> json_decode<span class="op">(</span><span class="va">Text</span><span class="op">:</span> <span class="va">str</span><span class="op">):&lt;</span><span class="va">any</span><span class="op">,</span> <span class="va">num</span><span class="op">&gt;</span></span>
+<div class="sourceCode" id="cb39"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> json_decode<span class="op">(</span><span class="cn">T</span><span class="va">ext</span><span class="op">:</span> <span class="va">str</span><span class="op">):&lt;</span><span class="va">any</span><span class="op">,</span> <span class="va">num</span><span class="op">&gt;</span></span>
 <span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Returns decoded value (could be table, string, number, bool, or nil)</span></span>
 <span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- and the position after parsing</span></span>
 <span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="va">decoded_value</span><span class="op">,</span> <span class="va">pos</span></span>
 <span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> dynamic_result<span class="op">(</span><span class="va">Mode</span><span class="op">:</span> <span class="va">str</span><span class="op">):</span> <span class="va">any</span></span>
-<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">Mode</span> is <span class="st">&quot;number&quot;</span> <span class="cf">then</span> <span class="cf">return</span> <span class="dv">42</span> <span class="cf">end</span></span>
-<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">Mode</span> is <span class="st">&quot;string&quot;</span> <span class="cf">then</span> <span class="cf">return</span> <span class="st">&quot;hello&quot;</span> <span class="cf">end</span></span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> dynamic_result<span class="op">(</span><span class="cn">M</span><span class="va">ode</span><span class="op">:</span> <span class="va">str</span><span class="op">):</span> <span class="va">any</span></span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="cn">M</span><span class="va">ode</span> is <span class="st">&quot;number&quot;</span> <span class="cf">then</span> <span class="cf">return</span> <span class="dv">42</span> <span class="cf">end</span></span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="cn">M</span><span class="va">ode</span> is <span class="st">&quot;string&quot;</span> <span class="cf">then</span> <span class="cf">return</span> <span class="st">&quot;hello&quot;</span> <span class="cf">end</span></span>
 <span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="op">{</span> <span class="va">key</span> <span class="op">=</span> <span class="st">&quot;value&quot;</span> <span class="op">}</span></span>
 <span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <h4 id="recursive-functions">Recursive Functions</h4>
@@ -1290,7 +1290,7 @@ type inference cannot determine the return type before analysing the function bo
 <p><strong>Basic Syntax:</strong></p>
 <div class="sourceCode" id="cb59"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="va">try</span></span>
 <span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>   risky_operation<span class="op">()</span></span>
-<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a><span class="op">[</span> <span class="va">except</span> <span class="op">[</span><span class="va">e</span><span class="op">]</span> <span class="op">[</span> <span class="va">when</span> <span class="va">Exception</span><span class="op">,</span> <span class="op">...</span> <span class="op">]</span> <span class="op">]</span></span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a><span class="op">[</span> <span class="va">except</span> <span class="op">[</span><span class="va">e</span><span class="op">]</span> <span class="op">[</span> <span class="va">when</span> <span class="cn">E</span><span class="va">xception</span><span class="op">,</span> <span class="op">...</span> <span class="op">]</span> <span class="op">]</span></span>
 <span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&quot;Error: &quot;</span> <span class="op">..</span> <span class="va">e</span><span class="op">.</span><span class="va">message</span><span class="op">)</span></span>
 <span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a><span class="op">[</span> <span class="va">except</span><span class="op">...</span> <span class="op">]</span></span>
 <span id="cb59-6"><a href="#cb59-6" aria-hidden="true" tabindex="-1"></a><span class="op">[</span> <span class="va">success</span> <span class="op">]</span></span>
@@ -1298,29 +1298,29 @@ type inference cannot determine the return type before analysing the function bo
 <p>The <code>except</code> blocks catch exceptions raised within the preceding <code>try</code> block. Multiple <code>except</code> handlers are permitted, each with their own optional filter using the <code>when</code> clause. An unfiltered handler is recommended at the end to catch unexpected errors. The exception parameter <code>e</code> (or any name of your choosing) is a table containing information about the error:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Field</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>code</code></td>
 <td>The <code>ERR</code> code, e.g. <code>ERR_Failed</code>. <code>ERR_Exception</code> is the default for Lua errors.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>message</code></td>
 <td>Human-readable error description.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>line</code></td>
 <td>Line number where the error occurred.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>trace</code></td>
 <td>Native array of stack frames (only with <code>try&lt;trace&gt;</code> enabled).</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>stackTrace</code></td>
 <td>Formatted traceback string (only with <code>try&lt;trace&gt;</code> enabled).</td>
 </tr>
@@ -1338,14 +1338,14 @@ type inference cannot determine the return type before analysing the function bo
 <div class="sourceCode" id="cb60"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="va">try</span></span>
 <span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">error</span><span class="op">(</span><span class="st">&quot;Lua error&quot;</span><span class="op">)</span></span>
 <span id="cb60-3"><a href="#cb60-3" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span></span>
-<span id="cb60-4"><a href="#cb60-4" aria-hidden="true" tabindex="-1"></a>   <span class="fu">assert</span><span class="op">(</span><span class="va">e</span><span class="op">.</span><span class="va">code</span> <span class="va">is</span> <span class="va">ERR_Exception</span><span class="op">)</span></span>
+<span id="cb60-4"><a href="#cb60-4" aria-hidden="true" tabindex="-1"></a>   <span class="fu">assert</span><span class="op">(</span><span class="va">e</span><span class="op">.</span><span class="va">code</span> <span class="va">is</span> <span class="cn">ERR_E</span><span class="va">xception</span><span class="op">)</span></span>
 <span id="cb60-5"><a href="#cb60-5" aria-hidden="true" tabindex="-1"></a><span class="va">success</span></span>
 <span id="cb60-6"><a href="#cb60-6" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&quot;No error occurred&quot;</span><span class="op">)</span></span>
 <span id="cb60-7"><a href="#cb60-7" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
 <span id="cb60-8"><a href="#cb60-8" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb60-9"><a href="#cb60-9" aria-hidden="true" tabindex="-1"></a><span class="va">try</span></span>
-<span id="cb60-10"><a href="#cb60-10" aria-hidden="true" tabindex="-1"></a>   <span class="va">raise</span> <span class="va">ERR_Failed</span></span>
-<span id="cb60-11"><a href="#cb60-11" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span> <span class="va">when</span> <span class="va">ERR_Failed</span></span>
+<span id="cb60-10"><a href="#cb60-10" aria-hidden="true" tabindex="-1"></a>   <span class="va">raise</span> <span class="cn">ERR_F</span><span class="va">ailed</span></span>
+<span id="cb60-11"><a href="#cb60-11" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span> <span class="va">when</span> <span class="cn">ERR_F</span><span class="va">ailed</span></span>
 <span id="cb60-12"><a href="#cb60-12" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Caught ERR_Failed&#39;</span><span class="op">)</span></span>
 <span id="cb60-13"><a href="#cb60-13" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <p><strong>Lazy Exception Syntax:</strong></p>
@@ -1376,10 +1376,10 @@ type inference cannot determine the return type before analysing the function bo
 <p><strong>Filtered Exception Handling:</strong></p>
 <p>Use the <code>when</code> clause to catch specific <code>ERR</code> codes. Multiple codes are permitted per <code>when</code> clause, up to a limit of 4 per handler.</p>
 <div class="sourceCode" id="cb64"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="va">try</span></span>
-<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">raise</span> <span class="va">ERR_Args</span></span>
-<span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span> <span class="va">when</span> <span class="va">ERR_Args</span></span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">raise</span> <span class="cn">ERR_A</span><span class="va">rgs</span></span>
+<span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span> <span class="va">when</span> <span class="cn">ERR_A</span><span class="va">rgs</span></span>
 <span id="cb64-4"><a href="#cb64-4" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&quot;Invalid arguments&quot;</span><span class="op">)</span></span>
-<span id="cb64-5"><a href="#cb64-5" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span> <span class="va">when</span> <span class="va">ERR_Read</span><span class="op">,</span> <span class="va">ERR_Write</span><span class="op">,</span> <span class="va">ERR_Seek</span></span>
+<span id="cb64-5"><a href="#cb64-5" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span> <span class="va">when</span> <span class="cn">ERR_R</span><span class="va">ead</span><span class="op">,</span> <span class="cn">ERR_W</span><span class="va">rite</span><span class="op">,</span> <span class="cn">ERR_S</span><span class="va">eek</span></span>
 <span id="cb64-6"><a href="#cb64-6" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&quot;Operation failed&quot;</span><span class="op">)</span></span>
 <span id="cb64-7"><a href="#cb64-7" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span></span>
 <span id="cb64-8"><a href="#cb64-8" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&quot;Unexpected error: &quot;</span> <span class="op">..</span> <span class="va">e</span><span class="op">.</span><span class="va">message</span><span class="op">)</span></span>
@@ -1393,10 +1393,10 @@ type inference cannot determine the return type before analysing the function bo
 </ul>
 <div class="sourceCode" id="cb65"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Valid: filters before catch-all</span></span>
 <span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a><span class="va">try</span></span>
-<span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">raise</span> <span class="va">ERR_Failed</span></span>
-<span id="cb65-4"><a href="#cb65-4" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span> <span class="va">when</span> <span class="va">ERR_Args</span></span>
+<span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">raise</span> <span class="cn">ERR_F</span><span class="va">ailed</span></span>
+<span id="cb65-4"><a href="#cb65-4" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span> <span class="va">when</span> <span class="cn">ERR_A</span><span class="va">rgs</span></span>
 <span id="cb65-5"><a href="#cb65-5" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- First filter</span></span>
-<span id="cb65-6"><a href="#cb65-6" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span> <span class="va">when</span> <span class="va">ERR_Failed</span></span>
+<span id="cb65-6"><a href="#cb65-6" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span> <span class="va">when</span> <span class="cn">ERR_F</span><span class="va">ailed</span></span>
 <span id="cb65-7"><a href="#cb65-7" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Second filter (matches)</span></span>
 <span id="cb65-8"><a href="#cb65-8" aria-hidden="true" tabindex="-1"></a><span class="va">except</span> <span class="va">e</span></span>
 <span id="cb65-9"><a href="#cb65-9" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Catch-all (must be last)</span></span>
@@ -1446,21 +1446,21 @@ type inference cannot determine the return type before analysing the function bo
 <p>The <code>trace</code> field contains an array of frame tables, each with the following fields:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Field</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>source</code></td>
 <td>Source file name (may be <code>nil</code>).</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>line</code></td>
 <td>Line number (0 if unknown).</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>func</code></td>
 <td>Function name (may be <code>nil</code> for anonymous functions).</td>
 </tr>
@@ -1640,7 +1640,7 @@ print(isAvailable) -- Resolved and cached here, no need to prime with isAvailabl
 <p>The <code>??</code> operator can be used as a conditional operator for routines and control flow. For instance <code>if not value then error() end</code> can now be written as simply as:</p>
 <div class="sourceCode" id="cb86"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a><span class="va">value</span> ?? <span class="fu">error</span><span class="op">(</span><span class="st">&#39;Value is empty&#39;</span><span class="op">)</span></span></code></pre></div>
 <p>It also works as a guard for controlling program flow with <code>return</code>, <code>break</code> and <code>continue</code>:</p>
-<div class="sourceCode" id="cb87"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb87-1"><a href="#cb87-1" aria-hidden="true" tabindex="-1"></a><span class="va">user_input</span> ?? <span class="cf">return</span> <span class="va">ERR_InvalidInput</span></span></code></pre></div>
+<div class="sourceCode" id="cb87"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb87-1"><a href="#cb87-1" aria-hidden="true" tabindex="-1"></a><span class="va">user_input</span> ?? <span class="cf">return</span> <span class="cn">ERR_I</span><span class="va">nvalidInput</span></span></code></pre></div>
 <p><strong>Notes</strong></p>
 <ul>
 <li>Standard <code>or</code> treats only <code>nil</code> and <code>false</code> as falsey. Values like <code>0</code> and <code>&quot;&quot;</code> are considered truthy.</li>
@@ -1794,32 +1794,32 @@ implementation used by the <code>t[{range}]</code> and <code>s[{range}]</code> i
 <p>Ranges provide an <code>each()</code> method for functional-style iteration. The method accepts a callback function that is
 invoked once for each value in the range:</p>
 <div class="sourceCode" id="cb99"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb99-1"><a href="#cb99-1" aria-hidden="true" tabindex="-1"></a><span class="va">sum</span> <span class="op">=</span> <span class="dv">0</span></span>
-<span id="cb99-2"><a href="#cb99-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span><span class="dv">1..6</span><span class="op">}:</span>each<span class="op">(</span><span class="va">Value</span> <span class="op">=&gt;</span> <span class="va">sum</span> <span class="er">+=</span> <span class="va">Value</span><span class="op">)</span></span>
+<span id="cb99-2"><a href="#cb99-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span><span class="dv">1..6</span><span class="op">}:</span>each<span class="op">(</span><span class="cn">V</span><span class="va">alue</span> <span class="op">=&gt;</span> <span class="va">sum</span> <span class="er">+=</span> <span class="cn">V</span><span class="va">alue</span><span class="op">)</span></span>
 <span id="cb99-3"><a href="#cb99-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- sum is now 15 (1+2+3+4+5)</span></span></code></pre></div>
 <p>The callback receives a single argument: the current value in the iteration sequence.</p>
 <p><strong>Early Termination</strong></p>
 <p>The callback can return <code>false</code> to terminate iteration early:</p>
 <div class="sourceCode" id="cb100"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb100-1"><a href="#cb100-1" aria-hidden="true" tabindex="-1"></a><span class="va">sum</span> <span class="op">=</span> <span class="dv">0</span></span>
 <span id="cb100-2"><a href="#cb100-2" aria-hidden="true" tabindex="-1"></a><span class="va">r</span> <span class="op">=</span> <span class="op">{</span><span class="dv">1..100</span><span class="op">}</span></span>
-<span id="cb100-3"><a href="#cb100-3" aria-hidden="true" tabindex="-1"></a><span class="va">r</span><span class="op">:</span>each<span class="op">(</span><span class="va">Value</span> <span class="op">=&gt;</span> <span class="cf">do</span></span>
-<span id="cb100-4"><a href="#cb100-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">Value</span> <span class="op">&gt;</span> <span class="dv">5</span> <span class="cf">then</span> <span class="cf">return</span> <span class="kw">false</span> <span class="cf">end</span></span>
-<span id="cb100-5"><a href="#cb100-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">sum</span> <span class="er">+=</span> <span class="va">Value</span></span>
+<span id="cb100-3"><a href="#cb100-3" aria-hidden="true" tabindex="-1"></a><span class="va">r</span><span class="op">:</span>each<span class="op">(</span><span class="cn">V</span><span class="va">alue</span> <span class="op">=&gt;</span> <span class="cf">do</span></span>
+<span id="cb100-4"><a href="#cb100-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="cn">V</span><span class="va">alue</span> <span class="op">&gt;</span> <span class="dv">5</span> <span class="cf">then</span> <span class="cf">return</span> <span class="kw">false</span> <span class="cf">end</span></span>
+<span id="cb100-5"><a href="#cb100-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">sum</span> <span class="er">+=</span> <span class="cn">V</span><span class="va">alue</span></span>
 <span id="cb100-6"><a href="#cb100-6" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span><span class="op">)</span></span>
 <span id="cb100-7"><a href="#cb100-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- sum is 15 (iteration stopped after 5)</span></span></code></pre></div>
 <p>Returning <code>true</code> or <code>nil</code> (no return) continues iteration normally.</p>
 <p><strong>Method Chaining</strong></p>
 <p>The <code>each()</code> method returns the original range object, enabling method chaining:</p>
 <div class="sourceCode" id="cb101"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb101-1"><a href="#cb101-1" aria-hidden="true" tabindex="-1"></a><span class="va">r</span> <span class="op">=</span> <span class="op">{</span><span class="dv">1..6</span><span class="op">}</span></span>
-<span id="cb101-2"><a href="#cb101-2" aria-hidden="true" tabindex="-1"></a><span class="va">r</span><span class="op">:</span>each<span class="op">(</span><span class="va">Value</span> <span class="op">=&gt;</span> <span class="fu">print</span><span class="op">(</span><span class="va">Value</span><span class="op">))</span></span>
-<span id="cb101-3"><a href="#cb101-3" aria-hidden="true" tabindex="-1"></a> <span class="op">:</span>each<span class="op">(</span><span class="va">Value</span> <span class="op">=&gt;</span> process<span class="op">(</span><span class="va">Value</span><span class="op">))</span></span></code></pre></div>
+<span id="cb101-2"><a href="#cb101-2" aria-hidden="true" tabindex="-1"></a><span class="va">r</span><span class="op">:</span>each<span class="op">(</span><span class="cn">V</span><span class="va">alue</span> <span class="op">=&gt;</span> <span class="fu">print</span><span class="op">(</span><span class="cn">V</span><span class="va">alue</span><span class="op">))</span></span>
+<span id="cb101-3"><a href="#cb101-3" aria-hidden="true" tabindex="-1"></a> <span class="op">:</span>each<span class="op">(</span><span class="cn">V</span><span class="va">alue</span> <span class="op">=&gt;</span> process<span class="op">(</span><span class="cn">V</span><span class="va">alue</span><span class="op">))</span></span></code></pre></div>
 <p><strong>Usage with Constructor and Literals</strong></p>
 <p>The <code>each()</code> method works with both range literals and constructor-based ranges:</p>
 <div class="sourceCode" id="cb102"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb102-1"><a href="#cb102-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- With constructor (can chain directly)</span></span>
-<span id="cb102-2"><a href="#cb102-2" aria-hidden="true" tabindex="-1"></a>range<span class="op">(</span><span class="dv">0</span><span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">2</span><span class="op">):</span>each<span class="op">(</span><span class="va">Value</span> <span class="op">=&gt;</span> <span class="fu">print</span><span class="op">(</span><span class="va">Value</span><span class="op">))</span></span>
+<span id="cb102-2"><a href="#cb102-2" aria-hidden="true" tabindex="-1"></a>range<span class="op">(</span><span class="dv">0</span><span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">2</span><span class="op">):</span>each<span class="op">(</span><span class="cn">V</span><span class="va">alue</span> <span class="op">=&gt;</span> <span class="fu">print</span><span class="op">(</span><span class="cn">V</span><span class="va">alue</span><span class="op">))</span></span>
 <span id="cb102-3"><a href="#cb102-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb102-4"><a href="#cb102-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- With literal (must store in variable first due to parser limitations)</span></span>
 <span id="cb102-5"><a href="#cb102-5" aria-hidden="true" tabindex="-1"></a><span class="va">r</span> <span class="op">=</span> <span class="op">{</span><span class="dv">0..10</span><span class="op">}</span></span>
-<span id="cb102-6"><a href="#cb102-6" aria-hidden="true" tabindex="-1"></a><span class="va">r</span><span class="op">:</span>each<span class="op">(</span><span class="va">Value</span> <span class="op">=&gt;</span> <span class="fu">print</span><span class="op">(</span><span class="va">Value</span><span class="op">))</span></span></code></pre></div>
+<span id="cb102-6"><a href="#cb102-6" aria-hidden="true" tabindex="-1"></a><span class="va">r</span><span class="op">:</span>each<span class="op">(</span><span class="cn">V</span><span class="va">alue</span> <span class="op">=&gt;</span> <span class="fu">print</span><span class="op">(</span><span class="cn">V</span><span class="va">alue</span><span class="op">))</span></span></code></pre></div>
 <h3 id="functional-range-methods">Functional Range Methods</h3>
 <p>Ranges provide several functional programming methods for transforming, filtering, and querying data. These methods
 offer a declarative style for working with numeric sequences.</p>
@@ -1921,37 +1921,37 @@ offer a declarative style for working with numeric sequences.</p>
 <p><strong>Method Return Types:</strong></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Method</th>
 <th>Returns</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>filter()</code></td>
 <td>Table</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>reduce()</code></td>
 <td>Single value (type depends on reducer)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>map()</code></td>
 <td>Table</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>take()</code></td>
 <td>Table</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>any()</code></td>
 <td>Boolean</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>all()</code></td>
 <td>Boolean</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>find()</code></td>
 <td>Value or <code>nil</code></td>
 </tr>
@@ -2167,8 +2167,8 @@ complex expression positions, the compiler may wrap the <code>choose</code> in a
 </ul>
 <p><strong>Example - Exporting Globals:</strong></p>
 <div class="sourceCode" id="cb129"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb129-1"><a href="#cb129-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- helpers.tiri</span></span>
-<span id="cb129-2"><a href="#cb129-2" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="kw">function</span> formatDate<span class="op">(</span><span class="va">Timestamp</span><span class="op">)</span></span>
-<span id="cb129-3"><a href="#cb129-3" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="fu">os.date</span><span class="op">(</span><span class="st">&#39;%Y-%m-%d&#39;</span><span class="op">,</span> <span class="va">Timestamp</span><span class="op">)</span></span>
+<span id="cb129-2"><a href="#cb129-2" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="kw">function</span> formatDate<span class="op">(</span><span class="cn">T</span><span class="va">imestamp</span><span class="op">)</span></span>
+<span id="cb129-3"><a href="#cb129-3" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="fu">os.date</span><span class="op">(</span><span class="st">&#39;%Y-%m-%d&#39;</span><span class="op">,</span> <span class="cn">T</span><span class="va">imestamp</span><span class="op">)</span></span>
 <span id="cb129-4"><a href="#cb129-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb129-5"><a href="#cb129-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb129-6"><a href="#cb129-6" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="cn">HELPER_VERSION</span> <span class="op">=</span> <span class="st">&#39;1.0&#39;</span></span>
@@ -2235,37 +2235,37 @@ end</code></pre>
 <p>For consistency, we use a set of commonly named global variables to store module function tables. This is because loading an API more than once is undesirable. The following table illustrates the global names that we use for the default set of APIs.</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Module</th>
 <th>Global Name</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>audio</td>
 <td>mAudio</td>
 </tr>
-<tr>
+<tr class="even">
 <td>core</td>
 <td>mSys</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>display</td>
 <td>mGfx</td>
 </tr>
-<tr>
+<tr class="even">
 <td>font</td>
 <td>mFont</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>network</td>
 <td>mNet</td>
 </tr>
-<tr>
+<tr class="even">
 <td>vector</td>
 <td>mVec</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>xml</td>
 <td>mXML</td>
 </tr>
@@ -2388,7 +2388,7 @@ end</code></pre>
 <h2 id="action--method-subscriptions">Action &amp; Method Subscriptions</h2>
 <p>Kōtuku allows clients to monitor the calls made to an object by subscribing to its actions and methods. One commonly used strategy involves subscribing to the <code>free()</code> action of an object so that the client is notified of object termination.</p>
 <p>Subscription is enabled via the <code>subscribe()</code> method. The following example illustrates the creation of an HTTP object that performs a download and calls <code>my_function()</code> on completion of the download process. Note that <code>Args</code> is a table that contains named arguments for the action that was subscribed to. The <code>CustomRef</code> is an optional value that will be passed to the subscriber.</p>
-<div class="sourceCode" id="cb144"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb144-1"><a href="#cb144-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> my_function<span class="op">(</span><span class="cn">UID</span><span class="op">,</span> <span class="va">Args</span><span class="op">,</span> <span class="va">CustomRef</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb144"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb144-1"><a href="#cb144-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> my_function<span class="op">(</span><span class="cn">UID</span><span class="op">,</span> <span class="cn">A</span><span class="va">rgs</span><span class="op">,</span> <span class="cn">C</span><span class="va">ustomRef</span><span class="op">)</span></span>
 <span id="cb144-2"><a href="#cb144-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Download complete.&#39;</span><span class="op">)</span></span>
 <span id="cb144-3"><a href="#cb144-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb144-4"><a href="#cb144-4" aria-hidden="true" tabindex="-1"></a></span>
@@ -2423,7 +2423,7 @@ end</code></pre>
 <span id="cb145-17"><a href="#cb145-17" aria-hidden="true" tabindex="-1"></a>   <span class="va">proc</span> <span class="op">=</span> <span class="va">processing</span><span class="op">.</span>new<span class="op">({</span> <span class="va">timeout</span><span class="op">=</span><span class="dv">1.0</span><span class="op">,</span> <span class="va">signals</span> <span class="op">=</span> <span class="op">{</span> <span class="va">signal_a</span><span class="op">,</span> <span class="va">signal_b</span> <span class="op">}</span> <span class="op">})</span></span>
 <span id="cb145-18"><a href="#cb145-18" aria-hidden="true" tabindex="-1"></a>   msg<span class="op">(</span><span class="st">&#39;Sleeping....&#39;</span><span class="op">)</span></span>
 <span id="cb145-19"><a href="#cb145-19" aria-hidden="true" tabindex="-1"></a>   <span class="va">err</span> <span class="op">=</span> <span class="va">proc</span><span class="op">.</span>sleep<span class="op">()</span></span>
-<span id="cb145-20"><a href="#cb145-20" aria-hidden="true" tabindex="-1"></a>   <span class="fu">assert</span><span class="op">(</span><span class="va">err</span> <span class="va">is</span> <span class="va">ERR_Okay</span><span class="op">,</span> <span class="st">&quot;Unexpected error: &quot;</span> <span class="op">..</span> <span class="va">mSys</span><span class="op">.</span>GetErrorMsg<span class="op">(</span><span class="va">err</span><span class="op">))</span></span>
+<span id="cb145-20"><a href="#cb145-20" aria-hidden="true" tabindex="-1"></a>   <span class="fu">assert</span><span class="op">(</span><span class="va">err</span> <span class="va">is</span> <span class="cn">ERR_O</span><span class="va">kay</span><span class="op">,</span> <span class="st">&quot;Unexpected error: &quot;</span> <span class="op">..</span> <span class="va">mSys</span><span class="op">.</span>GetErrorMsg<span class="op">(</span><span class="va">err</span><span class="op">))</span></span>
 <span id="cb145-21"><a href="#cb145-21" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <p>Notice that we called <code>processing.new()</code> to create a dedicated interface for signal management. The two objects that will be signalled are passed in via the <code>signals</code> field. When the thread completes, it calls <code>acSignal()</code> on the objects to change their signal state. It is necessary for both objects to change state in order to wake the main thread.</p>
 <h4 id="signal">signal()</h4>
@@ -2450,17 +2450,17 @@ end</code></pre>
 <p>Controls the garbage collector. The optional <code>Mode</code> parameter specifies the collection mode:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Mode</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>full</code></td>
 <td>Performs a full garbage collection cycle (default).</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>step</code></td>
 <td>Performs an incremental collection step.</td>
 </tr>
@@ -2469,14 +2469,14 @@ end</code></pre>
 <p>The optional <code>Options</code> table supports the following fields:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>stepSize</code></td>
 <td>integer</td>
 <td>Step size for incremental collection (only used with <code>&quot;step&quot;</code> mode).</td>
@@ -2504,39 +2504,39 @@ end</code></pre>
 <p>Returns a table containing garbage collector statistics. This is useful for monitoring memory usage and GC behaviour.</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>memoryKB</code></td>
 <td>integer</td>
 <td>Memory usage in kilobytes.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>memoryBytes</code></td>
 <td>integer</td>
 <td>Remainder bytes (total bytes = memoryKB × 1024 + memoryBytes).</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>memoryMB</code></td>
 <td>number</td>
 <td>Total memory usage in megabytes (convenience field).</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>isRunning</code></td>
 <td>boolean</td>
 <td><code>true</code> if the garbage collector is currently running.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>pause</code></td>
 <td>integer</td>
 <td>Current pause multiplier (controls GC frequency, default 200).</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>stepMul</code></td>
 <td>integer</td>
 <td>Current step multiplier (controls GC speed, default 200).</td>
@@ -2681,64 +2681,64 @@ processing.sleep()</code></pre>
 <h3 id="custom-structures">Custom Structures</h3>
 <p>The <code>MAKESTRUCT()</code> function is used to build structure definitions. A structure definition is a single string that defines all fields in a structure, matched in the order in which they appear in the structure. Consider the following C structure:</p>
 <div class="sourceCode" id="cb157"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb157-1"><a href="#cb157-1" aria-hidden="true" tabindex="-1"></a><span class="va">struct</span> XMLTag <span class="op">{</span></span>
-<span id="cb157-2"><a href="#cb157-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">int</span>    <span class="va">Index</span><span class="op">;</span></span>
+<span id="cb157-2"><a href="#cb157-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">int</span>    <span class="cn">I</span><span class="va">ndex</span><span class="op">;</span></span>
 <span id="cb157-3"><a href="#cb157-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">int</span>    <span class="cn">ID</span><span class="op">;</span></span>
-<span id="cb157-4"><a href="#cb157-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Child</span><span class="op">;</span></span>
-<span id="cb157-5"><a href="#cb157-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Prev</span><span class="op">;</span></span>
-<span id="cb157-6"><a href="#cb157-6" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Next</span><span class="op">;</span></span>
-<span id="cb157-7"><a href="#cb157-7" aria-hidden="true" tabindex="-1"></a>   <span class="cn">APTR</span>   <span class="va">Private</span><span class="op">;</span></span>
-<span id="cb157-8"><a href="#cb157-8" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLAttrib</span> <span class="op">*</span><span class="va">Attrib</span><span class="op">;</span></span>
-<span id="cb157-9"><a href="#cb157-9" aria-hidden="true" tabindex="-1"></a>   <span class="va">int16_t</span>  <span class="va">TotalAttrib</span><span class="op">;</span></span>
-<span id="cb157-10"><a href="#cb157-10" aria-hidden="true" tabindex="-1"></a>   <span class="va">uint16_t</span> <span class="va">Nest</span><span class="op">;</span></span>
+<span id="cb157-4"><a href="#cb157-4" aria-hidden="true" tabindex="-1"></a>   <span class="cn">XMLT</span><span class="va">ag</span> <span class="op">*</span><span class="cn">C</span><span class="va">hild</span><span class="op">;</span></span>
+<span id="cb157-5"><a href="#cb157-5" aria-hidden="true" tabindex="-1"></a>   <span class="cn">XMLT</span><span class="va">ag</span> <span class="op">*</span><span class="cn">P</span><span class="va">rev</span><span class="op">;</span></span>
+<span id="cb157-6"><a href="#cb157-6" aria-hidden="true" tabindex="-1"></a>   <span class="cn">XMLT</span><span class="va">ag</span> <span class="op">*</span><span class="cn">N</span><span class="va">ext</span><span class="op">;</span></span>
+<span id="cb157-7"><a href="#cb157-7" aria-hidden="true" tabindex="-1"></a>   <span class="cn">APTR</span>   <span class="cn">P</span><span class="va">rivate</span><span class="op">;</span></span>
+<span id="cb157-8"><a href="#cb157-8" aria-hidden="true" tabindex="-1"></a>   <span class="cn">XMLA</span><span class="va">ttrib</span> <span class="op">*</span><span class="cn">A</span><span class="va">ttrib</span><span class="op">;</span></span>
+<span id="cb157-9"><a href="#cb157-9" aria-hidden="true" tabindex="-1"></a>   <span class="va">int16_t</span>  <span class="cn">T</span><span class="va">otalAttrib</span><span class="op">;</span></span>
+<span id="cb157-10"><a href="#cb157-10" aria-hidden="true" tabindex="-1"></a>   <span class="va">uint16_t</span> <span class="cn">N</span><span class="va">est</span><span class="op">;</span></span>
 <span id="cb157-11"><a href="#cb157-11" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>To define this structure in Tiri we would use the following code:</p>
 <p><code>MAKESTRUCT(&#39;XMLTag&#39;, &#39;lIndex,lID,pChild,pPrev:XMLTag,pNext:XMLTag,pPrivate,pAttrib,wTotalAttrib,uwNest&#39;)</code></p>
 <p>Notice that each field name is defined using the same order and names as identified in the structure. Each name is prefixed with a lower-case character that indicates the field type. Using the correct field types is the most crucial part of the structure definition and each must be chosen from the following table:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Character</th>
 <th>Field Type</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>l</td>
 <td>Integer (32-bit)</td>
 </tr>
-<tr>
+<tr class="even">
 <td>d</td>
 <td>Double (64-bit)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>x</td>
 <td>Integer (64-bit)</td>
 </tr>
-<tr>
+<tr class="even">
 <td>f</td>
 <td>Float (32-bit)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>w</td>
 <td>Integer (16-bit)</td>
 </tr>
-<tr>
+<tr class="even">
 <td>c</td>
 <td>Char (8-bit)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>p</td>
 <td>Pointer. You can use &#39;:StructName&#39; as a suffix to reference other structures.</td>
 </tr>
-<tr>
+<tr class="even">
 <td>s</td>
 <td>String</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>o</td>
 <td>Object (Pointer)</td>
 </tr>
-<tr>
+<tr class="even">
 <td>u</td>
 <td>Unsigned (Use in conjunction with a type)</td>
 </tr>
@@ -2763,21 +2763,21 @@ processing.sleep()</code></pre>
 <p>The following flags can be combined to modify regex compilation:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Flag</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>regex.ICASE</code></td>
 <td>Case insensitive matching</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>regex.MULTILINE</code></td>
 <td>^ and $ match line boundaries</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>regex.DOT_ALL</code></td>
 <td>. matches newlines</td>
 </tr>
@@ -2788,45 +2788,45 @@ processing.sleep()</code></pre>
 <p>The following <code>RMATCH</code> flags can be used with the optional <code>Flags</code> parameter in <code>test()</code>, <code>match()</code>, <code>search()</code>, <code>replace()</code>, and <code>split()</code> methods:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Flag</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>regex.NOT_BEGIN_OF_LINE</code></td>
 <td>Do not treat the beginning of text as start of line</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>regex.NOT_END_OF_LINE</code></td>
 <td>Do not treat the end of text as end of line</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>regex.NOT_BEGIN_OF_WORD</code></td>
 <td>Do not treat the beginning of text as start of word</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>regex.NOT_END_OF_WORD</code></td>
 <td>Do not treat the end of text as end of word</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>regex.NOT_NULL</code></td>
 <td>Do not match empty sequences</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>regex.CONTINUOUS</code></td>
 <td>Only match at the beginning of text</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>regex.PREV_AVAILABLE</code></td>
 <td>Previous character is available for look-behind</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>regex.REPLACE_NO_COPY</code></td>
 <td>Do not copy non-matching parts in replace operations</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>regex.REPLACE_FIRST_ONLY</code></td>
 <td>Replace only the first occurrence</td>
 </tr>
@@ -2891,7 +2891,7 @@ processing.sleep()</code></pre>
 <h3 id="regexfindall">regex.findAll()</h3>
 <p><code>iter = rx.findAll(Text, [Offset], [RMATCH])</code></p>
 <p>Use the <code>findAll()</code> method to iterate over all matches in a string:</p>
-<div class="sourceCode" id="cb165"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb165-1"><a href="#cb165-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="va">start</span><span class="op">,</span> <span class="va">stop</span><span class="op">,</span> <span class="va">captures</span> <span class="kw">in</span> <span class="va">rx</span><span class="op">.</span>findAll<span class="op">(</span><span class="va">Text</span><span class="op">,</span> <span class="op">[</span><span class="va">Offset</span><span class="op">],</span> <span class="op">[</span><span class="cn">RMATCH</span><span class="op">])</span> <span class="cf">do</span></span>
+<div class="sourceCode" id="cb165"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb165-1"><a href="#cb165-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="va">start</span><span class="op">,</span> <span class="va">stop</span><span class="op">,</span> <span class="va">captures</span> <span class="kw">in</span> <span class="va">rx</span><span class="op">.</span>findAll<span class="op">(</span><span class="cn">T</span><span class="va">ext</span><span class="op">,</span> <span class="op">[</span><span class="cn">O</span><span class="va">ffset</span><span class="op">],</span> <span class="op">[</span><span class="cn">RMATCH</span><span class="op">])</span> <span class="cf">do</span></span>
 <span id="cb165-2"><a href="#cb165-2" aria-hidden="true" tabindex="-1"></a>   <span class="op">...</span></span>
 <span id="cb165-3"><a href="#cb165-3" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <p>Each iteration yields:</p>
@@ -2985,74 +2985,74 @@ processing.sleep()</code></pre>
 <p><strong>Supported Element Types:</strong></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Type</th>
 <th>Size</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>byte</code></td>
 <td>1</td>
 <td>Unsigned 8-bit integer (0-255)</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>int16</code></td>
 <td>2</td>
 <td>Signed 16-bit integer</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>int</code></td>
 <td>4</td>
 <td>Signed 32-bit integer</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>int64</code></td>
 <td>8</td>
 <td>Signed 64-bit integer</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>float</code></td>
 <td>4</td>
 <td>32-bit floating point</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>double</code></td>
 <td>8</td>
 <td>64-bit floating point</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>string</code></td>
 <td>8</td>
 <td>String reference</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>object</code></td>
 <td>varies</td>
 <td>Object reference</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>struct</code></td>
 <td>varies</td>
 <td>Structure reference</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>table</code></td>
 <td>varies</td>
 <td>Table reference</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>array</code></td>
 <td>varies</td>
 <td>Array reference (use for creating multi-dimensional arrays)</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>any</code></td>
 <td>16</td>
 <td>Any type from the above (note: convenience comes at a cost of efficiency)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>pointer</code></td>
 <td>8</td>
 <td>Memory pointer (unavailable for client use)</td>
@@ -3060,8 +3060,8 @@ processing.sleep()</code></pre>
 </tbody>
 </table>
 <h3 id="arraynew">array.new()</h3>
-<div class="sourceCode" id="cb173"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb173-1"><a href="#cb173-1" aria-hidden="true" tabindex="-1"></a><span class="va">arr</span> <span class="op">=</span> <span class="va">array</span><span class="op">.</span>new<span class="op">(</span><span class="va">Size</span><span class="op">,</span> <span class="va">Type</span><span class="op">)</span></span>
-<span id="cb173-2"><a href="#cb173-2" aria-hidden="true" tabindex="-1"></a><span class="va">arr</span> <span class="op">=</span> <span class="va">array</span><span class="op">.</span>new<span class="op">(</span><span class="va">String</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb173"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb173-1"><a href="#cb173-1" aria-hidden="true" tabindex="-1"></a><span class="va">arr</span> <span class="op">=</span> <span class="va">array</span><span class="op">.</span>new<span class="op">(</span><span class="cn">S</span><span class="va">ize</span><span class="op">,</span> <span class="cn">T</span><span class="va">ype</span><span class="op">)</span></span>
+<span id="cb173-2"><a href="#cb173-2" aria-hidden="true" tabindex="-1"></a><span class="va">arr</span> <span class="op">=</span> <span class="va">array</span><span class="op">.</span>new<span class="op">(</span><span class="cn">S</span><span class="va">tring</span><span class="op">)</span></span></code></pre></div>
 <p>The traditional <code>array &lt;&gt;</code> syntax is syntactic sugar that desugars to <code>array.new()</code> and <code>array.of()</code> calls. We recommend against calling <code>array.new()</code> directly unless an edge case makes it necessary. There is however, one unique feature in that passing a string to <code>array.new()</code> will create a byte array from the string&#39;s contents.</p>
 <p><strong>Examples:</strong></p>
 <div class="sourceCode" id="cb174"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb174-1"><a href="#cb174-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Create a 100-element integer array</span></span>
@@ -3073,7 +3073,7 @@ processing.sleep()</code></pre>
 <span id="cb174-7"><a href="#cb174-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- Create an empty array (useful for dynamic filling)</span></span>
 <span id="cb174-8"><a href="#cb174-8" aria-hidden="true" tabindex="-1"></a><span class="va">empty_arr</span> <span class="op">=</span> <span class="va">array</span><span class="op">.</span>new<span class="op">(</span><span class="dv">0</span><span class="op">,</span> <span class="st">&#39;double&#39;</span><span class="op">)</span></span></code></pre></div>
 <h3 id="arrayof">array.of()</h3>
-<div class="sourceCode" id="cb175"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb175-1"><a href="#cb175-1" aria-hidden="true" tabindex="-1"></a><span class="va">arr</span> <span class="op">=</span> <span class="va">array</span><span class="op">.</span>of<span class="op">(</span><span class="va">Type</span><span class="op">,</span> <span class="va">Value1</span><span class="op">,</span> <span class="va">Value2</span><span class="op">,</span> <span class="op">...)</span></span></code></pre></div>
+<div class="sourceCode" id="cb175"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb175-1"><a href="#cb175-1" aria-hidden="true" tabindex="-1"></a><span class="va">arr</span> <span class="op">=</span> <span class="va">array</span><span class="op">.</span>of<span class="op">(</span><span class="cn">T</span><span class="va">ype</span><span class="op">,</span> <span class="cn">V</span><span class="va">alue1</span><span class="op">,</span> <span class="cn">V</span><span class="va">alue2</span><span class="op">,</span> <span class="op">...)</span></span></code></pre></div>
 <p>As for <code>array.new()</code>, calling <code>array.of()</code> is not recommended unless an edge case requires it. Calling <code>array.of()</code> will populate a new array with the given values. <code>Type</code> is the element type. The remaining arguments are the values to populate the array with. At least one value must be provided.</p>
 <p><strong>Examples:</strong></p>
 <div class="sourceCode" id="cb176"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb176-1"><a href="#cb176-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Create a string array with two domain names</span></span>
@@ -3383,7 +3383,7 @@ converted to their string representation automatically.</p>
 <p>Tiri supports function annotations that attach metadata to functions at parse time. Annotations provide a declarative way to mark functions with attributes that can be queried at runtime, enabling features like test discovery, deprecation warnings, and capability requirements.</p>
 <h3 id="annotation-syntax">Annotation Syntax</h3>
 <p>Annotations use the <code>@</code> prefix and are placed immediately before a function declaration:</p>
-<div class="sourceCode" id="cb203"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb203-1"><a href="#cb203-1" aria-hidden="true" tabindex="-1"></a>@<span class="va">AnnotationName</span></span>
+<div class="sourceCode" id="cb203"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb203-1"><a href="#cb203-1" aria-hidden="true" tabindex="-1"></a>@<span class="cn">A</span><span class="va">nnotationName</span></span>
 <span id="cb203-2"><a href="#cb203-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> myFunction<span class="op">()</span></span>
 <span id="cb203-3"><a href="#cb203-3" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- function body</span></span>
 <span id="cb203-4"><a href="#cb203-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
@@ -3395,29 +3395,29 @@ converted to their string representation automatically.</p>
 <p><strong>Supported Argument Types:</strong></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Type</th>
 <th>Example</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>String</td>
 <td><code>name=&#39;Test Name&#39;</code></td>
 </tr>
-<tr>
+<tr class="even">
 <td>Number</td>
 <td><code>timeout=5.0</code>, <code>priority=1</code></td>
 </tr>
-<tr>
+<tr class="odd">
 <td>Boolean</td>
 <td><code>enabled=true</code>, <code>network=false</code></td>
 </tr>
-<tr>
+<tr class="even">
 <td>Array</td>
 <td><code>labels=[&#39;unit&#39;, &#39;smoke&#39;, &#39;critical&#39;]</code></td>
 </tr>
-<tr>
+<tr class="odd">
 <td>Bare Identifier</td>
 <td><code>deprecated</code> (equivalent to <code>deprecated=true</code>)</td>
 </tr>
@@ -3431,20 +3431,20 @@ converted to their string representation automatically.</p>
 <span id="cb205-4"><a href="#cb205-4" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- test body</span></span>
 <span id="cb205-5"><a href="#cb205-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <p>Annotations can also be placed on the same line using semicolons:</p>
-<div class="sourceCode" id="cb206"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb206-1"><a href="#cb206-1" aria-hidden="true" tabindex="-1"></a>@<span class="va">BeforeEach</span><span class="op">;</span> @Requires<span class="op">(</span><span class="va">network</span><span class="op">=</span><span class="kw">true</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb206"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb206-1"><a href="#cb206-1" aria-hidden="true" tabindex="-1"></a>@<span class="cn">B</span><span class="va">eforeEach</span><span class="op">;</span> @Requires<span class="op">(</span><span class="va">network</span><span class="op">=</span><span class="kw">true</span><span class="op">)</span></span>
 <span id="cb206-2"><a href="#cb206-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> setupNetwork<span class="op">()</span></span>
 <span id="cb206-3"><a href="#cb206-3" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- setup body</span></span>
 <span id="cb206-4"><a href="#cb206-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <p><strong>Function Types:</strong></p>
 <p>Annotations work with all function declaration styles:</p>
 <div class="sourceCode" id="cb207"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb207-1"><a href="#cb207-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Regular functions</span></span>
-<span id="cb207-2"><a href="#cb207-2" aria-hidden="true" tabindex="-1"></a>@<span class="va">Test</span> <span class="kw">function</span> regularFunc<span class="op">()</span> <span class="kw">end</span></span>
+<span id="cb207-2"><a href="#cb207-2" aria-hidden="true" tabindex="-1"></a>@<span class="cn">T</span><span class="va">est</span> <span class="kw">function</span> regularFunc<span class="op">()</span> <span class="kw">end</span></span>
 <span id="cb207-3"><a href="#cb207-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb207-4"><a href="#cb207-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- Local functions</span></span>
-<span id="cb207-5"><a href="#cb207-5" aria-hidden="true" tabindex="-1"></a>@<span class="va">Test</span> <span class="kw">local</span> <span class="kw">function</span> localFunc<span class="op">()</span> <span class="kw">end</span></span>
+<span id="cb207-5"><a href="#cb207-5" aria-hidden="true" tabindex="-1"></a>@<span class="cn">T</span><span class="va">est</span> <span class="kw">local</span> <span class="kw">function</span> localFunc<span class="op">()</span> <span class="kw">end</span></span>
 <span id="cb207-6"><a href="#cb207-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb207-7"><a href="#cb207-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- Global functions</span></span>
-<span id="cb207-8"><a href="#cb207-8" aria-hidden="true" tabindex="-1"></a>@<span class="va">Test</span> <span class="va">global</span> <span class="kw">function</span> globalFunc<span class="op">()</span> <span class="kw">end</span></span></code></pre></div>
+<span id="cb207-8"><a href="#cb207-8" aria-hidden="true" tabindex="-1"></a>@<span class="cn">T</span><span class="va">est</span> <span class="va">global</span> <span class="kw">function</span> globalFunc<span class="op">()</span> <span class="kw">end</span></span></code></pre></div>
 <h3 id="compile-time-pre-processor">Compile-Time Pre-Processor</h3>
 <p>The <code>@if ... @end</code> construct provides a compile-time pre-processor, allowing code to be included or excluded based on conditions evaluated during parsing. This allows you to quickly eliminate the compilation of bytecode that the program doesn&#39;t need.</p>
 <p><strong>Basic Syntax:</strong></p>
@@ -3454,29 +3454,29 @@ converted to their string representation automatically.</p>
 <p><strong>Supported Conditions:</strong></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Condition</th>
 <th>Value Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>imported</code></td>
 <td>boolean</td>
 <td><code>true</code> when file is being imported; <code>false</code> when file is the main script.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>debug</code></td>
 <td>boolean</td>
 <td><code>true</code> when log level is higher than &#39;warning&#39;; <code>false</code> otherwise.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>platform</code></td>
 <td>string</td>
 <td>Matches against current platform: <code>&quot;windows&quot;</code>, <code>&quot;linux&quot;</code>, <code>&quot;osx&quot;</code>, <code>&quot;native&quot;</code>.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>exists</code></td>
 <td>string</td>
 <td>Checks for existence of a file at compile time: <code>exists=&#39;path/to/file&#39;</code>. The path is calculated relative to the script.</td>
@@ -3508,24 +3508,24 @@ converted to their string representation automatically.</p>
 <p>The following annotations are recommended for general-purpose code organisation:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Annotation</th>
 <th>Arguments</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>@Deprecated</code></td>
 <td><code>message:str</code>, <code>since:str</code></td>
 <td>Marks a function as deprecated. Tools may emit warnings when deprecated functions are called.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>@Override</code></td>
 <td>(none)</td>
 <td>Indicates that a function overrides a parent implementation. Useful for documentation and tooling.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>@SuppressWarnings</code></td>
 <td><code>&lt;flags&gt;</code></td>
 <td>Suppresses specific warnings. Flags are bare identifiers: <code>@SuppressWarnings(unused, deprecated)</code></td>
@@ -3538,7 +3538,7 @@ converted to their string representation automatically.</p>
 <span id="cb211-3"><a href="#cb211-3" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> newApi<span class="op">()</span></span>
 <span id="cb211-4"><a href="#cb211-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb211-5"><a href="#cb211-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb211-6"><a href="#cb211-6" aria-hidden="true" tabindex="-1"></a>@<span class="va">Override</span></span>
+<span id="cb211-6"><a href="#cb211-6" aria-hidden="true" tabindex="-1"></a>@<span class="cn">O</span><span class="va">verride</span></span>
 <span id="cb211-7"><a href="#cb211-7" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> customBehaviour<span class="op">()</span></span>
 <span id="cb211-8"><a href="#cb211-8" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Override parent implementation</span></span>
 <span id="cb211-9"><a href="#cb211-9" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
@@ -3551,44 +3551,44 @@ converted to their string representation automatically.</p>
 <p>The Flute test framework recognises the following annotations for test discovery and configuration:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Annotation</th>
 <th>Arguments</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>@Test</code></td>
 <td><code>name:str</code>, <code>timeout:num</code>, <code>priority:num</code>, <code>labels:array</code></td>
 <td>Marks a function as a test case</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>@BeforeEach</code></td>
 <td>(none)</td>
 <td>Runs before each test in the file</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>@AfterEach</code></td>
 <td>(none)</td>
 <td>Runs after each test in the file</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>@BeforeAll</code></td>
 <td>(none)</td>
 <td>Runs once before all tests in the file</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>@AfterAll</code></td>
 <td>(none)</td>
 <td>Runs once after all tests in the file</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>@Disabled</code></td>
 <td><code>reason:str</code></td>
 <td>Skips the test with an optional reason</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>@Requires</code></td>
 <td><code>display:bool</code>, <code>network:bool</code>, <code>audio:bool</code></td>
 <td>Specifies runtime requirements; test is skipped if requirements are not met</td>
@@ -3598,7 +3598,7 @@ converted to their string representation automatically.</p>
 <p><strong>Test Argument Reference:</strong></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Argument</th>
 <th>Type</th>
 <th>Default</th>
@@ -3606,25 +3606,25 @@ converted to their string representation automatically.</p>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>name</code></td>
 <td>string</td>
 <td>function name</td>
 <td>Display name for the test</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>timeout</code></td>
 <td>number</td>
 <td>3.0</td>
 <td>Maximum execution time in seconds</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>priority</code></td>
 <td>number</td>
 <td>0</td>
 <td>Execution order (lower runs first)</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>labels</code></td>
 <td>array</td>
 <td><code>[]</code></td>
@@ -3635,29 +3635,29 @@ converted to their string representation automatically.</p>
 <p><strong>Requirements Reference:</strong></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Requirement</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>audio</code></td>
 <td>Requires working audio module</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>display</code></td>
 <td>Requires working display module</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>font</code></td>
 <td>Requires working font module</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>network</code></td>
 <td>Requires working network module</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>ssl</code></td>
 <td>Requires SSL to be built-in to network module</td>
 </tr>
@@ -3670,13 +3670,13 @@ converted to their string representation automatically.</p>
 <span id="cb212-4"><a href="#cb212-4" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Test implementation</span></span>
 <span id="cb212-5"><a href="#cb212-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb212-6"><a href="#cb212-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb212-7"><a href="#cb212-7" aria-hidden="true" tabindex="-1"></a>@<span class="va">BeforeEach</span></span>
+<span id="cb212-7"><a href="#cb212-7" aria-hidden="true" tabindex="-1"></a>@<span class="cn">B</span><span class="va">eforeEach</span></span>
 <span id="cb212-8"><a href="#cb212-8" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> setupTestEnvironment<span class="op">()</span></span>
 <span id="cb212-9"><a href="#cb212-9" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Runs before each test</span></span>
 <span id="cb212-10"><a href="#cb212-10" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb212-11"><a href="#cb212-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb212-12"><a href="#cb212-12" aria-hidden="true" tabindex="-1"></a>@Disabled<span class="op">(</span><span class="va">reason</span><span class="op">=</span><span class="st">&#39;Pending implementation&#39;</span><span class="op">)</span></span>
-<span id="cb212-13"><a href="#cb212-13" aria-hidden="true" tabindex="-1"></a>@<span class="va">Test</span></span>
+<span id="cb212-13"><a href="#cb212-13" aria-hidden="true" tabindex="-1"></a>@<span class="cn">T</span><span class="va">est</span></span>
 <span id="cb212-14"><a href="#cb212-14" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> testFutureFeature<span class="op">()</span></span>
 <span id="cb212-15"><a href="#cb212-15" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Will be skipped</span></span>
 <span id="cb212-16"><a href="#cb212-16" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
@@ -3687,54 +3687,54 @@ converted to their string representation automatically.</p>
 <p>Returns an array of all registered file sources for the current script execution. Each entry in the returned array contains the following fields:</p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>index</code></td>
 <td>number</td>
 <td>File index (0 = main file, 255 = overflow fallback)</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>path</code></td>
 <td>string</td>
 <td>Full resolved path to the source file</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>filename</code></td>
 <td>string</td>
 <td>Short filename for error display</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>namespace</code></td>
 <td>string</td>
 <td>Declared namespace (empty string if none)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>firstLine</code></td>
 <td>number</td>
 <td>First line number in unified line space</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>sourceLines</code></td>
 <td>number</td>
 <td>Total number of lines in the source file</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>parentIndex</code></td>
 <td>number</td>
 <td>Index of the file that imported this one (0 for main)</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>importLine</code></td>
 <td>number</td>
 <td>Line number in parent where import occurred (0 for main)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>isOverflow</code></td>
 <td>boolean</td>
 <td>True if this is the overflow fallback entry (index 255)</td>
@@ -3781,29 +3781,29 @@ converted to their string representation automatically.</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Parameter</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>func</code></td>
 <td>function</td>
 <td>The function to annotate</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>annotations</code></td>
 <td>string or table</td>
 <td>Annotation data (see below)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>source</code></td>
 <td>string</td>
 <td>Source file path (default: <code>&#39;&lt;runtime&gt;&#39;</code>)</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>name</code></td>
 <td>string</td>
 <td>Function name (default: inferred or <code>&#39;&lt;anonymous&gt;&#39;</code>)</td>
@@ -3817,7 +3817,7 @@ converted to their string representation automatically.</p>
 <span id="cb215-3"><a href="#cb215-3" aria-hidden="true" tabindex="-1"></a>   <span class="op">{</span> <span class="va">name</span> <span class="op">=</span> <span class="st">&#39;Requires&#39;</span><span class="op">,</span> <span class="va">args</span> <span class="op">=</span> <span class="op">{</span> <span class="va">network</span> <span class="op">=</span> <span class="kw">true</span> <span class="op">}</span> <span class="op">}</span></span>
 <span id="cb215-4"><a href="#cb215-4" aria-hidden="true" tabindex="-1"></a><span class="op">},</span> <span class="st">&#39;myfile.tiri&#39;</span><span class="op">,</span> <span class="st">&#39;myFunc&#39;</span><span class="op">)</span></span></code></pre></div>
 <p><em>String format (parsed):</em></p>
-<div class="sourceCode" id="cb216"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb216-1"><a href="#cb216-1" aria-hidden="true" tabindex="-1"></a><span class="va">debug</span><span class="op">.</span><span class="va">anno</span><span class="op">.</span>set<span class="op">(</span><span class="va">myFunc</span><span class="op">,</span> <span class="st">&#39;@Test(name=&#39;</span><span class="va">My</span> Test<span class="st">&#39;); @Requires(network=true)&#39;</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb216"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb216-1"><a href="#cb216-1" aria-hidden="true" tabindex="-1"></a><span class="va">debug</span><span class="op">.</span><span class="va">anno</span><span class="op">.</span>set<span class="op">(</span><span class="va">myFunc</span><span class="op">,</span> <span class="st">&#39;@Test(name=&#39;</span><span class="cn">M</span><span class="va">y</span> Test<span class="st">&#39;); @Requires(network=true)&#39;</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Returns:</strong> Entry table with fields:</p>
 <ul>
 <li><code>name</code>: Function name</li>
@@ -3829,14 +3829,14 @@ converted to their string representation automatically.</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
-<tr>
+<tr class="header">
 <th>Parameter</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>func</code></td>
 <td>function</td>
 <td>The function to query</td>

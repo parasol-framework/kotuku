@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Combines multiple effects in sequence.</comment>
     <version>1</version>
-    <id>be2da2d3</id>
+    <id>10ff4c63</id>
     <idstring>MERGEFX</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>
@@ -25,6 +25,7 @@
       <name>Draw</name>
       <comment>Render the effect to the target bitmap.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <tiriPrototype>err = Object.acDraw(X:num, Y:num, Width:num, Height:num)</tiriPrototype>
       <input>
         <param type="INT" name="X">The X position of the region to be drawn.</param>
         <param type="INT" name="Y">The Y position of the region to be drawn.</param>

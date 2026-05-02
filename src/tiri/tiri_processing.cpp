@@ -35,8 +35,15 @@ static int processing_new(lua_State *Lua)
       // Default configuration
       fp->Timeout = -1;
       fp->Signals = 0;
+      fp->SignalRefs = 0;
 
       if (not (fp->Signals = new (std::nothrow) std::list<ObjectSignal>)) {
+         luaL_error(Lua, ERR::Memory);
+      }
+
+      if (not (fp->SignalRefs = new (std::nothrow) std::list<int>)) {
+         delete fp->Signals;
+         fp->Signals = nullptr;
          luaL_error(Lua, ERR::Memory);
       }
 
@@ -59,8 +66,11 @@ static int processing_new(lua_State *Lua)
                            for (MSize i = 0; i < arr->len; i++) {
                               if (gcref(refs[i])) {
                                  auto obj = gco_to_object(gcref(refs[i]));
-                                 ObjectSignal sig = { .Object = obj->ptr };
+                                 ObjectSignal sig = { .Object = obj->ptr ? obj->ptr : GetObjectPtr(obj->uid) };
+                                 if (not sig.Object) luaL_error(Lua, ERR::AccessObject, "Signal object at index %d is not available.", i);
                                  fp->Signals->push_back(sig);
+                                 setobjectV(Lua, Lua->top++, obj);
+                                 fp->SignalRefs->push_back(luaL_ref(Lua, LUA_REGISTRYINDEX));
                               }
                               else luaL_error(Lua, ERR::InvalidType, "Nil entry at index %d in signal array.", i);
                            }
@@ -109,7 +119,7 @@ static int processing_new(lua_State *Lua)
 
 static int processing_sleep(lua_State *Lua)
 {
-   pf::Log log;
+   kt::Log log;
    static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
    ERR error;
@@ -136,7 +146,7 @@ static int processing_sleep(lua_State *Lua)
       // Always collect your garbage before going to sleep.  Can be prevented with processing.stopCollector() if
       // absolutely necessary.
       if (lua_gc(Lua, LUA_GCISRUNNING, 0)) {
-         pf::Log log;
+         kt::Log log;
          log.traceBranch("Collecting garbage.");
          lua_gc(Lua, LUA_GCCOLLECT, 0);
       }
@@ -198,6 +208,11 @@ static int processing_signal(lua_State *Lua)
 static int processing_flush(lua_State *Lua)
 {
    Lua->script->clearFlag(NF::SIGNALLED);
+   if (auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Tiri.processing")) {
+      for (auto &entry : *fp->Signals) {
+         entry.Object->clearFlag(NF::SIGNALLED);
+      }
+   }
    return 0;
 }
 
@@ -335,13 +350,9 @@ static int processing_get(lua_State *Lua)
          return 1;
       }
       else if (std::string_view("flush") IS fieldname) {
-         Lua->script->clearFlag(NF::SIGNALLED);
-         if (auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Tiri.processing")) {
-            for (auto &entry : *fp->Signals) {
-               entry.Object->clearFlag(NF::SIGNALLED);
-            }
-         }
-         return 0;
+         lua_pushvalue(Lua, 1);
+         lua_pushcclosure(Lua, &processing_flush, 1);
+         return 1;
       }
       else luaL_error(Lua, "Unrecognised index '%s'", fieldname);
    }
@@ -358,7 +369,7 @@ static MsgHandler *delayed_call_handle;
 
 static ERR msg_handler(APTR Meta, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   if (MsgSize != sizeof(int)) return pf::Log(__FUNCTION__).warning(ERR::Args);
+   if (MsgSize != sizeof(int)) return kt::Log(__FUNCTION__).warning(ERR::Args);
 
    auto lua = (lua_State *)Meta;
    auto prv = (prvTiri *)lua->script->ChildPrivate;
@@ -384,7 +395,10 @@ static int processing_delayed_call(lua_State *Lua)
 
    if (lua_type(Lua, 1) IS LUA_TFUNCTION) {
       int ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
-      SendMessage(msgid, MSF::NIL, &ref, sizeof(ref));
+      if (SendMessage(msgid, MSF::NIL, &ref, sizeof(ref)) != ERR::Okay) {
+         luaL_unref(Lua, LUA_REGISTRYINDEX, ref);
+         luaL_error(Lua, ERR::MessageOperation);
+      }
    }
    else luaL_error(Lua, "Expected a function to register as a message hook.");
    return 0;
@@ -396,6 +410,11 @@ static int processing_delayed_call(lua_State *Lua)
 static int processing_destruct(lua_State *Lua)
 {
    auto fp = (fprocessing *)luaL_checkudata(Lua, 1, "Tiri.processing");
+   if (fp->SignalRefs) {
+      for (auto ref : *fp->SignalRefs) luaL_unref(Lua, LUA_REGISTRYINDEX, ref);
+      delete fp->SignalRefs;
+      fp->SignalRefs = nullptr;
+   }
    if (fp->Signals) { delete fp->Signals; fp->Signals = nullptr; }
    return 0;
 }
@@ -425,7 +444,7 @@ static const luaL_Reg processinglib_methods[] = {
 
 void register_processing_class(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Registering processing interface.");
 
    luaL_newmetatable(Lua, "Tiri.processing");
@@ -437,6 +456,8 @@ void register_processing_class(lua_State *Lua)
    luaL_openlib(Lua, nullptr, processinglib_methods, 0);
 
    luaL_openlib(Lua, "processing", processinglib_functions, 0);
+
+   lua_pop(Lua, 2); // Drop the Tiri.processing metatable and the processing library table
 
    // Register processing interface prototypes for compile-time type inference
    reg_iface_prototype("processing", "new", { TiriType::Any }, { TiriType::Table });

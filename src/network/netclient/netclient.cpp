@@ -29,7 +29,7 @@ static ERR NETCLIENT_Free(objNetClient *Self)
 static ERR NETCLIENT_Init(objNetClient *Self)
 {
    if (Self->Owner->classID() != CLASSID::NETSOCKET) {
-      return pf::Log().warning(ERR::UnsupportedOwner);
+      return kt::Log().warning(ERR::UnsupportedOwner);
    }
 
    return ERR::Okay;

@@ -122,11 +122,11 @@
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Parameters" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Parameters"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Parameters</th><td class="col-md-1"><span class="text-nowrap">pf::vector&lt;std::string&gt;</span></td><td>Command line arguments (list format).</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Parameters" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Parameters</th><td class="col-md-1"><span class="text-nowrap">kt::vector&lt;std::string&gt;</span></td><td>Command line arguments (list format).</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Parameters" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>Command line arguments for a program can be defined here as a vector list, whereby each argument is an independent string.  To illustrate, the following command-line string:</p>
 <pre>1&gt; YourProgram PREFS MyPrefs -file "documents:readme.txt"</pre>
 <p>Would be represented as follows:</p>
-<pre>pf::vector&lt;std::string&gt; Args = {
+<pre>kt::vector&lt;std::string&gt; Args = {
    "PREFS",
    "MyPrefs",
    "-file",
@@ -225,8 +225,8 @@
 \HKEY_CLASSES_ROOT\
 \HKEY_USERS\
 </pre>
-<p>Here is a valid example for reading the 'Kotuku' key value <code>\HKEY_CURRENT_USER\Software\Kotuku</code></p>
-<p>Caution: If your programming language uses backslash as an escape character (true for Tiri developers), remember to use double-backslashes as the key value separator in your Name string.</p>
+<p>If the <code>Name</code> string ends with a trailing backslash, all keys and sub-keys held at that location are returned as a tab-separated list in the form <code>Name1\tName2...</code>.  Sub-key names are distinguished from values by a trailing backslash, e.g. <code>SubKey\\</code>.  This is useful for enumerating the complete contents of a registry key without needing to know names in advance.</p>
+<p>NOTE: If your programming language uses backslash as an escape character, remember to use double-backslashes in the <code>Name</code> string.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>

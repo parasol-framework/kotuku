@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Renders a bitmap image in the effect pipeline.</comment>
     <version>1</version>
-    <id>9bba5446</id>
+    <id>1208408a</id>
     <idstring>IMAGEFX</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>
@@ -27,6 +27,7 @@
       <name>Draw</name>
       <comment>Render the effect to the target bitmap.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <tiriPrototype>err = Object.acDraw(X:num, Y:num, Width:num, Height:num)</tiriPrototype>
       <input>
         <param type="INT" name="X">The X position of the region to be drawn.</param>
         <param type="INT" name="Y">The Y position of the region to be drawn.</param>

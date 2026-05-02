@@ -38,7 +38,7 @@ static objScript *glTestScript = nullptr;
 
 namespace {
 
-static void log_diagnostics(std::span<const ParserDiagnostic> diagnostics, pf::Log &log)
+static void log_diagnostics(std::span<const ParserDiagnostic> diagnostics, kt::Log &log)
 {
    if (diagnostics.empty()) {
       return;
@@ -184,7 +184,7 @@ static std::optional<ExpressionParseHarness> make_expression_harness(std::string
 
 //********************************************************************************************************************
 
-static void log_block_outline(const BlockStmt& block, pf::Log &log)
+static void log_block_outline(const BlockStmt& block, kt::Log &log)
 {
    StatementListView view = block.view();
    size_t index = 0;
@@ -196,7 +196,7 @@ static void log_block_outline(const BlockStmt& block, pf::Log &log)
 
 //********************************************************************************************************************
 
-static bool test_parser_profiler_captures_stages(pf::Log &log)
+static bool test_parser_profiler_captures_stages(kt::Log &log)
 {
    ParserProfilingResult result;
    ParserProfiler profiler(true, &result);
@@ -227,7 +227,7 @@ static bool test_parser_profiler_captures_stages(pf::Log &log)
 
 //********************************************************************************************************************
 
-static bool test_parser_profiler_disabled_noop(pf::Log &log)
+static bool test_parser_profiler_disabled_noop(kt::Log &log)
 {
    ParserProfilingResult result;
    ParserProfiler profiler(false, &result);
@@ -249,7 +249,7 @@ static bool test_parser_profiler_disabled_noop(pf::Log &log)
 
 //********************************************************************************************************************
 
-static bool test_literal_binary_expr(pf::Log &log)
+static bool test_literal_binary_expr(kt::Log &log)
 {
    auto result = build_ast_from_source("return (value + 4) * 3");
    if (not result.chunk.ok()) {
@@ -319,7 +319,7 @@ static bool test_literal_binary_expr(pf::Log &log)
 //********************************************************************************************************************
 // Expression parsing entry point tests.
 
-static bool test_expression_entry_point(pf::Log &log)
+static bool test_expression_entry_point(kt::Log &log)
 {
    auto harness = make_expression_harness("value + 42");
    if (not harness.has_value()) {
@@ -357,7 +357,7 @@ static bool test_expression_entry_point(pf::Log &log)
 
 //********************************************************************************************************************
 
-static bool test_expression_list_entry_point(pf::Log &log)
+static bool test_expression_list_entry_point(kt::Log &log)
 {
    auto harness = make_expression_harness("value, call(arg), 99");
    if (not harness.has_value()) {
@@ -393,7 +393,7 @@ static bool test_expression_list_entry_point(pf::Log &log)
 
 //********************************************************************************************************************
 
-static bool test_loop_ast(pf::Log &log)
+static bool test_loop_ast(kt::Log &log)
 {
    constexpr const char* source = R"(
 while ready do
@@ -459,7 +459,7 @@ end
 
 //********************************************************************************************************************
 
-static bool test_if_stmt_with_elseif_ast(pf::Log &log)
+static bool test_if_stmt_with_elseif_ast(kt::Log &log)
 {
    constexpr const char* source = R"(
 local output = 0
@@ -563,7 +563,7 @@ return output
 
 //********************************************************************************************************************
 
-static bool test_local_function_table_ast(pf::Log &log)
+static bool test_local_function_table_ast(kt::Log &log)
 {
    constexpr const char* source = R"(
 local function build_pair(a, b)
@@ -669,7 +669,7 @@ return build_pair(1, 2)
 
 //********************************************************************************************************************
 
-static bool test_numeric_for_ast(pf::Log &log)
+static bool test_numeric_for_ast(kt::Log &log)
 {
    constexpr const char* source = R"(
 local limit = 5
@@ -733,7 +733,7 @@ return sum
    return true;
 }
 
-static bool test_generic_for_ast(pf::Log &log)
+static bool test_generic_for_ast(kt::Log &log)
 {
    constexpr const char* source = R"(
 local total = 0
@@ -806,7 +806,7 @@ return total
    return true;
 }
 
-static bool test_repeat_defer_ast(pf::Log &log)
+static bool test_repeat_defer_ast(kt::Log &log)
 {
    constexpr const char* source = R"(
 local total = 0
@@ -886,7 +886,7 @@ return total
    return true;
 }
 
-static bool test_ternary_presence_expr_ast(pf::Log &log)
+static bool test_ternary_presence_expr_ast(kt::Log &log)
 {
    constexpr const char* source = R"(
 local value = nil
@@ -970,7 +970,7 @@ static BytecodeSnapshot snapshot_proto(GCproto* pt)
 
 static void log_snapshot(const BytecodeSnapshot& snapshot, const std::string& label)
 {
-   pf::Log log("Tiri-Parser");
+   kt::Log log("Tiri-Parser");
    log.msg("%s: %" PRId64 " instructions", label.c_str(), snapshot.instructions.size());
    for (size_t i = 0; i < snapshot.instructions.size(); ++i) {
       std::string desc = describe_instruction(snapshot.instructions[i]);
@@ -1028,7 +1028,7 @@ static bool compare_snapshots(const BytecodeSnapshot& legacy, const BytecodeSnap
             }
          }
 
-         pf::Log log("Tiri-Parser");
+         kt::Log log("Tiri-Parser");
          std::string legacy_desc = describe_instruction(legacy_body[i]);
          std::string ast_desc = describe_instruction(ast_body[i]);
          log.msg("legacy[%s:%" PRId64 "] %s", label.c_str(), i, legacy_desc.c_str());
@@ -1079,7 +1079,7 @@ static std::optional<BytecodeSnapshot> compile_snapshot(lua_State* L, std::strin
    return snapshot;
 }
 
-static bool test_bytecode_equivalence(pf::Log &log)
+static bool test_bytecode_equivalence(kt::Log &log)
 {
    constexpr const char* source = R"(
 local value = 1
@@ -1116,7 +1116,7 @@ return value * 3
    return true;
 }
 
-static bool test_ast_call_lowering(pf::Log &log)
+static bool test_ast_call_lowering(kt::Log &log)
 {
    constexpr const char* source = R"(
 local context = { base = 5 }
@@ -1157,7 +1157,7 @@ return context:compute(-3)
    return true;
 }
 
-static bool test_return_lowering(pf::Log &log)
+static bool test_return_lowering(kt::Log &log)
 {
    constexpr const char* source =
       "local function retmix(flag, ...)\n"
@@ -1203,7 +1203,7 @@ static bool test_return_lowering(pf::Log &log)
    return true;
 }
 
-static bool test_ast_statement_matrix(pf::Log &log)
+static bool test_ast_statement_matrix(kt::Log &log)
 {
    constexpr std::array<PipelineSnippet, 4> snippets = { {
       { "control_flow_ladder", R"(
@@ -1314,13 +1314,13 @@ return value
 
 struct TestCase {
    const char* name;
-   bool (*fn)(pf::Log&);
+   bool (*fn)(kt::Log&);
 };
 
 //********************************************************************************************************************
 // Test ExpDesc::is_falsey() method for extended falsey semantics
 
-static bool test_expdesc_is_falsey(pf::Log &log)
+static bool test_expdesc_is_falsey(kt::Log &log)
 {
    // Test nil
    ExpDesc nil_expr(ExpKind::Nil);
@@ -1406,7 +1406,7 @@ static bool test_expdesc_is_falsey(pf::Log &log)
 //********************************************************************************************************************
 // Test ?? operator with constant folding
 
-static bool test_if_empty_operator_constants(pf::Log &log)
+static bool test_if_empty_operator_constants(kt::Log &log)
 {
    // Test: nil ?? 5 should evaluate to 5
    {
@@ -1484,7 +1484,7 @@ static bool test_if_empty_operator_constants(pf::Log &log)
 //********************************************************************************************************************
 // Test ternary operator with falsey semantics
 
-static bool test_ternary_falsey_semantics(pf::Log &log)
+static bool test_ternary_falsey_semantics(kt::Log &log)
 {
    // Test: nil ? "yes" :> "no" should evaluate to "no"
    {
@@ -1591,7 +1591,7 @@ extern void parser_unit_tests(int &Passed, int &Total)
    if (Action(AC::Init, glTestScript, nullptr) != ERR::Okay) return;
 
    for (const TestCase& test : tests) {
-      pf::Log log("ParserTests");
+      kt::Log log("ParserTests");
       log.branch("Running %s", test.name);
       ++Total;
       if (test.fn(log)) {

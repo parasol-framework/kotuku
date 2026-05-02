@@ -133,7 +133,7 @@ static const ActionArray glModuleActions[] = {
 #ifndef KOTUKU_STATIC
 static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    std::string path;
 
    if ((Self->Name.starts_with('/')) or (Self->Name.find(':') != std::string::npos)) {
@@ -326,7 +326,7 @@ static ERR MODULE_Free(extModule *Self)
 
 static ERR MODULE_Init(extModule *Self)
 {
-   pf::Log log;
+   kt::Log log;
    ERR error = ERR::ModuleValidation;
    bool root_mod = false;
 
@@ -357,7 +357,7 @@ static ERR MODULE_Init(extModule *Self)
 
       root_mod = true;
 
-      pf::SwitchContext ctx(master);
+      kt::SwitchContext ctx(master);
 
       master->LibraryName.assign(name);
 
@@ -515,7 +515,7 @@ NoSupport: The host platform does not support this method.
 
 static ERR MODULE_ResolveSymbol(extModule *Self, struct mod::ResolveSymbol *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
@@ -681,7 +681,7 @@ APTR build_jump_table(const Function *FList)
 {
    if (!FList) return nullptr;
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    int size;
    for (size=0; FList[size].Address; size++);
@@ -744,7 +744,7 @@ static RootModule * check_resident(extModule *Self, const std::string_view Modul
 
 static void free_module(MODHANDLE handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!handle) return;
 
@@ -802,7 +802,7 @@ extern ERR add_module_class(void)
       fl::ClassVersion(VER_MODULE),
       fl::Name("Module"),
       fl::Category(CCF::SYSTEM),
-      fl::FileExtension("*.mod|*.so|*.dll"),
+      fl::FileExtension("mod|so|dll"),
       fl::FileDescription("System Module"),
       fl::Icon("tools/cog"),
       fl::Actions(glModuleActions),

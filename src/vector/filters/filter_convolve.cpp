@@ -66,7 +66,7 @@ class extConvolveFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::CONVOLVEFX;
    static constexpr CSTRING CLASS_NAME = "ConvolveFX";
-   using create = pf::Create<extConvolveFX>;
+   using create = kt::Create<extConvolveFX>;
 
    double UnitX, UnitY;
    double Divisor;
@@ -103,10 +103,10 @@ class extConvolveFX : public extFilterEffect {
             X -= Bitmap->Clip.Left;
             Y -= Bitmap->Clip.Top;
 
-            if (X < 0) X = std::abs(width + X) % width;
+            if (X < 0) X = ((X % width) + width) % width;
             else if (X >= width) X %= width;
 
-            if (Y < 0) Y = std::abs(height + Y) % height;
+            if (Y < 0) Y = ((Y % height) + height) % height;
             else if (Y >= height) Y %= height;
 
             return Bitmap->Data + ((Y + Bitmap->Clip.Top)  * Bitmap->LineWidth) + ((X + Bitmap->Clip.Left) * Bitmap->BytesPerPixel);
@@ -137,9 +137,9 @@ class extConvolveFX : public extFilterEffect {
             double r = 0.0, g = 0.0, b = 0.0, a = 0.0;
             uint8_t kv = 0;
             for (int fy = 0; fy < MatrixRows; fy++) {
-                int isrcY = F2I(y - (TargetY * UnitY) + (fy * UnitY));
+                int isrcY = std::lrint(y - (TargetY * UnitY) + (fy * UnitY));
                 for (int fx = 0; fx < MatrixColumns; fx++) {
-                    int isrcX = F2I(x - (TargetX * UnitX) + (fx * UnitX));
+                    int isrcX = std::lrint(x - (TargetX * UnitX) + (fx * UnitX));
                     if (auto pixel = getPixel(InputBitmap, isrcX, isrcY)) {
                         r += pixel[R] * Matrix[kv];
                         g += pixel[G] * Matrix[kv];
@@ -150,13 +150,13 @@ class extConvolveFX : public extFilterEffect {
                 }
             }
 
-            int lr = F2I((factor * r) + bias);
-            int lg = F2I((factor * g) + bias);
-            int lb = F2I((factor * b) + bias);
+            int lr = std::lrint((factor * r) + bias);
+            int lg = std::lrint((factor * g) + bias);
+            int lb = std::lrint((factor * b) + bias);
             out[R] = glLinearRGB.invert(std::clamp(lr, 0, 255));
             out[G] = glLinearRGB.invert(std::clamp(lg, 0, 255));
             out[B] = glLinearRGB.invert(std::clamp(lb, 0, 255));
-            if (!PreserveAlpha) out[A] = std::clamp(F2I(factor * a + bias), 0, 255);
+            if (!PreserveAlpha) out[A] = std::clamp(int(std::lrint(factor * a + bias)), 0, 255);
             else out[A] = (alpha_input + (x * InputBitmap->BytesPerPixel))[A];
             out += 4;
          }
@@ -232,7 +232,7 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
 
 static ERR CONVOLVEFX_Init(extConvolveFX *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->UnitY) Self->UnitY = Self->UnitX;
 
@@ -330,7 +330,7 @@ static ERR CONVOLVEFX_GET_Divisor(extConvolveFX *Self, double *Value)
 
 static ERR CONVOLVEFX_SET_Divisor(extConvolveFX *Self, double Value)
 {
-   pf::Log log;
+   kt::Log log;
    if (Value <= 0) return log.warning(ERR::InvalidValue);
    Self->Divisor = Value;
    return ERR::Okay;
@@ -377,7 +377,7 @@ static ERR CONVOLVEFX_GET_Matrix(extConvolveFX *Self, double **Value, int *Eleme
 
 static ERR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, double *Value, int Elements)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Elements > 0) and (Elements <= std::ssize(Self->Matrix))) {
       Self->MatrixSize = Elements;
@@ -406,7 +406,7 @@ static ERR CONVOLVEFX_GET_MatrixRows(extConvolveFX *Self, int *Value)
 
 static ERR CONVOLVEFX_SET_MatrixRows(extConvolveFX *Self, int Value)
 {
-   pf::Log log;
+   kt::Log log;
    if (Value <= 0) return log.warning(ERR::InvalidValue);
 
    Self->MatrixRows = Value;
@@ -432,7 +432,7 @@ static ERR CONVOLVEFX_GET_MatrixColumns(extConvolveFX *Self, int *Value)
 
 static ERR CONVOLVEFX_SET_MatrixColumns(extConvolveFX *Self, int Value)
 {
-   pf::Log log;
+   kt::Log log;
    if (Value <= 0) return log.warning(ERR::InvalidValue);
 
    Self->MatrixColumns = Value;
@@ -479,7 +479,7 @@ static ERR CONVOLVEFX_GET_TargetX(extConvolveFX *Self, int *Value)
 static ERR CONVOLVEFX_SET_TargetX(extConvolveFX *Self, int Value)
 {
    if (Self->initialised()) {
-      pf::Log log;
+      kt::Log log;
       if ((Value < 0) or (Value >= Self->MatrixColumns)) return log.warning(ERR::OutOfRange);
    }
 
@@ -508,7 +508,7 @@ static ERR CONVOLVEFX_GET_TargetY(extConvolveFX *Self, int *Value)
 static ERR CONVOLVEFX_SET_TargetY(extConvolveFX *Self, int Value)
 {
    if (Self->initialised()) {
-      pf::Log log;
+      kt::Log log;
       if ((Value < 0) or (Value >= Self->MatrixRows)) return log.warning(ERR::OutOfRange);
    }
 

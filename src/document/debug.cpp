@@ -27,7 +27,7 @@ static void print_stream(RSTREAM &Stream)
 {
    if (Stream.data.empty()) return;
 
-   pf::Log log;
+   kt::Log log;
    std::ostringstream out;
    out << "\nSTREAM: " << Stream.size() << " codes\n";
    out << "-------------------------------------------------------------------------------\n";
@@ -68,7 +68,7 @@ static void print_stream(RSTREAM &Stream)
 static void print_segments(extDocument *Self)
 {
 #ifdef DBG_SEGMENTS
-   pf::Log log;
+   kt::Log log;
    std::ostringstream out;
 
    out << "\nSEGMENTS\n--------\n";

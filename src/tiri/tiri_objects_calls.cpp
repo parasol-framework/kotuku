@@ -122,7 +122,7 @@ static int object_method_call(lua_State *Lua)
 
 ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *argbuffer, int *ResultCount)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    int top = lua_gettop(Lua);
 
@@ -324,7 +324,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
 
 static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *ArgBuf)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int i;
 
    RMSG("get_results(%p)", ArgBuf);
@@ -338,7 +338,7 @@ static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *
          if (type & FD_RESULT) {
             int total_elements = -1;  // If -1, make_any_array() assumes the array is null terminated.
             if (args[i+1].Type & FD_ARRAYSIZE) {
-               const APTR size_var = ((APTR *)(ArgBuf + of + sizeof(APTR)))[0];
+               CPTR size_var = ArgBuf + of + sizeof(APTR);
                if (args[i+1].Type & FD_INT) total_elements = ((int *)size_var)[0];
                else if (args[i+1].Type & FD_INT64) total_elements = ((int64_t *)size_var)[0];
                else log.warning("Invalid parameter definition for '%s' of $%.8x", args[i+1].Name, args[i+1].Type);

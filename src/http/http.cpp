@@ -459,14 +459,14 @@ ConnectionRefused: The connection to the server was refused.
 
 static ERR HTTP_Activate(extHTTP *Self)
 {
-   pf::Log log;
+   kt::Log log;
    int i;
    static thread_local uint8_t recursion = 0;
 
    if (recursion) return log.warning(ERR::Recursion);
 
    recursion++;
-   auto __cleanup = pf::Defer([&]() { recursion--; });
+   auto __cleanup = kt::Defer([&]() { recursion--; });
 
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
@@ -619,7 +619,7 @@ static ERR HTTP_Activate(extHTTP *Self)
             }
             else if (Self->InputObjectID) {
                if (!Self->Size) {
-                  pf::ScopedObjectLock<Object> input(Self->InputObjectID, 3000);
+                  kt::ScopedObjectLock<Object> input(Self->InputObjectID, 3000);
                   if (input.granted()) {
                      input->get(FID_Size, Self->ContentLength);
                   }
@@ -697,10 +697,10 @@ static ERR HTTP_Activate(extHTTP *Self)
             std::string buffer = Self->Username + ':' + Self->Password;
             std::vector<char> output(buffer.size() * 2);
 
-            pf::BASE64ENCODE state;
+            kt::BASE64ENCODE state;
 
             cmd << "Authorization: Basic ";
-            auto len = pf::Base64Encode(&state, buffer.c_str(), buffer.size(), output.data(), buffer.length() * 2);
+            auto len = kt::Base64Encode(&state, buffer.c_str(), buffer.size(), output.data(), buffer.length() * 2);
             cmd.write(output.data(), len);
             cmd << CRLF;
          }
@@ -813,7 +813,7 @@ result in closure of the socket.
 
 static ERR HTTP_Deactivate(extHTTP *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch("Halting HTTP request.");
 
@@ -889,12 +889,12 @@ static ERR HTTP_GetKey(extHTTP *Self, struct acGetKey *Args)
    if (!Args) return ERR::NullArgs;
 
    if (Self->ResponseKeys.contains(Args->Key)) {
-      pf::strcopy(Self->ResponseKeys[Args->Key], Args->Value, Args->Size);
+      kt::strcopy(Self->ResponseKeys[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
    if (Self->Headers.contains(Args->Key)) {
-      pf::strcopy(Self->Headers[Args->Key], Args->Value, Args->Size);
+      kt::strcopy(Self->Headers[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
@@ -905,12 +905,12 @@ static ERR HTTP_GetKey(extHTTP *Self, struct acGetKey *Args)
 
 static ERR HTTP_Init(extHTTP *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->ProxyDefined) {
       if ((glProxy) and (glProxy->find(Self->Port, true) IS ERR::Okay)) {
          if (Self->ProxyServer) FreeResource(Self->ProxyServer);
-         Self->ProxyServer = pf::strclone(glProxy->Server);
+         Self->ProxyServer = kt::strclone(glProxy->Server);
          Self->ProxyPort   = glProxy->ServerPort; // NB: Default is usually 8080
 
          log.msg("Using preset proxy server '%s:%d'", Self->ProxyServer, Self->ProxyPort);
@@ -927,7 +927,7 @@ static ERR HTTP_NewPlacement(extHTTP *Self)
 {
    new (Self) extHTTP;
    Self->Error          = ERR::Okay;
-   Self->UserAgent      = pf::strclone("Kotuku Client");
+   Self->UserAgent      = kt::strclone("Kotuku Client");
    Self->DataTimeout    = 5.0;
    Self->ConnectTimeout = 10.0;
    Self->Datatype       = DATA::RAW;
@@ -962,7 +962,7 @@ static ERR HTTP_Write(extHTTP *Self, struct acWrite *Args)
    if (auto len = Args->Length; len > 0) {
       auto offset = Self->WriteBuffer.size();
       Self->WriteBuffer.resize(Self->WriteBuffer.size() + len);
-      pf::copymem(Args->Buffer, Self->WriteBuffer.data() + offset, len);
+      kt::copymem(Args->Buffer, Self->WriteBuffer.data() + offset, len);
       Args->Result = len;
       return ERR::Okay;
    }

@@ -5,21 +5,21 @@ UDP Broadcast and Multicast Test
    include 'network'
    mNet ?= mod.load('network')
 
-   local glBasePort = 19820  -- Base port for broadcast/multicast tests
-   local glTestTimeout = 3.0
+   glBasePort = 19820  -- Base port for broadcast/multicast tests
+   glTestTimeout = 3.0
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Test multicast group operations
 
 function MulticastGroups()
-   local multicastSocket = obj.new('netsocket', { flags = 'UDP', multicastTTL = 2 })
+   multicastSocket = obj.new('netsocket', { flags = 'UDP', multicastTTL = 2 })
 
    assert(multicastSocket.multicastTTL is 2, 'MulticastTTL not set correctly')
 
    -- Test joining IPv4 multicast group
-   local ipv4Group = '224.1.1.1'  -- Test multicast address
+   ipv4Group = '224.1.1.1'  -- Test multicast address
    print('Testing join IPv4 multicast group: ' .. ipv4Group)
-   local err = multicastSocket.mtJoinMulticastGroup(ipv4Group)
+   err = multicastSocket.mtJoinMulticastGroup(ipv4Group)
    if (err is ERR_Okay) then
       print('Successfully joined IPv4 multicast group')
 
@@ -31,7 +31,7 @@ function MulticastGroups()
    end
 
    -- Test joining IPv6 multicast group
-   local ipv6Group = 'ff02::1'  -- All-nodes multicast
+   ipv6Group = 'ff02::1'  -- All-nodes multicast
    err = multicastSocket.mtJoinMulticastGroup(ipv6Group)
    if (err is ERR_Okay) then
       -- Test leaving the group

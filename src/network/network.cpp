@@ -200,7 +200,7 @@ DEFINE_ENUM_FLAG_OPERATORS(SHS)
    static void CLOSESOCKET(SOCKET_HANDLE Handle) {
       if (Handle IS NOHANDLE) return;
 
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.traceBranch("Handle: %d", Handle);
 
       // Perform graceful disconnect before closing
@@ -430,7 +430,7 @@ inline void setIPV4(IPAddress &IP, uint32_t IPV4HostOrder, uint16_t Port) {
 inline void setIPV6(IPAddress &IP, uint8_t *Address, uint16_t Port) {
    IP.Type = IPADDR::V6;
    IP.Port = Port;
-   pf::copymem(Address, &IP.Data, 16);
+   kt::copymem(Address, &IP.Data, 16);
 }
 
 //********************************************************************************************************************
@@ -506,7 +506,7 @@ static MsgHandler *glResolveAddrHandler = nullptr;
 
 static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   pf::Log log;
+   kt::Log log;
 
    CoreBase = argCoreBase;
 
@@ -570,7 +570,7 @@ static ERR MODOpen(OBJECTPTR Module)
 
 static ERR MODExpunge(void)
 {
-   pf::Log log;
+   kt::Log log;
 
    cleanup_proxy_config();
 
@@ -648,14 +648,14 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 
 CSTRING AddressToStr(IPAddress *Address)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Address) return nullptr;
 
    if (Address->Type IS IPADDR::V6) {
       char ipv6_str[46]; // 46 bytes is sufficient for both platforms
       const char *result = unified_inet_ntop(AF_INET6, Address->Data, ipv6_str, sizeof(ipv6_str));
-      if (result) return pf::strclone(result);
+      if (result) return kt::strclone(result);
       return nullptr;
    }
    else if (Address->Type IS IPADDR::V4) {
@@ -670,7 +670,7 @@ CSTRING AddressToStr(IPAddress *Address)
       #endif
 
       if (!result) return nullptr;
-      return pf::strclone(result);
+      return kt::strclone(result);
    }
    else {
       log.warning("Unsupported address type: %d", int(Address->Type));
@@ -709,31 +709,31 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
    if ((!Str) or (!Address)) return ERR::NullArgs;
 
    // Handle special cases
-   if (pf::iequals(Str, "localhost") or pf::iequals(Str, "127.0.0.1")) {
+   if (kt::iequals(Str, "localhost") or kt::iequals(Str, "127.0.0.1")) {
       Address->Type = IPADDR::V4;
       Address->Data[0] = 0x7f000001; // 127.0.0.1
       Address->Data[1] = Address->Data[2] = Address->Data[3] = 0;
       return ERR::Okay;
    }
-   else if (pf::iequals(Str, "::1")) {
+   else if (kt::iequals(Str, "::1")) {
       Address->Type = IPADDR::V6;
-      pf::clearmem(&Address->Data, sizeof(Address->Data));
+      kt::clearmem(&Address->Data, sizeof(Address->Data));
       ((uint8_t*)Address->Data)[15] = 1; // ::1 in byte format
       return ERR::Okay;
    }
-   else if (pf::iequals(Str, "::")) {
+   else if (kt::iequals(Str, "::")) {
       // Bind to all interfaces (IPv6)
       Address->Type = IPADDR::V6;
-      pf::clearmem(&Address->Data, sizeof(Address->Data));
+      kt::clearmem(&Address->Data, sizeof(Address->Data));
       return ERR::Okay;
    }
-   else if (pf::iequals(Str, "0.0.0.0") or pf::iequals(Str, "*") or pf::iequals(Str, "")) {
+   else if (kt::iequals(Str, "0.0.0.0") or kt::iequals(Str, "*") or kt::iequals(Str, "")) {
       // Bind to all interfaces
       Address->Type = IPADDR::V4;
-      pf::clearmem(&Address->Data, sizeof(Address->Data));
+      kt::clearmem(&Address->Data, sizeof(Address->Data));
       return ERR::Okay;
    }
-   else if (pf::iequals(Str, "255.255.255.255")) {
+   else if (kt::iequals(Str, "255.255.255.255")) {
       // Needed to prevent confusion with INADDR_NONE
       Address->Type = IPADDR::V4;
       Address->Data[0] = 0xffffffff;
@@ -745,7 +745,7 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
    if (strchr(Str, ':')) {
       struct in6_addr ipv6_addr;
       if (unified_inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
-         pf::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
+         kt::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
          Address->Type = IPADDR::V6;
          return ERR::Okay;
       }
@@ -880,15 +880,15 @@ NoSupport: SSL support is disabled in this build.
 ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
 {
 #ifndef DISABLE_SSL
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.traceBranch("Command: %s = %s", Command, Value ? Value : "NULL");
 
    if ((!Socket) or (!Command)) return ERR::NullArgs;
    if (Socket->classID() != CLASSID::NETSOCKET) return ERR::WrongClass;
 
-   auto hash = pf::strhash(Command);
+   auto hash = kt::strhash(Command);
    switch(hash) {
-      case pf::strhash("EnableSSL"):
+      case kt::strhash("EnableSSL"):
          if ((Socket->Flags & NSF::SSL) IS NSF::NIL) {
             if (auto error = sslSetup((extNetSocket *)Socket); error IS ERR::Okay) {
                if (error = sslConnect((extNetSocket *)Socket); error IS ERR::Okay) {
@@ -901,7 +901,7 @@ ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
          }
          else return ERR::Okay; // Already enabled
 
-      case pf::strhash("DisableSSL"): // Disconnect SSL (i.e. go back to unencrypted mode)
+      case kt::strhash("DisableSSL"): // Disconnect SSL (i.e. go back to unencrypted mode)
          if ((Socket->Flags & NSF::SSL) != NSF::NIL) {
             Socket->Flags &= ~NSF::SSL;
             sslDisconnect((extNetSocket *)Socket);
@@ -927,7 +927,7 @@ ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
 template<typename T>
 static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!*Length) return ERR::Okay;
 

@@ -20,7 +20,7 @@ class extVectorWave : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORWAVE;
    static constexpr CSTRING CLASS_NAME = "VectorWave";
-   using create = pf::Create<extVectorWave>;
+   using create = kt::Create<extVectorWave>;
 
    double wX, wY;
    double wWidth, wHeight;
@@ -159,7 +159,7 @@ Move: Moves the vector to a new position.
 
 static ERR WAVE_Move(extVectorWave *Self, struct acMove *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -177,7 +177,7 @@ MoveToPoint: Moves the vector to a new fixed position.
 
 static ERR WAVE_MoveToPoint(extVectorWave *Self, struct acMoveToPoint *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 

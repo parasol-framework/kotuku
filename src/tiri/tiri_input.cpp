@@ -53,7 +53,7 @@ static void key_event(evKey *, int, struct finput *);
 
 [[nodiscard]] static ERR consume_input_events(const InputEvent *Events, int Handle)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto Self = (objScript *)CurrentContext();
    auto prv = (prvTiri *)Self->ChildPrivate;
@@ -101,7 +101,7 @@ static void key_event(evKey *, int, struct finput *);
 
 [[nodiscard]] static int input_index(lua_State *Lua)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (auto input = (struct finput *)luaL_checkudata(Lua, 1, "Tiri.input")) {
       auto field = lua_checkstringview(Lua, 2);
@@ -127,7 +127,7 @@ static void key_event(evKey *, int, struct finput *);
 
 [[nodiscard]] static int input_keyboard(lua_State *Lua)
 {
-   pf::Log log("input.keyboard");
+   kt::Log log("input.keyboard");
    auto prv = (prvTiri *)Lua->script->ChildPrivate;
 
    OBJECTID object_id;
@@ -224,17 +224,17 @@ static void key_event(evKey *, int, struct finput *);
    DATA datatype;
    if (lua_isstring(Lua, 3)) {
       auto dt = lua_tostringview(Lua, 3);
-      if (pf::iequals("text", dt))              datatype = DATA::TEXT;
-      else if (pf::iequals("raw", dt))          datatype = DATA::RAW;
-      else if (pf::iequals("device_input", dt)) datatype = DATA::DEVICE_INPUT;
-      else if (pf::iequals("xml", dt))          datatype = DATA::XML;
-      else if (pf::iequals("audio", dt))        datatype = DATA::AUDIO;
-      else if (pf::iequals("record", dt))       datatype = DATA::RECORD;
-      else if (pf::iequals("image", dt))        datatype = DATA::IMAGE;
-      else if (pf::iequals("request", dt))      datatype = DATA::REQUEST;
-      else if (pf::iequals("receipt", dt))      datatype = DATA::RECEIPT;
-      else if (pf::iequals("file", dt))         datatype = DATA::FILE;
-      else if (pf::iequals("content", dt))      datatype = DATA::CONTENT;
+      if (kt::iequals("text", dt))              datatype = DATA::TEXT;
+      else if (kt::iequals("raw", dt))          datatype = DATA::RAW;
+      else if (kt::iequals("device_input", dt)) datatype = DATA::DEVICE_INPUT;
+      else if (kt::iequals("xml", dt))          datatype = DATA::XML;
+      else if (kt::iequals("audio", dt))        datatype = DATA::AUDIO;
+      else if (kt::iequals("record", dt))       datatype = DATA::RECORD;
+      else if (kt::iequals("image", dt))        datatype = DATA::IMAGE;
+      else if (kt::iequals("request", dt))      datatype = DATA::REQUEST;
+      else if (kt::iequals("receipt", dt))      datatype = DATA::RECEIPT;
+      else if (kt::iequals("file", dt))         datatype = DATA::FILE;
+      else if (kt::iequals("content", dt))      datatype = DATA::CONTENT;
       else {
          luaL_argerror(Lua, 3, "Unrecognised datatype");
          return 0;
@@ -260,9 +260,9 @@ static void key_event(evKey *, int, struct finput *);
 
    {
       // The source will return a DATA::RECEIPT for the items that we've asked for (see the DataFeed action).
-      pf::Log log("input.request_item");
+      kt::Log log("input.request_item");
       log.branch();
-      pf::ScopedObjectLock src(source_id);
+      kt::ScopedObjectLock src(source_id);
       if (src.granted()) {
          struct dcRequest dcr {
             .Item = item,
@@ -284,7 +284,7 @@ static void key_event(evKey *, int, struct finput *);
 
 [[nodiscard]] static int input_subscribe(lua_State *Lua)
 {
-   pf::Log log("input.subscribe");
+   kt::Log log("input.subscribe");
    auto prv = (prvTiri *)Lua->script->ChildPrivate;
 
    auto mask = JTYPE(lua_tointeger(Lua, 1)); // Optional
@@ -305,7 +305,7 @@ static void key_event(evKey *, int, struct finput *);
 
    ERR error;
    if (not modDisplay) {
-      pf::SwitchContext context(modTiri);
+      kt::SwitchContext context(modTiri);
       if ((error = objModule::load("display", &modDisplay, &DisplayBase)) != ERR::Okay) {
          luaL_error(Lua, ERR::LoadModule);
          return 0;
@@ -326,7 +326,7 @@ static void key_event(evKey *, int, struct finput *);
          input->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
       }
       else {
-         lua_getglobal(Lua, (STRING)lua_tostring(Lua, 1));
+         lua_getglobal(Lua, (STRING)lua_tostring(Lua, 4));
          input->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
       }
 
@@ -362,7 +362,7 @@ static void key_event(evKey *, int, struct finput *);
       return 0;
    }
 
-   pf::Log log("input.unsubscribe");
+   kt::Log log("input.unsubscribe");
    log.traceBranch();
 
    if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
@@ -380,7 +380,7 @@ static void key_event(evKey *, int, struct finput *);
 
 [[nodiscard]] static int input_destruct(lua_State *Lua)
 {
-   pf::Log log("input.destroy");
+   kt::Log log("input.destroy");
 
    auto input = (struct finput *)lua_touserdata(Lua, 1);
    if (input) {
@@ -416,7 +416,7 @@ static void key_event(evKey *, int, struct finput *);
 
 static void key_event(evKey *Event, int Size, struct finput *Input)
 {
-   pf::Log log("input.key_event");
+   kt::Log log("input.key_event");
    objScript *script = Input->Script;
    auto prv = (prvTiri *)script->ChildPrivate;
 
@@ -454,7 +454,7 @@ static void key_event(evKey *Event, int Size, struct finput *Input)
 
 static void focus_event(evFocus *Event, int Size, lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    auto prv = (prvTiri *)Lua->script->ChildPrivate;
    objScript *script = Lua->script;
 
@@ -522,7 +522,7 @@ void register_input_class(lua_State *Lua)
       { nullptr, nullptr }
    };
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.trace("Registering input interface.");
 
    luaL_newmetatable(Lua, "Tiri.input");
@@ -532,6 +532,8 @@ void register_input_class(lua_State *Lua)
 
    luaL_openlib(Lua, nullptr, inputlib_methods, 0);
    luaL_openlib(Lua, "input", inputlib_functions, 0);
+
+   lua_pop(Lua, 2); // Drop the Tiri.input metatable and the input library table
 
    // Register input interface prototypes for compile-time type inference
    reg_iface_prototype("input", "subscribe", { TiriType::Any }, { TiriType::Num, TiriType::Any, TiriType::Num, TiriType::Func });

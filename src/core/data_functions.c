@@ -8,7 +8,7 @@ FDEF argsAccessMemory[] = { { "Error", FD_INT|FD_ERROR }, { "Memory", FD_INT }, 
 FDEF argsAccessObject[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTID }, { "MilliSeconds", FD_INT }, { "Result", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsAction[] = { { "Error", FD_INT|FD_ERROR }, { "Action", FD_INT }, { "Object", FD_OBJECTPTR }, { "Parameters", FD_PTR }, { 0, 0 } };
 FDEF argsActionList[] = { { "Void", FD_VOID }, { "ActionTable:Actions", FD_ARRAY|FD_STRUCT|FD_RESULT }, { "Size", FD_INT|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
-FDEF argsAddInfoTag[] = { { "Error", FD_INT|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
+FDEF argsAddInfoTag[] = { { "Error", FD_INT|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_CPP|FD_STR }, { "Value", FD_CPP|FD_STR }, { 0, 0 } };
 FDEF argsAddMsgHandler[] = { { "Error", FD_INT|FD_ERROR }, { "MsgType", FD_INT }, { "Routine", FD_FUNCTIONPTR }, { "MsgHandler:Handle", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsAdjustLogLevel[] = { { "Result", FD_INT }, { "Delta", FD_INT }, { 0, 0 } };
 FDEF argsAllocMemory[] = { { "Error", FD_INT|FD_ERROR }, { "Size", FD_INT }, { "Flags", FD_INT }, { "Address", FD_PTR|FD_RESULT }, { "ID", FD_INT|FD_RESULT }, { 0, 0 } };
@@ -22,6 +22,7 @@ FDEF argsBroadcastEvent[] = { { "Error", FD_INT|FD_ERROR }, { "Event", FD_PTR },
 FDEF argsCheckAction[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_INT }, { 0, 0 } };
 FDEF argsCheckMemoryExists[] = { { "Error", FD_INT|FD_ERROR }, { "ID", FD_INT }, { 0, 0 } };
 FDEF argsCheckObjectExists[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTID }, { 0, 0 } };
+FDEF argsClassDatabase[] = { { "Error", FD_INT|FD_ERROR }, { "ClassRecord:Classes", FD_ARRAY|FD_PTR|FD_STRUCT|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsCompareFilePaths[] = { { "Error", FD_INT|FD_ERROR }, { "PathA", FD_STR }, { "PathB", FD_STR }, { 0, 0 } };
 FDEF argsCopyFile[] = { { "Error", FD_INT|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsCreateFolder[] = { { "Error", FD_INT|FD_ERROR }, { "Path", FD_STR }, { "Permissions", FD_INT }, { 0, 0 } };
@@ -41,6 +42,7 @@ FDEF argsGetActionMsg[] = { { "Message", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 
 FDEF argsGetClassID[] = { { "Result", FD_INT|FD_UNSIGNED }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetErrorMsg[] = { { "Result", FD_STR }, { "Error", FD_INT|FD_ERROR }, { 0, 0 } };
 FDEF argsGetEventID[] = { { "Result", FD_INT64 }, { "Group", FD_INT }, { "SubGroup", FD_STR }, { "Event", FD_STR }, { 0, 0 } };
+FDEF argsGetFileInfo[] = { { "Error", FD_INT|FD_ERROR }, { "Path", FD_CPP|FD_STR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "InfoSize", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetObjectPtr[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetOwnerID[] = { { "Result", FD_OBJECTID }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetResource[] = { { "Result", FD_INT64 }, { "Resource", FD_INT }, { 0, 0 } };
@@ -192,6 +194,8 @@ const struct Function glFunctions[] = {
    { (APTR)AsyncCancel, "AsyncCancel", argsAsyncCancel },
    { (APTR)AsyncPending, "AsyncPending", argsAsyncPending },
    { (APTR)AsyncWait, "AsyncWait", argsAsyncWait },
+   { (APTR)GetFileInfo, "GetFileInfo", argsGetFileInfo },
+   { (APTR)ClassDatabase, "ClassDatabase", argsClassDatabase },
    { nullptr, nullptr, nullptr }
 };
 

@@ -8,6 +8,8 @@
 #include "lj_gc.h"
 #include "lj_err.h"
 #include "lj_array.h"
+#include "lj_bulk.h"
+#include "lj_object.h"
 #include "lj_tab.h"
 
 #include <cstring>
@@ -101,7 +103,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
                }
             }
             else { // AET::STR_CPP
-               pf::vector<std::string> &strings = ((pf::vector<std::string> *)Data)[0];
+               kt::vector<std::string> &strings = ((kt::vector<std::string> *)Data)[0];
                for (uint32_t i = 0; i < Length; i++) {
                   content_size += strings[i].size() + 1;
                }
@@ -127,7 +129,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
                }
             }
             else { // AET::STR_CPP
-               pf::vector<std::string> &strings = ((pf::vector<std::string> *)Data)[0];
+               kt::vector<std::string> &strings = ((kt::vector<std::string> *)Data)[0];
                for (uint32_t i = 0; i < Length; i++) {
                   ptr_array[i] = cache_ptr;
                   std::memcpy(cache_ptr, strings[i].c_str(), strings[i].size() + 1);
@@ -142,6 +144,26 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             lj_err_callerv(L, ErrMsg::BADVAL);
             return nullptr;
          }
+         else if (Type IS AET::OBJECT) {
+            // Object arrays returned by the Kōtuku API contain native OBJECTPTR values.  Tiri object arrays store
+            // GCobject references, so wrap each native object before exposing the array to the script.
+            size_t byte_size = Length * elem_size;
+            void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
+            auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
+            arr->init(storage, Type, elem_size, Length, Length, Flags, sdef);
+
+            auto refs = arr->get<GCRef>();
+            auto objects = (OBJECTPTR *)Data;
+            for (uint32_t i=0; i < Length; i++) {
+               if (objects[i]) {
+                  auto obj = lj_object_new(L, objects[i]->UID, nullptr, objects[i]->Class, GCOBJ_DETACHED);
+                  setgcref(refs[i], obj2gco(obj));
+                  lj_gc_objbarrier(L, arr, obj);
+               }
+               else setgcrefnull(refs[i]);
+            }
+            return arr;
+         }
          else {
             // Non-string cached array - allocate storage via GC, then copy data
             // Capacity equals length for cached arrays
@@ -149,7 +171,10 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
             void *storage = (byte_size > 0) ? lj_mem_new(L, byte_size) : nullptr;
             auto arr = (GCarray *)lj_mem_newgco(L, sizeof(GCarray));
             arr->init(storage, Type, elem_size, Length, Length, Flags, sdef);
-            if (byte_size > 0) std::memcpy(storage, Data, byte_size);
+            if (byte_size > 0) {
+               if (Type IS AET::ANY) lj_bulk_copy_tvalue((TValue *)storage, (const TValue *)Data, Length);
+               else std::memcpy(storage, Data, byte_size);
+            }
             return arr;
          }
       }
@@ -164,8 +189,7 @@ extern GCarray * lj_array_new(lua_State *L, uint32_t Length, AET Type, void *Dat
       if (storage) {
          if (Type IS AET::ANY) {
             // _ANY arrays require explicit nil initialization (nil TValue = -1, not 0)
-            TValue *slots = (TValue*)storage;
-            for (MSize i = 0; i < Length; i++) setnilV(&slots[i]);
+            lj_bulk_nil_tvalue((TValue *)storage, Length);
          }
          else std::memset(storage, 0, byte_size);
       }
@@ -200,8 +224,11 @@ bool lj_array_grow(lua_State *L, GCarray *Array, MSize MinCapacity)
    // Reallocate storage
    void *new_storage = lj_mem_realloc(L, Array->storage, old_size, new_size);
 
-   // Zero-initialise new elements for vulnerable types (pointers, strings, tables)
-   if (int(Array->elemtype) >= int(AET::VULNERABLE)) {
+   // Initialise new elements for vulnerable types (pointers, strings, tables)
+   if (Array->elemtype IS AET::ANY) {
+      lj_bulk_nil_tvalue((TValue *)((char *)new_storage + old_size), new_capacity - Array->capacity);
+   }
+   else if (int(Array->elemtype) >= int(AET::VULNERABLE)) {
       size_t zerolen = new_size - old_size;
       std::memset((char *)new_storage + old_size, 0, zerolen);
    }
@@ -235,8 +262,13 @@ void lj_array_copy(lua_State *L, GCarray *Dest, uint32_t DstIdx, GCarray *Src, u
 
    void *dst_ptr = lj_array_index(Dest, DstIdx);
    void *src_ptr = lj_array_index(Src, SrcIdx);
-   size_t byte_count = Count * Dest->elemsize;
-   memmove(dst_ptr, src_ptr, byte_count); // Use memmove to handle overlapping regions
+   if (Dest->elemtype IS AET::ANY) {
+      lj_bulk_move_tvalue((TValue *)dst_ptr, (const TValue *)src_ptr, Count);
+   }
+   else {
+      size_t byte_count = Count * Dest->elemsize;
+      memmove(dst_ptr, src_ptr, byte_count); // Use memmove to handle overlapping regions
+   }
 }
 
 //********************************************************************************************************************
@@ -245,6 +277,11 @@ GCtab * lj_array_to_table(lua_State *L, GCarray *Array)
 {
    GCtab *t = lj_tab_new(L, Array->len, 0);  // 0-based: indices 0..len-1
    auto array_part = tvref(t->array);
+
+   if (Array->elemtype IS AET::ANY) {
+      lj_bulk_copy_tvalue(array_part, (const TValue *)Array->arraydata(), Array->len);
+      return t;
+   }
 
    auto data = (uint8_t *)Array->arraydata();
    for (MSize i = 0; i < Array->len; i++) {

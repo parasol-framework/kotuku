@@ -171,7 +171,7 @@ static void audio_stopped_event(extAudio &Audio, int SampleHandle)
 {
    auto &sample = Audio.Samples[SampleHandle];
    if (sample.OnStop.isC()) {
-      pf::SwitchContext context(sample.OnStop.Context);
+      kt::SwitchContext context(sample.OnStop.Context);
       auto routine = (void (*)(extAudio *, int, APTR))sample.OnStop.Routine;
       routine(&Audio, SampleHandle, sample.OnStop.Meta);
    }
@@ -186,7 +186,7 @@ static void audio_stopped_event(extAudio &Audio, int SampleHandle)
 static BYTELEN fill_stream_buffer(int Handle, AudioSample &Sample, int Offset)
 {
    if (Sample.Callback.isC()) {
-      pf::SwitchContext context(Sample.Callback.Context);
+      kt::SwitchContext context(Sample.Callback.Context);
       auto routine = (BYTELEN (*)(int, int, uint8_t *, int, APTR))Sample.Callback.Routine;
       return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType), Sample.Callback.Meta);
    }
@@ -208,7 +208,7 @@ static BYTELEN fill_stream_buffer(int Handle, AudioSample &Sample, int Offset)
 
 //********************************************************************************************************************
 
-static ERR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
+[[maybe_unused]] static ERR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
 {
    auto ml = SAMPLE(0x7fffffff);
    for (int i=1; i < (int)Self->Sets.size(); i++) {
@@ -270,7 +270,7 @@ extern "C" void dsSeekData(Object *Self, int Offset) {
 
 static ERR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Self) or (!Channel)) return log.warning(ERR::NullArgs);
 
@@ -323,9 +323,9 @@ static ERR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 //********************************************************************************************************************
 // Process as many command batches as possible that will fit within MixLeft.
 
-ERR process_commands(extAudio *Self, SAMPLE Elements)
+[[maybe_unused]] static ERR process_commands(extAudio *Self, SAMPLE Elements)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    for (int index=1; index < (int)Self->Sets.size(); index++) {
       Self->Sets[index].MixLeft -= Elements;
@@ -373,7 +373,7 @@ static ERR audio_timer(extAudio *Self, int64_t Elapsed, int64_t CurrentTime)
 {
 #ifdef ALSA_ENABLED
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    static int16_t errcount = 0;
 
    // Check if we need to send out any OnStop events
@@ -494,7 +494,7 @@ static ERR audio_timer(extAudio *Self, int64_t Elapsed, int64_t CurrentTime)
 
 #else
 
-   #warning No audio timer support on this platform.
+   // No audio timer support on this platform.
    return ERR::NoSupport;
 
 #endif
@@ -575,7 +575,7 @@ static int samples_until_end_impl(int position, int sample_length, int lp_start,
 
 static int samples_until_end(extAudio *Self, AudioChannel &Channel, int &NextOffset)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto &sample = Self->Samples[Channel.SampleHandle];
 
@@ -653,7 +653,7 @@ static bool amiga_change(extAudio *Self, AudioChannel &Channel)
 
 static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int lp_start, lp_end;
    LTYPE lp_type;
 
@@ -780,9 +780,9 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 //********************************************************************************************************************
 // Main entry point for mixing sound data to destination
 
-static ERR mix_data(extAudio *Self, int Elements, APTR Dest)
+[[maybe_unused]] static ERR mix_data(extAudio *Self, int Elements, APTR Dest)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    while (Elements > 0) {
       // Mix only as much as we can fit in our mixing buffer
@@ -835,7 +835,7 @@ static ERR mix_data(extAudio *Self, int Elements, APTR Dest)
 
 static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples, APTR Dest)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto &sample = Self->Samples[Channel.SampleHandle];
 

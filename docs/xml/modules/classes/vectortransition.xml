@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Transitions are used to incrementally apply transforms over distance.</comment>
     <version>1</version>
-    <id>a7c89dc3</id>
+    <id>d75cb936</id>
     <idstring>VECTORTRANSITION</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

@@ -7,6 +7,7 @@
 #include <cstring>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <kotuku/main.h>
@@ -310,7 +311,7 @@ public:
       if (index >= this->counts.size()) return;
       uint32_t total = ++this->counts[index];
       if ((total <= 8) or (total % 32 IS 0)) {
-         pf::Log log("Parser");
+         kt::Log log("Parser");
          log.msg("Unsupported %s node kind=%u hits=%u line=%d column=%d offset=%lld",
             stage, unsigned(kind), unsigned(total), int(span.line), int(span.column),
             (long long)(span.offset));
@@ -2731,7 +2732,7 @@ void IrEmitter::materialise_to_reg(ExpDesc& expression, BCReg slot, std::string_
 void IrEmitter::ensure_register_floor(std::string_view usage)
 {
    if (this->func_state.freereg < this->func_state.varmap.size()) {
-      pf::Log log("Parser");
+      kt::Log log("Parser");
       log.warning("Register underrun during %.*s (free=%u active=%u)",
          int(usage.size()), usage.data(), unsigned(this->func_state.freereg), unsigned(this->func_state.varmap.size()));
       this->func_state.reset_freereg();
@@ -2744,7 +2745,7 @@ void IrEmitter::ensure_register_balance(std::string_view usage)
 {
    this->ensure_register_floor(usage);
    if (this->func_state.freereg > this->func_state.varmap.size()) {
-      pf::Log log("Parser");
+      kt::Log log("Parser");
       int line = this->lex_state.lastline;
       log.warning("Leaked %u registers after %.*s at line %d (free=%u active=%u)",
          unsigned(this->func_state.freereg - this->func_state.varmap.size()), int(usage.size()), usage.data(),

@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Provides support for the filling and stroking of vectors with colour gradients.</comment>
     <version>1</version>
-    <id>e81ac386</id>
+    <id>74a746ab</id>
     <idstring>VECTORGRADIENT</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>

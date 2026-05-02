@@ -8,7 +8,7 @@
     <module>Core</module>
     <comment>The MetaClass is used to manage all classes supported by the system core.</comment>
     <version>1</version>
-    <id>8bf5f002</id>
+    <id>883d1872</id>
     <idstring>METACLASS</idstring>
     <category>System</category>
     <copyright>Paul Manias 1996-2026</copyright>
@@ -27,6 +27,7 @@
       <name>FindField</name>
       <comment>Search a class definition for a specific field.</comment>
       <prototype>ERR mc::FindField(OBJECTPTR Object, INT ID, struct Field ** Field, objMetaClass ** Source)</prototype>
+      <tiriPrototype>err, Field:any, Source:obj = FindField(ID:num)</tiriPrototype>
       <input>
         <param type="INT" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <code>fieldhash()</code> function.</param>
         <param type="struct Field **" name="Field">Pointer to the <st>Field</st> if discovered, otherwise <code>NULL</code>.</param>
@@ -283,6 +284,16 @@
       </description>
     </field>
 
+    <field>
+      <name>SubClasses</name>
+      <comment>Returns a list of all sub-classes of the class.</comment>
+      <access read="G">Get</access>
+      <type>ARRAY</type>
+      <description>
+<p>This field returns an array listing all active sub-classes of the class (classes that have not been loaded are not included).  This feature applies to base-classes only.</p>
+      </description>
+    </field>
+
   </fields>
   <types>
     <constants lookup="CCF" comment="Class categories">
@@ -314,9 +325,9 @@
 
     <struct name="Field" comment="Used to describe the public fields of a class.">
       <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
-      <field name="GetValue" type="FUNCTION *" prototype="ERR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
-      <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
-      <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, int, const void *, int)">An internal function for writing to this field.</field>
+      <field name="GetValue" type="FUNCTION *" prototype="ERR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field</field>
+      <field name="SetValue" type="APTR">A virtual function that will set the value for this field</field>
+      <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, int, const void *, int)">An internal function for writing to this field</field>
       <field name="Name" type="CSTRING">The English name for the field, e.g. <code>Width</code></field>
       <field name="FieldID" type="UINT">32-bit hash from fieldhash(). Represented by FID constants, e.g. <code>FID_Width</code></field>
       <field name="Offset" type="UINT16">Field offset within the object</field>

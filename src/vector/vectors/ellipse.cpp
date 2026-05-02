@@ -13,7 +13,7 @@ class extVectorEllipse : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORELLIPSE;
    static constexpr CSTRING CLASS_NAME = "VectorEllipse";
-   using create = pf::Create<extVectorEllipse>;
+   using create = kt::Create<extVectorEllipse>;
 
    double eCX, eCY;
    double eRadiusX, eRadiusY;

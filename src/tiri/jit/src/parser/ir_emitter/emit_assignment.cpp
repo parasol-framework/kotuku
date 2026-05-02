@@ -539,7 +539,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
 
    if (count != 1) {
       return assignment_value_count_error(this, values,
-         "??= assignment expects exactly one RHS value");
+         "?" "?= assignment expects exactly one RHS value");
    }
 
    ExpDesc rhs = list.value_ref();
@@ -694,7 +694,7 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
 
       if (trace_assignments and prepared.reserved.count().raw() > 0) {
          auto target_kind = prepared.target.is_indexed() ? "indexed" : "member";
-         pf::Log("Parser").msg("[%d] assignment: prepared %s target, duplicated %d registers (R%d..R%d)",
+         kt::Log("Parser").msg("[%d] assignment: prepared %s target, duplicated %d registers (R%d..R%d)",
             this->func_state.ls->linenumber.lineNumber(), target_kind,
             unsigned(prepared.reserved.count().raw()), unsigned(prepared.reserved.start().raw()),
             unsigned(prepared.reserved.start().raw() + prepared.reserved.count().raw() - 1));

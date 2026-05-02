@@ -228,6 +228,20 @@ end
    file:close()
 end
 
+@Test(labels=['io', 'file']) function FileFlushClosedHandle()
+   test_path = glTestFolder .. 'test_flush_closed.txt'
+   file = io.open(test_path, 'w')
+   assert(file, 'Failed to open file for closed flush test')
+   glTestFiles:push(test_path)
+
+   file:close()
+   try
+      file:flush()
+   success
+      error('file:flush() on a closed handle should throw an error')
+   end
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Lines iteration tests
 
@@ -248,6 +262,17 @@ end
    assert(collected_lines[0] is 'Line 1', 'First line should be "Line 1", got ' .. tostring(collected_lines[0]))
    assert(collected_lines[1] is 'Line 2', 'Second line should be "Line 2"')
    assert(collected_lines[2] is 'Line 3', 'Third line should be "Line 3"')
+end
+
+@Test(labels=['io', "lines"]) function IOLinesPathIteratorSurvivesGC()
+   test_path = createTestFile('test_lines_gc.txt', 'First\nSecond\n')
+
+   iter = io.lines(test_path)
+   processing.collect()
+
+   assert(iter() is 'First', 'Path iterator should keep its file handle alive after GC')
+   assert(iter() is 'Second', 'Path iterator should continue reading after GC')
+   assert(iter() is nil, 'Path iterator should return nil at EOF')
 end
 
 @Test(labels=['io', "lines"]) function FileLines()

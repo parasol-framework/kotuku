@@ -21,7 +21,7 @@ constexpr int SIZE_READ = 1024;
 #include "lj_state.h"
 #include "lauxlib.h"
 
-using namespace pf;
+using namespace kt;
 
 template <class T> T ALIGN64(T a) { return (((a) + 7) & (~7)); }
 template <class T> T ALIGN32(T a) { return (((a) + 3) & (~3)); }
@@ -204,7 +204,7 @@ struct actionmonitor {
 
    ~actionmonitor() {
       if (ObjectID) {
-         pf::Log log(__FUNCTION__);
+         kt::Log log(__FUNCTION__);
          log.trace("Unsubscribe action %s from object #%d", glActions[int(ActionID)].Name, ObjectID);
          OBJECTPTR obj;
          if (AccessObject(ObjectID, 3000, &obj) IS ERR::Okay) {
@@ -219,7 +219,19 @@ struct actionmonitor {
       move.ObjectID = 0;
    }
 
-   actionmonitor& operator=(actionmonitor &&move) = default;
+   actionmonitor& operator=(actionmonitor &&move) noexcept
+   {
+      if (this != &move) {
+         Object = move.Object;
+         Args = move.Args;
+         Function = move.Function;
+         Reference = move.Reference;
+         ActionID = move.ActionID;
+         ObjectID = move.ObjectID;
+         move.ObjectID = 0;
+      }
+      return *this;
+   }
 };
 
 //********************************************************************************************************************
@@ -236,12 +248,24 @@ struct eventsub {
       if (EventHandle) UnsubscribeEvent(EventHandle);
    }
 
+   eventsub(const eventsub &) = delete;
+   eventsub& operator=(const eventsub &) = delete;
+
    eventsub(eventsub &&move) noexcept :
       Function(move.Function), EventID(move.EventID), EventHandle(move.EventHandle) {
       move.EventHandle = nullptr;
    }
 
-   eventsub& operator=(eventsub &&move) = default;
+   eventsub& operator=(eventsub &&move) noexcept {
+      if (this != &move) {
+         if (EventHandle) UnsubscribeEvent(EventHandle);
+         Function = move.Function;
+         EventID = move.EventID;
+         EventHandle = move.EventHandle;
+         move.EventHandle = nullptr;
+      }
+      return *this;
+   }
 };
 
 //********************************************************************************************************************
@@ -278,7 +302,7 @@ struct prvTiri {
    std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
    std::vector<datarequest> Requests;     // For drag and drop requests
    ankerl::unordered_dense::map<OBJECTID, int> StateMap;
-   pf::vector<std::string> Procedures;
+   kt::vector<std::string> Procedures;
    std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
    std::shared_ptr<SharedPool> Pool;     // Thread-safe shared pool for async.pool (created on first use, shared with child scripts)
    APTR     FocusEventHandle;
@@ -307,6 +331,7 @@ struct fstruct {
 struct fprocessing {
    double Timeout;
    std::list<ObjectSignal> *Signals;
+   std::list<int> *SignalRefs;
 };
 
 class fregex {
@@ -363,14 +388,16 @@ struct module {
    }
 };
 
-constexpr uint32_t simple_hash(CSTRING String, uint32_t Hash = 5381) {
-   while (auto c = *String++) Hash = ((Hash<<5) + Hash) + c;
-   return Hash;
+constexpr uint32_t simple_hash(CSTRING String, uint32_t Hash = 0) {
+   auto crc = kt::detail::crc32c_finalise(Hash);
+   while (auto c = *String++) crc = kt::detail::crc32c_byte(crc, uint8_t(c));
+   return kt::detail::crc32c_finalise(crc);
 }
 
-constexpr uint32_t char_hash(char Char, uint32_t Hash = 5381) {
-   Hash = ((Hash<<5) + Hash) + Char;
-   return Hash;
+constexpr uint32_t char_hash(char Char, uint32_t Hash = 0) {
+   auto crc = kt::detail::crc32c_finalise(Hash);
+   crc = kt::detail::crc32c_byte(crc, uint8_t(Char));
+   return kt::detail::crc32c_finalise(crc);
 }
 
 //********************************************************************************************************************
@@ -417,6 +444,8 @@ int MAKESTRUCT(lua_State *);
 [[maybe_unused]] void make_array(lua_State *, AET, int = 0, CPTR = nullptr, std::string_view = {});
 [[maybe_unused]] ERR make_struct(objScript *, std::string_view, CSTRING);
 ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
+void construct_struct_cpp_strings(const struct struct_record &, APTR);
+void destroy_struct_cpp_strings(const struct struct_record &, APTR);
 void make_struct_ptr_array(lua_State *, std::string_view, int, CPTR *);
 void make_struct_serial_array(lua_State *, std::string_view, int, CPTR);
 void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);

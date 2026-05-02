@@ -241,7 +241,7 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
 
 ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not PathNode) or (PathNode->type != XQueryNodeType::LOCATION_PATH)) return log.warning(ERR::Failed);
 
@@ -317,7 +317,7 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
 
 ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not StepNode) return log.warning(ERR::NullArgs);
 
@@ -464,7 +464,7 @@ ERR XPathEvaluator::apply_predicates_to_candidates(const std::vector<const XPath
 
 ERR XPathEvaluator::invoke_callback(XTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    ShouldTerminate = false;
    if (not Node) return ERR::Okay;
@@ -485,7 +485,7 @@ ERR XPathEvaluator::invoke_callback(XTag *Node, const XMLAttrib *Attribute, bool
    }
 
    // Use defer to ensure constructed nodes are removed when we exit
-   auto cleanup = pf::Defer([&, is_constructed]() {
+   auto cleanup = kt::Defer([&, is_constructed]() {
       if (is_constructed and (not xml->Tags.empty())) {
          xml->nullifyMap(xml->Tags.back());
          xml->Tags.pop_back();
@@ -675,7 +675,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicat
 
    for (int index = 1; index < std::ssize(candidate->Attribs); ++index) {
       auto &attrib = candidate->Attribs[index];
-      if (pf::iequals(attrib.Name, name_node->value)) return PredicateResult::MATCH;
+      if (kt::iequals(attrib.Name, name_node->value)) return PredicateResult::MATCH;
    }
 
    return PredicateResult::NO_MATCH;
@@ -720,14 +720,14 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicat
 
       bool name_matches;
       if (attribute_name IS "*") name_matches = true;
-      else if (wildcard_name) name_matches = pf::wildcmp(attribute_name, attrib.Name);
-      else name_matches = pf::iequals(attrib.Name, attribute_name);
+      else if (wildcard_name) name_matches = kt::wildcmp(attribute_name, attrib.Name);
+      else name_matches = kt::iequals(attrib.Name, attribute_name);
 
       if (not name_matches) continue;
 
       bool value_matches;
-      if (wildcard_value) value_matches = pf::wildcmp(attribute_value, attrib.Value);
-      else value_matches = pf::iequals(attrib.Value, attribute_value);
+      if (wildcard_value) value_matches = kt::wildcmp(attribute_value, attrib.Value);
+      else value_matches = kt::iequals(attrib.Value, attribute_value);
 
       if (value_matches) return PredicateResult::MATCH;
    }
@@ -770,9 +770,9 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(
       if ((not first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
          const std::string &content = first_child.Attribs[0].Value;
          if (wildcard_value) {
-            return pf::wildcmp(expected, content) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
+            return kt::wildcmp(expected, content) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
          }
-         return pf::iequals(content, expected) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
+         return kt::iequals(content, expected) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
       }
    }
 

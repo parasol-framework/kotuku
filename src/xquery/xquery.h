@@ -964,8 +964,8 @@ public:
    std::shared_ptr<XQueryModuleCache> ModuleCache; // Strong reference; ParseResult.module_cache is weak to break cycles
    XPathVal Result; // Result of the last execution.
    std::vector<std::unique_ptr<XTag>> ConstructedNodes; // Keeps constructed-node results alive after evaluation.
-   pf::vector<std::string> ListVariables; // List of variable names.
-   pf::vector<std::string> ListFunctions; // List of function names.
+   kt::vector<std::string> ListVariables; // List of variable names.
+   kt::vector<std::string> ListFunctions; // List of function names.
    std::string ResultString; // Cached string representation of the result.
    std::string Path; // Base path for resolving relative URIs.
    size_t MemUsage; // Total bytes allocated during the most recent evaluation or compilation.

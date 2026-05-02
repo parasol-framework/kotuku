@@ -1,0 +1,616 @@
+----------------------------------------------------------------------------------------------------------------------
+-- Go to Definition Support
+
+rx_def_func           = <{ regex.new([[\bfunction\s+([A-Za-z_][A-Za-z0-9_:.]*)\s*\(([^\)]*)\)]]) }>
+rx_def_decl           = <{ regex.new([[\b(local|global)\s+([A-Za-z_][A-Za-z0-9_]*)]]) }>
+rx_def_assign_func    = <{ regex.new([[\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*function\s*\(([^\)]*)\)]]) }>
+rx_def_assign         = <{ regex.new([[^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=]]) }>
+rx_def_param          = <{ regex.new([[([A-Za-z_][A-Za-z0-9_]*)]]) }>
+rx_def_loader_before  = <{ regex.new([[\b(import|require|include)\s*(?:\(\s*)?$]]) }>
+rx_def_obj_new_before = <{ regex.new([[obj\.new\s*\(\s*$]]) }>
+rx_def_obj_new        = <{ regex.new([=[([A-Za-z_][A-Za-z0-9_]*)\s*=\s*obj\.new\s*\(\s*['"]([^'"]+)['"]]=], regex.DOT_ALL) }>
+rx_def_action_prefix  = <{ regex.new([=[^ac[A-Z]]=]) }>
+rx_def_method_prefix  = <{ regex.new([=[^mt[A-Z]]=]) }>
+
+----------------------------------------------------------------------------------------------------------------------
+-- URI and Path Helpers
+
+global function lspPercentDecode(Text:str):str
+   result = ''
+   pos = 0
+
+   while pos < #Text do
+      c = Text:sub(pos, pos + 1)
+      if c is '%' and pos + 2 < #Text then
+         hex = Text:sub(pos + 1, pos + 3)
+         value = tonumber(hex, 16)
+         if value then
+            result ..= string.char(value)
+            pos += 3
+         else
+            result ..= c
+            pos++
+         end
+      else
+         result ..= c
+         pos++
+      end
+   end
+
+   return result
+end
+
+function lspPercentEncode(Text:str):str
+   return Text:replace('%', '%25'):replace(' ', '%20'):replace('#', '%23'):replace('?', '%3F')
+end
+
+global function lspUriToPath(Uri:str):str
+   Uri ?? return nil
+   path = Uri
+
+   if path:startsWith('file://') then
+      path = path:sub(7)
+   end
+
+   path = lspPercentDecode(path):replace('\\', '/')
+
+   -- VS Code sends Windows file URIs as file:///e:/path.
+   if #path >= 3 and path:sub(0, 1) is '/' and path:sub(2, 3) is ':' then
+      path = path:sub(1)
+   end
+
+   return path
+end
+
+global function lspPathToUri(Path:str):str
+   Path ?? return nil
+
+   local resolved
+   err, resolved = mSys.ResolvePath(Path)
+   if err != ERR_Okay then
+      err, resolved = mSys.ResolvePath(Path, RSF_NO_FILE_CHECK)
+   end
+   if err != ERR_Okay then return nil end
+
+   resolved = resolved:replace('\\', '/')
+   if #resolved >= 2 and resolved:sub(1, 2) is ':' then
+      resolved = '/' .. resolved
+   elseif not resolved:startsWith('/') then
+      resolved = '/' .. resolved
+   end
+
+   return 'file://' .. lspPercentEncode(resolved)
+end
+
+function getParentPath(Path:str):str
+   Path ?? return ''
+   path = Path:replace('\\', '/')
+   last_slash = -1
+
+   for i = 0, #path - 1 do
+      if path:sub(i, i + 1) is '/' then last_slash = i end
+   end
+
+   if last_slash < 0 then return '' end
+   return path:sub(0, last_slash + 1)
+end
+
+function resolveExistingPath(Path:str):str
+   Path ?? return nil
+   local resolved
+   err, resolved = mSys.ResolvePath(Path)
+   if err is ERR_Okay then return resolved end
+   return nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Location Helpers
+
+function offsetToPosition(Content:str, Offset:num):table
+   line = 0
+   character = 0
+   pos = 0
+   limit = Offset
+   if limit > #Content then limit = #Content end
+
+   while pos < limit do
+      c = Content:sub(pos, pos + 1)
+      if c is '\n' then
+         line++
+         character = 0
+      else
+         character++
+      end
+      pos++
+   end
+
+   return { line = line, character = character }
+end
+
+function makeLocation(Path:str, StartLine:num, StartChar:num, EndLine:num, EndChar:num):table
+   uri = lspPathToUri(Path)
+   uri ?? return nil
+
+   return {
+      uri = uri,
+      range = {
+         start = { line = StartLine or 0, character = StartChar or 0 },
+         ['end'] = { line = EndLine or StartLine or 0, character = EndChar or StartChar or 0 }
+      }
+   }
+end
+
+function makeDocLocation(Doc:table, StartLine:num, StartChar:num, EndLine:num, EndChar:num):table
+   return {
+      uri = Doc.uri,
+      range = {
+         start = { line = StartLine or 0, character = StartChar or 0 },
+         ['end'] = { line = EndLine or StartLine or 0, character = EndChar or StartChar or 0 }
+      }
+   }
+end
+
+function makeOffsetLocation(Path:str, ByteStart:num, ByteEnd:num):table
+   ByteStart ?= 0
+   ByteEnd ?= ByteStart
+
+   content = io.readAll(Path)
+   if not content then return makeLocation(Path, 0, 0, 0, 0) end
+
+   start_pos = offsetToPosition(content, ByteStart)
+   end_pos = offsetToPosition(content, ByteEnd)
+   return makeLocation(Path, start_pos.line, start_pos.character, end_pos.line, end_pos.character)
+end
+
+function makeXmlLocation(Entry:table, ByteStart:num, ByteEnd:num):table
+   if not Entry or not Entry.file or not glDocCache then return nil end
+   return makeOffsetLocation(glDocCache.sdkPath .. Entry.file, ByteStart or Entry.byteStart or 0, ByteEnd or Entry.byteEnd or 0)
+end
+
+function pushLocation(Locations:array, Location:table)
+   if Location then Locations:push(Location) end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- String Context
+
+function getStringAtPosition(Doc:table, Line:num, Character:num):table
+   line_text = getLine(Doc, Line)
+   if not line_text or Character >= #line_text then return nil end
+
+   pos = 0
+   while pos < #line_text do
+      c = line_text:sub(pos, pos + 1)
+      if c is '"' or c is "'" then
+         quote = c
+         start_pos = pos
+         pos++
+
+         while pos < #line_text do
+            sc = line_text:sub(pos, pos + 1)
+            if sc is '\\' and pos + 1 < #line_text then
+               pos += 2
+            elseif sc is quote then
+               if Character > start_pos and Character < pos then
+                  return {
+                     text = line_text:sub(start_pos + 1, pos),
+                     quoteStart = start_pos,
+                     quoteEnd = pos,
+                     before = line_text:sub(0, start_pos)
+                  }
+               end
+               break
+            else
+               pos++
+            end
+         end
+      end
+      pos++
+   end
+
+   return nil
+end
+
+function getLoaderStringAtPosition(Doc:table, Position:table):table
+   string_info = getStringAtPosition(Doc, Position.line, Position.character)
+   string_info ?? return nil
+
+   keyword = rx_def_loader_before.extract(string_info.before)
+   keyword ?? return nil
+
+   string_info.keyword = keyword
+   return string_info
+end
+
+function getObjNewStringAtPosition(Doc:table, Position:table):table
+   string_info = getStringAtPosition(Doc, Position.line, Position.character)
+   string_info ?? return nil
+   if rx_def_obj_new_before.test(string_info.before) then return string_info end
+   return nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Current Document Symbols
+
+function addSymbol(Symbols:array, Name:str, Kind:str, Line:num, StartChar:num, EndChar:num)
+   if not Name or Name is '' then return end
+   Symbols:push({
+      name = Name,
+      kind = Kind,
+      line = Line,
+      startChar = StartChar,
+      endChar = EndChar,
+      range = {
+         start = { line = Line, character = StartChar },
+         ['end'] = { line = Line, character = EndChar }
+      }
+   })
+end
+
+function addFunctionParameters(Symbols:array, Params:str, LineText:str, Line:num, SearchFrom:num)
+   Params ?? return
+   scan_from = SearchFrom or 0
+
+   for start, stop, cap in rx_def_param.findAll(Params) do
+      name = cap[0]
+      if name and name != '' then
+         name_start = LineText:find(name, scan_from, true)
+         if name_start then
+            addSymbol(Symbols, name, 'parameter', Line, name_start, name_start + #name)
+            scan_from = name_start + #name
+         end
+      end
+   end
+end
+
+function updateTableDepth(LineCode:str, TableDepth:num):num
+   depth = TableDepth or 0
+
+   for i = 0, #LineCode - 1 do
+      c = LineCode:sub(i, i + 1)
+      if c is '{' then
+         depth++
+      elseif c is '}' and depth > 0 then
+         depth -= 1
+      end
+   end
+
+   return depth
+end
+
+global function extractDefinitionSymbols(Doc:table):array
+   symbols = array<table>
+   total_lines = getTotalLines(Doc)
+   in_block_comment = false
+   table_depth = 0
+
+   for line_num = 0, total_lines - 1 do
+      line_text = getLine(Doc, line_num)
+      line_code, in_block_comment = maskNonCode(line_text, in_block_comment)
+      in_table_literal = table_depth > 0
+
+      for start, stop, cap in rx_def_func.findAll(line_code) do
+         name = cap[0]
+         params = cap[1]
+         name_start = line_text:find(name, start, true) or start
+         addSymbol(symbols, name, 'function', line_num, name_start, name_start + #name)
+
+         paren_start = line_text:find('(', name_start + #name, true)
+         if paren_start then
+            addFunctionParameters(symbols, params, line_text, line_num, paren_start + 1)
+         end
+      end
+
+      for start, stop, cap in rx_def_assign_func.findAll(line_code) do
+         name = cap[0]
+         params = cap[1]
+         name_start = line_text:find(name, start, true) or start
+         addSymbol(symbols, name, 'function', line_num, name_start, name_start + #name)
+
+         paren_start = line_text:find('(', name_start + #name, true)
+         if paren_start then
+            addFunctionParameters(symbols, params, line_text, line_num, paren_start + 1)
+         end
+      end
+
+      for start, stop, cap in rx_def_decl.findAll(line_code) do
+         name = cap[1]
+         if name and name != 'function' then
+            name_start = line_text:find(name, start, true) or start
+            addSymbol(symbols, name, 'variable', line_num, name_start, name_start + #name)
+         end
+      end
+
+      for start, stop, cap in rx_def_assign.findAll(line_code) do
+         name = cap[0]
+         if name and name != 'local' and name != 'global' and not in_table_literal then
+            name_start = line_text:find(name, start, true) or start
+            eq_pos = line_text:find('=', name_start + #name, true)
+            next_char = eq_pos and line_text:sub(eq_pos + 1, eq_pos + 2) or ''
+
+            if eq_pos and next_char != '=' and next_char != '>' then
+               addSymbol(symbols, name, 'variable', line_num, name_start, name_start + #name)
+            end
+         end
+      end
+
+      table_depth = updateTableDepth(line_code, table_depth)
+   end
+
+   return symbols
+end
+
+function isSymbolBefore(Symbol:table, Position:table):bool
+   if Symbol.line < Position.line then return true end
+   if Symbol.line is Position.line and Symbol.startChar <= Position.character then return true end
+   return false
+end
+
+function symbolNameMatches(SymbolName:str, TokenInfo:table):bool
+   token = TokenInfo.text
+   if SymbolName is token then return true end
+
+   if TokenInfo.object then
+      if SymbolName is TokenInfo.object .. '.' .. token then return true end
+      if SymbolName is TokenInfo.object .. ':' .. token then return true end
+   end
+
+   if SymbolName:endsWith('.' .. token) or SymbolName:endsWith(':' .. token) then return true end
+   return false
+end
+
+function resolveDocumentSymbolDefinition(Doc:table, TokenInfo:table, Position:table):array
+   TokenInfo ?? return nil
+
+   symbols = extractDefinitionSymbols(Doc)
+   best = nil
+   fallback_function = nil
+
+   for symbol in values(symbols) do
+      if symbolNameMatches(symbol.name, TokenInfo) then
+         if symbol.kind is 'function' and not fallback_function then
+            fallback_function = symbol
+         end
+
+         if isSymbolBefore(symbol, Position) then
+            if not best or symbol.line > best.line or
+                  (symbol.line is best.line and symbol.startChar > best.startChar) then
+               best = symbol
+            end
+         end
+      end
+   end
+
+   best ?= fallback_function
+   best ?? return nil
+
+   locations = array<table>
+   pushLocation(locations, makeDocLocation(Doc, best.line, best.startChar, best.line, best.endChar))
+   return locations
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Import, Require and Include Targets
+
+function normaliseModuleName(Name:str):str
+   if not Name or not glDocCache or not glDocCache.modules then return nil end
+   for module_name, entry in pairs(glDocCache.modules) do
+      if module_name:lower() is Name:lower() then return module_name end
+   end
+   return nil
+end
+
+function resolveScriptImport(Doc:table, Name:str):table
+   candidates = array<string>
+   doc_path = lspUriToPath(Doc.uri)
+   base_path = getParentPath(doc_path)
+   script_name = Name:endsWith('.tiri') and Name or (Name .. '.tiri')
+
+   if Name:startsWith('./') or Name:startsWith('../') then
+      candidates:push(base_path .. script_name)
+   end
+
+   candidates:push('sdk:scripts/' .. script_name)
+   candidates:push('scripts:' .. script_name)
+
+   for candidate in values(candidates) do
+      resolved = resolveExistingPath(candidate)
+      if resolved then return makeLocation(resolved, 0, 0, 0, 0) end
+   end
+
+   return nil
+end
+
+function resolveLoaderDefinition(Doc:table, Position:table):array
+   string_info = getLoaderStringAtPosition(Doc, Position)
+   string_info ?? return nil
+
+   locations = array<table>
+
+   if string_info.keyword is 'include' then
+      module_name = normaliseModuleName(string_info.text)
+      if module_name then
+         module_doc = glDocCache.modules[module_name]
+         pushLocation(locations, makeXmlLocation(module_doc, module_doc.byteStart, module_doc.byteEnd))
+      end
+   else
+      pushLocation(locations, resolveScriptImport(Doc, string_info.text))
+   end
+
+   if #locations > 0 then return locations end
+   return nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Kotuku API Targets
+
+function normaliseClassName(Name:str):str
+   if not Name or not glDocCache or not glDocCache.classes then return nil end
+   if glDocCache.classes[Name] then return Name end
+
+   for class_name, entry in pairs(glDocCache.classes) do
+      if class_name:lower() is Name:lower() then return class_name end
+   end
+
+   capitalised = Name:sub(0, 1):upper() .. Name:sub(1)
+   if glDocCache.classes[capitalised] then return capitalised end
+
+   return nil
+end
+
+function buildDefinitionTypeMap(Doc:table):table
+   type_map = {}
+
+   for start, stop, cap in rx_def_obj_new.findAll(Doc.content) do
+      local var_name, class_name = cap[0], cap[1]
+      normalised = normaliseClassName(class_name)
+      if var_name and normalised then type_map[var_name] = normalised end
+   end
+
+   return type_map
+end
+
+function addSourceFallback(Locations:array, ApiEntry:table)
+   if not ApiEntry or not ApiEntry.sources or not ApiEntry.module then return end
+
+   module_folder = ApiEntry.module:lower()
+   for source in values(ApiEntry.sources) do
+      if source.file and source.file != '' then
+         candidate = 'sdk:src/' .. module_folder .. '/' .. (source.path or '') .. source.file
+         resolved = resolveExistingPath(candidate)
+         if resolved then
+            pushLocation(Locations, makeLocation(resolved, 0, 0, 0, 0))
+            return
+         end
+      end
+   end
+end
+
+function resolveClassDefinition(ClassName:str):array
+   class_name = normaliseClassName(ClassName)
+   class_name ?? return nil
+
+   class_doc = glDocCache.classes[class_name]
+   locations = array<table>
+   pushLocation(locations, makeXmlLocation(class_doc, class_doc.byteStart, class_doc.byteEnd))
+   addSourceFallback(locations, class_doc)
+   return #locations > 0 and locations or nil
+end
+
+function resolveApiMemberDefinition(Doc:table, TokenInfo:table):array
+   if not TokenInfo or not TokenInfo.object or not glDocCache then return nil end
+
+   token = TokenInfo.text
+   object_name = TokenInfo.object
+   type_map = buildDefinitionTypeMap(Doc)
+   class_name = type_map[object_name] ?? normaliseClassName(object_name)
+
+   if class_name then
+      class_doc = glDocCache.classes[class_name]
+      if class_doc then
+         locations = array<table>
+
+         if rx_def_action_prefix.test(token) then
+            action_name = token:sub(2)
+            if class_doc.actions and class_doc.actions[action_name] then
+               action_doc = decodeMethod(class_doc.actions[action_name])
+               pushLocation(locations, makeXmlLocation(class_doc, action_doc.byteStart, action_doc.byteEnd))
+            end
+         end
+
+         if #locations is 0 and rx_def_method_prefix.test(token) then
+            method_name = token:sub(2)
+            if class_doc.methods and class_doc.methods[method_name] then
+               method_doc = decodeMethod(class_doc.methods[method_name])
+               pushLocation(locations, makeXmlLocation(class_doc, method_doc.byteStart, method_doc.byteEnd))
+            end
+         end
+
+         if #locations is 0 and class_doc.methods and class_doc.methods[token] then
+            method_doc = decodeMethod(class_doc.methods[token])
+            pushLocation(locations, makeXmlLocation(class_doc, method_doc.byteStart, method_doc.byteEnd))
+         end
+
+         if #locations is 0 and class_doc.actions and class_doc.actions[token] then
+            action_doc = decodeMethod(class_doc.actions[token])
+            pushLocation(locations, makeXmlLocation(class_doc, action_doc.byteStart, action_doc.byteEnd))
+         end
+
+         if #locations is 0 and class_doc.fields then
+            field_doc = class_doc.fields[token]
+            if not field_doc then
+               field_name = token:sub(0, 1):upper() .. token:sub(1)
+               field_doc = class_doc.fields[field_name]
+            end
+
+            if field_doc then
+               decoded_field = decodeField(field_doc)
+               pushLocation(locations, makeXmlLocation(class_doc, decoded_field.byteStart, decoded_field.byteEnd))
+            end
+         end
+
+         if #locations > 0 then
+            addSourceFallback(locations, class_doc)
+            return locations
+         end
+      end
+   end
+
+   if glDefs?.modulePrefixes?[object_name] then
+      module_name = glDefs.modulePrefixes[object_name]
+      module_doc = glDocCache?.modules?[module_name]
+      func_doc = module_doc?.functions?[token]
+      if module_doc and func_doc then
+         decoded_func = decodeMethod(func_doc)
+         locations = array<table>
+         pushLocation(locations, makeXmlLocation(module_doc, decoded_func.byteStart, decoded_func.byteEnd))
+         return #locations > 0 and locations or nil
+      end
+   end
+
+   return nil
+end
+
+function resolveApiDefinition(Doc:table, Position:table, TokenInfo:table):array
+   obj_new_string = getObjNewStringAtPosition(Doc, Position)
+   if obj_new_string then
+      class_locations = resolveClassDefinition(obj_new_string.text)
+      if class_locations then return class_locations end
+   end
+
+   if TokenInfo then
+      if TokenInfo.context is 'identifier' then
+         class_locations = resolveClassDefinition(TokenInfo.text)
+         if class_locations then return class_locations end
+      end
+
+      member_locations = resolveApiMemberDefinition(Doc, TokenInfo)
+      if member_locations then return member_locations end
+   end
+
+   return nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Public Resolver
+
+global function resolveDefinition(Doc:table, Position:table):array
+   Doc ?? return nil
+   Position ?? return nil
+
+   loader_locations = resolveLoaderDefinition(Doc, Position)
+   if loader_locations then return loader_locations end
+
+   api_string_locations = resolveApiDefinition(Doc, Position, nil)
+   if api_string_locations then return api_string_locations end
+
+   token_info = getTokenAtPosition(Doc, Position.line, Position.character)
+
+   document_locations = resolveDocumentSymbolDefinition(Doc, token_info, Position)
+   if document_locations then return document_locations end
+
+   api_locations = resolveApiDefinition(Doc, Position, token_info)
+   if api_locations then return api_locations end
+
+   return nil
+end

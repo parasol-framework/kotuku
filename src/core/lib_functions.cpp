@@ -35,6 +35,15 @@ Name: System
  #include <string.h> // Required for memmove()
 #endif
 
+#if defined(__ARM_FEATURE_CRC32)
+ #ifdef _MSC_VER
+  #include <intrin.h>
+ #else
+  #include <arm_acle.h>
+ #endif
+ #define PF_HAS_HW_CRC32 1
+#endif
+
 #ifdef __ANDROID__
  #include <android/log.h>
 #endif
@@ -43,7 +52,7 @@ Name: System
 
 #include "defs.h"
 
-using namespace pf;
+using namespace kt;
 
 //********************************************************************************************************************
 
@@ -93,7 +102,7 @@ int: A unique ID matching the requested type will be returned.  This function ca
 
 int AllocateID(IDTYPE Type)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (Type IS IDTYPE::MESSAGE) {
       auto id = ++glMessageIDCount;
@@ -159,11 +168,13 @@ CSTRING GetErrorMsg(ERR Code)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GenCRC32: Generates 32-bit CRC checksum values.
+GenCRC32: Generates 32-bit IEEE 802.3 CRC checksum values.
 
 This function is used internally for the generation of 32-bit CRC checksums compatible with IEEE 802.3.  It is made
 available to clients to generate CRC values over any length of buffer space.  This function may be called repeatedly
 by feeding it CRC values in a cycle, making it ideal for processing streamed data.
+
+Note that string hashes in Kotuku use CRC-32C, which is incompatible with this function.
 
 -INPUT-
 uint CRC: If streaming data to this function, this value must reflect the most recently returned CRC integer.  Otherwise set to zero.
@@ -237,10 +248,8 @@ alignas(64) static constexpr uint32_t crc_table_0[256] = {
 alignas(64) static uint32_t crc_table[8][256];
 static std::once_flag glCRCInit;
 
-uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length)
+static void init_crc32_tables(void)
 {
-   if (not Data) return 0;
-
    std::call_once(glCRCInit, []() {
       // Copy table 0
       std::copy(std::begin(crc_table_0), std::end(crc_table_0), crc_table[0]);
@@ -252,14 +261,18 @@ uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length)
          }
       }
    });
+}
 
-   // Process 8 bytes at a time using slice-by-8 algorithm
+static uint32_t gen_crc32_slice_by_8(uint32_t CRC, const uint8_t *Data, uint32_t Length)
+{
+   init_crc32_tables();
 
-   auto data = (const uint8_t *)Data;
-   CRC = ~CRC;
    while (Length >= 8) {
-      const uint32_t one = CRC ^ *reinterpret_cast<const uint32_t*>(data);
-      const uint32_t two = *reinterpret_cast<const uint32_t*>(data + 4);
+      uint32_t one;
+      uint32_t two;
+      memcpy(&one, Data, sizeof(one));
+      memcpy(&two, Data + 4, sizeof(two));
+      one ^= CRC;
 
       CRC = crc_table[7][(one      ) & 0xff] ^
             crc_table[6][(one >>  8) & 0xff] ^
@@ -270,15 +283,66 @@ uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length)
             crc_table[1][(two >> 16) & 0xff] ^
             crc_table[0][(two >> 24) & 0xff];
 
-      data += 8;
+      Data += 8;
       Length -= 8;
    }
 
-   // Process remaining bytes with single-byte table lookup
    while (Length > 0) {
-      CRC = crc_table[0][(CRC ^ *data++) & 0xff] ^ (CRC >> 8);
+      CRC = crc_table[0][(CRC ^ *Data++) & 0xff] ^ (CRC >> 8);
       Length--;
    }
+
+   return CRC;
+}
+
+#ifdef PF_HAS_HW_CRC32
+static uint32_t gen_crc32_hardware(uint32_t CRC, const uint8_t *Data, uint32_t Length)
+{
+   while (Length >= sizeof(uint64_t)) {
+      uint64_t chunk;
+      memcpy(&chunk, Data, sizeof(chunk));
+      CRC = __crc32d(CRC, chunk);
+      Data += sizeof(chunk);
+      Length -= sizeof(chunk);
+   }
+
+   while (Length >= sizeof(uint32_t)) {
+      uint32_t chunk;
+      memcpy(&chunk, Data, sizeof(chunk));
+      CRC = __crc32w(CRC, chunk);
+      Data += sizeof(chunk);
+      Length -= sizeof(chunk);
+   }
+
+   while (Length >= sizeof(uint16_t)) {
+      uint16_t chunk;
+      memcpy(&chunk, Data, sizeof(chunk));
+      CRC = __crc32h(CRC, chunk);
+      Data += sizeof(chunk);
+      Length -= sizeof(chunk);
+   }
+
+   while (Length > 0) {
+      CRC = __crc32b(CRC, *Data++);
+      Length--;
+   }
+
+   return CRC;
+}
+#endif
+
+uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length)
+{
+   if (not Data) return 0;
+
+   auto data = (const uint8_t *)Data;
+   CRC = ~CRC;
+
+   #ifdef PF_HAS_HW_CRC32
+      CRC = gen_crc32_hardware(CRC, data, Length);
+   #else
+      CRC = gen_crc32_slice_by_8(CRC, data, Length);
+   #endif
 
    return ~CRC;
 }
@@ -388,7 +452,9 @@ int64_t GetResource(RES Resource)
 
          if (file.ok()) {
             while ((line = file->readLine())) {
-               if (startswith("cpu Mhz", line)) cpu_mhz = strtol(line, nullptr, 0);
+               if (startswith("cpu MHz", line)) {
+                  if (auto value = strchr(line, ':')) cpu_mhz = int(strtod(value + 1, nullptr));
+               }
             }
          }
 
@@ -525,7 +591,7 @@ ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR
 ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #endif
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // Note that FD's < -1 are permitted for the registering of functions marked with RFD::ALWAYS_CALL
 
@@ -598,7 +664,7 @@ NullArgs:
 
 ERR SetResourcePath(RP PathType, CSTRING Path)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.function("Type: %d, Path: %s", int(PathType), Path);
 
@@ -606,7 +672,7 @@ ERR SetResourcePath(RP PathType, CSTRING Path)
       case RP::ROOT_PATH:
          if (Path) {
             glRootPath = Path;
-            if ((glRootPath.back() != '/') and (glRootPath.back() != '\\')) {
+            if ((!glRootPath.empty()) and (glRootPath.back() != '/') and (glRootPath.back() != '\\')) {
                #ifdef _WIN32
                   glRootPath.push_back('\\');
                #else
@@ -619,7 +685,7 @@ ERR SetResourcePath(RP PathType, CSTRING Path)
       case RP::SYSTEM_PATH:
          if (Path) {
             glSystemPath = Path;
-            if ((glSystemPath.back() != '/') and (glSystemPath.back() != '\\')) {
+            if ((!glSystemPath.empty()) and (glSystemPath.back() != '/') and (glSystemPath.back() != '\\')) {
                #ifdef _WIN32
                   glSystemPath.push_back('\\');
                #else
@@ -632,7 +698,7 @@ ERR SetResourcePath(RP PathType, CSTRING Path)
       case RP::MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
             glModulePath = Path;
-            if ((glModulePath.back() != '/') and (glModulePath.back() != '\\')) {
+            if ((!glModulePath.empty()) and (glModulePath.back() != '/') and (glModulePath.back() != '\\')) {
                #ifdef _WIN32
                   glModulePath += '\\';
                #else
@@ -673,7 +739,7 @@ large: Returns the previous value of the `Resource`.  If the `Resource` value is
 
 int64_t SetResource(RES Resource, int64_t Value)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
 #ifdef __unix__
    static int16_t privileged = 0;
@@ -789,7 +855,7 @@ SystemLocked:
 
 ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((not Interval) or (not Callback)) return log.warning(ERR::NullArgs);
    if (Interval < 0) return log.warning(ERR::Args);
@@ -852,7 +918,7 @@ Search:
 
 ERR UpdateTimer(APTR Subscription, double Interval)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (not Subscription) return log.warning(ERR::NullArgs);
 

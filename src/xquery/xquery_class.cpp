@@ -134,7 +134,7 @@ static std::string xml_escape(const std::string &str)
 
 static ERR build_query(extXQuery *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    Self->StaleBuild = false;
    Self->ListVariables.clear();
@@ -246,15 +246,15 @@ Syntax
 
 static ERR XQUERY_Activate(extXQuery *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 40);
    while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
    log.branch("Expression: %.*s, BasePath: %s", len, Self->Statement.c_str(), Self->Path.c_str());
 
 #ifdef ANALYSE_MEMORY_USAGE
-   auto mt = pf::MemTracker();
-   auto cleanup = pf::Defer([&]() {
+   auto mt = kt::MemTracker();
+   auto cleanup = kt::Defer([&]() {
       auto stats = mt.getStats();
       log.msg("Blocks allocated: %" PRId64 ", Total Size: %" PRId64 ", Avg Size: %" PRId64 " bytes",
          stats.total_alloc, stats.total_size, stats.avg_size());
@@ -322,18 +322,23 @@ NotFound
 
 static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
    if (not Self->initialised()) return log.warning(ERR::NotInitialised);
+
+   Self->ErrorMsg.clear();
+   Self->ResultString.clear();
+   Self->Result = XPathVal();
+   Self->ConstructedNodes.clear();
 
    int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 40);
    while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
    log.branch("Expression: %.*s, BasePath: %s", len, Self->Statement.c_str(), Self->Path.c_str());
 
 #ifdef ANALYSE_MEMORY_USAGE
-   auto mt = pf::MemTracker();
-   auto cleanup = pf::Defer([&]() {
+   auto mt = kt::MemTracker();
+   auto cleanup = kt::Defer([&]() {
       auto stats = mt.getStats();
       log.msg("Memory allocated: %" PRId64 " bytes in %" PRId64 " blocks, Peak usage: %" PRId64 " bytes", stats.total_alloc, stats.total_size, stats.avg_size);
       Self->MemUsage = stats.total_size;
@@ -353,9 +358,8 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
    }
 
    if (xml) {
-      pf::ScopedObjectLock lock(xml);
+      kt::ScopedObjectLock lock(xml);
       XTag *root_tag = nullptr;
-      Self->ConstructedNodes.clear();
 
       if (Self->Path.empty() and (xml->Path)) Self->Path = xml->Path;
       if (Args->Index != 0) {
@@ -377,7 +381,6 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
       return err;
    }
    else {
-      Self->ConstructedNodes.clear();
       XPathEvaluator eval(Self, nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
       auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
       if (err IS ERR::Okay) Self->ConstructedNodes = std::move(eval.constructed_nodes);
@@ -411,7 +414,7 @@ static ERR XQUERY_GetKey(extXQuery *Self, struct acGetKey *Args)
    if (Args->Size < 2) return ERR::Args;
 
    if (auto it = Self->Variables.find(Args->Key); it != Self->Variables.end()) {
-      pf::strcopy(it->second.c_str(), Args->Value, Args->Size);
+      kt::strcopy(it->second.c_str(), Args->Value, Args->Size);
       return ERR::Okay;
    }
    else {
@@ -437,10 +440,10 @@ separate thread to avoid blocking in such cases.
 static ERR XQUERY_Init(extXQuery *Self)
 {
 #ifdef ANALYSE_MEMORY_USAGE
-   auto mt = pf::MemTracker();
-   auto cleanup = pf::Defer([&]() {
+   auto mt = kt::MemTracker();
+   auto cleanup = kt::Defer([&]() {
       auto stats = mt.getStats();
-      pf::Log().msg("Memory allocated: %" PRId64 " bytes in %" PRId64 " blocks, Peak usage: %" PRId64 " bytes", stats.total_alloc, stats.total_size, stats.avg_size);
+      kt::Log().msg("Memory allocated: %" PRId64 " bytes in %" PRId64 " blocks, Peak usage: %" PRId64 " bytes", stats.total_alloc, stats.total_size, stats.avg_size);
       Self->MemUsage = stats.total_size;
    });
 #endif
@@ -495,7 +498,7 @@ NullArgs
 
 static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions *Args)
 {
-   pf::Log log;
+   kt::Log log;
    if (not Args) return log.warning(ERR::NullArgs);
 
    if (Self->StaleBuild) {
@@ -559,7 +562,7 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
       for (const auto &entry : Self->ParseResult.prolog->functions) {
          const auto &fn = entry.second;
          auto fname = to_lexical_name(*Self->ParseResult.prolog, fn.qname);
-         if (pf::wildcmp(Args->Name, fname)) {
+         if (kt::wildcmp(Args->Name, fname)) {
             process_function(fn);
          }
       }
@@ -571,7 +574,7 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
             if ((it->second) and (it->second->prolog)) {
                for (auto fn = it->second->prolog->functions.begin(); fn != it->second->prolog->functions.end(); ++fn) {
                   auto fname = to_lexical_name(*Self->ParseResult.prolog, fn->second.qname);
-                  if (pf::wildcmp(Args->Name, fname)) {
+                  if (kt::wildcmp(Args->Name, fname)) {
                      process_function(fn->second);
                   }
                }
@@ -582,7 +585,7 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
       if (not stream.tellp()) return log.warning(ERR::Search);
 
       std::string result = stream.str();
-      Args->Result = pf::strclone(result.c_str());
+      Args->Result = kt::strclone(result.c_str());
 
       return ERR::Okay;
    }
@@ -624,7 +627,7 @@ NoSupport: The provided callback is not a C function reference.
 
 static ERR XQUERY_RegisterFunction(extXQuery *Self, struct xq::RegisterFunction *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
    if ((not Args->FunctionName) or (!Args->FunctionName[0])) return log.warning(ERR::NullArgs);
@@ -680,7 +683,7 @@ NotFound: The specified Index does not correspond to a valid XML tag.
 
 static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -689,8 +692,8 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
    log.branch("Expression: %.*s; Callback: %c, BasePath: %s", len, Self->Statement.c_str(), Args->Callback ? (Args->Callback->Type != CALL::NIL ? 'Y' : 'N') : 'N', Self->Path.c_str());
 
 #ifdef ANALYSE_MEMORY_USAGE
-   auto mt = pf::MemTracker();
-   auto cleanup = pf::Defer([&]() {
+   auto mt = kt::MemTracker();
+   auto cleanup = kt::Defer([&]() {
       auto stats = mt.getStats();
       log.msg("Memory allocated: %" PRId64 " bytes in %" PRId64 " blocks, Peak usage: %" PRId64 " bytes", stats.total_alloc, stats.total_size, stats.avg_size);
       Self->MemUsage = stats.total_size;
@@ -710,7 +713,7 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
    }
 
    if (xml) {
-      pf::ScopedObjectLock lock(xml);
+      kt::ScopedObjectLock lock(xml);
       XTag *root_tag = nullptr;
 
       if (Self->Path.empty() and (xml->Path)) Self->Path = xml->Path;
@@ -764,7 +767,7 @@ NullArgs: The `Key` parameter was not specified.
 
 static ERR XQUERY_SetKey(extXQuery *Self, struct acSetKey *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((not Args) or (not Args->Key)) return log.warning(ERR::NullArgs);
 
@@ -828,7 +831,7 @@ Duplicate function names are not removed.
 
 *********************************************************************************************************************/
 
-static ERR GET_Functions(extXQuery *Self, pf::vector<std::string> **Value)
+static ERR GET_Functions(extXQuery *Self, kt::vector<std::string> **Value)
 {
    if (not Self->initialised()) return ERR::NotInitialised;
 
@@ -886,13 +889,13 @@ static ERR GET_Path(extXQuery *Self, STRING *Value)
 {
    if (not Self->initialised()) {
       if (not Self->Path.empty()) {
-         *Value = pf::strclone(Self->Path.c_str());
+         *Value = kt::strclone(Self->Path.c_str());
          return ERR::Okay;
       }
       else return ERR::FieldNotSet;
    }
 
-   if ((*Value = pf::strclone(Self->Path.c_str()))) {
+   if ((*Value = kt::strclone(Self->Path.c_str()))) {
       return ERR::Okay;
    }
    else return ERR::AllocMemory;
@@ -1052,12 +1055,12 @@ static ERR GET_Statement(extXQuery *Self, STRING *Value)
 {
    if (not Self->initialised()) {
       if (not Self->Statement.empty()) {
-         *Value = pf::strclone(Self->Statement.c_str());
+         *Value = kt::strclone(Self->Statement.c_str());
          return ERR::Okay;
       }
       else return ERR::FieldNotSet;
    }
-   else if ((*Value = pf::strclone(Self->Statement.c_str()))) return ERR::Okay;
+   else if ((*Value = kt::strclone(Self->Statement.c_str()))) return ERR::Okay;
    else return ERR::AllocMemory;
 }
 
@@ -1089,7 +1092,7 @@ Duplicate variable names are not removed.
 
 *********************************************************************************************************************/
 
-static ERR GET_Variables(extXQuery *Self, pf::vector<std::string> **Value)
+static ERR GET_Variables(extXQuery *Self, kt::vector<std::string> **Value)
 {
    if (not Self->initialised()) return ERR::NotInitialised;
 
@@ -1149,7 +1152,7 @@ static ERR add_xquery_class(void)
       fl::BaseClassID(CLASSID::XQUERY),
       fl::ClassVersion(VER_XQUERY),
       fl::Name("XQuery"),
-      fl::FileExtension("*.xqm|*.xq"),
+      fl::FileExtension("xqm|xq"),
       fl::FileDescription("XQuery Module"),
       fl::Icon("filetypes/xml"),
       fl::Category(CCF::DATA),

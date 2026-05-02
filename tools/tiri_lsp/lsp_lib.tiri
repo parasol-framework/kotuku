@@ -90,7 +90,7 @@ global function getLine(Doc:table, LineNo:num):str
    if LineNo < 0 or LineNo >= total_lines then return '' end
 
    idx = LineNo * 2
-   return Doc.content:substr(Doc.lineIndex[idx], Doc.lineIndex[idx + 1])
+   return Doc.content:substr(Doc.lineIndex[idx], Doc.lineIndex[idx + 1] + 1)
 end
 
 -- Mark line N and subsequent lines for recomputation.  Currently we are very lazy about this...
@@ -208,6 +208,13 @@ global FLUID_OPERATORS = {
 -- Built-in constants
 global FLUID_CONSTANTS = {
    ['true'] = true, ['false'] = true, ['nil'] = true
+}
+
+-- Parser intrinsic annotations that can be used as expressions.
+global FLUID_PARSER_ANNOTATIONS = {
+   ['FunctionName'] = true,
+   ['SourceFile'] = true,
+   ['SourceLine'] = true
 }
 
 -- Built-in functions (default library)
@@ -433,10 +440,13 @@ global function computeDiagnostics(Doc:table)
    return { uri = Doc.uri, version = Doc.version, diagnostics = lsp_diags }
 end
 
-   import './lsp_parsing'
-   import './lsp_handlers'
    import './lsp_cache'
    import './lsp_hover'
+   import './lsp_definition'
+   import './lsp_signature'
+   import './lsp_parsing'
+   import './lsp_symbols'
+   import './lsp_handlers'
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Public API
@@ -453,7 +463,20 @@ global function lspInitDocs(DocPath)
    end
 
    -- Load static definitions (builtins, keywords)
-   defsPath = glSelf.workingPath .. 'lsp_defs.tiri'
+   defsPath = nil
+   try
+      defsPath = glSelf.workingPath .. 'lsp_defs.tiri'
+   end
+   if not defsPath or mSys.AnalysePath(defsPath) != ERR_Okay then
+      try
+         defsPath = glSelf.workingPath .. '../lsp_defs.tiri'
+      except ex
+         defsPath = nil
+      end
+   end
+   if not defsPath or mSys.AnalysePath(defsPath) != ERR_Okay then
+      defsPath = 'sdk:tools/tiri_lsp/lsp_defs.tiri'
+   end
    local result
    try
       result = loadFile(defsPath)
@@ -483,42 +506,71 @@ global function lspInitDocs(DocPath)
    return glDocCache != nil
 end
 
+function runStdioServer(Self:table)
+   input = Self.stdioInput or io.input()
+   output = Self.stdioOutput or io.output()
+   stdio_state = {}
+   disconnected = false
+
+   client = {
+      _state = function()
+         return stdio_state
+      end,
+      acWrite = function(Data)
+         output:write(Data)
+         output:flush()
+         return ERR_Okay
+      end,
+      acDeactivate = function()
+         disconnected = true
+         stdio_state.should_disconnect = true
+         return ERR_Okay
+      end
+   }
+
+   Self._stdioClient = client
+
+   logMessage(Self, 'Tiri LSP Server using stdio')
+   if Self.verbose then
+      logMessage(Self, 'Verbose logging enabled')
+   end
+
+   while not disconnected do
+      data = input:read(8192)
+      if not data then
+         logVerbose(Self, 'Stdio input closed')
+         break
+      end
+
+      processIncomingData(Self, client, data)
+
+      if stdio_state.should_disconnect then
+         break
+      end
+   end
+end
+
 global function lspStart(Options)
    Options ?= {}
 
-   self.port       = Options.port or 5007
-   self.verbose    = Options.verbose or false
-   self.logMessage = Options.logMessage or function(msg) print(msg) end
-   self.requestLog = Options.requestLog  -- Optional request/response logging callback
-   self._socket    = nil
-   self._handlers  = {}
+   self.port            = Options.port or 5007
+   self.verbose         = Options.verbose or false
+   self.logMessage      = Options.logMessage or function(msg) print(msg) end
+   self.requestLog      = Options.requestLog  -- Optional request/response logging callback
+   self.stdioInput      = Options.stdioInput
+   self.stdioOutput     = Options.stdioOutput
+   self.stdioTextOutput = false
+   self._socket         = nil
+   self._stdioClient    = nil
+   self._handlers       = {}
 
    registerCoreHandlers(self)
 
-   logMessage(self, 'Starting Tiri LSP Server on port ' .. self.port)
-
-   -- Create TCP server socket
-   self._socket = obj.new('netsocket', {
-      port = self.port,
-      flags = 'SERVER|MULTI_CONNECT',
-      feedback = function(Server, ClientSocket, State)
-         if State is NTC_CONNECTED then
-            logMessage(self, 'LSP client connected')
-         elseif State is NTC_DISCONNECTED then
-            logMessage(self, 'LSP client disconnected')
-         end
-      end,
-      incoming = function(Server, ClientSocket)
-         processIncoming(self, ClientSocket)
-      end
-   })
-
-   logMessage(self, 'Tiri LSP Server listening on port ' .. self.port)
-   if self.verbose then
-      logMessage(self, 'Verbose logging enabled')
+   self.registerHandler = function(Method, Handler)
+      assert(type(Handler) is 'function', 'Handler must be a function')
+      self._handlers[Method] = Handler
+      logVerbose(self, 'Registered handler for: ' .. Method)
    end
-
-   -- Public methods
 
    self.stop = function()
       if self._socket then
@@ -526,12 +578,39 @@ global function lspStart(Options)
          self._socket = nil
          processing.collect()
       end
+      if self._stdioClient then
+         logMessage(self, 'Stopping stdio LSP server')
+         self._stdioClient.acDeactivate()
+         self._stdioClient = nil
+      end
    end
 
-   self.registerHandler = function(Method, Handler)
-      assert(type(Handler) is 'function', 'Handler must be a function')
-      self._handlers[Method] = Handler
-      logVerbose(self, 'Registered handler for: ' .. Method)
+   if self.port is 0 then
+      self.stdioTextOutput = true
+      runStdioServer(self)
+   else
+      logMessage(self, 'Starting Tiri LSP Server on port ' .. self.port)
+
+      -- Create TCP server socket
+      self._socket = obj.new('netsocket', {
+         port = self.port,
+         flags = 'SERVER|MULTI_CONNECT',
+         feedback = function(Server, ClientSocket, State)
+            if State is NTC_CONNECTED then
+               logMessage(self, 'LSP client connected')
+            elseif State is NTC_DISCONNECTED then
+               logMessage(self, 'LSP client disconnected')
+            end
+         end,
+         incoming = function(Server, ClientSocket)
+            processIncoming(self, ClientSocket)
+         end
+      })
+
+      logMessage(self, 'Tiri LSP Server listening on port ' .. self.port)
+      if self.verbose then
+         logMessage(self, 'Verbose logging enabled')
+      end
    end
 
    return self

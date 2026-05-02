@@ -1,6 +1,6 @@
 
-local rx_split_header_lines = <{ regex.new([[([^\r\n]+)]]) }>
-local rx_header_value = <{ regex.new([[([^:]+):\s*(.+)]]) }>
+rx_split_header_lines = <{ regex.new([[([^\r\n]+)]]) }>
+rx_header_value = <{ regex.new([[([^:]+):\s*(.+)]]) }>
 
 function makeErrorResponse(Id:num, Code:num, Message:str):table
    return {
@@ -24,6 +24,11 @@ end
 
 function parseHeader(Buffer:str):<str,num,str>
    header_end = Buffer:find('\r\n\r\n')
+   separator_len = 4
+   if not header_end then
+      header_end = Buffer:find('\n\n')
+      separator_len = 2
+   end
    header_end ?? return nil, nil, nil  -- Need more data
    header_section = Buffer:sub(0, header_end)
    content_length = nil
@@ -38,7 +43,7 @@ function parseHeader(Buffer:str):<str,num,str>
    end
 
    content_length ?? return nil, nil, 'Missing Content-Length header'
-   return content_length, header_end + 4, nil  -- +4 for \r\n\r\n
+   return content_length, header_end + separator_len, nil
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -60,17 +65,19 @@ function parseMessage(JsonBody)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Response Formatting
+-- Response Formatting: LSP framing is not platform-specific.  The spec requires headers terminated with \r\n, with
+-- the header/body separator effectively \r\n\r\n, regardless of Windows/Linux/macOS. Source: Microsoft LSP 3.17
+-- base protocol, https://github.com/Microsoft/language-server-protocol/blob/gh-pages/_specifications/lsp/3.17/specification.md
 
-function formatResponse(ResponseTable:table):str
+function formatResponse(ResponseTable:table, TextOutput:bool):str
    body = json.encode(ResponseTable)
    return 'Content-Length: ' .. #body .. '\r\n\r\n' .. body
 end
 
-global function sendResponse(Self, ClientSocket, ResponseTable, RequestLog)
+global function sendResponse(Self:table, ClientSocket, ResponseTable, RequestLog)
    ResponseTable ?? return -- Notifications don't get responses
 
-   formatted = formatResponse(ResponseTable)
+   formatted = formatResponse(ResponseTable, Self.stdioTextOutput)
    err = ClientSocket.acWrite(formatted)
    if err != ERR_Okay then
       logMessage(Self, 'Failed to send response: ' .. mSys.GetErrorMsg(err))
@@ -87,13 +94,13 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Send an LSP notification (no response expected)
 
-global function sendNotification(Self, ClientSocket, Method, Params)
+global function sendNotification(Self:table, ClientSocket:obj, Method, Params)
    notification = {
       jsonrpc = '2.0',
       method = Method,
       params = Params
    }
-   formatted = formatResponse(notification)
+   formatted = formatResponse(notification, Self.stdioTextOutput)
    err = ClientSocket.acWrite(formatted)
    if err != ERR_Okay then
       logMessage(Self, 'Failed to send notification: ' .. mSys.GetErrorMsg(err))
@@ -142,12 +149,11 @@ function dispatchMethod(Self:table, Message:table, State:table)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Incoming Data Handler
+-- Incoming Data Handling
 
-global function processIncoming(Self:table, ClientSocket)
+function initClientState(Self:table, ClientSocket:obj)
    state = ClientSocket._state()
 
-   -- Initialize state on first call
    if not state.initialised then
       state.buffer             = ''
       state.phase              = 'READING_HEADER'
@@ -160,22 +166,17 @@ global function processIncoming(Self:table, ClientSocket)
       logVerbose(Self, 'New client connection initialized')
    end
 
-   -- Read available data
-   buffer = string.alloc(8192)
-   err, bytes_read = ClientSocket.acRead(buffer, 8192)
+   return state
+end
 
-   if err != ERR_Okay then
-      if err != ERR_Disconnected then
-         logMessage(Self, 'Read error: ' .. mSys.GetErrorMsg(err))
-      end
-      return
-   end
+global function processIncomingData(Self:table, ClientSocket:obj, Data:str)
+   state = initClientState(Self, ClientSocket)
 
-   if bytes_read is 0 then return end
+   if not Data or #Data is 0 then return end
 
    -- Accumulate data
-   state.buffer ..= buffer:sub(0, bytes_read)
-   logVerbose(Self, 'Received ' .. bytes_read .. ' bytes, buffer now ' .. #state.buffer .. ' bytes')
+   state.buffer ..= Data
+   logVerbose(Self, 'Received ' .. #Data .. ' bytes, buffer now ' .. #state.buffer .. ' bytes')
 
    -- Process messages in a loop (may have multiple messages in buffer)
    while #state.buffer > 0 do
@@ -232,4 +233,23 @@ global function processIncoming(Self:table, ClientSocket)
          end
       end
    end
+end
+
+global function processIncoming(Self:table, ClientSocket:obj)
+   state = initClientState(Self, ClientSocket)
+
+   -- Read available data
+   buffer = string.alloc(8192)
+   err, bytes_read = ClientSocket.acRead(buffer, 8192)
+
+   if err != ERR_Okay then
+      if err != ERR_Disconnected then
+         logMessage(Self, 'Read error: ' .. mSys.GetErrorMsg(err))
+      end
+      return
+   end
+
+   if bytes_read is 0 then return end
+
+   processIncomingData(Self, ClientSocket, buffer:sub(0, bytes_read))
 end

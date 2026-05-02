@@ -3,22 +3,22 @@
 //
 // #included from ir_emitter.cpp
 
-constexpr auto HASH_ASSERT  = pf::strhash("assert");
-constexpr auto HASH_MSG     = pf::strhash("msg");
-constexpr auto HASH_INCLUDE = pf::strhash("include");
+constexpr auto HASH_ASSERT  = kt::strhash("assert");
+constexpr auto HASH_MSG     = kt::strhash("msg");
+constexpr auto HASH_INCLUDE = kt::strhash("include");
 
 // Known C library interface hashes - warnings for missing prototypes only apply to these
 
 static constexpr uint32_t KNOWN_C_INTERFACES[] = {
-   pf::strhash("obj"),
-   pf::strhash("string"),
-   pf::strhash("math"),
-   pf::strhash("table"),
-   pf::strhash("bit"),
-   pf::strhash("jit"),
-   pf::strhash("debug"),
-   pf::strhash("array"),
-   pf::strhash("range")
+   kt::strhash("obj"),
+   kt::strhash("string"),
+   kt::strhash("math"),
+   kt::strhash("table"),
+   kt::strhash("bit"),
+   kt::strhash("jit"),
+   kt::strhash("debug"),
+   kt::strhash("array"),
+   kt::strhash("range")
 };
 
 static bool is_known_c_interface(uint32_t Hash) {
@@ -257,7 +257,7 @@ ParserResult<ExpDesc> IrEmitter::emit_safe_call_expr(const CallExprPayload &Payl
 
 ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    // We save lastline here before it gets overwritten by processing sub-expressions.
    BCLine call_line = this->lex_state.lastline;

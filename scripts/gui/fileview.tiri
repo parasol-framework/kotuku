@@ -215,7 +215,7 @@ function getFilters(self):array
    if self.filterList then
       for filter in values(self.filterList) do
          if filter.selected then
-            if type(filter.ext) is 'table' then
+            if type(filter.ext) is 'table' or type(filter.ext) is 'array' then
                for ext in values(filter.ext) do
                   self._filters:push(ext)
                end
@@ -242,8 +242,9 @@ function filterCheck(self:table, Filename:str)
    Filename = Filename:lower()
    filters = getFilters(self)
    if #filters is 0 then return true end
-   for f in values(filters) do
-      if Filename:endsWith(f) then return true end
+   for ext in values(filters) do
+      if not ext:startsWith('.') then ext = '.' .. ext end
+      if Filename:endsWith(ext) then return true end
    end
    return false
 end
@@ -317,10 +318,12 @@ function displayFilters(self)
                if ev.flags has JTYPE_BUTTON then
                   if ev.type is JET_BUTTON_1 and ev.value is 1 then
                      if item.selected then
-                        item.highlight.visibility = VIS_HIDDEN
-                        item.selected = false
-                        item.txt.fill = self.theme.page.text
-                        self._filters = nil
+                        if (not self.strictFilter) or (selectedFilters(self) > 1) then
+                           item.highlight.visibility = VIS_HIDDEN
+                           item.selected = false
+                           item.txt.fill = self.theme.page.text
+                           self._filters = nil
+                        end
                      else
                         item.highlight.visibility = VIS_VISIBLE
                         item.selected = true
@@ -563,6 +566,7 @@ gui.fileview = function(Options)
       hideFiles      = Options.hideFiles,
       pathChanged    = Options.pathChanged,
       filterList     = Options.filterList,
+      strictFilter   = Options.strictFilter,
       theme          = nil -- Determined by target viewport
    }
 
@@ -591,7 +595,8 @@ gui.fileview = function(Options)
       if self.path then return end
 
       if not findItem(Info.name) then -- Add missing volume
-         err, info = mSys.GetFileInfo(Info.name .. ':')
+         info = struct.new('FileInfo')
+         err = mSys.GetFileInfo(Info.name .. ':', info)
          if (err is ERR_Okay) and not (info.flags has RDF_HIDDEN) then
             addFileItem(self, info)
             self.view.sort()
@@ -615,6 +620,7 @@ gui.fileview = function(Options)
          end
       end
 
+      msg('deleteItem() File not found: ' .. File)
       return false
    end
 
@@ -740,7 +746,7 @@ gui.fileview = function(Options)
       if sort then self.view.sort() end
    end
 
-   function pathWatch(MonitoredFile, Path, Custom, Flags)
+   function pathWatch(MonitoredFile, Path, Flags)
       if self.inRefresh then return end
 
       if Flags is 0 then -- No flags means a change has occurred but the host is unable to tell us what happened.
@@ -763,7 +769,8 @@ gui.fileview = function(Options)
 
       local info, info_err
       if not (Flags has MFF_DELETE) then
-         info_err, info = mSys.GetFileInfo(self.path .. (Path ?? ''))
+         info = struct.new('FileInfo')
+         info_err = mSys.GetFileInfo(self.path .. Path, info)
          if info_err is ERR_Okay then
             if self.hideFiles and (info.Flags has RDF_FILE) then return end
             -- Use the true file name with the trailing slash if it is a folder (important
@@ -981,7 +988,7 @@ gui.fileview = function(Options)
          msg(f'Monitor path "{self.path}"')
          try
             self.watch = obj.new('file', { path = self.path })
-            if self.watch.mtWatch(pathWatch, 0, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED) != ERR_Okay then
+            if self.watch.mtWatch(pathWatch, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED) != ERR_Okay then
                self.watch = nil
                local err
                err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
@@ -1073,7 +1080,8 @@ gui.fileview = function(Options)
                   path = f'{self.path}{State.input}/'
                   if mSys.CreateFolder(path, 0) is ERR_Okay then
                      if not self.watch then
-                        err, info = mSys.GetFileInfo(path)
+                        info = struct.new('FileInfo')
+                        err = mSys.GetFileInfo(path, info)
                         if err is ERR_Okay then
                            addFileItem(self, info)
                            self.view.sort()
@@ -1254,7 +1262,7 @@ gui.fileview = function(Options)
    -- If the source has slow read access, system messages are processsed at regular intervals.
    -- See also incrementalRefresh()
 
-   function refreshFiles()
+   function refreshFiles():bool
       msg('refreshFiles() ' .. (self.path ?? 'ROOT') .. ' [Limited Logging]')
 
       self._file_table = { }
@@ -1263,35 +1271,34 @@ gui.fileview = function(Options)
       flags     = RDF_READ_ALL|RDF_TAGS
       if self.hideFiles then flags = flags & bit.bxor(RDF_FILE) end
       err, dir_info = mSys.OpenDir(self.path ?? ':', flags)
-      if err is ERR_Okay then
-         mSys.AdjustLogLevel(1)
+      if err != ERR_Okay then return false end
 
-            items = { }
-            while mSys.ScanDir(dir_info) is ERR_Okay do
-               if self.path != orig_path then -- Sanity check in case the user changes the path
-                  mSys.AdjustLogLevel(-1)
-                  return true
-               end
-
-               item = createFileItem(self, dir_info.info)
-               if item then table.insert(items, item) end
-
-               current_time = mSys.PreciseTime()
-               if current_time - msg_time > 20000 then
-                  if #items > 1 then
-                     self.view.addItems(items)
-                     items = { }
-                  end
-                  msg_time = current_time
-                  processing.sleep(0)
-               end
-            end
-
-            if #items > 0 then self.view.addItems(items) end
-
+      mSys.AdjustLogLevel(1)
+      defer()
          mSys.AdjustLogLevel(-1)
       end
 
+      items = array<table> { }
+      while mSys.ScanDir(dir_info) is ERR_Okay do
+         if self.path != orig_path then -- Sanity check in case the user changes the path
+            return true
+         end
+
+         item = createFileItem(self, dir_info.info)
+         if item then items:push(item) end
+
+         current_time = mSys.PreciseTime()
+         if current_time - msg_time > 20000 then
+            if #items > 1 then
+               self.view.addItems(items)
+               items = array<table> { }
+            end
+            msg_time = current_time
+            processing.sleep(0)
+         end
+      end
+
+      if #items > 0 then self.view.addItems(items) end
       return false
    end
 
@@ -1322,9 +1329,9 @@ gui.fileview = function(Options)
    function activateFile(self:table, Item:table)
       if lOptions.autoMode and Item then
          choose lOptions.autoMode from
-            'open' -> openFiles({ Item }, 'Open')
-            'edit' -> openFiles({ Item }, 'Edit')
-            'view' -> openFiles({ Item }, 'View')
+            'open' -> openFiles(array<table> { Item }, 'Open')
+            'edit' -> openFiles(array<table> { Item }, 'Edit')
+            'view' -> openFiles(array<table> { Item }, 'View')
          end
       end
 
@@ -1738,7 +1745,7 @@ gui.fileview = function(Options)
    if not self.watch and self.path?? and self.path != ':' then
       try
          self.watch = obj.new('file', { path = self.path })
-         self.watch.mtWatch(pathWatch, 0, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED)
+         self.watch.mtWatch(pathWatch, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED)
       except ex -- Some systems don't support path watching
          self.watch = nil
          err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)

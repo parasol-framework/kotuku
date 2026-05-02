@@ -231,7 +231,7 @@ InvalidState: The `LINEAR` flag was used when at least one bitmap is using a lin
 
 uint8_t validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
 {
-   pf::Log log(Header);
+   kt::Log log(Header);
 
 #ifndef NDEBUG // Force break if clipping is wrong (use gdb)
    if (((Bitmap->Clip.Right) > Bitmap->Width) or
@@ -278,7 +278,7 @@ uint8_t validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
 
 ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Width, int Height, int DestX, int DestY)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    RGB8 pixel, srgb;
    uint8_t *srctable, *desttable;
    int i;
@@ -1165,7 +1165,7 @@ static uint32_t read_surface32(BITMAPSURFACE *Surface, int16_t X, int16_t Y)
 ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap, CSRF Flags, int X, int Y, int Width, int Height,
    int XDest, int YDest)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    RGB8 pixel, src;
    uint8_t *srctable, *desttable;
    int i;
@@ -1556,7 +1556,7 @@ int(BAF) Flags: Use `FILL` to fill the rectangle.
 
 void DrawRectangle(objBitmap *Target, int X, int Y, const int Width, const int Height, uint32_t Colour, BAF Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    uint8_t *data;
    uint16_t *word;
    uint32_t *longdata;

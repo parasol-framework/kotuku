@@ -20,7 +20,7 @@ using namespace display;
 // Class definition at end of this source file.
 
 static ERR DISPLAY_Resize(extDisplay *, struct acResize *);
-static CSTRING dpms_name(DPMS Index);
+[[maybe_unused]] static CSTRING dpms_name(DPMS Index);
 
 static void alloc_display_buffer(extDisplay *Self);
 
@@ -75,7 +75,7 @@ static const CSTRING names[] = {
 
 static void printConfig(EGLDisplay display, EGLConfig config) __attribute__ ((unused));
 static void printConfig(EGLDisplay display, EGLConfig config) {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    int value[1];
 
    log.branch();
@@ -108,13 +108,13 @@ static void update_displayinfo(extDisplay *Self)
 
 void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, int X, int Y, int Width, int Height)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.traceBranch("%dx%d, %dx%d", X, Y, Width, Height);
 
    if (Feedback->isC()) {
       auto routine = (ERR (*)(OBJECTID, int, int, int, int, APTR))Feedback->Routine;
-      pf::SwitchContext ctx(Feedback->Context);
+      kt::SwitchContext ctx(Feedback->Context);
       routine(DisplayID, X, Y, Width, Height, Feedback->Meta);
    }
    else if (Feedback->isScript()) {
@@ -165,7 +165,7 @@ static ERR DISPLAY_CheckXWindow(extDisplay *Self)
    XTranslateCoordinates(XDisplay, Self->XWindowHandle, DefaultRootWindow(XDisplay), 0, 0, &absx, &absy, &childwin);
 
    if ((Self->X != absx) or (Self->Y != absy)) {
-      pf::Log log;
+      kt::Log log;
       log.msg("Repairing coordinates, pos is %dx%d, was %dx%d", absx, absy, Self->X, Self->Y);
 
       Self->X = absx;
@@ -207,7 +207,7 @@ DataFeed: Declared for internal purposes - do not call.
 
 static ERR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -240,7 +240,7 @@ static ERR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
          auto result = xml.str();
          dc.Object   = Self;
          dc.Datatype = DATA::RECEIPT;
-         dc.Buffer   = pf::strclone(result);
+         dc.Buffer   = kt::strclone(result);
          dc.Size     = result.size() + 1;
          Action(AC::DataFeed, Args->Object, &dc);
       }
@@ -318,7 +318,7 @@ static ERR DISPLAY_Flush(extDisplay *Self)
 
 static ERR DISPLAY_Focus(extDisplay *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.traceBranch();
 #ifdef _WIN32
@@ -333,7 +333,7 @@ static ERR DISPLAY_Focus(extDisplay *Self)
 
 static ERR DISPLAY_Free(extDisplay *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((Self->Flags & SCR::AUTO_SAVE) != SCR::NIL) {
       log.trace("Autosave enabled.");
@@ -404,12 +404,12 @@ GetKey: Retrieve formatted information from the display.
 
 static ERR DISPLAY_GetKey(extDisplay *Self, struct acGetKey *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Key) or (!Args->Value)) return log.warning(ERR::NullArgs);
    if (Args->Size < 1) return log.warning(ERR::Args);
 
-   if (pf::startswith("resolution(", Args->Key)) {
+   if (kt::startswith("resolution(", Args->Key)) {
       // Field is in the format:  Resolution(Index, Format) Where 'Format' contains % symbols to indicate variable references.
 
       CSTRING str = Args->Key + 11;
@@ -442,7 +442,7 @@ static ERR DISPLAY_GetKey(extDisplay *Self, struct acGetKey *Args)
                str += 2;
             }
          }
-         pf::strcopy(out.str(), Args->Value, Args->Size);
+         kt::strcopy(out.str(), Args->Value, Args->Size);
 
          return ERR::Okay;
       }
@@ -463,7 +463,7 @@ displays available then the user's viewport will be blank after calling this act
 
 static ERR DISPLAY_Hide(extDisplay *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
 
@@ -497,7 +497,7 @@ static ERR DISPLAY_Hide(extDisplay *Self)
 
 static ERR DISPLAY_Init(extDisplay *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    #ifdef __xwindows__
       // Figure out how many bits and bytes are used per pixel on this XDisplay
@@ -890,7 +890,7 @@ Okay
 
 static ERR DISPLAY_Minimise(extDisplay *Self)
 {
-   pf::Log log;
+   kt::Log log;
    log.branch();
 #ifdef _WIN32
    winMinimiseWindow(Self->WindowHandle);
@@ -933,7 +933,7 @@ Move: Move the display to a new display position (relative coordinates).
 
 static ERR DISPLAY_Move(extDisplay *Self, struct acMove *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return ERR::NullArgs;
 
@@ -978,7 +978,7 @@ MoveToBack: Move the display to the back of the display list.
 
 static ERR DISPLAY_MoveToBack(extDisplay *Self)
 {
-   pf::Log log;
+   kt::Log log;
    log.branch("%s", Self->Name);
 
 #ifdef _WIN32
@@ -998,7 +998,7 @@ MoveToFront: Move the display to the front of the display list.
 
 static ERR DISPLAY_MoveToFront(extDisplay *Self)
 {
-   pf::Log log;
+   kt::Log log;
    log.branch("%s", Self->Name);
 #ifdef _WIN32
    winMoveToFront(Self->WindowHandle);
@@ -1028,7 +1028,7 @@ unavailable.
 
 static ERR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return ERR::NullArgs;
 
@@ -1163,7 +1163,7 @@ If the display is hosted, the Width and Height values will determine the size of
 
 static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
 
@@ -1278,7 +1278,7 @@ SaveSettings: Saves the current display settings as the default.
 
 static ERR DISPLAY_SaveSettings(extDisplay *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
 #ifdef __xwindows__
 
@@ -1427,7 +1427,7 @@ Failed: Failed to switch to the requested display mode.
 
 static ERR DISPLAY_SetDisplay(extDisplay *Self, gfx::SetDisplay *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -1529,7 +1529,7 @@ NoSupport: The graphics hardware does not support gamma correction.
 static ERR DISPLAY_SetGamma(extDisplay *Self, gfx::SetGamma *Args)
 {
 #ifdef __snap__
-   pf::Log log;
+   kt::Log log;
    GA_palette palette[256];
    double intensity, red, green, blue;
 
@@ -1591,7 +1591,7 @@ NullArgs:
 static ERR DISPLAY_SetGammaLinear(extDisplay *Self, gfx::SetGammaLinear *Args)
 {
 #ifdef __snap__
-   pf::Log log;
+   kt::Log log;
    GA_palette palette[256];
 
    if (!Args) return log.warning(ERR::NullArgs);
@@ -1669,7 +1669,7 @@ NullArgs
 static ERR DISPLAY_SetMonitor(extDisplay *Self, gfx::SetMonitor *Args)
 {
 #ifdef __snap__
-   pf::Log log;
+   kt::Log log;
    OBJECTPTR config;
    GA_monitor monitor;
    ERR priverror;
@@ -1777,7 +1777,7 @@ The `VISIBLE` flag in the #Flags field will be set if the Show operation is succ
 
 ERR DISPLAY_Show(extDisplay *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
 
@@ -1890,7 +1890,7 @@ NullArgs
 
 static ERR DISPLAY_UpdatePalette(extDisplay *Self, gfx::UpdatePalette *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->NewPalette)) return ERR::NullArgs;
 
@@ -1999,7 +1999,7 @@ ERR GET_HDensity(extDisplay *Self, int *Value)
 
    OBJECTID style_id;
    if (FindObject("glStyle", CLASSID::XML, FOF::NIL, &style_id) IS ERR::Okay) {
-      pf::ScopedObjectLock<objXML> style(style_id, 3000);
+      kt::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
          if (acGetKey(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi)) IS ERR::Okay) {
@@ -2069,7 +2069,7 @@ ERR GET_VDensity(extDisplay *Self, int *Value)
 
    OBJECTID style_id;
    if (FindObject("glStyle", CLASSID::XML, FOF::NIL, &style_id) IS ERR::Okay) {
-      pf::ScopedObjectLock<objXML> style(style_id, 3000);
+      kt::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
          if (acGetKey(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi)) IS ERR::Okay) {
@@ -2156,7 +2156,7 @@ Optional display flags can be defined here.  Post-initialisation, the only flags
 
 static ERR SET_Flags(extDisplay *Self, SCR Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->initialised()) {
       // Only flags that are explicitly supported here may be set post-initialisation.
@@ -2485,7 +2485,7 @@ output device.
 
 static ERR SET_PopOver(extDisplay *Self, OBJECTID Value)
 {
-   pf::Log log;
+   kt::Log log;
 
 #ifdef __xwindows__
 
@@ -2763,7 +2763,7 @@ static ERR SET_Y(extDisplay *Self, int Value)
 
 void alloc_display_buffer(extDisplay *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    log.branch("Allocating a video based buffer bitmap.");
 
@@ -2834,7 +2834,7 @@ static const FieldArray DisplayFields[] = {
 
 //********************************************************************************************************************
 
-CSTRING dpms_name(DPMS Index)
+static CSTRING dpms_name(DPMS Index)
 {
    return clDisplayPowerMode[int(Index)].Name;
 }

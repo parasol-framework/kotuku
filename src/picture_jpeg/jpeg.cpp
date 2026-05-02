@@ -132,8 +132,7 @@ typedef kotuku_destination_mgr *kotuku_dest_ptr;
 METHODDEF(void) init_kotuku_destination(j_compress_ptr cinfo) {
    kotuku_dest_ptr dest = (kotuku_dest_ptr)cinfo->dest;
    dest->buffer = (JOCTET *)
-      (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_IMAGE,
-                                OUTPUT_BUF_SIZE * sizeof(JOCTET));
+      (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_IMAGE, OUTPUT_BUF_SIZE * sizeof(JOCTET));
    dest->pub.next_output_byte = dest->buffer;
    dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
 }
@@ -185,7 +184,7 @@ static void jpeg_kotuku_dest(j_compress_ptr cinfo, objFile *outfile) {
 
 static ERR JPEG_Activate(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
    struct jpeg_decompress_struct cinfo;
    struct jpeg_error_mgr jerr;
 
@@ -256,7 +255,7 @@ static ERR JPEG_Activate(extPicture *Self)
 
 static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_decompress_struct *Cinfo)
 {
-   pf::Log log;
+   kt::Log log;
    RGB8 rgb;
 
    jpeg_start_decompress(Cinfo);
@@ -307,7 +306,7 @@ static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 
 static ERR JPEG_Init(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
    uint8_t *buffer;
    CSTRING path = nullptr;
 
@@ -345,7 +344,7 @@ static ERR JPEG_Init(extPicture *Self)
 
 static ERR JPEG_Query(extPicture *Self)
 {
-   pf::Log log;
+   kt::Log log;
    struct jpeg_decompress_struct *cinfo;
    struct jpeg_error_mgr jerr;
 
@@ -389,7 +388,7 @@ static ERR JPEG_Query(extPicture *Self)
 
 static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
 
@@ -477,8 +476,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       fl::ClassID(CLASSID::JPEG),
       fl::Name("JPEG"),
       fl::Category(CCF::GRAPHICS),
-      fl::FileExtension("*.jpeg|*.jpeg|*.jfif"),
-      fl::FileDescription("JPEG Picture"),
+      fl::FileExtension("jpeg|jpg|jfif"),
+      fl::FileDescription("JPEG Image"),
       fl::FileHeader("[0:$ffd8ffe0]|[0:$ffd8ffe1]|[0:$ffd8fffe]"),
       fl::Actions(clActions),
       fl::Path(MOD_PATH));

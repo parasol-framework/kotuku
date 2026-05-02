@@ -319,7 +319,7 @@ std::string ParserContext::describe_token(const Token &Token) const
 
 void ParserContext::log_trace(ParserChannel Channel, const Token &Token, std::string_view Note) const
 {
-   pf::Log log("Parser");
+   kt::Log log("Parser");
 
    std::string name = this->describe_token(Token);
    BCLine line = Token.span().line;

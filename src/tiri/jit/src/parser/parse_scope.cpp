@@ -24,7 +24,7 @@ static int is_blank_identifier(GCstr *name)
 
 void LexState::var_new(BCREG n_unused, GCstr *name, BCLine Line, BCLine Column)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    FuncState *fs = this->fs;
    MSize vtop = this->vtop;

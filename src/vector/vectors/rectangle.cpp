@@ -26,8 +26,8 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
 
    if (dmf::hasY(Vector->rDimensions)) y = Vector->rY;
    else if (dmf::hasScaledY(Vector->rDimensions)) y = Vector->rY * get_parent_height(Vector);
-   else if ((dmf::hasAnyWidth(Vector->rDimensions)) and (dmf::hasAnyYOffset(Vector->rDimensions))) {
-      if (dmf::hasWidth(Vector->rDimensions)) height = Vector->rHeight;
+   else if ((dmf::hasAnyHeight(Vector->rDimensions)) and (dmf::hasAnyYOffset(Vector->rDimensions))) {
+      if (dmf::hasHeight(Vector->rDimensions)) height = Vector->rHeight;
       else height = get_parent_height(Vector) * Vector->rHeight;
 
       if (dmf::hasYOffset(Vector->rDimensions)) y = get_parent_height(Vector) - height - Vector->rYOffset;
@@ -174,7 +174,7 @@ Move: Moves the vector to a new position.
 
 static ERR RECTANGLE_Move(extVectorRectangle *Self, struct acMove *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -192,7 +192,7 @@ MoveToPoint: Moves the vector to a new fixed position.
 
 static ERR RECTANGLE_MoveToPoint(extVectorRectangle *Self, struct acMoveToPoint *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -220,7 +220,7 @@ Resize: Changes the rectangle dimensions.
 
 static ERR RECTANGLE_Resize(extVectorRectangle *Self, struct acResize *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -420,8 +420,8 @@ static ERR RECTANGLE_GET_XOffset(extVectorRectangle *Self, Unit *Value)
    }
    else if ((dmf::hasAnyX(Self->rDimensions)) and (dmf::hasAnyWidth(Self->rDimensions))) {
       double width;
-      if (dmf::hasWidth(Self->rDimensions)) width = Self->rHeight;
-      else width = get_parent_width(Self) * Self->rHeight;
+      if (dmf::hasWidth(Self->rDimensions)) width = Self->rWidth;
+      else width = get_parent_width(Self) * Self->rWidth;
 
       if (dmf::hasX(Self->rDimensions)) value = get_parent_width(Self) - (Self->rX + width);
       else value = get_parent_width(Self) - ((Self->rX * get_parent_width(Self)) + width);

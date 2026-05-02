@@ -14,7 +14,7 @@ class extOffsetFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::OFFSETFX;
    static constexpr CSTRING CLASS_NAME = "OffsetFX";
-   using create = pf::Create<extOffsetFX>;
+   using create = kt::Create<extOffsetFX>;
 
    int XOffset, YOffset;
 };

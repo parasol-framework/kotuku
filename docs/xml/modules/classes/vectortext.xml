@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>Extends the Vector class with support for generating text.</comment>
     <version>1</version>
-    <id>51bb151d</id>
+    <id>8788bfaa</id>
     <idstring>VECTORTEXT</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>
@@ -36,6 +36,7 @@
       <name>DeleteLine</name>
       <comment>Deletes any line number.</comment>
       <prototype>ERR vt::DeleteLine(OBJECTPTR Object, INT Line)</prototype>
+      <tiriPrototype>err = DeleteLine(Line:num)</tiriPrototype>
       <input>
         <param type="INT" name="Line">The line number that you want to delete.  If negative, the last line will be deleted.</param>
       </input>

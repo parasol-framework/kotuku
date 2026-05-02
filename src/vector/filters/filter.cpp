@@ -38,6 +38,7 @@ struct target {
 };
 
 static ERR get_source_bitmap(extVectorFilter *, objBitmap **, VSF, objFilterEffect *, bool);
+static ERR get_banked_bitmap(extVectorFilter *, objBitmap **);
 
 //********************************************************************************************************************
 // Universal function for rendering a filter's Bitmap to the target region.
@@ -202,7 +203,7 @@ static void compute_target_area(extVectorFilter *Self)
 
 static ERR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto bi = Self->BankIndex;
    if (bi >= 255) return log.warning(ERR::ArrayFull);
@@ -232,11 +233,11 @@ static ERR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
 
 static ERR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VSF SourceType, objFilterEffect *Effect, bool Premultiply)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!BitmapResult) return log.warning(ERR::NullArgs);
 
-   pf::SwitchContext ctx(Self);
+   kt::SwitchContext ctx(Self);
 
    log.branch("%s #%d <- ID: #%u, Type: %d", Self->ActiveEffect->Class->ClassName, Self->ActiveEffect->UID, Effect ? Effect->UID : 0, int(SourceType));
 
@@ -342,7 +343,7 @@ static ERR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VS
 
 objBitmap * get_source_graphic(extVectorFilter *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Self->ClientVector) {
       log.warning("%s No ClientVector defined.", Self->ActiveEffect->Class->ClassName);
@@ -351,7 +352,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
 
    if (Self->Rendered) return Self->SourceGraphic; // Source bitmap already exists and drawn at the correct size.
 
-   pf::SwitchContext ctx(Self);
+   kt::SwitchContext ctx(Self);
 
    if (!Self->SourceGraphic) {
       // The BlendMode is set to SRGB for the sake of SVG compatibility.  Otherwise the use of filters
@@ -395,8 +396,14 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    if (Self->SourceGraphic->Clip.Right  > Self->SourceGraphic->Width)  Self->SourceGraphic->Clip.Right  = Self->SourceGraphic->Width;
 
    // These non-fatal clipping checks will trigger if vector bounds lie outside of the visible/drawable area.
-   if (Self->SourceGraphic->Clip.Top >= Self->SourceGraphic->Clip.Bottom) return nullptr;
-   if (Self->SourceGraphic->Clip.Left >= Self->SourceGraphic->Clip.Right) return nullptr;
+   if (Self->SourceGraphic->Clip.Top >= Self->SourceGraphic->Clip.Bottom) {
+      Self->SourceScene->Viewport->Child = save_child;
+      return nullptr;
+   }
+   if (Self->SourceGraphic->Clip.Left >= Self->SourceGraphic->Clip.Right) {
+      Self->SourceScene->Viewport->Child = save_child;
+      return nullptr;
+   }
 
    auto const save_vector = Self->ClientVector->Next; // Switch off the Next pointer to prevent processing of siblings.
    Self->ClientVector->Next = nullptr;
@@ -419,7 +426,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
 
 static ERR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    const double container_width  = Viewport->vpFixedWidth;
    const double container_height = Viewport->vpFixedHeight;
@@ -505,13 +512,13 @@ static ERR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, e
 
 ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector, objBitmap *BkgdBitmap, objBitmap **Output)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (!Vector) return log.warning(ERR::NullArgs);
    if (Self->Disabled) return ERR::NothingDone;
    if (!Self->Effects) return log.warning(ERR::UndefinedField);
 
-   pf::SwitchContext context(Self);
+   kt::SwitchContext context(Self);
 
    CSTRING filter_name = Self->Name;
    if ((!filter_name) or (!filter_name[0])) filter_name = "Unnamed";
@@ -558,7 +565,10 @@ ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector 
          e->Target = out;
       }
 
-      acDraw(e);
+      if (auto error = acDraw(e); error != ERR::Okay) {
+         Self->ActiveEffect = nullptr;
+         return error;
+      }
    }
    Self->ActiveEffect = nullptr;
 
@@ -588,7 +598,7 @@ Clear: Removes all filter effects.
 
 static ERR VECTORFILTER_Clear(extVectorFilter *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    log.branch();
    while (Self->Effects) FreeResource(Self->Effects);
@@ -616,7 +626,7 @@ static ERR VECTORFILTER_Free(extVectorFilter *Self)
 
 static ERR VECTORFILTER_Init(extVectorFilter *Self)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((int(Self->Units) <= 0) or (int(Self->Units) >= int(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
@@ -963,4 +973,3 @@ ERR init_filter(void)
 
    return clVectorFilter ? ERR::Okay : ERR::AddClass;
 }
-

@@ -247,7 +247,7 @@ extern struct CoreBase *CoreBase;
    OBJECTPTR file = NULL;
 
    {
-      pf::SwitchContext ctx(modFont);
+      kt::SwitchContext ctx(modFont);
       file = objFile::create::integral(fl::Name("FreetypeTTFile"), fl::Path(filepathname), fl::Flags(FL::READ));
    }
 

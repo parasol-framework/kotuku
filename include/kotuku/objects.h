@@ -73,7 +73,7 @@
 #define TAGDIVERT -1LL
 #define TSTRING   TSTR
 
-namespace pf {
+namespace kt {
 
 // FieldValue is used to simplify the initialisation of new objects.
 
@@ -275,7 +275,7 @@ struct Object { // Must be 64-bit aligned
    inline void pin() {
       #ifndef NDEBUG
       if (RefCount.load() >= 254) {
-         pf::Log("pin").warning("RefCount overflow risk for object #%d (%s), count: %d", UID, className(), RefCount.load());
+         kt::Log("pin").warning("RefCount overflow risk for object #%d (%s), count: %d", UID, className(), RefCount.load());
          DEBUG_BREAK
       }
       #endif
@@ -285,7 +285,7 @@ struct Object { // Must be 64-bit aligned
    inline void unpin(bool FreeIfReady = false) {
       #ifndef NDEBUG
       if (RefCount.load() IS 0) {
-         pf::Log("unpin").warning("Unbalanced unpin() on object #%d (%s) - RefCount is already 0.", UID, className());
+         kt::Log("unpin").warning("Unbalanced unpin() on object #%d (%s) - RefCount is already 0.", UID, className());
          DEBUG_BREAK
       }
       #endif
@@ -319,17 +319,17 @@ struct Object { // Must be 64-bit aligned
       #ifndef NDEBUG
       auto prev_queue = Queue.load(std::memory_order_relaxed);
       if (prev_queue < 0) {
-         pf::Log("lock").warning("Queue already negative on #%d (%s), Queue: %d, ThreadID: %d, OurThread: %d",
-            UID, className(), prev_queue, ThreadID.load(), pf::_get_thread_id());
+         kt::Log("lock").warning("Queue already negative on #%d (%s), Queue: %d, ThreadID: %d, OurThread: %d",
+            UID, className(), prev_queue, ThreadID.load(), kt::_get_thread_id());
          DEBUG_BREAK
       }
       #endif
       if (++Queue IS 1) {
-         ThreadID = pf::_get_thread_id();
+         ThreadID = kt::_get_thread_id();
          return ERR::Okay;
       }
       else {
-         if (ThreadID IS pf::_get_thread_id()) return ERR::Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
+         if (ThreadID IS kt::_get_thread_id()) return ERR::Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
          --Queue; // Restore the lock count
          return LockObject(this, Timeout); // Can fail if object is marked for collection.
       }
@@ -337,14 +337,14 @@ struct Object { // Must be 64-bit aligned
 
    // Transfer ownership of the lock to the current thread.
    inline void transferLock() {
-      ThreadID = pf::_get_thread_id();
+      ThreadID = kt::_get_thread_id();
    }
 
    inline void unlock() {
       #ifndef NDEBUG
       if (Queue.load() <= 0) {
-         pf::Log("unlock").warning("Queue underflow on #%d (%s), Queue: %d, ThreadID: %d, OurThread: %d",
-            UID, className(), Queue.load(), ThreadID.load(), pf::_get_thread_id());
+         kt::Log("unlock").warning("Queue underflow on #%d (%s), Queue: %d, ThreadID: %d, OurThread: %d",
+            UID, className(), Queue.load(), ThreadID.load(), kt::_get_thread_id());
          DEBUG_BREAK
       }
       #endif
@@ -400,7 +400,7 @@ struct Object { // Must be 64-bit aligned
       else return ERR::UnsupportedField;
    }
 
-   template <class T> ERR set(FIELD FieldID, const pf::vector<T> &Value, int Type = FIELD_TYPECHECK<T>()) {
+   template <class T> ERR set(FIELD FieldID, const kt::vector<T> &Value, int Type = FIELD_TYPECHECK<T>()) {
       Object *target;
       if (auto field = FindField(this, FieldID, &target)) {
          if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
@@ -593,8 +593,8 @@ struct Object { // Must be 64-bit aligned
 
          if (flags & FD_ARRAY) {
             if (flags & FD_CPP) {
-               array_size = ((pf::vector<int> *)data)->size();
-               data = ((pf::vector<int> *)data)->data();
+               array_size = ((kt::vector<int> *)data)->size();
+               data = ((kt::vector<int> *)data)->data();
             }
 
             std::stringstream buffer;
@@ -782,8 +782,8 @@ struct Object { // Must be 64-bit aligned
          else data = *((T **)((int8_t *)target) + field->Offset);
 
          if (field->Flags & FD_CPP) {
-            auto vec = (pf::vector<APTR> *)data; // Data type doesn't matter, we just need the size().
-            Result = data; // Return a generic pf::vector<>, the caller must cast to the correct type.
+            auto vec = (kt::vector<APTR> *)data; // Data type doesn't matter, we just need the size().
+            Result = data; // Return a generic kt::vector<>, the caller must cast to the correct type.
             Elements = vec->size();
          }
          else {
@@ -797,9 +797,9 @@ struct Object { // Must be 64-bit aligned
    }
 
    template <typename... Args> ERR setFields(Args&&... pFields) {
-      pf::Log log("setFields");
+      kt::Log log("setFields");
 
-      std::initializer_list<pf::FieldValue> Fields = { std::forward<Args>(pFields)... };
+      std::initializer_list<kt::FieldValue> Fields = { std::forward<Args>(pFields)... };
 
       auto ctx = CurrentContext();
       for (auto &f : Fields) {
@@ -844,7 +844,7 @@ struct Object { // Must be 64-bit aligned
 
 } __attribute__ ((aligned (8)));
 
-namespace pf {
+namespace kt {
 
 // Object creation helper class.  Usage examples:
 //
@@ -863,7 +863,7 @@ class Create {
       // you don't want this.
 
       template <typename... Args> static T * global(Args&&... Fields) {
-         pf::Create<T> object = { std::forward<Args>(Fields)... };
+         kt::Create<T> object = { std::forward<Args>(Fields)... };
          if (object.ok()) {
             auto result = *object;
             object.obj = nullptr;
@@ -873,7 +873,7 @@ class Create {
       }
 
       inline static T * global(const std::initializer_list<FieldValue> Fields) {
-         pf::Create<T> object(Fields);
+         kt::Create<T> object(Fields);
          if (object.ok()) {
             auto result = *object;
             object.obj = nullptr;
@@ -885,13 +885,13 @@ class Create {
       // Return an unscoped local object (suitable for class allocations only).
 
       template <typename... Args> static T * local(Args&&... Fields) {
-         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::LOCAL);
+         kt::Create<T> object({ std::forward<Args>(Fields)... }, NF::LOCAL);
          if (object.ok()) return *object;
          else return nullptr;
       }
 
       inline static T * local(const std::initializer_list<FieldValue> Fields) {
-         pf::Create<T> object(Fields, NF::LOCAL);
+         kt::Create<T> object(Fields, NF::LOCAL);
          if (object.ok()) return *object;
          else return nullptr;
       }
@@ -899,13 +899,13 @@ class Create {
       // Return an unscoped and untracked object pointer.
 
       template <typename... Args> static T * untracked(Args&&... Fields) {
-         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::UNTRACKED);
+         kt::Create<T> object({ std::forward<Args>(Fields)... }, NF::UNTRACKED);
          if (object.ok()) return *object;
          else return nullptr;
       }
 
       inline static T * untracked(const std::initializer_list<FieldValue> Fields) {
-         pf::Create<T> object(Fields, NF::UNTRACKED);
+         kt::Create<T> object(Fields, NF::UNTRACKED);
          if (object.ok()) return *object;
          else return nullptr;
       }
@@ -921,7 +921,7 @@ class Create {
       // Create a scoped object that is fully initialised.
 
       Create(const std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(nullptr), error(ERR::Failed) {
-         pf::Log log("CreateObject");
+         kt::Log log("CreateObject");
          log.branch(T::CLASS_NAME);
 
          if (NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (Object **)&obj) IS ERR::Okay) {

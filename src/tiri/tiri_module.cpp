@@ -87,7 +87,7 @@ static int process_results(prvTiri *, APTR, const FunctionField *);
 
 static CSTRING load_include_constant(CSTRING Line, std::string_view Source)
 {
-   pf::Log log("load_include");
+   kt::Log log("load_include");
 
    int i;
    for (i=0; (unsigned(Line[i]) > 0x20) and (Line[i] != ':'); i++);
@@ -133,7 +133,7 @@ static CSTRING load_include_constant(CSTRING Line, std::string_view Source)
          else if (dt IS 'h') constant = TiriConstant(int64_t(strtoull(value.c_str(), nullptr, 0)));
          else log.warning("Unsupported constant value: %s", value.c_str());
 
-         glConstantRegistry.emplace(pf::strhash(name), constant);
+         glConstantRegistry.emplace(kt::strhash(name), constant);
       }
 
       if (*Line IS ',') Line++;
@@ -183,11 +183,10 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
    bool process_constants = false;
    if (not glLoadedConstants.contains(Module)) {
       process_constants = true;
-      glLoadedConstants.insert(Module);
    }
 
    if (process_constants) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.branch("Definition: %s", Module);
 
       AdjustLogLevel(1);
@@ -197,6 +196,8 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
          else error = ERR::CreateObject;
 
       AdjustLogLevel(-1);
+
+      if (error IS ERR::Okay) glLoadedConstants.insert(Module);
    }
 
    return error;
@@ -230,7 +231,7 @@ static ERR process_module_defs(objScript *Script, objModule *module, CSTRING Nam
       }
    }
    else {
-      pf::Log(__FUNCTION__).warning("Malformed struct name in %.*s.", int(Source.size()), Source.data());
+      kt::Log(__FUNCTION__).warning("Malformed struct name in %.*s.", int(Source.size()), Source.data());
       return next_line(Line);
    }
 }
@@ -289,7 +290,7 @@ static int module_load(lua_State *Lua)
       return 0;
    }
 
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    log.branch("Module: %s", modname);
 
    int i;
@@ -306,18 +307,25 @@ static int module_load(lua_State *Lua)
    }
 
    if (auto loaded_mod = objModule::create::global(fl::Name(modname))) {
+      ERR defs_error = ERR::Okay;
       {
          std::unique_lock lock(glConstantMutex); // Required to update the constant registry
 
          bool process_constants = false;
          if (not glLoadedConstants.contains(modname)) {
             process_constants = true;
-            glLoadedConstants.insert(modname);
          }
 
          if (process_constants) {
-            process_module_defs(Lua->script, loaded_mod, modname);
+            if ((defs_error = process_module_defs(Lua->script, loaded_mod, modname)) IS ERR::Okay) {
+               glLoadedConstants.insert(modname);
+            }
          }
+      }
+
+      if (defs_error != ERR::Okay) {
+         luaL_error(Lua, defs_error, "Failed to process definitions for the %s module.", modname);
+         return 0;
       }
 
       new_module(Lua, loaded_mod);
@@ -390,21 +398,29 @@ static int module_index(lua_State *Lua)
 
 static int module_call(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
    objScript *Self = Lua->script;
    uint8_t buffer[MAX_MODULE_ARGS * 16]; // 16 bytes seems overkill but some parameters output meta information (e.g. size).
    int i;
 
    // Track dynamically allocated objects for cleanup
+   struct allocated_struct_ref {
+      APTR Data;
+      struct_record *Def;
+   };
+
    std::vector<std::string*> allocated_strings;
    std::vector<std::string_view*> allocated_string_views;
-   std::vector<APTR> allocated_structs;
+   std::vector<allocated_struct_ref> allocated_structs;
 
    // Cleanup lambda for early exits.  Note that we can't rely on RAII because luaL_error() breaks out of the function.
    auto cleanup = [&]() {
       for (auto ptr : allocated_strings) delete ptr;
       for (auto ptr : allocated_string_views) delete ptr;
-      for (auto ptr : allocated_structs) FreeResource(ptr);
+      for (auto &entry : allocated_structs) {
+         if (entry.Def) destroy_struct_cpp_strings(*entry.Def, entry.Data);
+         FreeResource(entry.Data);
+      }
    };
 
    auto prv = (prvTiri *)Self->ChildPrivate;
@@ -439,7 +455,11 @@ static int module_call(lua_State *Lua)
    APTR function = mod->Functions[index].Address;
    FUNCTION func;
    ffi_cif cif;
-   ffi_arg rc;
+   union {
+      ffi_arg Arg;
+      double  Double;
+      int64_t Int64;
+   } rc = { };
    ffi_type *arg_types[MAX_MODULE_ARGS];
    void * arg_values[MAX_MODULE_ARGS];
    int in = 0;
@@ -628,9 +648,10 @@ static int module_call(lua_State *Lua)
 
          if (lua_type(Lua, i) IS LUA_TARRAY) {
             GCarray *arr = arrayV(Lua, i);
-            arg_values[in] = arr->arraydata();
+            ((APTR *)(buffer + j))[0] = arr->arraydata();
+            arg_values[in] = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
-            j += sizeof(APTR); // Dummy increment
+            j += sizeof(APTR);
 
             if (args[i+1].Type & (FD_BUFSIZE|FD_ARRAYSIZE)) {
                if (args[i+1].Type & FD_RESULT) {
@@ -791,7 +812,9 @@ static int module_call(lua_State *Lua)
                lua_pushvalue(Lua, i); // Duplicate table for table_to_struct (consumes stack)
                APTR struct_data;
                if (table_to_struct(Lua, args[i].Name, &struct_data) IS ERR::Okay) {
-                  allocated_structs.push_back(struct_data); // Track for cleanup
+                  auto def = glStructs.find(std::string_view(args[i].Name));
+                  if (def != glStructs.end()) allocated_structs.push_back({ struct_data, &def->second });
+                  else allocated_structs.push_back({ struct_data, nullptr });
                   ((APTR *)(buffer + j))[0] = struct_data;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_pointer;
@@ -887,17 +910,17 @@ static int module_call(lua_State *Lua)
 
       // Process the result based on the return type
       if (restype & FD_STR) {
-         lua_pushstring(Lua, (CSTRING)rc);
+         lua_pushstring(Lua, (CSTRING)rc.Arg);
       }
       else if (restype & FD_OBJECT) {
-         if ((OBJECTPTR)rc) {
-            push_object(Lua, (OBJECTPTR)rc,  (restype & FD_ALLOC) ? false : true);
+         if ((OBJECTPTR)rc.Arg) {
+            push_object(Lua, (OBJECTPTR)rc.Arg,  (restype & FD_ALLOC) ? false : true);
          }
          else lua_pushnil(Lua);
       }
       else if (restype & FD_PTR) {
          if (restype & FD_STRUCT) {
-            if (auto structptr = (APTR)rc) {
+            if (auto structptr = (APTR)rc.Arg) {
                ERR error;
                // A structure marked as a resource will be returned as an accessible struct pointer.  This is typically
                // needed when a struct's use is beyond informational and can be passed to other functions.
@@ -920,27 +943,27 @@ static int module_call(lua_State *Lua)
             else lua_pushnil(Lua);
          }
          else {
-            if ((APTR)rc) lua_pushlightuserdata(Lua, (APTR)rc);
+            if ((APTR)rc.Arg) lua_pushlightuserdata(Lua, (APTR)rc.Arg);
             else lua_pushnil(Lua);
          }
       }
       else if (restype & (FD_INT|FD_ERROR)) {
          if (restype & FD_UNSIGNED) {
-            lua_pushnumber(Lua, (uint32_t)rc);
+            lua_pushnumber(Lua, (uint32_t)rc.Arg);
          }
          else {
-            lua_pushinteger(Lua, (int)rc);
-            if ((restype & FD_ERROR) and (rc >= int(ERR::ExceptionThreshold)) and in_try_immediate_scope(Lua)) {
+            lua_pushinteger(Lua, (int)rc.Arg);
+            if ((restype & FD_ERROR) and (rc.Arg >= int(ERR::ExceptionThreshold)) and in_try_immediate_scope(Lua)) {
                // Scope isolation: Only throw exceptions for direct calls within the try block.
-               luaL_error(Lua, ERR(rc));
+               luaL_error(Lua, ERR(rc.Arg));
             }
          }
       }
       else if (restype & FD_DOUBLE) {
-         lua_pushnumber(Lua, (double)rc);
+         lua_pushnumber(Lua, rc.Double);
       }
       else if (restype & FD_INT64) {
-         lua_pushnumber(Lua, (int64_t)rc);
+         lua_pushnumber(Lua, rc.Int64);
       }
       // Void functions don't push anything to the stack
    }
@@ -961,7 +984,7 @@ static int module_call(lua_State *Lua)
 
 static int process_results(prvTiri *prv, APTR resultsidx, const FunctionField *args)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    auto scan = (uint8_t *)resultsidx;
    int results = 0;
@@ -1112,7 +1135,7 @@ static int process_results(prvTiri *prv, APTR resultsidx, const FunctionField *a
 
 void register_module_class(lua_State *Lua)
 {
-   pf::Log log;
+   kt::Log log;
 
    static const struct luaL_Reg modlib_functions[] = {
       { "load", module_load },
@@ -1129,6 +1152,8 @@ void register_module_class(lua_State *Lua)
 
    log.trace("Registering module interface.");
 
+   int stack_top = lua_gettop(Lua);
+
    luaL_newmetatable(Lua, "Tiri.mod");
    lua_pushstring(Lua, "Tiri.mod");
    lua_setfield(Lua, -2, "__name");
@@ -1138,6 +1163,11 @@ void register_module_class(lua_State *Lua)
 
    luaL_openlib(Lua, nullptr, modlib_methods, 0);
    luaL_openlib(Lua, "mod", modlib_functions, 0);
+
+   lua_pop(Lua, 2); // Drop the Tiri.mod metatable and the mod library table
+
+   int stack_delta = lua_gettop(Lua) - stack_top;
+   if (stack_delta) log.warning("Module registration left %d value(s) on the Lua stack.", stack_delta);
 
    // Register mod interface prototypes for compile-time type inference
    reg_iface_prototype("mod", "load", { TiriType::Any }, { TiriType::Str });

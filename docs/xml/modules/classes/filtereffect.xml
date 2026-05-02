@@ -8,7 +8,7 @@
     <module>Vector</module>
     <comment>FilterEffect is a support class for managing effects hosted by the VectorFilter class.</comment>
     <version>1</version>
-    <id>79e93e58</id>
+    <id>4664cb23</id>
     <idstring>FILTEREFFECT</idstring>
     <category>Graphics</category>
     <copyright>Paul Manias © 2010-2026</copyright>
@@ -25,12 +25,14 @@
       <name>MoveToBack</name>
       <comment>Move an effect to the front of the VectorFilter's list order.</comment>
       <prototype>ERR acMoveToBack(*Object)</prototype>
+      <tiriPrototype>err = Object.acMoveToBack()</tiriPrototype>
     </action>
 
     <action>
       <name>MoveToFront</name>
       <comment>Move an object to the front of its current location.</comment>
       <prototype>ERR acMoveToFront(*Object)</prototype>
+      <tiriPrototype>err = Object.acMoveToFront()</tiriPrototype>
     </action>
 
   </actions>

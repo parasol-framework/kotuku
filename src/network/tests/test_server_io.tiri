@@ -5,11 +5,14 @@ This test checks connectivity and I/O with a server by sending a simple HTTP req
    include 'network'
 
 function printableState(State)
-   if State is NTC_CONNECTED then return 'CONNECTED'
-   elseif State is NTC_CONNECTING then return 'CONNECTING'
-   elseif State is NTC_DISCONNECTED then return 'DISCONNECTED'
-   elseif State is NTC_HANDSHAKING then return 'HANDSHAKING'
-   else return tostring(State) end
+   return choose State from
+      NTC_CONNECTED -> 'CONNECTED'
+      NTC_CONNECTING -> 'CONNECTING'
+      NTC_DISCONNECTED -> 'DISCONNECTED'
+      NTC_HANDSHAKING -> 'HANDSHAKING'
+      NTC_RESOLVING -> 'RESOLVING'
+      else -> tostring(State)
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------

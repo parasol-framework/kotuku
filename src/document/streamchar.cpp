@@ -19,7 +19,7 @@ template <class T> T & RSTREAM::insert(stream_char &Cursor, T &Code)
    if (codes.contains(Code.uid)) {
       // Sanity check - is the UID unique?  The caller probably needs to utilise glByteCodeID++
       // TODO: At some point the re-use of codes should be allowed, e.g. bc_font reversions would benefit from this.
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.warning("Code #%d is already registered.", Code.uid);
    }
    else codes[Code.uid] = Code; // Intentional copy
@@ -45,7 +45,7 @@ template <class T> T & RSTREAM::emplace(stream_char &Cursor, T &Code)
    auto code_no = Code.code;
 
    if (codes.contains(uid)) {
-      pf::Log log(__FUNCTION__);
+      kt::Log log(__FUNCTION__);
       log.warning("Code #%d is already registered.", uid);
    }
    else codes[uid] = std::move(Code);

@@ -85,7 +85,7 @@ THREADID get_thread_id(void)
 
 ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   pf::Log log;
+   kt::Log log;
 
    auto msg = (ThreadMessage *)Message;
    auto uid = msg->ThreadID;
@@ -105,6 +105,7 @@ ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int Ms
 
    ScopedObjectLock<extThread> thread(uid, 10000);
    if (thread.granted()) {
+      thread->InterruptThreadID.store(0, std::memory_order_release);
       // NB: If a client wants notification of the thread ending, they can use WaitForObjects()
       // if not using callbacks.
       thread->Active = false;
@@ -124,9 +125,12 @@ ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int Ms
 static void thread_entry_cleanup(void *Arg)
 {
    if (tlThreadCrashed) {
-      pf::Log log("thread_cleanup");
+      kt::Log log("thread_cleanup");
       log.error("A thread in this program has crashed.");
-      if (tlThreadRef) tlThreadRef->Active = false;
+      if (tlThreadRef) {
+         tlThreadRef->InterruptThreadID.store(0, std::memory_order_release);
+         tlThreadRef->Active = false;
+      }
    }
 
    deregister_thread();
@@ -144,7 +148,7 @@ Activate: Spawn a new thread that calls the function referenced in the #Routine 
 
 static ERR THREAD_Activate(extThread *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->Active) return ERR::ThreadAlreadyActive;
 
@@ -156,8 +160,9 @@ static ERR THREAD_Activate(extThread *Self)
    Self->Active = true; // Indicate that the thread is running
 
    std::thread::id thread_id = std::this_thread::get_id();
+   Self->InterruptThreadID.store(0, std::memory_order_release);
 
-   Self->CPPThread = new (std::nothrow) std::jthread([Self]() {
+   Self->CPPThread = new (std::nothrow) std::jthread([Self](std::stop_token StopToken) {
       auto uid = Self->UID;
 
       // Note that the Active flag will have been set to true prior to entry, and will remain until msg_threadcallback()
@@ -168,6 +173,7 @@ static ERR THREAD_Activate(extThread *Self)
       tlThreadCrashed = true;
       tlThreadRef     = Self;
       ThreadEntryCleanupGuard cleanup_guard;
+      Self->InterruptThreadID.store(int(get_thread_id()), std::memory_order_release);
 
       ThreadMessage msg = { .ThreadID = uid, .Callback = Self->Callback };
 
@@ -175,7 +181,10 @@ static ERR THREAD_Activate(extThread *Self)
          // Replace the default dummy context with one that pertains to the thread
          extObjectContext thread_ctx(Self, AC::NIL);
 
-         if (Self->Routine.isC()) {
+         if (StopToken.stop_requested()) {
+            Self->Error = ERR::Cancelled;
+         }
+         else if (Self->Routine.isC()) {
             auto routine = (ERR (*)(extThread *, APTR))Self->Routine.Routine;
             Self->Error = routine(Self, Self->Routine.Meta);
          }
@@ -220,9 +229,11 @@ could result in an unstable application.
 
 static ERR THREAD_Deactivate(extThread *Self)
 {
-   if (Self->Active) {
+   if (Self->Active and Self->CPPThread) {
       Self->CPPThread->request_stop();
-      Self->Active = false;
+
+      auto thread_id = Self->InterruptThreadID.load(std::memory_order_acquire);
+      if (thread_id > 0) WakeThread(thread_id, true);
    }
 
    return ERR::Okay;
@@ -257,7 +268,7 @@ static ERR THREAD_FreeWarning(extThread *Self)
 {
    if (!Self->Active) return ERR::Okay;
    else {
-      pf::Log log;
+      kt::Log log;
       log.detail("Thread is still running, marking for auto termination.");
       Self->Flags |= THF::AUTO_FREE;
       return ERR::InUse;
@@ -268,7 +279,7 @@ static ERR THREAD_FreeWarning(extThread *Self)
 
 static ERR THREAD_Init(extThread *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    return ERR::Okay;
 }
@@ -308,7 +319,7 @@ AllocMemory
 
 static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
 {
-   pf::Log log;
+   kt::Log log;
 
    if ((!Args) or (!Args->Data)) return log.warning(ERR::NullArgs);
    if (Args->Size < 0) return log.warning(ERR::Args);
@@ -321,6 +332,7 @@ static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
 
    if (!Args->Size) { // If no size is provided, we simply copy the provided pointer.
       Self->Data = Args->Data;
+      Self->DataSize = 0;
       return ERR::Okay;
    }
    else if (AllocMemory(Args->Size, MEM::DATA, &Self->Data, nullptr) IS ERR::Okay) {

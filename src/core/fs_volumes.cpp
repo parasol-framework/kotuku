@@ -28,7 +28,7 @@ NoPermission: An attempt to delete a system volume was denied.
 
 ERR DeleteVolume(CSTRING Name)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Name) or (!Name[0])) return ERR::NullArgs;
 
@@ -60,7 +60,7 @@ RenameVolume: Renames a volume.
 
 ERR RenameVolume(CSTRING Volume, CSTRING Name)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if (auto lock = std::unique_lock{glmVolumes, 6s}) {
       int i;
@@ -124,7 +124,7 @@ LockFailed:
 
 ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Name) or (!Path)) return log.warning(ERR::NullArgs);
 
@@ -207,7 +207,7 @@ using CALL_WATCH_PATH      = ERR (*)(extFile*);
 
 ERR VirtualVolume(CSTRING Name, ...)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    if ((!Name) or (!Name[0])) return log.warning(ERR::NullArgs);
 
@@ -215,12 +215,15 @@ ERR VirtualVolume(CSTRING Name, ...)
 
    auto id = strihash(Name);
 
+   std::lock_guard<std::mutex> lock(glmVirtual);
+
    if (glVirtual.contains(id)) return ERR::Exists;
 
-   glVirtual[id].Name.assign(Name);
-   glVirtual[id].Name.push_back(':');
-   glVirtual[id].VirtualID     = id; // Virtual ID = Hash of the name, not including the colon
-   glVirtual[id].CaseSensitive = false;
+   auto &drive = glVirtual[id];
+   drive.Name.assign(Name);
+   drive.Name.push_back(':');
+   drive.VirtualID     = id; // Virtual ID = Hash of the name, not including the colon
+   drive.CaseSensitive = false;
 
    va_list list;
    va_start(list, Name);
@@ -232,21 +235,21 @@ ERR VirtualVolume(CSTRING Name, ...)
             va_end(list);
             return ERR::Okay; // The volume has been removed, so any further tags are redundant.
 
-         case VAS::DRIVER_SIZE:     glVirtual[id].DriverSize    = va_arg(list, int); break;
-         case VAS::CASE_SENSITIVE:  glVirtual[id].CaseSensitive = va_arg(list, int) ? true : false; break;
-         case VAS::CLOSE_DIR:       glVirtual[id].CloseDir      = va_arg(list, CALL_CLOSE_DIR); break;
-         case VAS::DELETE:          glVirtual[id].Delete        = va_arg(list, CALL_DELETE); break;
-         case VAS::GET_INFO:        glVirtual[id].GetInfo       = va_arg(list, CALL_GET_INFO); break;
-         case VAS::GET_DEVICE_INFO: glVirtual[id].GetDeviceInfo = va_arg(list, CALL_GET_DEVICE_INFO); break;
-         case VAS::IDENTIFY_FILE:   glVirtual[id].IdentifyFile  = va_arg(list, CALL_IDENTIFY_FILE); break;
-         case VAS::IGNORE_FILE:     glVirtual[id].IgnoreFile    = va_arg(list, CALL_IGNORE_FILE); break;
-         case VAS::MAKE_DIR:        glVirtual[id].CreateFolder  = va_arg(list, CALL_MAKE_DIR); break;
-         case VAS::OPEN_DIR:        glVirtual[id].OpenDir       = va_arg(list, CALL_OPEN_DIR); break;
-         case VAS::RENAME:          glVirtual[id].Rename        = va_arg(list, CALL_RENAME); break;
-         case VAS::SAME_FILE:       glVirtual[id].SameFile      = va_arg(list, CALL_SAME_FILE); break;
-         case VAS::SCAN_DIR:        glVirtual[id].ScanDir       = va_arg(list, CALL_SCAN_DIR); break;
-         case VAS::TEST_PATH:       glVirtual[id].TestPath      = va_arg(list, CALL_TEST_PATH); break;
-         case VAS::WATCH_PATH:      glVirtual[id].WatchPath     = va_arg(list, CALL_WATCH_PATH); break;
+         case VAS::DRIVER_SIZE:     drive.DriverSize    = va_arg(list, int); break;
+         case VAS::CASE_SENSITIVE:  drive.CaseSensitive = va_arg(list, int) ? true : false; break;
+         case VAS::CLOSE_DIR:       drive.CloseDir      = va_arg(list, CALL_CLOSE_DIR); break;
+         case VAS::DELETE:          drive.Delete        = va_arg(list, CALL_DELETE); break;
+         case VAS::GET_INFO:        drive.GetInfo       = va_arg(list, CALL_GET_INFO); break;
+         case VAS::GET_DEVICE_INFO: drive.GetDeviceInfo = va_arg(list, CALL_GET_DEVICE_INFO); break;
+         case VAS::IDENTIFY_FILE:   drive.IdentifyFile  = va_arg(list, CALL_IDENTIFY_FILE); break;
+         case VAS::IGNORE_FILE:     drive.IgnoreFile    = va_arg(list, CALL_IGNORE_FILE); break;
+         case VAS::MAKE_DIR:        drive.CreateFolder  = va_arg(list, CALL_MAKE_DIR); break;
+         case VAS::OPEN_DIR:        drive.OpenDir       = va_arg(list, CALL_OPEN_DIR); break;
+         case VAS::RENAME:          drive.Rename        = va_arg(list, CALL_RENAME); break;
+         case VAS::SAME_FILE:       drive.SameFile      = va_arg(list, CALL_SAME_FILE); break;
+         case VAS::SCAN_DIR:        drive.ScanDir       = va_arg(list, CALL_SCAN_DIR); break;
+         case VAS::TEST_PATH:       drive.TestPath      = va_arg(list, CALL_TEST_PATH); break;
+         case VAS::WATCH_PATH:      drive.WatchPath     = va_arg(list, CALL_WATCH_PATH); break;
 
          default:
             log.warning("Bad VAS tag $%.8x @ pair index %d, aborting.", tagid, arg);

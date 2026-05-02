@@ -35,19 +35,19 @@ static ERR STORAGE_Free(extStorageDevice *Self)
 
 static ERR STORAGE_Init(extStorageDevice *Self)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (!Self->Volume) return log.warning(ERR::FieldNotSet);
 
-   const virtual_drive *vd = get_fs(Self->Volume);
+   auto vd = get_fs(Self->Volume);
 
-   if (vd->is_virtual()) Self->DeviceFlags |= DEVICE::SOFTWARE;
+   if (vd.is_virtual()) Self->DeviceFlags |= DEVICE::SOFTWARE;
 
    Self->BytesFree  = -1;
    Self->BytesUsed  = 0;
    Self->DeviceSize = -1;
 
-   if (vd->GetDeviceInfo) return vd->GetDeviceInfo(Self->Volume, Self);
+   if (vd.GetDeviceInfo) return vd.GetDeviceInfo(Self->Volume, Self);
    else return ERR::Okay;
 }
 
@@ -118,7 +118,7 @@ static ERR GET_Volume(extStorageDevice *Self, STRING *Value)
 
 static ERR SET_Volume(extStorageDevice *Self, CSTRING Value)
 {
-   pf::Log log;
+   kt::Log log;
 
    if (Self->initialised()) return log.warning(ERR::Immutable);
 

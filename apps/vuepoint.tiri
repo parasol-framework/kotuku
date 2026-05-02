@@ -11,6 +11,9 @@ A file viewer for recognised documents like SVG and RIPL
    import 'gui/scrollbar'
    import 'gui/filedialog'
    include 'svg'
+   include 'picture'
+
+CLASSID_PICTURE <const> = 'Picture':hash()
 
 glBody = [[<body fill="rgb(68 68 90)" font-fill="white" font-face="Noto Sans" font-size="12pt" margins="2em"/>]]
 
@@ -49,10 +52,56 @@ glIntroduction = [[
 </page>
 ]]
 
-   local glWindow, glFileView, glTerminateView, glScrollbar, glViewArea, glStats, glAppBar
+   local glWindow, glFileView, glTerminateView, glScrollbar, glViewArea, glStats, glAppBar, glSaveRoutine
+
+   glOpenFilter = array<table> {
+      { name='SVG Images', ext='.svg' },
+      { name='RIPL Documents', ext=array<string> { 'ripl', 'rpl' } }
+   }
+
+   glSaveFilter = array<table> { }
 
    glScript = obj.find('self')
    mSys.SetVolume('vuepoint', glScript.workingPath)
+
+   picmeta = mSys.FindClass(CLASSID_PICTURE)
+   file_ext = picmeta.fileExtension
+   if file_ext then
+      local save_ext
+      if file_ext:find('|') then
+         file_ext = file_ext:split('|')
+         save_ext = file_ext[0]
+      else
+         save_ext = file_ext
+      end
+      desc = picmeta.fileDescription
+      if not desc then desc = picmeta.name .. ' Image' end
+      glOpenFilter:push({ name=desc, ext=file_ext })
+      glSaveFilter:push({ name=desc, ext=save_ext })
+   end
+
+   pic_classes = picmeta.subClasses
+   if pic_classes then
+      err, class_list = mSys.ClassDatabase()
+      for c in values(class_list) do
+         if c.parentID is CLASSID_PICTURE then
+            if c.name is 'RSVG' then continue end
+            file_ext = c.extension
+            if file_ext then
+               local save_ext
+               if file_ext:find('|') then
+                  file_ext = file_ext:split('|')
+                  save_ext = file_ext[0]
+               else
+                  save_ext = file_ext
+               end
+               glOpenFilter:push({ name=c.description ? c.description :> c.name .. ' Image', ext=file_ext, icon=c.icon })
+            else
+               print('No file extension for class ' .. c.name)
+            end
+         end
+      end
+   end
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -135,6 +184,10 @@ function displayImage(Path:str)
          img.free()
       end
 
+      glSaveRoutine = function(Path:str)
+         pic.acSaveImage(obj.new('file', { path=Path, flags=FL_NEW|FL_WRITE }))
+      end
+
       configureScrollbar(window, page)
 
       glStats = { width = pic.bitmap.width, height = pic.bitmap.height }
@@ -157,7 +210,8 @@ function displayFile(Path:str)
       glTerminateView = nil
    end
 
-   glStats = { }
+   glStats = { } -- Status bar information
+   glSaveRoutine = nil
 
    lpath = Path:lower()
    if lpath:endsWith('.png') then
@@ -213,13 +267,8 @@ end
          toolBar     = { navigation=true, views=true },
          displayPath = true,
          path        = arg('path', ':'),
-         filterList = array<table> {
-            { name='SVG Images', ext='.svg' },
-            { name='RIPL Documents', ext={ '.ripl', '.rpl' } },
-            { name='JPEG Images', ext={ '.jpeg', '.jpg' } },
-            { name='PNG Images', ext='.png' }
-         },
-         fileSelected = function(FileView)
+         filterList = glOpenFilter,
+         fileSelected = function(FileView:table)
             displayFile(FileView.selectionPath())
             title = FileView.selectionFile()
             if glStats.width and glStats.height then
@@ -262,16 +311,21 @@ end
                      Files ?? return
 
                      target_file = Path .. Files[0].filename
+                     print('Saving image to ' .. target_file)
 
-                     bmp = glViewArea.buffer
-                     if bmp then
-                        pic = obj.new('picture', {
-                           width = bmp.width, height = bmp.height, bitsPerPixel = bmp.bitsPerPixel,
-                           flags = PCF_NEW|PCF_FORCE_ALPHA_32
-                        })
-                        bmp.acCopyData(pic.bitmap)
-                        file = obj.new('file', { flags=FL_NEW|FL_WRITE, path=target_file })
-                        pic.acSaveImage(file)
+                     if glSaveRoutine then
+                        glSaveRoutine(target_file)
+                     else
+                        bmp = glViewArea.buffer
+                        if bmp then
+                           pic = obj.new('picture', {
+                              width = bmp.width, height = bmp.height, bitsPerPixel = bmp.bitsPerPixel,
+                              flags = PCF_NEW|PCF_FORCE_ALPHA_32
+                           })
+                           bmp.acCopyData(pic.bitmap)
+                           file = obj.new('file', { flags=FL_NEW|FL_WRITE, path=target_file })
+                           pic.acSaveImage(file)
+                        end
                      end
                   end
                })

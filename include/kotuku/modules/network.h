@@ -128,7 +128,7 @@ class objNetClient : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::NETCLIENT;
    static constexpr CSTRING CLASS_NAME = "NetClient";
 
-   using create = pf::Create<objNetClient>;
+   using create = kt::Create<objNetClient>;
 
    char IP[8];                       // The IP address of the client.
    objNetClient * Next;              // The next client IP with connections to the server socket.
@@ -159,7 +159,7 @@ class objClientSocket : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::CLIENTSOCKET;
    static constexpr CSTRING CLASS_NAME = "ClientSocket";
 
-   using create = pf::Create<objClientSocket>;
+   using create = kt::Create<objClientSocket>;
 
    int64_t ConnectTime;       // System time for the creation of this socket.
    objClientSocket * Prev;    // Previous socket in the chain.
@@ -245,7 +245,7 @@ class objProxy : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::PROXY;
    static constexpr CSTRING CLASS_NAME = "Proxy";
 
-   using create = pf::Create<objProxy>;
+   using create = kt::Create<objProxy>;
 
    STRING NetworkFilter;    // The name of the network that the proxy is limited to.
    STRING GatewayFilter;    // The IP address of the gateway that the proxy is limited to.
@@ -280,13 +280,13 @@ class objProxy : public Object {
 
    template <class T> inline ERR setNetworkFilter(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setGatewayFilter(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -298,37 +298,37 @@ class objProxy : public Object {
 
    template <class T> inline ERR setPassword(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[3];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setProxyName(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setServer(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setPort(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[8];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setServerPort(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setEnabled(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -359,7 +359,7 @@ class objNetLookup : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::NETLOOKUP;
    static constexpr CSTRING CLASS_NAME = "NetLookup";
 
-   using create = pf::Create<objNetLookup>;
+   using create = kt::Create<objNetLookup>;
 
    int64_t ClientData;    // Optional user data storage
    NLF     Flags;         // Optional flags
@@ -398,7 +398,7 @@ class objNetLookup : public Object {
 
    inline ERR setCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[1];
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -427,7 +427,7 @@ class objNetSocket : public Object {
    static constexpr CLASSID CLASS_ID = CLASSID::NETSOCKET;
    static constexpr CSTRING CLASS_NAME = "NetSocket";
 
-   using create = pf::Create<objNetSocket>;
+   using create = kt::Create<objNetSocket>;
 
    objNetClient * Clients;    // For server sockets, lists all clients connected to the server.
    APTR   ClientData;         // A client-defined value that can be useful in action notify events.
@@ -545,31 +545,31 @@ class objNetSocket : public Object {
 
    template <class T> inline ERR setAddress(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSSLCertificate(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSSLPrivateKey(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSSLKeyPassword(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERR setState(const NTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -620,25 +620,25 @@ class objNetSocket : public Object {
 
    inline ERR setHandle(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[1];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
    inline ERR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setOutgoing(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

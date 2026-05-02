@@ -36,7 +36,7 @@ static void init_test_jit_state(jit_State& J) {
 //********************************************************************************************************************
 // Test that FRC constants match the expected values for LJ_FR2=1
 
-static bool test_frc_constants(pf::Log& log)
+static bool test_frc_constants(kt::Log& log)
 {
    // In 2-slot frame mode (LJ_FR2=1):
    // HEADER_SIZE = 1 + LJ_FR2 = 2
@@ -57,7 +57,7 @@ static bool test_frc_constants(pf::Log& log)
 //********************************************************************************************************************
 // Test push/pop symmetry for call frames
 
-static bool test_frame_push_pop_symmetry(pf::Log& log)
+static bool test_frame_push_pop_symmetry(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -85,7 +85,7 @@ static bool test_frame_push_pop_symmetry(pf::Log& log)
 //********************************************************************************************************************
 // Test delta-only pop (for vararg/pcall frames)
 
-static bool test_delta_frame_pop(pf::Log& log)
+static bool test_delta_frame_pop(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -118,7 +118,7 @@ static bool test_delta_frame_pop(pf::Log& log)
 //********************************************************************************************************************
 // Test func_slot accessor
 
-static bool test_func_slot_access(pf::Log& log)
+static bool test_func_slot_access(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -147,7 +147,7 @@ static bool test_func_slot_access(pf::Log& log)
 //********************************************************************************************************************
 // Test overflow detection
 
-static bool test_overflow_detection(pf::Log& log)
+static bool test_overflow_detection(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -174,7 +174,7 @@ static bool test_overflow_detection(pf::Log& log)
 //********************************************************************************************************************
 // Test at_root_baseslot
 
-static bool test_root_baseslot_detection(pf::Log& log)
+static bool test_root_baseslot_detection(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -199,7 +199,7 @@ static bool test_root_baseslot_detection(pf::Log& log)
 //********************************************************************************************************************
 // Test compact_tailcall memory move
 
-static bool test_compact_tailcall(pf::Log& log)
+static bool test_compact_tailcall(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -231,7 +231,7 @@ static bool test_compact_tailcall(pf::Log& log)
 // RAII Scope Guards
 
 // Test FrameDepthGuard auto-increment and auto-decrement
-static bool test_frame_depth_guard_auto(pf::Log& log)
+static bool test_frame_depth_guard_auto(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -256,7 +256,7 @@ static bool test_frame_depth_guard_auto(pf::Log& log)
 //********************************************************************************************************************
 // Test FrameDepthGuard release (no auto-decrement)
 
-static bool test_frame_depth_guard_release(pf::Log& log)
+static bool test_frame_depth_guard_release(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -278,7 +278,7 @@ static bool test_frame_depth_guard_release(pf::Log& log)
 //********************************************************************************************************************
 // Test FrameDepthGuard manual decrement with check
 
-static bool test_frame_depth_guard_decrement(pf::Log& log)
+static bool test_frame_depth_guard_decrement(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -304,7 +304,7 @@ static bool test_frame_depth_guard_decrement(pf::Log& log)
 //********************************************************************************************************************
 // Test FrameDepthGuard helper methods
 
-static bool test_frame_depth_guard_helpers(pf::Log& log)
+static bool test_frame_depth_guard_helpers(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -338,7 +338,7 @@ static bool test_frame_depth_guard_helpers(pf::Log& log)
 //********************************************************************************************************************
 // Test IRRollbackPoint basic functionality
 
-static bool test_ir_rollback_point_basic(pf::Log& log)
+static bool test_ir_rollback_point_basic(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -377,7 +377,7 @@ static bool test_ir_rollback_point_basic(pf::Log& log)
 //********************************************************************************************************************
 // Test IRRollbackPoint needs_rollback logic
 
-static bool test_ir_rollback_point_needs_rollback(pf::Log& log)
+static bool test_ir_rollback_point_needs_rollback(kt::Log& log)
 {
    IRRollbackPoint rbp;
    rbp.ref = 100;
@@ -412,7 +412,7 @@ static bool test_ir_rollback_point_needs_rollback(pf::Log& log)
 // SlotView Tests
 
 // Test SlotView basic read/write access
-static bool test_slotview_basic_access(pf::Log& log)
+static bool test_slotview_basic_access(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -444,7 +444,7 @@ static bool test_slotview_basic_access(pf::Log& log)
 
 //********************************************************************************************************************
 // Test SlotView func() accessor
-static bool test_slotview_func_accessor(pf::Log& log)
+static bool test_slotview_func_accessor(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -471,7 +471,7 @@ static bool test_slotview_func_accessor(pf::Log& log)
 
 //********************************************************************************************************************
 // Test SlotView is_loaded() helper
-static bool test_slotview_is_loaded(pf::Log& log)
+static bool test_slotview_is_loaded(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -496,7 +496,7 @@ static bool test_slotview_is_loaded(pf::Log& log)
 
 //********************************************************************************************************************
 // Test SlotView clear operations
-static bool test_slotview_clear(pf::Log& log)
+static bool test_slotview_clear(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -528,7 +528,7 @@ static bool test_slotview_clear(pf::Log& log)
 
 //********************************************************************************************************************
 // Test SlotView copy operation
-static bool test_slotview_copy(pf::Log& log)
+static bool test_slotview_copy(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -552,7 +552,7 @@ static bool test_slotview_copy(pf::Log& log)
 
 //********************************************************************************************************************
 // Test SlotView maxslot operations
-static bool test_slotview_maxslot(pf::Log& log)
+static bool test_slotview_maxslot(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -605,7 +605,7 @@ static bool test_slotview_maxslot(pf::Log& log)
 
 //********************************************************************************************************************
 // Test SlotView ptr() accessor
-static bool test_slotview_ptr(pf::Log& log)
+static bool test_slotview_ptr(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -639,7 +639,7 @@ static bool test_slotview_ptr(pf::Log& log)
 // IRBuilder Tests
 
 // Test IRBuilder construction and state accessor
-static bool test_irbuilder_construction(pf::Log& log)
+static bool test_irbuilder_construction(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -671,7 +671,7 @@ static bool test_irbuilder_construction(pf::Log& log)
 
 //********************************************************************************************************************
 // Test IRBuilder at() method for IR access
-static bool test_irbuilder_at(pf::Log& log)
+static bool test_irbuilder_at(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -710,7 +710,7 @@ static bool test_irbuilder_at(pf::Log& log)
 
 //********************************************************************************************************************
 // Test IRBuilder constant emission wrappers
-static bool test_irbuilder_constants(pf::Log& log)
+static bool test_irbuilder_constants(kt::Log& log)
 {
    // Note: We can only test that the methods compile and the wrapper pattern is correct.
    // Full constant emission requires a properly initialised JIT state which is complex to mock.
@@ -742,7 +742,7 @@ static bool test_irbuilder_constants(pf::Log& log)
 
 //********************************************************************************************************************
 // Test IRBuilder typed emission helper signatures
-static bool test_irbuilder_typed_helpers(pf::Log& log)
+static bool test_irbuilder_typed_helpers(kt::Log& log)
 {
    // Verify the typed helper method signatures compile correctly
    jit_State J;
@@ -770,7 +770,7 @@ static bool test_irbuilder_typed_helpers(pf::Log& log)
 
 //********************************************************************************************************************
 // Test IRBuilder fload helper signatures
-static bool test_irbuilder_fload_helpers(pf::Log& log)
+static bool test_irbuilder_fload_helpers(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -794,7 +794,7 @@ static bool test_irbuilder_fload_helpers(pf::Log& log)
 
 //********************************************************************************************************************
 // Test IRBuilder conversion helper signatures
-static bool test_irbuilder_conv_helpers(pf::Log& log)
+static bool test_irbuilder_conv_helpers(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -815,7 +815,7 @@ static bool test_irbuilder_conv_helpers(pf::Log& log)
 
 //********************************************************************************************************************
 // Test IRBuilder guard helper signatures
-static bool test_irbuilder_guard_helpers(pf::Log& log)
+static bool test_irbuilder_guard_helpers(kt::Log& log)
 {
    jit_State J;
    init_test_jit_state(J);
@@ -839,7 +839,7 @@ static bool test_irbuilder_guard_helpers(pf::Log& log)
 
 struct TestCase {
    const char* name;
-   bool (*fn)(pf::Log&);
+   bool (*fn)(kt::Log&);
 };
 
 } // anonymous namespace
@@ -884,7 +884,7 @@ extern void jit_frame_unit_tests(int &Passed, int &Total)
    } };
 
    for (const TestCase& test : tests) {
-      pf::Log log("JitFrameTests");
+      kt::Log log("JitFrameTests");
       log.branch("Running %s", test.name);
       ++Total;
       if (test.fn(log)) {

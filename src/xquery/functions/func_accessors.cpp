@@ -23,10 +23,10 @@ XPathVal XPathFunctionLibrary::function_base_uri(const std::vector<XPathVal> &Ar
       if (!value.node_set_attributes.empty()) target_attribute = value.node_set_attributes[0];
       if (!value.node_set.empty()) target_node = value.node_set[0];
    }
-   else return XPathVal(pf::vector<XTag *>());
+   else return XPathVal(kt::vector<XTag *>());
 
    auto base = xpath::accessor::build_base_uri_chain(Context, target_node, target_attribute);
-   if (!base.has_value()) return XPathVal(pf::vector<XTag *>());
+   if (!base.has_value()) return XPathVal(kt::vector<XTag *>());
 
    return XPathVal(*base);
 }
@@ -48,16 +48,16 @@ XPathVal XPathFunctionLibrary::function_data(const std::vector<XPathVal> &Args, 
          sequence_value = &context_value;
       }
       else if (Context.context_node) {
-         pf::vector<XTag *> nodes = { Context.context_node };
+         kt::vector<XTag *> nodes = { Context.context_node };
          context_value = XPathVal(nodes);
          sequence_value = &context_value;
       }
-      else return XPathVal(pf::vector<XTag *>());
+      else return XPathVal(kt::vector<XTag *>());
    }
    else sequence_value = &Args[0];
 
    size_t length = sequence_length(*sequence_value);
-   if (!length) return XPathVal(pf::vector<XTag *>());
+   if (!length) return XPathVal(kt::vector<XTag *>());
 
    SequenceBuilder builder;
 
@@ -115,10 +115,10 @@ XPathVal XPathFunctionLibrary::function_document_uri(const std::vector<XPathVal>
    else if (Args[0].Type IS XPVT::NodeSet) {
       if (!Args[0].node_set.empty()) target_node = Args[0].node_set[0];
    }
-   else return XPathVal(pf::vector<XTag *>());
+   else return XPathVal(kt::vector<XTag *>());
 
    auto uri = xpath::accessor::resolve_document_uri(Context, target_node);
-   if (!uri.has_value()) return XPathVal(pf::vector<XTag *>());
+   if (!uri.has_value()) return XPathVal(kt::vector<XTag *>());
 
    return XPathVal(*uri);
 }
@@ -141,17 +141,17 @@ XPathVal XPathFunctionLibrary::function_node_name(const std::vector<XPathVal> &A
       if (!value.node_set_attributes.empty()) target_attribute = value.node_set_attributes[0];
       if (!value.node_set.empty()) target_node = value.node_set[0];
    }
-   else return XPathVal(pf::vector<XTag *>());
+   else return XPathVal(kt::vector<XTag *>());
 
    if (target_attribute) {
-      if (target_attribute->Name.empty()) return XPathVal(pf::vector<XTag *>());
+      if (target_attribute->Name.empty()) return XPathVal(kt::vector<XTag *>());
       return XPathVal(target_attribute->Name);
    }
 
-   if ((!target_node) or target_node->Attribs.empty()) return XPathVal(pf::vector<XTag *>());
+   if ((!target_node) or target_node->Attribs.empty()) return XPathVal(kt::vector<XTag *>());
 
    std::string name = target_node->Attribs[0].Name;
-   if (name.empty()) return XPathVal(pf::vector<XTag *>());
+   if (name.empty()) return XPathVal(kt::vector<XTag *>());
 
    return XPathVal(name);
 }
@@ -168,10 +168,10 @@ XPathVal XPathFunctionLibrary::function_nilled(const std::vector<XPathVal> &Args
    else if (Args[0].Type IS XPVT::NodeSet) {
       if (!Args[0].node_set.empty()) target_node = Args[0].node_set[0];
    }
-   else return XPathVal(pf::vector<XTag *>());
+   else return XPathVal(kt::vector<XTag *>());
 
-   if ((!target_node) or target_node->Attribs.empty()) return XPathVal(pf::vector<XTag *>());
-   if (target_node->Attribs[0].Name.empty()) return XPathVal(pf::vector<XTag *>());
+   if ((!target_node) or target_node->Attribs.empty()) return XPathVal(kt::vector<XTag *>());
+   if (target_node->Attribs[0].Name.empty()) return XPathVal(kt::vector<XTag *>());
 
    bool nilled = xpath::accessor::is_element_explicitly_nilled(Context, target_node);
    return XPathVal(nilled);
@@ -201,7 +201,7 @@ XPathVal XPathFunctionLibrary::function_static_base_uri(const std::vector<XPathV
       }
    }
 
-   if (!base.has_value()) return XPathVal(pf::vector<XTag *>());
+   if (!base.has_value()) return XPathVal(kt::vector<XTag *>());
 
    return XPathVal(*base);
 }

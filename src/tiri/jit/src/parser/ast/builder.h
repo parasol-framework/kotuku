@@ -23,13 +23,26 @@ public:
    ParserResult<ExprNodePtr> parse_expression(uint8_t precedence = 0);
    ParserResult<ExprNodeList> parse_expression_list();
 
-   [[nodiscard]] bool at_top_level() const { return function_depth_ == 0; }
+   [[nodiscard]] bool at_top_level() const { return function_depth_ IS 0; }
 
 private:
    ParserContext& ctx;
    bool in_guard_expression = false;  // True when parsing 'when' clause guard expression
    bool in_choose_expression = false; // True when parsing choose expression cases (for tuple pattern detection)
    int function_depth_ = 0;           // Tracks nesting depth inside function bodies
+   std::vector<GCstr *> function_name_stack;
+
+   class FunctionNameScope {
+   public:
+      FunctionNameScope(AstBuilder &Builder, GCstr *FunctionName);
+      ~FunctionNameScope();
+
+      FunctionNameScope(const FunctionNameScope &) = delete;
+      FunctionNameScope& operator=(const FunctionNameScope &) = delete;
+
+   private:
+      AstBuilder &builder;
+   };
 
    struct BinaryOpInfo {
       AstBinaryOperator op = AstBinaryOperator::Add;
@@ -69,7 +82,8 @@ private:
    ParserResult<ExprNodePtr> parse_primary();
    ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr);
    ParserResult<ExprNodePtr> parse_arrow_function(ExprNodeList parameters);
-   ParserResult<ExprNodePtr> parse_function_literal(const Token &, bool is_thunk = false);
+   ParserResult<ExprNodePtr> parse_function_literal(
+      const Token &, bool IsThunk = false, GCstr *FunctionName = nullptr);
    ParserResult<ExprNodePtr> parse_table_literal();
    ParserResult<ReturnStmtPayload> parse_return_payload(const Token &, bool same_line_only);
    ParserResult<FunctionReturnTypes> parse_return_type_annotation();
@@ -108,6 +122,9 @@ private:
    [[nodiscard]] size_t skip_to_synchronisation_point(std::span<const TokenKind> terminators);
    [[nodiscard]] static Identifier make_identifier(const Token &);
    [[nodiscard]] static LiteralValue make_literal(const Token &);
+   [[nodiscard]] GCstr *anonymous_function_name();
+   [[nodiscard]] GCstr *current_function_name();
+   [[nodiscard]] GCstr *current_source_file();
    [[nodiscard]] inline SourceSpan span_from(const Token &Token) { return Token.span(); }
    [[nodiscard]] inline SourceSpan span_from(const Token &Start, const Token &End) const { return combine_spans(Start.span(), End.span()); }
    [[nodiscard]] std::optional<BinaryOpInfo> match_binary_operator(const Token &) const;

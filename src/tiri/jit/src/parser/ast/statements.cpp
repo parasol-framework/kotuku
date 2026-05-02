@@ -34,7 +34,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
          Token function_token = local_token;  // Use local_token as span start
          auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
          if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
-         auto fn = this->parse_function_literal(function_token, is_thunk);
+         GCstr *funcname = name_token.value_ref().identifier();
+         auto fn = this->parse_function_literal(function_token, is_thunk, funcname);
          if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
          ExprNodePtr function_expr = std::move(fn.value_ref());
          auto stmt = std::make_unique<StmtNode>(AstNodeKind::LocalFunctionStmt, this->span_from(local_token, name_token.value_ref()));
@@ -121,7 +122,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
       Token function_token = global_token;
       auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
       if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
-      auto fn = this->parse_function_literal(function_token, is_thunk);
+      GCstr *funcname = name_token.value_ref().identifier();
+      auto fn = this->parse_function_literal(function_token, is_thunk, funcname);
       if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
       ExprNodePtr function_expr = std::move(fn.value_ref());
 
@@ -225,7 +227,15 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
       path.method = make_identifier(seg.value_ref());
    }
 
-   auto fn = this->parse_function_literal(func_token, is_thunk);
+   GCstr *funcname = nullptr;
+   if (path.method.has_value() and path.method->symbol) {
+      funcname = path.method->symbol;
+   }
+   else if (not path.segments.empty()) {
+      funcname = path.segments.back().symbol;
+   }
+
+   auto fn = this->parse_function_literal(func_token, is_thunk, funcname);
    if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
    ExprNodePtr function_expr = std::move(fn.value_ref());
 
@@ -697,7 +707,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_check()
 
 ParserResult<StmtNodePtr> AstBuilder::parse_import()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    Token import_token = this->ctx.tokens().current();
 
@@ -755,7 +765,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
    // Look up the FileSource index and namespace for this import (registered during parse_imported_file)
 
    lua_State *L = &this->ctx.lua();
-   auto file_idx = find_file_source(L, pf::strihash(path));
+   auto file_idx = find_file_source(L, kt::strihash(path));
    std::string default_ns;
 
    if (file_idx.has_value()) {
@@ -813,7 +823,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_import()
 
 ParserResult<StmtNodePtr> AstBuilder::parse_namespace()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    Token ns_token = this->ctx.tokens().current();
 
@@ -882,7 +892,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_namespace()
 
 ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(std::string &Path, std::string_view Library, const Token &ImportToken)
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    lua_State *L = &this->ctx.lua();
 
@@ -891,7 +901,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(std::st
       Path = resolved_path;
    }
 
-   auto libhash = pf::strihash(Path);
+   auto libhash = kt::strihash(Path);
 
    // Check if this file is already registered in FileSource
    auto existing_index = find_file_source(L, libhash);
@@ -1007,7 +1017,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(std::st
 
 void AstBuilder::skip_to_compile_end()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    int depth = 1;  // Already consumed one @if
 
@@ -1049,7 +1059,7 @@ void AstBuilder::skip_to_compile_end()
 
 ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
 {
-   pf::Log log(__FUNCTION__);
+   kt::Log log(__FUNCTION__);
 
    Token compif_token = this->ctx.tokens().current();
    this->ctx.tokens().advance();  // consume @if
@@ -1124,7 +1134,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_compile_if()
       if (is_bool_value) return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'platform' requires a string value");
       const SystemState *state = GetSystemState();
       std::string_view current_platform = state->Platform ? state->Platform : "";
-      condition_result = pf::iequals(current_platform, string_value);
+      condition_result = kt::iequals(current_platform, string_value);
    }
    else if (condition_name IS "exists") {
       if (is_bool_value) return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, value_token, "Condition 'exists' requires a string path value");

@@ -1380,7 +1380,7 @@ static std::string find_language_for_node(XTag *Node, extXML *Document)
    while (current) {
       for (size_t index = 1; index < current->Attribs.size(); ++index) {
          const auto &attrib = current->Attribs[index];
-         if (pf::iequals(attrib.Name, "xml:lang")) return attrib.Value;
+         if (kt::iequals(attrib.Name, "xml:lang")) return attrib.Value;
       }
 
       if (not Document) break;

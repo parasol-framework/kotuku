@@ -33,6 +33,7 @@ that is distributed with this package.  Please refer to it for further informati
 #include "defs/hashes.h"
 #include "../link/unicode.h"
 #include <kotuku/modules/xquery.h>
+#include <cassert>
 
 using BYTECODE = uint32_t;
 using CELL_ID = uint32_t;
@@ -40,7 +41,7 @@ using CELL_ID = uint32_t;
 static BYTECODE glByteCodeID = 1;
 static uint32_t glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
 
-using namespace pf;
+using namespace kt;
 
 JUMPTABLE_CORE
 JUMPTABLE_FONT
@@ -115,16 +116,15 @@ static ERR  add_document_class(void);
 static int add_tabfocus(extDocument *, TT, BYTECODE);
 static void advance_tabfocus(extDocument *, int8_t);
 static void deactivate_edit(extDocument *, bool);
-static ERR  extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
+static ERR  extract_script(extDocument *, std::string_view, objScript **, std::string &, std::string &);
 static void error_dialog(const std::string, const std::string);
 static void error_dialog(const std::string, ERR);
-static const Field * find_field(OBJECTPTR, std::string_view, OBJECTPTR *);
 static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
 static int  find_tabfocus(extDocument *, TT, BYTECODE);
 static ERR  flash_cursor(extDocument *, int64_t, int64_t);
 static int getutf8(CSTRING, int *);
 static ERR  insert_text(extDocument *, RSTREAM *, stream_char &, const std::string_view, bool);
-static ERR  insert_xml(extDocument *, RSTREAM *, objXML *, objXML::TAGS &, int, STYLE = STYLE::NIL, IPF = IPF::NIL);
+static ERR  insert_xml(extDocument *, RSTREAM *, objXML *, const objXML::TAGS &, int, STYLE = STYLE::NIL, IPF = IPF::NIL);
 static ERR  key_event(objVectorViewport *, KQ, KEY, int);
 static void layout_doc(extDocument *);
 static ERR  load_doc(extDocument *, std::string, bool, ULD = ULD::NIL);
@@ -135,19 +135,18 @@ static void notify_free_event(OBJECTPTR, ACTIONID, ERR, APTR);
 static void notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
 static ERR  feedback_view(objVectorViewport *, FM);
 static void process_parameters(extDocument *, const std::string_view);
-static CSTRING read_unit(CSTRING, double &, bool &);
+static std::string_view read_unit(std::string_view, double &, bool &);
 static void redraw(extDocument *, bool);
 static ERR  report_event(extDocument *, DEF, entity *, KEYVALUE *);
 static void reset_cursor(extDocument *);
 static ERR  resolve_fontx_by_index(extDocument *, stream_char, double &);
-static int  safe_file_path(extDocument *, const std::string &);
+static int  safe_file_path(extDocument *, std::string_view);
 static void set_focus(extDocument *, int, CSTRING);
-static void show_bookmark(extDocument *, const std::string &);
+static void show_bookmark(extDocument *, std::string_view);
 static std::string stream_to_string(RSTREAM &, stream_char, stream_char);
 static ERR  unload_doc(extDocument *, ULD = ULD::NIL);
 static bool valid_objectid(extDocument *, OBJECTID);
 static bool view_area(extDocument *, double, double, double, double);
-static std::string write_calc(double, int16_t);
 
 static ERR GET_WorkingPath(extDocument *, CSTRING *);
 
@@ -261,7 +260,7 @@ inline doc_edit * find_editdef(extDocument *Self, std::string_view Name)
 inline void layout_doc_fast(extDocument *Self)
 {
 #ifndef RETAIN_LOG_LEVEL
-   pf::LogLevel level(2);
+   kt::LogLevel level(2);
 #endif
 
    layout_doc(Self);
@@ -298,7 +297,7 @@ static ERR add_document_class(void)
       fl::Fields(clFields),
       fl::Size(sizeof(extDocument)),
       fl::Path(MOD_PATH),
-      fl::FileExtension("*.rpl|*.ripple|*.ripl"),
+      fl::FileExtension("rpl|ripple|ripl"),
       fl::Icon("filetypes/text"));
 
    return clDocument ? ERR::Okay : ERR::AddClass;
