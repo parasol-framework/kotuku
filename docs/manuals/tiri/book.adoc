@@ -113,39 +113,39 @@ include::ch19_script_organisation.adoc[]
 
 = Kōtuku Integration
 
-include::ch21_the_object_system.adoc[]
+include::ch20_the_object_system.adoc[]
 
-include::ch22_modules_and_structures.adoc[]
+include::ch21_modules_and_structures.adoc[]
 
-include::ch23_processing_and_events.adoc[]
+include::ch22_processing_and_events.adoc[]
 
-include::ch24_file_io.adoc[]
+include::ch23_file_io.adoc[]
 
-include::ch25_input_handling.adoc[]
+include::ch24_input_handling.adoc[]
 
-include::ch26_threading.adoc[]
+include::ch25_threading.adoc[]
 
 // Part V: Advanced Topics
 
 = Advanced Topics
 
-include::ch34_metatables_and_metamethods.adoc[]
+include::ch26_metatables_and_metamethods.adoc[]
 
-include::ch35_annotations_and_preprocessing.adoc[]
+include::ch27_annotations_and_preprocessing.adoc[]
 
-include::ch36_the_debug_library.adoc[]
+include::ch28_the_debug_library.adoc[]
 
-include::ch37_performance_and_the_jit.adoc[]
+include::ch29_performance_and_the_jit.adoc[]
 
-include::ch38_logging_and_diagnostics.adoc[]
+include::ch30_logging_and_diagnostics.adoc[]
 
 // Part VI: Tools
 
 = Tools
 
-include::ch39_origo.adoc[]
+include::ch31_origo.adoc[]
 
-include::ch40_tiri_lsp.adoc[]
+include::ch32_tiri_lsp.adoc[]
 
 // Appendices
 
