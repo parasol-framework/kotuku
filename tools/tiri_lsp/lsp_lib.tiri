@@ -380,6 +380,7 @@ global function computeErrorRange(Doc:table, Line:num, Column:num)
    return Column, Column + 1
 end
 
+@Doc(text="Compute diagnostics for a document using debug.validate()")
 global function computeDiagnostics(Doc:table)
    result = debug.validate(Doc.content)
 
