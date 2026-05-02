@@ -126,6 +126,7 @@
       <name>ParseSymbol</name>
       <comment>Instantiates an SVG symbol definition within a target viewport.</comment>
       <prototype>ERR svg::ParseSymbol(OBJECTPTR Object, CSTRING ID, objVectorViewport * Viewport)</prototype>
+      <tiriPrototype>err = ParseSymbol(ID:str, Viewport:obj)</tiriPrototype>
       <input>
         <param type="CSTRING" name="ID">Name of the symbol to parse.</param>
         <param type="objVectorViewport *" name="Viewport">The target viewport.</param>
@@ -140,6 +141,7 @@
       <name>Render</name>
       <comment>Performs high-quality rasterisation of the SVG document to a target bitmap.</comment>
       <prototype>ERR svg::Render(OBJECTPTR Object, objBitmap * Bitmap, INT X, INT Y, INT Width, INT Height)</prototype>
+      <tiriPrototype>err = Render(Bitmap:obj, X:num, Y:num, Width:num, Height:num)</tiriPrototype>
       <input>
         <param type="objBitmap *" name="Bitmap">The target bitmap object to receive the rendered content.</param>
         <param type="INT" name="X">Horizontal position within the target bitmap.</param>

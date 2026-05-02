@@ -171,6 +171,7 @@
       <name>Compress</name>
       <comment>Compresses bitmap data to save memory.</comment>
       <prototype>ERR bmp::Compress(OBJECTPTR Object, INT Level)</prototype>
+      <tiriPrototype>err = Compress(Level:num)</tiriPrototype>
       <input>
         <param type="INT" name="Level">Level of compression.  Zero uses a default setting (recommended), the maximum is 10.</param>
       </input>
@@ -192,6 +193,7 @@
       <name>ConvertToLinear</name>
       <comment>Convert a bitmap's colour space to linear RGB.</comment>
       <prototype>ERR bmp::ConvertToLinear(OBJECTPTR Object)</prototype>
+      <tiriPrototype>err = ConvertToLinear()</tiriPrototype>
       <description>
 <p>Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
 <p>The <fl>ColourSpace</fl> will be set to <code>LINEAR_RGB</code> on completion.  This method returns immediately if the <fl>ColourSpace</fl> is already set to <code>LINEAR_RGB</code>.</p>
@@ -209,6 +211,7 @@
       <name>ConvertToRGB</name>
       <comment>Convert a bitmap's colour space to standard RGB.</comment>
       <prototype>ERR bmp::ConvertToRGB(OBJECTPTR Object)</prototype>
+      <tiriPrototype>err = ConvertToRGB()</tiriPrototype>
       <description>
 <p>Use ConvertToRGB() to convert the colour space of a bitmap from linear RGB to sRGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
 <p>The <fl>ColourSpace</fl> will be set to <code>SRGB</code> on completion.  This method returns immediately if the <fl>ColourSpace</fl> is already set to <code>SRGB</code>.</p>
@@ -226,6 +229,7 @@
       <name>CopyArea</name>
       <comment>Copies a rectangular area from one bitmap to another.</comment>
       <prototype>ERR bmp::CopyArea(OBJECTPTR Object, objBitmap * DestBitmap, BAF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</prototype>
+      <tiriPrototype>err = CopyArea(DestBitmap:obj, Flags:num, X:num, Y:num, Width:num, Height:num, XDest:num, YDest:num)</tiriPrototype>
       <input>
         <param type="objBitmap *" name="DestBitmap">The target bitmap.</param>
         <param type="BAF" name="Flags" lookup="BAF">Optional flags.</param>
@@ -250,6 +254,7 @@
       <name>Decompress</name>
       <comment>Decompresses a compressed bitmap.</comment>
       <prototype>ERR bmp::Decompress(OBJECTPTR Object, INT RetainData)</prototype>
+      <tiriPrototype>err = Decompress(RetainData:num)</tiriPrototype>
       <input>
         <param type="INT" name="RetainData">Retains the compression data if <code>true</code>.</param>
       </input>
@@ -267,6 +272,7 @@
       <name>Demultiply</name>
       <comment>Reverses the conversion process performed by Premultiply().</comment>
       <prototype>ERR bmp::Demultiply(OBJECTPTR Object)</prototype>
+      <tiriPrototype>err = Demultiply()</tiriPrototype>
       <description>
 <p>Use Demultiply() to normalise RGB values that have previously been converted by <method>Premultiply</method>.  This method will return immediately if the bitmap values are already normalised, as determined by the presence of the <code>PREMUL</code> value in <fl>Flags</fl>.</p>
       </description>
@@ -282,6 +288,7 @@
       <name>DrawRectangle</name>
       <comment>Draws rectangles, both filled and unfilled.</comment>
       <prototype>ERR bmp::DrawRectangle(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height, UINT Colour, BAF Flags)</prototype>
+      <tiriPrototype>err = DrawRectangle(X:num, Y:num, Width:num, Height:num, Colour:num, Flags:num)</tiriPrototype>
       <input>
         <param type="INT" name="X">The left-most coordinate of the rectangle.</param>
         <param type="INT" name="Y">The top-most coordinate of the rectangle.</param>
@@ -303,6 +310,7 @@
       <name>GetColour</name>
       <comment>Converts Red, Green, Blue components into a single colour value.</comment>
       <prototype>ERR bmp::GetColour(OBJECTPTR Object, INT Red, INT Green, INT Blue, INT Alpha, UINT * Colour)</prototype>
+      <tiriPrototype>err, Colour:num = GetColour(Red:num, Green:num, Blue:num, Alpha:num)</tiriPrototype>
       <input>
         <param type="INT" name="Red">Red component from 0 - 255.</param>
         <param type="INT" name="Green">Green component from 0 - 255.</param>
@@ -323,6 +331,7 @@
       <name>Premultiply</name>
       <comment>Premultiplies RGB channel values by the alpha channel.</comment>
       <prototype>ERR bmp::Premultiply(OBJECTPTR Object)</prototype>
+      <tiriPrototype>err = Premultiply()</tiriPrototype>
       <description>
 <p>Use Premultiply() to convert all RGB values in the bitmap's clipping region to pre-multiplied values.  The exact formula applied per channel is <code>(Colour * Alpha + 0xff)&gt;&gt;8</code>.  The alpha channel is not affected.</p>
 <p>This method will only operate on 32 bit bitmaps, and an alpha channel must be present.  If the RGB values are already pre-multiplied, the method returns immediately.</p>
@@ -340,6 +349,7 @@
       <name>SetClipRegion</name>
       <comment>Sets a clipping region for a bitmap object.</comment>
       <prototype>ERR bmp::SetClipRegion(OBJECTPTR Object, INT Number, INT Left, INT Top, INT Right, INT Bottom, INT Terminate)</prototype>
+      <tiriPrototype>err = SetClipRegion(Number:num, Left:num, Top:num, Right:num, Bottom:num, Terminate:num)</tiriPrototype>
       <input>
         <param type="INT" name="Number">The number of the clip region to set.</param>
         <param type="INT" name="Left">The horizontal start of the clip region.</param>

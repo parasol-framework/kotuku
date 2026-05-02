@@ -22,11 +22,12 @@ function encodeField(Access, Type, ByteStart, ByteEnd, Comment)
 end
 
 -- Encode a method/action/function entry.
-function encodeMethod(Prototype, ByteStart, ByteEnd, Comment, Params)
+function encodeMethod(Prototype, TiriPrototype, ByteStart, ByteEnd, Comment, Params)
    return {
       byteStart = ByteStart,
       byteEnd = ByteEnd,
       prototype = Prototype or '',
+      tiriPrototype = TiriPrototype or '',
       comment = Comment or '',
       params = Params or array<table>
    }
@@ -72,6 +73,8 @@ global function decodeMethod(Str:any):table
          result.byteEnd = tonumber(end_pos)
       elseif key is 'P' then
          result.prototype = value
+      elseif key is 'T' then
+         result.tiriPrototype = value
       elseif key is 'C' then
          result.comment = value
       else
@@ -217,6 +220,7 @@ function processModuleXML(FilePath:str, DocPath:str):<str,table>
       if funcName then
          modEntry.functions[funcName] = encodeMethod(
             extractChildText(funcMatch.content, 'prototype') or '',
+            extractChildText(funcMatch.content, 'tiriPrototype') or '',
             funcMatch.byteStart,
             funcMatch.byteEnd,
             extractChildText(funcMatch.content, 'comment') or '',
@@ -268,6 +272,7 @@ function processClassXML(FilePath, DocPath)
       if methodName then
          classEntry.methods[methodName] = encodeMethod(
             extractChildText(methodMatch.content, 'prototype') or '',
+            extractChildText(methodMatch.content, 'tiriPrototype') or '',
             methodMatch.byteStart,
             methodMatch.byteEnd,
             extractChildText(methodMatch.content, 'comment') or '',
@@ -288,6 +293,7 @@ function processClassXML(FilePath, DocPath)
       if actionName then
          classEntry.actions[actionName] = encodeMethod(
             extractChildText(actionMatch.content, 'prototype') or '',
+            extractChildText(actionMatch.content, 'tiriPrototype') or '',
             actionMatch.byteStart,
             actionMatch.byteEnd,
             extractChildText(actionMatch.content, 'comment') or '',
@@ -330,7 +336,7 @@ global function buildDocCache(DocPath)
    -- Build the documentation cache from XML files
 
    cache = {
-      version = 5,
+      version = 6,
       built = mSys.PreciseTime() / 1000000,
       sdkPath = DocPath,
       modules = {},
@@ -447,7 +453,7 @@ global function loadDocCache(DocPath)
       return nil
    end
 
-   if cache.version != 5 then msg('Unsupported version'); return nil end
+   if cache.version != 6 then msg('Unsupported version'); return nil end
    if cache.sdkPath != DocPath then msg('Path mismatch: ' .. cache.sdkPath .. ' != ' .. DocPath); return nil end
 
    module_count = 0

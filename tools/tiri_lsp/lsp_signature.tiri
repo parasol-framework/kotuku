@@ -416,12 +416,56 @@ function signatureParamFromPrototypeLabel(Label:str):table
    }
 end
 
+function signatureParamFromTiriLabel(Label:str):table
+   label = Label:trim()
+   if label is '' then return { label = '' } end
+   if label is '...' then return { label = '...' } end
+
+   colon_pos = label:find(':', 0, true)
+   if colon_pos then
+      name = label:sub(0, colon_pos):trim()
+      param_type = label:sub(colon_pos + 1):trim()
+      return {
+         name = name,
+         type = param_type,
+         label = label
+      }
+   end
+
+   return { name = label, label = label }
+end
+
 function signatureXmlParamsFromPrototype(Prototype:str):array
    params = array<table>
    for param in values(signatureParamsFromPrototype(Prototype)) do
       params:push(signatureParamFromPrototypeLabel(param.label))
    end
    return params
+end
+
+function signatureTiriParamsFromPrototype(Prototype:str):array
+   params = array<table>
+   for param in values(signatureParamsFromPrototype(Prototype)) do
+      params:push(signatureParamFromTiriLabel(param.label))
+   end
+   return params
+end
+
+function signatureCopyParamDocs(Params:array, SourceParams:array):array
+   if not SourceParams then return Params end
+
+   for param in values(Params or array<table>) do
+      if param.name?? then
+         for source in values(SourceParams) do
+            if source.name is param.name then
+               param.doc ?= source.doc
+               break
+            end
+         end
+      end
+   end
+
+   return Params
 end
 
 function signatureIsImplicitObjectParam(Param:table, Index:num):bool
@@ -461,14 +505,29 @@ function signatureXmlLabel(DisplayName:str, Params:array):str
    return DisplayName .. '(' .. labels:join(', ') .. ')'
 end
 
+function signatureTiriLabel(DisplayName:str, Prototype:str):str
+   open_pos = Prototype and Prototype:find('(', 0, true) or nil
+   if not open_pos then return DisplayName end
+   return DisplayName .. Prototype:sub(open_pos)
+end
+
 function signatureFromXmlEntry(DisplayName:str, Entry:any, HideReceiver:bool):table
    doc = decodeMethod(Entry)
    doc ?? return nil
 
-   params = signatureXmlParams(doc, HideReceiver)
-   label = signatureXmlLabel(DisplayName, params)
-   if #params is 0 and doc.prototype and doc.prototype != '' then
-      label = DisplayName .. '()'
+   local params
+   local label
+
+   if doc.tiriPrototype?? then
+      params = signatureTiriParamsFromPrototype(doc.tiriPrototype)
+      params = signatureCopyParamDocs(params, doc.params)
+      label = signatureTiriLabel(DisplayName, doc.tiriPrototype)
+   else
+      params = signatureXmlParams(doc, HideReceiver)
+      label = signatureXmlLabel(DisplayName, params)
+      if #params is 0 and doc.prototype and doc.prototype != '' then
+         label = DisplayName .. '()'
+      end
    end
 
    return signatureBuildInfo(label, doc.comment, params)

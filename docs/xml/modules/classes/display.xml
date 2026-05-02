@@ -200,6 +200,7 @@
       <name>Minimise</name>
       <comment>Minimise the desktop window hosting the display.</comment>
       <prototype>ERR gfx::Minimise(OBJECTPTR Object)</prototype>
+      <tiriPrototype>err = Minimise()</tiriPrototype>
       <description>
 <p>If a display is hosted in a desktop window, calling the Minimise method will perform the default minimise action on that window.  On a platform such as Microsoft Windows, this would normally result in the window being minimised to the task bar.</p>
 <p>Calling Minimise on a display that is already in the minimised state may result in the host window being restored to the desktop.  This behaviour is platform dependent and should be manually tested to confirm its reliability on the host platform.</p>
@@ -213,6 +214,7 @@
       <name>SetDisplay</name>
       <comment>Changes the current display mode.</comment>
       <prototype>ERR gfx::SetDisplay(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height, INT InsideWidth, INT InsideHeight, INT BitsPerPixel, DOUBLE RefreshRate, INT Flags)</prototype>
+      <tiriPrototype>err = SetDisplay(X:num, Y:num, Width:num, Height:num, InsideWidth:num, InsideHeight:num, BitsPerPixel:num, RefreshRate:num, Flags:num)</tiriPrototype>
       <input>
         <param type="INT" name="X">Horizontal offset of the display, relative to its default position.</param>
         <param type="INT" name="Y">Vertical offset of the display, relative to its default position.</param>
@@ -241,6 +243,7 @@
       <name>SetGamma</name>
       <comment>Sets the display gamma levels.</comment>
       <prototype>ERR gfx::SetGamma(OBJECTPTR Object, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags)</prototype>
+      <tiriPrototype>err = SetGamma(Red:num, Green:num, Blue:num, Flags:num)</tiriPrototype>
       <input>
         <param type="DOUBLE" name="Red">Gamma correction for the red gun.</param>
         <param type="DOUBLE" name="Green">Gamma correction for the green gun.</param>
@@ -263,6 +266,7 @@
       <name>SetGammaLinear</name>
       <comment>Sets the display gamma level using a linear algorithm.</comment>
       <prototype>ERR gfx::SetGammaLinear(OBJECTPTR Object, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags)</prototype>
+      <tiriPrototype>err = SetGammaLinear(Red:num, Green:num, Blue:num, Flags:num)</tiriPrototype>
       <input>
         <param type="DOUBLE" name="Red">New red gamma value.</param>
         <param type="DOUBLE" name="Green">New green gamma value.</param>
@@ -282,6 +286,7 @@
       <name>SetMonitor</name>
       <comment>Changes the default monitor settings.</comment>
       <prototype>ERR gfx::SetMonitor(OBJECTPTR Object, CSTRING Name, INT MinH, INT MaxH, INT MinV, INT MaxV, MON Flags)</prototype>
+      <tiriPrototype>err = SetMonitor(Name:str, MinH:num, MaxH:num, MinV:num, MaxV:num, Flags:num)</tiriPrototype>
       <input>
         <param type="CSTRING" name="Name">The name of the display.</param>
         <param type="INT" name="MinH">The minimum horizontal scan rate.  Usually set to 31.</param>
@@ -305,6 +310,7 @@
       <name>SizeHints</name>
       <comment>Sets the width and height restrictions for the host window (hosted environments only).</comment>
       <prototype>ERR gfx::SizeHints(OBJECTPTR Object, INT MinWidth, INT MinHeight, INT MaxWidth, INT MaxHeight, INT EnforceAspect)</prototype>
+      <tiriPrototype>err = SizeHints(MinWidth:num, MinHeight:num, MaxWidth:num, MaxHeight:num, EnforceAspect:num)</tiriPrototype>
       <input>
         <param type="INT" name="MinWidth">The minimum width of the window.</param>
         <param type="INT" name="MinHeight">The minimum height of the window.</param>
@@ -325,6 +331,7 @@
       <name>UpdatePalette</name>
       <comment>Updates the video display palette to new colour values if in 256 colour mode.</comment>
       <prototype>ERR gfx::UpdatePalette(OBJECTPTR Object, struct RGBPalette * NewPalette)</prototype>
+      <tiriPrototype>err = UpdatePalette(NewPalette:any)</tiriPrototype>
       <input>
         <param type="struct RGBPalette *" name="NewPalette">The new palette to apply to the display bitmap.</param>
       </input>
@@ -342,6 +349,7 @@
       <name>WaitVBL</name>
       <comment>Waits for a vertical blank.</comment>
       <prototype>ERR gfx::WaitVBL(OBJECTPTR Object)</prototype>
+      <tiriPrototype>err = WaitVBL()</tiriPrototype>
       <description>
 <p>This method waits for the strobe to reach the vertical blank area at the bottom of the display.  Not all graphics hardware will support this method.  If this is the case, WaitVBL() will return immediately with <code>ERR::NoSupport</code>.</p>
       </description>

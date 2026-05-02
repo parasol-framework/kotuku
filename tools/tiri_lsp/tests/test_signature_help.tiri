@@ -9,6 +9,22 @@ global glSignatureHelpTestUri = nil
    assert(lspInitDocs('sdk:docs/xml/'), 'Failed to initialise LSP documentation cache.')
    glSignatureHelpTestUri = lspPathToUri('sdk:tools/tiri_lsp/tests/test_signature_help.tiri')
    assert(glSignatureHelpTestUri, 'Failed to create test document URI.')
+
+   glDocCache.modules.Core.functions.WaitTime.tiriPrototype = 'WaitTime(Seconds: num):num'
+   glDocCache.classes.XML.methods.GetAttrib.tiriPrototype = 'GetAttrib(Index: num, Attrib: str, Value: str):num'
+   glDefs.modulePrefixes.mTest = 'Test'
+   glDocCache.modules.Test = {
+      functions = {
+         Mixed = {
+            prototype = 'APTR Mixed(APTR Value)',
+            tiriPrototype = 'Mixed(Value: any):any',
+            comment = 'Mixed pointer fallback.',
+            params = array<table> {
+               { name = 'Value', type = 'APTR', doc = 'Pointer-like value.' }
+            }
+         }
+      }
+   }
 end
 
 function makeDoc(Content:str):table
@@ -140,8 +156,8 @@ end
    help = signatureAt('mSys.WaitTime(|)\n')
    signature = firstSignature(help)
 
-   assert(signature.label is 'mSys.WaitTime(Seconds: DOUBLE)', 'Module API signature should use XML parameter docs.')
-   assert(signature.parameters[0].label is 'Seconds: DOUBLE', 'Module API parameter should include name and type.')
+   assert(signature.label is 'mSys.WaitTime(Seconds: num):num', 'Module API signature should prefer Tiri prototypes.')
+   assert(signature.parameters[0].label is 'Seconds: num', 'Module API parameter should include the Tiri type.')
    assertContains(signature.parameters[0].documentation.value, 'seconds',
       'Module API parameter should include XML docs.')
    assert(help.activeParameter is 0, 'First module parameter should be active.')
@@ -154,10 +170,20 @@ xml.mtGetAttrib(1, |)
 ]=])
    signature = firstSignature(help)
 
-   assertContains(signature.label, 'xml.mtGetAttrib(Index: INT, Attrib: CSTRING, Value: CSTRING *)',
-      'Object method signature should use XML method params without implicit receiver.')
-   assert(signature.parameters[0].label is 'Index: INT', 'First visible method parameter should be Index.')
+   assert(signature.label is 'xml.mtGetAttrib(Index: num, Attrib: str, Value: str):num',
+      'Object method signature should prefer Tiri prototypes.')
+   assert(signature.parameters[0].label is 'Index: num', 'First visible method parameter should be Index.')
    assert(help.activeParameter is 1, 'Second method argument should be active.')
+end
+
+@Test function TiriPrototypePreservesAnyFallback()
+   help = signatureAt('mTest.Mixed(|)\n')
+   signature = firstSignature(help)
+
+   assert(signature.label is 'mTest.Mixed(Value: any):any', 'Tiri prototype should preserve any fallback types.')
+   assert(signature.parameters[0].label is 'Value: any', 'Parameter label should retain any annotations.')
+   assert(signature.parameters[0].documentation.value is 'Pointer-like value.',
+      'Parameter docs should still come from XML parameter metadata.')
 end
 
 @Test function ObjectActionWithNoVisibleParameters()

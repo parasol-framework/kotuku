@@ -86,6 +86,7 @@
       <name>AddArgument</name>
       <comment>Adds a new argument to the Parameters field.</comment>
       <prototype>ERR task::AddArgument(OBJECTPTR Object, CSTRING Argument)</prototype>
+      <tiriPrototype>err = AddArgument(Argument:str)</tiriPrototype>
       <input>
         <param type="CSTRING" name="Argument">The new argument string.</param>
       </input>
@@ -102,6 +103,7 @@
       <name>Expunge</name>
       <comment>Forces a Task to expunge unused code.</comment>
       <prototype>ERR task::Expunge(OBJECTPTR Object)</prototype>
+      <tiriPrototype>err = Expunge()</tiriPrototype>
       <description>
 <p>The Expunge() method releases all loaded libraries that are no longer in use by the active process.</p>
       </description>
@@ -114,6 +116,7 @@
       <name>GetEnv</name>
       <comment>Retrieves environment variables for the active process.</comment>
       <prototype>ERR task::GetEnv(OBJECTPTR Object, CSTRING Name, CSTRING * Value)</prototype>
+      <tiriPrototype>err, Value:str = GetEnv(Name:str)</tiriPrototype>
       <input>
         <param type="CSTRING" name="Name">The name of the environment variable to retrieve.</param>
         <param type="CSTRING *" name="Value">The value of the environment variable is returned in this parameter.</param>
@@ -141,6 +144,7 @@
       <name>Quit</name>
       <comment>Sends a quit message to a task.</comment>
       <prototype>ERR task::Quit(OBJECTPTR Object)</prototype>
+      <tiriPrototype>err = Quit()</tiriPrototype>
       <description>
 <p>The Quit() method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the <code>MSGID::QUIT</code> message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.</p>
 <p>Signal Handling on Unix: When terminating a foreign process on Unix systems, the quit behavior follows a two-stage approach for safe process termination: The first call sends <code>SIGTERM</code> to allow the process to shutdown gracefully; A second call sends <code>SIGKILL</code> to force immediate termination if the process is unresponsive.</p>
@@ -155,6 +159,7 @@
       <name>SetEnv</name>
       <comment>Sets environment variables for the active process.</comment>
       <prototype>ERR task::SetEnv(OBJECTPTR Object, CSTRING Name, CSTRING Value)</prototype>
+      <tiriPrototype>err = SetEnv(Name:str, Value:str)</tiriPrototype>
       <input>
         <param type="CSTRING" name="Name">The name of the environment variable to set.</param>
         <param type="CSTRING" name="Value">The value to assign to the environment variable.</param>

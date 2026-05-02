@@ -835,6 +835,7 @@ global function docClass(Class)
             out ..=f'      <name>{method.name}</name>\n'
             out ..=f'      <comment>{substituteReferences((method.comment ?? ''):escXML(), Class)}</comment>\n'
             if method.prototype?? then out ..= f'      <prototype>{method.prototype:escXML()}</prototype>\n' end
+            if method.tiriPrototype?? then out ..= f'      <tiriPrototype>{method.tiriPrototype:escXML()}</tiriPrototype>\n' end
 
             if not table.empty(method.params) then
                out ..= '      <input>\n'
@@ -1057,6 +1058,7 @@ global function docFunction(Function)
    if Function.synonym??   then out ..= '    <synonym>' .. Function.synonym .. '</synonym>\n' end
    if Function.comment??   then out ..= '    <comment>' .. substituteReferences(Function.comment:escXML()) .. '</comment>\n' end
    if Function.prototype?? then out ..= '    <prototype>' .. docFunctionPrototype(Function):escXML() .. '</prototype>\n' end
+   if Function.tiriPrototype?? then out ..= '    <tiriPrototype>' .. Function.tiriPrototype:escXML() .. '</tiriPrototype>\n' end
    if Function.id??        then out ..= '    <id>' .. Function.id .. '</id>\n' end
 
    -- Function arguments
