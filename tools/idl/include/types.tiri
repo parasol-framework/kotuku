@@ -80,83 +80,83 @@ global function getFieldType(Def:table, Type:num, CustomName:str, Option:any)
       else
          Def.type = 'APTR'
       end
-   elseif Type & FD_ARRAY != 0 then
+   elseif Type has FD_ARRAY then
       -- All arrays are pointers, with additional information indicating the type of values in the array.
 
-      if Type & FD_CPP != 0 then
-         if Type & FD_BYTE != 0 then
+      if Type has FD_CPP then
+         if Type has FD_BYTE then
             Def.type = 'kt::vector<int8_t>'
-         elseif Type & FD_WORD != 0 then
+         elseif Type has FD_WORD then
             Def.type = 'kt::vector<int16_t>'
-         elseif Type & FD_INT != 0 then
+         elseif Type has FD_INT then
             Def.type = 'kt::vector<int>'
-         elseif Type & FD_FLOAT != 0 then
+         elseif Type has FD_FLOAT then
             Def.type = 'kt::vector<float>'
-         elseif Type & FD_DOUBLE != 0 then
+         elseif Type has FD_DOUBLE then
             Def.type = 'kt::vector<double>'
-         elseif Type & FD_STRING != 0 then
+         elseif Type has FD_STRING then
             Def.type = 'kt::vector<std::string>'
-         elseif Type & FD_POINTER != 0 then
+         elseif Type has FD_POINTER then
             Def.type = 'kt::vector<APTR>'
-         elseif Type & FD_STRUCT != 0 then
+         elseif Type has FD_STRUCT then
             Def.type = 'kt::vector<STRUCT>'
          else
             Def.type = 'kt::vector<>'
          end
       else
-         if Type & FD_BYTE != 0 then
+         if Type has FD_BYTE then
             Def.type = 'int8_t []'
             Def.doc_type = 'INT8 []'
-         elseif Type & FD_WORD != 0 then
+         elseif Type has FD_WORD then
             Def.type = 'int16_t []'
             Def.doc_type = 'INT16 []'
-         elseif Type & FD_INT != 0 then
+         elseif Type has FD_INT then
             Def.type = 'int []'
             Def.doc_type = 'INT []'
-         elseif Type & FD_FLOAT != 0 then
+         elseif Type has FD_FLOAT then
             Def.type = 'float []'
             Def.doc_type = 'FLOAT []'
-         elseif Type & FD_DOUBLE != 0 then
+         elseif Type has FD_DOUBLE then
             Def.type = 'double []'
             Def.doc_type = 'DOUBLE []'
-         elseif Type & FD_STRING != 0 then
+         elseif Type has FD_STRING then
             Def.type = 'STRING []'
-         elseif Type & FD_POINTER != 0 then
+         elseif Type has FD_POINTER then
             Def.type = 'APTR []'
-         elseif Type & FD_STRUCT != 0 then
+         elseif Type has FD_STRUCT then
             Def.type = 'STRUCT []'
          else
             Def.type = 'ARRAY'
          end
       end
-   elseif Type & FD_STRING != 0 then
+   elseif Type has FD_STRING then
       Def.type = 'STRING'
-   elseif Type & FD_FUNCTION != 0 then
+   elseif Type has FD_FUNCTION then
       Def.type = 'FUNCTION'
-   elseif Type & FD_POINTER != 0 then
+   elseif Type has FD_POINTER then
       ptr = 0
-      if Type & FD_INT != 0 then
+      if Type has FD_INT then
          result = 'INT'
          ptr++
-      elseif Type & FD_INT64 != 0 then
+      elseif Type has FD_INT64 then
          result = 'INT64'
          ptr++
-      elseif Type & FD_DOUBLE != 0 then
+      elseif Type has FD_DOUBLE then
          result = 'DOUBLE'
          ptr++
-      elseif Type & (FD_OBJECT | FD_LOCAL) != 0 then
+      elseif Type has FD_OBJECT or Type has FD_LOCAL then
          Def.type = 'OBJECTPTR'
          return
-      elseif Type & FD_STRING != 0 then
+      elseif Type has FD_STRING then
          Def.type = 'STRING'
          return
-      elseif Type & FD_RGB != 0 then
+      elseif Type has FD_RGB then
          result = 'RGB'
          ptr++
-      elseif Type & FD_FUNCTION != 0 then
+      elseif Type has FD_FUNCTION then
          result = 'FUNCTION'
          ptr++
-      elseif Type & FD_STRUCT != 0 then
+      elseif Type has FD_STRUCT then
          if Option?? then -- TODO: We need a way to convert the Option number to a string address...
             result = 'APTR'
          else
@@ -172,23 +172,23 @@ global function getFieldType(Def:table, Type:num, CustomName:str, Option:any)
       else
          Def.type = result
       end
-   elseif Type & FD_RGB != 0 then
+   elseif Type has FD_RGB then
       Def.type = 'RGB8'
-   elseif Type & FD_INT != 0 then
-      if Type & FD_OBJECT != 0 then
+   elseif Type has FD_INT then
+      if Type has FD_OBJECT then
          Def.type = 'OBJECTID'
       else
-         Def.type = 'int'
+         Def.type     = 'int'
          Def.doc_type = 'INT'
       end
-   elseif Type & FD_INT64 != 0 then
-      Def.type = 'int64_t'
+   elseif Type has FD_INT64 then
+      Def.type     = 'int64_t'
       Def.doc_type = 'INT64'
-   elseif Type & FD_DOUBLE != 0 then
-      Def.type = 'double'
+   elseif Type has FD_DOUBLE then
+      Def.type     = 'double'
       Def.doc_type = 'DOUBLE'
-   elseif Type & FD_FLOAT != 0 then
-      Def.type = 'float'
+   elseif Type has FD_FLOAT then
+      Def.type     = 'float'
       Def.doc_type = 'FLOAT'
    else
       print(string.format('Failed to identify field type $%.8x for field "%s"', Type, CustomName))
@@ -197,7 +197,7 @@ global function getFieldType(Def:table, Type:num, CustomName:str, Option:any)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Returns { cpp, type, fullType, docType, defType, sizeof, ref, lookup, bits, name, comment, basicType, allocated, result_value }
+-- Returns { cpp, type, fullType, docType, defType, sizeof, ref, lookup, bits, name, comment, basicType, allocated, result_value, output }
 
 global function cType(Field:table, Origin:str):table
    assert(Field.type, "Field definition incorrect, missing 'type' value for '" .. tostring(Origin) .. "'")
@@ -213,6 +213,7 @@ global function cType(Field:table, Origin:str):table
       if special:find('!') then Field.allocated = true end
       result_value = true
       Field.type = rest_type
+      Field.output = true
    end
 
    if Field.type:startsWith('structsize') then
@@ -263,7 +264,12 @@ global function cType(Field:table, Origin:str):table
          Field.cpp  = true
          Field.type = cpp_inner
          Field = cType(Field, Origin)
-         Field.fullType = { fd='FD_CPP|' .. Field.fullType.fd, c_type=Field.fullType.c_type, doc_type=Field.fullType.doc_type }
+         Field.fullType = {
+            fd       = 'FD_CPP|' .. Field.fullType.fd,
+            c_type   = Field.fullType.c_type,
+            doc_type = Field.fullType.doc_type,
+            t_type   = Field.fullType.t_type
+         }
          return Field
       end
    end
