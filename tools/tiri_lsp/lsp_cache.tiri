@@ -10,11 +10,11 @@
 
    import 'io/filesearch'
 
-rx_pos_pair = <{ regex.new([[(\d+),(\d+)]]) }>
-rx_source_file_path = <{ regex.new([[<file\s+path="([^"]*)">([^<]+)<\/file>]]) }>
+rx_pos_pair          = <{ regex.new([[(\d+),(\d+)]]) }>
+rx_source_file_path  = <{ regex.new([[<file\s+path="([^"]*)">([^<]+)<\/file>]]) }>
 rx_source_file_plain = <{ regex.new([[<file>([^<]+)<\/file>]]) }>
-rx_input_param = <{ regex.new([[<param\s+([^>]*)>(.*?)<\/param>]], regex.DOT_ALL) }>
-rx_xml_attr = <{ regex.new([=[([A-Za-z_][A-Za-z0-9_]*)="([^"]*)"]=]) }>
+rx_input_param       = <{ regex.new([[<param\s+([^>]*)>(.*?)<\/param>]], regex.DOT_ALL) }>
+rx_xml_attr          = <{ regex.new([=[([A-Za-z_][A-Za-z0-9_]*)="([^"]*)"]=]) }>
 
 @Doc(text='Encode a field entry to compact string format')
 function encodeField(Access, Type, ByteStart, ByteEnd, Comment):str
@@ -223,15 +223,15 @@ function processClassXML(FilePath, DocPath)
    className ?? return
 
    classEntry = {
-      file = relativePath,
+      file      = relativePath,
       byteStart = infoMatch.byteStart,
-      byteEnd = infoMatch.byteEnd,
-      module = extractChildText(infoMatch.content, 'module') or '',
-      comment = extractChildText(infoMatch.content, 'comment') or '',
-      sources = extractSources(infoMatch.content),
-      methods = {},
-      actions = {},
-      fields = {}
+      byteEnd   = infoMatch.byteEnd,
+      module    = extractChildText(infoMatch.content, 'module') or '',
+      comment   = extractChildText(infoMatch.content, 'comment') or '',
+      sources   = extractSources(infoMatch.content),
+      methods   = {},
+      actions   = {},
+      fields    = {}
    }
 
    -- Extract methods (using compact string format)
@@ -309,7 +309,7 @@ global function buildDocCache(DocPath)
 
    cache = {
       version = 6,
-      built = mSys.PreciseTime() / 1000000,
+      built   = mSys.PreciseTime() / 1000000,
       sdkPath = DocPath,
       modules = {},
       classes = {}
@@ -345,9 +345,9 @@ global function buildDocCache(DocPath)
    print('Scanning classes for documentation cache; ', classesPath)
 
    err = io.search(classesPath, {
-      nameFilter = regex.new([[\.xml$]]),
-      maxDepth = 1,
-      matchFeedback = function(Path, FileName, File)
+      nameFilter    = regex.new([[\.xml$]]),
+      maxDepth      = 1,
+      matchFeedback = function(Path:str, FileName:str, File)
          fullPath = Path .. FileName
          className, classEntry = processClassXML(fullPath, DocPath)
          if className and classEntry then

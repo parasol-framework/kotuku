@@ -4,8 +4,6 @@ rx_starts_capital = <{ regex.new("^[A-Z]") }>
 rx_action_prefix = <{ regex.new("^ac[A-Z]") }>
 rx_method_prefix = <{ regex.new("^mt[A-Z]") }>
 
-global glHoverSymbolCache = {}
-
 ----------------------------------------------------------------------------------------------------------------------
 
 @Doc(text="Hover Support - Token Extraction")
@@ -203,11 +201,10 @@ function hoverGetDocumentSymbols(Doc:table):array
    if result and result.symbols then
       Doc.hoverSymbols = result.symbols
       Doc.hoverSymbolsContent = Doc.content
-      glHoverSymbolCache[Doc.uri] = result.symbols
       return result.symbols
    end
 
-   return Doc.hoverSymbols or glHoverSymbolCache[Doc.uri]
+   return Doc.hoverSymbols
 end
 
 function hoverTextHasContent(Text:str):bool
