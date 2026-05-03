@@ -2,6 +2,7 @@
 
 [[ch-threading]]
 == Threading
+indexterm:[threading]
 
 Tiri provides a threading model designed for safety over flexibility, without compromising performance.  Rather than launching raw threads, the programmer submits asynchronous work against a Kōtuku object.  The runtime manages thread creation, queueing, and exclusive locking automatically.  This _barrier model_ eliminates data races by ensuring that no two workers can access the same object concurrently — while the worker has exclusive access, it can safely operate on the object's data without additional synchronisation.
 
@@ -13,6 +14,7 @@ The threading system consists of three interfaces:
 
 [[sec-threading-model]]
 === The Barrier Model
+indexterm:[threading, barrier model]
 
 Every asynchronous activity targets a Kōtuku object that will represent the working state.  When the worker thread starts, it acquires an exclusive lock on that object that lasts until the thread completes.  Execution proceeds in two phases:
 
@@ -33,6 +35,7 @@ NOTE: Thread callbacks always execute during the event processing loop, which re
 
 [[sec-thread-creation]]
 === Thread Creation
+indexterm:[threading, creation]
 
 ==== async.script()
 
@@ -116,6 +119,8 @@ processing.collect() <1>
 
 [[sec-threaded-actions-and-methods]]
 === Async Actions & Methods
+indexterm:[async actions]
+indexterm:[async methods]
 
 ==== async.action(), async.method()
 
@@ -192,6 +197,7 @@ Any async actions submitted during callback execution — including actions targ
 
 [[sec-async-queue-management]]
 === Queue Management
+indexterm:[threading, queue management]
 
 ==== async.wait()
 
@@ -271,6 +277,7 @@ check async.cancel(array<object> { script_a, script_b })
 
 [[sec-thread-synchronisation]]
 === Thread Synchronisation
+indexterm:[threading, synchronisation]
 
 Thread synchronisation in Tiri relies on the signal mechanism defined in <<sec-signals>>.  The pattern is:
 
@@ -361,6 +368,7 @@ The pipe iteration operator can be combined with `async.script()` to fan out wor
 
 [[sec-shared-pool]]
 === Shared Data Pool
+indexterm:[threading, shared data pool]
 
 ==== async.pool
 
@@ -443,6 +451,7 @@ Keys are strings and are binary-safe (embedded NUL bytes are preserved).
 
 [[sec-thread-safety]]
 === Thread Safety
+indexterm:[thread safety]
 
 [discrete]
 ==== Guarantees

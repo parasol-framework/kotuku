@@ -2,6 +2,7 @@
 
 [[ch-the-object-system]]
 == The Object System
+indexterm:[object system]
 
 Tiri provides full interoperability with the Kōtuku application framework through a native object interface.  This chapter defines the interface for creating, configuring, querying, and destroying Kōtuku objects from Tiri scripts.
 
@@ -22,6 +23,7 @@ Thread-safe access:: Objects are treated as shared resources by default.  The `w
 
 [[sec-creating-objects]]
 === Creating Objects
+indexterm:[objects, creation]
 
 ==== obj.new()
 
@@ -89,6 +91,7 @@ Returns the MetaClass object for the given `Object`.  The MetaClass provides acc
 
 [[sec-field-access]]
 === Field Access
+indexterm:[objects, field access]
 
 Object fields are read and written using standard dot notation:
 
@@ -165,6 +168,8 @@ state.clickCount = 0
 
 [[sec-actions-and-methods]]
 === Actions & Methods
+indexterm:[actions]
+indexterm:[methods]
 
 Actions and methods are the primary means of interacting with an initialised object.  Actions are contractual operations defined by the framework (common across many classes), while methods are class-specific operations.
 
@@ -198,6 +203,7 @@ For complete documentation of the actions and methods supported by each class, r
 
 [[sec-object-relationships]]
 === Object Relationships
+indexterm:[objects, relationships]
 
 Kōtuku enforces a strict parent-child hierarchy.  Every object has exactly one parent and may have any number of children.  By default, `obj.new()` creates objects owned by the script.
 
@@ -244,6 +250,7 @@ end
 
 [[sec-object-lifecycle]]
 === Object Lifecycle
+indexterm:[objects, lifecycle]
 
 Object interfaces hold either a strong or weak reference to the underlying Kōtuku object.  The reference type determines when the object is eligible for destruction.
 
@@ -302,6 +309,7 @@ For objects with a single reference, assigning `nil` makes the object eligible f
 
 [[sec-subscriptions]]
 === Subscriptions
+indexterm:[subscriptions]
 
 Subscriptions allow a script to hook into the actions and methods invoked on an object.  When the subscribed action or method executes, the registered callback function is called.
 
@@ -356,6 +364,7 @@ http.unsubscribe('deactivate')
 
 [[sec-object-locking]]
 === Object Locking
+indexterm:[objects, locking]
 
 The `with` statement locks one or more Kōtuku objects for the duration of a block.  Objects are automatically unlocked when the scope exits through any path: normal completion, `return`, `break`, `continue`, or exception unwinding.
 

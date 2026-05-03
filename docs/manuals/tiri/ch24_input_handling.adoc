@@ -2,6 +2,7 @@
 
 [[ch-input-handling]]
 == Input Handling
+indexterm:[input handling]
 
 Kōtuku provides a unified input handling model for pointer devices (mice, trackpads, touchscreens, graphics tablets) and keyboards.  Input events are dispatched during the processing loop (see <<ch-processing-and-events>>) and delivered to registered callbacks.
 
@@ -19,6 +20,7 @@ include 'display'
 
 [[sec-subscribing-to-input]]
 === Subscribing to Input
+indexterm:[input subscriptions]
 
 [discrete]
 [[sec-vector-input-subscriptions]]
@@ -279,6 +281,7 @@ Global subscriptions do not transform coordinates to a vector's local space.  `x
 
 [[sec-keyboard-input]]
 === Keyboard Input
+indexterm:[keyboard input]
 
 Keyboard events are handled separately from pointer events.  Two subscription mechanisms are available.
 
@@ -539,6 +542,7 @@ processing.sleep()
 
 [[sec-drag-and-drop]]
 === Drag and Drop
+indexterm:[drag and drop]
 
 Kōtuku supports two forms of dragging: **viewport dragging** (moving a viewport around the scene) and **data dropping** (transferring data between objects via the clipboard).
 
@@ -665,6 +669,7 @@ input.requestItem(source, item, 'file',
 
 [[sec-unsubscribing]]
 === Unsubscribing
+indexterm:[input subscriptions, unsubscribing]
 
 [discrete]
 ==== Vector Subscriptions

@@ -2,10 +2,12 @@
 [[appendix-operator-precedence]]
 [appendix]
 == Operator Precedence
+indexterm:[operators, precedence]
 
 This appendix provides a quick-reference for all Tiri operators, ordered from highest to lowest precedence.  Operators on the same row share the same precedence level.  See <<ch-operators>> for full semantics.
 
 === Precedence Table
+indexterm:[precedence table]
 
 [cols="1,4,2"]
 |===

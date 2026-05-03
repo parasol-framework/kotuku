@@ -2,6 +2,7 @@
 
 [[ch-control-flow]]
 == Control Flow
+indexterm:[control flow]
 
 This chapter defines the control flow statements in Tiri: conditionals, loops, loop control, and return.  All blocks are delimited by keywords (`then`/`do`/`repeat`) and terminated by `end` or `until`.
 
@@ -9,6 +10,7 @@ Only `nil` and `false` are false when evaluating conditions.  All other values -
 
 [[sec-if-elseif-else]]
 === If / Elseif / Else
+indexterm:[if statements]
 
 [source,ebnf]
 ----
@@ -35,6 +37,7 @@ Each `block` introduces a new scope.  Variables declared inside a branch are not
 
 [[sec-while-loop]]
 === While Loop
+indexterm:[loops, while]
 
 [source,ebnf]
 ----
@@ -56,6 +59,7 @@ The loop body introduces a new scope.  `break` and `continue` are permitted (see
 
 [[sec-repeat-until-loop]]
 === Repeat-Until Loop
+indexterm:[loops, repeat until]
 
 [source,ebnf]
 ----
@@ -86,6 +90,7 @@ until line is 'quit'
 
 [[sec-numeric-for-loop]]
 === Numeric For Loop
+indexterm:[loops, numeric for]
 
 [source,ebnf]
 ----
@@ -158,6 +163,7 @@ WARNING: A zero `Step` produces an infinite loop.
 
 [[sec-generic-for-loop]]
 === Generic For Loop
+indexterm:[loops, generic for]
 
 [source,ebnf]
 ----
@@ -223,6 +229,8 @@ When a range literal appears directly after `in`, the call is implicit -- the co
 
 [[sec-break-and-continue]]
 === Break & Continue
+indexterm:[break statement]
+indexterm:[continue statement]
 
 ==== Break
 
@@ -289,6 +297,7 @@ This is equivalent to `if not result?? then return -1 end`.
 
 [[sec-return]]
 === Return
+indexterm:[return statement]
 
 [source,ebnf]
 ----

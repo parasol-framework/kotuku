@@ -2,6 +2,8 @@
 
 [[ch-logging-and-diagnostics]]
 == Logging & Diagnostics
+indexterm:[logging]
+indexterm:[diagnostics]
 
 _This chapter includes documentation for extensions that are not part of the language specification._
 
@@ -9,6 +11,8 @@ Tiri provides two primary output functions for writing diagnostic information: `
 
 [[sec-print-and-msg]]
 === Print & Msg
+indexterm:[print]
+indexterm:[msg]
 
 [discrete]
 ==== print()
@@ -48,6 +52,7 @@ Throws an error if `tostring()` does not return a string for any argument.
 
 [[sec-log-levels]]
 === Log Levels
+indexterm:[log levels]
 
 Kōtuku's logging system organises output by severity.  Log messages are written to stderr.  The following log levels are defined, from most to least verbose:
 
@@ -94,6 +99,7 @@ When debugging thread-related issues, append `--log-threads` to include thread i
 
 [[sec-debug-logging]]
 === Debug Logging
+indexterm:[debug logging]
 
 Calling the `DebugLog()` method on Script objects provides structured inspection of the Tiri runtime state.
 

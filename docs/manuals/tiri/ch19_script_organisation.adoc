@@ -2,11 +2,13 @@
 
 [[ch-script-management]]
 == Script Management
+indexterm:[script management]
 
 Tiri programs are organised through a combination of compile-time directives and runtime loading functions.  The `import` directive inlines library scripts at parse time, and the runtime functions `loadFile()` and `exec()` provide dynamic loading and evaluation.  User interactivity is possible via the `arg()` function, which allows command-line parameters to be passed through to the script.
 
 [[sec-the-import-directive]]
 === The import Directive
+indexterm:[import directive]
 
 [.api]`import 'Name' [as Alias]`
 
@@ -170,6 +172,7 @@ This pattern allows libraries to include self-test or demonstration code that do
 
 [[sec-dynamic-loading]]
 === Dynamic Loading
+indexterm:[dynamic loading]
 
 ==== loadFile()
 
@@ -257,6 +260,7 @@ The following table summarises the available mechanisms for loading and executin
 
 [[sec-script-parameters]]
 === Script Parameters
+indexterm:[script parameters]
 
 ==== arg()
 

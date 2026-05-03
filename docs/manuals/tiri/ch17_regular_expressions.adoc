@@ -2,6 +2,8 @@
 
 [[ch-regular-expressions]]
 == Regular Expressions
+indexterm:[regular expressions]
+indexterm:[regex]
 
 Tiri provides a compiled regular expression interface through the `regex` module.  Pattern objects are compiled once from an ECMAScript-compatible pattern string and reused for matching, searching, replacing, and splitting operations.  The underlying engine supports full Unicode via UTF-8, named and numbered capture groups, lookahead and lookbehind assertions, and inline flag modifiers.
 
@@ -9,6 +11,7 @@ This chapter documents the Tiri API for creating and using regex objects.  For c
 
 [[sec-creating-a-regex]]
 === Creating a Regular Expression
+indexterm:[regex, creation]
 
 ==== regex.new()
 
@@ -76,6 +79,8 @@ Use `regex.escape()` when constructing patterns from dynamic data or user input 
 
 [[sec-matching-and-searching]]
 === Matching and Searching
+indexterm:[regex, matching]
+indexterm:[regex, searching]
 
 ==== regex.test()
 
@@ -185,6 +190,8 @@ results = rx.search('<hello> <world>')
 
 [[sec-replacement-and-splitting]]
 === Replacement and Splitting
+indexterm:[regex, replacement]
+indexterm:[regex, splitting]
 
 ==== regex.replace()
 
@@ -268,6 +275,7 @@ parts = rx.split("line1\nline2\tline3")
 
 [[sec-flags-and-options]]
 === Flags and Options
+indexterm:[regex, flags]
 
 ==== Compilation Flags
 
@@ -356,6 +364,7 @@ rx.replace('abc123def456', '#', regex.REPLACE_NO_COPY)   -- '##'
 
 [[sec-regex-properties]]
 === Regex Properties
+indexterm:[regex, properties]
 
 Compiled regex objects expose the following read-only properties:
 
@@ -394,6 +403,7 @@ print(tostring(rx))   -- 'regex(words?, flags=1)'
 
 [[sec-regex-performance-considerations]]
 === Performance Considerations
+indexterm:[regex, performance]
 
 [discrete]
 ==== Compile Once, Reuse Many Times

@@ -3,6 +3,8 @@
 
 [[ch-annotations-and-preprocessing]]
 == Annotations & Preprocessing
+indexterm:[annotations]
+indexterm:[preprocessing]
 
 Tiri provides three parsing-related mechanisms: _annotations_, _parser annotation expressions_, and _preprocessor directives_.  Annotations attach structured metadata to function declarations.  Parser annotation expressions expand to literal source metadata while expressions are parsed.  Preprocessor directives conditionally include or exclude blocks of source code based on the execution environment.
 
@@ -10,6 +12,7 @@ All three features use `@` syntax, but they do not behave identically afterwards
 
 [[sec-annotation-syntax]]
 === Annotation Syntax
+indexterm:[annotations, syntax]
 
 An annotation begins with `@` followed by an identifier and an optional parenthesised argument list.  Annotations can only precede function declarations (`function`, `local function`, `global function`, or `thunk`).  Placing an annotation before any other statement raises a parse error.
 
@@ -94,6 +97,7 @@ x = compute()
 
 [[sec-parser-annotation-expressions]]
 === Parser Annotation Expressions
+indexterm:[parser annotation expressions]
 
 Parser annotation expressions begin with `@` and appear where an expression is permitted.  The parser resolves each expression to a literal value before bytecode is emitted.
 
@@ -125,6 +129,7 @@ Parser annotation expressions are source metadata expressions, not function decl
 
 [[sec-standard-annotations]]
 === Standard Annotations
+indexterm:[annotations, standard]
 
 The following annotations are recognised by standard Tiri tooling:
 
@@ -188,6 +193,7 @@ in `_ANNO`.
 
 [[sec-test-framework-annotations]]
 === Test Framework Annotations
+indexterm:[annotations, test framework]
 
 The Flute test runner (see <<ch-flute>>) recognises the following annotations.  These annotations control test
 discovery, lifecycle, filtering, and execution.
@@ -349,6 +355,7 @@ end
 
 [[sec-compile-time-preprocessor]]
 === Compile-Time Preprocessor
+indexterm:[preprocessor]
 
 The `@if` and `@end` directives conditionally include or exclude source code at parse time.  Excluded code is never compiled and produces no bytecode.
 
@@ -437,6 +444,7 @@ global function multiply(A, B) return A * B end
 
 [[sec-the-debug-anno-interface]]
 === The debug.anno Interface
+indexterm:[debug.anno]
 
 The `debug.anno` interface provides runtime access to function annotations.  All annotations, whether registered programmatically or declared in source code, are stored in the global `_ANNO` table indexed by function reference.  For source annotations, the `_ANNO` entry appears when the annotated declaration executes, not merely when the file is parsed.
 
@@ -534,6 +542,7 @@ is empty if no arguments were provided).
 
 [[sec-parser-symbol-metadata]]
 === Parser Symbol Metadata
+indexterm:[parser symbol metadata]
 
 `debug.validate(Code, 'symbols')` parses `Code` without executing it and returns parser-derived symbol metadata in the
 `symbols` field.  This mode enables documentation processing while the source is parsed.

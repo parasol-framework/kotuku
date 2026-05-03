@@ -1,10 +1,12 @@
 [[appendix-standard-library-quick-reference]]
 [appendix]
 == Standard Library Quick Reference
+indexterm:[standard library, quick reference]
 
 This appendix provides a compact reference of all built-in Tiri functions organised by library.  For full semantics, see the referenced chapters.  All string and table indexing is zero-based.  String and array methods support method-call syntax: `s:upper()` is equivalent to `string.upper(s)`.
 
 === Global Functions
+indexterm:[standard library, global functions]
 
 See <<ch-basic-syntax>>, <<ch-types-and-values>>, <<ch-error-handling>>.
 
@@ -37,6 +39,7 @@ See <<ch-basic-syntax>>, <<ch-types-and-values>>, <<ch-error-handling>>.
 
 <<<
 === String Library
+indexterm:[standard library, string library]
 
 See <<ch-strings>>.
 
@@ -92,6 +95,7 @@ See <<ch-strings>>.
 
 <<<
 === Table Library
+indexterm:[standard library, table library]
 
 See <<ch-tables>>.
 
@@ -113,6 +117,7 @@ See <<ch-tables>>.
 |===
 
 === Array Library
+indexterm:[standard library, array library]
 
 See <<ch-arrays>>.
 
@@ -193,6 +198,7 @@ Typed literal syntax is also supported: `array<int> { 10, 20, 30 }`
 
 <<<
 === Range Library
+indexterm:[standard library, range library]
 
 See <<ch-ranges>>.
 
@@ -221,6 +227,7 @@ Range literal syntax: `{0..5}` (exclusive), `{0...5}` (inclusive).
 Read-only properties: `r.start`, `r.stop`, `r.step`, `r.inclusive`, `r.length`.
 
 === Math Library
+indexterm:[standard library, math library]
 
 See <<ch-mathematics>>.
 
@@ -293,6 +300,7 @@ All trigonometric functions operate in radians.
 
 <<<
 === Regex Library
+indexterm:[standard library, regex library]
 
 See <<ch-regular-expressions>>.
 
@@ -341,6 +349,7 @@ See <<ch-regular-expressions>>.
 Read-only properties: `rx.pattern`, `rx.flags`, `rx.error`.
 
 === I/O Library
+indexterm:[standard library, I/O library]
 
 See <<ch-file-io>>.
 
@@ -393,6 +402,7 @@ See <<ch-file-io>>.
 Standard streams: `io.stdin`, `io.stdout`, `io.stderr`.
 
 === Debug Library
+indexterm:[standard library, debug library]
 
 See <<ch-the-debug-library>>.
 
@@ -423,6 +433,7 @@ See <<ch-the-debug-library>>.
 |===
 
 === JIT Library
+indexterm:[standard library, JIT library]
 
 See <<ch-performance-and-the-jit>>.
 

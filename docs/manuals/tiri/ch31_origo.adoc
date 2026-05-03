@@ -2,6 +2,7 @@
 
 [[ch-origo]]
 == Origo
+indexterm:[Origo]
 
 Origo is the command-line executable that runs Tiri scripts.  It initialises the Kōtuku framework, parses command-line options, resolves the target script, passes arguments to the script environment, and manages the execution lifecycle.
 
@@ -21,6 +22,7 @@ If no script path is provided, Origo attempts automatic detection (see <<sec-aut
 [discrete]
 [[sec-commandline-options]]
 === Command-Line Options
+indexterm:[Origo, command-line options]
 
 [discrete]
 ==== General
@@ -82,6 +84,7 @@ When debugging thread-related issues, append `--log-threads` to include thread i
 [discrete]
 [[sec-inline-execution]]
 === Inline Execution
+indexterm:[Origo, inline execution]
 
 The `--statement` option executes Tiri code directly without loading a script file:
 
@@ -93,6 +96,7 @@ origo --statement "print('Hello World')"
 [discrete]
 [[sec-automatic-script-detection]]
 === Automatic Script Detection
+indexterm:[Origo, script detection]
 
 When no script path is provided on the command line, Origo searches for a script to execute in the following order:
 
@@ -105,6 +109,7 @@ This feature makes it simple to distribute packaged Tiri applications by copying
 [discrete]
 [[sec-script-arguments]]
 === Script Arguments
+indexterm:[Origo, script arguments]
 
 Arguments after the script path are passed to the script and accessed through the `arg()` function (see <<sec-script-parameters>>).  Three forms are supported:
 
@@ -143,6 +148,7 @@ count = arg('files:size')               -- '2'
 [discrete]
 [[sec-shebang]]
 === Shebang Support
+indexterm:[shebang]
 
 On Unix systems, Tiri scripts can be made directly executable by adding a shebang line:
 
@@ -157,6 +163,7 @@ Mark the script as executable with `chmod +x script.tiri` to run it directly fro
 [discrete]
 [[sec-exit-codes]]
 === Exit Codes
+indexterm:[exit codes]
 
 Origo returns `0` on successful execution.  A non-zero exit code indicates that the script or framework encountered an error.
 
@@ -165,6 +172,7 @@ If the script sets an explicit error code on its Script object, that error code 
 [discrete]
 [[sec-version-output]]
 === Version Output
+indexterm:[version output]
 
 The `--version` option prints three lines:
 

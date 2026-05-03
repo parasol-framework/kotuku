@@ -1,5 +1,7 @@
 [[ch-fluid-lsp]]
 == Tiri LSP
+indexterm:[Tiri LSP]
+indexterm:[language server]
 
 [[sec-fluid-language-server]]
 === Tiri Language Server

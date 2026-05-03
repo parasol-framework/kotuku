@@ -18,6 +18,7 @@ Paul Manias
 :toclevels: 3
 :sectnums:
 :sectnumlevels: 3
+:index:
 
 toc::[]
 
@@ -162,3 +163,6 @@ include::appendix_d_reserved_words.adoc[]
 include::appendix_e_standard_library_quick_reference.adoc[]
 
 include::appendix_f_glossary.adoc[]
+
+[index]
+== Index

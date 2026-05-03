@@ -2,6 +2,8 @@
 
 [[ch-arrays]]
 == Arrays
+indexterm:[arrays]
+indexterm:[typed arrays]
 
 Arrays are mutable, typed, contiguous sequences of elements.  Each array holds elements of a single declared type, providing efficient storage and direct memory access.  Arrays are a distinct type from tables, purpose-built for sequential data where all elements share a common type.
 
@@ -19,6 +21,7 @@ All indexing is zero-based.  The `#` operator returns the element count.  Elemen
 
 [[sec-array-fundamentals]]
 === Array Fundamentals
+indexterm:[arrays, fundamentals]
 
 [discrete]
 ==== Element Types
@@ -114,6 +117,7 @@ a is b   -- false (distinct objects)
 
 [[sec-creating-arrays]]
 === Creating Arrays
+indexterm:[arrays, creation]
 
 [discrete]
 ==== Typed Syntax
@@ -178,6 +182,7 @@ NOTE: The typed syntax `array<int> { 1, 2, 3 }` is preferred over `array.of()` f
 [[sec-element-access]]
 [%breakable]
 === Element Access
+indexterm:[arrays, element access]
 
 [discrete]
 ==== Indexing
@@ -248,6 +253,7 @@ end
 
 [[sec-mutation-methods]]
 === Mutation Methods
+indexterm:[arrays, mutation]
 
 [discrete]
 ==== push()
@@ -393,6 +399,8 @@ Changes the array length to `NewSize`.  When growing, new elements are zero-init
 
 [[sec-search-and-query]]
 === Search & Query
+indexterm:[arrays, searching]
+indexterm:[arrays, querying]
 
 [discrete]
 ==== find()
@@ -423,6 +431,8 @@ arr:find(20, {4...0})   -- 3 (found searching backwards)
 
 [[sec-copying-and-slicing]]
 === Copying & Slicing
+indexterm:[arrays, copying]
+indexterm:[arrays, slicing]
 
 [discrete]
 ==== clone()
@@ -548,6 +558,7 @@ arr:join('-')     -- '1-2-3'
 
 [[sec-functional-methods]]
 === Functional Methods
+indexterm:[arrays, functional methods]
 
 All functional methods in this section accept a callback function that receives `(Value, Index)` as parameters.  The `Index` parameter is optional; callbacks that only need the value can omit it.
 

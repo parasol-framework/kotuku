@@ -2,11 +2,14 @@
 
 [[ch-basic-syntax]]
 == Basic Syntax
+indexterm:[syntax]
+indexterm:[lexical conventions]
 
 This chapter defines the lexical structure of Tiri: how source text is decomposed into tokens, and the rules governing comments, identifiers, keywords, literals, statements, and blocks.
 
 [[sec-comments]]
 === Comments
+indexterm:[comments]
 
 The lexer discards all comment text.  Comments have no effect on program behaviour.  Tiri supports three comment forms.
 
@@ -47,6 +50,9 @@ The lexer discards a newline immediately following the opening delimiter.
 <<<
 [[sec-identifiers-and-keywords]]
 === Identifiers & Keywords
+indexterm:[identifiers]
+indexterm:[keywords]
+indexterm:[reserved words]
 
 [[sec-identifiers]]
 ==== Identifiers
@@ -91,6 +97,8 @@ Keywords are case-sensitive.  `and` is reserved; `And` and `AND` are valid ident
 
 [[sec-statements-and-blocks]]
 === Statements & Blocks
+indexterm:[statements]
+indexterm:[blocks]
 
 ==== Statements
 

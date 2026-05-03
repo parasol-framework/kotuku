@@ -2,6 +2,7 @@
 
 [[ch-tables]]
 == Tables
+indexterm:[tables]
 
 Tables are the primary compound data structure in Tiri.  A table is a mutable, unordered map of key-value pairs.  No type restrictions are imposed on table values.  Setting a key's value to `nil` removes that entry from the table.  Tables are used to represent records, dictionaries, configuration maps, and ad-hoc objects.
 
@@ -21,6 +22,7 @@ For sequential data storage, the dedicated `array` type (see <<ch-arrays>>) prov
 
 [[sec-table-fundamentals]]
 === Table Fundamentals
+indexterm:[tables, fundamentals]
 
 ==== Table Constructors
 
@@ -160,6 +162,7 @@ Returns the raw length of the array part without invoking the `__len` metamethod
 
 [[sec-iteration]]
 === Iteration
+indexterm:[tables, iteration]
 
 Tiri provides four iterator functions for traversing tables in `for` loops.
 
@@ -232,6 +235,7 @@ end
 
 [[sec-table-library]]
 === Table Library
+indexterm:[table library]
 
 All table library functions are accessed through the `table` namespace.
 
@@ -415,6 +419,8 @@ table.toXML({ item = { [0] = 'a&b' } })
 
 [[sec-table-slicing-with-ranges]]
 === Table Slicing with Ranges
+indexterm:[tables, slicing]
+indexterm:[ranges, table slicing]
 
 Tables support range objects as indices to extract subsequences.  Indexing is zero-based and follows inclusive/exclusive semantics consistent with string slicing (see <<sec-string-slicing-with-ranges>>).  Table slices always return a new table containing copies of the selected elements; modifying the result does not affect the original.
 
@@ -491,6 +497,8 @@ t[{5..10}]    -- {}             (beyond table length)
 
 [[sec-tables-vs-arrays]]
 === Tables vs. Arrays
+indexterm:[tables, arrays comparison]
+indexterm:[arrays, tables comparison]
 
 Tables and arrays serve different purposes.  The following comparison summarises the key distinctions.
 

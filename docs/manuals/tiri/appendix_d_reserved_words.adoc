@@ -2,6 +2,8 @@
 [[appendix-reserved-words]]
 [appendix]
 == Reserved Words & Keywords
+indexterm:[reserved words]
+indexterm:[keywords]
 
 This appendix provides a quick-reference for all reserved words in Tiri.  Reserved words cannot be used as identifiers.  All reserved words are case-sensitive; `and` is reserved but `And` and `AND` are valid identifiers.  See <<sec-keywords>> for the normative definition.
 

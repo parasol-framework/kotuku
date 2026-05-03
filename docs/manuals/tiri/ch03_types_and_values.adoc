@@ -2,6 +2,8 @@
 
 [[ch-types-and-values]]
 == Types & Values
+indexterm:[types]
+indexterm:[values]
 
 Tiri is a dynamically typed language.  Every value carries its type at runtime.  Variables are not bound to a fixed type by default, but Tiri's type inference system commits a variable to its first assigned type unless overridden.  See <<ch-type-system>> for a complete treatment of type inference, sticky types, and type annotations.
 
@@ -9,6 +11,7 @@ Tiri defines the following types: nil, boolean, number, string, table, array, fu
 
 [[sec-nil]]
 === Nil
+indexterm:[nil]
 
 The type `nil` has exactly one value, also called `nil`.  It represents the absence of a useful value.
 
@@ -18,6 +21,7 @@ Unassigned variables evaluate to `nil`.  Setting a table field to `nil` removes 
 
 [[sec-booleans]]
 === Booleans
+indexterm:[booleans]
 
 The type `boolean` has exactly two values: `true` and `false`.
 
@@ -25,6 +29,7 @@ Booleans are the natural result of comparison and logical expressions.  Conditio
 
 [[sec-numbers]]
 === Numbers
+indexterm:[numbers]
 
 Tiri uses a dual-number representation.  A single `number` type encompasses both integers and floating-point values.  The `type()` function returns `"number"` for both.
 
@@ -45,6 +50,7 @@ Arithmetic operations that produce results outside the 32-bit signed integer ran
 
 [[sec-strings-overview]]
 === Strings
+indexterm:[strings]
 
 Strings are immutable sequences of bytes.  Identical strings are interned: two strings with the same content share the same internal object.  Comparison with `is` compares content.
 
@@ -63,6 +69,7 @@ All string indexing and standard library operations use zero-based indices.  See
 
 [[sec-tables-overview]]
 === Tables
+indexterm:[tables]
 
 Tables are mutable associative key-value stores.  Any non-`nil` value can serve as a key; any value can serve as a value.  Tables are the primary compound data structure in Tiri, used to represent records, dictionaries, and ad-hoc objects.  Although tables can be used as arrays, the dedicated `array` type is more efficient for that purpose.
 
@@ -87,6 +94,7 @@ See <<ch-tables>> for the complete table library.
 
 [[sec-arrays-overview]]
 === Arrays
+indexterm:[arrays]
 
 Arrays are mutable, typed, contiguous sequences of elements.  Each array holds elements of a single declared type.  Arrays are a distinct type from tables, purpose-built for sequential data storage with efficient memory layout and direct access.
 
@@ -106,6 +114,7 @@ See <<ch-arrays>> for the complete array library, including supported element ty
 
 [[sec-functions-overview]]
 === Functions
+indexterm:[functions]
 
 Functions are first-class values.  They can be stored in variables, passed as arguments, and returned from other functions.
 
@@ -133,6 +142,7 @@ See <<ch-functions>> for function declarations, closures, and parameter rules.
 
 [[sec-userdata]]
 === Userdata
+indexterm:[userdata]
 
 Userdata values represent opaque C data managed outside the Tiri runtime.  They cannot be created or modified directly from Tiri code; they are produced by C/C++ host functions.
 
@@ -140,6 +150,7 @@ The `type()` function returns `"userdata"` for userdata values.  Ranges are impl
 
 [[sec-objects]]
 ==== Objects
+indexterm:[objects]
 
 Kōtuku framework objects are a specialised form of userdata.  They represent C++ objects exposed through the Kōtuku API and support field access, method calls, and action invocations.  The `type()` function returns `"object"` for Kōtuku objects.
 
@@ -153,6 +164,8 @@ See <<ch-the-object-system>> for the full object interface.
 
 [[sec-truthiness]]
 === Truthiness and Falsiness
+indexterm:[truthiness]
+indexterm:[falsiness]
 
 Tiri defines two sets of falsiness rules.
 
@@ -164,6 +177,7 @@ The `??` operator and its postfix form `??` use a broader definition.  The value
 
 [[sec-type-inspection]]
 === Type Inspection
+indexterm:[type inspection]
 
 ==== type()
 

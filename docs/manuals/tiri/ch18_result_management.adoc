@@ -2,11 +2,13 @@
 
 [[ch-result-management]]
 == Result Management
+indexterm:[result management]
 
 Tiri functions return zero or more values.  This chapter expands on <<ch-functions>> with more information on how results can be managed.
 
 [[sec-blank-identifier]]
 === Blank Identifier
+indexterm:[blank identifier]
 
 The blank identifier `_` is a write-only placeholder that discards a value without allocating a variable.
 
@@ -82,6 +84,7 @@ Assigning to the blank identifier incurs no runtime cost.  Values at blank posit
 
 [[sec-result-filter-operator]]
 === Result Filter Operator
+indexterm:[operators, result filter]
 
 The result filter operator selectively extracts return values from a function call using a positional mask.  It provides a concise alternative to intermediate variables or blank identifiers when only specific return positions are needed.
 

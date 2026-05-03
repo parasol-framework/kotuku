@@ -2,6 +2,8 @@
 
 [[ch-pattern-matching]]
 == Pattern Matching (Choose Expression)
+indexterm:[pattern matching]
+indexterm:[choose expressions]
 
 The `choose...from` expression provides structured pattern matching for selecting a result value or executing a branch based on the shape or value of an input.  It replaces verbose `if`/`elseif` chains with a concise, declarative syntax.
 
@@ -18,6 +20,7 @@ The scrutinee expression is evaluated exactly once.  Cases are tested in declara
 
 [[sec-choose-expressions]]
 === Choose Expressions
+indexterm:[choose expressions]
 
 [discrete]
 ==== Syntax
@@ -170,6 +173,7 @@ end
 
 [[sec-guards]]
 === Guards
+indexterm:[guards]
 
 A `when` clause adds a conditional guard to a case arm.  The guard expression is evaluated only after the pattern has matched.  If the guard evaluates to a falsey value, the case is skipped and evaluation proceeds to the next case.
 
@@ -264,6 +268,7 @@ end
 
 [[sec-matching-patterns]]
 === Matching Patterns
+indexterm:[patterns, matching]
 
 [discrete]
 ==== Literal Patterns

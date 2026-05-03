@@ -3,6 +3,8 @@
 
 [[ch-metatables-and-metamethods]]
 == Metatables & Metamethods
+indexterm:[metatables]
+indexterm:[metamethods]
 
 A metatable is a regular table that the runtime attaches to another table or userdata to customise its behaviour.  When an operation has no native implementation for a given operand -- for example, adding two tables -- the runtime looks up a specially named field in the operand's metatable.  If the field exists and holds a callable value, the runtime invokes it.  That callable value is called a _metamethod_.
 
@@ -10,6 +12,7 @@ Every table and full userdata can carry exactly one metatable.  Strings share a 
 
 [[sec-metatable-basics]]
 === Metatable Basics
+indexterm:[metatables, basics]
 
 ==== Setting and Querying
 
@@ -62,6 +65,7 @@ The following functions bypass all metamethods and operate directly on the under
 
 [[sec-arithmetic-metamethods]]
 === Arithmetic Metamethods
+indexterm:[metamethods, arithmetic]
 
 When an arithmetic operator encounters a non-numeric operand that cannot be coerced from a string, the runtime searches for the corresponding metamethod.  It checks the left operand's metatable first; if no metamethod is found there, it checks the right operand's metatable.  If neither operand provides the metamethod, the runtime raises an error.
 
@@ -104,6 +108,7 @@ v = Vec2.new(1, 2) + Vec2.new(3, 4)   -- Vec2(4, 6)
 
 [[sec-comparison-and-equality]]
 === Comparison & Equality
+indexterm:[metamethods, comparison]
 
 ==== Equality
 
@@ -175,6 +180,7 @@ See <<sec-length-operator>> for full operator semantics.
 [%unbreakable]
 [[sec-indexing]]
 === Indexing
+indexterm:[metamethods, indexing]
 
 ==== __index
 
@@ -262,6 +268,7 @@ end
 
 [[sec-callable-tables]]
 === Callable Tables
+indexterm:[callable tables]
 
 [.api]`pass:[__]call(Self, ...)`
 
@@ -290,6 +297,7 @@ The `pass:[__]call` metamethod enables factory and constructor patterns where a 
 
 [[sec-garbage-collection]]
 === Garbage Collection
+indexterm:[metamethods, garbage collection]
 
 ==== __gc
 
@@ -348,6 +356,7 @@ The `pass:[__]pairs` and `pass:[__]ipairs` metamethods customise the behaviour o
 
 [[sec-metamethod-reference]]
 === Metamethod Reference
+indexterm:[metamethods, reference]
 
 The following table lists every metamethod recognised by the runtime, ordered by dispatch priority.
 

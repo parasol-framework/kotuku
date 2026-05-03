@@ -2,6 +2,8 @@
 
 [[ch-introduction]]
 == Introduction
+indexterm:[Tiri]
+indexterm:[Kōtuku]
 
 
 [[sec-what-is-tiri]]
@@ -54,6 +56,8 @@ This prints the version string, git commit hash, and build type.
 
 [[sec-running-scripts]]
 === Running Scripts
+indexterm:[scripts, running]
+indexterm:[Origo]
 
 Execute a Tiri script by passing its path to `origo`:
 
