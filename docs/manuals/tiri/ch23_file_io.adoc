@@ -587,7 +587,7 @@ io.search('documents:', {
 
 |`caseSensitive`
 |boolean
-|Enforce case-sensitive name comparisons if `true`.  Defaults to case-insensitive.
+|Controls how `nameFilter` is applied.  When omitted or `false`, the candidate file name is converted to lowercase before matching.  String filters and regex patterns must therefore be written for lowercase input.  When `true`, the original file name is used.
 
 |`matchFeedback`
 |function
@@ -606,16 +606,16 @@ io.search('documents:', {
 |Exclude files larger than this byte size.
 
 |`minDate`
-|string
-|Exclude files with a modification time earlier than this date string.
+|DateTime
+|Exclude files with a modification time earlier than this `DateTime` structure.
 
 |`maxDate`
-|string
-|Exclude files with a modification time later than this date string.
+|DateTime
+|Exclude files with a modification time later than this `DateTime` structure.
 
 |`scanLinks`
 |boolean
-|Include symbolically linked files and folders in the search.  Defaults to `false`.
+|Allow symbolically linked files to be opened for content matching.  Symbolically linked directories are not recursed.
 
 |`matchFolders`
 |boolean
@@ -632,7 +632,7 @@ io.search('documents:', {
 
 When searching files for content, apply a `nameFilter` or size limit so that only a controlled number of files are opened for reading.
 
-Symbolic links to directories are not followed by default to avoid infinite recursion.
+Symbolic links to directories are not followed to avoid infinite recursion.
 
 [[sec-file-manager]]
 === File Manager
@@ -659,7 +659,7 @@ Returns an `ERR` code.  If the user cancels the operation, `ERR_Cancelled` is re
 
 [.api]`io.ui.paste(Dest)`
 
-Pastes files from the system clipboard to the destination path `Dest`.  Follows the same behavioural rules as `io.ui.copy()`.
+Pastes files from the system clipboard to the destination path `Dest`.  Files marked for deletion by the clipboard are moved instead of copied.  The function delegates the file transfer to `io.ui.copy()` and does not return its status code.
 
 ==== io.ui.delete()
 

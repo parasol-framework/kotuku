@@ -382,7 +382,18 @@ See <<ch-file-io>>.
 |`io.isFolder(Path)`       |Returns `true` if `Path` ends with a separator.
 |`io.splitPath(Path)`      |Returns `dir, file` components.
 |`io.sanitisePath(Path)`   |Removes repeated separators.
-|`io.search(Path, Options)`|Searches for files matching criteria.
+|===
+
+==== I/O Extension Functions
+
+[cols="4,5"]
+|===
+|Signature |Description
+
+|`io.search(Path, Options)`|Searches for files matching criteria.  Requires `import 'io/filesearch'`.
+|`io.ui.copy(Source, Dest, [Move])`|Copies or moves files with file-transfer UI.  Requires `import 'io/filemgr'`.
+|`io.ui.paste(Dest)`|Pastes clipboard files to `Dest`.  Requires `import 'io/filemgr'`.
+|`io.ui.delete(Paths)`|Deletes one or more paths with file-transfer UI.  Requires `import 'io/filemgr'`.
 |===
 
 ==== File Handle Methods

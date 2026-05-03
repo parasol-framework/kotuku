@@ -74,6 +74,7 @@ A standard Tiri application creates its user interface, then enters the processi
 [source,tiri]
 ----
 include 'display'
+import 'gui/window'
 
 win = gui.window({
    title   = 'Hello',
@@ -83,7 +84,7 @@ win = gui.window({
    quit    = true
 })
 
-win.show()
+win:show()
 processing.sleep()
 ----
 
