@@ -302,12 +302,13 @@ void format_bc_line(lua_State *L, BCLine Line, int FileWidth, BytecodeLogger Log
          const FileSource *src = get_file_source(L, Line.fileIndex());
 
          std::string_view sv("<unknown>");
-         if (src) sv = std::string_view(src->filename);
+         if (src) {
+            sv = std::string_view(src->filename);
+            if (src->total_lines > 10000) line_no_width += 2;
+            else if (src->total_lines > 1000) line_no_width++;
+         }
          if (sv.size() > size_t(FileWidth)) sv.remove_suffix(sv.size() - FileWidth);
          file_and_line = std::format("{}:{}", sv, Line.lineNumber());
-
-         if (src->total_lines > 10000) line_no_width += 2;
-         else if (src->total_lines > 1000) line_no_width++;
       }
       else file_and_line = "<unknown>:-";
 

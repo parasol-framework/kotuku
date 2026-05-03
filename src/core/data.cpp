@@ -71,6 +71,7 @@ std::set<std::shared_ptr<std::jthread>> glAsyncThreads;
 std::mutex glmActionQueue;
 std::unordered_map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
 std::unordered_set<OBJECTID> glActiveAsyncObjects;
+std::unordered_set<OBJECTID> glCancelledAsyncObjects;
 std::unordered_map<OBJECTID, int> glAsyncObjectThreads;
 
 std::condition_variable_any cvObjects;

@@ -1,4 +1,7 @@
 
+@BeforeEach(hotpath=3)
+function enforce_hotpath() end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
 -- Also ensures that the garbage collector doesn't collect the script while it's running.
@@ -557,9 +560,39 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- async.cancel() must not leave stale cancellation state after the worker finishes but before its message is processed.
+
+@Test(priority=26) function CancelCompletedWorkerAllowsNextAction()
+   async.pool.clear()
+   async.pool.completed_cancel_race = 0
+
+   script = obj.new('script', {
+      statement=[[ async.pool.completed_cancel_race = async.pool.completed_cancel_race + 1 ]]
+   })
+
+   async.script(script)
+
+   -- Negative WaitTime sleeps without processing the worker completion message.
+   mSys.WaitTime(-0.25)
+
+   check async.cancel(script)
+
+   async.script(script)
+   check async.wait(script, 3.0)
+
+   count = async.pool.completed_cancel_race
+   pending = async.pending(script)
+
+   assert(count is 2, f'Expected second action to run after stale cancellation window, got {count}')
+   assert(pending is 0, f'Expected 0 pending after stale cancellation window, got {pending}')
+
+   async.pool.clear()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- async.pending() must reject non-object arguments.
 
-@Test(priority=26) function PendingRejectsBadArgs()
+@Test(priority=27) function PendingRejectsBadArgs()
    for arg in values({ 'hello', 42, true, { } }) do
       rejected = false
       try
@@ -574,7 +607,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- async.cancel() must reject non-object/non-array arguments.
 
-@Test(priority=27) function CancelRejectsBadArgs()
+@Test(priority=28) function CancelRejectsBadArgs()
    for arg in values({ 'hello', 42, true }) do
       rejected = false
       try
@@ -589,7 +622,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Verify that async.action() passes user arguments after the fixed Object, Action, Callback and Key parameters.
 
-@Test(priority=28) function ActionArgumentOffset()
+@Test(priority=29) function ActionArgumentOffset()
    script = obj.new('script', { statement=[[ ]] })
 
    async.action(script, 'SetKey', function(ActionID, Object, Error, Key)

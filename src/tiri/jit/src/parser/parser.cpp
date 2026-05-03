@@ -236,20 +236,18 @@ extern GCproto * lj_parse(LexState *State)
    State->chunk_name = lj_str_newz(L, State->chunk_arg);
 #endif
 
-   log.branch("Chunk: %.*s", State->chunk_name->len, strdata(State->chunk_name));
-
-   // Register this file with FileSource tracking.
-   // The chunk_arg starts with '@' for file sources, extract the path.
+   // Register real file chunks with FileSource tracking.  Synthetic chunks such as "=validate" have no stable path and
+   // should fall back to their chunk name in diagnostics rather than being added to the persistent file source map.
    // Note: We don't clear existing file_sources to preserve import deduplication across loadFile() calls.
-   {
+
+   if (State->chunk_arg and State->chunk_arg[0] IS '@') {
       std::string path = State->chunk_arg;
-      std::string filename = path;
-      if (not path.empty() and path[0] IS '@') {
-         path = path.substr(1);
-         // Extract just the filename from the path
-         auto pos = path.find_last_of("/\\");
-         filename = (pos != std::string::npos) ? path.substr(pos + 1) : path;
-      }
+      path = path.substr(1);
+
+      // Extract just the filename from the path
+      auto pos = path.find_last_of("/\\");
+      std::string filename = (pos != std::string::npos) ? path.substr(pos + 1) : path;
+
       // Estimate source lines from the source view (count newlines + 1)
       BCLine source_lines = 1;
       for (char c : State->source) {
@@ -257,6 +255,9 @@ extern GCproto * lj_parse(LexState *State)
       }
       State->current_file_index = register_main_file_source(L, path, filename, source_lines);
    }
+   else State->current_file_index = FILESOURCE_OVERFLOW_INDEX;
+
+   log.branch("Chunk: %.*s, Registered: %c", State->chunk_name->len, strdata(State->chunk_name), State->current_file_index IS FILESOURCE_OVERFLOW_INDEX ? 'N' : 'Y');
 
    setstrV(L, L->top, State->chunk_name);  // Anchor chunk_name string.
    incr_top(L);
