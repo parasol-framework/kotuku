@@ -70,8 +70,8 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    // interpolation measures).
 
    // SVG also states that Filter->ColourSpace applies to the Mix and not Input.  The Input must remain in its current
-   // colour space.  NOTE: If the displacement map is behaving in an unexpected way, check that colourspace is in the
-   // expected format, most probably SRGB and not linear.
+   // colour space.  When the filter colour space is linear, RGB channels from Mix are linearised on sampling; alpha
+   // remains unchanged.
 
    objBitmap *inBmp, *mixBmp;
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return log.warning(ERR::NoData);
@@ -119,6 +119,12 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
 
    const uint8_t x_type = RGBA[int(Self->XChannel)];
    const uint8_t y_type = RGBA[int(Self->YChannel)];
+   const bool linear_mix = Self->Filter->ColourSpace IS VCS::LINEAR_RGB;
+
+   auto sample_mix = [linear_mix](uint8_t *Pixel, CMP Channel, uint8_t Type) -> uint8_t {
+      if ((linear_mix) and (Channel != CMP::ALPHA)) return glLinearRGB.convert(Pixel[Type]);
+      else return Pixel[Type];
+   };
 
    //log.warning("W/H: %dx%d; MW/H: %dx%d; IW/H: %dx%d; CW/H: %.2fx%.2f, BBox: %d", width, height, mix_width, mix_height, in_width, in_height, c_width, c_height, Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX);
    //log.warning("X Channel: %d, Y Channel: %d; Scale: %.2f / %.2f -> %.2f,%.2f; WH: %dx%d", Self->XChannel, Self->YChannel, Self->Scale, scale_against, sx, sy, width, height);
@@ -128,8 +134,8 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
       auto m = mix;
       auto d = (uint32_t *)dest;
       for (int x=0; x < draw_width; x++, m += mixBmp->BytesPerPixel, d++) {
-         auto dx = m[x_type];
-         auto dy = m[y_type];
+         auto dx = sample_mix(m, Self->XChannel, x_type);
+         auto dy = sample_mix(m, Self->YChannel, y_type);
          // TODO: SVG recommends using interpolation between pixels rather than the dropping the fractional part
          // as done here.
          const int cx = x + std::lrint(sx * (double(dx) - HALF8BIT));
