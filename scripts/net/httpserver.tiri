@@ -151,7 +151,7 @@ function canonicalizePath(self, Path:str):str
       local component = cap[0]
       if component is '..' then
          -- Attempt to go up - block this
-         logMessage(self, 'Security: Blocked directory traversal attempt with ..')
+         if self.logMessage then self.logMessage(self, 'Security: Blocked directory traversal attempt with ..') end
          return
       elseif component != '.' and component != '' then
          table.insert(components, component)
@@ -606,8 +606,20 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
+function isHeadRequest(Client):bool
+   try
+      state = Client._state()
+      if state?.request?.method is 'HEAD' then return true end
+   end
+
+   return false
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 function sendHttpResponse(self, client, statusCode, statusText, headers, body)
    response = "HTTP/1.1 " .. statusCode .. " " .. statusText .. "\r\n"
+   head_only = isHeadRequest(client)
 
    if (not headers['content-length']) and (body) then headers['content-length'] = tostring(#body)end
 
@@ -641,7 +653,7 @@ function sendHttpResponse(self, client, statusCode, statusText, headers, body)
 
    response ..= "\r\n"
 
-   if body then response ..= body end
+   if body and not head_only then response ..= body end
 
    err, written = client.acWrite(response)
    if err != ERR_Okay then
@@ -1310,13 +1322,15 @@ function checkRateLimit(self:table, IP:str):bool
    if currentTime - self._lastCleanup > 60 then
       cutoff = currentTime - self.rateLimitWindow
       for ip, data in pairs(self._rateLimits) do
-         newRequests = {}
+         newRequests = array<double> {}
+         request_count = 0
          for timestamp in values(data.requests) do
             if timestamp > cutoff then
-               table.insert(newRequests, timestamp)
+               newRequests:push(timestamp)
+               request_count++
             end
          end
-         if #newRequests is 0 then
+         if request_count is 0 then
             self._rateLimits[ip] = nil
          else
             data.requests = newRequests
@@ -1327,27 +1341,29 @@ function checkRateLimit(self:table, IP:str):bool
 
    -- Check this client's rate
    if not self._rateLimits[IP] then
-      self._rateLimits[IP] = { requests = {} }
+      self._rateLimits[IP] = { requests = array<double> {} }
    end
 
    clientData = self._rateLimits[IP]
    cutoff = currentTime - self.rateLimitWindow
 
    -- Count recent requests
-   recentRequests = {}
-   for _, timestamp in ipairs(clientData.requests) do
+   recentRequests = array<double> {}
+   request_count = 0
+   for timestamp in values(clientData.requests) do
       if timestamp > cutoff then
-         table.insert(recentRequests, timestamp)
+         recentRequests:push(timestamp)
+         request_count++
       end
    end
 
-   if #recentRequests >= self.rateLimit then
+   if request_count >= self.rateLimit then
       logMessage(self, 'Rate limit exceeded for ' .. IP)
       return false
    end
 
    -- Add current request
-   table.insert(recentRequests, currentTime)
+   recentRequests:push(currentTime)
    clientData.requests = recentRequests
 
    return true
@@ -1623,19 +1639,19 @@ function serverIncoming(self, ClientSocket)
          response = createResponseObject(self, ClientSocket)
 
          -- Combine global middleware with route-specific middleware
-         middlewareChain = {}
+         middlewareChain = array<any> {}
 
          -- Add global middleware first
          if self._middleware then
-            for _, middleware in ipairs(self._middleware) do
-               table.insert(middlewareChain, middleware)
+            for middleware in values(self._middleware) do
+               middlewareChain:push(middleware)
             end
          end
 
          -- Add route-specific middleware
          if matchedRoute.middleware then
-            for _, middleware in ipairs(matchedRoute.middleware) do
-               table.insert(middlewareChain, middleware)
+            for middleware in values(matchedRoute.middleware) do
+               middlewareChain:push(middleware)
             end
          end
 
@@ -1833,6 +1849,13 @@ hslib.start = function(Options)
       end
    end
 
+   if Options.rateLimitWindow then
+      window = tonumber(Options.rateLimitWindow)
+      if window and (window > 0) and (window <= 3600) then
+         self.rateLimitWindow = window
+      end
+   end
+
    if Options.bind then
       self.bind = Options.bind
    end
@@ -1850,19 +1873,19 @@ hslib.start = function(Options)
    -- Process middleware configuration
    middlewareCount = 0
    if Options.middleware then
-      if type(Options.middleware) is 'table' then
-         self._middleware = {}
-         for i, middleware in ipairs(Options.middleware) do
+      if type(Options.middleware) is 'table' or type(Options.middleware) is 'array' then
+         self._middleware = array<any> {}
+         for middleware in values(Options.middleware) do
             if type(middleware) is 'function' then
-               table.insert(self._middleware, middleware)
+               self._middleware:push(middleware)
                middlewareCount++
-               logMessage(self, f'Global middleware configured at index {i}')
+               logMessage(self, f'Global middleware configured at index {middlewareCount}')
             else
-               error(f'Invalid middleware at index {i} - must be a function')
+               error(f'Invalid middleware at index {middlewareCount + 1} - must be a function')
             end
          end
       else
-         error('middleware option must be a table')
+         error('middleware option must be a table or array')
       end
    end
 

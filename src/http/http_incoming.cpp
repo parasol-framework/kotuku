@@ -239,6 +239,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                   if (active_socket) {
                      active_socket->set(FID_Feedback, (APTR)nullptr);
                      Self->Socket = nullptr;
+                     QueueAction(AC::Free, active_socket->UID);
                   }
 
                   if (location.starts_with("http:")) redirect_error = Self->setLocation(location);
