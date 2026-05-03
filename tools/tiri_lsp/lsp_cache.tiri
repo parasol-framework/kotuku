@@ -17,7 +17,7 @@ rx_input_param = <{ regex.new([[<param\s+([^>]*)>(.*?)<\/param>]], regex.DOT_ALL
 rx_xml_attr = <{ regex.new([=[([A-Za-z_][A-Za-z0-9_]*)="([^"]*)"]=]) }>
 
 @Doc(text='Encode a field entry to compact string format')
-function encodeField(Access, Type, ByteStart, ByteEnd, Comment)
+function encodeField(Access, Type, ByteStart, ByteEnd, Comment):str
    return f'A:{Access or "R"}\tL:{ByteStart},{ByteEnd}\tT:{Type or ""}\tC:{Comment or ""}'
 end
 
