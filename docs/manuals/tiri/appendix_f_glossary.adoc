@@ -3,6 +3,7 @@
 == Glossary
 indexterm:[glossary]
 
+[glossary]
 Action::
 A contractual operation defined by the Kōtuku framework, prefixed with `ac`.  Actions are invoked on objects and dispatch to the underlying C++ implementation.  See <<sec-actions-and-methods>>.
 
