@@ -174,6 +174,7 @@ struct ThreadActionMessage {
    OBJECTID  ObjectID;  // ID of the target object (for queue dispatch).
    ERR       Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
+   bool      DispatchNext = true; // False for callbacks emitted while draining a queue.
 };
 
 // Queued async action, waiting for the same-object action to complete.
@@ -206,6 +207,7 @@ extern std::recursive_mutex glmAsyncActions;
 extern std::mutex glmActionQueue;
 extern std::unordered_map<OBJECTID, std::deque<QueuedAction>> glActionQueues;
 extern std::unordered_set<OBJECTID> glActiveAsyncObjects;
+extern std::unordered_set<OBJECTID> glCancelledAsyncObjects;
 extern std::unordered_map<OBJECTID, int> glAsyncObjectThreads;
 
 extern std::condition_variable_any cvResources;

@@ -26,7 +26,7 @@ Name: Objects
 
 using namespace kt;
 
-static void drain_action_queue(OBJECTID, bool = false);
+static void drain_action_queue(OBJECTID ObjectID, bool Terminating = false, bool PreserveActive = false);
 static void async_wait_callback(OBJECTID, bool);
 
 // AsyncWait() state — guarded by glmAsyncWait.
@@ -79,6 +79,7 @@ void stop_async_actions(void)
       std::lock_guard<std::mutex> lock(glmActionQueue);
       glActionQueues.clear();
       glActiveAsyncObjects.clear();
+      glCancelledAsyncObjects.clear();
       glAsyncObjectThreads.clear();
    }
 }
@@ -402,6 +403,8 @@ void dispatch_queued_action(OBJECTID ObjectID)
    bool queue_empty = false;
    {
       std::lock_guard<std::mutex> lock(glmActionQueue);
+      // Cancellation state applies only to the action whose completion is being processed.
+      glCancelledAsyncObjects.erase(ObjectID);
       auto it = glActionQueues.find(ObjectID);
       if ((it IS glActionQueues.end()) or it->second.empty()) {
          glActiveAsyncObjects.erase(ObjectID);
@@ -439,7 +442,8 @@ void dispatch_queued_action(OBJECTID ObjectID)
                .ActionID = next.ActionID,
                .ObjectID = ObjectID,
                .Error    = ERR::DoesNotExist,
-               .Callback = next.Callback
+               .Callback = next.Callback,
+               .DispatchNext = false
             };
             SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
          }
@@ -461,7 +465,8 @@ void dispatch_queued_action(OBJECTID ObjectID)
             .ActionID = next.ActionID,
             .ObjectID = ObjectID,
             .Error    = obj.error,
-            .Callback = next.Callback
+            .Callback = next.Callback,
+            .DispatchNext = false
          };
          SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
       }
@@ -474,11 +479,12 @@ void dispatch_queued_action(OBJECTID ObjectID)
 // Drain all queued actions for an object, sending error callbacks for each.  Called when the object
 // is being freed or is otherwise no longer valid.
 
-static void drain_action_queue(OBJECTID ObjectID, bool Terminating)
+static void drain_action_queue(OBJECTID ObjectID, bool Terminating, bool PreserveActive)
 {
    kt::Log log(__FUNCTION__);
 
    std::deque<QueuedAction> drained;
+   bool clear_active = not PreserveActive;
    {
       std::lock_guard<std::mutex> lock(glmActionQueue);
       auto it = glActionQueues.find(ObjectID);
@@ -486,12 +492,15 @@ static void drain_action_queue(OBJECTID ObjectID, bool Terminating)
          drained = std::move(it->second);
          glActionQueues.erase(it);
       }
-      glActiveAsyncObjects.erase(ObjectID);
+      if (clear_active) {
+         glActiveAsyncObjects.erase(ObjectID);
+         glCancelledAsyncObjects.erase(ObjectID);
+      }
    }
 
    // Clear the async flag.  The object may already be freed in the Terminating case, so tolerate lock failure.
 
-   if (not Terminating) {
+   if ((not Terminating) and clear_active) {
       ScopedObjectLock obj(ObjectID);
       if (obj.granted()) {
          if (obj->defined(NF::ASYNC_ACTIVE)) {
@@ -511,7 +520,8 @@ static void drain_action_queue(OBJECTID ObjectID, bool Terminating)
             .ActionID = action.ActionID,
             .ObjectID = ObjectID,
             .Error    = ERR::DoesNotExist,
-            .Callback = action.Callback
+            .Callback = action.Callback,
+            .DispatchNext = false
          };
          SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
       }
@@ -556,12 +566,18 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
          std::lock_guard<std::mutex> lock(glmActionQueue);
          glAsyncObjectThreads[object_uid] = int(get_thread_id());
       }
+
       auto is_stopping = [&stop_token, &thread_rec]() {
          return stop_token.stop_requested()
             or (thread_rec and thread_rec->state.load(std::memory_order_acquire) IS TSTATE::STOPPING);
       };
 
-      if (is_stopping()) {
+      auto is_cancelled = [object_uid]() {
+         std::lock_guard<std::mutex> lock(glmActionQueue);
+         return glCancelledAsyncObjects.contains(object_uid);
+      };
+
+      if (is_stopping() or is_cancelled()) {
          ThreadActionMessage msg = {
             .ActionID = ActionID,
             .ObjectID = object_uid,
@@ -576,7 +592,7 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
       ERR error;
       if (error = LockObject(Object, 5000); error IS ERR::Okay) { // Access the object and process the action.
          // Check for stop request before executing action
-         if (not is_stopping()) {
+         if ((not is_stopping()) and (not is_cancelled())) {
             error = Action(ActionID, Object, ArgsSize ? (APTR)Parameters.data() : nullptr);
          }
 
@@ -591,7 +607,7 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
       // Preserve the callback on cancellation so script-side cleanup still runs.
 
       auto completion_error = error;
-      if (is_stopping()) completion_error = ERR::Cancelled;
+      if (is_stopping() or is_cancelled()) completion_error = ERR::Cancelled;
 
       ThreadActionMessage msg = {
          .ActionID = ActionID,
@@ -945,6 +961,7 @@ ERR AsyncCancel(OBJECTID *Objects, int Size)
       int thread_id;
       {
          std::lock_guard<std::mutex> lock(glmActionQueue);
+         if (glActiveAsyncObjects.contains(object_id)) glCancelledAsyncObjects.insert(object_id);
          auto it = glAsyncObjectThreads.find(object_id);
          if (it != glAsyncObjectThreads.end()) thread_id = it->second;
          else thread_id = 0;
@@ -952,7 +969,7 @@ ERR AsyncCancel(OBJECTID *Objects, int Size)
 
       if (thread_id) WakeThread(thread_id, true);
 
-      drain_action_queue(object_id);
+      drain_action_queue(object_id, false, true);
    }
 
    return ERR::Okay;
@@ -982,7 +999,8 @@ int AsyncPending(OBJECTID ObjectID)
 {
    std::lock_guard<std::mutex> lock(glmActionQueue);
    int count = 0;
-   if (glActiveAsyncObjects.contains(ObjectID) or glAsyncObjectThreads.contains(ObjectID)) count++;
+   // Match AsyncWait() state: worker-thread bookkeeping can outlive completion dispatch briefly.
+   if (glActiveAsyncObjects.contains(ObjectID)) count++;
    if (auto it = glActionQueues.find(ObjectID); it != glActionQueues.end()) {
       count += int(it->second.size());
    }
@@ -1107,7 +1125,7 @@ ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgS
    }
 
    // Dispatch the next queued action for this object (if any).
-   dispatch_queued_action(msg->ObjectID);
+   if (msg->DispatchNext) dispatch_queued_action(msg->ObjectID);
 
    return ERR::Okay;
 }
