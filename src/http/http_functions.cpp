@@ -74,6 +74,7 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
          }
          else if ((Self->ContentLength IS -1) or (Self->Index < Self->ContentLength)) {
             std::vector<char> buffer(BUFFER_READ_SIZE);
+            ERR drain_error = ERR::Okay;
 
             while (true) {
                auto len = std::ssize(buffer);
@@ -93,9 +94,16 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
 
                if (auto output_error = output_incoming_data(Self, buffer.data(), bytes_read);
                      output_error != ERR::Okay) {
-                  return;
+                  drain_error = output_error;
+                  break;
                }
                if (check_incoming_end(Self) IS ERR::True) break;
+            }
+
+            if (drain_error != ERR::Okay) {
+               Self->Error = drain_error;
+               Self->setCurrentState(HGS::TERMINATED);
+               return;
             }
          }
 

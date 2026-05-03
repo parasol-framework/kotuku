@@ -747,9 +747,9 @@ function createResponseObject(self, client)
    res.redirect = function(url, code)
       assert(not res._sent, 'Response already sent')
 
-      code = code or 302
+      code = code or ((res._statusCode >= 300 and res._statusCode < 400) ? res._statusCode :> 302)
       res._headers['location'] = url
-      res:status(code)
+      res.status(code)
       sendHttpResponse(res._self, res._client, res._statusCode, res._statusText, res._headers)
       res._sent = true
       return res
@@ -1261,6 +1261,42 @@ function matchRoute(serverInstance, method, path)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+
+function routeMatchesPath(route, path):bool
+   pattern = route.pattern
+
+   if not route.compiledRegex then
+      regexPattern = regex.escape(pattern)
+      regexPattern = regexPattern:replace('\\-', '-')
+      regexPattern = rxRouteParamSub.replace(regexPattern, '([^\\/]+)')
+      regexPattern = rxEscapedWildcard.replace(regexPattern, '(.*)')
+
+      route.compiledRegex = regex.new(f'^{regexPattern}$')
+   end
+
+   return route.compiledRegex.test(path)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function allowedMethodsForPath(serverInstance, path):str
+   serverInstance._routes ?? return nil
+
+   methods = {}
+   for method, methodRoutes in pairs(serverInstance._routes) do
+      for route in values(methodRoutes) do
+         if routeMatchesPath(route, path) then
+            table.insert(methods, method)
+            break
+         end
+      end
+   end
+
+   if #methods > 0 then return table.concat(methods, ', ') end
+   return nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Check rate limiting for client IP
 
 function checkRateLimit(self:table, IP:str):bool
@@ -1482,6 +1518,14 @@ function serverIncoming(self, ClientSocket)
       state.content_length = tonumber(state.request.headers['content-length'])
       state.transfer_encoding = state.request.headers['transfer-encoding']
 
+      if state.content_length and state.content_length > self.maxRequestSize then
+         errorBody = createErrorPage(413, 'Payload Too Large', 'Request exceeds maximum allowed size.', 'Maximum size: ' .. self.maxRequestSize .. ' bytes')
+         sendHttpResponse(self, ClientSocket, 413, "Payload Too Large", {
+            ['content-type'] = 'text/html'
+         }, errorBody)
+         return
+      end
+
       if state.request.method is 'POST' or state.request.method is 'PUT' or state.request.method is 'PATCH' then
          if (state.transfer_encoding and state.transfer_encoding:lower():find('chunked')) or
             (state.content_length and state.content_length > 0) then
@@ -1569,6 +1613,9 @@ function serverIncoming(self, ClientSocket)
 
       -- Try to match against registered routes first
       matchedRoute, params = matchRoute(self, request.method, URIPath)
+      if not matchedRoute and request.method is 'HEAD' then
+         matchedRoute, params = matchRoute(self, 'GET', URIPath)
+      end
       if matchedRoute then
          logMessage(self, 'Found matching route: ' .. matchedRoute.pattern)
          -- Populate request params and create response object
@@ -1617,6 +1664,18 @@ function serverIncoming(self, ClientSocket)
          executeMiddleware(middlewareChain, request, response, routeHandler)
 
          return -- Route was handled, don't continue to static file serving
+      end
+
+      allowed_methods = allowedMethodsForPath(self, URIPath)
+      if allowed_methods then
+         errorBody = createErrorPage(405, 'Method Not Allowed',
+            'This method is not allowed for the requested route.',
+            'Method: ' .. request.method .. ', Path: ' .. URIPath)
+         sendHttpResponse(self, ClientSocket, 405, "Method Not Allowed", {
+            ['content-type'] = 'text/html',
+            ['allow'] = allowed_methods
+         }, errorBody)
+         return
       end
 
       -- Validate path doesn't contain dangerous patterns
@@ -1737,6 +1796,24 @@ hslib.start = function(Options)
          self.timeout = timeout
       else
          error('Invalid timeout: must be between 1 and 300 seconds')
+      end
+   end
+
+   if Options.maxRequestSize then
+      max_request_size = tonumber(Options.maxRequestSize)
+      if max_request_size and max_request_size > 0 then
+         self.maxRequestSize = max_request_size
+      else
+         error('Invalid maxRequestSize: must be greater than 0')
+      end
+   end
+
+   if Options.fileChunkSize then
+      file_chunk_size = tonumber(Options.fileChunkSize)
+      if file_chunk_size and file_chunk_size > 0 then
+         self.fileChunkSize = file_chunk_size
+      else
+         error('Invalid fileChunkSize: must be greater than 0')
       end
    end
 
