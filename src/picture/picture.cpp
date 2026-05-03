@@ -157,6 +157,11 @@ static ERR PICTURE_Activate(extPicture *Self)
    if (!(info_ptr = png_create_info_struct(read_ptr))) goto exit;
    if (!(end_info = png_create_info_struct(read_ptr))) goto exit;
 
+   if (setjmp(png_jmpbuf(read_ptr))) {
+      error = ERR::Read;
+      goto exit;
+   }
+
    // Setup the PNG file
 
    png_set_read_fn(read_ptr, Self->prvFile, kotuku_read_callback);
@@ -219,20 +224,47 @@ static ERR PICTURE_Activate(extPicture *Self)
       // The first colour index in the list is taken as the background, any others are ignored
 
       RGB8 rgb;
-      if ((info_ptr->color_type IS PNG_COLOR_TYPE_PALETTE) or
-          (info_ptr->color_type IS PNG_COLOR_TYPE_GRAY) or
-          (info_ptr->color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
-         bmp->TransIndex = info_ptr->trans_alpha[0];
-         rgb = bmp->Palette->Col[bmp->TransIndex];
-         rgb.Alpha = 255;
-         bmp->set(FID_Transparence, &rgb);
-      }
-      else {
-         rgb.Red   = info_ptr->trans_color.red;
-         rgb.Green = info_ptr->trans_color.green;
-         rgb.Blue  = info_ptr->trans_color.blue;
-         rgb.Alpha = 255;
-         bmp->set(FID_Transparence, &rgb);
+      png_bytep trans_alpha = nullptr;
+      png_color_16p trans_colour = nullptr;
+      int num_trans = 0;
+
+      if (png_get_tRNS(read_ptr, info_ptr, &trans_alpha, &num_trans, &trans_colour)) {
+         if (info_ptr->color_type IS PNG_COLOR_TYPE_PALETTE) {
+            int trans_index = -1;
+
+            if (trans_alpha) {
+               for (int i=0; i < num_trans; i++) {
+                  if (trans_alpha[i] < 255) {
+                     trans_index = i;
+                     break;
+                  }
+               }
+            }
+
+            if ((trans_index >= 0) and (trans_index < bmp->Palette->AmtColours)) {
+               bmp->TransIndex = trans_index;
+               rgb = bmp->Palette->Col[bmp->TransIndex];
+               rgb.Alpha = 255;
+               bmp->set(FID_Transparence, &rgb);
+            }
+         }
+         else if ((info_ptr->color_type IS PNG_COLOR_TYPE_GRAY) or
+                  (info_ptr->color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
+            if (trans_colour) {
+               rgb.Red   = trans_colour->gray;
+               rgb.Green = trans_colour->gray;
+               rgb.Blue  = trans_colour->gray;
+               rgb.Alpha = 255;
+               bmp->set(FID_Transparence, &rgb);
+            }
+         }
+         else if (trans_colour) {
+            rgb.Red   = trans_colour->red;
+            rgb.Green = trans_colour->green;
+            rgb.Blue  = trans_colour->blue;
+            rgb.Alpha = 255;
+            bmp->set(FID_Transparence, &rgb);
+         }
       }
    }
 
@@ -240,10 +272,13 @@ static ERR PICTURE_Activate(extPicture *Self)
       png_color_16p prgb;
       prgb = &(info_ptr->background);
       if (color_type IS PNG_COLOR_TYPE_PALETTE) {
-         bmp->Bkgd.Red   = bmp->Palette->Col[info_ptr->trans_alpha[0]].Red;
-         bmp->Bkgd.Green = bmp->Palette->Col[info_ptr->trans_alpha[0]].Green;
-         bmp->Bkgd.Blue  = bmp->Palette->Col[info_ptr->trans_alpha[0]].Blue;
-         bmp->Bkgd.Alpha = 255;
+         int bkgd_index = prgb->index;
+         if ((bkgd_index >= 0) and (bkgd_index < bmp->Palette->AmtColours)) {
+            bmp->Bkgd.Red   = bmp->Palette->Col[bkgd_index].Red;
+            bmp->Bkgd.Green = bmp->Palette->Col[bkgd_index].Green;
+            bmp->Bkgd.Blue  = bmp->Palette->Col[bkgd_index].Blue;
+            bmp->Bkgd.Alpha = 255;
+         }
       }
       else if ((color_type IS PNG_COLOR_TYPE_GRAY) or (color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
          bmp->Bkgd.Red   = prgb->gray;
@@ -310,6 +345,11 @@ static ERR PICTURE_Activate(extPicture *Self)
    else error = decompress_png(Self, bmp, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height);
 
    if (error IS ERR::Okay) {
+      if (setjmp(png_jmpbuf(read_ptr))) {
+         error = ERR::Read;
+         goto exit;
+      }
+
       png_read_end(read_ptr, end_info);
       if (Self->prvFile) { FreeResource(Self->prvFile); Self->prvFile = nullptr; }
    }
@@ -453,7 +493,6 @@ static ERR PICTURE_Query(extPicture *Self)
    int bit_depth, color_type;
 
    if ((Self->Bitmap->Flags & BMF::QUERIED) != BMF::NIL) return ERR::Okay;
-   if (!Self->prvFile) return ERR::NotInitialised;
 
    log.branch();
 
@@ -479,6 +518,11 @@ static ERR PICTURE_Query(extPicture *Self)
    if (!(read_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, Self, &png_error_hook, &png_warning_hook))) goto exit;
    if (!(info_ptr = png_create_info_struct(read_ptr))) goto exit;
    if (!(end_info = png_create_info_struct(read_ptr))) goto exit;
+
+   if (setjmp(png_jmpbuf(read_ptr))) {
+      error = ERR::Read;
+      goto exit;
+   }
 
    // Read the PNG description
 
@@ -551,8 +595,9 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
    kt::Log log;
    CSTRING path;
-   int y, i;
    png_bytep row_pointers;
+   uint8_t *row_buffer = nullptr;
+   png_color palette[256];
 
    log.branch();
 
@@ -562,6 +607,13 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
    png_infop info_ptr    = nullptr;
    ERR error = ERR::Failed;
    tlError = false;
+
+   bool alpha_mask = ((Self->Flags & PCF::ALPHA) != PCF::NIL);
+
+   if (((Self->Flags & (PCF::ALPHA|PCF::MASK)) != PCF::NIL) and (!Self->Mask)) {
+      log.warning("Illegal use of the ALPHA/MASK flags without an accompanying mask bitmap.");
+      return log.warning(ERR::Args);
+   }
 
    if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
@@ -594,34 +646,52 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
       goto exit;
    }
 
-   if (((Self->Flags & (PCF::ALPHA|PCF::MASK)) != PCF::NIL) and (!Self->Mask)) {
-      log.warning("Illegal use of the ALPHA/MASK flags without an accompanying mask bitmap.");
-      Self->Flags &= ~(PCF::ALPHA|PCF::MASK);
+   if (alpha_mask or (bmp->BitsPerPixel IS 32) or (bmp->BytesPerPixel IS 2)) {
+      if ((error = AllocMemory(size_t(bmp->Width) * 4, MEM::DATA|MEM::NO_CLEAR, &row_buffer)) != ERR::Okay) {
+         goto exit;
+      }
    }
 
-   if (bmp->AmtColours > 256) {
+   if (setjmp(png_jmpbuf(write_ptr))) {
+      error = ERR::Write;
+      goto exit;
+   }
+
+   if ((bmp->AmtColours > 256) or alpha_mask) {
       if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
          log.trace("Saving as 32-bit alpha.");
-         png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+         png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA,
+            PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
-      else if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
+      else if (alpha_mask) {
          log.trace("Saving with alpha-mask.");
-         png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+         png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA,
+            PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
       else {
          log.trace("Saving in standard chunky graphics mode (no alpha).");
-         png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+         png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB,
+            PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
    }
    else {
-      png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_PALETTE, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+      int palette_count = bmp->Palette ? bmp->Palette->AmtColours : 0;
 
-      std::vector<png_color> p(bmp->Palette->AmtColours);
-      for (int i=0; i < bmp->Palette->AmtColours; i++) {
-         p[i] = { bmp->Palette->Col[i].Red, bmp->Palette->Col[i].Green, bmp->Palette->Col[i].Blue };
+      if (palette_count > bmp->AmtColours) palette_count = bmp->AmtColours;
+      if (palette_count > 256) palette_count = 256;
+      if (palette_count <= 0) {
+         error = ERR::Args;
+         goto exit;
       }
 
-      png_set_PLTE(write_ptr, info_ptr, p.data(), bmp->AmtColours);
+      png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_PALETTE,
+         PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+
+      for (int i=0; i < palette_count; i++) {
+         palette[i] = { bmp->Palette->Col[i].Red, bmp->Palette->Col[i].Green, bmp->Palette->Col[i].Blue };
+      }
+
+      png_set_PLTE(write_ptr, info_ptr, palette, palette_count);
    }
 
    // On Intel CPU's the pixel format is BGR
@@ -662,134 +732,172 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    // Write the image data to the PNG file
 
-   if ((bmp->BitsPerPixel IS 8) or (bmp->BitsPerPixel IS 24)) {
-      if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
-         auto row = std::make_unique<uint8_t[]>(bmp->Width * 4);
-         row_pointers = row.get();
+   if (bmp->BitsPerPixel IS 8) {
+      if (alpha_mask) {
+         row_pointers = row_buffer;
          uint8_t *data = bmp->Data;
          uint8_t *mask = Self->Mask->Data;
+         int palette_count = bmp->Palette ? bmp->Palette->AmtColours : 0;
+
          for (int y=0; y < bmp->Height; y++) {
             int i = 0;
-            int16_t maskx = 0;
-            for (int x=0; x < bmp->ByteWidth; x+=3) {
-               row[i++] = data[x+0];  // Blue
-               row[i++] = data[x+1];  // Green
-               row[i++] = data[x+2];  // Red
-               row[i++] = mask[maskx++];  // Alpha
+            for (int x=0; x < bmp->Width; x++) {
+               if (data[x] >= palette_count) {
+                  error = ERR::Args;
+                  goto exit;
+               }
+
+               auto &colour = bmp->Palette->Col[data[x]];
+               row_buffer[i++] = colour.Blue;
+               row_buffer[i++] = colour.Green;
+               row_buffer[i++] = colour.Red;
+               row_buffer[i++] = mask[x];
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row.get(), bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row_buffer, bmp->Width);
             png_write_row(write_ptr, row_pointers);
+            if (tlError) { error = ERR::Write; goto exit; }
             data += bmp->LineWidth;
             mask += Self->Mask->LineWidth;
          }
       }
       else {
-         for (y=0; y < bmp->Height; y++) {
+         for (int y=0; y < bmp->Height; y++) {
             row_pointers = bmp->Data + (y * bmp->LineWidth);
             png_write_row(write_ptr, row_pointers);
+            if (tlError) { error = ERR::Write; goto exit; }
+         }
+      }
+   }
+   else if (bmp->BitsPerPixel IS 24) {
+      if (alpha_mask) {
+         row_pointers = row_buffer;
+         uint8_t *data = bmp->Data;
+         uint8_t *mask = Self->Mask->Data;
+         for (int y=0; y < bmp->Height; y++) {
+            int i = 0;
+            for (int x=0; x < bmp->Width; x++) {
+               int data_x = x * 3;
+               row_buffer[i++] = data[data_x+0];  // Blue
+               row_buffer[i++] = data[data_x+1];  // Green
+               row_buffer[i++] = data[data_x+2];  // Red
+               row_buffer[i++] = mask[x];         // Alpha
+            }
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row_buffer, bmp->Width);
+            png_write_row(write_ptr, row_pointers);
+            if (tlError) { error = ERR::Write; goto exit; }
+            data += bmp->LineWidth;
+            mask += Self->Mask->LineWidth;
+         }
+      }
+      else {
+         for (int y=0; y < bmp->Height; y++) {
+            row_pointers = bmp->Data + (y * bmp->LineWidth);
+            png_write_row(write_ptr, row_pointers);
+            if (tlError) { error = ERR::Write; goto exit; }
          }
       }
    }
    else if (bmp->BitsPerPixel IS 32) {
       if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
-         auto row = std::make_unique<uint8_t[]>(bmp->Width * 4);
-         row_pointers = row.get();
+         row_pointers = row_buffer;
          uint8_t *data = bmp->Data;
          for (int y=0; y < bmp->Height; y++) {
             int i = 0;
             for (int x=0; x < (bmp->Width<<2); x+=4) {
-               row[i++] = data[x+0];  // Blue
-               row[i++] = data[x+1];  // Green
-               row[i++] = data[x+2];  // Red
-               row[i++] = data[x+3];  // Alpha
+               row_buffer[i++] = data[x+0];  // Blue
+               row_buffer[i++] = data[x+1];  // Green
+               row_buffer[i++] = data[x+2];  // Red
+               row_buffer[i++] = data[x+3];  // Alpha
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row.get(), bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row_buffer, bmp->Width);
             png_write_row(write_ptr, row_pointers);
+            if (tlError) { error = ERR::Write; goto exit; }
             data += bmp->LineWidth;
          }
       }
-      else if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
-         auto row = std::make_unique<uint8_t[]>(bmp->Width * 4);
-
-         row_pointers = row.get();
+      else if (alpha_mask) {
+         row_pointers = row_buffer;
          uint8_t *data = bmp->Data;
          uint8_t *mask = Self->Mask->Data;
          for (int y=0; y < bmp->Height; y++) {
             int i = 0;
-            int16_t maskx = 0;
+            int mask_x = 0;
             for (int x=0; x < (bmp->Width<<2); x+=4) {
-               row[i++] = data[x+0];     // Blue
-               row[i++] = data[x+1];     // Green
-               row[i++] = data[x+2];     // Red
-               row[i++] = mask[maskx++]; // Alpha
+               row_buffer[i++] = data[x+0];       // Blue
+               row_buffer[i++] = data[x+1];       // Green
+               row_buffer[i++] = data[x+2];       // Red
+               row_buffer[i++] = mask[mask_x++];  // Alpha
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row.get(), bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row_buffer, bmp->Width);
             png_write_row(write_ptr, row_pointers);
+            if (tlError) { error = ERR::Write; goto exit; }
             data += bmp->LineWidth;
             mask += Self->Mask->LineWidth;
          }
       }
       else {
-         auto row = std::make_unique<uint8_t[]>(bmp->Width * 3);
-         row_pointers = row.get();
+         row_pointers = row_buffer;
          uint8_t *data = bmp->Data;
          for (int y=0; y < bmp->Height; y++) {
-            i = 0;
+            int i = 0;
             for (int x=0; x < (bmp->Width<<2); x+=4) {
-               row[i++] = data[x+0];  // Blue
-               row[i++] = data[x+1];  // Green
-               row[i++] = data[x+2];  // Red
+               row_buffer[i++] = data[x+0];  // Blue
+               row_buffer[i++] = data[x+1];  // Green
+               row_buffer[i++] = data[x+2];  // Red
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row.get(), bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row_buffer, bmp->Width);
             png_write_row(write_ptr, row_pointers);
+            if (tlError) { error = ERR::Write; goto exit; }
             data += bmp->LineWidth;
          }
       }
    }
    else if (bmp->BytesPerPixel IS 2) {
-      if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
-         auto row = std::make_unique<uint8_t[]>(bmp->Width * 4);
-         row_pointers = row.get();
+      if (alpha_mask) {
+         row_pointers = row_buffer;
          uint16_t *data = (uint16_t *)bmp->Data;
          uint8_t *mask = Self->Mask->Data;
          for (int y=0; y < bmp->Height; y++) {
             int i = 0;
-            int16_t maskx = 0;
+            int mask_x = 0;
             for (int x=0; x < bmp->Width; x++) {
-               row[i++] = bmp->unpackBlue(data[x]);
-               row[i++] = bmp->unpackGreen(data[x]);
-               row[i++] = bmp->unpackRed(data[x]);
-               row[i++] = mask[maskx++];
+               row_buffer[i++] = bmp->unpackBlue(data[x]);
+               row_buffer[i++] = bmp->unpackGreen(data[x]);
+               row_buffer[i++] = bmp->unpackRed(data[x]);
+               row_buffer[i++] = mask[mask_x++];
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row.get(), bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row_buffer, bmp->Width);
             png_write_row(write_ptr, row_pointers);
+            if (tlError) { error = ERR::Write; goto exit; }
             data = (uint16_t *)(((uint8_t *)data) + bmp->LineWidth);
             mask += Self->Mask->LineWidth;
          }
       }
       else {
-         auto row = std::make_unique<uint8_t[]>(bmp->Width * 3);
-         row_pointers = row.get();
+         row_pointers = row_buffer;
          uint16_t *data = (uint16_t *)bmp->Data;
          for (int y=0; y < bmp->Height; y++) {
             int i = 0;
             for (int x=0; x < bmp->Width; x++) {
-               row[i++] = bmp->unpackBlue(data[x]);
-               row[i++] = bmp->unpackGreen(data[x]);
-               row[i++] = bmp->unpackRed(data[x]);
+               row_buffer[i++] = bmp->unpackBlue(data[x]);
+               row_buffer[i++] = bmp->unpackGreen(data[x]);
+               row_buffer[i++] = bmp->unpackRed(data[x]);
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row.get(), bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row_buffer, bmp->Width);
             png_write_row(write_ptr, row_pointers);
+            if (tlError) { error = ERR::Write; goto exit; }
             data = (uint16_t *)(((uint8_t *)data) + bmp->LineWidth);
          }
       }
    }
 
    png_write_end(write_ptr, nullptr);
+   if (tlError) { error = ERR::Write; goto exit; }
 
    error = ERR::Okay;
 
 exit:
+   if (row_buffer) FreeResource(row_buffer);
    png_destroy_write_struct(&write_ptr, &info_ptr);
 
    if ((Args) and (Args->Dest));
@@ -810,8 +918,12 @@ static ERR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
    kt::Log log;
    ERR (**routine)(OBJECTPTR, APTR);
 
+   if (!Args) return log.warning(ERR::NullArgs);
+
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::PICTURE)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
+      if (!mc) return log.warning(ERR::NoSupport);
+
       if ((mc->get(FID_ActionTable, routine) IS ERR::Okay) and (routine)) {
          if ((routine[int(AC::SaveToObject)]) and (routine[int(AC::SaveToObject)] != (APTR)PICTURE_SaveToObject)) {
             return routine[int(AC::SaveToObject)](Self, Args);
@@ -1190,6 +1302,7 @@ static void png_error_hook(png_structp png_ptr, png_const_charp message)
    kt::Log log;
    log.warning("%s", message);
    tlError = true;
+   png_longjmp(png_ptr, 1);
 }
 
 static void png_warning_hook(png_structp png_ptr, png_const_charp message)
@@ -1208,14 +1321,16 @@ ZEXTERN uLong ZEXPORT crc32   OF((uLong crc, const Bytef *buf, uInt len))
 static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int ColourType, png_structp ReadPtr,
                             png_infop InfoPtr, png_uint_32 PngWidth, png_uint_32 PngHeight)
 {
-   ERR error;
-   uint8_t *row;
+   ERR error = ERR::Failed;
+   uint8_t *row = nullptr;
    png_bytep row_pointers;
    RGB8 rgb;
    int i;
    kt::Log log(__FUNCTION__);
 
    // Read the image data into our Bitmap
+
+   if (setjmp(png_jmpbuf(ReadPtr))) return ERR::Read;
 
    if (ColourType & PNG_COLOR_MASK_ALPHA) png_set_expand(ReadPtr); // Alpha channel
    if (BitDepth IS 16) png_set_strip_16(ReadPtr); // Reduce bit depth to 24bpp if the image is 48bpp
@@ -1224,6 +1339,11 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
    auto interlace_type = png_get_interlace_type(ReadPtr, InfoPtr);
 
    log.branch("Size: %dx%dx%d, Interlace: %d", (int)PngWidth, (int)PngHeight, BitDepth, interlace_type);
+
+   int passes = 1;
+   if (interlace_type IS PNG_INTERLACE_ADAM7) passes = png_set_interlace_handling(ReadPtr);
+
+   png_read_update_info(ReadPtr, InfoPtr);
 
    auto row_size = png_get_rowbytes(ReadPtr, InfoPtr);
    if ((error = acQuery(Bitmap)) != ERR::Okay) return error;
@@ -1237,8 +1357,10 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
    if (PngWidth > (png_uint_32)Bitmap->Width) PngWidth = Bitmap->Width;
    if (PngHeight > (png_uint_32)Bitmap->Height) PngHeight = Bitmap->Height;
 
-   int passes = 1;
-   if (interlace_type == PNG_INTERLACE_ADAM7) passes = png_set_interlace_handling(ReadPtr);
+   if (setjmp(png_jmpbuf(ReadPtr))) {
+      error = ERR::Read;
+      goto exit;
+   }
 
    row_pointers = row;
    if (ColourType IS PNG_COLOR_TYPE_GRAY) {
@@ -1290,7 +1412,7 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
 
                // Set the alpha byte in the alpha mask (nb: refer to png_set_invert_alpha() if you want to reverse the alpha bytes)
 
-               if (Self->Mask) Self->Mask->Data[(y * Self->Mask->LineWidth) + x] = row[3];
+               if (Self->Mask) Self->Mask->Data[(y * Self->Mask->LineWidth) + x] = row[i+3];
 
                i += 4;
             }
