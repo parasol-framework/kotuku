@@ -185,6 +185,137 @@ function formatParserAnnotationHover(AnnotationName, AnnotationDoc)
    return md
 end
 
+----------------------------------------------------------------------------------------------------------------------
+
+@Doc(text="Hover Support - Current Document Symbols")
+function hoverGetDocumentSymbols(Doc:table):array
+   if Doc.hoverSymbolsContent is Doc.content and Doc.hoverSymbols then return Doc.hoverSymbols end
+
+   local result
+   try
+      result = debug.validate(Doc.content, 'symbols')
+   except ex
+      result = nil
+   end
+
+   if result and result.symbols then
+      Doc.hoverSymbols = result.symbols
+      Doc.hoverSymbolsContent = Doc.content
+      return result.symbols
+   end
+
+   return Doc.hoverSymbols
+end
+
+function hoverTextHasContent(Text:str):bool
+   return Text and Text != ''
+end
+
+function hoverSymbolMatches(Symbol:table, TokenInfo:table):bool
+   if not Symbol or not TokenInfo then return false end
+
+   token = TokenInfo.text
+   if Symbol.name is token then return true end
+
+   if TokenInfo.object then
+      if Symbol.name is TokenInfo.object .. '.' .. token then return true end
+      if Symbol.name is TokenInfo.object .. ':' .. token then return true end
+   end
+
+   return false
+end
+
+function hoverAppendParamSection(Markdown:str, Params:array):str
+   lines = array<string>
+
+   for param in values(Params or array<table>) do
+      if hoverTextHasContent(param.doc) then
+         label = param.name or ''
+         if hoverTextHasContent(param.type) then
+            label ..= ': ' .. param.type
+         end
+         if label is '' then label = 'parameter' end
+         lines:push(f'- `{label}` - {param.doc}')
+      end
+   end
+
+   if #lines > 0 then
+      Markdown ..= '\n\n**Parameters**\n\n' .. lines:join('\n')
+   end
+
+   return Markdown
+end
+
+function hoverAppendResultSection(Markdown:str, Results:array):str
+   lines = array<string>
+
+   for result in values(Results or array<table>) do
+      if hoverTextHasContent(result.type) or hoverTextHasContent(result.doc) then
+         label = result.type or 'result'
+         line = f'- `{label}`'
+         if hoverTextHasContent(result.doc) then line ..= ' - ' .. result.doc end
+         lines:push(line)
+      end
+   end
+
+   if #lines > 0 then
+      Markdown ..= '\n\n**Results**\n\n' .. lines:join('\n')
+   end
+
+   return Markdown
+end
+
+function hoverAppendErrorSection(Markdown:str, Errors:array):str
+   lines = array<string>
+
+   for err in values(Errors or array<table>) do
+      if hoverTextHasContent(err.code) or hoverTextHasContent(err.doc) then
+         label = err.code or 'error'
+         line = f'- `{label}`'
+         if hoverTextHasContent(err.doc) then line ..= ' - ' .. err.doc end
+         lines:push(line)
+      end
+   end
+
+   if #lines > 0 then
+      Markdown ..= '\n\n**Errors**\n\n' .. lines:join('\n')
+   end
+
+   return Markdown
+end
+
+function formatDocumentSymbolHover(Symbol:table):str
+   signature = Symbol.signature or Symbol.name
+   doc_text = Symbol.doc?.body
+   if not hoverTextHasContent(doc_text) then doc_text = Symbol.doc?.summary end
+
+   if not hoverTextHasContent(signature) and not hoverTextHasContent(doc_text) then return nil end
+
+   md = f'**{signature}**'
+   if hoverTextHasContent(doc_text) then
+      md ..= '\n\n' .. doc_text
+   end
+
+   md = hoverAppendParamSection(md, Symbol.params)
+   md = hoverAppendResultSection(md, Symbol.results)
+   md = hoverAppendErrorSection(md, Symbol.errors)
+
+   return md
+end
+
+function resolveDocumentSymbolHover(TokenInfo:table, Doc:table):str
+   symbols = hoverGetDocumentSymbols(Doc)
+   symbols ?? return nil
+
+   for symbol in values(symbols) do
+      if hoverSymbolMatches(symbol, TokenInfo) then
+         return formatDocumentSymbolHover(symbol)
+      end
+   end
+
+   return nil
+end
+
 @Doc(text="Resolve hover content for a token")
 global function resolveHoverContent(TokenInfo, Doc)
    -- Priority: keywords, builtins, class names, module functions, object methods/fields
@@ -208,6 +339,10 @@ global function resolveHoverContent(TokenInfo, Doc)
    if glDefs?.builtins?[token] then
       return formatBuiltinHover(token, glDefs.builtins[token])
    end
+
+   -- Check current-document functions parsed by debug.validate(..., 'symbols')
+   document_hover = resolveDocumentSymbolHover(TokenInfo, Doc)
+   if document_hover then return document_hover end
 
    -- Handle obj.new specially
    if context is 'method_call' and TokenInfo.object is 'obj' and token is 'new' then
