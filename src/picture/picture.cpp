@@ -1458,7 +1458,10 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
                auto source_row = interlaced ? image_data + (size_t(y) * row_size) : row;
                if (!interlaced) { png_read_row(ReadPtr, row_pointers, nullptr); if (tlError) goto exit; }
                for (png_uint_32 x=0; x < PngWidth; x++) {
-                  Bitmap->DrawUCRPixel(Bitmap, x, y, &Bitmap->Palette->Col[source_row[x]]);
+                  auto &palette_colour = Bitmap->Palette->Col[source_row[x]];
+
+                  Bitmap->DrawUCRPixel(Bitmap, x, y, &palette_colour);
+                  if (Self->Mask) Self->Mask->Data[(y * Self->Mask->LineWidth) + x] = palette_colour.Alpha;
                }
             }
          }
