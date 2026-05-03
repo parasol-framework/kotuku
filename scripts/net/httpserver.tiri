@@ -1227,6 +1227,7 @@ function matchRoute(serverInstance, method, path)
          -- :param becomes ([^/]+), * becomes (.*), escape regex special chars
 
          regexPattern = regex.escape(pattern)
+         regexPattern = regexPattern:replace('\\-', '-')
          regexPattern = rxRouteParamSub.replace(regexPattern, '([^\\/]+)')   -- :param -> ([^/]+)
          regexPattern = rxEscapedWildcard.replace(regexPattern, '(.*)')    -- \* -> (.*)
 

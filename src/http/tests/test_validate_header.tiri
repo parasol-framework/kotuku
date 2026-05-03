@@ -9,8 +9,8 @@ request body is processed.
 
 SERVER_PORT <const> = 18940
 
-@BeforeAll function init(Path)
-   global glPath = Path
+@BeforeAll function init(State)
+   global glPath = State.folder
 
    global glServer = hslib.start({
       port    = SERVER_PORT,
@@ -105,6 +105,8 @@ SERVER_PORT <const> = 18940
          }
       }
    })
+
+   processing.sleep(0.1)
 end
 
 @AfterAll function cleanup()
@@ -121,9 +123,8 @@ end
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/auth/protected',
       method = 'GET',
       flags = HTF_NO_HEAD | HTF_NO_DIALOG,
-      _Authorization = 'Bearer valid-token-123',
       incoming = function(HTTP, Buffer)
-         content ..= tostring(Buffer)
+         content ..= Buffer:getString()
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
@@ -132,6 +133,7 @@ end
       end
    })
 
+   check http.acSetKey('Authorization', 'Bearer valid-token-123')
    assert(http.acActivate() is ERR_Okay, "Valid header test failed to activate")
 
    err = proc.sleep()
@@ -154,7 +156,6 @@ end
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/auth/protected',
       method = 'GET',
       flags = HTF_NO_HEAD | HTF_NO_DIALOG,
-      _Authorization = 'Bearer invalid-token',
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
             proc.signal()
@@ -162,6 +163,7 @@ end
       end
    })
 
+   check http.acSetKey('Authorization', 'Bearer invalid-token')
    assert(http.acActivate() is ERR_Okay, "Invalid header test failed to activate")
 
    err = proc.sleep()
@@ -181,7 +183,6 @@ end
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/admin-only',
       method = 'POST',
       flags = HTF_NO_HEAD | HTF_NO_DIALOG,
-      _Authorization = 'Bearer user-token',
       inputFile = 'string:{"data":"test"}',
       size = 15,
       stateChanged = function(HTTP, State)
@@ -191,6 +192,7 @@ end
       end
    })
 
+   check http.acSetKey('Authorization', 'Bearer user-token')
    assert(http.acActivate() is ERR_Okay, "Custom error test failed to activate")
 
    err = proc.sleep()
@@ -296,7 +298,7 @@ end
       method   = 'GET',
       flags    = HTF_NO_HEAD | HTF_NO_DIALOG,
       incoming = function(HTTP, Buffer)
-         content ..= tostring(Buffer)
+         content ..= Buffer:getString()
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
