@@ -551,7 +551,6 @@ static void launch_async_thread(OBJECTPTR Object, ACTIONID ActionID, int ArgsSiz
          {
             std::lock_guard<std::mutex> lock(glmActionQueue);
             glAsyncObjectThreads.erase(object_uid);
-            glCancelledAsyncObjects.erase(object_uid);
          }
          deregister_thread();
          std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);
