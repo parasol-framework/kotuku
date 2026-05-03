@@ -403,6 +403,8 @@ void dispatch_queued_action(OBJECTID ObjectID)
    bool queue_empty = false;
    {
       std::lock_guard<std::mutex> lock(glmActionQueue);
+      // Cancellation state applies only to the action whose completion is being processed.
+      glCancelledAsyncObjects.erase(ObjectID);
       auto it = glActionQueues.find(ObjectID);
       if ((it IS glActionQueues.end()) or it->second.empty()) {
          glActiveAsyncObjects.erase(ObjectID);
