@@ -58,12 +58,9 @@ static void read_row_callback(png_structp, png_uint_32, int);
 static void write_row_callback(png_structp, png_uint_32, int);
 static void png_error_hook(png_structp png_ptr, png_const_charp message);
 static void png_warning_hook(png_structp png_ptr, png_const_charp message);
+static void kotuku_flush_callback(png_structp png);
 void kotuku_read_callback(png_structp png, png_bytep data, png_size_t length);
 void kotuku_write_callback(png_structp png, png_bytep data, png_size_t length);
-void png_read_data(png_structp png, png_bytep data, png_size_t length);
-void png_write_data(png_structp png, png_const_bytep data, png_size_t length);
-void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data_fn);
-void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_data_fn, png_flush_ptr output_flush_fn);
 static ERR create_picture_class(void);
 
 //********************************************************************************************************************
@@ -141,15 +138,18 @@ static ERR PICTURE_Activate(extPicture *Self)
    png_structp read_ptr = nullptr;
    png_infop info_ptr = nullptr;
    png_infop end_info = nullptr;
+   bool file_opened = false;
+   volatile bool mask_created = false;
 
    if (!Self->prvFile) {
       CSTRING path;
       if (Self->get(FID_Path, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
+      file_opened = true;
    }
 
-   Self->prvFile->seekStart(0);
+   if (not ((error = Self->prvFile->seekStart(0)) IS ERR::Okay)) goto exit;
 
    // Allocate PNG structures
 
@@ -213,6 +213,7 @@ static ERR PICTURE_Activate(extPicture *Self)
             fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
             fl::AmtColours(256), fl::Flags(BMF::MASK)))) {
          Self->Flags |= PCF::MASK|PCF::ALPHA;
+         mask_created = true;
       }
       else goto exit;
    }
@@ -338,7 +339,7 @@ static ERR PICTURE_Activate(extPicture *Self)
 
       if (tmp_bitmap.ok()) {
          if ((error = decompress_png(Self, *tmp_bitmap, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height)) IS ERR::Okay) {
-            gfx::CopyArea(*tmp_bitmap, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
+            error = gfx::CopyArea(*tmp_bitmap, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
          }
       }
    }
@@ -355,6 +356,17 @@ static ERR PICTURE_Activate(extPicture *Self)
    }
    else {
 exit:
+      if (mask_created and Self->Mask) {
+         FreeResource(Self->Mask);
+         Self->Mask = nullptr;
+         Self->Flags &= ~(PCF::MASK|PCF::ALPHA);
+      }
+
+      if (file_opened and Self->prvFile) {
+         FreeResource(Self->prvFile);
+         Self->prvFile = nullptr;
+      }
+
       log.warning(error);
    }
 
@@ -448,7 +460,8 @@ static ERR PICTURE_Init(extPicture *Self)
 
             auto buffer = (uint8_t *)Self->prvHeader;
 
-            if ((buffer[0] IS 0x89) and (buffer[1] IS 0x50) and (buffer[2] IS 0x4e) and (buffer[3] IS 0x47) and
+            if ((result >= 8) and
+                (buffer[0] IS 0x89) and (buffer[1] IS 0x50) and (buffer[2] IS 0x4e) and (buffer[3] IS 0x47) and
                 (buffer[4] IS 0x0d) and (buffer[5] IS 0x0a) and (buffer[6] IS 0x1a) and (buffer[7] IS 0x0a)) {
                if ((Self->Flags & PCF::LAZY) != PCF::NIL) return ERR::Okay;
                return acActivate(Self);
@@ -511,7 +524,7 @@ static ERR PICTURE_Query(extPicture *Self)
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
 
-   Self->prvFile->seekStart(0);
+   if (not ((error = Self->prvFile->seekStart(0)) IS ERR::Okay)) goto exit;
 
    // Allocate PNG structures
 
@@ -638,7 +651,7 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    // Setup the PNG file
 
-   png_set_write_fn(write_ptr, file, kotuku_write_callback, nullptr);
+   png_set_write_fn(write_ptr, file, kotuku_write_callback, kotuku_flush_callback);
 
    png_set_write_status_fn(write_ptr, write_row_callback);
    if (tlError) {
@@ -1178,7 +1191,7 @@ Software: The name of the application that was used to draw the image.
 
 static ERR GET_Software(extPicture *Self, STRING *Value)
 {
-   if (!Self->prvPath.empty()) {
+   if (!Self->prvSoftware.empty()) {
       *Value = Self->prvSoftware.data();
       return ERR::Okay;
    }
@@ -1254,42 +1267,8 @@ void kotuku_write_callback(png_structp png, png_bytep data, png_size_t length)
    }
 }
 
-void png_flush(png_structp png_ptr)
+static void kotuku_flush_callback(png_structp png)
 {
-
-}
-
-// These functions are expected by the embedded libpng library
-void png_read_data(png_structp png, png_bytep data, png_size_t length)
-{
-   struct acRead read = { data, (int)length };
-   if ((Action(AC::Read, (OBJECTPTR)png_get_io_ptr(png), &read) != ERR::Okay) or ((png_size_t)read.Result != length)) {
-      png_error(png, "File read error");
-   }
-}
-
-void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
-{
-   struct acWrite write = { data, (int)length };
-   if ((Action(AC::Write, (OBJECTPTR)png_get_io_ptr(png), &write) != ERR::Okay) or ((png_size_t)write.Result != length)) {
-      png_error(png, "File write error");
-   }
-}
-
-void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data_fn)
-{
-   if (png_ptr IS nullptr) return;
-   png_ptr->io_ptr = io_ptr;
-   png_ptr->read_data_fn = read_data_fn;
-   png_ptr->output_flush_fn = nullptr;
-}
-
-void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_data_fn, png_flush_ptr output_flush_fn)
-{
-   if (png_ptr IS nullptr) return;
-   png_ptr->io_ptr = io_ptr;
-   png_ptr->write_data_fn = write_data_fn;
-   png_ptr->output_flush_fn = output_flush_fn;
 }
 
 
@@ -1366,14 +1345,18 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
    if (ColourType IS PNG_COLOR_TYPE_GRAY) {
       log.trace("Greyscale image source.");
       rgb.Alpha = 255;
-      for (png_uint_32 y=0; y < PngHeight; y++) {
-         png_read_row(ReadPtr, row_pointers, nullptr); if (tlError) goto exit;
-         for (png_uint_32 x=0; x < PngWidth; x++) {
-            rgb.Red   = row[x];
-            rgb.Green = row[x];
-            rgb.Blue  = row[x];
-            Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
+
+      while (passes > 0) {
+         for (png_uint_32 y=0; y < PngHeight; y++) {
+            png_read_row(ReadPtr, row_pointers, nullptr); if (tlError) goto exit;
+            for (png_uint_32 x=0; x < PngWidth; x++) {
+               rgb.Red   = row[x];
+               rgb.Green = row[x];
+               rgb.Blue  = row[x];
+               Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
+            }
          }
+         passes--;
       }
    }
    else if (ColourType IS PNG_COLOR_TYPE_PALETTE) {
