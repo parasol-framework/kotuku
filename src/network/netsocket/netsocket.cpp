@@ -1419,15 +1419,24 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    }
 
    if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
-      if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
+      bool ssl_read_blocked = false;
+      #ifndef DISABLE_SSL
+       #ifndef _WIN32
+         ssl_read_blocked = (error IS ERR::Busy) and (Self->SSLHandle) and (Self->HandshakeStatus IS SHS::READ);
+       #endif
+      #endif
+
+      if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (ssl_read_blocked) or (len > 0))  {
          // Put data into the write queue and register the socket for write events
          log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
          Self->WriteQueue.write((int8_t *)Args->Buffer + len, std::min<size_t>(Args->Length - len, Self->MsgLimit));
-         #ifdef __linux__
-            RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
-         #elif _WIN32
-            win_socketstate(Self->Handle, std::nullopt, true);
-         #endif
+         if (!ssl_read_blocked) {
+            #ifdef __linux__
+               RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
+            #elif _WIN32
+               win_socketstate(Self->Handle, std::nullopt, true);
+            #endif
+         }
       }
       else {
          Self->ErrorCountdown--;

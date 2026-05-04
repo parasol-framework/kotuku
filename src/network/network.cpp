@@ -486,6 +486,9 @@ static std::string glCertPath;
   #ifdef _WIN32
     #include "win32/win32_ssl.cpp"
   #else
+    static void netsocket_outgoing(HOSTHANDLE, APTR);
+    static void clientsocket_outgoing(HOSTHANDLE, APTR);
+
     #include "openssl.cpp"
   #endif
 #endif
@@ -961,7 +964,10 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 
          if (Self->HandshakeStatus != SHS::NIL) {
             *Length = 0;
-            if (Self->HandshakeStatus IS SHS::READ) return ERR::Busy;
+            if (Self->HandshakeStatus IS SHS::READ) {
+               ssl_suspend_write_queue(Self->Handle.hosthandle());
+               return ERR::Busy;
+            }
             return ERR::BufferOverflow;
          }
 
@@ -982,6 +988,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
                   Self->HandshakeStatus = SHS::READ;
                   auto read_callback = std::is_same<T, extNetSocket>::value ?
                      ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
+                  ssl_suspend_write_queue(Self->Handle.hosthandle());
                   RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, read_callback, Self);
                   return ERR::Busy;
                }

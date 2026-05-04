@@ -695,6 +695,15 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       return;
    }
 
+#ifndef DISABLE_SSL
+#ifndef _WIN32
+   if ((Self->SSLHandle) and (Self->HandshakeStatus IS SHS::READ)) {
+      ssl_suspend_write_queue(Self->Handle.hosthandle());
+      return;
+   }
+#endif
+#endif
+
    if (Self->OutgoingRecursion) {
       log.traceWarning(ERR::Recursion);
       return;
