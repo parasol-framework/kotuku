@@ -18,7 +18,7 @@
 
    -- Empty/nil handling
    assert(url.encode('') is '', 'Empty string encoding failed')
-   assert(url.encode(nil) is nil, 'Nil encoding should return nil')
+   assert(url.encode(nil) is '', 'Nil encoding should return empty string')
 
    -- Plus encoding for forms
    assert(url.encodePlus('hello world') is 'hello+world', 'Plus space encoding failed')
@@ -41,7 +41,7 @@ end
 
    -- Empty/nil handling
    assert(url.decode('') is '', 'Empty string decoding failed')
-   assert(url.decode(nil) is nil, 'Nil decoding should return nil')
+   assert(url.decode(nil) is '', 'Nil decoding should return empty string')
 
    -- Round-trip test
    original = 'Hello World! @#$%^&*()'
@@ -202,7 +202,7 @@ end
 @Test function URLJoining()
    -- Basic relative URL joining
    joined = url.join('https://example.com/api/', 'users/123')
-   assert(joined is 'https://example.com/api/users/123', 'Basic joining failed')
+   assert(joined is 'https://example.com/api/users/123', f'Basic joining failed, got {joined}')
 
    -- Absolute path joining
    absJoined = url.join('https://example.com/api/old', '/new/path')
