@@ -200,6 +200,13 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
       return ERR::InvalidState;
    }
 
+#ifdef DISABLE_SSL
+   if ((Self->Flags & NSF::SSL) != NSF::NIL) {
+      Self->Error = ERR::NoSecureSockets;
+      return log.warning(Self->Error);
+   }
+#endif
+
    log.branch("Address: %s, Port: %d", Args->Address, Args->Port);
 
    if (Args->Address != Self->Address) {

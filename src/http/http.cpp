@@ -870,6 +870,11 @@ static ERR HTTP_Activate(extHTTP *Self)
             cleanup_activation_failure();
             return log.warning(Self->Error);
          }
+         else if (result IS ERR::NoSecureSockets) {
+            Self->Error = ERR::NoSecureSockets;
+            cleanup_activation_failure();
+            return log.warning(Self->Error);
+         }
          else {
             Self->Error = ERR::ConnectionRefused;
             cleanup_activation_failure();
