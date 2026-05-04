@@ -341,8 +341,9 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
                log.trace("IPv6 connect() attempt would block or need to try again.");
             }
             else {
-               log.warning("IPv6 Connect() failed: %s", strerror(errno));
-               Socket->Error = ERR::SystemCall;
+               const int system_error = errno;
+               log.warning("IPv6 Connect() failed: %s", strerror(system_error));
+               Socket->Error = convert_socket_error(system_error);
                Socket->setState(NTC::DISCONNECTED);
                return;
             }
@@ -384,8 +385,9 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
                log.trace("IPv4-mapped IPv6 connect() attempt would block or need to try again.");
             }
             else {
-               log.warning("IPv4-mapped IPv6 Connect() failed: %s", strerror(errno));
-               Socket->Error = ERR::SystemCall;
+               const int system_error = errno;
+               log.warning("IPv4-mapped IPv6 Connect() failed: %s", strerror(system_error));
+               Socket->Error = convert_socket_error(system_error);
                Socket->setState(NTC::DISCONNECTED);
                return;
             }
@@ -412,13 +414,13 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          server_address6.sin6_addr.s6_addr[11] = 0xff;
          *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = htonl(addr->Data[0]);
 
-         if (win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6)) IS ERR::Okay) {
+         Socket->Error = win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6));
+         if (Socket->Error IS ERR::Okay) {
             log.trace("IPv4-mapped IPv6 connection initiated successfully");
             Socket->setState(NTC::CONNECTING);
          }
          else {
-            log.trace("IPv4-mapped IPv6 connect() failed");
-            Socket->Error = ERR::SystemCall;
+            log.trace("IPv4-mapped IPv6 connect() failed: %s", GetErrorMsg(Socket->Error));
             Socket->setState(NTC::DISCONNECTED);
          }
          return;
@@ -442,8 +444,9 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          log.trace("connect() attempt would block or need to try again.");
       }
       else {
-         log.warning("Connect() failed: %s", strerror(errno));
-         Socket->Error = ERR::SystemCall;
+         const int system_error = errno;
+         log.warning("Connect() failed: %s", strerror(system_error));
+         Socket->Error = convert_socket_error(system_error);
          Socket->setState(NTC::DISCONNECTED);
          return;
       }
@@ -817,14 +820,17 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
       }
    }
    else {
-      log.warning("Failed to create socket: %s", strerror(errno));
-      return ERR::SystemCall;
+      const int system_error = errno;
+      log.warning("Failed to create socket: %s", strerror(system_error));
+      return convert_socket_error(system_error);
    }
 
    // Put the socket into non-blocking mode, this is required when registering it as an FD and also prevents connect()
    // calls from going to sleep.
 
-   if (fcntl(Self->Handle, F_SETFL, fcntl(Self->Handle, F_GETFL) | O_NONBLOCK)) return log.warning(ERR::SystemCall);
+   if (fcntl(Self->Handle, F_SETFL, fcntl(Self->Handle, F_GETFL) | O_NONBLOCK)) {
+      return log.warning(convert_socket_error());
+   }
 
    // Set the send timeout so that connect() will timeout after a reasonable time
 
@@ -916,8 +922,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                }
                return ERR::Okay;
             }
-            else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
-            else return log.warning(ERR::SystemCall);
+            else return log.warning(convert_socket_error());
          #elif _WIN32
             // Windows IPv6 dual-stack server binding
             struct sockaddr_in6 addr;
@@ -991,10 +996,10 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                }
                return ERR::Okay;
             }
-            else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
             else {
-               log.warning("bind() failed with error: %s", strerror(errno));
-               return ERR::SystemCall;
+               const int system_error = errno;
+               log.warning("bind() failed with error: %s", strerror(system_error));
+               return convert_socket_error(system_error);
             }
          #elif _WIN32
             if ((error = win_bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
@@ -1328,8 +1333,9 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    }
    else if ((errno IS EAGAIN) or (errno IS EINTR)) return ERR::Okay;
    else {
-      log.warning("recv() failed: %s", strerror(errno));
-      return ERR::SystemCall;
+      const int system_error = errno;
+      log.warning("recv() failed: %s", strerror(system_error));
+      return convert_socket_error(system_error);
    }
 #elif _WIN32
    size_t result;
@@ -1480,8 +1486,9 @@ static ERR NETSOCKET_RecvFrom(extNetSocket *Self, struct ns::RecvFrom *Args)
          case EMSGSIZE:
             return ERR::BufferOverflow;
          default:
-            log.warning("recvfrom() failed: %s", strerror(errno));
-            return ERR::SystemCall;
+            const int system_error = errno;
+            log.warning("recvfrom() failed: %s", strerror(system_error));
+            return convert_socket_error(system_error);
       }
    }
 #elif _WIN32
@@ -1612,8 +1619,9 @@ static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
       case ENETUNREACH: return ERR::NetworkUnreachable;
       case EINVAL:      return ERR::Args;
       default:
-         log.warning("sendto() failed: %s", strerror(errno));
-         return ERR::SystemCall;
+         const int system_error = errno;
+         log.warning("sendto() failed: %s", strerror(system_error));
+         return convert_socket_error(system_error);
    }
 #elif defined(_WIN32)
    auto error = WIN_SENDTO(Self->Handle, Args->Data, &bytes_to_send, (sockaddr *)&dest_addr, addr_len);

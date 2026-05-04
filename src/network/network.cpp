@@ -266,6 +266,10 @@ public:
    }
 #endif
 
+#ifdef __linux__
+   #include "socket_errors.h"
+#endif
+
 class extClientSocket : public objClientSocket {
    public:
    SocketHandle Handle;
@@ -1007,8 +1011,9 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
       if (errno IS EAGAIN) return ERR::BufferOverflow;
       else if (errno IS EMSGSIZE) return ERR::DataSize;
       else {
-         log.warning("send() failed: %s", strerror(errno));
-         return ERR::Failed;
+         const int system_error = errno;
+         log.warning("send() failed: %s", strerror(system_error));
+         return convert_socket_error(system_error, ERR::Failed);
       }
    }
 #elif _WIN32

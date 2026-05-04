@@ -159,8 +159,9 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
          return ERR::Okay;
       }
       else {
-         log.warning("recv() failed: %s", strerror(errno));
-         return ERR::SystemCall;
+         const int system_error = errno;
+         log.warning("recv() failed: %s", strerror(system_error));
+         return convert_socket_error(system_error);
       }
    }
 #elif _WIN32
