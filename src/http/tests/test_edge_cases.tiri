@@ -96,7 +96,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test(priority=1000) function RequestTimeout()
-   proc = processing.new({ timeout = 3.0 })
    content = ''
    timedOut = false
 
@@ -113,11 +112,12 @@ end
             timedOut = true
          end
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 3.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Timeout test failed to activate")
 
    err = proc.sleep()
@@ -130,7 +130,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function AbortedConnection()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -144,11 +143,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Aborted connection test failed to activate")
 
    err = proc.sleep()
@@ -163,7 +163,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function MalformedChunkedEncoding()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
    testCompleted = false
 
@@ -185,11 +184,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Malformed chunks test failed to activate")
 
    err = proc.sleep()
@@ -202,7 +202,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ContentLengthMismatch()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -214,11 +213,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Content mismatch test failed to activate")
 
    err = proc.sleep()
@@ -233,7 +233,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function MaxRequestSizeExceeded()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    -- Create a body larger than server's maxRequestSize (which we'll set to 1KB)
@@ -251,11 +250,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Max size test failed to activate")
 
    err = proc.sleep()
@@ -272,7 +272,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function InvalidHttpVersion()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -284,11 +283,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "HTTP version test failed to activate")
 
    err = proc.sleep()
@@ -303,7 +303,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function EmptyRequest()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -319,11 +318,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Empty request test failed to activate")
 
    err = proc.sleep()

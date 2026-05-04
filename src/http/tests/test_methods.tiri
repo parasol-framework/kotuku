@@ -1,8 +1,10 @@
 --[[
 HTTP Methods Testing
 
-Tests various HTTP methods (PUT, DELETE, PATCH, HEAD, OPTIONS) with both
-the HTTP client class and httpserver.tiri implementation.
+Tests various HTTP methods (PUT, DELETE, PATCH, HEAD, OPTIONS) with both the HTTP client class and httpserver.tiri
+implementation.
+
+Also demonstrates how to wait for and directly signal objects
 --]]
 
    import 'net/httpserver'
@@ -15,8 +17,6 @@ SERVER_PORT <const> = 18943
 rxStatusLine = <{ regex.new([[HTTP\/1\.[01]\s+(\d+)]]) }>
 
 function rawHttpRequest(Method:str, Path:str, Body:any, Headers:any):<num, str>
-   signal = obj.new('time', {})
-   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    response = ''
    request = f"{Method} {Path} HTTP/1.1\r\n" ..
       "Host: 127.0.0.1\r\n" ..
@@ -40,7 +40,7 @@ function rawHttpRequest(Method:str, Path:str, Body:any, Headers:any):<num, str>
          if State is NTC_CONNECTED then
             check Socket.acWrite(request)
          elseif State is NTC_DISCONNECTED then
-            signal.acSignal()
+            Socket.acSignal()
          end
       end,
       incoming = function(Socket)
@@ -49,16 +49,16 @@ function rawHttpRequest(Method:str, Path:str, Body:any, Headers:any):<num, str>
          if err is ERR_Okay then
             response ..= buffer:substr(0, read_len)
          elseif err is ERR_Disconnected then
-            signal.acSignal()
+            Socket.acSignal()
          else
             error('Raw HTTP read failed: ' .. mSys.GetErrorMsg(err))
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { socket } })
    check socket.mtConnect('127.0.0.1', SERVER_PORT, 3.0)
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Raw HTTP request failed: ' .. mSys.GetErrorMsg(err))
+   check proc.sleep()
 
    status = rxStatusLine.extract(response)
    return tonumber(status ?? 0), response
@@ -143,32 +143,30 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function PUT()
-   signal = obj.new('time', {})
-   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
    testBody = '{"name":"updated","value":42}'
 
    http = obj.new('http', {
-      src = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/resource/123',
-      method = 'PUT',
+      src         = f'http://127.0.0.1:{SERVER_PORT}/api/resource/123',
+      method      = 'PUT',
       contentType = 'application/json',
-      flags = HTF_NO_HEAD,
-      inputFile = 'string:' .. testBody,
-      size = testBody:len(),
-      incoming = function(HTTP, Buffer)
+      flags       = HTF_NO_HEAD,
+      inputFile   = 'string:' .. testBody,
+      size        = testBody:len(),
+      incoming = function(HTTP:obj, Buffer)
          content ..= Buffer:getString()
       end,
-      stateChanged = function(HTTP, State)
+      stateChanged = function(HTTP:obj, State:num)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            signal.acSignal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "HTTP PUT failed to activate")
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'PUT processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'PUT HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'PUT unexpected status: ' .. http.status)
 
@@ -183,8 +181,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function DELETE()
-   signal = obj.new('time', {})
-   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -196,15 +192,15 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            signal.acSignal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "HTTP DELETE failed to activate")
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'DELETE processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'DELETE HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 204, 'DELETE unexpected status: ' .. http.status)
 
@@ -253,12 +249,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function OPTIONS()
-   signal = obj.new('time', {})
-   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
-      src = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/resource/options',
+      src = f'http://127.0.0.1:{SERVER_PORT}/api/resource/options',
       method = 'OPTIONS',
       flags = HTF_NO_HEAD,
       incoming = function(HTTP, Buffer)
@@ -266,15 +260,15 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            signal.acSignal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "HTTP OPTIONS failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'OPTIONS processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'OPTIONS HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'OPTIONS unexpected status: ' .. http.status)
 
@@ -287,8 +281,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function MethodNotAllowed()
-   signal = obj.new('time', {})
-   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -302,15 +294,14 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            signal.acSignal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "HTTP method test failed to activate")
-
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Method test processing failed: ' .. mSys.GetErrorMsg(err))
+   check proc.sleep()
    assert(http.status is 405, 'Expected 405 Method Not Allowed, got: ' .. http.status)
 
    print('Method Not Allowed test passed - 405 status received')

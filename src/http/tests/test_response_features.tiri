@@ -14,8 +14,6 @@ SERVER_PORT <const> = 18942
 rxStatusLine = <{ regex.new([[HTTP\/1\.[01]\s+(\d+)]]) }>
 
 function rawHttpRequest(Method:str, Path:str):<num, str>
-   signal = obj.new('time', {})
-   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    response = ''
    request = Method .. ' ' .. Path .. " HTTP/1.1\r\n" ..
       "Host: 127.0.0.1\r\n" ..
@@ -26,7 +24,7 @@ function rawHttpRequest(Method:str, Path:str):<num, str>
          if State is NTC_CONNECTED then
             check Socket.acWrite(request)
          elseif State is NTC_DISCONNECTED then
-            signal.acSignal()
+            Socket.acSignal()
          end
       end,
       incoming = function(Socket)
@@ -35,13 +33,14 @@ function rawHttpRequest(Method:str, Path:str):<num, str>
          if err is ERR_Okay then
             response ..= buffer:substr(0, read_len)
          elseif err is ERR_Disconnected then
-            signal.acSignal()
+            Socket.acSignal()
          else
             error('Raw HTTP read failed: ' .. mSys.GetErrorMsg(err))
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { socket } })
    check socket.mtConnect('127.0.0.1', SERVER_PORT, 3.0)
    err = proc.sleep()
    assert(err is ERR_Okay, 'Raw HTTP request failed: ' .. mSys.GetErrorMsg(err))
@@ -187,8 +186,6 @@ end
 
    response = json.decode(rawHttpBody(target_response))
    assert(response.redirected is true, 'Should indicate request was redirected')
-
-   print('Redirect handling test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -197,21 +194,18 @@ end
    status, response = rawHttpRequest('GET', '/permanent-redirect')
    assert(status is 301, 'Permanent redirect should return 301, got: ' .. status)
    assert(response:find('location: /redirect/target'), 'Permanent redirect Location header missing')
-
-   print('Permanent redirect test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function CustomStatusCodes()
-   signal      = obj.new('time', {})
-   proc        = processing.new({ timeout = 5.0, signals = array<object> { signal } })
-   statusCodes = { 201, 202, 204, 400, 401, 403, 500, 503 }
-   results     = {}
-   requests    = {}
-   completed   = 0
+   status_codes = { 201, 202, 204, 400, 401, 403, 500, 503 }
+   results      = {}
+   requests     = {}
+   completed    = 0
+   wait_http    = nil
 
-   for i, statusCode in ipairs(statusCodes) do
+   for i, statusCode in ipairs(status_codes) do
       http = obj.new('http', {
          src = 'http://127.0.0.1:' .. SERVER_PORT .. '/status/' .. statusCode,
          method = 'GET',
@@ -225,26 +219,29 @@ end
                if not results[i] then results[i] = {} end
                results[i].status = HTTP.status
                results[i].error = HTTP.error
-               completed = completed + 1
-               if completed >= #statusCodes then
-                  signal.acSignal()
+               completed++
+               if completed >= #status_codes then
+                  wait_http.acSignal()
                end
             end
          end
       })
       requests[i] = http
-      assert(http.acActivate() is ERR_Okay, "Status code test " .. statusCode .. " failed to activate")
+      if not wait_http then wait_http = http end
    end
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Status code processing failed: ' .. mSys.GetErrorMsg(err))
+   proc = processing.new({ timeout = 5.0, signals = array<object> { wait_http } })
+
+   for i, http in ipairs(requests) do
+      assert(http.acActivate() is ERR_Okay, "Status code test " .. status_codes[i] .. " failed to activate")
+   end
+
+   check proc.sleep()
 
    -- Verify each status code was returned correctly
-   for i, expectedStatus in ipairs(statusCodes) do
+   for i, expectedStatus in ipairs(status_codes) do
       assert(results[i].status is expectedStatus, 'Status code mismatch: expected ' .. expectedStatus .. ', got ' .. (results[i].status or 'nil'))
    end
-
-   print('Custom status codes test passed: ' .. #statusCodes .. ' status codes')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -257,15 +254,11 @@ end
    assert(response.customHeaders, 'Custom response headers should be set')
    assert(raw_response:find('content-type: application/json'), 'Content-Type header not set correctly')
    assert(raw_response:find('x-custom-response: CustomValue'), 'Custom response header missing')
-
-   print('Response headers test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function CacheHeaders()
-   signal = obj.new('time', {})
-   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -277,29 +270,25 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            signal.acSignal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Cache headers test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Cache headers processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Cache headers HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Cache headers unexpected status: ' .. http.status)
 
    response = json.decode(content)
    assert(response.cacheControl, 'Cache-Control header should be reported')
-
-   print('Cache headers test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function CompressionSupport()
-   signal = obj.new('time', {})
-   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -311,31 +300,27 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            signal.acSignal()
+            HTTP.acSignal()
          end
       end
    })
 
    check http.acSetKey('Accept-Encoding', 'gzip, deflate')
-   assert(http.acActivate() is ERR_Okay, "Compression test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Compression processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Compression HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Compression unexpected status: ' .. http.status)
 
    -- Content should be properly decompressed by HTTP client
    response = json.decode(content)
    assert(response.message, 'Compressed response should be decompressed correctly')
-
-   print('Compression support test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ErrorResponse()
-   signal = obj.new('time', {})
-   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -347,31 +332,27 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            signal.acSignal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Error response test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Error response processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.status is 500, 'Error response should return 500, got: ' .. http.status)
 
    response = json.decode(content)
    assert(response.error, 'Error response should contain error message')
    assert(response.code is 'INTERNAL_ERROR', 'Error response should contain error code')
-
-   print('Error response test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function LargeResponse()
-   signal = obj.new('time', {})
-   proc = processing.new({ timeout = 10.0, signals = array<object> { signal } })
    content = ''
-   totalBytes = 0
+   total_bytes = 0
 
    http = obj.new('http', {
       src      = 'http://127.0.0.1:' .. SERVER_PORT .. '/large/response',
@@ -380,25 +361,23 @@ end
       incoming = function(HTTP, Buffer)
          if Buffer then
             content ..= Buffer:getString()
-            totalBytes += #Buffer
+            total_bytes += #Buffer
          end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            signal.acSignal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Large response test failed to activate")
+   proc = processing.new({ timeout = 10.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Large response processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Large response HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Large response unexpected status: ' .. http.status)
 
    -- Should receive substantial amount of data
-   assert(totalBytes > 1024, 'Large response should be over 1KB, got: ' .. totalBytes .. ' bytes')
-
-   print('Large response test passed: ' .. totalBytes .. ' bytes received')
+   assert(total_bytes > 1024, 'Large response should be over 1KB, got: ' .. total_bytes .. ' bytes')
 end

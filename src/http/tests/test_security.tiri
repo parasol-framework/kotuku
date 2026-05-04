@@ -15,7 +15,6 @@ SERVER_PORT <const> = 18949
 rxStatusLine = <{ regex.new([[HTTP\/1\.[01]\s+(\d+)]]) }>
 
 function rawHttpRequest(Method:str, Path:str):<num, str>
-   proc = processing.new({ timeout = 5.0 })
    response = ''
    request = Method .. ' ' .. Path .. " HTTP/1.1\r\n" ..
       "Host: 127.0.0.1\r\n" ..
@@ -26,7 +25,7 @@ function rawHttpRequest(Method:str, Path:str):<num, str>
          if State is NTC_CONNECTED then
             check Socket.acWrite(request)
          elseif State is NTC_DISCONNECTED then
-            processing.delayedCall(function() proc.signal() end)
+            Socket.acSignal()
          end
       end,
       incoming = function(Socket)
@@ -35,16 +34,16 @@ function rawHttpRequest(Method:str, Path:str):<num, str>
          if err is ERR_Okay then
             response ..= buffer:substr(0, read_len)
          elseif err is ERR_Disconnected then
-            processing.delayedCall(function() proc.signal() end)
+            Socket.acSignal()
          else
             error('Raw HTTP read failed: ' .. mSys.GetErrorMsg(err))
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { socket } })
    check socket.mtConnect('127.0.0.1', SERVER_PORT, 3.0)
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Raw HTTP request failed: ' .. mSys.GetErrorMsg(err))
+   check proc.sleep()
 
    status = rxStatusLine.extract(response)
    return tonumber(status ?? 0), response
@@ -116,7 +115,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function PathTraversal()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    -- Attempt directory traversal attack
@@ -129,30 +127,28 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Path traversal test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Path traversal processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Path traversal HTTP error: ' .. mSys.GetErrorMsg(http.error))
 
    -- Server should reject with 400 Bad Request
    assert(http.status is 400, 'Expected 400 Bad Request for path traversal, got: ' .. http.status)
-
-   print('Path traversal test passed - 400 Bad Request received')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ForbiddenFiles()
-   proc = processing.new({ timeout = 5.0 })
    results = {}
    requests = {}
    completed = 0
+   wait_http = nil
    forbiddenFiles = { '/test.exe', '/config.ini', '/app.dll', '/script.bat' }
 
    for i, file in ipairs(forbiddenFiles) do
@@ -170,32 +166,33 @@ end
                results[i].status = HTTP.status
                completed++
                if completed >= #forbiddenFiles then
-                  proc.signal()
+                  wait_http.acSignal()
                end
             end
          end
       })
       requests[i] = http
+      if not wait_http then wait_http = http end
+   end
+
+   proc = processing.new({ timeout = 5.0, signals = array<object> { wait_http } })
+
+   for i, http in ipairs(requests) do
       assert(http.acActivate() is ERR_Okay, "Forbidden file test " .. i .. " failed to activate")
    end
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Forbidden files processing failed: ' .. mSys.GetErrorMsg(err))
+   check proc.sleep()
 
    -- All forbidden files should return 403 Forbidden
    for i, file in ipairs(forbiddenFiles) do
       assert(results[i].status is 403, 'Expected 403 Forbidden for ' .. file .. ', got: ' .. (results[i].status or 'nil'))
    end
-
-   print('Forbidden files test passed - all returned 403 Forbidden')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function RateLimiting()
    totalRequests = 15 -- Exceed rate limit
-
-   print('Testing rate limiting with ' .. totalRequests .. ' rapid requests...')
 
    -- Some requests should be rate limited (429 Too Many Requests)
    rateLimited = 0
@@ -214,38 +211,35 @@ end
 
    assert(rateLimited > 0, 'Rate limiting should have blocked some requests')
    assert(successful > 0, 'Some requests should have succeeded')
-
-   print('Rate limiting test passed: ' .. successful .. ' succeeded, ' .. rateLimited .. ' rate limited')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function HeaderInjection()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    -- Attempt header injection attack.  Header CR/LF values must be rejected by the HTTP client before sending.
    http = obj.new('http', {
-      src = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/header-test',
-      method = 'GET',
-      flags = HTF_NO_HEAD,
+      src      = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/header-test',
+      method   = 'GET',
+      flags    = HTF_NO_HEAD,
       incoming = function(HTTP, Buffer)
          content ..= Buffer:getString()
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   err = http.acSetKey('X-Test-Header', 'value\r\nX-Injected-Header: injected\r\nHost: evil.com')
-   assert(err != ERR_Okay, 'Header injection value should be rejected')
+   assert(http.acSetKey('X-Test-Header', 'value\r\nX-Injected-Header: injected\r\nHost: evil.com') != ERR_Okay,
+      'Header injection should not succeed')
    check http.acSetKey('X-Test-Header', 'safe-value')
-   assert(http.acActivate() is ERR_Okay, "Header injection test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Header injection processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Header injection HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Header injection unexpected status: ' .. http.status)
 
@@ -253,14 +247,11 @@ end
    -- Server should sanitize headers and not be vulnerable to injection
    assert(not response.receivedHeaders['x-injected-header'], 'Header injection should be prevented')
    assert(response.receivedHeaders['x-test-header'] is 'safe-value', 'Safe header should be received')
-
-   print('Header injection test passed - injection prevented')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function LargeHeaderAttack()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    -- Create oversized header to test limits
@@ -275,29 +266,26 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
    check http.acSetKey('X-Large-Header', largeHeaderValue)
-   assert(http.acActivate() is ERR_Okay, "Large header test failed to activate")
-
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Large header processing failed: ' .. mSys.GetErrorMsg(err))
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
    -- Server should either accept it or reject with 400/413
    assert(http.status is 200 or http.status is 400 or http.status is 413,
           'Large header should be accepted or rejected properly, got: ' .. http.status)
-
-   print('Large header attack test passed - status: ' .. http.status)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function MaliciousUserAgent()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
+   completed = false
 
    http = obj.new('http', {
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/api/user-agent-test',
@@ -308,22 +296,24 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            completed = true
+            HTTP.acSignal()
          end
       end
    })
 
    check http.acSetKey('User-Agent', '<script>alert("xss")</script>Malicious/1.0')
-   assert(http.acActivate() is ERR_Okay, "Malicious User-Agent test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Malicious User-Agent processing failed: ' .. mSys.GetErrorMsg(err))
+   if not completed then
+      check proc.sleep()
+   end
+
    assert(http.error is ERR_Okay, 'Malicious User-Agent HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Malicious User-Agent unexpected status: ' .. http.status)
 
    response = json.decode(content)
    -- Server should handle malicious user agent without issues
    assert(response.userAgent, 'User agent should be received')
-
-   print('Malicious User-Agent test passed')
 end

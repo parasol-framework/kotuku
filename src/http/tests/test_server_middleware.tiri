@@ -84,7 +84,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function MiddlewareChain()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -96,11 +95,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Middleware chain test failed to activate")
 
    err = proc.sleep()
@@ -118,7 +118,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function RouteNotFound()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -130,11 +129,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "404 test failed to activate")
 
    err = proc.sleep()
@@ -148,7 +148,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function MethodNotAllowed()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -162,11 +161,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "405 test failed to activate")
 
    err = proc.sleep()
@@ -180,7 +180,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function WildcardRoute()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -192,11 +191,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Wildcard test failed to activate")
 
    err = proc.sleep()
@@ -214,7 +214,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function CORSMiddleware()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -226,7 +225,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
@@ -234,6 +233,7 @@ end
    check http.acSetKey('Origin', 'https://example.com')
    check http.acSetKey('Access-Control-Request-Method', 'POST')
    check http.acSetKey('Access-Control-Request-Headers', 'Content-Type')
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "CORS test failed to activate")
 
    err = proc.sleep()

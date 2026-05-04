@@ -178,7 +178,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function JSONContentType()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    testData = {
@@ -205,15 +204,15 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "JSON test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'JSON processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'JSON HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'JSON unexpected status: ' .. http.status)
 
@@ -221,14 +220,11 @@ end
    assert(response.contentType is 'application/json', 'JSON content type not detected')
    assert(response.parsedData.name is testData.name, 'JSON data not parsed correctly')
    assert(response.parsedData.age is testData.age, 'JSON numeric data not parsed correctly')
-
-   print('JSON content type test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function XMLContentType()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    xmlData = [[<?xml version="1.0" encoding="UTF-8"?>
@@ -255,15 +251,15 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "XML test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'XML processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'XML HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'XML unexpected status: ' .. http.status)
 
@@ -271,14 +267,11 @@ end
    assert(response.contentType is 'application/xml', 'XML content type not detected')
    assert(response.bodyLength is xmlData:len(), 'XML body length mismatch')
    assert(response.bodyPreview:find('<user>'), 'XML content not preserved')
-
-   print('XML content type test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function BinaryContentType()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    -- Create binary data (simulate image data)
@@ -304,15 +297,15 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Binary test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Binary processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Binary HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Binary unexpected status: ' .. http.status)
 
@@ -320,14 +313,11 @@ end
    assert(response.contentType is 'image/png', 'Binary content type not detected')
    assert(response.bodyLength is binaryData:len(), 'Binary data length mismatch')
    assert(response.isBinary is true, 'Binary data not detected as binary')
-
-   print('Binary content type test passed: ' .. response.bodyLength .. ' bytes')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function FormDataContentType()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    formData = 'name=Test+User&age=30&email=test%40example.com&active=true&tags=tag1%2Ctag2'
@@ -344,15 +334,15 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Form data test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Form data processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Form data HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Form data unexpected status: ' .. http.status)
 
@@ -360,14 +350,11 @@ end
    assert(response.contentType is 'application/x-www-form-urlencoded', 'Form content type not detected')
    assert(response.parsedForm.name is 'Test User', 'Form name not decoded correctly')
    assert(response.parsedForm.email is 'test@example.com', 'Form email not URL decoded correctly')
-
-   print('Form data content type test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function TextContentType()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    textData = 'This is plain text content.\nIt contains multiple lines.\nWith various punctuation: !@#$%^&*()_+{}[]|\\:";\'<>?,./'
@@ -390,15 +377,15 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Text test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Text processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Text HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Text unexpected status: ' .. http.status)
 
@@ -406,14 +393,11 @@ end
    assert(response.contentType:find('text/plain'), 'Text content type not detected')
    assert(response.charset is 'utf-8', 'Charset not parsed correctly')
    assert(response.bodyLength is textData:len(), 'Text data length mismatch')
-
-   print('Text content type test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ContentNegotiation()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -425,7 +409,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
@@ -433,48 +417,43 @@ end
    check http.acSetKey('Accept', 'application/json, application/xml;q=0.9, text/plain;q=0.8, */*;q=0.1')
    check http.acSetKey('Accept-Encoding', 'gzip, deflate')
    check http.acSetKey('Accept-Language', 'en-US,en;q=0.9')
-   assert(http.acActivate() is ERR_Okay, "Content negotiation test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Content negotiation processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Content negotiation HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Content negotiation unexpected status: ' .. http.status)
 
    response = json.decode(content)
    assert(response.negotiatedType is 'application/json', 'Content negotiation should prefer JSON')
    assert(response.acceptHeader, 'Accept header should be received')
-
-   print('Content negotiation test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function UnsupportedContentType()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
-      src = 'http://127.0.0.1:' .. SERVER_PORT .. '/restricted/content-type',
-      method = 'POST',
+      src         = 'http://127.0.0.1:' .. SERVER_PORT .. '/restricted/content-type',
+      method      = 'POST',
       contentType = 'application/vnd.custom-format',
-      flags = HTF_NO_HEAD,
-      inputFile = 'string:custom binary data',
-      size = 18,
+      flags       = HTF_NO_HEAD,
+      inputFile   = 'string:custom binary data',
+      size        = 18,
       incoming = function(HTTP, Buffer)
          content ..= Buffer:getString()
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Unsupported content test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Unsupported content processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.status is 415, 'Expected 415 Unsupported Media Type, got: ' .. http.status)
-
-   print('Unsupported content type test passed - 415 received')
 end

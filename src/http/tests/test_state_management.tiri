@@ -99,7 +99,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function IncompleteRequest()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
    request_body = '{"incomplete":'
 
@@ -115,36 +114,33 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Incomplete request test failed to activate")
 
-   local err = proc.sleep()
+   err = proc.sleep()
    assert(err is ERR_Okay, 'Incomplete request processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Incomplete request HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Incomplete request unexpected status: ' .. http.status)
 
    response = json.decode(content)
    assert(response.hasBody, 'Malformed body should still be received by the route')
-
-   -- Should handle the malformed request body gracefully
-   print('Incomplete request test completed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ConnectionStateCleanup()
-   local connectionCount = 0
+   connectionCount = 0
 
    -- Make multiple quick connections to test state cleanup
    for i = 1, 3 do
-      local proc = processing.new({ timeout = 5.0 })
-      local content = ''
+      content = ''
 
-      local http = obj.new('http', {
+      http = obj.new('http', {
          src = 'http://127.0.0.1:' .. SERVER_PORT .. '/state/cleanup/' .. i,
          method = 'GET',
          flags = HTF_NO_HEAD,
@@ -153,36 +149,34 @@ end
          end,
          stateChanged = function(HTTP, State)
             if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-               proc.signal()
+               HTTP.acSignal()
             end
          end
       })
 
+      proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
       assert(http.acActivate() is ERR_Okay, "State cleanup test " .. i .. " failed to activate")
 
-      local err = proc.sleep()
+      err = proc.sleep()
       assert(err is ERR_Okay, 'State cleanup ' .. i .. ' processing failed: ' .. mSys.GetErrorMsg(err))
       assert(http.error is ERR_Okay, 'State cleanup ' .. i .. ' HTTP error: ' .. mSys.GetErrorMsg(http.error))
       assert(http.status is 200, 'State cleanup ' .. i .. ' unexpected status: ' .. http.status)
 
-      local response = json.decode(content)
+      response = json.decode(content)
       assert(response.requestId is tostring(i), 'State cleanup request ID mismatch for request ' .. i)
       connectionCount++
    end
 
    assert(connectionCount is 3, 'Not all connections completed: ' .. connectionCount)
-
-   print('Connection state cleanup test passed: ' .. connectionCount .. ' connections')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function RequestTimeoutHandling()
-   local proc = processing.new({ timeout = 8.0 })
-   local content = ''
-   local timeoutOccurred = false
+   content = ''
+   timeoutOccurred = false
 
-   local http = obj.new('http', {
+   http = obj.new('http', {
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/timeout/request',
       method = 'GET',
       flags = HTF_NO_HEAD,
@@ -195,75 +189,74 @@ end
             timeoutOccurred = true
          end
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Timeout handling test failed to activate")
-
-   local err = proc.sleep()
-   assert(err is ERR_Okay, 'Timeout handling processing failed: ' .. mSys.GetErrorMsg(err))
-
-   -- Either completed successfully or timed out
-   print('Request timeout handling test completed - timeout occurred: ' .. tostring(timeoutOccurred))
+   proc = processing.new({ timeout = 8.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function PipelineStateManagement()
-   local proc = processing.new({ timeout = 10.0 })
-   local results = {}
-   local requests = {}
-   local completed = 0
-   local totalRequests = 4
+   results = {}
+   requests = array<object> {}
+   completed = 0
+   TOTAL_REQUESTS <const> = 4
+   wait_http = nil
 
    -- Send multiple pipelined requests
-   for i = 1, totalRequests do
-      local http = obj.new('http', {
+   for i = 0, TOTAL_REQUESTS-1 do
+      req = i
+      http = obj.new('http', {
          src = 'http://127.0.0.1:' .. SERVER_PORT .. '/pipeline/test/' .. i,
          method = 'GET',
          flags = HTF_NO_HEAD,
          incoming = function(HTTP, Buffer)
-            if not results[i] then results[i] = '' end
-            if Buffer then results[i] ..= Buffer:getString() end
+            if not results[req] then results[req] = '' end
+            if Buffer then results[req] ..= Buffer:getString() end
          end,
          stateChanged = function(HTTP, State)
             if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-               completed = completed + 1
-               if completed >= totalRequests then
-                  proc.signal()
+               completed++
+               if completed >= TOTAL_REQUESTS then
+                  wait_http.acSignal()
                end
             end
          end
       })
 
-      requests[i] = http
-      assert(http.acActivate() is ERR_Okay, "Pipeline test " .. i .. " failed to activate")
+      requests:push(http)
+      if not wait_http then wait_http = http end
    end
 
-   local err = proc.sleep()
-   assert(err is ERR_Okay, 'Pipeline state processing failed: ' .. mSys.GetErrorMsg(err))
-   assert(completed is totalRequests, 'Pipeline requests incomplete: ' .. completed .. '/' .. totalRequests)
+   proc = processing.new({ timeout = 10.0, signals = array<object> { wait_http } })
+
+   for http in values(requests) do
+      check http.acActivate()
+   end
+
+   check proc.sleep()
+   assert(completed is TOTAL_REQUESTS, 'Pipeline requests incomplete: ' .. completed .. '/' .. TOTAL_REQUESTS)
 
    -- Verify all requests completed with correct responses
-   for i = 1, totalRequests do
+   for i = 0, TOTAL_REQUESTS-1 do
       assert(results[i], 'No response for pipeline request ' .. i)
-      local response = json.decode(results[i])
+      response = json.decode(results[i])
       assert(response.requestId is tostring(i), 'Pipeline request ID mismatch for request ' .. i)
    end
-
-   print('Pipeline state management test passed: ' .. totalRequests .. ' requests')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ChunkedStateHandling()
-   local proc = processing.new({ timeout = 5.0 })
-   local content = ''
-   local chunksReceived = 0
+   content = ''
+   chunksReceived = 0
 
-   local http = obj.new('http', {
+   http = obj.new('http', {
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/chunked/state',
       method = 'GET',
       flags = HTF_NO_HEAD,
@@ -275,37 +268,34 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Chunked state test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
 
-   local err = proc.sleep()
-   assert(err is ERR_Okay, 'Chunked state processing failed: ' .. mSys.GetErrorMsg(err))
+   check proc.sleep()
    assert(http.error is ERR_Okay, 'Chunked state HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Chunked state unexpected status: ' .. http.status)
 
-   local response = json.decode(content)
+   response = json.decode(content)
    assert(response.chunked is true, 'Chunked response not handled correctly')
    assert(chunksReceived >= 1, 'Should have received at least one chunk')
-
-   print('Chunked state handling test passed: ' .. chunksReceived .. ' chunks received')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ConnectionReuse()
-   local proc = processing.new({ timeout = 10.0 })
-   local responses = {}
-   local requestCount = 3
+   responses = {}
+   requestCount = 3
 
    -- Make sequential requests to test connection reuse
    for i = 1, requestCount do
-      local content = ''
+      content = ''
 
-      local http = obj.new('http', {
+      http = obj.new('http', {
          src = 'http://127.0.0.1:' .. SERVER_PORT .. '/reuse/test/' .. i,
          method = 'GET',
          flags = HTF_NO_HEAD,
@@ -314,18 +304,18 @@ end
          end,
          stateChanged = function(HTTP, State)
             if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-               proc.signal()
+               HTTP.acSignal()
             end
          end
       })
 
-      assert(http.acActivate() is ERR_Okay, "Connection reuse test " .. i .. " failed to activate")
+      proc = processing.new({ timeout = 10.0, signals = array<object> { http } })
+      check http.acActivate()
 
-      local err = proc.sleep()
-      assert(err is ERR_Okay, 'Connection reuse ' .. i .. ' processing failed: ' .. mSys.GetErrorMsg(err))
+      check proc.sleep()
       assert(http.error is ERR_Okay, 'Connection reuse ' .. i .. ' HTTP error: ' .. mSys.GetErrorMsg(http.error))
 
-      local response = json.decode(content)
+      response = json.decode(content)
       responses[i] = response
    end
 
@@ -333,17 +323,14 @@ end
    for i = 1, requestCount do
       assert(responses[i].requestId is tostring(i), 'Connection reuse request ' .. i .. ' failed')
    end
-
-   print('Connection reuse test passed: ' .. requestCount .. ' sequential requests')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ServerStateCleanup()
-   local proc = processing.new({ timeout = 5.0 })
-   local content = ''
+   content = ''
 
-   local http = obj.new('http', {
+   http = obj.new('http', {
       src = 'http://127.0.0.1:' .. SERVER_PORT .. '/server/state-info',
       method = 'GET',
       flags = HTF_NO_HEAD,
@@ -352,20 +339,18 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Server state test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   local err = proc.sleep()
-   assert(err is ERR_Okay, 'Server state processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Server state HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Server state unexpected status: ' .. http.status)
 
-   local response = json.decode(content)
+   response = json.decode(content)
    assert(response.activeConnections != nil, 'Server should report active connections')
-
-   print('Server state cleanup test passed')
 end

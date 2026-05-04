@@ -103,7 +103,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function MultipartFormData()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    -- Create multipart form data
@@ -133,29 +132,26 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Multipart test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Multipart processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Multipart HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Multipart unexpected status: ' .. http.status)
 
    response = json.decode(content)
    assert(response.contentType:find('multipart/form-data'), 'Multipart content type not detected')
    assert(response.bodyLength > 0, 'Multipart body should not be empty')
-
-   print('Multipart form data test passed: ' .. response.bodyLength .. ' bytes')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function CookieHandling()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -167,16 +163,16 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
    check http.acSetKey('Cookie', 'session_id=abc123; user_pref=dark_mode; lang=en')
-   assert(http.acActivate() is ERR_Okay, "Cookie test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Cookie processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Cookie HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Cookie unexpected status: ' .. http.status)
 
@@ -184,14 +180,11 @@ end
    assert(response.cookies.session_id is 'abc123', 'Session cookie not parsed correctly')
    assert(response.cookies.user_pref is 'dark_mode', 'User preference cookie not parsed correctly')
    assert(response.setCookies, 'Server should set response cookies')
-
-   print('Cookie handling test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function CustomHeaders()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -203,7 +196,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
@@ -211,10 +204,10 @@ end
    check http.acSetKey('X-Custom-Header', 'CustomValue')
    check http.acSetKey('X-API-Key', 'secret123')
    check http.acSetKey('X-Client-Version', '1.0.0')
-   assert(http.acActivate() is ERR_Okay, "Custom headers test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Custom headers processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Custom headers HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Custom headers unexpected status: ' .. http.status)
 
@@ -222,14 +215,11 @@ end
    assert(response.receivedHeaders['x-custom-header'] is 'CustomValue', 'Custom header not received')
    assert(response.receivedHeaders['x-api-key'] is 'secret123', 'API key header not received')
    assert(response.responseHeaders, 'Server should return custom response headers')
-
-   print('Custom headers test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function RouteParametersComplex()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -241,15 +231,15 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Complex route test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Complex route processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Complex route HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Complex route unexpected status: ' .. http.status)
 
@@ -257,14 +247,11 @@ end
    assert(response.params.userId is '123', 'User ID parameter not extracted')
    assert(response.params.postId is '456', 'Post ID parameter not extracted')
    assert(response.path is '/api/users/123/posts/456/comments', 'Path not preserved correctly')
-
-   print('Complex route parameters test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function QueryParameters()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    http = obj.new('http', {
@@ -276,15 +263,15 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
-   assert(http.acActivate() is ERR_Okay, "Query params test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'Query params processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'Query params HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'Query params unexpected status: ' .. http.status)
 
@@ -293,14 +280,11 @@ end
    assert(response.query.category is 'docs', 'Category parameter not parsed')
    assert(response.query.limit is '10', 'Limit parameter not parsed')
    assert(response.query.debug is true, 'Boolean query parameter not handled')
-
-   print('Query parameters test passed')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function FileUpload()
-   proc = processing.new({ timeout = 5.0 })
    content = ''
 
    -- Create a simple file content
@@ -318,17 +302,17 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
    check http.acSetKey('X-Filename', 'test.txt')
    check http.acSetKey('X-File-Size', tostring(fileContent:len()))
-   assert(http.acActivate() is ERR_Okay, "File upload test failed to activate")
+   proc = processing.new({ timeout = 5.0, signals = array<object> { http } })
+   check http.acActivate()
+   check proc.sleep()
 
-   err = proc.sleep()
-   assert(err is ERR_Okay, 'File upload processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error is ERR_Okay, 'File upload HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.status is 200, 'File upload unexpected status: ' .. http.status)
 
@@ -336,6 +320,4 @@ end
    assert(response.filename is 'test.txt', 'Filename header not received')
    assert(response.fileSize is fileContent:len(), 'File size mismatch')
    assert(response.contentReceived is fileContent:len(), 'File content not fully received')
-
-   print(f'File upload test passed: {response.contentReceived} bytes')
 end

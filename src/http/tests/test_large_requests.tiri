@@ -93,7 +93,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function LargePostChunked()
-   proc = processing.new({ timeout = 10.0 })
    content = ''
    testPostCompleted = false
 
@@ -118,11 +117,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 10.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Large chunked POST failed to activate")
 
    err = proc.sleep()
@@ -140,7 +140,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function LargePostContentLength()
-   proc = processing.new({ timeout = 10.0 })
    content = ''
 
    -- Create a large test body (5KB)
@@ -158,11 +157,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 10.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Large Content-Length POST failed to activate")
 
    err = proc.sleep()
@@ -180,7 +180,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function LargeFileDownload()
-   proc = processing.new({ timeout = 15.0 })
    content = ''
    totalReceived = 0
 
@@ -202,11 +201,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if State is HGS_COMPLETED or State is HGS_TERMINATED then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 15.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Large file download failed to activate")
 
    err = proc.sleep()
@@ -224,7 +224,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function VeryLargeRequest()
-   proc = processing.new({ timeout = 15.0 })
    content = ''
    testPostCompleted = false
 
@@ -249,11 +248,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 15.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Very large request failed to activate")
 
    err = proc.sleep()
@@ -270,7 +270,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function StreamingResponse()
-   proc = processing.new({ timeout = 10.0 })
    chunks = {}
    totalReceived = 0
 
@@ -286,11 +285,12 @@ end
       end,
       stateChanged = function(HTTP, State)
          if State is HGS_COMPLETED or State is HGS_TERMINATED then
-            proc.signal()
+            HTTP.acSignal()
          end
       end
    })
 
+   proc = processing.new({ timeout = 10.0, signals = array<object> { http } })
    assert(http.acActivate() is ERR_Okay, "Streaming response failed to activate")
 
    err = proc.sleep()
