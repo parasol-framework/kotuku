@@ -63,58 +63,13 @@ static char glWinsockInitialised = false;
 
 //********************************************************************************************************************
 
-static const struct {
-   int WinError;
-   ERR PanError;
-} glErrors[] = {
-   { WSAEINTR,              ERR::Cancelled },
-   { WSAEACCES,             ERR::PermissionDenied },
-   { WSAEFAULT,             ERR::InvalidData },
-   { WSAEINVAL,             ERR::Args },
-   { WSAEMFILE,             ERR::OutOfSpace },
-   { WSAEWOULDBLOCK,        ERR::InvalidState },
-   { WSAEINPROGRESS,        ERR::Busy },
-   { WSAEALREADY,           ERR::Busy },
-   { WSAENOTSOCK,           ERR::Args },
-   { WSAEDESTADDRREQ,       ERR::Args },
-   { WSAEMSGSIZE,           ERR::DataSize },
-   { WSAEPROTOTYPE,         ERR::Args },
-   { WSAENOPROTOOPT,        ERR::Args },
-   { WSAEPROTONOSUPPORT,    ERR::NoSupport },
-   { WSAESOCKTNOSUPPORT,    ERR::NoSupport },
-   { WSAEOPNOTSUPP,         ERR::NoSupport },
-   { WSAEPFNOSUPPORT,       ERR::NoSupport },
-   { WSAEAFNOSUPPORT,       ERR::NoSupport },
-   { WSAEADDRINUSE,         ERR::InUse },
-   { WSAEADDRNOTAVAIL,      ERR::HostUnreachable },
-   { WSAENETDOWN,           ERR::NetworkUnreachable },
-   { WSAENETUNREACH,        ERR::NetworkUnreachable },
-   { WSAENETRESET,          ERR::Disconnected },
-   { WSAECONNABORTED,       ERR::ConnectionAborted },
-   { WSAECONNRESET,         ERR::Disconnected },
-   { WSAENOBUFS,            ERR::BufferOverflow },
-   { WSAEISCONN,            ERR::DoubleInit },
-   { WSAENOTCONN,           ERR::Disconnected },
-   { WSAESHUTDOWN,          ERR::Disconnected },
-   { WSAETIMEDOUT,          ERR::TimeOut },
-   { WSAECONNREFUSED,       ERR::ConnectionRefused },
-   { WSAEHOSTDOWN,          ERR::HostUnreachable },
-   { WSAEHOSTUNREACH,       ERR::HostUnreachable },
-   { WSAHOST_NOT_FOUND,     ERR::HostNotFound },
-   { WSASYSCALLFAILURE,     ERR::SystemCall },
-   { 0, ERR::NIL }
-};
+#include "../socket_errors.h"
 
 //********************************************************************************************************************
 
 static ERR convert_error(int error = 0)
 {
-   if (!error) error = WSAGetLastError();
-
-   for (int i=0; glErrors[i].WinError; i++) {
-      if (glErrors[i].WinError IS error) return glErrors[i].PanError;
-   }
-   return ERR::SystemCall;
+   return convert_socket_error(error);
 }
 
 //********************************************************************************************************************
