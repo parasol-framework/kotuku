@@ -249,11 +249,10 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 
                   log.msg("MovedPermanently to %s", location.c_str());
 
-                  auto active_socket = Self->Socket;
-                  if (active_socket) {
-                     active_socket->set(FID_Feedback, (APTR)nullptr);
+                  if (auto active_socket = Self->Socket) {
+                     Self->Socket->set(FID_Feedback, (APTR)nullptr);
                      Self->Socket = nullptr;
-                     QueueAction(AC::Free, active_socket->UID);
+                     FreeResource(active_socket);
                   }
 
                   if (location.starts_with("http:")) redirect_error = Self->setLocation(location);
