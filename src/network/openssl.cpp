@@ -38,6 +38,18 @@ template <class T> void ssl_handshake_read(SocketHandle Socket, T *Self) {
    ssl_handshake_read_impl(Socket.hosthandle(), Self);
 }
 
+static bool ssl_has_buffered_read_data(SSL *SSLHandle)
+{
+   if (!SSLHandle) return false;
+   if (SSL_pending(SSLHandle) > 0) return true;
+
+   #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      return SSL_has_pending(SSLHandle) != 0;
+   #else
+      return false;
+   #endif
+}
+
 template <class T> void sslDisconnect(T *Self)
 {
    if (Self->SSLHandle) {

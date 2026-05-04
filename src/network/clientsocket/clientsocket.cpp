@@ -191,6 +191,7 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
    #ifdef _WIN32
       if (client->State IS NTC::HANDSHAKING) {
          log.trace("Windows SSL server handshake in progress, reading raw data.");
+         bool ssl_connected = false;
          std::array<char, 4096> buffer;
          size_t bytes_received;
          ERR error = WIN_RECEIVE(client->Handle, buffer.data(), buffer.size(), &bytes_received);
@@ -201,7 +202,9 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
                case SSL_OK:
                   log.trace("SSL handshake completed for client %d", client->UID);
                   client->setState(NTC::CONNECTED);
-                  return;
+                  if (client->terminating()) return;
+                  ssl_connected = true;
+                  break;
                case SSL_ERROR_WOULD_BLOCK:
                case SSL_NEED_DATA: // Server needs to send response data back to client
                   return;
@@ -214,19 +217,24 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
                   return;
             }
          }
-         return;
+         if (!ssl_connected) return;
+         if (!ssl_has_decrypted_data(client->SSLHandle) and !ssl_has_encrypted_data(client->SSLHandle)) return;
       }
    #else
       if (client->State IS NTC::HANDSHAKING) {
+         bool ssl_connected = false;
+
          // Continue SSL handshake for this ClientSocket
          auto result = SSL_accept(client->SSLHandle);
-         if (result == 1) {
+         if (result IS 1) {
             log.msg("SSL handshake completed for client %d", client->UID);
             client->setState(NTC::CONNECTED);
+            if (client->terminating()) return;
+            ssl_connected = true;
          }
          else {
             auto ssl_error = SSL_get_error(client->SSLHandle, result);
-            if ((ssl_error == SSL_ERROR_WANT_READ) or (ssl_error == SSL_ERROR_WANT_WRITE)) {
+            if ((ssl_error IS SSL_ERROR_WANT_READ) or (ssl_error IS SSL_ERROR_WANT_WRITE)) {
                log.trace("SSL handshake continuing for client %d...", client->UID);
                // Handshake will continue on next data arrival
             }
@@ -235,7 +243,8 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
                client->setState(NTC::DISCONNECTED);
             }
          }
-         return;
+         if (!ssl_connected) return;
+         if (!ssl_has_buffered_read_data(client->SSLHandle)) return;
       }
    #endif
 #endif

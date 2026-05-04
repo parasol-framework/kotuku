@@ -959,11 +959,14 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
          if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
          else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
 
-         if (Self->HandshakeStatus != SHS::NIL) return ERR::Okay;
+         if (Self->HandshakeStatus != SHS::NIL) {
+            *Length = 0;
+            return ERR::BufferOverflow;
+         }
 
          auto bytes_sent = SSL_write(Self->SSLHandle, Buffer, *Length);
 
-         if (bytes_sent < 0) {
+         if (bytes_sent <= 0) {
             *Length = 0;
             auto ssl_error = SSL_get_error(Self->SSLHandle, bytes_sent);
 
@@ -972,11 +975,14 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
                   log.traceWarning("Buffer overflow (SSL want write)");
                   return ERR::BufferOverflow;
 
-               case SSL_ERROR_WANT_READ:
+               case SSL_ERROR_WANT_READ: {
                   log.trace("Handshake requested by server.");
                   Self->HandshakeStatus = SHS::READ;
-                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, ssl_handshake_read_netsocket, Self);
-                  return ERR::Okay;
+                  auto read_callback = std::is_same<T, extNetSocket>::value ?
+                     ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
+                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, read_callback, Self);
+                  return ERR::BufferOverflow;
+               }
 
                case SSL_ERROR_SYSCALL:
                   log.warning("SSL_write() SysError %d: %s", errno, strerror(errno));
