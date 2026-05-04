@@ -1300,6 +1300,11 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
                      return ERR::Read;
 
                   case SSL_ERROR_SSL:
+                     if (ssl_unexpected_eof()) {
+                        ssl_clear_error_queue();
+                        free_socket(Self);
+                        return log.traceWarning(ERR::Disconnected);
+                     }
                      log.warning("SSL read failed with %s.", ssl_error_name(ssl_error));
                      ssl_log_error_queue(log, "SSL_read");
                      return ERR::Read;

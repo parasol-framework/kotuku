@@ -118,6 +118,10 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
                   return ERR::Read;
 
                case SSL_ERROR_SSL:
+                  if (ssl_unexpected_eof()) {
+                     ssl_clear_error_queue();
+                     return log.traceWarning(ERR::Disconnected);
+                  }
                   log.warning("SSL read failed with %s.", ssl_error_name(ssl_error));
                   ssl_log_error_queue(log, "SSL_read");
                   return ERR::Read;

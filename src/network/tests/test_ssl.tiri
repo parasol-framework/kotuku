@@ -44,7 +44,7 @@ end
 -- Simple localised connectivity test between server and client.  The client manually enables the SSL handshake
 -- with SetSSL().
 
-@Test; @Requires(ssl=true)
+@Test(priority=10); @Requires(ssl=true)
 function BasicSSLCommunication()
    ssl_handshake_complete = false
    ssl_data_received = false
@@ -159,7 +159,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(ssl=true)
+@Test(priority=20); @Requires(ssl=true)
 function SSLStateTransitions()
    state_sequence = {}
    ssl_handshake_complete = false
@@ -260,7 +260,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(ssl=true)
+@Test(priority=30); @Requires(ssl=true)
 function SSLDataIntegrity()
    test_messages = array<string> {
       'Binary data: ' .. string.char(0, 1, 2, 3, 255, 254, 253),
@@ -345,7 +345,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(ssl=true)
+@Test(priority=90); @Requires(ssl=true)
 function HTTPSConnection()
    data_received     = false
    page_content      = ""
@@ -357,6 +357,8 @@ function HTTPSConnection()
    headers_complete  = false
    expected_content_length = 0
    connection_established  = false
+   read_failed             = false
+   read_error              = ''
 
    logOutput('Testing HTTPS connection to ' .. SITE .. '...')
 
@@ -397,7 +399,6 @@ function HTTPSConnection()
             end
 
             Socket.acSignal()
-            raise ERR_Terminate
          end
       end,
       incoming = function(Socket)
@@ -454,10 +455,13 @@ function HTTPSConnection()
                response_complete = true
                if #page_content > 0 then data_received = true end
                Socket.acSignal()
-               raise ERR_Terminate
+               return
             else
-               logOutput('HTTPS read error: ' .. mSys.GetErrorMsg(err))
-               raise ERR_Terminate
+               read_failed = true
+               read_error = mSys.GetErrorMsg(err)
+               logOutput('HTTPS read error: ' .. read_error)
+               Socket.acSignal()
+               return
             end
          end
 
@@ -487,6 +491,7 @@ function HTTPSConnection()
    assert(connection_established, 'HTTPS connection was not established')
    assert(data_received, 'No data was received from the HTTPS server')
    assert(#page_content != 0, 'Index page content is empty')
+   assert(not read_failed, 'HTTPS read failed unexpectedly: ' .. read_error)
 
    final_time = mSys.PreciseTime()
    total_duration = string.format("%.3f", (final_time - start_time) / 1000000.0)
@@ -522,7 +527,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(ssl=true)
+@Test(priority=40); @Requires(ssl=true)
 function CustomCertificate()
    custom_cert_test_complete = false
    handshake_successful = false

@@ -86,6 +86,16 @@ static void ssl_clear_error_queue()
    ERR_clear_error();
 }
 
+static bool ssl_unexpected_eof()
+{
+   #ifdef SSL_R_UNEXPECTED_EOF_WHILE_READING
+      auto ssl_error = ERR_peek_error();
+      return ssl_error and (ERR_GET_REASON(ssl_error) IS SSL_R_UNEXPECTED_EOF_WHILE_READING);
+   #else
+      return false;
+   #endif
+}
+
 template <class T> void sslDisconnect(T *Self)
 {
    if (Self->SSLHandle) {
