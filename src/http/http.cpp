@@ -41,7 +41,7 @@ http = obj.new('http', {
    method     = 'get',
    outputFile = 'temp:index.html',
    stateChanged = function(HTTP, State)
-      if (State == HGS::COMPLETED) then print(content) end
+      if (State is HGS::COMPLETED) then print(content) end
    end
 })
 
@@ -56,7 +56,7 @@ http = obj.new('http', {
    src        = 'http://www.kotuku.dev/index.html',
    method     = 'get',
    datatype   = 'text',
-   objectMode = 'DATA_FEED',
+   objectMode = 'FEED',
    outputObject = doc
 })
 http.acActivate()
@@ -827,6 +827,7 @@ static ERR HTTP_Activate(extHTTP *Self)
       }
 
       if (!(Self->Socket = objNetSocket::create::local(
+            fl::Name("http_main_sock"),
             fl::ClientData(Self),
             fl::Incoming(C_FUNCTION(socket_incoming)),
             fl::Feedback(C_FUNCTION(socket_feedback)),

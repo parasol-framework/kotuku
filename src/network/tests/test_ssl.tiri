@@ -82,7 +82,7 @@ function BasicSSLCommunication()
          err, read_len = Client.acRead(buffer)
 
          if err is ERR_Okay then
-            assert(read_len > 0, 'Received incoming data notification with no data to read.')
+            if read_len is 0 then return end
 
             emsg = buffer:substr(0, read_len)
             logOutput('[Server] Received encrypted message of ' .. read_len .. ' bytes: "' .. tostring(emsg) .. '"')
@@ -131,7 +131,7 @@ function BasicSSLCommunication()
          err, read_len = Socket.acRead(buffer)
 
          if err is ERR_Okay then
-            assert(read_len > 0, 'Received incoming data notification with no data to read.')
+            if read_len is 0 then return end
 
             emsg = buffer:substr(0, read_len)
             logOutput('[Client] Received encrypted message of ' .. read_len .. ' bytes: "' .. tostring(emsg) .. '"')
@@ -411,8 +411,8 @@ function HTTPSConnection()
                err, read_len = Socket.acRead(buffer)
                if err is ERR_Okay and read_len > 0 then
                   chunk = buffer:substr(0, read_len)
-                  page_content = page_content .. chunk
-                  logOutput('Read ' .. read_len .. ' bytes during disconnect (total: ' .. #page_content .. ')')
+                  page_content ..= chunk
+                  logOutput(f'Read {read_len} bytes during disconnect (total: {#page_content})')
                   data_received = true
                end
             end
@@ -432,12 +432,16 @@ function HTTPSConnection()
             err, read_len = Socket.acRead(buffer)
 
             if err is ERR_Okay then
-               assert(read_len > 0, 'Received incoming data notification with no data to read.')
+               if read_len is 0 then
+                  -- This is a common issue because the SSL protocol can send unfinished encrypted blocks
+                  msg('Received incoming data notification with no data to read.')
+                  return
+               end
 
                chunks_received++
                callback_total += read_len
                chunk = buffer:substr(0, read_len)
-               page_content = page_content .. chunk
+               page_content ..= chunk
 
                logOutput('Chunk ' .. chunks_received .. ' received: ' .. read_len .. ' bytes from ' ..
                      SITE .. ' at ' .. elapsed .. 's (total: ' .. #page_content .. ' bytes)')
@@ -586,7 +590,7 @@ function CustomCertificate()
       incoming = function(Socket, Client)
          buffer = string.alloc(1024)
          err, read_len = Client.acRead(buffer)
-         if err is ERR_Okay then
+         if err is ERR_Okay and read_len > 0 then
             message = buffer:substr(0, read_len)
             logOutput('[Server] Received: ' .. message)
             custom_cert_test_complete = true
