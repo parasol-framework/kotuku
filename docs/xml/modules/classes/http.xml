@@ -33,7 +33,7 @@
    method     = 'get',
    outputFile = 'temp:index.html',
    stateChanged = function(HTTP, State)
-      if (State == HGS::COMPLETED) then print(content) end
+      if (State is HGS::COMPLETED) then print(content) end
    end
 })
 
@@ -45,7 +45,7 @@ http = obj.new('http', {
    src        = 'http://www.kotuku.dev/index.html',
    method     = 'get',
    datatype   = 'text',
-   objectMode = 'DATA_FEED',
+   objectMode = 'FEED',
    outputObject = doc
 })
 http.acActivate()

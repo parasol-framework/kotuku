@@ -93,12 +93,12 @@
 <b>DisableSSL</b>: Disconnects the SSL connection and reverts to unencrypted mode.</li>
 </list>
 <p>If a failure occurs when executing a command, the execution of all further commands is aborted and the error code is returned immediately.</p>
-<p>SetSSL() can also be used to check if SSL is supported in the current build, in which case <code>ERR::NoSupport</code> will be the return value if all other arguments are <code>NULL</code>.</p>
+<p>SetSSL() can also be used to check if SSL is supported in the current build, in which case <code>ERR::NoSecureSockets</code> will be the return value if all other arguments are <code>NULL</code>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="NoSupport">SSL support is disabled in this build.</error>
       <error code="NullArgs">The NetSocket argument was not specified.</error>
+      <error code="NoSecureSockets">SSL support is disabled in this build.</error>
     </result>
   </function>
 
