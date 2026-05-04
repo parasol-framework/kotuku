@@ -43,6 +43,13 @@ static void ssl_suspend_write_queue(HOSTHANDLE SocketFD)
    RegisterFD(SocketFD, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, nullptr, nullptr);
 }
 
+template <class T> void ssl_resume_write_handshake(HOSTHANDLE SocketFD, T *Self)
+{
+   auto write_callback = std::is_same<T, extNetSocket>::value ?
+      ssl_handshake_write_netsocket : ssl_handshake_write_clientsocket;
+   RegisterFD(SocketFD, RFD::WRITE|RFD::SOCKET, write_callback, Self);
+}
+
 template <class T> void ssl_resume_write_queue(HOSTHANDLE SocketFD, T *Self)
 {
    if (Self->WriteQueue.Buffer.empty()) {

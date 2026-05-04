@@ -701,6 +701,11 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       ssl_suspend_write_queue(Self->Handle.hosthandle());
       return;
    }
+
+   if ((Self->SSLHandle) and (Self->HandshakeStatus IS SHS::WRITE)) {
+      ssl_resume_write_handshake(Self->Handle.hosthandle(), Self);
+      return;
+   }
 #endif
 #endif
 
