@@ -961,6 +961,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 
          if (Self->HandshakeStatus != SHS::NIL) {
             *Length = 0;
+            if (Self->HandshakeStatus IS SHS::READ) return ERR::Busy;
             return ERR::BufferOverflow;
          }
 
@@ -982,7 +983,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
                   auto read_callback = std::is_same<T, extNetSocket>::value ?
                      ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
                   RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, read_callback, Self);
-                  return ERR::BufferOverflow;
+                  return ERR::Busy;
                }
 
                case SSL_ERROR_SYSCALL:
