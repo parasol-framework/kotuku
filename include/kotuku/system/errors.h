@@ -225,7 +225,8 @@ enum class ERR : int32_t {
    SanityCheckFailed = 193,
    NotAuthorised = 194,
    UnknownProperty = 195,
-   END = 196,
+   NoSecureSockets = 196,
+   END = 197,
    Notified = 1073741824,
 };
 

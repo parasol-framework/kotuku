@@ -200,6 +200,13 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
       return ERR::InvalidState;
    }
 
+#ifdef DISABLE_SSL
+   if ((Self->Flags & NSF::SSL) != NSF::NIL) {
+      Self->Error = ERR::NoSecureSockets;
+      return log.warning(Self->Error);
+   }
+#endif
+
    log.branch("Address: %s, Port: %d", Args->Address, Args->Port);
 
    if (Args->Address != Self->Address) {
@@ -341,8 +348,9 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
                log.trace("IPv6 connect() attempt would block or need to try again.");
             }
             else {
-               log.warning("IPv6 Connect() failed: %s", strerror(errno));
-               Socket->Error = ERR::SystemCall;
+               const int system_error = errno;
+               log.warning("IPv6 Connect() failed: %s", strerror(system_error));
+               Socket->Error = convert_socket_error(system_error);
                Socket->setState(NTC::DISCONNECTED);
                return;
             }
@@ -384,8 +392,9 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
                log.trace("IPv4-mapped IPv6 connect() attempt would block or need to try again.");
             }
             else {
-               log.warning("IPv4-mapped IPv6 Connect() failed: %s", strerror(errno));
-               Socket->Error = ERR::SystemCall;
+               const int system_error = errno;
+               log.warning("IPv4-mapped IPv6 Connect() failed: %s", strerror(system_error));
+               Socket->Error = convert_socket_error(system_error);
                Socket->setState(NTC::DISCONNECTED);
                return;
             }
@@ -412,13 +421,13 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          server_address6.sin6_addr.s6_addr[11] = 0xff;
          *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = htonl(addr->Data[0]);
 
-         if (win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6)) IS ERR::Okay) {
+         Socket->Error = win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6));
+         if (Socket->Error IS ERR::Okay) {
             log.trace("IPv4-mapped IPv6 connection initiated successfully");
             Socket->setState(NTC::CONNECTING);
          }
          else {
-            log.trace("IPv4-mapped IPv6 connect() failed");
-            Socket->Error = ERR::SystemCall;
+            log.trace("IPv4-mapped IPv6 connect() failed: %s", GetErrorMsg(Socket->Error));
             Socket->setState(NTC::DISCONNECTED);
          }
          return;
@@ -442,8 +451,9 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          log.trace("connect() attempt would block or need to try again.");
       }
       else {
-         log.warning("Connect() failed: %s", strerror(errno));
-         Socket->Error = ERR::SystemCall;
+         const int system_error = errno;
+         log.warning("Connect() failed: %s", strerror(system_error));
+         Socket->Error = convert_socket_error(system_error);
          Socket->setState(NTC::DISCONNECTED);
          return;
       }
@@ -817,14 +827,17 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
       }
    }
    else {
-      log.warning("Failed to create socket: %s", strerror(errno));
-      return ERR::SystemCall;
+      const int system_error = errno;
+      log.warning("Failed to create socket: %s", strerror(system_error));
+      return convert_socket_error(system_error);
    }
 
    // Put the socket into non-blocking mode, this is required when registering it as an FD and also prevents connect()
    // calls from going to sleep.
 
-   if (fcntl(Self->Handle, F_SETFL, fcntl(Self->Handle, F_GETFL) | O_NONBLOCK)) return log.warning(ERR::SystemCall);
+   if (fcntl(Self->Handle, F_SETFL, fcntl(Self->Handle, F_GETFL) | O_NONBLOCK)) {
+      return log.warning(convert_socket_error());
+   }
 
    // Set the send timeout so that connect() will timeout after a reasonable time
 
@@ -916,8 +929,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                }
                return ERR::Okay;
             }
-            else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
-            else return log.warning(ERR::SystemCall);
+            else return log.warning(convert_socket_error());
          #elif _WIN32
             // Windows IPv6 dual-stack server binding
             struct sockaddr_in6 addr;
@@ -991,10 +1003,10 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                }
                return ERR::Okay;
             }
-            else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
             else {
-               log.warning("bind() failed with error: %s", strerror(errno));
-               return ERR::SystemCall;
+               const int system_error = errno;
+               log.warning("bind() failed with error: %s", strerror(system_error));
+               return convert_socket_error(system_error);
             }
          #elif _WIN32
             if ((error = win_bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
@@ -1264,10 +1276,13 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          auto BufferSize = Args->Length;
          do {
             read_blocked = false;
+            ssl_clear_error_queue();
             if (auto result = SSL_read(Self->SSLHandle, Buffer, BufferSize); result <= 0) {
                auto ssl_error = SSL_get_error(Self->SSLHandle, result);
                switch (ssl_error) {
-                  case SSL_ERROR_ZERO_RETURN: return log.traceWarning(ERR::Disconnected);
+                  case SSL_ERROR_ZERO_RETURN:
+                     free_socket(Self);
+                     return log.traceWarning(ERR::Disconnected);
 
                   case SSL_ERROR_WANT_READ: read_blocked = true; break;
 
@@ -1280,10 +1295,23 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
                       RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, ssl_handshake_write_netsocket, Self);
                       return ERR::Okay;
 
-                   case SSL_ERROR_SYSCALL:
-                   default:
-                      log.warning("SSL read failed with error %d: %s", ssl_error, ERR_error_string(ssl_error, nullptr));
-                      return ERR::Read;
+                  case SSL_ERROR_SYSCALL:
+                     log.warning("SSL read failed with %s: %s", ssl_error_name(ssl_error), strerror(errno));
+                     return ERR::Read;
+
+                  case SSL_ERROR_SSL:
+                     if (ssl_unexpected_eof()) {
+                        ssl_clear_error_queue();
+                        free_socket(Self);
+                        return log.traceWarning(ERR::Disconnected);
+                     }
+                     log.warning("SSL read failed with %s.", ssl_error_name(ssl_error));
+                     ssl_log_error_queue(log, "SSL_read");
+                     return ERR::Read;
+
+                  default:
+                     log.warning("SSL read failed with %s.", ssl_error_name(ssl_error));
+                     return ERR::Read;
                }
             }
             else {
@@ -1321,12 +1349,14 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    }
 
    if (bytes_received IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
+      free_socket(Self);
       return ERR::Disconnected;
    }
    else if ((errno IS EAGAIN) or (errno IS EINTR)) return ERR::Okay;
    else {
-      log.warning("recv() failed: %s", strerror(errno));
-      return ERR::SystemCall;
+      const int system_error = errno;
+      log.warning("recv() failed: %s", strerror(system_error));
+      return convert_socket_error(system_error);
    }
 #elif _WIN32
    size_t result;
@@ -1389,15 +1419,34 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    }
 
    if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
-      if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
+      bool ssl_read_blocked = false;
+      bool ssl_write_blocked = false;
+      #ifndef DISABLE_SSL
+       #ifndef _WIN32
+         ssl_read_blocked = (error IS ERR::Busy) and (Self->SSLHandle) and (Self->HandshakeStatus IS SHS::READ);
+         ssl_write_blocked = (error IS ERR::BufferOverflow) and (Self->SSLHandle) and
+            (Self->HandshakeStatus IS SHS::WRITE);
+       #endif
+      #endif
+
+      if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (ssl_read_blocked) or (len > 0))  {
          // Put data into the write queue and register the socket for write events
          log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
          Self->WriteQueue.write((int8_t *)Args->Buffer + len, std::min<size_t>(Args->Length - len, Self->MsgLimit));
-         #ifdef __linux__
-            RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
-         #elif _WIN32
-            win_socketstate(Self->Handle, std::nullopt, true);
-         #endif
+         if (ssl_write_blocked) {
+            #ifndef DISABLE_SSL
+             #ifndef _WIN32
+               ssl_resume_write_handshake(Self->Handle.hosthandle(), Self);
+             #endif
+            #endif
+         }
+         else if (!ssl_read_blocked) {
+            #ifdef __linux__
+               RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
+            #elif _WIN32
+               win_socketstate(Self->Handle, std::nullopt, true);
+            #endif
+         }
       }
       else {
          Self->ErrorCountdown--;
@@ -1477,8 +1526,9 @@ static ERR NETSOCKET_RecvFrom(extNetSocket *Self, struct ns::RecvFrom *Args)
          case EMSGSIZE:
             return ERR::BufferOverflow;
          default:
-            log.warning("recvfrom() failed: %s", strerror(errno));
-            return ERR::SystemCall;
+            const int system_error = errno;
+            log.warning("recvfrom() failed: %s", strerror(system_error));
+            return convert_socket_error(system_error);
       }
    }
 #elif _WIN32
@@ -1609,8 +1659,9 @@ static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
       case ENETUNREACH: return ERR::NetworkUnreachable;
       case EINVAL:      return ERR::Args;
       default:
-         log.warning("sendto() failed: %s", strerror(errno));
-         return ERR::SystemCall;
+         const int system_error = errno;
+         log.warning("sendto() failed: %s", strerror(system_error));
+         return convert_socket_error(system_error);
    }
 #elif defined(_WIN32)
    auto error = WIN_SENDTO(Self->Handle, Args->Data, &bytes_to_send, (sockaddr *)&dest_addr, addr_len);

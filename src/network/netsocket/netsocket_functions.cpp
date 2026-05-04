@@ -528,11 +528,7 @@ static void netsocket_connect_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
       if (Self->TimerHandle) { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
 
-      if (result IS ECONNREFUSED)      Self->Error = ERR::ConnectionRefused;
-      else if (result IS ENETUNREACH)  Self->Error = ERR::NetworkUnreachable;
-      else if (result IS EHOSTUNREACH) Self->Error = ERR::HostUnreachable;
-      else if (result IS ETIMEDOUT)    Self->Error = ERR::TimeOut;
-      else Self->Error = ERR::SystemCall;
+      Self->Error = convert_socket_error(result);
 
       log.error(Self->Error);
 
@@ -698,6 +694,20 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       log.trace("Handshaking...");
       return;
    }
+
+#ifndef DISABLE_SSL
+#ifndef _WIN32
+   if ((Self->SSLHandle) and (Self->HandshakeStatus IS SHS::READ)) {
+      ssl_suspend_write_queue(Self->Handle.hosthandle());
+      return;
+   }
+
+   if ((Self->SSLHandle) and (Self->HandshakeStatus IS SHS::WRITE)) {
+      ssl_resume_write_handshake(Self->Handle.hosthandle(), Self);
+      return;
+   }
+#endif
+#endif
 
    if (Self->OutgoingRecursion) {
       log.traceWarning(ERR::Recursion);

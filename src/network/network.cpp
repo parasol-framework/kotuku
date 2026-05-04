@@ -266,6 +266,10 @@ public:
    }
 #endif
 
+#ifdef __linux__
+   #include "socket_errors.h"
+#endif
+
 class extClientSocket : public objClientSocket {
    public:
    SocketHandle Handle;
@@ -482,6 +486,9 @@ static std::string glCertPath;
   #ifdef _WIN32
     #include "win32/win32_ssl.cpp"
   #else
+    static void netsocket_outgoing(HOSTHANDLE, APTR);
+    static void clientsocket_outgoing(HOSTHANDLE, APTR);
+
     #include "openssl.cpp"
   #endif
 #endif
@@ -861,7 +868,7 @@ available:
 If a failure occurs when executing a command, the execution of all further commands is aborted and the error code is
 returned immediately.
 
-SetSSL() can also be used to check if SSL is supported in the current build, in which case `ERR::NoSupport` will
+SetSSL() can also be used to check if SSL is supported in the current build, in which case `ERR::NoSecureSockets` will
 be the return value if all other arguments are `NULL`.
 
 -INPUT-
@@ -872,7 +879,7 @@ cstr Value: Value to set for the command or option.
 -ERRORS-
 Okay:
 NullArgs: The NetSocket argument was not specified.
-NoSupport: SSL support is disabled in this build.
+NoSecureSockets: SSL support is disabled in this build.
 -END-
 
 *********************************************************************************************************************/
@@ -915,7 +922,7 @@ ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
 
    return ERR::Okay;
 #else
-   return ERR::NoSupport;
+   return ERR::NoSecureSockets;
 #endif
 }
 
@@ -955,11 +962,19 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
          if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
          else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
 
-         if (Self->HandshakeStatus != SHS::NIL) return ERR::Okay;
+         if (Self->HandshakeStatus != SHS::NIL) {
+            *Length = 0;
+            if (Self->HandshakeStatus IS SHS::READ) {
+               ssl_suspend_write_queue(Self->Handle.hosthandle());
+               return ERR::Busy;
+            }
+            return ERR::BufferOverflow;
+         }
 
+         ssl_clear_error_queue();
          auto bytes_sent = SSL_write(Self->SSLHandle, Buffer, *Length);
 
-         if (bytes_sent < 0) {
+         if (bytes_sent <= 0) {
             *Length = 0;
             auto ssl_error = SSL_get_error(Self->SSLHandle, bytes_sent);
 
@@ -968,21 +983,27 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
                   log.traceWarning("Buffer overflow (SSL want write)");
                   return ERR::BufferOverflow;
 
-               case SSL_ERROR_WANT_READ:
+               case SSL_ERROR_WANT_READ: {
                   log.trace("Handshake requested by server.");
                   Self->HandshakeStatus = SHS::READ;
-                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, ssl_handshake_read_netsocket, Self);
-                  return ERR::Okay;
+                  auto read_callback = std::is_same<T, extNetSocket>::value ?
+                     ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
+                  ssl_suspend_write_queue(Self->Handle.hosthandle());
+                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, read_callback, Self);
+                  return ERR::Busy;
+               }
 
                case SSL_ERROR_SYSCALL:
                   log.warning("SSL_write() SysError %d: %s", errno, strerror(errno));
                   return ERR::Write;
 
+               case SSL_ERROR_SSL:
+                  log.warning("SSL_write() failed: %s", ssl_error_name(ssl_error));
+                  ssl_log_error_queue(log, "SSL_write");
+                  return ERR::Write;
+
                default:
-                  while (ssl_error) {
-                     log.warning("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, nullptr));
-                     ssl_error = ERR_get_error();
-                  }
+                  log.warning("SSL_write() failed: %s", ssl_error_name(ssl_error));
                   return ERR::Write;
             }
          }
@@ -1007,8 +1028,9 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
       if (errno IS EAGAIN) return ERR::BufferOverflow;
       else if (errno IS EMSGSIZE) return ERR::DataSize;
       else {
-         log.warning("send() failed: %s", strerror(errno));
-         return ERR::Failed;
+         const int system_error = errno;
+         log.warning("send() failed: %s", strerror(system_error));
+         return convert_socket_error(system_error, ERR::Failed);
       }
    }
 #elif _WIN32
