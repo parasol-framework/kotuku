@@ -214,7 +214,7 @@ function SSLStateTransitions()
          table.insert(state_sequence, 'CLIENT:' .. printableState(State))
          logOutput('[Client] State transition: ' .. printableState(State))
          if State is NTC_DISCONNECTED then
-            proc.signal()
+            ssl_server.acSignal()
          end
       end,
       incoming = function(Socket)
@@ -225,18 +225,12 @@ function SSLStateTransitions()
             if read_len is 0 then return end
             emsg = buffer:substr(0, read_len)
             logOutput('[Client] Received: ' .. emsg)
-            logOutput('[Client] Sending acknowledgment...')
-            err, len = Socket.acWrite('SSL_STATES_VERIFIED')
-            if (err != ERR_Okay) then
-               error('[Client] Failed to send acknowledgment: ' .. mSys.GetErrorMsg(err))
-            else
-               logOutput('[Client] Acknowledgment sent successfully')
-            end
+            check Socket.acWrite('SSL_STATES_VERIFIED')
          elseif (err != ERR_Disconnected) then
             error('[Client] Read error: ' .. mSys.GetErrorMsg(err))
          end
       end,
-      flags = 'SSL|DISABLE_SERVER_VERIFY'
+      flags = NSF_SSL|NSF_DISABLE_SERVER_VERIFY
    })
 
    proc = processing.new({ timeout = 5.0, signals = array<object> { ssl_server } })
@@ -459,7 +453,7 @@ function HTTPSConnection()
                logOutput('Server closed connection after sending data')
                response_complete = true
                if #page_content > 0 then data_received = true end
-               proc.signal()
+               Socket.acSignal()
                raise ERR_Terminate
             else
                logOutput('HTTPS read error: ' .. mSys.GetErrorMsg(err))
