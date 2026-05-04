@@ -1,0 +1,146 @@
+global glHoverTestUri = nil
+
+@BeforeAll function SetupHoverTests(State)
+   local err, sdk_path = mSys.ResolvePath(State.folder .. '../../../')
+   assert(err is ERR_Okay, 'Failed to resolve SDK path for LSP hover tests.')
+   mSys.SetVolume('sdk', sdk_path)
+
+   loadFile('sdk:tools/tiri_lsp/lsp_lib.tiri')
+   assert(lspInitDocs('sdk:docs/xml/'), 'Failed to initialise LSP documentation cache.')
+   glHoverTestUri = lspPathToUri('sdk:tools/tiri_lsp/tests/test_hover.tiri')
+   assert(glHoverTestUri, 'Failed to create test document URI.')
+end
+
+function makeDoc(Content:str):table
+   return {
+      uri = glHoverTestUri,
+      languageId = 'tiri',
+      version = 1,
+      content = Content,
+      lineIndex = nil
+   }
+end
+
+function makeDocAtMarker(Content:str):<table,table>
+   marker_pos = Content:find('|', 0, true)
+   assert(marker_pos, 'Test source must include a cursor marker.')
+
+   line = 0
+   character = 0
+   for i = 0, marker_pos - 1 do
+      c = Content:sub(i, i + 1)
+      if c is '\n' then
+         line++
+         character = 0
+      else
+         character++
+      end
+   end
+
+   doc = makeDoc(Content:sub(0, marker_pos) .. Content:sub(marker_pos + 1))
+   return doc, { line = line, character = character }
+end
+
+function hoverAt(Content:str):<str,table>
+   doc, position = makeDocAtMarker(Content)
+   token = getTokenAtPosition(doc, position.line, position.character)
+   return resolveHoverContent(token, doc), token
+end
+
+function assertContains(Text:str, Needle:str, Message:str)
+   assert(Text and Text:find(Needle, 0, true), Message .. f' Expected "{Needle}" in "{Text}".')
+end
+
+@Test function HandlerAdvertisesHover()
+   server = {
+      _handlers = {},
+      verbose = false,
+      logMessage = function(Message) end
+   }
+   registerCoreHandlers(server)
+
+   init = server._handlers['initialize']({ jsonrpc = '2.0', id = 1, params = {} }, {})
+   assert(init.result.capabilities.hoverProvider is true, 'Server must advertise hoverProvider.')
+end
+
+@Test function ParserAnnotationHoverStillWorks()
+   hover, token = hoverAt('value = @Source|File\n')
+
+   assert(token and token.text is 'SourceFile', 'Hover token extraction should identify @SourceFile.')
+   assertContains(hover, '@SourceFile', 'Parser annotation hover should include the annotation name.')
+   assertContains(hover, 'Parser annotation', 'Parser annotation hover should identify the symbol kind.')
+end
+
+@Test function DocAnnotatedFunctionDeclarationHover()
+   hover, token = hoverAt([=[
+@Doc(text=[[
+   Returns a greeting.
+
+   Extra detail.
+
+   -INPUT-
+   Name: Person to greet
+   Count: Number of greetings
+
+   -RESULTS-
+   str: Greeting text
+
+   -ERRORS-
+   Args: If the name is invalid
+]])
+function gr|eet(Name: str, Count: num):str
+   return Name
+end
+]=])
+
+   assert(token and token.text is 'greet', 'Hover should identify the documented function declaration name.')
+   assertContains(hover, 'greet(Name: str, Count: num):str', 'Hover should include the parser signature.')
+   assertContains(hover, 'Returns a greeting.', 'Hover should include @Doc summary text.')
+   assertContains(hover, 'Extra detail.', 'Hover should prefer the @Doc body when available.')
+   assertContains(hover, '`Name: str` - Person to greet', 'Hover should include parameter documentation.')
+   assertContains(hover, '`Count: num` - Number of greetings', 'Hover should include all parameter documentation.')
+   assertContains(hover, '`str` - Greeting text', 'Hover should include result documentation.')
+   assertContains(hover, '`Args` - If the name is invalid', 'Hover should include error documentation.')
+end
+
+@Test function DocAnnotatedFunctionCallHover()
+   hover, token = hoverAt([=[
+@Doc(text=[[
+   Returns a greeting.
+
+   -INPUT-
+   Name: Person to greet
+]])
+function greet(Name: str):str
+   return Name
+end
+
+result = greet|('Ada')
+]=])
+
+   assert(token and token.text is 'greet', 'Hover should identify the documented function call.')
+   assertContains(hover, 'greet(Name: str):str', 'Call hover should include the parser signature.')
+   assertContains(hover, 'Returns a greeting.', 'Call hover should include @Doc text.')
+   assertContains(hover, '`Name: str` - Person to greet', 'Call hover should include parameter documentation.')
+end
+
+@Test function AssignedFunctionExpressionHover()
+   hover, token = hoverAt([=[
+global greetGlobal = function(Name: str):str
+   return Name
+end
+
+result = greet|Global('Ada')
+]=])
+
+   assert(token and token.text is 'greetGlobal', 'Hover should identify the assigned function expression call.')
+   assertContains(hover, 'greetGlobal(Name: str):str',
+      'Assigned function hover should include the parser signature.')
+end
+
+@Test function UnknownSymbolReturnsNil()
+   hover, token = hoverAt('print(miss|ingSymbol)\n')
+
+   assert(token and token.text is 'missingSymbol', 'Hover should identify the unknown symbol token.')
+   assert(not hover, 'Unknown symbols should not return hover content.')
+end
