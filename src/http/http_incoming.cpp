@@ -68,6 +68,20 @@ constexpr std::pair<std::string_view, std::string_view> parse_header_field(T && 
 }
 
 //********************************************************************************************************************
+// Comma-separated header token matching
+
+static bool header_contains_token(std::string_view Value, std::string_view Token)
+{
+   for (auto token_range : Value | std::views::split(',')) {
+      std::string token(token_range.begin(), token_range.end());
+      kt::trim(token);
+      if (kt::iequals(token, Token)) return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
 // Chunk header parsing
 
 static inline std::optional<std::pair<int64_t, size_t>> parse_chunk_header(std::span<const uint8_t> Buffer, size_t Start)
@@ -92,6 +106,9 @@ static inline std::optional<std::pair<int64_t, size_t>> parse_chunk_header(std::
    auto [ptr, ec] = std::from_chars(hex_str.data(), hex_str.data() + hex_str.size(), chunk_length, 16);
 
    if (ec != std::errc{}) return std::nullopt; // Parse error
+   while ((ptr != hex_str.data() + hex_str.size()) and ((*ptr IS ' ') or (*ptr IS '\t'))) ptr++;
+   if ((ptr != hex_str.data() + hex_str.size()) and (*ptr != ';')) return std::nullopt;
+
    size_t header_end = Start + std::distance(chunk_str.begin(), crlf_result.end());
    return std::make_pair(chunk_length, header_end);
 }
@@ -168,7 +185,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
       if (!len) break; // No more incoming data
 
       #ifdef DEBUG_SOCKET
-         if (glDebugFile) glDebugFile->write(Self->Response.data() + Self->ResponseIndex, len);
+         write_debug_socket_data(Self->Response.data() + Self->ResponseIndex, len);
       #endif
 
       Self->ResponseIndex += len;
@@ -228,14 +245,34 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
             else {
                if (auto it = Self->ResponseKeys.find("location"); it != Self->ResponseKeys.end()) {
                   auto &location = it->second;
+                  ERR redirect_error;
+
                   log.msg("MovedPermanently to %s", location.c_str());
-                  if (location.starts_with("http:")) Self->setLocation(location);
-                  else if (location.starts_with("https:")) Self->setLocation(location);
-                  else Self->setPath(location);
-                  Self->setCurrentState(HGS::COMPLETED);
-                  acActivate(Self); // Try again
+
+                  auto active_socket = Self->Socket;
+                  if (active_socket) {
+                     active_socket->set(FID_Feedback, (APTR)nullptr);
+                     Self->Socket = nullptr;
+                     QueueAction(AC::Free, active_socket->UID);
+                  }
+
+                  if (location.starts_with("http:")) redirect_error = Self->setLocation(location);
+                  else if (location.starts_with("https:")) redirect_error = Self->setLocation(location);
+                  else redirect_error = Self->setPath(location);
+
+                  if (redirect_error != ERR::Okay) {
+                     Self->Error = redirect_error;
+                     Self->setCurrentState(HGS::TERMINATED);
+                     return ERR::Terminate;
+                  }
+
+                  if (auto activate_error = acActivate(Self); activate_error != ERR::Okay) {
+                     Self->Error = activate_error;
+                     Self->setCurrentState(HGS::TERMINATED);
+                  }
+
                   Self->Flags |= HTF::MOVED;
-                  return ERR::Okay;
+                  return ERR::Terminate;
                }
                else {
                   Self->Flags |= HTF::MOVED;
@@ -277,8 +314,8 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                }
             }
 
-            std::string &authenticate = Self->ResponseKeys["WWW-Authenticate"];
-            if (not authenticate.empty()) {
+            if (auto auth_it = Self->ResponseKeys.find("www-authenticate"); auth_it != Self->ResponseKeys.end()) {
+               auto &authenticate = auth_it->second;
                if (kt::startswith("Digest", authenticate)) {
                   log.trace("Digest authentication mode.");
 
@@ -372,7 +409,10 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 
             if (len > 0) {
                if (header_end + len <= std::ssize(Self->Response)) {
-                  output_incoming_data(Self, Self->Response.data() + header_end, len);
+                  if (auto output_error = output_incoming_data(Self, Self->Response.data() + header_end, len);
+                        output_error != ERR::Okay) {
+                     return ERR::Terminate;
+                  }
                }
                else return log.warning(ERR::BufferOverflow);
             }
@@ -454,7 +494,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
          Self->Error = acRead(Socket, Self->Chunk.data() + Self->ChunkBuffered, Self->Chunk.size() - Self->ChunkBuffered, &read_bytes);
 
          #ifdef DEBUG_SOCKET
-            if ((glDebugFile) and (read_bytes)) glDebugFile->write(Self->Chunk.data() + Self->ChunkBuffered, read_bytes);
+            write_debug_socket_data(Self->Chunk.data() + Self->ChunkBuffered, read_bytes);
          #endif
 
          log.trace("Filling the chunk buffer: Read %d bytes.", read_bytes);
@@ -545,7 +585,10 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
             log.trace("%d bytes yet to process, outputting %d bytes", Self->ChunkRemaining, len);
 
             Self->ChunkRemaining -= len;
-            output_incoming_data(Self, Self->Chunk.data() + Self->ChunkIndex, len);
+            if (auto output_error = output_incoming_data(Self, Self->Chunk.data() + Self->ChunkIndex, len);
+                  output_error != ERR::Okay) {
+               return ERR::Terminate;
+            }
 
             Self->ChunkIndex += len;
 
@@ -559,6 +602,13 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
             log.trace("Skipping %d bytes.", -Self->ChunkRemaining);
 
             while ((Self->ChunkRemaining < 0) and (Self->ChunkIndex < Self->ChunkBuffered)) {
+               auto expected = (Self->ChunkRemaining IS -2) ? '\r' : '\n';
+               if (Self->Chunk[Self->ChunkIndex] != expected) {
+                  log.warning("Invalid chunk delimiter.");
+                  Self->setCurrentState(HGS::TERMINATED);
+                  return ERR::Terminate;
+               }
+
                Self->ChunkIndex++;
                Self->ChunkRemaining++;
             }
@@ -607,7 +657,7 @@ static ERR read_incoming_content(extHTTP *Self, objNetSocket *Socket)
 
       if ((Self->Error = acRead(Socket, buffer.data(), len, &len)) != ERR::Okay) {
          #ifdef DEBUG_SOCKET
-            if (glDebugFile) glDebugFile->write(buffer.data(), len);
+            write_debug_socket_data(buffer.data(), len);
          #endif
 
          if ((Self->Error IS ERR::Disconnected) and (Self->ContentLength IS -1)) {
@@ -623,7 +673,9 @@ static ERR read_incoming_content(extHTTP *Self, objNetSocket *Socket)
 
       if (!len) break; // No more incoming data right now
 
-      output_incoming_data(Self, buffer.data(), len);
+      if (auto output_error = output_incoming_data(Self, buffer.data(), len); output_error != ERR::Okay) {
+         return ERR::Terminate;
+      }
       if (check_incoming_end(Self) IS ERR::True) {
          return ERR::Terminate;
       }
@@ -705,7 +757,9 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
       Self->ContentLength = 0;
       int64_t temp_length = 0;
       auto [ ptr, error ] = std::from_chars(value.data(), value.data() + value.size(), temp_length);
-      if (error IS std::errc() and temp_length >= 0 and temp_length <= MAX_CONTENT_LENGTH) {
+      while ((ptr != value.data() + value.size()) and (uint8_t(*ptr) <= 0x20)) ptr++;
+      if ((error IS std::errc()) and (ptr IS value.data() + value.size()) and
+            (temp_length >= 0) and (temp_length <= MAX_CONTENT_LENGTH)) {
          Self->ContentLength = temp_length;
       }
       else {
@@ -716,7 +770,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
 
    if (auto it = Self->ResponseKeys.find("transfer-encoding"); it != Self->ResponseKeys.end()) {
       auto &value = it->second;
-      if (kt::iequals(value, "chunked")) {
+      if (header_contains_token(value, "chunked")) {
          if ((Self->Flags & HTF::RAW) IS HTF::NIL) Self->Chunked = true;
          Self->ContentLength = -1;
       }
@@ -777,10 +831,23 @@ static ERR output_incoming_data(extHTTP *Self, APTR Buffer, int Length)
             Self->setIndex(0);
          }
       }
-      else Self->Error = ERR::CreateFile;
+      else {
+         Self->Error = ERR::CreateFile;
+         return Self->Error;
+      }
    }
 
-   if (Self->flOutput) Self->flOutput->write(Buffer, Length, nullptr);
+   if (Self->flOutput) {
+      int result = 0;
+      if (auto error = Self->flOutput->write(Buffer, Length, &result); error != ERR::Okay) {
+         Self->Error = error;
+         return Self->Error;
+      }
+      else if (result != Length) {
+         Self->Error = ERR::Write;
+         return Self->Error;
+      }
+   }
 
    if ((Self->Flags & HTF::RECV_BUFFER) != HTF::NIL) {
       Self->RecvBuffer.append(std::string_view((char *)Buffer, Length));
@@ -819,11 +886,34 @@ static ERR output_incoming_data(extHTTP *Self, APTR Buffer, int Length)
    if (Self->OutputObjectID) {
       if (Self->ObjectMode IS HOM::DATA_FEED) {
          kt::ScopedObjectLock output(Self->OutputObjectID);
-         if (output.granted()) acDataFeed(*output, Self, Self->Datatype, Buffer, Length);
+         if (output.granted()) {
+            if (auto error = acDataFeed(*output, Self, Self->Datatype, Buffer, Length); error != ERR::Okay) {
+               Self->Error = error;
+               return Self->Error;
+            }
+         }
+         else {
+            Self->Error = ERR::Lock;
+            return Self->Error;
+         }
       }
       else if (Self->ObjectMode IS HOM::READ_WRITE) {
          kt::ScopedObjectLock output(Self->OutputObjectID);
-         if (output.granted()) acWrite(*output, Buffer, Length);
+         if (output.granted()) {
+            int result = 0;
+            if (auto error = acWrite(*output, Buffer, Length, &result); error != ERR::Okay) {
+               Self->Error = error;
+               return Self->Error;
+            }
+            else if (result != Length) {
+               Self->Error = ERR::Write;
+               return Self->Error;
+            }
+         }
+         else {
+            Self->Error = ERR::Lock;
+            return Self->Error;
+         }
       }
    }
 
@@ -840,10 +930,6 @@ static ERR socket_incoming(objNetSocket *Socket)
    auto Self = (extHTTP *)Socket->ClientData;
 
    if (Self->classID() != CLASSID::HTTP) return log.warning(ERR::SystemCorrupt);
-
-   #ifdef DEBUG_SOCKET
-      if (!glDebugFile) glDebugFile = objFile::create::untracked({ fl::Path("temp:http-incoming-log.raw"), fl::Flags(FL::NEW|FL::WRITE) });
-   #endif
 
 restart:
 

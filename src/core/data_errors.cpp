@@ -195,6 +195,7 @@ const CSTRING glMessages[int(ERR::END)+1] = {
  "A sanity check has failed.",
  "Client is not authorised to perform this operation.",
  "The specified property is not recognised.",
+ "A secure sockets layer is not available in this environment.",
  nullptr // Needs to be null-terminated for Tiri support
 };
 

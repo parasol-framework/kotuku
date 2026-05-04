@@ -159,8 +159,9 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
          return ERR::Okay;
       }
       else {
-         log.warning("recv() failed: %s", strerror(errno));
-         return ERR::SystemCall;
+         const int system_error = errno;
+         log.warning("recv() failed: %s", strerror(system_error));
+         return convert_socket_error(system_error);
       }
    }
 #elif _WIN32
@@ -585,6 +586,8 @@ Write: Writes data to the socket.
 Write raw data to a client socket with this action.  Write connections are buffered, so any data overflow generated
 in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are
 governed by the @NetSocket.MsgLimit value.
+
+Assuming no errors occur, the reported result will always reflect the length of the incoming buffer.
 
 *********************************************************************************************************************/
 

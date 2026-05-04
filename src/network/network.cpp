@@ -266,6 +266,10 @@ public:
    }
 #endif
 
+#ifdef __linux__
+   #include "socket_errors.h"
+#endif
+
 class extClientSocket : public objClientSocket {
    public:
    SocketHandle Handle;
@@ -861,7 +865,7 @@ available:
 If a failure occurs when executing a command, the execution of all further commands is aborted and the error code is
 returned immediately.
 
-SetSSL() can also be used to check if SSL is supported in the current build, in which case `ERR::NoSupport` will
+SetSSL() can also be used to check if SSL is supported in the current build, in which case `ERR::NoSecureSockets` will
 be the return value if all other arguments are `NULL`.
 
 -INPUT-
@@ -872,7 +876,7 @@ cstr Value: Value to set for the command or option.
 -ERRORS-
 Okay:
 NullArgs: The NetSocket argument was not specified.
-NoSupport: SSL support is disabled in this build.
+NoSecureSockets: SSL support is disabled in this build.
 -END-
 
 *********************************************************************************************************************/
@@ -915,7 +919,7 @@ ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
 
    return ERR::Okay;
 #else
-   return ERR::NoSupport;
+   return ERR::NoSecureSockets;
 #endif
 }
 
@@ -1007,8 +1011,9 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
       if (errno IS EAGAIN) return ERR::BufferOverflow;
       else if (errno IS EMSGSIZE) return ERR::DataSize;
       else {
-         log.warning("send() failed: %s", strerror(errno));
-         return ERR::Failed;
+         const int system_error = errno;
+         log.warning("send() failed: %s", strerror(system_error));
+         return convert_socket_error(system_error, ERR::Failed);
       }
    }
 #elif _WIN32
