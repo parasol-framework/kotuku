@@ -14,7 +14,8 @@ SERVER_PORT <const> = 18942
 rxStatusLine = <{ regex.new([[HTTP\/1\.[01]\s+(\d+)]]) }>
 
 function rawHttpRequest(Method:str, Path:str):<num, str>
-   proc = processing.new({ timeout = 5.0 })
+   signal = obj.new('time', {})
+   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    response = ''
    request = Method .. ' ' .. Path .. " HTTP/1.1\r\n" ..
       "Host: 127.0.0.1\r\n" ..
@@ -25,7 +26,7 @@ function rawHttpRequest(Method:str, Path:str):<num, str>
          if State is NTC_CONNECTED then
             check Socket.acWrite(request)
          elseif State is NTC_DISCONNECTED then
-            proc.signal()
+            signal.acSignal()
          end
       end,
       incoming = function(Socket)
@@ -34,7 +35,7 @@ function rawHttpRequest(Method:str, Path:str):<num, str>
          if err is ERR_Okay then
             response ..= buffer:substr(0, read_len)
          elseif err is ERR_Disconnected then
-            proc.signal()
+            signal.acSignal()
          else
             error('Raw HTTP read failed: ' .. mSys.GetErrorMsg(err))
          end
@@ -203,7 +204,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function CustomStatusCodes()
-   proc        = processing.new({ timeout = 5.0 })
+   signal      = obj.new('time', {})
+   proc        = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    statusCodes = { 201, 202, 204, 400, 401, 403, 500, 503 }
    results     = {}
    requests    = {}
@@ -225,7 +227,7 @@ end
                results[i].error = HTTP.error
                completed = completed + 1
                if completed >= #statusCodes then
-                  proc.signal()
+                  signal.acSignal()
                end
             end
          end
@@ -262,7 +264,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function CacheHeaders()
-   proc = processing.new({ timeout = 5.0 })
+   signal = obj.new('time', {})
+   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -274,7 +277,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            signal.acSignal()
          end
       end
    })
@@ -295,7 +298,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function CompressionSupport()
-   proc = processing.new({ timeout = 5.0 })
+   signal = obj.new('time', {})
+   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -307,7 +311,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            signal.acSignal()
          end
       end
    })
@@ -330,7 +334,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ErrorResponse()
-   proc = processing.new({ timeout = 5.0 })
+   signal = obj.new('time', {})
+   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -342,7 +347,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            signal.acSignal()
          end
       end
    })
@@ -363,7 +368,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function LargeResponse()
-   proc = processing.new({ timeout = 10.0 })
+   signal = obj.new('time', {})
+   proc = processing.new({ timeout = 10.0, signals = array<object> { signal } })
    content = ''
    totalBytes = 0
 
@@ -379,7 +385,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            signal.acSignal()
          end
       end
    })

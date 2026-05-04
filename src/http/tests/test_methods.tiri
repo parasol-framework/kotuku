@@ -15,7 +15,8 @@ SERVER_PORT <const> = 18943
 rxStatusLine = <{ regex.new([[HTTP\/1\.[01]\s+(\d+)]]) }>
 
 function rawHttpRequest(Method:str, Path:str, Body:any, Headers:any):<num, str>
-   proc = processing.new({ timeout = 5.0 })
+   signal = obj.new('time', {})
+   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    response = ''
    request = f"{Method} {Path} HTTP/1.1\r\n" ..
       "Host: 127.0.0.1\r\n" ..
@@ -39,7 +40,7 @@ function rawHttpRequest(Method:str, Path:str, Body:any, Headers:any):<num, str>
          if State is NTC_CONNECTED then
             check Socket.acWrite(request)
          elseif State is NTC_DISCONNECTED then
-            proc.signal()
+            signal.acSignal()
          end
       end,
       incoming = function(Socket)
@@ -48,7 +49,7 @@ function rawHttpRequest(Method:str, Path:str, Body:any, Headers:any):<num, str>
          if err is ERR_Okay then
             response ..= buffer:substr(0, read_len)
          elseif err is ERR_Disconnected then
-            proc.signal()
+            signal.acSignal()
          else
             error('Raw HTTP read failed: ' .. mSys.GetErrorMsg(err))
          end
@@ -142,7 +143,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function PUT()
-   proc = processing.new({ timeout = 5.0 })
+   signal = obj.new('time', {})
+   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
    testBody = '{"name":"updated","value":42}'
 
@@ -158,7 +160,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            signal.acSignal()
          end
       end
    })
@@ -181,7 +183,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function DELETE()
-   proc = processing.new({ timeout = 5.0 })
+   signal = obj.new('time', {})
+   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -193,7 +196,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            signal.acSignal()
          end
       end
    })
@@ -250,7 +253,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function OPTIONS()
-   proc = processing.new({ timeout = 5.0 })
+   signal = obj.new('time', {})
+   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -262,7 +266,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            signal.acSignal()
          end
       end
    })
@@ -283,7 +287,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function MethodNotAllowed()
-   proc = processing.new({ timeout = 5.0 })
+   signal = obj.new('time', {})
+   proc = processing.new({ timeout = 5.0, signals = array<object> { signal } })
    content = ''
 
    http = obj.new('http', {
@@ -297,7 +302,7 @@ end
       end,
       stateChanged = function(HTTP, State)
          if (State is HGS_COMPLETED) or (State is HGS_TERMINATED) then
-            proc.signal()
+            signal.acSignal()
          end
       end
    })
