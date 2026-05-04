@@ -1276,6 +1276,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          auto BufferSize = Args->Length;
          do {
             read_blocked = false;
+            ssl_clear_error_queue();
             if (auto result = SSL_read(Self->SSLHandle, Buffer, BufferSize); result <= 0) {
                auto ssl_error = SSL_get_error(Self->SSLHandle, result);
                switch (ssl_error) {
@@ -1294,10 +1295,18 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
                       RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, ssl_handshake_write_netsocket, Self);
                       return ERR::Okay;
 
-                   case SSL_ERROR_SYSCALL:
-                   default:
-                      log.warning("SSL read failed with error %d: %s", ssl_error, ERR_error_string(ssl_error, nullptr));
-                      return ERR::Read;
+                  case SSL_ERROR_SYSCALL:
+                     log.warning("SSL read failed with %s: %s", ssl_error_name(ssl_error), strerror(errno));
+                     return ERR::Read;
+
+                  case SSL_ERROR_SSL:
+                     log.warning("SSL read failed with %s.", ssl_error_name(ssl_error));
+                     ssl_log_error_queue(log, "SSL_read");
+                     return ERR::Read;
+
+                  default:
+                     log.warning("SSL read failed with %s.", ssl_error_name(ssl_error));
+                     return ERR::Read;
                }
             }
             else {

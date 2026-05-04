@@ -964,6 +964,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
             return ERR::BufferOverflow;
          }
 
+         ssl_clear_error_queue();
          auto bytes_sent = SSL_write(Self->SSLHandle, Buffer, *Length);
 
          if (bytes_sent <= 0) {
@@ -988,11 +989,13 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
                   log.warning("SSL_write() SysError %d: %s", errno, strerror(errno));
                   return ERR::Write;
 
+               case SSL_ERROR_SSL:
+                  log.warning("SSL_write() failed: %s", ssl_error_name(ssl_error));
+                  ssl_log_error_queue(log, "SSL_write");
+                  return ERR::Write;
+
                default:
-                  while (ssl_error) {
-                     log.warning("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, nullptr));
-                     ssl_error = ERR_get_error();
-                  }
+                  log.warning("SSL_write() failed: %s", ssl_error_name(ssl_error));
                   return ERR::Write;
             }
          }
