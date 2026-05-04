@@ -240,7 +240,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- curl -v -X GET https://www.google.com
 
-@Test(priority=6) function HTTPSRemote()
+@Test(priority=6); @Requires(ssl=true)
+function HTTPSRemote()
    content = nil
 
    http = obj.new('http', {
@@ -281,7 +282,8 @@ end
 -- Making an HTTPS request to google.co.uk should cause a redirect to google.com, which should
 -- all be handled in the background.
 
-@Test(priority=7) function RedirectedHTTPSRemote()
+@Test(priority=7); @Requires(ssl=true)
+function RedirectedHTTPSRemote()
    local content
 
    http = obj.new('http', {
