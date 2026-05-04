@@ -68,6 +68,20 @@ constexpr std::pair<std::string_view, std::string_view> parse_header_field(T && 
 }
 
 //********************************************************************************************************************
+// Comma-separated header token matching
+
+static bool header_contains_token(std::string_view Value, std::string_view Token)
+{
+   for (auto token_range : Value | std::views::split(',')) {
+      std::string token(token_range.begin(), token_range.end());
+      kt::trim(token);
+      if (kt::iequals(token, Token)) return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
 // Chunk header parsing
 
 static inline std::optional<std::pair<int64_t, size_t>> parse_chunk_header(std::span<const uint8_t> Buffer, size_t Start)
@@ -588,6 +602,13 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
             log.trace("Skipping %d bytes.", -Self->ChunkRemaining);
 
             while ((Self->ChunkRemaining < 0) and (Self->ChunkIndex < Self->ChunkBuffered)) {
+               auto expected = (Self->ChunkRemaining IS -2) ? '\r' : '\n';
+               if (Self->Chunk[Self->ChunkIndex] != expected) {
+                  log.warning("Invalid chunk delimiter.");
+                  Self->setCurrentState(HGS::TERMINATED);
+                  return ERR::Terminate;
+               }
+
                Self->ChunkIndex++;
                Self->ChunkRemaining++;
             }
@@ -736,7 +757,9 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
       Self->ContentLength = 0;
       int64_t temp_length = 0;
       auto [ ptr, error ] = std::from_chars(value.data(), value.data() + value.size(), temp_length);
-      if (error IS std::errc() and temp_length >= 0 and temp_length <= MAX_CONTENT_LENGTH) {
+      while ((ptr != value.data() + value.size()) and (uint8_t(*ptr) <= 0x20)) ptr++;
+      if ((error IS std::errc()) and (ptr IS value.data() + value.size()) and
+            (temp_length >= 0) and (temp_length <= MAX_CONTENT_LENGTH)) {
          Self->ContentLength = temp_length;
       }
       else {
@@ -747,7 +770,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
 
    if (auto it = Self->ResponseKeys.find("transfer-encoding"); it != Self->ResponseKeys.end()) {
       auto &value = it->second;
-      if (kt::iequals(value, "chunked")) {
+      if (header_contains_token(value, "chunked")) {
          if ((Self->Flags & HTF::RAW) IS HTF::NIL) Self->Chunked = true;
          Self->ContentLength = -1;
       }

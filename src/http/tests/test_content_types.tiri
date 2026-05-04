@@ -11,8 +11,8 @@ form data, and content negotiation between HTTP client and server.
 
 SERVER_PORT <const> = 18944
 
-rxPercentEncoded = <{ regex.new('%([0-9A-Fa-f]{2})') }>
-rxSplitPair = <{ regex.new('([^=]+)=([^=]*)') }>
+rxPercentEncoded <const> = <{ regex.new('%([0-9A-Fa-f]{2})') }>
+rxSplitPair <const> = <{ regex.new('([^=]+)=([^=]*)') }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -20,8 +20,8 @@ function decodeFormComponent(Value:str):str
    Value ?? return ''
 
    Value = Value:replace('+', ' ')
-   local result = ''
-   local last_stop = 0
+   result = ''
+   last_stop = 0
 
    for start, stop, cap in rxPercentEncoded.findAll(Value) do
       if start > last_stop then result ..= Value:sub(last_stop, start) end
@@ -71,7 +71,7 @@ end
               isBinary = false
               if req.body then
                  -- Check for binary data (non-printable characters)
-                 for i = 1, math.min(req.body:len(), 100) do
+                 for i = 0, math.min(req.body:len(), 100) - 1 do
                     byte = req.body:byte(i)
                     if byte < 32 and byte != 9 and byte != 10 and byte != 13 then
                        isBinary = true

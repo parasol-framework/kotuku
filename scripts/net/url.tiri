@@ -9,7 +9,7 @@
    _LIB[_NS] = { }
    url = _LIB[_NS]
 
-local DEFAULT_PORTS = {
+DEFAULT_PORTS <const> = {
    http = 80,
    https = 443,
    ftp = 21,
@@ -24,7 +24,7 @@ local DEFAULT_PORTS = {
 
 -- Characters that need percent-encoding in different URL contexts
 
-local RESERVED_CHARS = {
+RESERVED_CHARS <const> = {
    -- General reserved characters (RFC 3986)
    general = ':/?#[]@!$&\'()*+,;=%',
    -- Additional characters that should be encoded in query strings
@@ -35,25 +35,30 @@ local RESERVED_CHARS = {
 
 -- Deferred regex patterns for URL parsing
 
-rxPercentEncoded = <{ regex.new('%([0-9A-Fa-f]{2})') }>
-rxScheme         = <{ regex.new('^([\\w+.\\-]+):(.*)') }>
-rxSchemeOnly     = <{ regex.new('^[\\w+.\\-]+:(.*)') }>
-rxIPv6Port       = <{ regex.new('^\\[([^\\]]+)\\]:?(\\d*)$') }>
-rxIPv6PortOnly   = <{ regex.new('^\\[[^\\]]+\\]:(\\d+)$') }>
-rxAbsoluteUrl    = <{ regex.new('^[\\w+.\\-]+:') }>
-rxSchemeExtract  = <{ regex.new('^([\\w+.\\-]+):') }>
-rxQueryPair      = <{ regex.new('([^&]+)') }>
-rxKeyValueOpt    = <{ regex.new('^([^=]*)=(.*)$') }>
-rxBasePath       = <{ regex.new('(.*\\/)') }>
-rxPathSegment    = <{ regex.new('([^\\/]+)') }>
+rxPercentEncoded <const> = <{ regex.new('%([0-9A-Fa-f]{2})') }>
+rxScheme         <const> = <{ regex.new('^([\\w+.\\-]+):(.*)') }>
+rxSchemeOnly     <const> = <{ regex.new('^[\\w+.\\-]+:(.*)') }>
+rxIPv6Port       <const> = <{ regex.new('^\\[([^\\]]+)\\]:?(\\d*)$') }>
+rxIPv6PortOnly   <const> = <{ regex.new('^\\[[^\\]]+\\]:(\\d+)$') }>
+rxAbsoluteUrl    <const> = <{ regex.new('^[\\w+.\\-]+:') }>
+rxSchemeExtract  <const> = <{ regex.new('^([\\w+.\\-]+):') }>
+rxQueryPair      <const> = <{ regex.new('([^&]+)') }>
+rxKeyValueOpt    <const> = <{ regex.new('^([^=]*)=(.*)$') }>
+rxBasePath       <const> = <{ regex.new('(.*\\/)') }>
+rxPathSegment    <const> = <{ regex.new('([^\\/]+)') }>
 
 ----------------------------------------------------------------------------------------------------------------------
 -- URL Encoding Functions
 
--- Percent-encode a string for safe URL use
+@Doc(text=[[
+@desc Percent-encode a string for safe URL use
+@input str:str
+@input extraChars:str
+@result str
+]])
 
-url.encode = function(str, extraChars)
-   if str is nil then return nil end
+url.encode = function(str:str, extraChars:str):str
+   str ?? return ''
 
    chars_to_encode = RESERVED_CHARS.general .. RESERVED_CHARS.query
    if extraChars then chars_to_encode = chars_to_encode .. extraChars end
@@ -75,7 +80,7 @@ end
 -- Percent-encode with spaces as plus signs (for form data)
 
 url.encodePlus = function(str, extraChars)
-   if str is nil then return nil end
+   str ?? return ''
 
    encoded = url.encode(str, extraChars)
    if encoded then
@@ -88,13 +93,13 @@ end
 -- Decode percent-encoded string
 
 url.decode = function(str)
-   if not str then return nil end
+   str ?? return ''
 
-   local result = ''
-   local last_stop = 0
+   result = ''
+   last_stop = 0
    for start, stop, cap in rxPercentEncoded.findAll(str) do
       if start > last_stop then result ..= str:sub(last_stop, start) end
-      local hex = cap[0]
+      hex = cap[0]
       result ..= string.char(tonumber(hex, 16))
       last_stop = stop
    end
@@ -128,7 +133,7 @@ url.parseQuery = function(queryString)
 
    params = {}
    for start, stop, cap in rxQueryPair.findAll(queryString) do
-      local pair = cap[0]
+      pair = cap[0]
       key, value = rxKeyValueOpt.extract(pair)
       if key then
          key = url.decodePlus(key)
@@ -159,7 +164,7 @@ url.parseQueryList = function(queryString)
    queryString ?? return params
 
    for start, stop, cap in rxQueryPair.findAll(queryString) do
-      local pair = cap[0]
+      pair = cap[0]
       key, value = rxKeyValueOpt.extract(pair)
       if key then
          key = url.decodePlus(key)
@@ -462,7 +467,7 @@ url.normalize = function(path)
    isAbsolute = path:sub(0, 1) is '/'
 
    for start, stop, cap in rxPathSegment.findAll(path) do
-      local segment = cap[0]
+      segment = cap[0]
       if segment is '..' then
          if #segments > 0 and segments[#segments - 1] != '..' then
             table.remove(segments)

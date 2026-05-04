@@ -337,6 +337,40 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 
    if ((!Value) or (!*Value)) return ERR::InvalidValue;
 
+   CSTRING str = Value;
+   int new_port = 80;
+   bool new_ssl = false;
+
+   if (kt::startswith("http://", str)) str += 7;
+   else if (kt::startswith("https://", str)) {
+      str += 8;
+      new_port = 443;
+      new_ssl = true;
+   }
+   else return ERR::InvalidValue;
+
+   CSTRING host = str;
+   int len;
+   for (len=0; (str[len]) and (str[len] != ':') and (str[len] != '/'); len++);
+   if (!len) return ERR::InvalidValue;
+
+   str += len;
+
+   if (*str IS ':') {
+      str++;
+
+      char *port_end = nullptr;
+      long port_long = strtol(str, &port_end, 10);
+      if ((port_end IS str) or (port_long <= 0) or (port_long > MAX_PORT_NUMBER)) return ERR::InvalidValue;
+      if ((*port_end) and (*port_end != '/')) return ERR::InvalidValue;
+
+      new_port = int(port_long);
+      if (new_port IS 443) new_ssl = true;
+      str = port_end;
+   }
+
+   while ((*str) and (*str != '/')) str++;
+
    if (Self->initialised()) {
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
@@ -351,55 +385,22 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
       log.msg("%s", Value);
    }
 
-   CSTRING str = Value;
-
-   Self->Port = 80;
-
-   if (kt::startswith("http://", str)) str += 7;
-   else if (kt::startswith("https://", str)) {
-      str += 8;
-      Self->Port = 443;
-      Self->Flags |= HTF::SSL;
-   }
+   Self->Port = new_port;
+   if (new_ssl) Self->Flags |= HTF::SSL;
+   else Self->Flags &= ~HTF::SSL;
 
    if (Self->Host) { FreeResource(Self->Host); Self->Host = nullptr; }
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
-
-   // Parse host name
-
-   int len;
-   for (len=0; (str[len]) and (str[len] != ':') and (str[len] != '/'); len++);
 
    if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Host) != ERR::Okay) {
       return ERR::AllocMemory;
    }
 
-   kt::copymem(str, Self->Host, len);
+   kt::copymem(host, Self->Host, len);
    Self->Host[len] = 0;
 
-   str += len;
-
-   // Parse port number
-
-   if (*str IS ':') {
-      str++;
-      long port_long = strtol(str, nullptr, 0);
-      if (port_long > 0 and port_long <= MAX_PORT_NUMBER) {
-         Self->Port = int(port_long);
-         if (Self->Port IS 443) Self->Flags |= HTF::SSL;
-      }
-      else {
-         kt::Log log;
-         log.warning("Invalid port number %ld, using default 80", port_long);
-         Self->Port = 80;
-      }
-   }
-
-   while ((*str) and (*str != '/')) str++;
-
    if (*str) { // Parse absolute path
-      SET_Path(Self, str+1);
-      return ERR::Okay;
+      return SET_Path(Self, str+1);
    }
 
    return ERR::Okay;
@@ -510,6 +511,8 @@ A `401` status code is returned in the event of an authorisation failure.
 
 static ERR SET_Password(extHTTP *Self, CSTRING Value)
 {
+   if (!Value) return ERR::InvalidValue;
+
    Self->Password.assign(Value);
    Self->PasswordPreset = true;
    return ERR::Okay;
@@ -722,6 +725,8 @@ presented with a dialog box and asked to enter the correct username and password
 
 static ERR SET_Username(extHTTP *Self, CSTRING Value)
 {
+   if (!Value) return ERR::InvalidValue;
+
    Self->Username.assign(Value);
    return ERR::Okay;
 }

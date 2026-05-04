@@ -17,7 +17,7 @@ rxStatusLine = <{ regex.new([[HTTP\/1\.[01]\s+(\d+)]]) }>
 function rawHttpRequest(Method:str, Path:str, Body:any, Headers:any):<num, str>
    proc = processing.new({ timeout = 5.0 })
    response = ''
-   request = Method .. ' ' .. Path .. " HTTP/1.1\r\n" ..
+   request = f"{Method} {Path} HTTP/1.1\r\n" ..
       "Host: 127.0.0.1\r\n" ..
       "Connection: close\r\n"
 

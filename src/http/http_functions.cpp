@@ -254,8 +254,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
    if (((error IS ERR::Okay) or (error IS ERR::Terminate)) and (client_bytes_written > 0)) {
       int bytes_sent;
       ERR write_error;
-
-      log.trace("Writing %" PRId64 " bytes (of expected %" PRId64 ") to socket.  Chunked: %d", std::ssize(Self->WriteBuffer), Self->ContentLength, Self->Chunked);
+      auto write_length = std::ssize(Self->WriteBuffer);
 
       if (Self->Chunked) {
          // Chunked encoding requires the length of each chunk to be sent in hexadecimal format followed by CRLF,
@@ -268,23 +267,27 @@ static ERR socket_outgoing(objNetSocket *Socket)
 
          Self->WriteBuffer.push_back('\r');
          Self->WriteBuffer.push_back('\n');
+         write_length = std::ssize(Self->WriteBuffer);
 
          // Note: If the result were to come back as less than the length we intended to write,
          // it would screw up the entire sending process when using chunks.  However we don't
          // have to worry as the NetSocket has its own buffer - we're safe as long as we're only
          // sending data when the outgoing socket is ready.
-
-         write_error = acWrite(Self->Socket, Self->WriteBuffer.data(), std::ssize(Self->WriteBuffer), &bytes_sent);
-      }
-      else {
-         write_error = acWrite(Self->Socket, Self->WriteBuffer.data(), std::ssize(Self->WriteBuffer), &bytes_sent);
-         if (std::ssize(Self->WriteBuffer) != bytes_sent) log.warning("Only sent %" PRId64 " of %d bytes.", int64_t(std::ssize(Self->WriteBuffer)), bytes_sent);
       }
 
-      if (write_error IS ERR::Okay) {
+      log.trace("Writing %" PRId64 " bytes (of expected %" PRId64 ") to socket.  Chunked: %d",
+         write_length, Self->ContentLength, Self->Chunked);
+
+      write_error = acWrite(Self->Socket, Self->WriteBuffer.data(), write_length, &bytes_sent);
+
+      if ((write_error IS ERR::Okay) and (bytes_sent IS write_length)) {
          if (Self->Chunked) bytes_sent -= CHUNK_LENGTH_OFFSET + 2; // Discount chunk information
          Self->setIndex(Self->Index + bytes_sent); // Update the index by the amount of actual data sent, not including chunk headers/footers
          Self->TotalSent += bytes_sent;
+      }
+      else if (write_error IS ERR::Okay) {
+         log.warning("Only sent %" PRId64 " of %" PRId64 " bytes.", int64_t(bytes_sent), int64_t(write_length));
+         error = ERR::Write;
       }
       else {
          log.warning("acWrite() failed: %s", GetErrorMsg(write_error));
@@ -477,6 +480,13 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
 static ERR http_timeout(extHTTP *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    kt::Log log(__FUNCTION__);
+
+   if (!Self->Socket) {
+      log.warning("HTTP timeout fired without an active socket.");
+      Self->Error = ERR::TimeOut;
+      if (Self->CurrentState < HGS::COMPLETED) Self->setCurrentState(HGS::TERMINATED);
+      return ERR::Terminate;
+   }
 
    if (Self->Socket->State IS NTC::CONNECTED) {
       log.warning("Data timeout (%gs) - disconnecting from server .", Self->DataTimeout);

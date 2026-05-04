@@ -563,6 +563,16 @@ static ERR HTTP_Activate(extHTTP *Self)
 
    Self->RecvBuffer.resize(0);
 
+   auto cleanup_activation_failure = [&]() {
+      if (Self->flInput) { FreeResource(Self->flInput); Self->flInput = nullptr; }
+      if (Self->Socket) {
+         Self->Socket->set(FID_Feedback, (APTR)nullptr);
+         FreeResource(Self->Socket);
+         Self->Socket = nullptr;
+         Self->SecurePath = true;
+      }
+   };
+
    std::ostringstream cmd;
 
    if ((Self->ProxyServer) and ((Self->Flags & HTF::SSL) != HTF::NIL) and (!Self->Socket)) {
@@ -671,10 +681,12 @@ static ERR HTTP_Activate(extHTTP *Self)
                   Self->Index = 0;
                   if (!Self->Size) {
                      Self->flInput->get(FID_Size, Self->ContentLength); // Use the file's size as ContentLength
-                     if (!Self->ContentLength) { // If the file is empty or size is indeterminate then assume nothing is being posted
-                        Self->Error = ERR::NoData;
-                        return Self->Error;
-                     }
+                      // If the file is empty or size is indeterminate then assume nothing is being posted
+                      if (!Self->ContentLength) {
+                         Self->Error = ERR::NoData;
+                         cleanup_activation_failure();
+                         return Self->Error;
+                      }
                   }
                   else Self->ContentLength = Self->Size; // Allow the developer to define the ContentLength
                }
@@ -688,6 +700,10 @@ static ERR HTTP_Activate(extHTTP *Self)
                   kt::ScopedObjectLock<Object> input(Self->InputObjectID, 3000);
                   if (input.granted()) {
                      input->get(FID_Size, Self->ContentLength);
+                  }
+                  else {
+                     Self->Error = ERR::Lock;
+                     return log.warning(Self->Error);
                   }
                }
                else Self->ContentLength = Self->Size;
@@ -816,6 +832,7 @@ static ERR HTTP_Activate(extHTTP *Self)
             fl::Feedback(C_FUNCTION(socket_feedback)),
             fl::Flags(flags)))) {
          Self->Error = ERR::CreateObject;
+         cleanup_activation_failure();
          return log.warning(Self->Error);
       }
    }
@@ -850,10 +867,12 @@ static ERR HTTP_Activate(extHTTP *Self)
          }
          else if (result IS ERR::HostNotFound) {
             Self->Error = ERR::HostNotFound;
+            cleanup_activation_failure();
             return log.warning(Self->Error);
          }
          else {
             Self->Error = ERR::ConnectionRefused;
+            cleanup_activation_failure();
             return log.warning(Self->Error);
          }
       }
@@ -861,6 +880,7 @@ static ERR HTTP_Activate(extHTTP *Self)
    }
    else {
       Self->Error = ERR::Write;
+      cleanup_activation_failure();
       return log.warning(Self->Error);
    }
 }
