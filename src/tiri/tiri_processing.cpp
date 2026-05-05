@@ -1,6 +1,3 @@
-/*********************************************************************************************************************
-
-*********************************************************************************************************************/
 
 #define PRV_SCRIPT
 #define PRV_TIRI
@@ -20,11 +17,10 @@
 #include "defs.h"
 #include "lj_proto_registry.h"
 
-/*********************************************************************************************************************
-** Usage: proc = processing.new({ timeout=5.0, signals={ obj1, obj2, ... } })
-**
-** Creates a new processing object.
-*/
+//********************************************************************************************************************
+// Usage: proc = processing.new({ timeout=5.0, signals={ obj1, obj2, ... } })
+//
+// Creates a new processing object.
 
 static int processing_new(lua_State *Lua)
 {
@@ -106,11 +102,8 @@ static int processing_new(lua_State *Lua)
 //********************************************************************************************************************
 // Usage: err = proc.sleep([Seconds], [WakeOnSignal=true])
 //
-// Puts a process to sleep with message processing in the background.  Can be woken early with a signal (i.e.
-// proc.signal()).
-//
-// Lua's internal signal flag is always reset on entry in case it has been polluted by prior activity.  This behaviour
-// can be disabled by setting the third argument to false.
+// Puts a process to sleep with message processing in the background.  Can be woken early with a signal to a monitored
+// object.  If no objects are monitored, proc.signal() can be used to wake the process.
 //
 // Setting seconds to zero will process outstanding messages and return immediately.
 //
@@ -137,9 +130,6 @@ static int processing_sleep(lua_State *Lua)
    else if (!timeout) wake_on_signal = false; // We don't want to intercept signals if just processing messages
    else wake_on_signal = true;
 
-   bool reset_state = true;
-   if (lua_type(Lua, 3) IS LUA_TBOOLEAN) reset_state = lua_toboolean(Lua, 3);
-
    log.branch("Timeout: %d, WakeOnSignal: %c", timeout, wake_on_signal ? 'Y' : 'N');
 
    if (!timeout) {
@@ -165,7 +155,7 @@ static int processing_sleep(lua_State *Lua)
       }
       else { // Default behaviour: Sleeping can be broken with a signal to the Tiri object.
          if (Lua->script->defined(NF::SIGNALLED)) {
-            log.detail("Lua script already in signalled state.");
+            log.detail("Tiri script already in signalled state.");
             Lua->script->clearFlag(NF::SIGNALLED);
             error = ERR::Okay;
          }
@@ -241,8 +231,18 @@ static int processing_start_collector(lua_State *Lua)
 //   "full"    - Full collection cycle (default)
 //   "step"    - Incremental collection step
 //
+// Use "step" when a script needs to spread collection work across regular update or idle points instead of pausing for
+// a full collection.  It is most useful in interactive loops or long-running tasks where temporary allocations are
+// expected and latency matters; call it repeatedly with a small stepSize rather than as a one-off replacement for
+// "full".
+//
+// stepSize is a work budget in kibibytes, not the amount of memory that will be reclaimed.  Larger values let the
+// collector do more work per call and can complete cycles sooner, but they also increase the pause caused by that call.
+// For frequent calls from a frame or event loop, start with a small value such as 16-64 and increase it only if memory
+// keeps growing between steps.  Values around 100 or more are better suited to idle-time or background catch-up work.
+//
 // Options table (for "step" mode):
-//   stepSize  - Size of the incremental step
+//   stepSize  - Incremental step work budget in kibibytes
 
 static int processing_collect(lua_State *Lua)
 {
@@ -465,7 +465,7 @@ void register_processing_class(lua_State *Lua)
    reg_iface_prototype("processing", "stopCollector", {}, {});
    reg_iface_prototype("processing", "startCollector", {}, {});
    reg_iface_prototype("processing", "gcStats", { TiriType::Table }, {});
-   reg_iface_prototype("processing", "sleep", { TiriType::Num }, { TiriType::Num, TiriType::Bool, TiriType::Bool });
+   reg_iface_prototype("processing", "sleep", { TiriType::Num }, { TiriType::Num, TiriType::Bool });
    reg_iface_prototype("processing", "signal", {}, {});
    reg_iface_prototype("processing", "task", { TiriType::Any }, {});
    reg_iface_prototype("processing", "flush", {}, {});
