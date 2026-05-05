@@ -315,7 +315,7 @@ void win_closesocket(WSW_SOCKET SocketHandle)
 ERR win_connect(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 {
    if (connect(SocketHandle, Name, NameLen) IS SOCKET_ERROR) {
-      if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::BufferOverflow; // Non-blocking connect is still pending.
+      if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::Busy; // Non-blocking connect is still pending.
       return convert_error();
    }
    else return ERR::Okay;

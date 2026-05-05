@@ -181,15 +181,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
          }
          else {
             log.traceBranch("Connection to host granted.");
-
-            if (Socket->TimerHandle) { UpdateTimer(Socket->TimerHandle, 0); Socket->TimerHandle = 0; }
-
-            #ifndef DISABLE_SSL
-               if (Socket->SSLHandle) sslConnect(Socket);
-               else Socket->setState(NTC::CONNECTED);
-            #else
-               Socket->setState(NTC::CONNECTED);
-            #endif
+            complete_win_connect(Socket);
          }
       }
       else {

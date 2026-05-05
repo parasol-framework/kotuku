@@ -674,12 +674,10 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
       bool ssl_read_blocked = false;
       bool ssl_write_blocked = false;
-      #ifndef DISABLE_SSL
-       #ifndef _WIN32
+      #if !defined(DISABLE_SSL) and !defined(_WIN32)
          ssl_read_blocked = (error IS ERR::Busy) and (Self->SSLHandle) and (Self->HandshakeStatus IS SHS::READ);
          ssl_write_blocked = (error IS ERR::BufferOverflow) and (Self->SSLHandle) and
             (Self->HandshakeStatus IS SHS::WRITE);
-       #endif
       #endif
 
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (ssl_read_blocked) or (len > 0))  {
@@ -687,10 +685,8 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
          log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
          Self->WriteQueue.write((int8_t *)Args->Buffer + len, std::min<size_t>(Args->Length - len, server->MsgLimit));
          if (ssl_write_blocked) {
-            #ifndef DISABLE_SSL
-             #ifndef _WIN32
+            #if !defined(DISABLE_SSL) and !defined(_WIN32)
                ssl_resume_write_handshake(Self->Handle.hosthandle(), Self);
-             #endif
             #endif
          }
          else if (!ssl_read_blocked) {
