@@ -114,7 +114,7 @@ static int processing_halt(lua_State *Lua)
 
    if (seconds < 0) luaL_error(Lua, ERR::Args, "Seconds must be a positive number.");
 
-   kt::Log log;
+   kt::Log log("processing.halt");
    log.branch("Timeout: %.2f", seconds);
 
    // Always collect your garbage before going to sleep.  Can be prevented with processing.stopCollector() if
@@ -134,10 +134,11 @@ static int processing_halt(lua_State *Lua)
 // Usage: err = proc.sleep([Seconds])
 //
 // Puts a process to sleep with message processing in the background.  Can be woken early with a signal to a monitored
-// object.  If no objects are monitored, proc.signal() can be used to wake the process.
+// object (or all objects if multiple are listed).  If no objects are monitored, proc.signal() can be used to wake
+// the process.
 //
 // Setting seconds to zero will process outstanding messages and return immediately.
-// Negative seconds will wait indefinitely for a signal.
+// A negative or nil Seconds value will wait indefinitely for a signal.
 // Returns ERR_Timeout if the timeout expires.
 //
 // NOTE: Can be called directly as an interface function or as a member of a processing object.
@@ -145,22 +146,18 @@ static int processing_halt(lua_State *Lua)
 
 static int processing_sleep(lua_State *Lua)
 {
-   kt::Log log;
+   kt::Log log("processing.sleep");
    static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
-   ERR error;
-   double seconds;
-
    auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Tiri.processing");
-   if (fp) seconds = fp->Timeout;
-   else seconds = -1;
+   double seconds = fp ? fp->Timeout : -1;
 
    if (lua_type(Lua, 1) IS LUA_TNUMBER) seconds = lua_tonumber(Lua, 1);
    if (seconds < 0) seconds = -1; // Wait indefinitely
 
-   log.branch("Timeout: %d, WakeOnSignal: %c", seconds);
+   log.branch("Timeout: %g", seconds);
 
-   if (!seconds) {
+   if (seconds != 0) {
       // Always collect your garbage before going to sleep.  Can be prevented with processing.stopCollector() if
       // absolutely necessary.
       if (lua_gc(Lua, LUA_GCISRUNNING, 0)) {
@@ -170,6 +167,7 @@ static int processing_sleep(lua_State *Lua)
       }
    }
 
+   ERR error;
    if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {
       // Use custom signals provided by the client
       auto signal_list_c = std::make_unique<ObjectSignal[]>(fp->Signals->size() + 1);
@@ -178,7 +176,7 @@ static int processing_sleep(lua_State *Lua)
       signal_list_c[i].Object = nullptr;
 
       std::scoped_lock lock(recursion);
-      int timeout = int(seconds * 1000.0);
+      auto timeout = int(seconds * 1000.0);
       error = WaitForObjects(timeout IS -1 ? PMF::EVENT_LOOP : PMF::NIL, timeout, signal_list_c.get());
    }
    else { // Default behaviour: Sleeping can be broken with a signal to the Tiri object.
@@ -190,7 +188,7 @@ static int processing_sleep(lua_State *Lua)
       else {
          ObjectSignal signal_list_c[2] = { { .Object = Lua->script }, { .Object = nullptr } };
          std::scoped_lock lock(recursion);
-         int timeout = int(seconds * 1000.0);
+         auto timeout = int(seconds * 1000.0);
          error = WaitForObjects(timeout IS -1 ? PMF::EVENT_LOOP : PMF::NIL, timeout, signal_list_c);
       }
    }
@@ -291,7 +289,7 @@ static int processing_collect(lua_State *Lua)
       lua_pop(Lua, 1);
    }
 
-   int result = lua_gc(Lua, gc_mode, step_size);
+   auto result = lua_gc(Lua, gc_mode, step_size);
    lua_pushinteger(Lua, result);
    return 1;
 }
