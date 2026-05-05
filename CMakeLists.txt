@@ -841,6 +841,12 @@ if (KOTUKU_INSTALL)
       "${PROJECT_SOURCE_DIR}/apps/vuepoint.tiri"
       DESTINATION "${SHARE_TARGET}/apps")
 
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/tools/tiri_lsp/include" DESTINATION "${SHARE_TARGET}/tools/tiri_lsp")
+   install (FILES
+      "${PROJECT_SOURCE_DIR}/tools/tiri_lsp/server.tiri"
+      "${PROJECT_SOURCE_DIR}/tools/tiri_lsp/README.md"
+      DESTINATION "${SHARE_TARGET}/tools/tiri_lsp")
+
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts/" DESTINATION "${SHARE_TARGET}/scripts")
 
    if (INSTALL_EXAMPLES)
