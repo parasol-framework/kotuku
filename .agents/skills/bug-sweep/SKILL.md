@@ -19,8 +19,10 @@ Launch all five agents **simultaneously in a single message** (run_in_background
 Give every agent this shared context in its prompt:
 - Project path, e.g. `src/$ARGUMENTS/`
 - Project rules: no `static_cast` (use C-style casts), no `&&`/`||` (use `and`/`or`), no `==` (use `IS` macro), no C++ exceptions, 3-space indentation, upper camelCase function args, lower snake_case locals, British English, 120-char columns.
-- Return findings as a structured list: `[SEVERITY] file:line — description`. Severity levels: CRITICAL, HIGH, MEDIUM, LOW.
+- Return bug findings as a structured list: `[SEVERITY] file:line — description`. Severity levels: CRITICAL, HIGH, MEDIUM, LOW.
 - Do NOT fix anything — report only.
+- Only the design-pattern agent may report non-bug improvement suggestions. It must label them as optional design
+  improvements rather than severity-ranked bugs.
 
 ### Agent 1 — Memory & Resource Management
 Scan all C++ and Tiri source files in the targeted sub-project for:
@@ -52,13 +54,30 @@ Scan all C++ and Tiri source files in the targeted sub-project for:
 - Functions that silently succeed when they should fail
 - Missing input validation at module API entry points
 
+### Agent 5 — Design Patterns & Structural Efficiency
+Scan all C++ and Tiri source files in the targeted sub-project for optional design improvements that would simplify
+the code structure without changing behaviour. This agent is not looking for bugs and must not assign severity levels.
+
+Look for:
+- Repeated control-flow, validation, cleanup, or conversion patterns that could be consolidated behind an existing local helper
+- Classes, functions, or modules with responsibilities that are unnecessarily entangled
+- Overly complex call chains, state transitions, or callback flows that could be made more direct
+- Data structures, ownership models, or caching patterns that create unnecessary work or complexity
+- Places where existing Kōtuku patterns, local abstractions, or generated APIs would make the implementation simpler
+
+Return findings as a structured list: `[OPTIONAL] file:line — suggested simplification; expected benefit; tradeoff/risk`.
+Prefer concrete, low-disruption suggestions. Avoid proposing broad rewrites, style-only changes, or speculative
+architecture work unless the affected code already shows repeated complexity.
+
 ## Step 3 — Collect results
 
 Wait for all background agents to complete before proceeding.
 
 ## Step 4 — Compile the prioritised report
 
-Aggregate all agent findings and deduplicate overlapping reports for the same location. Produce the final report in this format:
+Aggregate all bug-agent findings and deduplicate overlapping reports for the same location. Keep the design-pattern
+agent's findings separate from bug findings and do not include them in the severity summary. Produce the final report in
+this format:
 
 ```
 # Bug Scan Report — <module> module
@@ -88,8 +107,19 @@ Aggregate all agent findings and deduplicate overlapping reports for the same lo
 
 ---
 
+## Optional Design Improvements
+These are not bug findings. Treat them as optional refactoring or simplification candidates.
+
+1. `file:line` — Suggested simplification [Agent: Design Patterns & Structural Efficiency]
+   Expected benefit: …
+   Tradeoff/risk: …
+
+---
+
 ## Coverage Notes
 List any subdirectories or file types that were not scanned, or any areas that require manual review beyond static analysis.
+If the design-pattern agent found no worthwhile optional improvements, state that explicitly in this section or omit the
+optional design improvements section.
 ```
 
 Order items within each severity group by the file they appear in, for easy navigation. If no issues are found at a severity level, omit that section.
