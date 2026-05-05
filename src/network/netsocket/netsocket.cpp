@@ -191,6 +191,13 @@ static void clear_connect_timer(extNetSocket *Socket)
 #ifdef _WIN32
 static void complete_win_connect(extNetSocket *Socket)
 {
+   kt::Log log(__FUNCTION__);
+
+   if ((Socket->State != NTC::RESOLVING) and (Socket->State != NTC::CONNECTING)) {
+      log.trace("Ignoring duplicate connect completion while socket is in state %s.", netsocket_state(Socket->State));
+      return;
+   }
+
    Socket->Error = ERR::Okay;
    clear_connect_timer(Socket);
 
