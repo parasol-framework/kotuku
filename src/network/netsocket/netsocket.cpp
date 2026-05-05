@@ -183,6 +183,11 @@ static void connect_name_resolved_nl(objNetLookup *, ERR, const std::string &, c
 static void connect_name_resolved(extNetSocket *, ERR, const std::string &, const std::vector<IPAddress> &);
 static ERR connect_timeout_handler(OBJECTPTR, int64_t, int64_t);
 
+static void clear_connect_timer(extNetSocket *Socket)
+{
+   if (Socket->TimerHandle) { UpdateTimer(Socket->TimerHandle, 0); Socket->TimerHandle = 0; }
+}
+
 static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 {
    kt::Log log;
@@ -315,19 +320,24 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          server_address6.sin6_port = htons(Socket->Port);
          kt::copymem((void *)addr->Data, &server_address6.sin6_addr.s6_addr, 16);
 
-         if ((Socket->Error = win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6))) != ERR::Okay) {
-            if (Socket->Error IS ERR::BufferOverflow) {
+         auto connect_error = win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6));
+         if (connect_error != ERR::Okay) {
+            if (connect_error IS ERR::BufferOverflow) {
                log.trace("IPv6 connection in progress...");
+               Socket->Error = ERR::Okay;
                Socket->setState(NTC::CONNECTING);
             }
             else {
+               Socket->Error = connect_error;
                log.warning("IPv6 connect() failed: %s", GetErrorMsg(Socket->Error));
+               clear_connect_timer(Socket);
                Socket->setState(NTC::DISCONNECTED);
                return;
             }
          }
          else {
             log.trace("IPv6 connect() successful.");
+            clear_connect_timer(Socket);
             Socket->setState(NTC::CONNECTED);
          }
          return;
@@ -421,13 +431,22 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          server_address6.sin6_addr.s6_addr[11] = 0xff;
          *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = htonl(addr->Data[0]);
 
-         Socket->Error = win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6));
-         if (Socket->Error IS ERR::Okay) {
-            log.trace("IPv4-mapped IPv6 connection initiated successfully");
+         auto connect_error = win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6));
+         if (connect_error IS ERR::Okay) {
+            log.trace("IPv4-mapped IPv6 connect() successful.");
+            Socket->Error = ERR::Okay;
+            clear_connect_timer(Socket);
+            Socket->setState(NTC::CONNECTED);
+         }
+         else if (connect_error IS ERR::BufferOverflow) {
+            log.trace("IPv4-mapped IPv6 connection in progress...");
+            Socket->Error = ERR::Okay;
             Socket->setState(NTC::CONNECTING);
          }
          else {
-            log.trace("IPv4-mapped IPv6 connect() failed: %s", GetErrorMsg(Socket->Error));
+            Socket->Error = connect_error;
+            log.warning("IPv4-mapped IPv6 connect() failed: %s", GetErrorMsg(Socket->Error));
+            clear_connect_timer(Socket);
             Socket->setState(NTC::DISCONNECTED);
          }
          return;
@@ -473,12 +492,25 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
    }
 
 #elif _WIN32
-   if ((Socket->Error = win_connect(Socket->Handle, (struct sockaddr *)&server_address, sizeof(server_address))) != ERR::Okay) {
+   auto connect_error = win_connect(Socket->Handle, (struct sockaddr *)&server_address, sizeof(server_address));
+   if (connect_error IS ERR::Okay) {
+      log.trace("connect() successful.");
+      Socket->Error = ERR::Okay;
+      clear_connect_timer(Socket);
+      Socket->setState(NTC::CONNECTED);
+   }
+   else if (connect_error IS ERR::BufferOverflow) {
+      log.trace("Connection in progress...");
+      Socket->Error = ERR::Okay;
+      Socket->setState(NTC::CONNECTING); // Connection isn't complete yet - see win32_netresponse() code for NTE_CONNECT
+   }
+   else {
+      Socket->Error = connect_error;
       log.warning("connect() failed: %s", GetErrorMsg(Socket->Error));
+      clear_connect_timer(Socket);
+      Socket->setState(NTC::DISCONNECTED);
       return;
    }
-
-   Socket->setState(NTC::CONNECTING); // Connection isn't complete yet - see win32_netresponse() code for NTE_CONNECT
 #endif
 }
 

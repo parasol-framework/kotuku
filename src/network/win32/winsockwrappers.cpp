@@ -165,7 +165,7 @@ void win_net_processing(int Status, void *Args)
       if (glSocketsDisabled == 1) {
          const lock_guard<recursive_mutex> lock(csNetLookup);
          for (auto it=glNetLookup.begin(); it != glNetLookup.end(); it++) {
-            WSAAsyncSelect(it->first, glNetWindow, 0, 0); // Turn off network messages
+            WSAAsyncSelect(it->first, glNetWindow, WM_NETWORK, it->second.Flags & ~(FD_READ|FD_WRITE));
          }
       }
    }
@@ -315,7 +315,7 @@ void win_closesocket(WSW_SOCKET SocketHandle)
 ERR win_connect(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 {
    if (connect(SocketHandle, Name, NameLen) IS SOCKET_ERROR) {
-      if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::Okay; // connect() will always 'fail' for non-blocking sockets (however it will continue to connect/succeed...!)
+      if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::BufferOverflow; // Non-blocking connect is still pending.
       return convert_error();
    }
    else return ERR::Okay;

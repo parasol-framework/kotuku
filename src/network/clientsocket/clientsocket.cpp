@@ -368,6 +368,14 @@ static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *Cli
       }
    }
 
+   if ((error IS ERR::Okay) and (ClientSocket->CloseAfterWrite) and (ClientSocket->WriteQueue.Buffer.empty())) {
+      ClientSocket->CloseAfterWrite = false;
+      disconnect(ClientSocket);
+      ClientSocket->InUse--;
+      ClientSocket->OutgoingRecursion--;
+      return;
+   }
+
    // Before feeding new data into the queue, the current buffer must be empty.
 
    if ((error IS ERR::Okay) and ((ClientSocket->WriteQueue.Buffer.empty()) or
@@ -423,6 +431,18 @@ static ERR CLIENTSOCKET_Deactivate(extClientSocket *Self)
 {
    kt::Log log;
    log.branch();
+
+   if ((Self->State IS NTC::CONNECTED) and (!Self->WriteQueue.Buffer.empty())) {
+      log.msg("Delaying disconnect until queued data is flushed.");
+      Self->CloseAfterWrite = true;
+      #ifdef __linux__
+         RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &clientsocket_outgoing, Self);
+      #elif _WIN32
+         win_socketstate(Self->Handle, std::nullopt, true);
+      #endif
+      return ERR::Okay;
+   }
+
    disconnect(Self);
    return ERR::Okay;
 }
