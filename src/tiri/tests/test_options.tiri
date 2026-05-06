@@ -41,6 +41,21 @@ function expect_validate_error(Parser:table, Args:table, Code:num, MessagePart:s
    error('Expected validation to fail')
 end
 
+function expect_options_error(Config:table, Code:num, MessagePart:str):table
+   try
+      options(Config)
+   except err
+      assert(err.code is Code, f"Expected error code '{Code}', got '{err.code} {err.message}'")
+      if MessagePart != nil then
+         assert(err.message:find(MessagePart),
+            f"Expected error message to include '{MessagePart}', got '{err.message}'")
+      end
+      return err
+   end
+
+   error('Expected parser construction to fail')
+end
+
 function set_test_env(Name:str, Value:any)
    task = processing.task()
    err = task.mtSetEnv(Name, Value)
@@ -974,4 +989,289 @@ end
 
    expect_error(fail_parser, array<string> { 'count=bad' }, ERR_WrongType,
       "Parameter 'count' requires an integer.")
+end
+
+@Test function CommandConstructionAliasesAndAddCommand()
+   parser = options({
+      commands = array<table> {
+         {
+            names = array<string> { 'build', 'b' },
+            comment = 'Build the project',
+            args = array<table> {
+               { name = 'input', type = 'folder' }
+            }
+         }
+      }
+   })
+
+   assert(parser.getCommand('build').name is 'build', 'Command lookup should accept canonical names')
+   assert(parser.getCommand('b').name is 'build', 'Command lookup should accept aliases')
+   assert(parser.getCommand('build').getParam('input').name is 'input',
+      'Command parameters should be normalised and searchable')
+
+   added = parser.addCommand({
+      names = array<string> { 'test', 't' },
+      args = array<table> {
+         { name = 'filter' }
+      }
+   })
+
+   assert(added.name is 'test', 'addCommand() should return the normalised command')
+   assert(parser.getCommand('t') is added, 'addCommand() should register aliases')
+   assert(added.getParam('filter').name is 'filter', 'addCommand() should register command parameters')
+end
+
+@Test function DuplicateCommandNamesFail()
+   try
+      options({
+         commands = array<table> {
+            { names = array<string> { 'build', 'b' } },
+            { names = array<string> { 'bundle', 'b' } }
+         }
+      })
+   except e
+      assert(e.code is ERR_DuplicateValue, 'Duplicate command aliases should report a duplicate value')
+      assert(e.message:find("Duplicate command name or alias 'b'"),
+         'Duplicate command aliases should explain the conflict')
+      return
+   end
+
+   error('Duplicate command aliases should fail')
+end
+
+@Test function CommandGlobalDispatchTokenCollisionsFail()
+   expect_options_error({
+      args = array<table> {
+         { name = 'build', kind = 'flag', type = 'bool' }
+      },
+      commands = array<table> {
+         { name = 'build' }
+      }
+   }, ERR_DuplicateValue, "Command name or alias 'build' conflicts with global parameter 'build'.")
+
+   expect_options_error({
+      args = array<table> {
+         { names = array<string> { 'verbose', 'v' }, kind = 'flag', type = 'bool' }
+      },
+      commands = array<table> {
+         { names = array<string> { 'build', 'v' } }
+      }
+   }, ERR_DuplicateValue, "Command name or alias 'v' conflicts with global parameter 'v'.")
+
+   expect_options_error({
+      args = array<table> {
+         { name = 'skip', kind = 'flag', type = 'bool' }
+      },
+      commands = array<table> {
+         { name = 'no-skip' }
+      }
+   }, ERR_DuplicateValue, "Command name or alias 'no-skip' conflicts with global no- token 'no-skip'.")
+
+   expect_options_error({
+      commands = array<table> {
+         { name = 'help' }
+      }
+   }, ERR_DuplicateValue, "Command name or alias 'help' conflicts with automatic help token 'help'.")
+
+   help_command = options({
+      autoHelp = false,
+      commands = array<table> {
+         { name = 'help' }
+      }
+   })
+
+   result = help_command.process(array<string> { 'help' })
+   assert(result.command is 'help', 'Disabling automatic help should allow a help command')
+end
+
+@Test function LaterGlobalParamCannotHideCommand()
+   parser = options({
+      commands = array<table> {
+         { name = 'build' }
+      }
+   })
+
+   try
+      parser.addParam({ name = 'build', kind = 'flag', type = 'bool' })
+   except e
+      assert(e.code is ERR_DuplicateValue, 'Global parameter collisions should report a duplicate value')
+      assert(e.message:find("Parameter name or alias 'build' conflicts with command 'build'."),
+         'Global parameter collisions should explain the command conflict')
+      return
+   end
+
+   error('Global parameters should not be allowed to hide existing commands')
+end
+
+@Test function CommandDispatchAndResultShape()
+   parser = options({
+      args = array<table> {
+         { names = array<string> { 'verbose', 'v' }, kind = 'flag', type = 'bool' }
+      },
+      commands = array<table> {
+         {
+            names = array<string> { 'build', 'b' },
+            args = array<table> {
+               { name = 'input', type = 'folder' },
+               { name = 'release', kind = 'flag', type = 'bool' }
+            }
+         },
+         {
+            name = 'test',
+            args = array<table> {
+               { name = 'filter' }
+            }
+         }
+      }
+   })
+
+   result = parser.process(array<string> { 'v', 'b', 'input=src', 'release' })
+   assert(result.command is 'build', 'Command aliases should dispatch to the canonical name')
+   assert(type(result.globals) is 'table', 'Command results should include global arguments')
+   assert(type(result.args) is 'table', 'Command results should include command arguments')
+   assert(result.globals.verbose is true, 'Global options before the command should parse')
+   assert(result.args.input is 'src', 'Command-specific options should parse after command dispatch')
+   assert(result.args.release is true, 'Command-specific flags should parse after command dispatch')
+end
+
+@Test function CommandSpecificOptionsAreScoped()
+   parser = options({
+      commands = array<table> {
+         {
+            name = 'build',
+            args = array<table> {
+               { name = 'input' }
+            }
+         },
+         {
+            name = 'test',
+            args = array<table> {
+               { name = 'filter' }
+            }
+         }
+      }
+   })
+
+   result = parser.process(array<string> { 'test', 'filter=svg' })
+   assert(result.command is 'test', 'Selected command should be returned')
+   assert(result.args.filter is 'svg', 'Selected command arguments should parse')
+   assert(result.args.input is nil, 'Arguments from other commands should not leak into the selected command')
+
+   expect_error(parser, array<string> { 'build', 'filter=svg' }, ERR_Exception, "Unknown parameter 'filter'.")
+   expect_error(parser, array<string> { 'input=src', 'build' }, ERR_Exception, "Unknown parameter 'input'.")
+end
+
+@Test function MissingAndUnknownCommandsFail()
+   parser = options({
+      commands = array<table> {
+         { name = 'build' }
+      }
+   })
+
+   expect_error(parser, array<string> { }, ERR_ParameterRequired, 'Command is required.')
+   expect_error(parser, array<string> { 'unknown' }, ERR_Exception, "Unknown parameter 'unknown'.")
+   expect_error(parser, { command = 'unknown' }, ERR_ParameterUnknown, "Unknown command 'unknown'.")
+end
+
+@Test function CommandTableInput()
+   parser = options({
+      args = array<table> {
+         { name = 'verbose', kind = 'flag', type = 'bool' }
+      },
+      commands = array<table> {
+         {
+            name = 'build',
+            args = array<table> {
+               { name = 'count', type = 'int' }
+            }
+         }
+      }
+   })
+
+   result = parser.process({
+      command = 'build',
+      globals = { verbose = true },
+      args = { count = '4' }
+   })
+
+   assert(result.command is 'build', 'Table input should select a command')
+   assert(result.globals.verbose is true, 'Table input should parse global command values')
+   assert(result.args.count is 4, 'Table input should parse command arguments')
+end
+
+@Test function CommandEnvironmentValues()
+   set_test_env('KOTUKU_OPTIONS_COMMAND_VERBOSE', 'yes')
+   set_test_env('KOTUKU_OPTIONS_COMMAND_INPUT', 'src')
+
+   parser = options({
+      envPrefix = 'KOTUKU_OPTIONS_COMMAND',
+      args = array<table> {
+         { name = 'verbose', kind = 'flag', type = 'bool' }
+      },
+      commands = array<table> {
+         {
+            name = 'build',
+            args = array<table> {
+               { name = 'input', required = true }
+            }
+         },
+         {
+            name = 'test',
+            args = array<table> {
+               { name = 'filter' }
+            }
+         }
+      }
+   })
+
+   result = parser.process(array<string> { 'build' })
+   assert(result.globals.verbose is true, 'Global environment values should apply during command parsing')
+   assert(result.args.input is 'src', 'Selected command environment values should apply')
+
+   set_test_env('KOTUKU_OPTIONS_COMMAND_VERBOSE', nil)
+   set_test_env('KOTUKU_OPTIONS_COMMAND_INPUT', nil)
+end
+
+@Test function CommandHelpAndHiddenCommands()
+   parser = options({
+      name = 'tool',
+      commands = array<table> {
+         {
+            names = array<string> { 'build', 'b' },
+            comment = 'Build the project',
+            description = 'Compiles project assets.',
+            args = array<table> {
+               { name = 'input', comment = 'Input folder' }
+            }
+         },
+         {
+            name = 'secret',
+            hidden = true,
+            comment = 'Hidden command',
+            args = array<table> {
+               { name = 'token' }
+            }
+         }
+      }
+   })
+
+   help = parser.getHelp()
+   assert(help:find('Commands:'), 'Normal help should include visible commands')
+   assert(help:find('build, b'), 'Normal help should show command aliases')
+   assert(help:find('Build the project'), 'Normal help should include command comments')
+   assert(not help:find('secret'), 'Hidden commands should be excluded from normal help')
+
+   detail = parser.getHelp(nil, 'b')
+   assert(detail:find('build:'), 'Command help should resolve aliases to canonical names')
+   assert(detail:find('Compiles project assets.'), 'Command help should include command descriptions')
+   assert(detail:find('Aliases: b'), 'Command help should include command aliases')
+   assert(detail:find('input=INPUT'), 'Command help should include command parameters')
+
+   result, err = parser.tryProcess(array<string> { 'help=build' })
+   assert(err is nil, 'help=command should produce command help')
+   assert(result.text:find('Build the project'), 'Structured command help should include command detail')
+
+   result = parser.process(array<string> { 'secret', 'token=abc' })
+   assert(result.command is 'secret', 'Hidden commands should remain callable')
+   assert(result.args.token is 'abc', 'Hidden command arguments should parse')
 end
