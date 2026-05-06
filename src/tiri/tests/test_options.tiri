@@ -991,6 +991,28 @@ end
       "Parameter 'count' requires an integer.")
 end
 
+@Test function OnErrorIgnoreRestoresRepeatedArrayDefaultsFlat()
+   parser = options({
+      onError = function(Parser:table, Error:table, Param:table, ArgName:str, RawValue:any):str
+         return 'ignore'
+      end,
+      args = array<table> {
+         {
+            name     = 'tag',
+            type     = 'array',
+            multiple = true,
+            default  = array<string> { 'fallback' },
+            choices  = array<string> { 'fallback' }
+         }
+      }
+   })
+
+   args = parser.process(array<string> { 'tag=bad' })
+   assert(type(args.tag) is 'array', 'Recovered array default should remain an array')
+   assert(#args.tag is 1, 'Recovered array default should not be nested')
+   assert(args.tag[0] is 'fallback', 'Recovered array default should keep the declared item')
+end
+
 @Test function CommandConstructionAliasesAndAddCommand()
    parser = options({
       commands = array<table> {
@@ -1274,4 +1296,234 @@ end
    result = parser.process(array<string> { 'secret', 'token=abc' })
    assert(result.command is 'secret', 'Hidden commands should remain callable')
    assert(result.args.token is 'abc', 'Hidden command arguments should parse')
+end
+
+@Test function EssentialExtendedConverters()
+   parser = options({
+      args = array<table> {
+         { name = 'columns', type = 'csv' },
+         { name = 'items', type = 'array' },
+         { name = 'delay', type = 'duration' },
+         { name = 'timeout', type = 'duration' },
+         { name = 'limit', type = 'size' },
+         { name = 'scale', type = 'percent' },
+         { name = 'pattern', type = 'regex' },
+         { name = 'config', type = 'json' }
+      }
+   })
+
+   args = parser.process(array<string> {
+      'columns=alpha, beta ,gamma',
+      'items={one, two, 3}',
+      'delay=250ms',
+      'timeout=2h',
+      'limit=1.5kb',
+      'scale=50%',
+      'pattern=^a+$',
+      'config={"name":"demo","count":2,"enabled":true,"flags":[true,false]}'
+   })
+
+   assert(#args.columns is 3, 'CSV values should split into an array')
+   assert(args.columns[0] is 'alpha' and args.columns[1] is 'beta' and args.columns[2] is 'gamma',
+      'CSV values should be trimmed')
+   assert(#args.items is 3, 'Array values should parse brace-wrapped input')
+   assert(args.items[0] is 'one' and args.items[1] is 'two' and args.items[2] is '3',
+      'Array values should be normalised to strings')
+   assert(math.abs(args.delay - 0.25) < 0.0001, 'Millisecond durations should convert to seconds')
+   assert(args.timeout is 7200, 'Hour durations should convert to seconds')
+   assert(args.limit is 1536, 'Size units should convert to bytes')
+   assert(args.scale is 0.5, 'Percent values should normalise to a fraction')
+   assert(args.pattern.test('aaa'), 'Regex values should compile')
+   assert(not args.pattern.test('bbb'), 'Regex values should preserve the supplied pattern')
+   assert(args.config.name is 'demo', 'JSON object fields should decode')
+   assert(args.config.count is 2, 'JSON numbers should decode')
+   assert(args.config.enabled is true, 'JSON booleans should decode')
+   assert(type(args.config.flags) is 'array' and #args.config.flags is 2, 'JSON arrays should decode')
+   assert(args.config.flags[0] is true and args.config.flags[1] is false,
+      'JSON arrays should preserve false values')
+end
+
+@Test function ExtendedConvertersApplyToDefaultsEnvironmentChoicesAndCommands()
+   set_test_env('KOTUKU_OPTIONS_STAGE6_TIMEOUT', '5m')
+
+   parser = options({
+      envPrefix = 'KOTUKU_OPTIONS_STAGE6',
+      defaults = { scale = '25%' },
+      args = array<table> {
+         { name = 'timeout', type = 'duration', default = '30s' },
+         { name = 'limit', type = 'size', default = '2mb' },
+         { name = 'scale', type = 'percent' },
+         { name = 'columns', type = 'csv', default = 'left, right' },
+         { name = 'pattern', type = 'regex', default = '^x+$' },
+         { name = 'mode', type = 'duration', choices = array<any> { 60, 120 } },
+         { name = 'tag', type = 'array', multiple = true }
+      },
+      commands = array<table> {
+         {
+            name = 'build',
+            args = array<table> {
+               { name = 'delay', type = 'duration', default = '1h' },
+               { name = 'payload', type = 'json' }
+            }
+         }
+      }
+   })
+
+   result = parser.process(array<string> { 'mode=120s', 'tag=alpha', 'tag=beta', 'build',
+      'delay=2d', 'payload=[1,2,3]' })
+   assert(result.globals.timeout is 300, 'Environment duration values should override parameter defaults')
+   assert(result.globals.limit is 2097152, 'String size defaults should convert')
+   assert(result.globals.scale is 0.25, 'Parser defaults should use the percent converter')
+   assert(#result.globals.columns is 2 and result.globals.columns[0] is 'left',
+      'CSV defaults should convert to arrays')
+   assert(result.globals.pattern.test('xxx'), 'Regex defaults should compile')
+   assert(result.globals.mode is 120, 'Converted duration values should be checked against choices')
+   assert(#result.globals.tag is 2 and result.globals.tag[0] is 'alpha' and result.globals.tag[1] is 'beta',
+      'Repeated array values should flatten into one array')
+   assert(result.args.delay is 172800, 'Command-specific duration values should convert')
+   assert(type(result.args.payload) is 'array' and #result.args.payload is 3,
+      'Command-specific JSON values should decode')
+
+   set_test_env('KOTUKU_OPTIONS_STAGE6_TIMEOUT', nil)
+end
+
+@Test function ExtendedConverterFailuresUseStableErrors()
+   parser = options({
+      args = array<table> {
+         { name = 'delay', type = 'duration' },
+         { name = 'limit', type = 'size' },
+         { name = 'scale', type = 'percent' },
+         { name = 'pattern', type = 'regex' },
+         { name = 'config', type = 'json' }
+      }
+   })
+
+   expect_error(parser, array<string> { 'delay=10' }, ERR_WrongType,
+      "Parameter 'delay' requires a duration with an ms, s, m, h, or d suffix.")
+   expect_error(parser, array<string> { 'delay=1w' }, ERR_WrongType,
+      "Parameter 'delay' requires a duration with an ms, s, m, h, or d suffix.")
+   expect_error(parser, array<string> { 'limit=4pb' }, ERR_WrongType,
+      "Parameter 'limit' requires a size with a b, kb, mb, gb, or tb suffix.")
+   expect_error(parser, array<string> { 'scale=half' }, ERR_WrongType,
+      "Parameter 'scale' requires a percent value.")
+   expect_error(parser, array<string> { 'pattern=(' }, ERR_WrongType,
+      "Parameter 'pattern' requires a valid regex pattern.")
+   expect_error(parser, array<string> { 'config={bad}' }, ERR_WrongType,
+      "Parameter 'config' requires valid JSON.")
+   expect_error(parser, array<string> { 'config=1 2' }, ERR_WrongType,
+      "Parameter 'config' requires valid JSON.")
+end
+
+@Test function DateTimeDomainValidators()
+   set_test_env('KOTUKU_OPTIONS_STAGE7_RELEASE', '2026-05-06T10:30:45.25+01:00')
+
+   parser = options({
+      envPrefix = 'KOTUKU_OPTIONS_STAGE7',
+      args = array<table> {
+         { name = 'day', type = 'date' },
+         { name = 'leap', type = 'date', default = '2024-02-29' },
+         { name = 'start', type = 'time' },
+         { name = 'short', type = 'time', default = '09:15' },
+         { name = 'release', type = 'datetime' }
+      },
+      commands = array<table> {
+         {
+            name = 'build',
+            args = array<table> {
+               { name = 'at', type = 'datetime' }
+            }
+         }
+      }
+   })
+
+   result = parser.process(array<string> { 'day=2025-12-31', 'start=23:59:59.123', 'build',
+      'at=2024-02-29T00:00Z' })
+   assert(result.globals.day is '2025-12-31', 'Date values should be returned unchanged when already normalised')
+   assert(result.globals.leap is '2024-02-29', 'Leap-year default dates should validate')
+   assert(result.globals.start is '23:59:59.123', 'Fractional seconds should validate')
+   assert(result.globals.short is '09:15', 'HH:MM defaults should validate')
+   assert(result.globals.release is '2026-05-06T10:30:45.25+01:00',
+      'Environment date-time values should validate')
+   assert(result.args.at is '2024-02-29T00:00Z', 'Command-specific date-time values should validate')
+
+   set_test_env('KOTUKU_OPTIONS_STAGE7_RELEASE', nil)
+end
+
+@Test function DateTimeDomainValidatorFailures()
+   parser = options({
+      args = array<table> {
+         { name = 'day', type = 'date' },
+         { name = 'start', type = 'time' },
+         { name = 'release', type = 'datetime' }
+      }
+   })
+
+   expect_error(parser, array<string> { 'day=2023-02-29' }, ERR_WrongType,
+      "Parameter 'day' requires an ISO date in YYYY-MM-DD form.")
+   expect_error(parser, array<string> { 'day=2025-13-01' }, ERR_WrongType,
+      "Parameter 'day' requires an ISO date in YYYY-MM-DD form.")
+   expect_error(parser, array<string> { 'start=24:00' }, ERR_WrongType,
+      "Parameter 'start' requires an ISO time value.")
+   expect_error(parser, array<string> { 'start=12:60' }, ERR_WrongType,
+      "Parameter 'start' requires an ISO time value.")
+   expect_error(parser, array<string> { 'release=2023-02-29T12:00Z' }, ERR_WrongType,
+      "Parameter 'release' requires an ISO date-time value.")
+   expect_error(parser, array<string> { 'release=2025-01-01 12:00Z' }, ERR_WrongType,
+      "Parameter 'release' requires an ISO date-time value.")
+   expect_error(parser, array<string> { 'release=2025-01-01T12:00+24:00' }, ERR_WrongType,
+      "Parameter 'release' requires an ISO date-time value.")
+end
+
+@Test function CssColourDomainValidators()
+   set_test_env('KOTUKU_OPTIONS_STAGE7_ACCENT', 'hsl(270deg 80% 50% / 0.75)')
+
+   parser = options({
+      envPrefix = 'KOTUKU_OPTIONS_STAGE7',
+      args = array<table> {
+         { name = 'fill', type = 'colour' },
+         { name = 'accent', type = 'colour' },
+         { name = 'stroke', type = 'colour', default = 'rgb(12, 34, 56, 0.5)' },
+         { name = 'surface', type = 'colour', default = 'oklch(60% 0.15 270deg / 75%)' }
+      },
+      commands = array<table> {
+         {
+            name = 'paint',
+            args = array<table> {
+               { name = 'mark', type = 'colour' }
+            }
+         }
+      }
+   })
+
+   result = parser.process(array<string> { 'fill=rgb(255 0 128 / 50%)', 'paint', 'mark=hsv(120 40% 90%)' })
+   assert(result.globals.fill is 'rgb(255 0 128 / 50%)', 'Modern rgb() colour values should validate')
+   assert(result.globals.accent is 'hsl(270deg 80% 50% / 0.75)', 'Environment hsl() values should validate')
+   assert(result.globals.stroke is 'rgb(12, 34, 56, 0.5)', 'Legacy rgb() defaults should validate')
+   assert(result.globals.surface is 'oklch(60% 0.15 270deg / 75%)', 'oklch() defaults should validate')
+   assert(result.args.mark is 'hsv(120 40% 90%)', 'Command-specific hsv() values should validate')
+
+   set_test_env('KOTUKU_OPTIONS_STAGE7_ACCENT', nil)
+end
+
+@Test function CssColourDomainValidatorFailures()
+   parser = options({
+      args = array<table> {
+         { name = 'fill', type = 'colour' }
+      }
+   })
+
+   expect_error(parser, array<string> { 'fill=lab(50% 0 0)' }, ERR_WrongType,
+      "Parameter 'fill' requires a supported CSS colour value.")
+   expect_error(parser, array<string> { 'fill=rgb(256 0 0)' }, ERR_WrongType,
+      "Parameter 'fill' requires a supported CSS colour value.")
+   expect_error(parser, array<string> { 'fill=rgb(10 20)' }, ERR_WrongType,
+      "Parameter 'fill' requires a supported CSS colour value.")
+   expect_error(parser, array<string> { 'fill=rgb(10, 20, 30 / 0.5)' }, ERR_WrongType,
+      "Parameter 'fill' requires a supported CSS colour value.")
+   expect_error(parser, array<string> { 'fill=hsl(10 50 50%)' }, ERR_WrongType,
+      "Parameter 'fill' requires a supported CSS colour value.")
+   expect_error(parser, array<string> { 'fill=hsv(10 50% 120%)' }, ERR_WrongType,
+      "Parameter 'fill' requires a supported CSS colour value.")
+   expect_error(parser, array<string> { 'fill=oklch(50% -0.2 20)' }, ERR_WrongType,
+      "Parameter 'fill' requires a supported CSS colour value.")
 end

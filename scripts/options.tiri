@@ -3,20 +3,66 @@ Options library.  See Wiki for details.
 --]]
 
    include 'core'
+   import 'json'
    namespace 'options'
 
 local create_parser
-local get_error_instruction
-local apply_error_instruction
-local get_help
-local help_result_marker = {}
-local rx_env_camel = <{ regex.new('([a-z0-9])([A-Z])') }>
-local rx_env_chars = <{ regex.new('[^A-Za-z0-9]+') }>
 
    _LIB[_NS] = function(Config:table):table
       return create_parser(Config)
    end
    options = _LIB[_NS]
+
+local get_error_instruction
+local apply_error_instruction
+local get_help
+
+help_result_marker = {}
+rx_env_camel = <{ regex.new('([a-z0-9])([A-Z])') }>
+rx_env_chars = <{ regex.new('[^A-Za-z0-9]+') }>
+iso_date_pattern =
+   [[((([0-9]{2}([02468][048]|[13579][26]))|(([02468][048]|[13579][26])00))-02-29|]] ..
+   [[[0-9]{4}-((01|03|05|07|08|10|12)-(0[1-9]|[12][0-9]|3[01])|]] ..
+   [[(04|06|09|11)-(0[1-9]|[12][0-9]|30)|02-(0[1-9]|1[0-9]|2[0-8])))]]
+iso_time_pattern = [[([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\.[0-9]+)?)?]]
+iso_timezone_pattern = [[(Z|[+\-]([01][0-9]|2[0-3]):[0-5][0-9])?]]
+rx_iso_date = regex.new('^' .. iso_date_pattern .. '$')
+rx_iso_time = regex.new('^' .. iso_time_pattern .. '$')
+rx_iso_datetime = regex.new('^' .. iso_date_pattern .. 'T' .. iso_time_pattern .. iso_timezone_pattern .. '$')
+css_number_pattern = [[([0-9]+(\.[0-9]+)?|\.[0-9]+)]]
+css_signed_number_pattern = [[([+\-]?([0-9]+(\.[0-9]+)?|\.[0-9]+))]]
+css_percent_pattern = [[([0-9](\.[0-9]+)?|[1-9][0-9](\.[0-9]+)?|100(\.0+)?)%]]
+css_alpha_pattern = [[(0(\.[0-9]+)?|1(\.0+)?|]] .. css_percent_pattern .. [[)]]
+css_rgb_channel_pattern =
+   [[(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]|]] .. css_percent_pattern .. [[)]]
+css_hue_pattern = css_signed_number_pattern .. [[(deg|rad|grad|turn)?]]
+css_lightness_pattern = [[(]] .. css_percent_pattern .. [[|0(\.[0-9]+)?|1(\.0+)?)]]
+css_chroma_pattern = [[(]] .. css_number_pattern .. [[|]] .. css_percent_pattern .. [[)]]
+css_slash_alpha_pattern = [[(\s*\/\s*]] .. css_alpha_pattern .. [[)?]]
+rgb_colour_pattern =
+   [[rgb\(\s*]] .. css_rgb_channel_pattern .. [[\s+]] .. css_rgb_channel_pattern .. [[\s+]] ..
+   css_rgb_channel_pattern .. css_slash_alpha_pattern .. [[\s*\)|rgb\(\s*]] .. css_rgb_channel_pattern ..
+   [[\s*,\s*]] .. css_rgb_channel_pattern .. [[\s*,\s*]] .. css_rgb_channel_pattern ..
+   [[(\s*,\s*]] .. css_alpha_pattern .. [[)?\s*\)]]
+hsl_colour_pattern =
+   [[hsl\(\s*]] .. css_hue_pattern .. [[\s+]] .. css_percent_pattern .. [[\s+]] .. css_percent_pattern ..
+   css_slash_alpha_pattern .. [[\s*\)|hsl\(\s*]] .. css_hue_pattern .. [[\s*,\s*]] ..
+   css_percent_pattern .. [[\s*,\s*]] .. css_percent_pattern .. [[(\s*,\s*]] .. css_alpha_pattern ..
+   [[)?\s*\)]]
+hsv_colour_pattern =
+   [[hsv\(\s*]] .. css_hue_pattern .. [[\s+]] .. css_percent_pattern .. [[\s+]] .. css_percent_pattern ..
+   css_slash_alpha_pattern .. [[\s*\)|hsv\(\s*]] .. css_hue_pattern .. [[\s*,\s*]] ..
+   css_percent_pattern .. [[\s*,\s*]] .. css_percent_pattern .. [[(\s*,\s*]] .. css_alpha_pattern ..
+   [[)?\s*\)]]
+oklch_colour_pattern =
+   [[oklch\(\s*]] .. css_lightness_pattern .. [[\s+]] .. css_chroma_pattern .. [[\s+]] ..
+   css_hue_pattern .. css_slash_alpha_pattern .. [[\s*\)]]
+
+rx_css_colour = regex.new(
+   '^(' .. rgb_colour_pattern .. '|' .. hsl_colour_pattern .. '|' .. hsv_colour_pattern .. '|' ..
+   oklch_colour_pattern .. ')$',
+   regex.ICASE
+)
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -169,7 +215,266 @@ function split_token(Token:str):<str, any, bool>
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Convert a raw parameter value with one of the Stage 1 built-in converters.
+-- Return true when the parameter's converter consumes the complete repeated value list itself.
+
+function converts_repeated_values(Param:table):bool
+   return Param.type is 'array'
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert an existing array or table into an array of strings.
+
+function string_array(Value:any):array
+   result = array<string>
+
+   for item in values(Value) do
+      result:push(tostring(item))
+   end
+
+   return result
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert a comma-separated string into an array of trimmed strings.
+
+function convert_csv(Value:any, Param:table):array
+   if type(Value) is 'array' or type(Value) is 'table' then
+      return string_array(Value)
+   end
+
+   if type(Value) != 'string' then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires a comma-separated string."
+   end
+
+   result = array<string>
+   for item in values(Value:split(',')) do
+      result:push(item:trim())
+   end
+
+   return result
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert a raw value into an array of strings.
+
+function convert_array(Value:any, Param:table):array
+   if type(Value) is 'array' or type(Value) is 'table' then
+      return string_array(Value)
+   end
+
+   if type(Value) != 'string' then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires an array value."
+   end
+
+   text = Value:trim()
+   if text:startsWith('{') and text:endsWith('}') then
+      text = text:substr(1, #text - 1)
+   end
+
+   return convert_csv(text, Param)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Split a string into a number and trailing unit suffix.
+
+function split_number_unit(Value:any, Param:table, Description:str):<num, str>
+   if type(Value) != 'string' then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires {Description}."
+   end
+
+   text = Value:trim()
+   if text is '' then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires {Description}."
+   end
+
+   index = #text
+   while index > 0 do
+      ch = text:substr(index - 1, index):lower()
+      if not ((ch >= 'a' and ch <= 'z') or ch is '%') then
+         break
+      end
+      index -= 1
+   end
+
+   number_text = text:substr(0, index):trim()
+   unit = text:substr(index):trim():lower()
+   number = tonumber(number_text)
+   if number is nil or unit is '' then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires {Description}."
+   end
+
+   return number, unit
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert a duration string into seconds.
+
+function convert_duration(Value:any, Param:table):num
+   if type(Value) is 'number' then return Value end
+
+   number, unit = split_number_unit(Value, Param, "a duration with an ms, s, m, h, or d suffix")
+   multiplier = ({
+      ms = 0.001,
+      s  = 1,
+      m  = 60,
+      h  = 3600,
+      d  = 86400
+   })[unit]
+
+   if multiplier is nil then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires a duration with an ms, s, m, h, or d suffix."
+   end
+
+   return number * multiplier
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert a size string into bytes.
+
+function convert_size(Value:any, Param:table):num
+   if type(Value) is 'number' then return Value end
+
+   number, unit = split_number_unit(Value, Param, "a size with a b, kb, mb, gb, or tb suffix")
+   multiplier = ({
+      b  = 1,
+      kb = 1024,
+      mb = 1024 * 1024,
+      gb = 1024 * 1024 * 1024,
+      tb = 1024 * 1024 * 1024 * 1024
+   })[unit]
+
+   if multiplier is nil then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires a size with a b, kb, mb, gb, or tb suffix."
+   end
+
+   return number * multiplier
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert a percent value into a normalised fraction.
+
+function convert_percent(Value:any, Param:table):num
+   if type(Value) is 'number' then return Value end
+
+   text = tostring(Value):trim()
+   if text:endsWith('%') then
+      number_text = text:substr(0, #text - 1):trim()
+      number = tonumber(number_text)
+      if number is nil then
+         raise ERR_WrongType, f"Parameter '{Param.name}' requires a percent value."
+      end
+      return number / 100
+   end
+
+   number = tonumber(text)
+   if number is nil then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires a percent value."
+   end
+   return number
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Compile a regular expression parameter.
+
+function convert_regex(Value:any, Param:table):any
+   if type(Value) is 'userdata' then return Value end
+   if type(Value) != 'string' then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires a regex pattern."
+   end
+
+   param_name = Param.name
+   try
+      return regex.new(Value)
+   except e
+      raise ERR_WrongType, f"Parameter '{param_name}' requires a valid regex pattern."
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Decode a JSON parameter and reject trailing non-whitespace input.
+
+function convert_json(Value:any, Param:table):any
+   if type(Value) != 'string' then return Value end
+
+   param_name = Param.name
+   try
+      decoded, pos = json.decode(Value)
+      if pos < #Value and Value:substr(pos):trim() != '' then
+         raise ERR_Syntax, 'Trailing content after JSON value.'
+      end
+
+      return decoded
+   except e
+      raise ERR_WrongType, f"Parameter '{param_name}' requires valid JSON."
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Validate an ISO date string in YYYY-MM-DD form.
+
+function convert_date(Value:any, Param:table):str
+   if type(Value) != 'string' then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires an ISO date in YYYY-MM-DD form."
+   end
+
+   text = Value:trim()
+   if not rx_iso_date.test(text) then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires an ISO date in YYYY-MM-DD form."
+   end
+
+   return text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Validate an ISO time string in HH:MM or HH:MM:SS form, with optional fractional seconds.
+
+function convert_time(Value:any, Param:table):str
+   if type(Value) != 'string' then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires an ISO time value."
+   end
+
+   text = Value:trim()
+   if not rx_iso_time.test(text) then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires an ISO time value."
+   end
+
+   return text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Validate an ISO date-time string with an optional timezone offset.
+
+function convert_datetime(Value:any, Param:table):str
+   if type(Value) != 'string' then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires an ISO date-time value."
+   end
+
+   text = Value:trim()
+   if not rx_iso_datetime.test(text) then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires an ISO date-time value."
+   end
+
+   return text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Validate supported CSS colour function syntax.
+
+function convert_colour(Value:any, Param:table):str
+   if type(Value) != 'string' then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires a supported CSS colour value."
+   end
+
+   text = Value:trim()
+   if not rx_css_colour.test(text) then
+      raise ERR_WrongType, f"Parameter '{Param.name}' requires a supported CSS colour value."
+   end
+
+   return text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert a raw parameter value with one of the built-in converters.
 
 function convert_builtin(TypeName:str, Value:any, Param:table):any
    if TypeName is 'str' or TypeName is 'string' or TypeName is 'enum' then
@@ -204,6 +509,28 @@ function convert_builtin(TypeName:str, Value:any, Param:table):any
    elseif TypeName is 'path' or TypeName is 'file' or TypeName is 'folder' then
       if type(Value) is 'string' then return Value, nil end
       return tostring(Value)
+   elseif TypeName is 'csv' then
+      return convert_csv(Value, Param)
+   elseif TypeName is 'array' then
+      return convert_array(Value, Param)
+   elseif TypeName is 'duration' then
+      return convert_duration(Value, Param)
+   elseif TypeName is 'size' then
+      return convert_size(Value, Param)
+   elseif TypeName is 'percent' then
+      return convert_percent(Value, Param)
+   elseif TypeName is 'regex' then
+      return convert_regex(Value, Param)
+   elseif TypeName is 'json' then
+      return convert_json(Value, Param)
+   elseif TypeName is 'date' then
+      return convert_date(Value, Param)
+   elseif TypeName is 'time' then
+      return convert_time(Value, Param)
+   elseif TypeName is 'datetime' then
+      return convert_datetime(Value, Param)
+   elseif TypeName is 'colour' then
+      return convert_colour(Value, Param)
    end
 
    raise ERR_InvalidType, f"Parameter '{Param.name}' has unknown type '{TypeName}'"
@@ -591,12 +918,16 @@ function convert_result(Parser:table, RawResult:table, ArgNames:table, Presence:
             if param.multiple then
                assert(type(raw_value) is 'array', f"Parameter '{param.name}' should contain an array of values.")
 
-               result_values = array<any>
-               for item in values(raw_value) do
-                  result_values:push(convert_value(Parser, param, item))
-               end
+               if converts_repeated_values(param) then
+                  result[param.name] = convert_value(Parser, param, raw_value)
+               else
+                  result_values = array<any>
+                  for item in values(raw_value) do
+                     result_values:push(convert_value(Parser, param, item))
+                  end
 
-               result[param.name] = result_values
+                  result[param.name] = result_values
+               end
             else
                result[param.name] = convert_value(Parser, param, raw_value)
             end
@@ -1038,6 +1369,10 @@ function convert_param_default(Parser:table, Param:table):<bool, any>
    end
 
    if Param.multiple then
+      if converts_repeated_values(Param) then
+         return true, convert_value(Parser, Param, Param.default)
+      end
+
       result_values = array<any>
 
       if type(Param.default) is 'array' then
