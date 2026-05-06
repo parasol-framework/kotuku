@@ -6,6 +6,9 @@ Options library.  See Wiki for details.
    namespace 'options'
 
 local create_parser
+local get_error_instruction
+local apply_error_instruction
+local help_result_marker = {}
 local rx_env_camel = <{ regex.new('([a-z0-9])([A-Z])') }>
 local rx_env_chars = <{ regex.new('[^A-Za-z0-9]+') }>
 
@@ -94,7 +97,10 @@ function clone_definition(Definition:table):table
    param.type     ?= 'str'
    param.required ?= false
    param.multiple ?= false
+   param.hidden   ?= false
    param.names     = names
+   param.group    ?= param.kind is 'positional' ? 'Arguments' :> 'Options'
+   param.metavar  ?= param.name:upper()
 
    if param.kind != 'option' and param.kind != 'flag' and param.kind != 'positional' then
       raise ERR_WrongType, f"Unsupported parameter kind '{param.kind}'."
@@ -536,23 +542,30 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Convert the final source values after precedence has selected the winning layer.
 
-function convert_result(Parser:table, RawResult:table):table
+function convert_result(Parser:table, RawResult:table, ArgNames:table, Presence:table):table
    result = {}
 
    for param in values(Parser._params) do
       raw_value = RawResult[param.name]
       if raw_value != nil then
-         if param.multiple then
-            assert(type(raw_value) is 'array', f"Parameter '{param.name}' should contain an array of values.")
+         try
+            if param.multiple then
+               assert(type(raw_value) is 'array', f"Parameter '{param.name}' should contain an array of values.")
 
-            result_values = array<any>
-            for item in values(raw_value) do
-               result_values:push(convert_value(Parser, param, item))
+               result_values = array<any>
+               for item in values(raw_value) do
+                  result_values:push(convert_value(Parser, param, item))
+               end
+
+               result[param.name] = result_values
+            else
+               result[param.name] = convert_value(Parser, param, raw_value)
             end
-
-            result[param.name] = result_values
-         else
-            result[param.name] = convert_value(Parser, param, raw_value)
+         except e
+            instruction = get_error_instruction(Parser, e, param, ArgNames[param.name] ?? param.name, raw_value)
+            if not apply_error_instruction(Parser, result, Presence, param, instruction) then
+               raise e.code, e.message
+            end
          end
       end
    end
@@ -594,6 +607,320 @@ function value_list(Values:any):str
    end
 
    return text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Join prepared text lines into one help string.
+
+function line_list(Lines:array):str
+   text = ''
+
+   for line in values(Lines) do
+      if text != '' then text ..= '\n' end
+      text ..= line
+   end
+
+   return text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Return the readable value label for a parameter.
+
+function param_metavar(Param:table):str
+   if Param.metavar then return tostring(Param.metavar) end
+   return Param.name:upper()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Return the parameter group label used by normal help.
+
+function param_group(Param:table):str
+   if Param.group then return Param.group end
+   if Param.kind is 'positional' then return 'Arguments' end
+   return 'Options'
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Format one parameter for the usage line.
+
+function usage_token(Param:table):str
+   metavar = param_metavar(Param)
+   text = ''
+
+   if Param.kind is 'positional' then
+      text = Param.multiple ? f"<{metavar}...>" :> f"<{metavar}>"
+   elseif Param.kind is 'flag' then
+      text = Param.name
+   else
+      text = f"{Param.name}={metavar}"
+   end
+
+   if Param.required then return text end
+   return f"[{text}]"
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Format one parameter's accepted command-line spelling for help.
+
+function param_invocation(Param:table):str
+   text = ''
+   metavar = param_metavar(Param)
+
+   for name in values(Param.names) do
+      if text != '' then text ..= ', ' end
+
+      if Param.kind is 'flag' then
+         text ..= name
+      elseif Param.kind is 'positional' then
+         text ..= metavar
+      else
+         text ..= f"{name}={metavar}"
+      end
+   end
+
+   if Param.kind is 'flag' then
+      text ..= f", no-{Param.name}"
+   end
+
+   return text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Format default and required annotations for normal help.
+
+function param_annotations(Param:table):str
+   annotations = array<string>
+
+   if Param.required then
+      annotations:push('required')
+   end
+
+   if Param.default != nil then
+      annotations:push(f"default: {Param.default}")
+   end
+
+   if #annotations is 0 then return '' end
+   return f" ({value_list(annotations)})"
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Append parser metadata fields to help output.
+
+function append_metadata(Lines:array, Parser:table)
+   if Parser.epilog then
+      Lines:push('')
+      Lines:push(Parser.epilog)
+   end
+
+   if Parser.copyright then
+      Lines:push('')
+      Lines:push(Parser.copyright)
+   end
+
+   if Parser.license then
+      Lines:push(Parser.license)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Validate a help format name.
+
+function check_help_format(Format:any)
+   if Format is nil or Format is 'text' then return end
+   raise ERR_InvalidType, f"Unsupported help format '{Format}'."
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generate a compact usage line for the parser.
+
+function build_usage(Parser:table):str
+   text = f"Usage: {Parser.name}"
+
+   for param in values(Parser._params) do
+      if param.hidden then continue end
+      text ..= ' ' .. usage_token(param)
+   end
+
+   return text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generate normal parser help.
+
+function build_normal_help(Parser:table):str
+   lines = array<string>
+
+   lines:push(Parser.name)
+   if Parser.description then
+      lines:push('')
+      lines:push(Parser.description)
+   end
+
+   lines:push('')
+   lines:push(build_usage(Parser))
+
+   groups = array<string>
+   seen_groups = {}
+
+   for param in values(Parser._params) do
+      if param.hidden then continue end
+
+      group = param_group(param)
+      if not seen_groups[group] then
+         groups:push(group)
+         seen_groups[group] = true
+      end
+   end
+
+   for group in values(groups) do
+      lines:push('')
+      lines:push(group .. ':')
+
+      for param in values(Parser._params) do
+         if param.hidden or param_group(param) != group then continue end
+
+         lines:push('  ' .. param_invocation(param) .. param_annotations(param))
+         if param.comment then
+            lines:push('      ' .. param.comment)
+         end
+      end
+   end
+
+   append_metadata(lines, Parser)
+   return line_list(lines)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generate detailed help for one parameter.
+
+function build_param_help(Parser:table, Topic:str):str
+   param = Parser._lookup[Topic]
+   if param is nil then
+      raise ERR_ParameterUnknown, f"Unknown help topic '{Topic}'."
+   end
+
+   lines = array<string>
+
+   lines:push(f"{param.name}:")
+   if param.comment then
+      lines:push(param.comment)
+   end
+
+   if param.description then
+      lines:push('')
+      lines:push(param.description)
+   end
+
+   lines:push('')
+   lines:push('Usage: ' .. param_invocation(param))
+   lines:push('Kind: ' .. param.kind)
+   if type(param.type) is 'string' then
+      lines:push('Type: ' .. param.type)
+   else
+      lines:push('Type: custom')
+   end
+
+   if #param.names > 1 then
+      aliases = ''
+      for index, name in ipairs(param.names) do
+         if index is 0 then continue end
+         if aliases != '' then aliases ..= ', ' end
+         aliases ..= name
+      end
+      lines:push('Aliases: ' .. aliases)
+   end
+
+   if param.required then
+      lines:push('Required: yes')
+   end
+
+   if param.default != nil then
+      lines:push(f"Default: {param.default}")
+   end
+
+   if param.choices then
+      lines:push('Choices: ' .. value_list(param.choices))
+   end
+
+   return line_list(lines)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generate parser help in a supported format.
+
+function get_help(Parser:table, Format:any, Topic:any):str
+   check_help_format(Format)
+
+   if Topic then
+      return build_param_help(Parser, Topic)
+   end
+
+   return build_normal_help(Parser)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert an onError() return value to a supported instruction.
+
+function normalise_error_instruction(Instruction:any):str
+   if Instruction is 'ignore' or Instruction is 'skip' then return Instruction end
+   return 'fail'
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Ask the parser's error callback how to handle a rejected parameter value.
+
+get_error_instruction = function(Parser:table, Error:table, Param:table, ArgName:str, RawValue:any):str
+   if not Parser.onError then return 'fail' end
+
+   instruction = Parser.onError(Parser, Error, Param, ArgName, RawValue)
+   return normalise_error_instruction(instruction)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert a parameter's own default value for the onError('ignore') path.
+
+function convert_param_default(Parser:table, Param:table):<bool, any>
+   if Param.default is nil then
+      return false, nil
+   end
+
+   if Param.multiple then
+      result_values = array<any>
+
+      if type(Param.default) is 'array' then
+         for item in values(Param.default) do
+            result_values:push(convert_value(Parser, Param, item))
+         end
+      else
+         result_values:push(convert_value(Parser, Param, Param.default))
+      end
+
+      return true, result_values
+   end
+
+   return true, convert_value(Parser, Param, Param.default)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Return a parameter to its default-or-absent state after an onError instruction.
+
+apply_error_instruction = function(Parser:table, Result:table, Presence:table, Param:table, Instruction:str):bool
+   Result[Param.name] = nil
+   Presence[Param.name] = nil
+
+   if Instruction is 'skip' then
+      return true
+   end
+
+   if Instruction is 'ignore' then
+      has_default, default_value = convert_param_default(Parser, Param)
+      if has_default then
+         Result[Param.name] = default_value
+      end
+      return true
+   end
+
+   return false
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -745,9 +1072,23 @@ function validate_result(Parser:table, Result:table, ArgNames:table, Presence:ta
 
    for param in values(Parser._params) do
       if Result[param.name] != nil then
-         validate_param_value(Parser, param, ArgNames[param.name] ?? param.name, Result[param.name])
+         try
+            validate_param_value(Parser, param, ArgNames[param.name] ?? param.name, Result[param.name])
+         except e
+            instruction = get_error_instruction(Parser, e, param, ArgNames[param.name] ?? param.name,
+               Result[param.name])
+            if not apply_error_instruction(Parser, Result, Presence, param, instruction) then
+               raise e.code, e.message
+            end
+
+            if Result[param.name] != nil then
+               validate_param_value(Parser, param, param.name, Result[param.name])
+            end
+         end
       end
    end
+
+   check_required(Parser, Result)
 
    for param in values(Parser._params) do
       validate_relationships(Parser, param, Result, Presence)
@@ -791,6 +1132,85 @@ function parse_arg_fallback(Parser:table, Result:table, ArgNames:table, Presence
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Detect automatic help requests in ordered input.
+
+function find_ordered_help(Parser:table, Input:array):<bool, str>
+   if not Parser.autoHelp then return false, nil end
+
+   pos_index = 0
+
+   for token in values(Input) do
+      name, value, has_explicit_value = split_token(token)
+      if Parser._named_lookup[name] then
+         continue
+      end
+
+      if not has_explicit_value and name:startsWith('no-') and Parser._named_lookup[name:substr(3)] then
+         continue
+      end
+
+      if not has_explicit_value and pos_index < #Parser._positionals then
+         param = Parser._positionals[pos_index]
+         if not param.multiple then
+            pos_index++
+         end
+         continue
+      end
+
+      if name is Parser.helpArg then
+         return true, has_explicit_value ? value :> nil
+      end
+   end
+
+   return false, nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Detect automatic help requests in keyed table input.
+
+function find_table_help(Parser:table, Input:table):<bool, str>
+   if not Parser.autoHelp then return false, nil end
+   if Parser._lookup[Parser.helpArg] then return false, nil end
+
+   for name, value in pairs(Input) do
+      if name is Parser.helpArg then
+         if value is true then return true, nil end
+         return true, tostring(value)
+      end
+   end
+
+   return false, nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Detect automatic help requests through the arg() fallback.
+
+function find_arg_help(Parser:table):<bool, str>
+   if not Parser.autoHelp then return false, nil end
+   if Parser._lookup[Parser.helpArg] then return false, nil end
+
+   value = arg(Parser.helpArg, nil)
+   if value then
+      if value is true then return true, nil end
+      return true, tostring(value)
+   end
+
+   return false, nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Build the structured tryProcess() result for a help request.
+
+function make_help_result(Parser:table, Topic:any):table
+   return {
+      help        = true,
+      topic       = Topic,
+      text        = get_help(Parser, nil, Topic),
+      _helpMarker = help_result_marker
+   }
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Parse the selected input source into a typed argument table.
 
 function parse_input(Parser:table, Input:any, Options:table):table
@@ -801,14 +1221,26 @@ function parse_input(Parser:table, Input:any, Options:table):table
    if Input is nil then
       task_parameters = get_task_parameters(Options)
       if task_parameters then
-         parse_ordered_input(Parser, input_result, input_arg_names, input_presence,
-            get_script_arguments(task_parameters))
+         script_arguments = get_script_arguments(task_parameters)
+         wants_help, help_topic = find_ordered_help(Parser, script_arguments)
+         if wants_help then return make_help_result(Parser, help_topic) end
+
+         parse_ordered_input(Parser, input_result, input_arg_names, input_presence, script_arguments)
       else
+         wants_help, help_topic = find_arg_help(Parser)
+         if wants_help then return make_help_result(Parser, help_topic) end
+
          parse_arg_fallback(Parser, input_result, input_arg_names, input_presence)
       end
    elseif type(Input) is 'array' then
+      wants_help, help_topic = find_ordered_help(Parser, Input)
+      if wants_help then return make_help_result(Parser, help_topic) end
+
       parse_ordered_input(Parser, input_result, input_arg_names, input_presence, Input)
    elseif type(Input) is 'table' then
+      wants_help, help_topic = find_table_help(Parser, Input)
+      if wants_help then return make_help_result(Parser, help_topic) end
+
       parse_table_input(Parser, input_result, input_arg_names, input_presence, Input)
    else
       raise ERR_WrongType, 'Input must be an array, table, or nil.'
@@ -824,7 +1256,7 @@ function parse_input(Parser:table, Input:any, Options:table):table
    apply_environment(Parser, raw_result, arg_names, presence)
    merge_input_result(Parser, raw_result, arg_names, presence, input_result, input_arg_names, input_presence)
 
-   result = convert_result(Parser, raw_result)
+   result = convert_result(Parser, raw_result, arg_names, presence)
    return validate_result(Parser, result, arg_names, presence)
 end
 
@@ -880,10 +1312,20 @@ create_parser = function(Config:table):table
       license     = Config.license,
       envPrefix   = Config.envPrefix,
       defaults    = Config.defaults,
-      strict      = Config.strict
+      strict      = Config.strict,
+      autoHelp    = Config.autoHelp,
+      helpArg     = Config.helpArg,
+      onError     = Config.onError,
+      onHelp      = Config.onHelp
    }
 
+   parser.name    ?= 'script'
    if parser.strict is nil then parser.strict = true end
+   if parser.autoHelp is nil then parser.autoHelp = true end
+   parser.helpArg ?= 'help'
+   validate_name(parser.helpArg, 'helpArg')
+   assert(parser.onError is nil or type(parser.onError) is 'function', 'onError must be a function.')
+   assert(parser.onHelp is nil or type(parser.onHelp) is 'function', 'onHelp must be a function.')
 
    parser._params       = array<table>
    parser._positionals  = array<table>
@@ -899,8 +1341,9 @@ create_parser = function(Config:table):table
    the canonical parameter name and later names are aliases.  Omitted `kind`, `type`, and `required` fields default to
    `option`, `str`, and `false` respectively.
 
-   Duplicate canonical names or aliases are rejected.  The returned table is the normalised parameter definition stored
-   by the parser, and can be retrieved later with parser.getParam().
+   Duplicate canonical names or aliases are rejected.  Positional parameters are stored in declaration order, and a
+   multiple positional parameter must be the final positional definition.  The returned table is the normalised
+   parameter definition stored by the parser, and can be retrieved later with parser.getParam().
 
    -INPUT-
    Definition: Parameter definition table to validate and register.
@@ -952,7 +1395,8 @@ create_parser = function(Config:table):table
 
    Converts supplied values using the registered parameter definitions, then applies required checks, validation fields,
    relationship checks, and exec callbacks.  This is useful when callers have already assembled an argument table and
-   need to re-run the parser's validation rules.
+   need to re-run the parser's validation rules.  Rejected values are passed through the parser's `onError` callback
+   when one is configured.
 
    -INPUT-
    Args: Argument table keyed by canonical parameter name or alias.
@@ -968,8 +1412,57 @@ create_parser = function(Config:table):table
       local presence = {}
 
       parse_table_input(parser, raw_result, arg_names, presence, Args)
-      local result = convert_result(parser, raw_result)
+      local result = convert_result(parser, raw_result, arg_names, presence)
       return validate_result(parser, result, arg_names, presence)
+   end
+
+   @Doc(text=[[
+   Return the parser's usage line
+
+   Generates a compact plain-text usage line from the parser name and visible parameter definitions.  Hidden parameters
+   remain parseable but are excluded from generated usage and help.  Required parameters are shown without brackets;
+   optional parameters are bracketed.  Option metavars use the parameter's `metavar` field or the upper-case canonical
+   name.
+
+   -RESULT-
+   str: Plain-text usage line.
+   ]])
+   parser.getUsage = function():str
+      return build_usage(parser)
+   end
+
+   @Doc(text=[[
+   Return parser help text
+
+   Generates normal parser help or detailed help for a parameter topic.  Normal help includes parser metadata,
+   grouped visible parameters, aliases, metavars, defaults, required markers, and comments.  Detailed help accepts a
+   canonical parameter name or alias and may include the parameter description, aliases, type, default, and choices.
+   `Format` may be `nil` or `text` in this stage.  Unsupported formats fail with a structured parser error so callers
+   do not mistake placeholder output for a real renderer.
+
+   -INPUT-
+   Format: Help format name, or `nil` for plain text.
+   Topic: Canonical parameter name or alias for detailed help, or `nil` for normal help.
+
+   -RESULT-
+   str: Generated help text.
+   ]])
+   parser.getHelp = function(Format:any, Topic:any):str
+      return get_help(parser, Format, Topic)
+   end
+
+   @Doc(text=[[
+   Print parser help text
+
+   Prints the text generated by parser.getHelp().  The same format and topic rules apply, including structured
+   failures for unsupported formats or unknown topics.
+
+   -INPUT-
+   Format: Help format name, or `nil` for plain text.
+   Topic: Canonical parameter name or alias for detailed help, or `nil` for normal help.
+   ]])
+   parser.printHelp = function(Format:any, Topic:any)
+      print(parser.getHelp(Format, Topic))
    end
 
    @Doc(text=[[
@@ -983,16 +1476,18 @@ create_parser = function(Config:table):table
    values, or `nil`.  When `Input` is `nil`, parsing reads ordered arguments from the active task parameters after the
    script path.  If ordered task input is unavailable, named script arguments are read from `arg()`.  Explicit arrays
    and tables bypass task input.  Named options use `name=value` syntax unless a default allows a bare option token.
-   Flags accept `name`, `no-name`, or `name=value` syntax.
+   Flags accept `name`, `no-name`, or `name=value` syntax.  Automatic help requests return a structured help table
+   with `help`, `topic`, and `text` fields instead of printing.
 
-   `Options` is reserved for later parser controls.
+   `Options.taskParameters` may be an ordered argument array used instead of the active task parameters.  Set it to
+   `false` to force the `arg()` fallback.
 
    -INPUT-
    Input: Explicit input to parse, or `nil` to use the default ordered task argument source.
-   Options: Reserved for later parser controls.
+   Options: Optional parser controls, currently `taskParameters`.
 
    -RESULTS-
-   table: Parsed argument table, or `nil` when parsing fails.
+   table: Parsed argument table, structured help table, or `nil` when parsing fails.
    table: Standard exception table when parsing fails.
    ]])
    parser.tryProcess = function(Input:any, Options:table):<table, table>
@@ -1008,29 +1503,39 @@ create_parser = function(Config:table):table
 
    Parses the supplied input with this parser's parameter definitions.  This is the convenient parsing API intended for
    normal scripts: successful parses return the typed argument table, while parse failures are raised as normal Tiri
-   errors.
+   errors after any configured `onError` recovery has been applied.
 
    Input may be an array of command-line tokens such as `array<string> { 'scene.svg', 'verbose' }`, a table of keyed
    values, or `nil`.  When `Input` is `nil`, parsing reads ordered arguments from the active task parameters after the
    script path.  If ordered task input is unavailable, named script arguments are read from `arg()`.  Explicit arrays
    and tables bypass task input.  Named options use `name=value` syntax unless a default allows a bare option token.
-   Flags accept `name`, `no-name`, or `name=value` syntax.
+   Flags accept `name`, `no-name`, or `name=value` syntax.  Automatic help requests print generated help or dispatch
+   it through `onHelp`, then return `nil`.
 
    Use parser.tryProcess() when parser failures should be returned instead of raised.
 
-   `Options` is reserved for later parser controls.
+   `Options.taskParameters` may be an ordered argument array used instead of the active task parameters.  Set it to
+   `false` to force the `arg()` fallback.
 
    -INPUT-
    Input: Explicit input to parse, or `nil` to use the default ordered task argument source.
-   Options: Reserved for later parser controls.
+   Options: Optional parser controls, currently `taskParameters`.
 
    -RESULT-
-   table: Parsed argument table.
+   table: Parsed argument table, or `nil` when automatic help is handled.
    ]])
    parser.process = function(Input:any, Options:table):table
       local result, err = parser.tryProcess(Input, Options)
       if err then
          raise err.code, err.message
+      end
+      if result and result._helpMarker is help_result_marker then
+         if parser.onHelp then
+            parser.onHelp(parser, result.text, result.topic)
+         else
+            print(result.text)
+         end
+         return nil
       end
       return result
    end

@@ -741,3 +741,237 @@ end
 
    expect_error(parser, array<string> { }, ERR_Args, "Parameter 'mode' must be one of: fast, slow.")
 end
+
+@Test function UsageAndNormalHelp()
+   parser = options({
+      name        = 'vuepoint',
+      description = 'View vector documents',
+      epilog      = 'End of help.',
+      args = array<table> {
+         { name = 'input', kind = 'positional', type = 'file', required = true, comment = 'Input document' },
+         { names = array<string> { 'output', 'o' }, type = 'file', metavar = 'PATH', default = 'preview.png',
+            comment = 'Output preview' },
+         { names = array<string> { 'verbose', 'v' }, kind = 'flag', type = 'bool', comment = 'Enable logs' }
+      }
+   })
+
+   usage = parser.getUsage()
+   assert(usage:find('Usage: vuepoint'), 'Usage should include the parser name')
+   assert(usage:find('<INPUT>'), 'Usage should include required positionals')
+   assert(usage:find('output=PATH'), 'Usage should include option metavars')
+
+   help = parser.getHelp()
+   assert(help:find('View vector documents'), 'Normal help should include the description')
+   assert(help:find('Arguments:'), 'Normal help should group positional arguments')
+   assert(help:find('Options:'), 'Normal help should group named options')
+   assert(help:find('output=PATH, o=PATH'), 'Normal help should show aliases')
+   assert(help:find('default: preview.png'), 'Normal help should show defaults')
+   assert(help:find('verbose, v, no-verbose'), 'Normal help should show flag aliases and negation')
+   assert(help:find('End of help.'), 'Normal help should include the epilog')
+end
+
+@Test function DetailedHelpAndHiddenParameters()
+   parser = options({
+      name = 'tool',
+      args = array<table> {
+         {
+            names = array<string> { 'mode', 'm' },
+            type = 'enum',
+            choices = array<string> { 'fast', 'slow' },
+            required = true,
+            comment = 'Execution mode',
+            description = 'Controls how much validation the tool performs.'
+         },
+         { name = 'token', hidden = true, comment = 'Secret token' }
+      }
+   })
+
+   help = parser.getHelp()
+   assert(help:find('mode=MODE'), 'Visible parameters should appear in normal help')
+   assert(not help:find('token'), 'Hidden parameters should be excluded from normal help')
+
+   detail = parser.getHelp(nil, 'm')
+   assert(detail:find('mode:'), 'Detailed help should resolve aliases to canonical names')
+   assert(detail:find('Execution mode'), 'Detailed help should include comments')
+   assert(detail:find('Controls how much validation'), 'Detailed help should include descriptions')
+   assert(detail:find('Aliases: m'), 'Detailed help should list aliases')
+   assert(detail:find('Required: yes'), 'Detailed help should show required markers')
+   assert(detail:find('Choices: fast, slow'), 'Detailed help should show choices')
+
+   hidden_detail = parser.getHelp(nil, 'token')
+   assert(hidden_detail:find('Secret token'), 'Hidden parameters should still support detailed help')
+end
+
+@Test function GroupedHelpOutput()
+   parser = options({
+      name = 'pack',
+      args = array<table> {
+         { name = 'input', group = 'Input', comment = 'Input path' },
+         { name = 'output', group = 'Output', comment = 'Output path' }
+      }
+   })
+
+   help = parser.getHelp()
+   assert(help:find('Input:'), 'Custom input group should be rendered')
+   assert(help:find('Output:'), 'Custom output group should be rendered')
+   assert(help:find('Input path'), 'Grouped parameter comments should be rendered')
+   assert(help:find('Output path'), 'Grouped parameter comments should be rendered')
+end
+
+@Test function AutomaticHelpHandling()
+   parser = options({
+      name = 'demo',
+      args = array<table> {
+         { name = 'file', type = 'file', required = true, comment = 'File to read' }
+      }
+   })
+
+   result, err = parser.tryProcess(array<string> { 'help' })
+   assert(err is nil, 'tryProcess() should not treat help as a parse failure')
+   assert(result.help is true, 'tryProcess() should return a structured help result')
+   assert(result.text:find('Usage: demo'), 'Structured help result should include normal help text')
+
+   result, err = parser.tryProcess(array<string> { 'help=file' })
+   assert(err is nil, 'tryProcess() should return detailed help without failing')
+   assert(result.topic is 'file', 'Detailed help result should report the requested topic')
+   assert(result.text:find('File to read'), 'Detailed help should be generated for help=argname')
+
+   seen_text = nil
+   seen_topic = nil
+   help_parser = options({
+      name = 'demo',
+      onHelp = function(Parser:table, Text:str, Topic:any)
+         assert(Parser.getParam('file') != nil, 'onHelp should receive the parser')
+         seen_text = Text
+         seen_topic = Topic
+      end,
+      args = array<table> {
+         { name = 'file', type = 'file', comment = 'File to read' }
+      }
+   })
+
+   returned = help_parser.process(array<string> { 'help=file' })
+   assert(returned is nil, 'process() should not return normal args for help requests')
+   assert(seen_topic is 'file', 'process() should pass the help topic to onHelp')
+   assert(seen_text:find('File to read'), 'process() should pass generated help text to onHelp')
+end
+
+@Test function AutomaticHelpDoesNotClaimDeclaredOrderedArguments()
+   positional = options({
+      args = array<table> {
+         { name = 'file', kind = 'positional', type = 'file', required = true }
+      }
+   })
+
+   args = positional.process(array<string> { 'help' })
+   assert(args.file is 'help', 'Bare help should remain a valid positional value')
+
+   named = options({
+      args = array<table> {
+         { name = 'help', type = 'str', required = true }
+      }
+   })
+
+   args = named.process(array<string> { 'help=topic' })
+   assert(args.help is 'topic', 'Declared help option should parse as normal input')
+
+   flag = options({
+      args = array<table> {
+         { name = 'help', kind = 'flag', type = 'bool' }
+      }
+   })
+
+   args = flag.process(array<string> { 'help' })
+   assert(args.help is true, 'Declared help flag should parse as normal input')
+end
+
+@Test function UnsupportedHelpFormatsFail()
+   parser = options({
+      args = array<table> {
+         { name = 'file' }
+      }
+   })
+
+   failed = false
+   try
+      parser.getHelp('html')
+   except e
+      assert(e.code is ERR_InvalidType, 'Unsupported help formats should report an invalid type error')
+      assert(e.message:find("Unsupported help format 'html'."), 'Unsupported format message should be stable')
+      failed = true
+   end
+   assert(failed is true, 'Unsupported help formats should fail')
+
+   args, err = parser.tryProcess(array<string> { 'help=missing' })
+   assert(args is nil, 'Unknown help topics should fail as structured errors')
+   assert(err.code is ERR_ParameterUnknown, 'Unknown help topics should report parameter-unknown')
+end
+
+@Test function AutoHelpCanBeDisabledOrRenamed()
+   disabled = options({
+      autoHelp = false,
+      args = array<table> {
+         { name = 'file' }
+      }
+   })
+
+   expect_error(disabled, array<string> { 'help' }, ERR_Exception, "Unknown parameter 'help'.")
+
+   renamed = options({
+      helpArg = 'usage',
+      args = array<table> {
+         { name = 'file' }
+      }
+   })
+
+   result, err = renamed.tryProcess(array<string> { 'usage' })
+   assert(err is nil, 'Renamed help argument should be recognised')
+   assert(result.help is true, 'Renamed help argument should return a help result')
+end
+
+@Test function OnErrorInstructions()
+   seen_arg = nil
+   seen_raw = nil
+
+   ignore_parser = options({
+      onError = function(Parser:table, Error:table, Param:table, ArgName:str, RawValue:any):str
+         assert(Param.name is 'count', 'onError should receive the rejected parameter')
+         assert(Error.code is ERR_WrongType, 'onError should receive the conversion error')
+         seen_arg = ArgName
+         seen_raw = RawValue
+         return 'ignore'
+      end,
+      args = array<table> {
+         { name = 'count', type = 'int', default = '7' }
+      }
+   })
+
+   args = ignore_parser.process(array<string> { 'count=bad' })
+   assert(args.count is 7, 'onError ignore should fall back to the parameter default')
+   assert(seen_arg is 'count', 'onError should receive the original argument name')
+   assert(seen_raw is 'bad', 'onError should receive the rejected raw value')
+
+   skip_parser = options({
+      onError = function(Parser:table, Error:table, Param:table, ArgName:str, RawValue:any):str
+         return 'skip'
+      end,
+      args = array<table> {
+         { name = 'count', type = 'int', default = '7' }
+      }
+   })
+
+   args = skip_parser.process(array<string> { 'count=bad' })
+   assert(args.count is nil, 'onError skip should leave the parameter unset even when a default exists')
+
+   fail_parser = options({
+      onError = function(Parser:table, Error:table, Param:table, ArgName:str, RawValue:any):any
+         return true
+      end,
+      args = array<table> {
+         { name = 'count', type = 'int' }
+      }
+   })
+
+   expect_error(fail_parser, array<string> { 'count=bad' }, ERR_WrongType,
+      "Parameter 'count' requires an integer.")
+end
