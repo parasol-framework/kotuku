@@ -205,7 +205,9 @@ end
 
 @Test function UnknownParametersRespectStrictMode()
    strict_parser = options({ args = array<table> { { name = 'file' } } })
-   expect_error(strict_parser, array<string> { 'extra=value' }, ERR_Exception, "Unknown parameter 'extra'.")
+   err = expect_error(strict_parser, array<string> { 'extra=value' }, ERR_ParameterUnknown,
+      "Unknown parameter 'extra'.")
+   assert(err.message:find('stack traceback') is nil, 'Unknown named parameters should not include a stack trace')
 
    loose_parser = options({ strict = false, args = array<table> { { name = 'file', default = 'fallback.txt' } } })
    args = loose_parser.process(array<string> { 'extra=value' })
@@ -285,7 +287,7 @@ end
 
    args, err = parser.tryProcess(array<string> { 'unknown=value' })
    assert(args is nil, 'tryProcess() should return nil on parse failure')
-   assert(err.code is ERR_Exception, 'tryProcess() should return the parse error')
+   assert(err.code is ERR_ParameterUnknown, 'tryProcess() should return the parse error')
    assert(called is false, 'tryProcess() must not invoke parser.error()')
 end
 
@@ -477,8 +479,9 @@ end
       }
    })
 
-   expect_error(strict_parser, array<string> { 'scene.svg', 'extra.svg' }, ERR_Exception,
+   err = expect_error(strict_parser, array<string> { 'scene.svg', 'extra.svg' }, ERR_ParameterUnknown,
       "Unknown parameter 'extra.svg'.")
+   assert(err.message:find('stack traceback') is nil, 'Unknown positional parameters should not include a stack trace')
 
    loose_parser = options({
       strict = false,
@@ -851,6 +854,29 @@ end
    assert(result.topic is 'file', 'Detailed help result should report the requested topic')
    assert(result.text:find('File to read'), 'Detailed help should be generated for help=argname')
 
+   cli_parser = options({
+      name = 'convert',
+      args = array<table> {
+         { name = 'input', kind = 'positional', type = 'file', required = true },
+         { name = 'output', kind = 'option', type = 'file', required = true },
+         { name = 'help', kind = 'flag', type = 'bool', comment = 'Show help.' }
+      }
+   })
+
+   result, err = cli_parser.tryProcess(nil, {
+      taskParameters = array<string> { '--log-warning', 'test.tiri', 'help' }
+   })
+   assert(err is nil, 'Default task-parameter help should not validate required arguments')
+   assert(result.help is true, 'Default task-parameter help should return a structured help result')
+   assert(result.text:find('Usage: convert'), 'Default task-parameter help should include normal help text')
+
+   result, err = cli_parser.tryProcess(nil, {
+      taskParameters = array<string> { '--log-warning', 'test.tiri' }
+   })
+   assert(err is nil, 'Empty default task parameters should print help instead of validating required arguments')
+   assert(result.help is true, 'Empty default task parameters should return a structured help result')
+   assert(result.text:find('Usage: convert'), 'Empty default task parameter help should include normal help text')
+
    seen_text = nil
    seen_topic = nil
    help_parser = options({
@@ -871,15 +897,16 @@ end
    assert(seen_text:find('File to read'), 'process() should pass generated help text to onHelp')
 end
 
-@Test function AutomaticHelpDoesNotClaimDeclaredOrderedArguments()
+@Test function AutomaticHelpClaimsDeclaredHelpToken()
    positional = options({
       args = array<table> {
-         { name = 'file', kind = 'positional', type = 'file', required = true }
+         { name = 'help', kind = 'positional', type = 'file', required = true }
       }
    })
 
-   args = positional.process(array<string> { 'help' })
-   assert(args.file is 'help', 'Bare help should remain a valid positional value')
+   result, err = positional.tryProcess(array<string> { 'help' })
+   assert(err is nil, 'Automatic help should not fail when help is also a declared positional')
+   assert(result.help is true, 'Automatic help should take precedence over a declared positional')
 
    named = options({
       args = array<table> {
@@ -887,8 +914,10 @@ end
       }
    })
 
-   args = named.process(array<string> { 'help=topic' })
-   assert(args.help is 'topic', 'Declared help option should parse as normal input')
+   result, err = named.tryProcess(array<string> { 'help=help' })
+   assert(err is nil, 'Automatic help should not fail when help is also a declared option')
+   assert(result.topic is 'help', 'Automatic help should treat help=value as a detailed help topic')
+   assert(result.text:find('help:'), 'Automatic help should generate detailed help for the declared parameter')
 
    flag = options({
       args = array<table> {
@@ -896,8 +925,85 @@ end
       }
    })
 
-   args = flag.process(array<string> { 'help' })
-   assert(args.help is true, 'Declared help flag should parse as normal input')
+   result, err = flag.tryProcess(array<string> { 'help' })
+   assert(err is nil, 'Automatic help should not fail when help is also a declared flag')
+   assert(result.help is true, 'Automatic help should take precedence over a declared flag')
+
+   positioned = options({
+      args = array<table> {
+         { name = 'input', kind = 'positional', type = 'file', required = true },
+         { name = 'output', kind = 'positional', type = 'file', required = true },
+         { name = 'help', kind = 'flag', type = 'bool' }
+      }
+   })
+
+   args = positioned.process(array<string> { 'abc', 'help' })
+   assert(args.input is 'abc', 'Help after another argument should not trigger automatic help')
+   assert(args.output is 'help', 'Help after another argument should remain positional input')
+   assert(args.help is nil, 'Help after another argument should not parse as the declared help flag')
+
+   args = positioned.process(array<string> { 'help', 'abc' })
+   assert(args.input is 'help', 'Help before another argument should not trigger automatic help')
+   assert(args.output is 'abc', 'A following argument should make help remain positional input')
+   assert(args.help is nil, 'Help before another argument should not parse as the declared help flag')
+
+   result, err = positioned.tryProcess(nil, {
+      taskParameters = array<string> { '--log-warning', 'test.tiri', 'abc', 'help' }
+   })
+   assert(err is nil, 'Task-parameter help after another argument should parse normally')
+   assert(result.input is 'abc' and result.output is 'help', 'Task-parameter help should remain positional input')
+end
+
+@Test function ManualHelpParameterBypassesRequiredValidation()
+   seen_text = nil
+   seen_topic = nil
+   parser = options({
+      name = 'convert',
+      autoHelp = false,
+      onHelp = function(Parser:table, Text:str, Topic:any)
+         seen_text = Text
+         seen_topic = Topic
+      end,
+      args = array<table> {
+         { name = 'input', kind = 'positional', type = 'file', required = true },
+         { name = 'output', kind = 'option', type = 'file', required = true },
+         { name = 'help', kind = 'flag', type = 'bool', comment = 'Show help.' }
+      }
+   })
+
+   returned = parser.process(array<string> { 'help' })
+   assert(returned is nil, 'Manual help should be handled before required validation')
+   assert(seen_topic is nil, 'Manual bare help should request normal help')
+   assert(seen_text:find('Usage: convert'), 'Manual help should generate normal help text')
+
+   result, err = parser.tryProcess(nil, {
+      taskParameters = array<string> { '--log-warning', 'test.tiri', 'help' }
+   })
+   assert(err is nil, 'Manual task-parameter help should not validate required arguments')
+   assert(result.help is true, 'Manual task-parameter help should return a structured help result')
+   assert(result.text:find('Usage: convert'), 'Manual task-parameter help should include normal help text')
+
+   result, err = parser.tryProcess(array<string> { 'help=output' })
+   assert(err is nil, 'Manual help topics should not validate required arguments')
+   assert(result.topic is 'output', 'Manual help should preserve explicit topics')
+   assert(result.text:find('output:'), 'Manual help topics should generate detailed help text')
+
+   positioned = options({
+      autoHelp = false,
+      args = array<table> {
+         { name = 'input', kind = 'positional', required = true },
+         { name = 'output', kind = 'positional', required = true },
+         { name = 'help', kind = 'flag', type = 'bool' }
+      }
+   })
+
+   args = positioned.process(array<string> { 'abc', 'help' })
+   assert(args.input is 'abc' and args.output is 'help', 'Manual help after another argument should parse normally')
+   assert(args.help is nil, 'Manual help after another argument should not parse as the declared help flag')
+
+   args = positioned.process(array<string> { 'help', 'abc' })
+   assert(args.input is 'help' and args.output is 'abc', 'Manual help before another argument should parse normally')
+   assert(args.help is nil, 'Manual help before another argument should not parse as the declared help flag')
 end
 
 @Test function UnsupportedHelpFormatsFail()
@@ -930,7 +1036,7 @@ end
       }
    })
 
-   expect_error(disabled, array<string> { 'help' }, ERR_Exception, "Unknown parameter 'help'.")
+   expect_error(disabled, array<string> { 'help' }, ERR_ParameterUnknown, "Unknown parameter 'help'.")
 
    renamed = options({
       helpArg = 'usage',
@@ -1179,8 +1285,8 @@ end
    assert(result.args.filter is 'svg', 'Selected command arguments should parse')
    assert(result.args.input is nil, 'Arguments from other commands should not leak into the selected command')
 
-   expect_error(parser, array<string> { 'build', 'filter=svg' }, ERR_Exception, "Unknown parameter 'filter'.")
-   expect_error(parser, array<string> { 'input=src', 'build' }, ERR_Exception, "Unknown parameter 'input'.")
+   expect_error(parser, array<string> { 'build', 'filter=svg' }, ERR_ParameterUnknown, "Unknown parameter 'filter'.")
+   expect_error(parser, array<string> { 'input=src', 'build' }, ERR_ParameterUnknown, "Unknown parameter 'input'.")
 end
 
 @Test function MissingAndUnknownCommandsFail()
@@ -1191,7 +1297,7 @@ end
    })
 
    expect_error(parser, array<string> { }, ERR_ParameterRequired, 'Command is required.')
-   expect_error(parser, array<string> { 'unknown' }, ERR_Exception, "Unknown parameter 'unknown'.")
+   expect_error(parser, array<string> { 'unknown' }, ERR_ParameterUnknown, "Unknown parameter 'unknown'.")
    expect_error(parser, { command = 'unknown' }, ERR_ParameterUnknown, "Unknown command 'unknown'.")
 end
 
