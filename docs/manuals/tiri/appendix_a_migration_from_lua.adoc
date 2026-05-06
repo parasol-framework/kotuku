@@ -2,16 +2,11 @@
 [[appendix-migration-from-lua]]
 [appendix]
 == Migration from Lua
-indexterm:[Lua migration]
-indexterm:[migration from Lua]
-
-This appendix provides a systematic guide for developers migrating existing Lua 5.1/5.2 code to Tiri.  Each section identifies a breaking change, explains the rationale, and shows the equivalent Tiri construct.
+indexterm:[Lua, migration] This appendix provides a systematic guide for developers migrating existing Lua 5.1/5.2 code to Tiri.  Each section identifies a breaking change, explains the rationale, and shows the equivalent Tiri construct.
 
 [[sec-migration-breaking-changes]]
 === Summary of Breaking Changes
-indexterm:[Lua migration, breaking changes]
-
-The following table lists all incompatible changes between standard Lua and Tiri.  Entries are grouped by category and cross-referenced to the relevant manual sections.
+indexterm:[Lua, breaking changes] The following table lists all incompatible changes between standard Lua and Tiri.  Entries are grouped by category and cross-referenced to the relevant manual sections.
 
 [cols="3,3,2"]
 |===
@@ -108,8 +103,6 @@ The following table lists all incompatible changes between standard Lua and Tiri
 
 [[sec-migration-equality]]
 === Equality and Inequality Operators
-indexterm:[Lua migration, equality]
-
 Lua's `==` operator is replaced by the `is` keyword.  The `~=` inequality operator is replaced by `!=`.
 
 [source,tiri]
@@ -176,9 +169,7 @@ Compound bitwise assignment operators (`&=`, `|=`, `^=`) do not exist.  Use `x =
 
 [[sec-migration-indexing]]
 === Zero-Based Indexing
-indexterm:[Lua migration, zero-based indexing]
-
-Tiri uses zero-based indexing for tables, strings and arrays.  In standard Lua, the first element of a table is at index 1 and `string.sub()` starts at position 1.  In Tiri, the first element is at index 0.
+indexterm:[Lua, indexing] Tiri uses zero-based indexing for tables, strings and arrays.  In standard Lua, the first element of a table is at index 1 and `string.sub()` starts at position 1.  In Tiri, the first element is at index 0.
 
 [source,tiri]
 ----
@@ -372,9 +363,7 @@ See <<sec-migration-pattern-matching>> for the pattern-to-regex migration guide.
 
 [[sec-migration-pattern-matching]]
 === Migration from Lua Patterns
-indexterm:[Lua patterns, migration]
-
-Lua patterns are deprecated in favour of ECMAScript-compatible regular expressions compiled with `regex.new()`.  The following table maps common Lua pattern constructs to their regex equivalents:
+indexterm:[Lua, patterns] Lua patterns are deprecated in favour of ECMAScript-compatible regular expressions compiled with `regex.new()`.  The following table maps common Lua pattern constructs to their regex equivalents:
 
 [cols="2,2,3"]
 |===
@@ -683,9 +672,7 @@ See <<ch-the-debug-library>> for the complete API reference.
 
 [[sec-migration-arrays]]
 === Arrays as a Distinct Type
-indexterm:[Lua migration, arrays]
-
-Lua uses tables for both associative maps and sequential data.  Tiri introduces arrays as a separate, performance-optimised type for sequential (integer-indexed) data.  Prefer arrays over tables when storing ordered, numerically indexed data.
+indexterm:[Lua, arrays] Lua uses tables for both associative maps and sequential data.  Tiri introduces arrays as a separate, performance-optimised type for sequential (integer-indexed) data.  Prefer arrays over tables when storing ordered, numerically indexed data.
 
 [source,tiri]
 ----

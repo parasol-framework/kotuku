@@ -1,14 +1,10 @@
 [[appendix-error-code-reference]]
 [appendix]
 == Error Code Reference
-indexterm:[error codes]
-
-Kōtuku uses a unified set of integer error codes for all API functions.  Error codes are exposed to Tiri as global constants following the `ERR_` naming convention (e.g. `ERR_Okay`, `ERR_Failed`, `ERR_Args`).  See <<ch-error-handling>> for full error handling semantics.
+indexterm:[error codes] Kōtuku uses a unified set of integer error codes for all API functions.  Error codes are exposed to Tiri as global constants following the `ERR_` naming convention (e.g. `ERR_Okay`, `ERR_Failed`, `ERR_Args`).  See <<ch-error-handling>> for full error handling semantics.
 
 [[sec-exception-threshold]]
 === Exception Threshold
-indexterm:[exception threshold]
-
 Error codes are divided into two categories based on their numeric value:
 
 Minor codes (0--8)::

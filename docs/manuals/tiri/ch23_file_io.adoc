@@ -2,9 +2,7 @@
 
 [[ch-file-io]]
 == File I/O
-indexterm:[file I/O]
-
-Tiri provides file system access through two complementary interfaces.  The `io` standard library offers a high-level API for common file operations: reading, writing, path manipulation, and convenience functions.  For advanced file management -- folder enumeration, file watching, date stamps, permissions -- the Kōtuku File object (<<sec-the-kotuku-file-object>>) exposes the full capabilities of the underlying framework.
+indexterm:[file system] Tiri provides file system access through two complementary interfaces.  The `io` standard library offers a high-level API for common file operations: reading, writing, path manipulation, and convenience functions.  For advanced file management -- folder enumeration, file watching, date stamps, permissions -- the Kōtuku File object (<<sec-the-kotuku-file-object>>) exposes the full capabilities of the underlying framework.
 
 All file paths in Tiri use the virtual volume system (<<sec-virtual-volumes>>).  Paths take the form `volume:folder/file`, for example `temp:output.txt` or `config:settings.tiri`.  The volume prefix is resolved at runtime to a platform-native location.
 
@@ -12,9 +10,7 @@ Filesystem failures in the `io` library throw exceptions.  This differs from sta
 
 [[sec-the-io-standard-library]]
 === The io Standard Library
-indexterm:[io library]
-
-The `io` namespace provides built-in functions for file operations and standard I/O management.  No `import` statement is required to use these functions.
+indexterm:[library, io] The `io` namespace provides built-in functions for file operations and standard I/O management.  No `import` statement is required to use these functions.
 
 ==== io.open()
 
@@ -208,9 +204,7 @@ print(io.sanitisePath('system://users///file.txt'))
 
 [[sec-file-handle-methods]]
 === File Handle Methods
-indexterm:[file handles]
-
-File handles returned by `io.open()` and related functions support the following methods, called with the colon syntax (e.g. `file:read()`).  Operating on a closed file handle throws an exception.
+indexterm:[file system, handles] File handles returned by `io.open()` and related functions support the following methods, called with the colon syntax (e.g. `file:read()`).  Operating on a closed file handle throws an exception.
 
 [[sec-file-read]]
 ==== file:read()
@@ -313,9 +307,7 @@ file:close()
 
 [[sec-the-kotuku-file-object]]
 === The Kōtuku File Object
-indexterm:[file object]
-
-The `io` standard library covers common file operations, but the Kōtuku File object provides the full range of file system capabilities: folder enumeration, file watching, permissions, timestamps, symbolic links, copying, moving, and deletion.
+indexterm:[file system, object] The `io` standard library covers common file operations, but the Kōtuku File object provides the full range of file system capabilities: folder enumeration, file watching, permissions, timestamps, symbolic links, copying, moving, and deletion.
 
 File objects are created with `obj.new('file', Options)`.  Refer to <<ch-the-object-system>> for general object creation patterns.
 
@@ -544,9 +536,7 @@ Calling `raise ERR_Terminate` in the callback function will cancel the watch.
 
 [[sec-file-search]]
 === File Search
-indexterm:[file search]
-
-The FileSearch extension simplifies recursive file and folder searching with support for name filters, content searching, and size/date constraints.  Load it with:
+indexterm:[file system, search] The FileSearch extension simplifies recursive file and folder searching with support for name filters, content searching, and size/date constraints.  Load it with:
 
 [source,tiri]
 ----
@@ -636,9 +626,7 @@ Symbolic links to directories are not followed to avoid infinite recursion.
 
 [[sec-file-manager]]
 === File Manager
-indexterm:[file manager]
-
-The File Manager extension provides file management operations with integrated UI feedback.  Progress dialogs appear automatically for long-running operations, and the user is prompted before overwriting existing files.
+indexterm:[file system, manager] The File Manager extension provides file management operations with integrated UI feedback.  Progress dialogs appear automatically for long-running operations, and the user is prompted before overwriting existing files.
 
 Load it with:
 
@@ -669,9 +657,7 @@ Deletes the file or folder identified by `Paths`, which is a string or array of 
 
 [[sec-virtual-volumes]]
 === Virtual Volumes
-indexterm:[virtual volumes]
-
-Kōtuku uses a virtual volume system that maps logical volume names to physical file system locations.  All file paths in Tiri use the format `volume:path/to/file`.  The volume prefix is resolved at runtime to a platform-native path, providing location independence across operating systems.
+indexterm:[file system, volumes] Kōtuku uses a virtual volume system that maps logical volume names to physical file system locations.  All file paths in Tiri use the format `volume:path/to/file`.  The volume prefix is resolved at runtime to a platform-native path, providing location independence across operating systems.
 
 Volume names are case-insensitive.  A colon (`:`) terminates the volume name and separates it from the remainder of the path.
 

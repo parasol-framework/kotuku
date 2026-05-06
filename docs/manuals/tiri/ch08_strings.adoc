@@ -2,9 +2,7 @@
 
 [[ch-strings]]
 == Strings
-indexterm:[strings]
-
-This chapter defines the string library: the built-in functions for creating, inspecting, searching, modifying, and encoding strings.  For string literal syntax, escape sequences, and type semantics see <<sec-strings-overview>> and <<sec-lexical-conventions>>.
+indexterm:[strings] This chapter defines the string library: the built-in functions for creating, inspecting, searching, modifying, and encoding strings.  For string literal syntax, escape sequences, and type semantics see <<sec-strings-overview>> and <<sec-lexical-conventions>>.
 
 Strings are immutable.  Every string operation that appears to modify a string produces a new string value.  Identical strings are interned: two strings with the same byte content share the same internal object.
 
@@ -40,9 +38,7 @@ Negative indices count from the end: `s[-1]` is equivalent to `s[#s - 1]`.
 
 [[sec-string-interpolation]]
 === String Interpolation
-indexterm:[strings, interpolation]
-
-Tiri supports f-strings for embedding expressions directly within string literals.  An `f` prefix before a short string enables interpolation.  Expressions enclosed in `{` and `}` are evaluated and converted to strings via `tostring()`.
+indexterm:[strings, interpolation] Tiri supports f-strings for embedding expressions directly within string literals.  An `f` prefix before a short string enables interpolation.  Expressions enclosed in `{` and `}` are evaluated and converted to strings via `tostring()`.
 
 [%unbreakable]
 [source,tiri]
@@ -252,15 +248,12 @@ Returns a copy of `String` with all ASCII lowercase letters converted to upperca
 
 [[sec-searching-and-extraction]]
 === Searching & Extraction
-indexterm:[strings, searching]
-indexterm:[strings, extraction]
-
 [[sec-string-count]]
 ==== string.count()
 
 [.api]`count = string.count(String, Keyword)`
 
-Counts the number of non-overlapping occurrences of `Keyword` in `String`.  Returns `0` if either string is empty or if `Keyword` is not found.
+indexterm:[strings, searching] indexterm:[strings, extraction] Counts the number of non-overlapping occurrences of `Keyword` in `String`.  Returns `0` if either string is empty or if `Keyword` is not found.
 
 [%unbreakable]
 [source,tiri]
@@ -362,14 +355,12 @@ Removes trailing whitespace from `String`.  Leading whitespace is preserved.  Wh
 
 [[sec-splitting]]
 === Splitting
-indexterm:[strings, splitting]
-
 [[sec-string-split]]
 ==== string.split()
 
 [.api]`arr = string.split(String, [Separator])`
 
-Splits `String` into an array of substrings.  Returns a value of type `array<string>`.
+indexterm:[strings, splitting] Splits `String` into an array of substrings.  Returns a value of type `array<string>`.
 
 If `Separator` is a single character, each occurrence of that character splits the string.  If `Separator` is a multi-character string, it is matched as a whole delimiter.
 
@@ -418,15 +409,12 @@ Returns `true` if `String` begins with `Prefix`.  An empty `Prefix` always retur
 
 [[sec-encoding]]
 === Encoding
-indexterm:[strings, encoding]
-indexterm:[XML escaping]
-
 [[sec-string-escXML]]
 ==== string.escXML()
 
 [.api]`str = string.escXML(String)`
 
-Escapes `String` for safe inclusion in XML content or attribute values.  The following characters are replaced:
+indexterm:[strings, encoding] indexterm:[XML escaping] Escapes `String` for safe inclusion in XML content or attribute values.  The following characters are replaced:
 
 [cols="2,3",options="header",stripes=even]
 |===
@@ -505,10 +493,7 @@ Returns an empty string if `String` is `nil`.  Unrecognised `&` sequences are pa
 
 [[sec-string-slicing-with-ranges]]
 === Slicing with Ranges
-indexterm:[strings, slicing]
-indexterm:[ranges, string slicing]
-
-Strings support range objects as indices for substring extraction.  Indexing is zero-based.
+indexterm:[strings, slicing] indexterm:[ranges, string slicing] Strings support range objects as indices for substring extraction.  Indexing is zero-based.
 
 [source,tiri]
 ----

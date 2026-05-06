@@ -1,17 +1,12 @@
 [[ch-performance-and-the-jit]]
 == Performance & the JIT
-indexterm:[performance]
-indexterm:[JIT]
-
-**Implementation-specific.** This chapter documents behaviour specific to the JIT (Just-In-Time) compiler as of March 2026 and is not part of the language specification.
+indexterm:[performance] indexterm:[JIT] **Implementation-specific.** This chapter documents behaviour specific to the JIT (Just-In-Time) compiler as of March 2026 and is not part of the language specification.
 
 Tiri executes on a tracing JIT compiler derived from LuaJIT 2.1.  Understanding the JIT compilation model is essential for writing high-performance Tiri code.  This chapter describes the compilation pipeline, the `jit` library API, tuneable parameters, and common performance pitfalls.
 
 [[sec-how-the-jit-works]]
 === How the JIT Works
-indexterm:[JIT, traces]
-
-Tiri code begins execution in an interpreter.  The JIT compiler monitors executing code and compiles frequently executed paths — called _hot paths_ — into native machine code.
+indexterm:[JIT, traces] Tiri code begins execution in an interpreter.  The JIT compiler monitors executing code and compiles frequently executed paths — called _hot paths_ — into native machine code.
 
 ==== The Trace Compiler
 
@@ -92,9 +87,7 @@ Recording also aborts on encountering operations that the JIT compiler does not 
 
 [[sec-type-annotations-for-performance]]
 === Type Annotations for Performance
-indexterm:[type annotations, performance]
-
-The JIT compiler achieves peak performance when types are stable across loop iterations.  Every type change at a guard causes a side exit, and repeated type instability prevents trace compilation entirely.
+indexterm:[type annotations, performance] The JIT compiler achieves peak performance when types are stable across loop iterations.  Every type change at a guard causes a side exit, and repeated type instability prevents trace compilation entirely.
 
 Type annotations (see <<ch-annotations-and-preprocessing>>) provide metadata that the compiler uses for type inference and validation.  While the JIT does not consume annotations directly, the parser's type analysis pass uses them to detect type inconsistencies at compile time — before code ever reaches the JIT.
 
@@ -124,10 +117,7 @@ end
 
 [[sec-arrays-vs-tables-performance]]
 === Arrays vs. Tables
-indexterm:[arrays, performance]
-indexterm:[tables, performance]
-
-Arrays and tables serve different purposes and have distinct performance characteristics.
+indexterm:[arrays, performance] indexterm:[tables, performance] Arrays and tables serve different purposes and have distinct performance characteristics.
 
 ==== Arrays
 
@@ -165,9 +155,7 @@ config = { width = 800, height = 600, title = 'My App' }
 
 [[sec-the-jit-library]]
 === The `jit` Library
-indexterm:[jit library]
-
-The `jit` library provides programmatic control over the JIT compiler.  It is always available and requires no explicit import.
+indexterm:[library, jit] The `jit` library provides programmatic control over the JIT compiler.  It is always available and requires no explicit import.
 
 [discrete]
 ==== jit.on()
@@ -268,9 +256,7 @@ jit.attach(trace_handler)  -- detach
 
 [[sec-jit-utilities]]
 === JIT Utilities
-indexterm:[JIT, utilities]
-
-The `jit.util` sub-table provides low-level introspection into compiled traces and function bytecode.  These functions are intended for profilers, debuggers, and diagnostic tools.
+indexterm:[JIT, utilities] The `jit.util` sub-table provides low-level introspection into compiled traces and function bytecode.  These functions are intended for profilers, debuggers, and diagnostic tools.
 
 [discrete]
 ==== jit.util.funcInfo()
@@ -458,14 +444,12 @@ Returns the C function address associated with IR call index `Idx`.
 
 [[sec-jit-options]]
 === JIT Options
-indexterm:[JIT, options]
-
 [discrete]
 ==== jit.opt.start()
 
 [.api]`jit.opt.start([pass:[...]Flags])`
 
-Configures JIT optimisation levels, flags, and parameters.  If called with no arguments, resets to the default optimisation level (level 3).  Each argument is a string specifying a level, flag, or parameter.
+indexterm:[JIT, options] Configures JIT optimisation levels, flags, and parameters.  If called with no arguments, resets to the default optimisation level (level 3).  Each argument is a string specifying a level, flag, or parameter.
 
 ==== Optimisation Levels
 
@@ -612,8 +596,6 @@ jit.opt.start(3, 'hotloop=100')   -- combine level and parameter
 
 [[sec-common-performance-pitfalls]]
 === Common Performance Pitfalls
-indexterm:[performance pitfalls]
-
 ==== Type Instability
 
 The most significant JIT performance issue is type instability within hot loops.  When a variable changes type between iterations, the JIT inserts a guard that fails on subsequent iterations, causing repeated side exits and preventing effective compilation.

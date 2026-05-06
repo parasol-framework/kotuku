@@ -2,18 +2,13 @@
 
 [[ch-type-system]]
 == Type System
-indexterm:[type system]
-
-Tiri is dynamically typed: every value carries its type at runtime.  However, Tiri enforces type consistency through a lazy inference mechanism called _sticky types_.  Once a variable commits to a type, all subsequent non-nil assignments must match that type.  This chapter defines the rules governing type commitment, explicit annotations, the `any` escape hatch, and the interaction between `nil` and typed variables.
+indexterm:[type system] Tiri is dynamically typed: every value carries its type at runtime.  However, Tiri enforces type consistency through a lazy inference mechanism called _sticky types_.  Once a variable commits to a type, all subsequent non-nil assignments must match that type.  This chapter defines the rules governing type commitment, explicit annotations, the `any` escape hatch, and the interaction between `nil` and typed variables.
 
 Type checking operates at two levels.  The compiler performs static analysis during parsing, catching mismatches that are visible in the source (literal assignments, annotated function returns).  When the compiler cannot determine the type statically -- function calls without return type declarations, table field lookups, array indexing -- it emits runtime type checks that validate values at the point of assignment.
 
 [[sec-sticky-types]]
 === Sticky Types (Type Inference)
-indexterm:[sticky types]
-indexterm:[type inference]
-
-Sticky types are Tiri's core type inference mechanism.  When a local, global, or upvalue variable receives its first non-nil value, the variable's type becomes _fixed_ to that value's type.  All subsequent non-nil assignments must match the fixed type.  Assigning a value of a different type produces a compile-time or runtime error.
+indexterm:[sticky types] indexterm:[type inference] Sticky types are Tiri's core type inference mechanism.  When a local, global, or upvalue variable receives its first non-nil value, the variable's type becomes _fixed_ to that value's type.  All subsequent non-nil assignments must match the fixed type.  Assigning a value of a different type produces a compile-time or runtime error.
 
 [source,tiri]
 ----
@@ -92,9 +87,7 @@ config = 'not a table'                                   -- error
 
 [[sec-implicit-type-fixing]]
 === Implicit Type Fixing
-indexterm:[implicit type fixing]
-
-Implicit type fixing occurs when a variable is assigned a non-nil value without an explicit type annotation.  The compiler determines the type from the value expression and locks the variable to that type.
+indexterm:[implicit type fixing] Implicit type fixing occurs when a variable is assigned a non-nil value without an explicit type annotation.  The compiler determines the type from the value expression and locks the variable to that type.
 
 [discrete]
 ==== Rules
@@ -149,9 +142,7 @@ Runtime type checks raise an exception if the value's type does not match the va
 
 [[sec-explicit-type-annotations]]
 === Explicit Type Annotations
-indexterm:[type annotations, explicit]
-
-The `:type` syntax after a variable name pre-declares the type constraint.  The variable is immediately fixed to the declared type, even if its initial value is `nil`.
+indexterm:[type annotations, explicit] The `:type` syntax after a variable name pre-declares the type constraint.  The variable is immediately fixed to the declared type, even if its initial value is `nil`.
 
 [discrete]
 ==== Syntax
@@ -344,9 +335,7 @@ local y: num = get_any()      -- runtime check: return type is 'any'
 
 [[sec-the-any-type]]
 === The Any Type
-indexterm:[any type]
-
-The `any` type annotation opts a variable out of type fixing entirely.  A variable declared with `:any` accepts values of any type at any time.
+indexterm:[any type] The `any` type annotation opts a variable out of type fixing entirely.  A variable declared with `:any` accepts values of any type at any time.
 
 [source,tiri]
 ----
@@ -374,9 +363,7 @@ TIP: Prefer sticky types by default.  Reserve `:any` for variables that genuinel
 
 [[sec-nil-semantics-in-typed-code]]
 === Nil Semantics in Typed Code
-indexterm:[nil, typed code]
-
-The value `nil` has special status in the type system.  It acts as a universal "clear" value that is always permitted for any variable, regardless of the variable's fixed type.
+indexterm:[nil, typed code] The value `nil` has special status in the type system.  It acts as a universal "clear" value that is always permitted for any variable, regardless of the variable's fixed type.
 
 [discrete]
 ==== Uninitialised Variables

@@ -2,14 +2,10 @@
 
 [[ch-introduction]]
 == Introduction
-indexterm:[Tiri]
-indexterm:[Kōtuku]
-
-
 [[sec-what-is-tiri]]
 === What Is Tiri?
 
-Tiri is a dynamically typed programming language derived from Lua and built on the LuaJIT virtual machine.  It is the
+indexterm:[Tiri] indexterm:[Kōtuku] Tiri is a dynamically typed programming language derived from Lua and built on the LuaJIT virtual machine.  It is the
 primary programming interface for the Kōtuku application framework.
 
 Tiri is a hard fork of the LuaJIT virtual machine and retains the core execution model -- a register-based virtual machine
@@ -56,10 +52,7 @@ This prints the version string, git commit hash, and build type.
 
 [[sec-running-scripts]]
 === Running Scripts
-indexterm:[scripts, running]
-indexterm:[Origo]
-
-Execute a Tiri script by passing its path to `origo`:
+indexterm:[scripts, running] indexterm:[Origo] Execute a Tiri script by passing its path to `origo`:
 
 [source,bash]
 ----

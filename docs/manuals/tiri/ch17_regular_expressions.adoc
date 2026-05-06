@@ -2,22 +2,17 @@
 
 [[ch-regular-expressions]]
 == Regular Expressions
-indexterm:[regular expressions]
-indexterm:[regex]
-
-Tiri provides a compiled regular expression interface through the `regex` module.  Pattern objects are compiled once from an ECMAScript-compatible pattern string and reused for matching, searching, replacing, and splitting operations.  The underlying engine supports full Unicode via UTF-8, named and numbered capture groups, lookahead and lookbehind assertions, and inline flag modifiers.
+indexterm:[regular expressions] indexterm:[regex] Tiri provides a compiled regular expression interface through the `regex` module.  Pattern objects are compiled once from an ECMAScript-compatible pattern string and reused for matching, searching, replacing, and splitting operations.  The underlying engine supports full Unicode via UTF-8, named and numbered capture groups, lookahead and lookbehind assertions, and inline flag modifiers.
 
 This chapter documents the Tiri API for creating and using regex objects.  For comprehensive coverage of regex syntax, character classes, quantifiers, assertions, Unicode properties, and advanced pattern features, refer to the https://github.com/parasol-framework/kotuku/wiki/Regex-Manual[Regex Manual] in the project wiki.
 
 [[sec-creating-a-regex]]
 === Creating a Regular Expression
-indexterm:[regex, creation]
-
 ==== regex.new()
 
 [.api]`rx = regex.new(Pattern, [Flags])`
 
-Compiles `Pattern` into a reusable regex object.  `Flags` is an optional bitmask of compilation flags (see <<sec-flags-and-options>>).  If `Pattern` is syntactically invalid, an exception is thrown with error code `ERR_Syntax` and a descriptive message.
+indexterm:[regex, creation] Compiles `Pattern` into a reusable regex object.  `Flags` is an optional bitmask of compilation flags (see <<sec-flags-and-options>>).  If `Pattern` is syntactically invalid, an exception is thrown with error code `ERR_Syntax` and a descriptive message.
 
 [source,tiri]
 ----
@@ -79,14 +74,11 @@ Use `regex.escape()` when constructing patterns from dynamic data or user input 
 
 [[sec-matching-and-searching]]
 === Matching and Searching
-indexterm:[regex, matching]
-indexterm:[regex, searching]
-
 ==== regex.test()
 
 [.api]`result = rx.test(Text, [Flags])`
 
-Returns `true` if the pattern matches anywhere in `Text`, otherwise `false`.  This is the fastest method for a simple presence check; it does not extract match positions or captures.
+indexterm:[regex, matching] indexterm:[regex, searching] Returns `true` if the pattern matches anywhere in `Text`, otherwise `false`.  This is the fastest method for a simple presence check; it does not extract match positions or captures.
 
 [source,tiri]
 ----
@@ -190,14 +182,11 @@ results = rx.search('<hello> <world>')
 
 [[sec-replacement-and-splitting]]
 === Replacement and Splitting
-indexterm:[regex, replacement]
-indexterm:[regex, splitting]
-
 ==== regex.replace()
 
 [.api]`result = rx.replace(Text, Replacement, [Flags])`
 
-Replaces all matches in `Text` with the `Replacement` string.  By default, all matches are replaced; pass `regex.REPLACE_FIRST_ONLY` in `Flags` to replace only the first occurrence.  If no matches are found, `Text` is returned unchanged.
+indexterm:[regex, replacement] indexterm:[regex, splitting] Replaces all matches in `Text` with the `Replacement` string.  By default, all matches are replaced; pass `regex.REPLACE_FIRST_ONLY` in `Flags` to replace only the first occurrence.  If no matches are found, `Text` is returned unchanged.
 
 The `Replacement` string supports the following placeholders:
 
@@ -275,11 +264,9 @@ parts = rx.split("line1\nline2\tline3")
 
 [[sec-flags-and-options]]
 === Flags and Options
-indexterm:[regex, flags]
-
 ==== Compilation Flags
 
-Compilation flags modify how the pattern is interpreted and are specified as the second argument to `regex.new()`.  Multiple flags are combined with the bitwise OR operator.
+indexterm:[regex, flags] Compilation flags modify how the pattern is interpreted and are specified as the second argument to `regex.new()`.  Multiple flags are combined with the bitwise OR operator.
 
 [cols="1,3a",options="header",stripes=even]
 |===
@@ -364,9 +351,7 @@ rx.replace('abc123def456', '#', regex.REPLACE_NO_COPY)   -- '##'
 
 [[sec-regex-properties]]
 === Regex Properties
-indexterm:[regex, properties]
-
-Compiled regex objects expose the following read-only properties:
+indexterm:[regex, properties] Compiled regex objects expose the following read-only properties:
 
 [cols="1,1,3a",options="header",stripes=even]
 |===
@@ -403,12 +388,10 @@ print(tostring(rx))   -- 'regex(words?, flags=1)'
 
 [[sec-regex-performance-considerations]]
 === Performance Considerations
-indexterm:[regex, performance]
-
 [discrete]
 ==== Compile Once, Reuse Many Times
 
-Pattern compilation involves parsing and optimisation.  Compiling the same pattern repeatedly in a loop is redundant.  Compile the pattern once and store the object in a variable:
+indexterm:[regex, performance] Pattern compilation involves parsing and optimisation.  Compiling the same pattern repeatedly in a loop is redundant.  Compile the pattern once and store the object in a variable:
 
 [source,tiri]
 ----

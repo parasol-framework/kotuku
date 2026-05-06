@@ -4,15 +4,11 @@
 
 [[ch-operators]]
 == Operators
-indexterm:[operators]
-
-This chapter defines all operators in Tiri: their syntax, operand types, return values, precedence, associativity, and metamethod support.  Compound assignment is covered in <<sec-compound-assignment>>; the full precedence table appears in <<sec-operator-precedence>>.
+indexterm:[operators] This chapter defines all operators in Tiri: their syntax, operand types, return values, precedence, associativity, and metamethod support.  Compound assignment is covered in <<sec-compound-assignment>>; the full precedence table appears in <<sec-operator-precedence>>.
 
 [[sec-arithmetic-operators]]
 === Arithmetic Operators
-indexterm:[operators, arithmetic]
-
-Arithmetic operators accept numeric operands.  The runtime coerces strings that represent valid numbers to numbers automatically.  If an operand is neither numeric nor string-coercible and no metamethod is defined, the runtime raises an error.
+indexterm:[operators, arithmetic] Arithmetic operators accept numeric operands.  The runtime coerces strings that represent valid numbers to numbers automatically.  If an operand is neither numeric nor string-coercible and no metamethod is defined, the runtime raises an error.
 
 [cols="2,3,3a,3",options="header",stripes=even]
 |===
@@ -43,9 +39,7 @@ n = -42        -- unary negation
 
 [[sec-comparison-operators]]
 === Comparison Operators
-indexterm:[operators, comparison]
-
-Comparison operators return a boolean value.  The equality operators (`is`, `is not`, `!=`) accept operands of any type.  The ordering operators (`<`, `>`, `\<=`, `>=`) accept two numbers or two strings; comparing other types without a metamethod raises an error.
+indexterm:[operators, comparison] Comparison operators return a boolean value.  The equality operators (`is`, `is not`, `!=`) accept operands of any type.  The ordering operators (`<`, `>`, `\<=`, `>=`) accept two numbers or two strings; comparing other types without a metamethod raises an error.
 
 [cols="2,3,3a,3",options="header",stripes=even]
 |===
@@ -83,9 +77,7 @@ print('abc' < 'abd')   -- true
 
 [[sec-logical-operators]]
 === Logical Operators
-indexterm:[operators, logical]
-
-Logical operators use standard falsiness: only `nil` and `false` are false.  All other values -- including `0`, `""`, and empty tables -- are true.
+indexterm:[operators, logical] Logical operators use standard falsiness: only `nil` and `false` are false.  All other values -- including `0`, `""`, and empty tables -- are true.
 
 [cols="2,3,5a",options="header",stripes=even]
 |===
@@ -108,9 +100,7 @@ z = not false          -- true
 
 [[sec-bitwise-operators]]
 === Bitwise Operators
-indexterm:[operators, bitwise]
-
-Bitwise operators operate on 32-bit integers using two's-complement representation.  Non-integer operands are truncated to 32-bit integers before the operation.  Shift operators mask the shift count to the range 0-31.
+indexterm:[operators, bitwise] Bitwise operators operate on 32-bit integers using two's-complement representation.  Non-integer operands are truncated to 32-bit integers before the operation.  Shift operators mask the shift count to the range 0-31.
 
 [cols="2,3,5a",options="header",stripes=even]
 |===
@@ -136,9 +126,7 @@ toggle = flags ^ mask   -- XOR toggle
 
 [[sec-flag-testing-operator]]
 === Flag Testing Operator
-indexterm:[operators, flag testing]
-
-The `has` operator tests whether bitwise flags are set in an integer value.
+indexterm:[operators, flag testing] The `has` operator tests whether bitwise flags are set in an integer value.
 
 [source,ebnf]
 ----
@@ -172,9 +160,7 @@ end
 
 [[sec-string-concatenation]]
 === String Concatenation
-indexterm:[operators, string concatenation]
-
-The `..` operator concatenates two values into a string.  The operator accepts both strings and numbers; it converts numbers to their string representation automatically.  Other types require a `pass:[__]concat` metamethod.
+indexterm:[operators, string concatenation] The `..` operator concatenates two values into a string.  The operator accepts both strings and numbers; it converts numbers to their string representation automatically.  Other types require a `pass:[__]concat` metamethod.
 
 [source,ebnf]
 ----
@@ -193,9 +179,7 @@ label = 'Item #' .. 42              -- 'Item #42'
 
 [[sec-length-operator]]
 === Length Operator
-indexterm:[operators, length]
-
-The unary `#` operator returns the length of a value.
+indexterm:[operators, length] The unary `#` operator returns the length of a value.
 
 [cols="2,5a",options="header",stripes=even]
 |===
@@ -215,9 +199,7 @@ print(#{ 'a', 'b', 'c' })   -- 3
 
 [[sec-compound-assignment]]
 === Compound Assignment
-indexterm:[operators, compound assignment]
-
-Compound assignment operators evaluate the right-hand side exactly once and apply the operation to the target.  If the RHS is a function call or vararg, only the first return value is used.  The target must be an assignable location: a local, upvalue, global, field, or index.  Applying compound assignment to a constant or a function call result is a compile-time error.
+indexterm:[operators, compound assignment] Compound assignment operators evaluate the right-hand side exactly once and apply the operation to the target.  If the RHS is a function call or vararg, only the first return value is used.  The target must be an assignable location: a local, upvalue, global, field, or index.  Applying compound assignment to a constant or a function call result is a compile-time error.
 
 [cols="2,3,5a",options="header",stripes=even]
 |===
@@ -270,9 +252,7 @@ label ??= 'untitled'         -- assigns only if label is falsey
 
 [[sec-postfix-increment]]
 === Postfix Increment
-indexterm:[operators, postfix increment]
-
-The `++` operator increments a numeric variable by 1.
+indexterm:[operators, postfix increment] The `++` operator increments a numeric variable by 1.
 
 [source,ebnf]
 ----
@@ -295,9 +275,7 @@ NOTE: There is no `--` decrement operator.  The `--` character sequence begins a
 
 [[sec-conditional-operators]]
 === Conditional Operators
-indexterm:[operators, conditional]
-
-Conditional operators use extended falsiness: `nil`, `false`, `0` (integer and floating-point zero), `""` (the empty string), and empty arrays (length 0) are all falsey.  All other values are truthy.  See <<sec-truthiness>> for the full definition.
+indexterm:[operators, conditional] Conditional operators use extended falsiness: `nil`, `false`, `0` (integer and floating-point zero), `""` (the empty string), and empty arrays (length 0) are all falsey.  All other values are truthy.  See <<sec-truthiness>> for the full definition.
 
 ==== If-Empty Binary Operator (??)
 
@@ -346,14 +324,12 @@ end
 
 [[sec-ternary-operator]]
 === Ternary Operator
-indexterm:[operators, ternary]
-
 [source,ebnf]
 ----
 ternary_expression = expression "?" expression ":>" expression ;
 ----
 
-Evaluates `condition` using extended falsiness.  If truthy, evaluates and returns `true_expr`; if falsey, evaluates and returns `false_expr`.  Only the selected branch is evaluated (short-circuit).
+indexterm:[operators, ternary] Evaluates `condition` using extended falsiness.  If truthy, evaluates and returns `true_expr`; if falsey, evaluates and returns `false_expr`.  Only the selected branch is evaluated (short-circuit).
 
 The ternary is right-associative: `a ? b :> c ? d :> e` parses as `a ? b :> (c ? d :> e)`.
 
@@ -373,9 +349,7 @@ label = count is 0 ? 'none' :> f'{count} items'
 
 [[sec-safe-navigation]]
 === Safe Navigation
-indexterm:[operators, safe navigation]
-
-The safe navigation operators provide nil-safe access to fields, methods, and indices.  If the receiver is `nil`, the expression evaluates to `nil` without raising an error.
+indexterm:[operators, safe navigation] The safe navigation operators provide nil-safe access to fields, methods, and indices.  If the receiver is `nil`, the expression evaluates to `nil` without raising an error.
 
 [cols="2,3,5a",options="header",stripes=even]
 |===
@@ -418,14 +392,12 @@ name = user?.name ?? 'Guest'
 
 [[sec-membership-operator]]
 === Membership Operator
-indexterm:[operators, membership]
-
 [source,ebnf]
 ----
 result = value in container
 ----
 
-Returns `true` if `container` contains `value`; `false` otherwise.  The expression `a in b` is equivalent to `b:contains(a)`.
+indexterm:[operators, membership] Returns `true` if `container` contains `value`; `false` otherwise.  The expression `a in b` is equivalent to `b:contains(a)`.
 
 The `in` operator requires the right-hand operand to provide a `:contains()` method.  The built-in types that define this method are ranges, strings and arrays.  Any user-defined type with a compliant `:contains()` method will also support `in`.  If the right-hand operand lacks a `:contains()` method, the runtime raises an error.
 
@@ -445,9 +417,7 @@ NOTE: The `in` keyword also appears in `for` loops (`for k, v in pairs(t) do`). 
 
 [[sec-pipe-operator]]
 === Pipe Operator
-indexterm:[operators, pipe]
-
-The pipe operator (`|>`) passes the result of the left-hand expression as arguments to the right-hand function call.
+indexterm:[operators, pipe] The pipe operator (`|>`) passes the result of the left-hand expression as arguments to the right-hand function call.
 
 [source,ebnf]
 ----
@@ -525,9 +495,7 @@ Pipe iteration applies only to range literals.  For ranges stored in variables, 
 
 [[sec-operator-precedence]]
 === Operator Precedence
-indexterm:[operators, precedence]
-
-The following table lists all operators from highest to lowest precedence.  Operators on the same row share the same precedence level.
+indexterm:[operators, precedence] The following table lists all operators from highest to lowest precedence.  Operators on the same row share the same precedence level.
 
 [cols="1,4a,2",options="header",stripes=even]
 |===

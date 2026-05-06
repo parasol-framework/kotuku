@@ -2,20 +2,16 @@
 
 [[ch-mathematics]]
 == Mathematics
-indexterm:[mathematics]
-
-The `math` library provides standard mathematical functions and constants.  All functions operate on double-precision floating-point numbers.  The library is always available and requires no explicit import.  All `math` functions raise an error if a required argument is missing or not a number.
+indexterm:[mathematics] The `math` library provides standard mathematical functions and constants.  All functions operate on double-precision floating-point numbers.  The library is always available and requires no explicit import.  All `math` functions raise an error if a required argument is missing or not a number.
 
 [[sec-arithmetic-functions]]
 === Arithmetic Functions
-indexterm:[mathematics, arithmetic]
-
 [discrete]
 ==== math.abs()
 
 [.api]`result = math.abs(X)`
 
-Returns the absolute value of `X`.
+indexterm:[mathematics, arithmetic] Returns the absolute value of `X`.
 
 [source,tiri]
 ----
@@ -100,9 +96,7 @@ math.modf(5)       -- 5, 0.0
 <<<
 [[sec-trigonometry]]
 === Trigonometry
-indexterm:[mathematics, trigonometry]
-
-All trigonometric functions operate in radians.  Use `math.rad()` and `math.deg()` to convert between degrees and radians.
+indexterm:[mathematics, trigonometry] All trigonometric functions operate in radians.  Use `math.rad()` and `math.deg()` to convert between degrees and radians.
 
 [discrete]
 ==== math.sin()
@@ -199,15 +193,12 @@ math.tanh(0)   -- 0.0
 
 [[sec-exponentials-and-logarithms]]
 === Exponentials & Logarithms
-indexterm:[mathematics, logarithms]
-indexterm:[mathematics, exponentials]
-
 [discrete]
 ==== math.exp()
 
 [.api]`result = math.exp(X)`
 
-Returns _e_ raised to the power `X`, where _e_ is Euler's number (approximately 2.71828).
+indexterm:[mathematics, logarithms] indexterm:[mathematics, exponentials] Returns _e_ raised to the power `X`, where _e_ is Euler's number (approximately 2.71828).
 
 [source,tiri]
 ----
@@ -298,14 +289,12 @@ m, e = math.frexp(12.0)
 
 [[sec-conversion]]
 === Conversion
-indexterm:[mathematics, conversion]
-
 [discrete]
 ==== math.deg()
 
 [.api]`result = math.deg(X)`
 
-Converts `X` from radians to degrees.
+indexterm:[mathematics, conversion] Converts `X` from radians to degrees.
 
 [source,tiri]
 ----
@@ -328,14 +317,12 @@ math.rad(90)    -- 1.5708...  (pi/2)
 
 [[sec-comparison-and-clamping]]
 === Comparison & Clamping
-indexterm:[mathematics, clamping]
-
 [discrete]
 ==== math.min()
 
 [.api]`result = math.min(X, ...)`
 
-Returns the smallest value among all arguments.  Accepts one or more numeric arguments.
+indexterm:[mathematics, clamping] Returns the smallest value among all arguments.  Accepts one or more numeric arguments.
 
 [source,tiri]
 ----
@@ -360,9 +347,7 @@ math.max(7)             -- 7
 
 [[sec-random-numbers]]
 === Random Numbers
-indexterm:[random numbers]
-
-The pseudo-random number generator uses a Tausworthe algorithm with a period of 2^223.  The generator is seeded with a fixed seed at startup; call `math.randomSeed()` to set a specific seed for reproducible sequences.
+indexterm:[random numbers] The pseudo-random number generator uses a Tausworthe algorithm with a period of 2^223.  The generator is seeded with a fixed seed at startup; call `math.randomSeed()` to set a specific seed for reproducible sequences.
 
 [discrete]
 ==== math.random()
@@ -410,11 +395,9 @@ b = math.random()
 
 [[sec-math-constants]]
 === Constants
-indexterm:[mathematics, constants]
-
 [cols="1,3a",options="header",stripes=even]
 |===
-|Constant |Description
+|indexterm:[mathematics, constants] Constant |Description
 
 |`math.pi`
 |The ratio of a circle's circumference to its diameter (approximately 3.14159265358979).
@@ -433,10 +416,7 @@ math.huge > 1e308   -- true
 
 [[sec-special-values]]
 === Special Values
-indexterm:[NaN]
-indexterm:[infinity]
-
-Mathematical operations can produce the following special floating-point values:
+indexterm:[NaN] indexterm:[infinity] Mathematical operations can produce the following special floating-point values:
 
 [cols="1,3a",options="header",stripes=even]
 |===

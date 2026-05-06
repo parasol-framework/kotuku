@@ -2,10 +2,8 @@
 
 [[ch-variables-and-scoping]]
 == Variables & Scoping
-indexterm:[variables]
-indexterm:[scoping]
 
-This chapter defines how variables are declared, assigned, and scoped in Tiri.  Tiri enforces local-by-default scoping, a significant departure from standard Lua where undeclared variables are implicitly global.
+indexterm:[variables] indexterm:[scoping] This chapter defines how variables are declared, assigned, and scoped in Tiri.  Tiri enforces local-by-default scoping, a significant departure from standard Lua where undeclared variables are implicitly global.
 
 [[sec-local-by-default]]
 === Local by Default
@@ -33,9 +31,8 @@ a, b, c                  -- error: use 'local a, b, c' or assign values
 
 [[sec-the-local-keyword]]
 === The local Keyword
-indexterm:[local variables]
 
-The `local` keyword explicitly declares one or more local variables in the current scope.  It is required when declaring multiple variables on a single line and when declaring a variable without an initial value.
+indexterm:[local variables] The `local` keyword explicitly declares one or more local variables in the current scope.  It is required when declaring multiple variables on a single line and when declaring a variable without an initial value.
 
 [source,tiri]
 ----
@@ -69,9 +66,8 @@ end
 
 [[sec-the-global-keyword]]
 === The global Keyword
-indexterm:[global variables]
 
-The `global` keyword declares a variable or function in the global scope.  Global declarations must precede any use of the variable name.
+indexterm:[global variables] The `global` keyword declares a variable or function in the global scope.  Global declarations must precede any use of the variable name.
 
 [source,tiri]
 ----
@@ -121,11 +117,10 @@ global MAX_RETRIES <const> = 5
 
 [[sec-assignment]]
 === Assignment
-indexterm:[assignment]
 
 ==== Simple Assignment
 
-Assignment stores a value in a variable.  If the target is undeclared, a new local is created (see <<sec-local-by-default>>).  If the target is an existing local, upvalue, or global, the stored value is updated.
+indexterm:[assignment] Assignment stores a value in a variable.  If the target is undeclared, a new local is created (see <<sec-local-by-default>>).  If the target is an existing local, upvalue, or global, the stored value is updated.
 
 [source,tiri]
 ----
@@ -228,10 +223,8 @@ Compound assignment (`+=`, `-=`, etc.) on an undeclared variable is an error.  T
 
 [[sec-type-annotations-on-variables]]
 === Type Annotations
-indexterm:[type annotations]
-indexterm:[variables, type annotations]
 
-Variables can carry an optional type annotation using the `:type` syntax after the variable name.  This pre-declares the type constraint for the variable.
+indexterm:[type annotations] indexterm:[variables, type annotations] Variables can carry an optional type annotation using the `:type` syntax after the variable name.  This pre-declares the type constraint for the variable.
 
 [source,tiri]
 ----
@@ -254,9 +247,8 @@ Type annotations interact with the type inference system.  See <<ch-type-system>
 
 [[sec-constant-variables]]
 === Constant Variables
-indexterm:[constant variables]
 
-The `<const>` attribute prevents reassignment after initialisation.  It applies to both `local` and `global` declarations.  The compiler enforces this constraint at parse time.
+indexterm:[constant variables] The `<const>` attribute prevents reassignment after initialisation.  It applies to both `local` and `global` declarations.  The compiler enforces this constraint at parse time.
 
 [source,tiri]
 ----
@@ -321,10 +313,8 @@ end
 
 [[sec-close-variables]]
 === To-Be-Closed Variables
-indexterm:[to-be-closed variables]
-indexterm:[close variables]
 
-The `<close>` attribute marks a local variable for automatic cleanup when its scope exits.  The runtime invokes the value's `__close` metamethod on scope exit, whether normal or due to an error.
+indexterm:[to-be-closed variables] indexterm:[close variables] The `<close>` attribute marks a local variable for automatic cleanup when its scope exits.  The runtime invokes the value's `__close` metamethod on scope exit, whether normal or due to an error.
 
 [source,tiri]
 ----
@@ -360,10 +350,8 @@ See <<ch-resource-management>> for further patterns using `<close>` and `defer`.
 
 [[sec-upvalues-and-closures]]
 === Upvalues & Closures
-indexterm:[upvalues]
-indexterm:[closures]
 
-When a function references a variable from an enclosing scope, that variable is captured as an upvalue.  The function and its captured upvalues together form a closure.
+indexterm:[upvalues] indexterm:[closures] When a function references a variable from an enclosing scope, that variable is captured as an upvalue.  The function and its captured upvalues together form a closure.
 
 [source,tiri]
 ----

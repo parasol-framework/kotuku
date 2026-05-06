@@ -1,14 +1,10 @@
 [[appendix-standard-library-quick-reference]]
 [appendix]
 == Standard Library Quick Reference
-indexterm:[standard library, quick reference]
-
-This appendix provides a compact reference of all built-in Tiri functions organised by library.  For full semantics, see the referenced chapters.  All string and table indexing is zero-based.  String and array methods support method-call syntax: `s:upper()` is equivalent to `string.upper(s)`.
+indexterm:[library, standard] This appendix provides a compact reference of all built-in Tiri functions organised by library.  For full semantics, see the referenced chapters.  All string and table indexing is zero-based.  String and array methods support method-call syntax: `s:upper()` is equivalent to `string.upper(s)`.
 
 === Global Functions
-indexterm:[standard library, global functions]
-
-See <<ch-basic-syntax>>, <<ch-types-and-values>>, <<ch-error-handling>>.
+indexterm:[global functions] See <<ch-basic-syntax>>, <<ch-types-and-values>>, <<ch-error-handling>>.
 
 [cols="4,5"]
 |===
@@ -39,9 +35,7 @@ See <<ch-basic-syntax>>, <<ch-types-and-values>>, <<ch-error-handling>>.
 
 <<<
 === String Library
-indexterm:[standard library, string library]
-
-See <<ch-strings>>.
+indexterm:[library, string] See <<ch-strings>>.
 
 ==== Core Methods
 
@@ -95,9 +89,7 @@ See <<ch-strings>>.
 
 <<<
 === Table Library
-indexterm:[standard library, table library]
-
-See <<ch-tables>>.
+indexterm:[library, table] See <<ch-tables>>.
 
 [cols="4,5"]
 |===
@@ -117,9 +109,7 @@ See <<ch-tables>>.
 |===
 
 === Array Library
-indexterm:[standard library, array library]
-
-See <<ch-arrays>>.
+indexterm:[library, array] See <<ch-arrays>>.
 
 ==== Creation
 
@@ -198,9 +188,7 @@ Typed literal syntax is also supported: `array<int> { 10, 20, 30 }`
 
 <<<
 === Range Library
-indexterm:[standard library, range library]
-
-See <<ch-ranges>>.
+indexterm:[library, range] See <<ch-ranges>>.
 
 [cols="4,5"]
 |===
@@ -227,9 +215,7 @@ Range literal syntax: `{0..5}` (exclusive), `{0...5}` (inclusive).
 Read-only properties: `r.start`, `r.stop`, `r.step`, `r.inclusive`, `r.length`.
 
 === Math Library
-indexterm:[standard library, math library]
-
-See <<ch-mathematics>>.
+indexterm:[library, math] See <<ch-mathematics>>.
 
 ==== Arithmetic
 
@@ -300,9 +286,7 @@ All trigonometric functions operate in radians.
 
 <<<
 === Regex Library
-indexterm:[standard library, regex library]
-
-See <<ch-regular-expressions>>.
+indexterm:[library, regex] See <<ch-regular-expressions>>.
 
 ==== Creation
 
@@ -349,9 +333,7 @@ See <<ch-regular-expressions>>.
 Read-only properties: `rx.pattern`, `rx.flags`, `rx.error`.
 
 === I/O Library
-indexterm:[standard library, I/O library]
-
-See <<ch-file-io>>.
+indexterm:[library, I/O] See <<ch-file-io>>.
 
 ==== File Operations
 
@@ -413,9 +395,7 @@ See <<ch-file-io>>.
 Standard streams: `io.stdin`, `io.stdout`, `io.stderr`.
 
 === Debug Library
-indexterm:[standard library, debug library]
-
-See <<ch-the-debug-library>>.
+indexterm:[library, debug] See <<ch-the-debug-library>>.
 
 [cols="4,5"]
 |===
@@ -444,9 +424,7 @@ See <<ch-the-debug-library>>.
 |===
 
 === JIT Library
-indexterm:[standard library, JIT library]
-
-See <<ch-performance-and-the-jit>>.
+indexterm:[library, JIT] See <<ch-performance-and-the-jit>>.
 
 [cols="4,5"]
 |===

@@ -2,9 +2,7 @@
 
 [[ch-ranges]]
 == Ranges
-indexterm:[ranges]
-
-Ranges are immutable, 32-bit integer-only sequences that express numeric intervals.  They are primarily used for iteration, slicing, and membership testing.  Two construction styles are supported: a `range()` constructor function and a brace-based literal syntax.
+indexterm:[ranges] Ranges are immutable, 32-bit integer-only sequences that express numeric intervals.  They are primarily used for iteration, slicing, and membership testing.  Two construction styles are supported: a `range()` constructor function and a brace-based literal syntax.
 
 Ranges report their type as `userdata`.  Use `range.check()` to distinguish ranges from other userdata values.
 
@@ -18,13 +16,11 @@ range.check(42)   -- false
 
 [[sec-range-constructors]]
 === Range Constructors
-indexterm:[ranges, constructors]
-
 ==== Constructor Function
 
 [.api]`r = range(Start, Stop, [Inclusive], [Step])`
 
-Creates a range from `Start` to `Stop`.  The `Stop` value is exclusive by default, unless `Inclusive` is `true`.
+indexterm:[ranges, constructors] Creates a range from `Start` to `Stop`.  The `Stop` value is exclusive by default, unless `Inclusive` is `true`.
 
 If `Step` is omitted, the step is inferred from direction: `1` when `Start` pass:[&lt;=] `Stop`, `-1` when `Start > Stop`.  An explicit `Step` must be a non-zero integer.
 
@@ -151,9 +147,7 @@ Equivalent to the `range()` constructor function.  An error is raised if any of 
 
 [[sec-iteration-with-ranges]]
 === Iteration with Ranges
-indexterm:[ranges, iteration]
-
-Ranges integrate with Tiri's generic `for` loop.  When a range literal appears directly in the loop header, the parser optimises it to a numeric for loop.
+indexterm:[ranges, iteration] Ranges integrate with Tiri's generic `for` loop.  When a range literal appears directly in the loop header, the parser optimises it to a numeric for loop.
 
 [source,tiri]
 ----
@@ -223,14 +217,12 @@ end
 
 [[sec-range-slicing]]
 === Range Slicing
-indexterm:[ranges, slicing]
-
 [discrete]
 ==== range.slice()
 
 [.api]`result = range.slice(Object, Range)`
 
-Slices a string, table, or array using `Range` to select elements.  Returns a value of the same type as `Object`.  This function is the underlying implementation for the `obj[{range}]` index syntax.
+indexterm:[ranges, slicing] Slices a string, table, or array using `Range` to select elements.  Returns a value of the same type as `Object`.  This function is the underlying implementation for the `obj[{range}]` index syntax.
 
 [source,tiri]
 ----
@@ -334,9 +326,7 @@ range.slice(t, range(0, 9, true, 2))     -- {0, 2, 4, 6, 8}
 
 [[sec-membership-testing]]
 === Membership Testing
-indexterm:[ranges, membership testing]
-
-The `in` operator tests whether a value belongs to a range.  The test respects the range's inclusive/exclusive semantics and step alignment.
+indexterm:[ranges, membership testing] The `in` operator tests whether a value belongs to a range.  The test respects the range's inclusive/exclusive semantics and step alignment.
 
 [source,tiri]
 ----
@@ -388,9 +378,7 @@ The `in` operator uses `contains()` internally.
 
 [[sec-functional-iteration]]
 === Functional Iteration
-indexterm:[ranges, functional iteration]
-
-Ranges provide functional programming methods for transforming, filtering, and querying numeric sequences.  All functional methods that accept a callback pass the current value as the sole argument.
+indexterm:[ranges, functional iteration] Ranges provide functional programming methods for transforming, filtering, and querying numeric sequences.  All functional methods that accept a callback pass the current value as the sole argument.
 
 [discrete]
 ==== each()

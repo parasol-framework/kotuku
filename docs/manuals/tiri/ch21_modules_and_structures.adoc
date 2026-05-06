@@ -2,22 +2,17 @@
 
 [[ch-modules-and-structures]]
 == Modules & Structures
-indexterm:[modules]
-indexterm:[structures]
-
-Tiri provides direct access to Kōtuku's compiled modules through the `mod` namespace.  This chapter defines the interfaces for loading modules, calling module functions, working with C/C++ structures, and interpreting error codes.
+indexterm:[modules] indexterm:[structures] Tiri provides direct access to Kōtuku's compiled modules through the `mod` namespace.  This chapter defines the interfaces for loading modules, calling module functions, working with C/C++ structures, and interpreting error codes.
 
 The Core module (`mSys`) is loaded automatically and is always available.  All other modules are loaded on demand with `mod.load()` or `mod.new()`.  The `include` directive (<<sec-the-include-directive>>) provides a lightweight alternative that loads only definitions (constants, structures, and class metadata) without opening the module's function table.
 
 [[sec-loading-modules]]
 === Loading Modules
-indexterm:[modules, loading]
-
 ==== mod.load()
 
 [.api]`module = mod.load(Name)`
 
-Loads the Kōtuku module identified by `Name` and returns a module interface object.  `Name` is a case-insensitive alphanumeric string with a maximum length of 32 characters.  Passing an invalid name raises an exception with `ERR_Syntax`.
+indexterm:[modules, loading] Loads the Kōtuku module identified by `Name` and returns a module interface object.  `Name` is a case-insensitive alphanumeric string with a maximum length of 32 characters.  Passing an invalid name raises an exception with `ERR_Syntax`.
 
 If the module cannot be loaded (e.g. the binary is missing or initialisation fails), an exception is raised with `ERR_LoadModule`.
 
@@ -112,11 +107,9 @@ print(buffer)
 
 [[sec-the-include-directive]]
 === The include Directive
-indexterm:[include directive]
-
 [.api]`include 'ModuleName', pass:[...]`
 
-The `include` directive loads the interface definitions (constants, structures, and class definitions) for one or more Kōtuku modules.  It accepts a comma-separated list of module names as string arguments:
+indexterm:[include directive] The `include` directive loads the interface definitions (constants, structures, and class definitions) for one or more Kōtuku modules.  It accepts a comma-separated list of module names as string arguments:
 
 [source,tiri]
 ----
@@ -149,9 +142,7 @@ mGfx = mod.load('display')
 
 [[sec-type-conversion]]
 === Type Conversion
-indexterm:[type conversion]
-
-When calling a module function, Tiri performs automatic type conversion to match the types declared in the function definition.  For example, a string value passed to an integer parameter is converted to an integer.  A boolean passed to a string parameter is converted to its string representation.
+indexterm:[type conversion] When calling a module function, Tiri performs automatic type conversion to match the types declared in the function definition.  For example, a string value passed to an integer parameter is converted to an integer.  A boolean passed to a string parameter is converted to its string representation.
 
 If the conversion is not possible (e.g. an abstract pointer cannot be converted to a number), an exception is raised with `ERR_WrongType`.
 
@@ -176,9 +167,7 @@ While automatic conversion is convenient, prefer passing correctly typed values 
 
 [[sec-structures]]
 === Structures
-indexterm:[structures]
-
-The structure interface allows Tiri scripts to create and manipulate C/C++ structures declared in the Kōtuku API.  Many class and module functions use structures for returning condensed information.  All structure functions are accessed through the `struct` namespace.
+indexterm:[structures] The structure interface allows Tiri scripts to create and manipulate C/C++ structures declared in the Kōtuku API.  Many class and module functions use structures for returning condensed information.  All structure functions are accessed through the `struct` namespace.
 
 ==== struct.new()
 

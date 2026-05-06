@@ -2,16 +2,12 @@
 
 [[ch-the-debug-library]]
 == The Debug Library
-indexterm:[debug library]
-
-The `debug` library provides introspection and manipulation of the Tiri runtime environment.  It exposes internal state that is not accessible through normal language constructs: stack frames, local variables, upvalues, metatables, hooks, and source file tracking.  The library is always available and requires no explicit import.
+indexterm:[library, debug] The `debug` library provides introspection and manipulation of the Tiri runtime environment.  It exposes internal state that is not accessible through normal language constructs: stack frames, local variables, upvalues, metatables, hooks, and source file tracking.  The library is always available and requires no explicit import.
 
 All `debug` functions operate on the runtime state of the currently executing programme.  Using them in production code is discouraged; they exist to support debuggers, profilers, testing frameworks, and diagnostic tools.
 
 [[sec-introspection]]
 === Introspection
-indexterm:[debug library, introspection]
-
 [discrete]
 ==== debug.getInfo()
 
@@ -163,9 +159,7 @@ Returns the registry table, a pre-defined table used internally by C code to sto
 
 [[sec-upvalue-access]]
 === Upvalue Access
-indexterm:[debug library, upvalues]
-
-Upvalues are external local variables captured by a closure.  The functions in this section inspect and modify upvalue storage directly.  All upvalue indices are 0-based.
+indexterm:[upvalues] Upvalues are external local variables captured by a closure.  The functions in this section inspect and modify upvalue storage directly.  All upvalue indices are 0-based.
 
 [discrete]
 ==== debug.getUpvalue()
@@ -233,14 +227,12 @@ Throws an error if either function is a C function or if an index is out of rang
 
 [[sec-metatable-access]]
 === Metatable Access
-indexterm:[debug library, metatables]
-
 [discrete]
 ==== debug.getMetatable()
 
 [.api]`mt = debug.getMetatable(Object)`
 
-Returns the metatable of `Object`, or `nil` if it has no metatable.  Unlike the standard `getmetatable()`, this function bypasses the `__metatable` metamethod and always returns the raw metatable.
+indexterm:[metatables] Returns the metatable of `Object`, or `nil` if it has no metatable.  Unlike the standard `getmetatable()`, this function bypasses the `__metatable` metamethod and always returns the raw metatable.
 
 [discrete]
 ==== debug.setMetatable()
@@ -289,9 +281,7 @@ debug.setEnv(sandboxed, sandbox)
 
 [[sec-hooks]]
 === Hooks
-indexterm:[debug hooks]
-
-Debug hooks allow a callback function to be invoked at specific execution events.  Only one hook may be active at a time.
+indexterm:[debug hooks] Debug hooks allow a callback function to be invoked at specific execution events.  Only one hook may be active at a time.
 
 [discrete]
 ==== debug.setHook()
@@ -356,14 +346,12 @@ Returns the current hook function, mask string, and count.  Returns `nil, '', 0`
 
 [[sec-tracebacks]]
 === Tracebacks
-indexterm:[tracebacks]
-
 [discrete]
 ==== debug.traceback()
 
 [.api]`str = debug.traceback([Message, [Level]])`
 
-Returns a string with a traceback of the call stack.  If `Message` is provided, it is prepended to the traceback.  `Level` specifies the stack level at which to start (defaults to 1, the function calling `traceback`).
+indexterm:[tracebacks] Returns a string with a traceback of the call stack.  If `Message` is provided, it is prepended to the traceback.  `Level` specifies the stack level at which to start (defaults to 1, the function calling `traceback`).
 
 [source,tiri]
 ----
@@ -397,8 +385,6 @@ Associates `Table` with `Userdata`.  Returns `Userdata`.  Throws an error if the
 
 [[sec-file-source-tracking]]
 === File Source Tracking
-indexterm:[file source tracking]
-
 [discrete]
 ==== debug.fileSources()
 
@@ -449,9 +435,7 @@ Returns an array of all registered file sources for the current script execution
 
 [source,tiri]
 ----
-sources = debug.fileSources()
-for i = 0, #sources - 1 do
-   src = sources[i]
+for src in values(debug.fileSources()) do
    print(f'[{src.index}] {src.filename} ({src.totalLines} lines)')
 end
 ----
@@ -463,8 +447,6 @@ The `fileIndex` field returned by `debug.getInfo()` (with the `S` option) corres
 [[sec-validation-and-diagnostics]]
 [%unbreakable]
 === Validation & Diagnostics
-indexterm:[validation diagnostics]
-
 [discrete%unbreakable]
 ==== debug.validate()
 
@@ -560,8 +542,7 @@ Each entry in the `tips` array contains:
 result = debug.validate([[local x = !!!]])
 
 if not result.success then
-   for i = 0, #result.diagnostics - 1 do
-      d = result.diagnostics[i]
+   for d in values(result.diagnostics) do
       print(f'line {d.line}: [{d.code}] {d.message}')
    end
 end

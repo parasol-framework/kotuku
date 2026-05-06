@@ -2,18 +2,13 @@
 
 [[ch-processing-and-events]]
 == Processing & Events
-indexterm:[processing loop]
-indexterm:[events]
-
-Kōtuku is an event-driven framework.  Programs interact with the system by entering a processing loop that dispatches messages, fires timers, and monitors signals.  This chapter defines the `processing` interface, the event subsystem, and the available garbage collector controls.
+indexterm:[processing loop] indexterm:[events] Kōtuku is an event-driven framework.  Programs interact with the system by entering a processing loop that dispatches messages, fires timers, and monitors signals.  This chapter defines the `processing` interface, the event subsystem, and the available garbage collector controls.
 
 All processing functions are accessed through the `processing` namespace.
 
 [[sec-the-processing-loop]]
 === The Processing Loop
-indexterm:[processing loop]
-
-A Tiri script that creates a GUI or performs asynchronous I/O must enter the processing loop to receive and dispatch messages.  The loop is entered by calling `processing.sleep()`.
+indexterm:[processing loop] A Tiri script that creates a GUI or performs asynchronous I/O must enter the processing loop to receive and dispatch messages.  The loop is entered by calling `processing.sleep()`.
 
 ==== processing.sleep()
 
@@ -104,13 +99,11 @@ processing.halt(0)
 
 [[sec-processing-callbacks]]
 === Processing Callbacks
-indexterm:[processing callbacks]
-
 ==== processing.delayedCall()
 
 [.api]`processing.delayedCall(Function)`
 
-Schedules `Function` to execute on the next message processing cycle inside `processing.sleep()`.  The function receives no arguments and its return value is discarded.
+indexterm:[processing callbacks] Schedules `Function` to execute on the next message processing cycle inside `processing.sleep()`.  The function receives no arguments and its return value is discarded.
 
 Use `processing.delayedCall()` when an operation must not execute immediately — for instance, freeing an object from within its own callback, or deferring work that depends on the current event cycle completing first.
 
@@ -139,9 +132,7 @@ task.priority = 15
 
 [[sec-signals]]
 === Signals
-indexterm:[signals]
-
-Signals provide a lightweight synchronisation mechanism for waking a sleeping script.  A signal is a boolean flag on a Kōtuku object that transitions from _cleared_ to _raised_ when the object's `Signal` action is invoked.  There are no limitations on the class of object that can be used for signalling.
+indexterm:[signals] Signals provide a lightweight synchronisation mechanism for waking a sleeping script.  A signal is a boolean flag on a Kōtuku object that transitions from _cleared_ to _raised_ when the object's `Signal` action is invoked.  There are no limitations on the class of object that can be used for signalling.
 
 [discrete]
 ==== Default Signal Behaviour
@@ -259,9 +250,7 @@ end
 
 [[sec-the-event-subsystem]]
 === The Event Subsystem
-indexterm:[events, subsystem]
-
-The event subsystem broadcasts system-wide notifications between all processes.  Events are identified by a hierarchical string in the format `group.subgroup.name`.  Tiri scripts can subscribe to events and receive callbacks when they are broadcast.
+indexterm:[events, subsystem] The event subsystem broadcasts system-wide notifications between all processes.  Events are identified by a hierarchical string in the format `group.subgroup.name`.  Tiri scripts can subscribe to events and receive callbacks when they are broadcast.
 
 Events are dispatched during the processing loop (<<sec-the-processing-loop>>).  A script must be inside `processing.sleep()` to receive event callbacks.
 
@@ -356,10 +345,7 @@ All event subscriptions are automatically cleaned up when the script terminates.
 
 [[sec-timers-and-scheduling]]
 === Timers & Scheduling
-indexterm:[timers]
-indexterm:[scheduling]
-
-Reliable timer subscriptions are available through the system core, `mSys`.  Timers fire callbacks at regular intervals during the processing loop.
+indexterm:[timers] indexterm:[scheduling] Reliable timer subscriptions are available through the system core, `mSys`.  Timers fire callbacks at regular intervals during the processing loop.
 
 ==== mSys.SubscribeTimer()
 
@@ -502,9 +488,7 @@ end
 
 [[sec-garbage-collector-control]]
 === Garbage Collector Control
-indexterm:[garbage collector]
-
-The `processing` namespace provides functions to control and query the Tiri garbage collector.  The collector runs automatically by default, reclaiming memory used by unreachable values.
+indexterm:[garbage collector] The `processing` namespace provides functions to control and query the Tiri garbage collector.  The collector runs automatically by default, reclaiming memory used by unreachable values.
 
 ==== processing.collect()
 

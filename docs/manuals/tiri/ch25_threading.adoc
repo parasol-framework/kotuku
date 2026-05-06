@@ -2,9 +2,7 @@
 
 [[ch-threading]]
 == Threading
-indexterm:[threading]
-
-Tiri provides a threading model designed for safety over flexibility, without compromising performance.  Rather than launching raw threads, the programmer submits asynchronous work against a Kōtuku object.  The runtime manages thread creation, queueing, and exclusive locking automatically.  This _barrier model_ eliminates data races by ensuring that no two workers can access the same object concurrently — while the worker has exclusive access, it can safely operate on the object's data without additional synchronisation.
+indexterm:[threading] Tiri provides a threading model designed for safety over flexibility, without compromising performance.  Rather than launching raw threads, the programmer submits asynchronous work against a Kōtuku object.  The runtime manages thread creation, queueing, and exclusive locking automatically.  This _barrier model_ eliminates data races by ensuring that no two workers can access the same object concurrently — while the worker has exclusive access, it can safely operate on the object's data without additional synchronisation.
 
 The threading system consists of three interfaces:
 
@@ -14,9 +12,7 @@ The threading system consists of three interfaces:
 
 [[sec-threading-model]]
 === The Barrier Model
-indexterm:[threading, barrier model]
-
-Every asynchronous activity targets a Kōtuku object that will represent the working state.  When the worker thread starts, it acquires an exclusive lock on that object that lasts until the thread completes.  Execution proceeds in two phases:
+indexterm:[threading, barrier model] Every asynchronous activity targets a Kōtuku object that will represent the working state.  When the worker thread starts, it acquires an exclusive lock on that object that lasts until the thread completes.  Execution proceeds in two phases:
 
 . **Worker phase** — the worker thread owns the object lock and executes the action.  No other thread may access the object.
 . **Callback phase** — on completion, ownership transfers directly to the main thread for callback execution.  The object remains unavailable to other worker threads throughout.
@@ -35,13 +31,11 @@ NOTE: Thread callbacks always execute during the event processing loop, which re
 
 [[sec-thread-creation]]
 === Thread Creation
-indexterm:[threading, creation]
-
 ==== async.script()
 
 [.api]`async.script(Script, [Callback])`
 
-Executes a Script object in a separate thread, or enqueues it for later execution if busy.  `Script` must be a Kōtuku Script object (created with `obj.new('script', { pass:[...] })`).  The script's code runs in its own isolated state — it cannot see local variables from the calling scope.
+indexterm:[threading, creation] Executes a Script object in a separate thread, or enqueues it for later execution if busy.  `Script` must be a Kōtuku Script object (created with `obj.new('script', { pass:[...] })`).  The script's code runs in its own isolated state — it cannot see local variables from the calling scope.
 
 If `Callback` is provided, it executes on the main thread after the threaded script completes.  The callback receives a reference to the `Script` object as its first parameter.
 
@@ -119,15 +113,12 @@ processing.collect() <1>
 
 [[sec-threaded-actions-and-methods]]
 === Async Actions & Methods
-indexterm:[async actions]
-indexterm:[async methods]
-
 ==== async.action(), async.method()
 
 [.api]`async.action(Object, Name, [Callback], [Key], [Argspass:[...]])` +
 [.api]`async.method(Object, Name, [Callback], [Key], [Argspass:[...]])`
 
-Submits an action or method for asynchronous execution against `Object`.  `Name` is the action or method as represented by its string name or numeric `AC` or `MT` ID.  The runtime allocates a worker thread to execute the action; the caller does not manage threads directly.  The optional `Callback` executes on the main thread when the action completes.  `Callback` accepts a function value or a string that names a global function.
+indexterm:[async methods] indexterm:[async actions] Submits an action or method for asynchronous execution against `Object`.  `Name` is the action or method as represented by its string name or numeric `AC` or `MT` ID.  The runtime allocates a worker thread to execute the action; the caller does not manage threads directly.  The optional `Callback` executes on the main thread when the action completes.  `Callback` accepts a function value or a string that names a global function.
 
 Multiple calls targeting the same object are queued automatically and executed in FIFO order — only one worker thread runs per object at any time.  Calls targeting different objects execute in parallel.
 
@@ -197,13 +188,11 @@ Any async actions submitted during callback execution — including actions targ
 
 [[sec-async-queue-management]]
 === Queue Management
-indexterm:[threading, queue management]
-
 ==== async.wait()
 
 [.api]`error = async.wait(Objects, [Timeout])`
 
-Blocks the main thread until all queued and in-flight asynchronous actions for the listed objects have completed.  Messages continue to be processed while waiting, so async completion callbacks fire normally.
+indexterm:[threading, queue management] Blocks the main thread until all queued and in-flight asynchronous actions for the listed objects have completed.  Messages continue to be processed while waiting, so async completion callbacks fire normally.
 
 `Objects` is a single Kōtuku object or `array<object>` list.  `Timeout` is an optional number of seconds to wait before returning `ERR_Timeout`.  If omitted, the wait is indefinite.
 
@@ -277,9 +266,7 @@ check async.cancel(array<object> { script_a, script_b })
 
 [[sec-thread-synchronisation]]
 === Thread Synchronisation
-indexterm:[threading, synchronisation]
-
-Thread synchronisation in Tiri relies on the signal mechanism defined in <<sec-signals>>.  The pattern is:
+indexterm:[threading, synchronisation] Thread synchronisation in Tiri relies on the signal mechanism defined in <<sec-signals>>.  The pattern is:
 
 1. Create one or more objects to act as signal targets.
 2. Create a processing object with `processing.new()` that monitors those targets.
@@ -368,11 +355,9 @@ The pipe iteration operator can be combined with `async.script()` to fan out wor
 
 [[sec-shared-pool]]
 === Shared Data Pool
-indexterm:[threading, shared data pool]
-
 ==== async.pool
 
-The `async.pool` table provides a thread-safe key-value store for exchanging data between the main thread and worker scripts launched with `async.script()`.  All reads and writes are protected by an internal shared mutex — reads execute concurrently with other reads, and writes acquire exclusive access.
+indexterm:[threading, shared data pool] The `async.pool` table provides a thread-safe key-value store for exchanging data between the main thread and worker scripts launched with `async.script()`.  All reads and writes are protected by an internal shared mutex — reads execute concurrently with other reads, and writes acquire exclusive access.
 
 The pool is created lazily on first access and is shared automatically with all child scripts launched via `async.script()`.  No explicit setup is required.
 
@@ -451,12 +436,10 @@ Keys are strings and are binary-safe (embedded NUL bytes are preserved).
 
 [[sec-thread-safety]]
 === Thread Safety
-indexterm:[thread safety]
-
 [discrete]
 ==== Guarantees
 
-* All Tiri thread callbacks execute on the main thread.  No Tiri code ever runs concurrently with callback code.
+* indexterm:[thread safety] All Tiri thread callbacks execute on the main thread.  No Tiri code ever runs concurrently with callback code.
 * The barrier model prevents concurrent access to the same object from multiple threads.
 * Multiple async actions on the same object are queued and dispatched in submission order, guaranteeing deterministic sequential execution per object.
 * Garbage collection cannot reclaim objects that are actively participating in a thread.

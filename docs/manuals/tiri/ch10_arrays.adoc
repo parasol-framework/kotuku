@@ -2,10 +2,7 @@
 
 [[ch-arrays]]
 == Arrays
-indexterm:[arrays]
-indexterm:[typed arrays]
-
-Arrays are mutable, typed, contiguous sequences of elements.  Each array holds elements of a single declared type, providing efficient storage and direct memory access.  Arrays are a distinct type from tables, purpose-built for sequential data where all elements share a common type.
+indexterm:[arrays] indexterm:[typed arrays] Arrays are mutable, typed, contiguous sequences of elements.  Each array holds elements of a single declared type, providing efficient storage and direct memory access.  Arrays are a distinct type from tables, purpose-built for sequential data where all elements share a common type.
 
 Arrays are reference types.  Assigning an array to another variable creates a second reference to the same underlying data, not a copy.  Two distinct arrays are never equal, even if they contain identical entries; `is` compares identity, not content.
 
@@ -21,12 +18,10 @@ All indexing is zero-based.  The `#` operator returns the element count.  Elemen
 
 [[sec-array-fundamentals]]
 === Array Fundamentals
-indexterm:[arrays, fundamentals]
-
 [discrete]
 ==== Element Types
 
-Each array declares a fixed element type at creation.  Storing a value of an incompatible type raises an error.
+indexterm:[arrays, fundamentals] Each array declares a fixed element type at creation.  Storing a value of an incompatible type raises an error.
 
 [cols="1,1,3a",options="header",stripes=even]
 |===
@@ -117,12 +112,10 @@ a is b   -- false (distinct objects)
 
 [[sec-creating-arrays]]
 === Creating Arrays
-indexterm:[arrays, creation]
-
 [discrete]
 ==== Typed Syntax
 
-The `array<type>` syntax creates arrays with concise, declarative notation:
+indexterm:[arrays, creation] The `array<type>` syntax creates arrays with concise, declarative notation:
 
 [source,tiri]
 ----
@@ -182,12 +175,10 @@ NOTE: The typed syntax `array<int> { 1, 2, 3 }` is preferred over `array.of()` f
 [[sec-element-access]]
 [%breakable]
 === Element Access
-indexterm:[arrays, element access]
-
 [discrete]
 ==== Indexing
 
-Elements are accessed by zero-based integer index.  Out-of-bounds reads and writes raise an error.  Negative indices are not supported.
+indexterm:[arrays, element access] Elements are accessed by zero-based integer index.  Out-of-bounds reads and writes raise an error.  Negative indices are not supported.
 
 [source,tiri]
 ----
@@ -253,14 +244,12 @@ end
 
 [[sec-mutation-methods]]
 === Mutation Methods
-indexterm:[arrays, mutation]
-
 [discrete]
 ==== push()
 
 [.api]`length = arr:push(Value, pass:[...])`
 
-Appends one or more values to the end of the array.  Grows the array if necessary.  Returns the new length.  If called with no arguments, returns the current length without modification.
+indexterm:[arrays, mutation] Appends one or more values to the end of the array.  Grows the array if necessary.  Returns the new length.  If called with no arguments, returns the current length without modification.
 
 [source,tiri]
 ----
@@ -399,16 +388,13 @@ Changes the array length to `NewSize`.  When growing, new elements are zero-init
 
 [[sec-search-and-query]]
 === Search & Query
-indexterm:[arrays, searching]
-indexterm:[arrays, querying]
-
 [discrete]
 ==== find()
 
 [.api]`index = arr:find(Value, [Start])` +
 [.api]`index = arr:find(Value, Range)`
 
-Searches for `Value` and returns its zero-based index, or `nil` if not found.  With a numeric `Start`, the search begins at that index.  With a range, the search is restricted to the indices selected by the range (supports exclusive, inclusive, negative, stepped, and reverse ranges).
+indexterm:[arrays, searching] indexterm:[arrays, querying] Searches for `Value` and returns its zero-based index, or `nil` if not found.  With a numeric `Start`, the search begins at that index.  With a range, the search is restricted to the indices selected by the range (supports exclusive, inclusive, negative, stepped, and reverse ranges).
 
 For `object` arrays, `Value` can be an object or a numeric UID.
 
@@ -431,15 +417,12 @@ arr:find(20, {4...0})   -- 3 (found searching backwards)
 
 [[sec-copying-and-slicing]]
 === Copying & Slicing
-indexterm:[arrays, copying]
-indexterm:[arrays, slicing]
-
 [discrete]
 ==== clone()
 
 [.api]`copy = arr:clone()`
 
-Creates a new array with the same element type and a copy of all elements.  For reference types (tables, objects, arrays), the clone is shallow: the new array holds references to the same underlying objects.
+indexterm:[arrays, copying] indexterm:[arrays, slicing] Creates a new array with the same element type and a copy of all elements.  For reference types (tables, objects, arrays), the clone is shallow: the new array holds references to the same underlying objects.
 
 [discrete]
 ==== slice()
@@ -558,9 +541,7 @@ arr:join('-')     -- '1-2-3'
 
 [[sec-functional-methods]]
 === Functional Methods
-indexterm:[arrays, functional methods]
-
-All functional methods in this section accept a callback function that receives `(Value, Index)` as parameters.  The `Index` parameter is optional; callbacks that only need the value can omit it.
+indexterm:[arrays, functional methods] All functional methods in this section accept a callback function that receives `(Value, Index)` as parameters.  The `Index` parameter is optional; callbacks that only need the value can omit it.
 
 [discrete]
 ==== each()

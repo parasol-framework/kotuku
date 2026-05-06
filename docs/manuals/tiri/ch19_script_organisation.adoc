@@ -2,17 +2,13 @@
 
 [[ch-script-management]]
 == Script Management
-indexterm:[script management]
-
-Tiri programs are organised through a combination of compile-time directives and runtime loading functions.  The `import` directive inlines library scripts at parse time, and the runtime functions `loadFile()` and `exec()` provide dynamic loading and evaluation.  User interactivity is possible via the `arg()` function, which allows command-line parameters to be passed through to the script.
+indexterm:[script management] Tiri programs are organised through a combination of compile-time directives and runtime loading functions.  The `import` directive inlines library scripts at parse time, and the runtime functions `loadFile()` and `exec()` provide dynamic loading and evaluation.  User interactivity is possible via the `arg()` function, which allows command-line parameters to be passed through to the script.
 
 [[sec-the-import-directive]]
 === The import Directive
-indexterm:[import directive]
-
 [.api]`import 'Name' [as Alias]`
 
-The `import` directive loads and inlines a Tiri script at parse time.  The imported script's bytecode is merged into the importing script during compilation, enabling the parser to produce optimised code across library boundaries.
+indexterm:[import directive] The `import` directive loads and inlines a Tiri script at parse time.  The imported script's bytecode is merged into the importing script during compilation, enabling the parser to produce optimised code across library boundaries.
 
 [discrete]
 ==== Resolution Rules
@@ -172,13 +168,11 @@ This pattern allows libraries to include self-test or demonstration code that do
 
 [[sec-dynamic-loading]]
 === Dynamic Loading
-indexterm:[dynamic loading]
-
 ==== loadFile()
 
 [.api]`resultspass:[...] = loadFile(Path)`
 
-Loads, parses, and executes a Tiri script at runtime.  `Path` is a string specifying the file location.  If the path is not fully qualified, it is resolved relative to the current working directory of the process.
+indexterm:[dynamic loading] Loads, parses, and executes a Tiri script at runtime.  `Path` is a string specifying the file location.  If the path is not fully qualified, it is resolved relative to the current working directory of the process.
 
 `loadFile()` raises an exception if the file cannot be opened, parsed, or if execution fails.
 
@@ -260,13 +254,11 @@ The following table summarises the available mechanisms for loading and executin
 
 [[sec-script-parameters]]
 === Script Parameters
-indexterm:[script parameters]
-
 ==== arg()
 
 [.api]`value = arg(Key, [Default])`
 
-Retrieves a named argument passed to the script on the command line.  If `Key` is not found and `Default` is provided, returns `Default`.  If `Key` is not found and no default is provided, returns `nil`.
+indexterm:[script parameters] Retrieves a named argument passed to the script on the command line.  If `Key` is not found and `Default` is provided, returns `Default`.  If `Key` is not found and no default is provided, returns `nil`.
 
 Arguments are passed to the Origo executable as `key=value` pairs after the script path:
 

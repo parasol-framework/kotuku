@@ -2,9 +2,7 @@
 
 [[ch-input-handling]]
 == Input Handling
-indexterm:[input handling]
-
-Kōtuku provides a unified input handling model for pointer devices (mice, trackpads, touchscreens, graphics tablets) and keyboards.  Input events are dispatched during the processing loop (see <<ch-processing-and-events>>) and delivered to registered callbacks.
+indexterm:[input handling] Kōtuku provides a unified input handling model for pointer devices (mice, trackpads, touchscreens, graphics tablets) and keyboards.  Input events are dispatched during the processing loop (see <<ch-processing-and-events>>) and delivered to registered callbacks.
 
 Two subscription models exist:
 
@@ -20,13 +18,11 @@ include 'display'
 
 [[sec-subscribing-to-input]]
 === Subscribing to Input
-indexterm:[input subscriptions]
-
 [discrete]
 [[sec-vector-input-subscriptions]]
 ==== Vector Input Subscriptions
 
-Calling `mtSubscribeInput()` on any `Vector` or `VectorViewport` object creates a subscription for pointer and device events scoped to that vector's clipping region.
+indexterm:[input subscriptions] Calling `mtSubscribeInput()` on any `Vector` or `VectorViewport` object creates a subscription for pointer and device events scoped to that vector's clipping region.
 
 [.api]`viewport.mtSubscribeInput(Mask, Callback)`
 
@@ -281,9 +277,7 @@ Global subscriptions do not transform coordinates to a vector's local space.  `x
 
 [[sec-keyboard-input]]
 === Keyboard Input
-indexterm:[keyboard input]
-
-Keyboard events are handled separately from pointer events.  Two subscription mechanisms are available.
+indexterm:[keyboard input] Keyboard events are handled separately from pointer events.  Two subscription mechanisms are available.
 
 [discrete]
 ==== Vector Keyboard Subscriptions
@@ -542,9 +536,7 @@ processing.sleep()
 
 [[sec-drag-and-drop]]
 === Drag and Drop
-indexterm:[drag and drop]
-
-Kōtuku supports two forms of dragging: **viewport dragging** (moving a viewport around the scene) and **data dropping** (transferring data between objects via the clipboard).
+indexterm:[drag and drop] Kōtuku supports two forms of dragging: **viewport dragging** (moving a viewport around the scene) and **data dropping** (transferring data between objects via the clipboard).
 
 [discrete]
 ==== Viewport Dragging
@@ -669,12 +661,10 @@ input.requestItem(source, item, 'file',
 
 [[sec-unsubscribing]]
 === Unsubscribing
-indexterm:[input subscriptions, unsubscribing]
-
 [discrete]
 ==== Vector Subscriptions
 
-Vector input subscriptions created with `mtSubscribeInput()` are removed by calling the method again with the same callback and an empty mask.  Alternatively, `raise ERR_Terminate` in the callback to end the subscription immediately.
+indexterm:[input subscriptions, unsubscribing] Vector input subscriptions created with `mtSubscribeInput()` are removed by calling the method again with the same callback and an empty mask.  Alternatively, `raise ERR_Terminate` in the callback to end the subscription immediately.
 
 Vector keyboard subscriptions created with `mtSubscribeKeyboard()` are removed by returning `ERR_Terminate` from the callback.
 

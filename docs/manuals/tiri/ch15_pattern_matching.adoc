@@ -2,10 +2,7 @@
 
 [[ch-pattern-matching]]
 == Pattern Matching (Choose Expression)
-indexterm:[pattern matching]
-indexterm:[choose expressions]
-
-The `choose...from` expression provides structured pattern matching for selecting a result value or executing a branch based on the shape or value of an input.  It replaces verbose `if`/`elseif` chains with a concise, declarative syntax.
+indexterm:[pattern matching] indexterm:[choose expressions] The `choose...from` expression provides structured pattern matching for selecting a result value or executing a branch based on the shape or value of an input.  It replaces verbose `if`/`elseif` chains with a concise, declarative syntax.
 
 [source,tiri]
 ----
@@ -20,12 +17,10 @@ The scrutinee expression is evaluated exactly once.  Cases are tested in declara
 
 [[sec-choose-expressions]]
 === Choose Expressions
-indexterm:[choose expressions]
-
 [discrete]
 ==== Syntax
 
-A `choose` expression begins with the `choose` keyword, followed by a scrutinee expression, the `from` keyword, one or more case arms, and `end`.  Each case arm consists of a pattern, an optional `when` guard, the `\->` arrow, and a result.
+indexterm:[choose expressions] A `choose` expression begins with the `choose` keyword, followed by a scrutinee expression, the `from` keyword, one or more case arms, and `end`.  Each case arm consists of a pattern, an optional `when` guard, the `\->` arrow, and a result.
 
 [source,tiri]
 ----
@@ -173,9 +168,7 @@ end
 
 [[sec-guards]]
 === Guards
-indexterm:[guards]
-
-A `when` clause adds a conditional guard to a case arm.  The guard expression is evaluated only after the pattern has matched.  If the guard evaluates to a falsey value, the case is skipped and evaluation proceeds to the next case.
+indexterm:[guards] A `when` clause adds a conditional guard to a case arm.  The guard expression is evaluated only after the pattern has matched.  If the guard evaluates to a falsey value, the case is skipped and evaluation proceeds to the next case.
 
 [discrete]
 ==== Syntax
@@ -268,12 +261,10 @@ end
 
 [[sec-matching-patterns]]
 === Matching Patterns
-indexterm:[patterns, matching]
-
 [discrete]
 ==== Literal Patterns
 
-Literal patterns match using `is` semantics (identity comparison with no implicit type coercion).  Supported literal types: numbers (including negative and floating-point), strings, booleans (`true`, `false`), and `nil`.
+indexterm:[patterns, matching] Literal patterns match using `is` semantics (identity comparison with no implicit type coercion).  Supported literal types: numbers (including negative and floating-point), strings, booleans (`true`, `false`), and `nil`.
 
 [source,tiri]
 ----

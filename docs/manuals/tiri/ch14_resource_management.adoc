@@ -2,9 +2,7 @@
 
 [[ch-resource-management]]
 == Resource Management
-indexterm:[resource management]
-
-Tiri provides three complementary mechanisms for managing resource lifetimes and deferred computation: the `defer` statement, to-be-closed variables (`<close>`), and deferred expressions.  Together they ensure deterministic cleanup of acquired resources without relying on garbage collection or explicit `finally` blocks.
+indexterm:[resource management] Tiri provides three complementary mechanisms for managing resource lifetimes and deferred computation: the `defer` statement, to-be-closed variables (`<close>`), and deferred expressions.  Together they ensure deterministic cleanup of acquired resources without relying on garbage collection or explicit `finally` blocks.
 
 All three mechanisms share a common execution guarantee: cleanup code runs when the enclosing scope exits via normal completion, `return`, `break`, or `continue`.  When both `<close>` handlers and `defer` blocks exist in the same scope, `<close>` handlers execute first, followed by `defer` blocks, both in LIFO order.
 
@@ -15,9 +13,7 @@ NOTE: `<close>` handlers run during error unwinding.  `defer` blocks do NOT run 
 
 [[sec-defer-statement]]
 === Defer Statement
-indexterm:[defer statement]
-
-The `defer` statement schedules a block of code to execute when the enclosing scope exits.  The deferred block runs after the scope body completes but before control transfers to the caller or the next enclosing scope.
+indexterm:[defer statement] The `defer` statement schedules a block of code to execute when the enclosing scope exits.  The deferred block runs after the scope body completes but before control transfers to the caller or the next enclosing scope.
 
 [discrete]
 ==== Syntax
@@ -181,9 +177,7 @@ end
 
 [[sec-defer-with-arguments]]
 === Defer with Arguments
-indexterm:[defer statement, arguments]
-
-The parameterised form of `defer` captures argument values at registration time rather than at execution time.  This provides value snapshotting for cases where a variable changes between registration and scope exit.
+indexterm:[defer statement, arguments] The parameterised form of `defer` captures argument values at registration time rather than at execution time.  This provides value snapshotting for cases where a variable changes between registration and scope exit.
 
 [discrete]
 ==== Syntax
@@ -256,10 +250,7 @@ TIP: Use argument snapshots when a variable is reassigned between registration a
 
 [[sec-to-be-closed-variables]]
 === To-Be-Closed Variables
-indexterm:[to-be-closed variables]
-indexterm:[close variables]
-
-The `<close>` attribute marks a local variable for automatic cleanup via the `pass:[__]close` metamethod when the variable's scope exits.  This provides deterministic resource cleanup that is more reliable than garbage collection.  Most crucially, correct use of `pass:[__]close` can ensure that acquired resources and locks are immediately released in the event of an exception.
+indexterm:[to-be-closed variables] indexterm:[close variables] The `<close>` attribute marks a local variable for automatic cleanup via the `pass:[__]close` metamethod when the variable's scope exits.  This provides deterministic resource cleanup that is more reliable than garbage collection.  Most crucially, correct use of `pass:[__]close` can ensure that acquired resources and locks are immediately released in the event of an exception.
 
 [discrete]
 ==== Syntax
@@ -442,10 +433,7 @@ end
 
 [[sec-deferred-expressions]]
 === Deferred Expressions (Thunks)
-indexterm:[deferred expressions]
-indexterm:[thunks]
-
-Deferred expressions provide lazy evaluation: an expression is not computed until its value is accessed.  This avoids unnecessary work for values that may never be used.
+indexterm:[deferred expressions] indexterm:[thunks] Deferred expressions provide lazy evaluation: an expression is not computed until its value is accessed.  This avoids unnecessary work for values that may never be used.
 
 [discrete]
 ==== Syntax

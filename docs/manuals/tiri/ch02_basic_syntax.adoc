@@ -2,16 +2,11 @@
 
 [[ch-basic-syntax]]
 == Basic Syntax
-indexterm:[syntax]
-indexterm:[lexical conventions]
-
-This chapter defines the lexical structure of Tiri: how source text is decomposed into tokens, and the rules governing comments, identifiers, keywords, literals, statements, and blocks.
+indexterm:[syntax] indexterm:[lexical conventions] This chapter defines the lexical structure of Tiri: how source text is decomposed into tokens, and the rules governing comments, identifiers, keywords, literals, statements, and blocks.
 
 [[sec-comments]]
 === Comments
-indexterm:[comments]
-
-The lexer discards all comment text.  Comments have no effect on program behaviour.  Tiri supports three comment forms.
+indexterm:[comments] The lexer discards all comment text.  Comments have no effect on program behaviour.  Tiri supports three comment forms.
 
 ==== Single-Line Comments
 
@@ -50,14 +45,10 @@ The lexer discards a newline immediately following the opening delimiter.
 <<<
 [[sec-identifiers-and-keywords]]
 === Identifiers & Keywords
-indexterm:[identifiers]
-indexterm:[keywords]
-indexterm:[reserved words]
-
 [[sec-identifiers]]
 ==== Identifiers
 
-An identifier is a name used to refer to variables, functions, fields, and other user-defined entities.
+indexterm:[identifiers] indexterm:[keywords] indexterm:[reserved words] An identifier is a name used to refer to variables, functions, fields, and other user-defined entities.
 
 identifier::
 Any sequence of ASCII letters (`A`-`Z`, `a`-`z`), digits (`0`-`9`), underscores (`_`), and bytes in the range 128-255.  An identifier must not begin with a digit.
@@ -97,12 +88,9 @@ Keywords are case-sensitive.  `and` is reserved; `And` and `AND` are valid ident
 
 [[sec-statements-and-blocks]]
 === Statements & Blocks
-indexterm:[statements]
-indexterm:[blocks]
-
 ==== Statements
 
-A statement forms the basic unit of execution.  Tiri supports assignment statements, function calls, control-flow statements, and declarations.
+indexterm:[statements] indexterm:[blocks] A statement forms the basic unit of execution.  Tiri supports assignment statements, function calls, control-flow statements, and declarations.
 
 Statements are separated by line breaks or semicolons.  Semicolons are optional and carry no semantic weight; the parser consumes them without effect.
 

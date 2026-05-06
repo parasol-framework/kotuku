@@ -2,9 +2,7 @@
 
 [[ch-functions]]
 == Functions
-indexterm:[functions]
-
-This chapter defines the syntax and semantics of functions in Tiri: declarations, parameters, return values, variadic forms, arrow functions, closures, tail calls, and recursion.
+indexterm:[functions] This chapter defines the syntax and semantics of functions in Tiri: declarations, parameters, return values, variadic forms, arrow functions, closures, tail calls, and recursion.
 
 Functions are first-class values.  A function definition produces a value of type `function` that can be assigned to variables, passed as arguments, returned from other functions, and stored in tables.  All functions are closures (see <<sec-closures>>).
 
@@ -103,12 +101,9 @@ table.sort(items, function(A, B) return A < B end)
 
 [[sec-parameters-and-arguments]]
 === Parameters & Arguments
-indexterm:[functions, parameters]
-indexterm:[functions, arguments]
-
 ==== Parameter Passing
 
-All arguments are passed by value.  Tables and objects pass a reference to the value, so mutations to the contents of a table inside a function are visible to the caller, but reassigning the parameter itself does not affect the caller's variable.
+indexterm:[functions, parameters] indexterm:[functions, arguments] All arguments are passed by value.  Tables and objects pass a reference to the value, so mutations to the contents of a table inside a function are visible to the caller, but reassigning the parameter itself does not affect the caller's variable.
 
 [source,tiri]
 ----
@@ -151,9 +146,7 @@ f(1, 2, 3, 4)  -- prints: 1  2  3  (4 is discarded)
 
 [[sec-multiple-return-values]]
 === Multiple Return Values
-indexterm:[functions, multiple return values]
-
-A function can return zero or more values.  Multiple return values are separated by commas:
+indexterm:[functions, multiple return values] A function can return zero or more values.  Multiple return values are separated by commas:
 
 [breakable]
 [source,tiri]
@@ -265,14 +258,12 @@ See <<ch-result-management>> for the full result filter specification.
 
 [[sec-variadic-functions]]
 === Variadic Functions
-indexterm:[functions, variadic]
-
 [source,ebnf]
 ----
 variadic_parameter = "..." ;
 ----
 
-The `pass:[...]` token declares a variadic parameter.  It must appear as the last parameter.  Inside the function body, `pass:[...]` expands to the extra arguments:
+indexterm:[functions, variadic] The `pass:[...]` token declares a variadic parameter.  It must appear as the last parameter.  Inside the function body, `pass:[...]` expands to the extra arguments:
 
 [source,tiri]
 ----
@@ -325,8 +316,6 @@ When `pass:[...]` appears as the last argument in a function call, all variadic 
 
 [[sec-arrow-functions]]
 === Arrow Functions
-indexterm:[arrow functions]
-
 [source,ebnf]
 ----
 arrow_expression  = parameter_expr "=>" expression ;
@@ -334,7 +323,7 @@ arrow_block       = parameter_expr "=>" "do" block "end" ;
 parameter_expr    = identifier | "(" [ identifier_list ] ")" ;
 ----
 
-The `\=>` operator provides concise anonymous function syntax.
+indexterm:[arrow functions] The `\=>` operator provides concise anonymous function syntax.
 
 [discrete]
 ==== Expression Body
@@ -383,9 +372,7 @@ Arrow function bodies bind loosely -- the expression after `\=>` extends as far 
 
 [[sec-closures]]
 === Closures
-indexterm:[closures]
-
-Every function in Tiri is a closure.  A closure captures variables from its enclosing scope as upvalues.  Captured variables are shared by reference: modifications inside the closure are visible outside, and vice versa.
+indexterm:[closures] Every function in Tiri is a closure.  A closure captures variables from its enclosing scope as upvalues.  Captured variables are shared by reference: modifications inside the closure are visible outside, and vice versa.
 
 [source,tiri]
 ----
@@ -422,9 +409,7 @@ Arrow functions capture upvalues identically to `function` declarations.
 
 [[sec-tail-calls]]
 === Tail Calls
-indexterm:[tail calls]
-
-A tail call occurs when a function call is the last action in a function -- specifically, when `return f()` is the only expression in a `return` statement.  Tiri optimises tail calls to reuse the current stack frame, preventing stack growth for indefinite call chains.
+indexterm:[tail calls] A tail call occurs when a function call is the last action in a function -- specifically, when `return f()` is the only expression in a `return` statement.  Tiri optimises tail calls to reuse the current stack frame, preventing stack growth for indefinite call chains.
 
 [source,tiri]
 ----

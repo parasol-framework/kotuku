@@ -2,16 +2,12 @@
 
 [[ch-control-flow]]
 == Control Flow
-indexterm:[control flow]
-
-This chapter defines the control flow statements in Tiri: conditionals, loops, loop control, and return.  All blocks are delimited by keywords (`then`/`do`/`repeat`) and terminated by `end` or `until`.
+indexterm:[control flow] This chapter defines the control flow statements in Tiri: conditionals, loops, loop control, and return.  All blocks are delimited by keywords (`then`/`do`/`repeat`) and terminated by `end` or `until`.
 
 Only `nil` and `false` are false when evaluating conditions.  All other values -- including `0`, `""`, and empty tables -- are considered true.  All condition statements in this chapter follow this rule.  Using the <<sec-conditional-operators,conditional operator>> `??` is the standard approach to overcoming this restriction, at a slight cost to performance.
 
 [[sec-if-elseif-else]]
 === If / Elseif / Else
-indexterm:[if statements]
-
 [source,ebnf]
 ----
 if_statement = "if" expression "then" block
@@ -20,7 +16,7 @@ if_statement = "if" expression "then" block
                "end" ;
 ----
 
-Evaluates `expression` and executes the associated `block` if the result is true.  If the condition is false, subsequent `elseif` clauses are tested in order.  If no condition is true and an `else` clause is present, its block executes.  At most one block executes per `if` statement.
+indexterm:[if statements] Evaluates `expression` and executes the associated `block` if the result is true.  If the condition is false, subsequent `elseif` clauses are tested in order.  If no condition is true and an `else` clause is present, its block executes.  At most one block executes per `if` statement.
 
 [source,tiri]
 ----
@@ -37,14 +33,12 @@ Each `block` introduces a new scope.  Variables declared inside a branch are not
 
 [[sec-while-loop]]
 === While Loop
-indexterm:[loops, while]
-
 [source,ebnf]
 ----
 while_statement = "while" expression "do" block "end" ;
 ----
 
-Evaluates `expression` before each iteration.  If the result is true, `block` executes and the condition is re-evaluated.  If the result is false, the loop terminates.  If the condition is false on the first evaluation, the body never executes.
+indexterm:[loops, while] Evaluates `expression` before each iteration.  If the result is true, `block` executes and the condition is re-evaluated.  If the result is false, the loop terminates.  If the condition is false on the first evaluation, the body never executes.
 
 [source,tiri]
 ----
@@ -59,14 +53,12 @@ The loop body introduces a new scope.  `break` and `continue` are permitted (see
 
 [[sec-repeat-until-loop]]
 === Repeat-Until Loop
-indexterm:[loops, repeat until]
-
 [source,ebnf]
 ----
 repeat_statement = "repeat" block "until" expression ;
 ----
 
-Executes `block` and then evaluates `expression`.  If the result is false, the loop iterates again.  If the result is true, the loop terminates.  The body always executes at least once.
+indexterm:[loops, repeat until] Executes `block` and then evaluates `expression`.  If the result is false, the loop iterates again.  If the result is true, the loop terminates.  The body always executes at least once.
 
 [source,tiri]
 ----
@@ -90,14 +82,12 @@ until line is 'quit'
 
 [[sec-numeric-for-loop]]
 === Numeric For Loop
-indexterm:[loops, numeric for]
-
 [source,ebnf]
 ----
 numeric_for = "for" identifier "=" expression "," expression [ "," expression ] "do" block "end" ;
 ----
 
-`for Name = Start, Stop [, Step] do pass:[...] end`
+indexterm:[loops, numeric for] `for Name = Start, Stop [, Step] do pass:[...] end`
 
 Evaluates `Start`, `Stop`, and `Step` once before the loop begins.  If `Step` is omitted, it defaults to `1`.  On each iteration, the loop variable `Name` is set to the current value.  The loop terminates when `Name` exceeds `Stop` (for a positive `Step`) or falls below `Stop` (for a negative `Step`).
 
@@ -163,15 +153,13 @@ WARNING: A zero `Step` produces an infinite loop.
 
 [[sec-generic-for-loop]]
 === Generic For Loop
-indexterm:[loops, generic for]
-
 [source,ebnf]
 ----
 generic_for = "for" identifier_list "in" expression_list "do" block "end" ;
 identifier_list = identifier { "," identifier } ;
 ----
 
-`for Var1 [, Var2, pass:[...]] in iterator_expr do pass:[...] end`
+indexterm:[loops, generic for] `for Var1 [, Var2, pass:[...]] in iterator_expr do pass:[...] end`
 
 Evaluates `iterator_expr` once to obtain an iterator function, an invariant state, and an initial control variable.  On each iteration, the iterator function is called with the state and current control variable.  If the first return value is `nil`, the loop terminates.  Otherwise, the return values are assigned to the loop variables.
 
@@ -229,12 +217,9 @@ When a range literal appears directly after `in`, the call is implicit -- the co
 
 [[sec-break-and-continue]]
 === Break & Continue
-indexterm:[break statement]
-indexterm:[continue statement]
-
 ==== Break
 
-`break` terminates the innermost enclosing loop immediately.  Execution resumes at the first statement after the loop.
+indexterm:[break statement] indexterm:[continue statement] `break` terminates the innermost enclosing loop immediately.  Execution resumes at the first statement after the loop.
 
 [source,tiri]
 ----
@@ -297,14 +282,12 @@ This is equivalent to `if not result?? then return -1 end`.
 
 [[sec-return]]
 === Return
-indexterm:[return statement]
-
 [source,ebnf]
 ----
 return_statement = "return" [ expression_list ] [ ";" ] ;
 ----
 
-`return` exits the current function and returns zero or more values to the caller.  `return` with no values returns `nil`.
+indexterm:[return statement] `return` exits the current function and returns zero or more values to the caller.  `return` with no values returns `nil`.
 
 [%unbreakable]
 [source,tiri]
