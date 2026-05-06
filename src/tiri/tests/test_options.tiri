@@ -461,7 +461,7 @@ end
          }
       })
    except e
-      assert(e.code is ERR_ParameterDef, 'Invalid variadic declaration should report a parameter definition error')
+      assert(e.code is ERR_Syntax, 'Invalid variadic declaration should report a syntax error')
       assert(tostring(e.message):find("Variadic positional parameter 'rest' must be the final positional."),
          'Invalid variadic declaration should explain the ordering rule')
       return
@@ -608,7 +608,7 @@ end
    try
       options({ args = array<table> { { name = 'bad', type = 'enum' } } })
    except e
-      assert(e.code is ERR_ParameterDef, 'Enum without choices should fail as a parameter definition error')
+      assert(e.code is ERR_Syntax, 'Enum without choices should fail as a syntax error')
       return
    end
 
@@ -1422,6 +1422,7 @@ end
       args = array<table> {
          { name = 'day', type = 'date' },
          { name = 'leap', type = 'date', default = '2024-02-29' },
+         { name = 'century', type = 'date', default = '2000-02-29' },
          { name = 'start', type = 'time' },
          { name = 'short', type = 'time', default = '09:15' },
          { name = 'release', type = 'datetime' }
@@ -1440,6 +1441,7 @@ end
       'at=2024-02-29T00:00Z' })
    assert(result.globals.day is '2025-12-31', 'Date values should be returned unchanged when already normalised')
    assert(result.globals.leap is '2024-02-29', 'Leap-year default dates should validate')
+   assert(result.globals.century is '2000-02-29', 'Century dates divisible by 400 should validate')
    assert(result.globals.start is '23:59:59.123', 'Fractional seconds should validate')
    assert(result.globals.short is '09:15', 'HH:MM defaults should validate')
    assert(result.globals.release is '2026-05-06T10:30:45.25+01:00',
@@ -1460,6 +1462,10 @@ end
 
    expect_error(parser, array<string> { 'day=2023-02-29' }, ERR_WrongType,
       "Parameter 'day' requires an ISO date in YYYY-MM-DD form.")
+   expect_error(parser, array<string> { 'day=1900-02-29' }, ERR_WrongType,
+      "Parameter 'day' requires an ISO date in YYYY-MM-DD form.")
+   expect_error(parser, array<string> { 'day=2100-02-29' }, ERR_WrongType,
+      "Parameter 'day' requires an ISO date in YYYY-MM-DD form.")
    expect_error(parser, array<string> { 'day=2025-13-01' }, ERR_WrongType,
       "Parameter 'day' requires an ISO date in YYYY-MM-DD form.")
    expect_error(parser, array<string> { 'start=24:00' }, ERR_WrongType,
@@ -1467,6 +1473,10 @@ end
    expect_error(parser, array<string> { 'start=12:60' }, ERR_WrongType,
       "Parameter 'start' requires an ISO time value.")
    expect_error(parser, array<string> { 'release=2023-02-29T12:00Z' }, ERR_WrongType,
+      "Parameter 'release' requires an ISO date-time value.")
+   expect_error(parser, array<string> { 'release=1900-02-29T12:00Z' }, ERR_WrongType,
+      "Parameter 'release' requires an ISO date-time value.")
+   expect_error(parser, array<string> { 'release=2100-02-29T12:00Z' }, ERR_WrongType,
       "Parameter 'release' requires an ISO date-time value.")
    expect_error(parser, array<string> { 'release=2025-01-01 12:00Z' }, ERR_WrongType,
       "Parameter 'release' requires an ISO date-time value.")
