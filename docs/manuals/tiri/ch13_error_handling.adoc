@@ -49,11 +49,15 @@ When an `except` clause declares a variable, the runtime constructs a table desc
 
 |`message`
 |string
-|Human-readable error description.
+|The raw error message.
+
+|`source`
+|string
+|Source file name where the error originated.  Resolved from debug frame metadata.  `nil` if the source is unavailable.
 
 |`line`
 |integer
-|Source line number where the error occurred.
+|Source line number where the error occurred.  Resolved from debug frame metadata.
 
 |`trace`
 |array
@@ -65,6 +69,24 @@ When an `except` clause declares a variable, the runtime constructs a table desc
 |===
 
 Omitting the variable in the `except` clause prevents construction of the table.
+
+==== Exception Table Metatable
+
+Every exception table carries a protected metatable with two metamethods:
+
+`__tostring`:: Returns a formatted string in the form `source:line: message`.  If the source is unavailable, returns the message alone.  This is the string produced by `tostring(e)` and `print(e)`.
+
+`__concat`:: When an exception table appears in a `..` concatenation, the raw `message` field is used.  This allows natural string building without location prefixes:
+
+[source,tiri]
+----
+try
+   error('bad input')
+except e
+   print(tostring(e))       -- "script.tiri:10: bad input"
+   print('Error: ' .. e)    -- "Error: bad input"
+end
+----
 
 ==== Error Codes and the Exception Threshold
 
@@ -178,7 +200,7 @@ end
 [discrete]
 ==== Re-throwing Exceptions
 
-Call `error()` within an `except` block, passing the exception table, to propagate the exception to an outer handler:
+Call `error()` within an `except` block, passing the exception table, to propagate the exception to an outer handler.  When re-throwing, all structured metadata is preserved: the outer handler receives the same `message`, `source`, `line`, and `code` as the inner handler.
 
 [source,tiri]
 ----
@@ -187,12 +209,15 @@ try
       error('Original error')
    except e
       msg(e.message)
-      error(e)   -- re-throw
+      error(e)   -- re-throw: preserves source, line, code
    end
 except e
    print('Caught: ' .. e.message)
+   print('From: ' .. e.source .. ':' .. e.line)
 end
 ----
+
+Filtered `except` clauses also match correctly against re-thrown exceptions.  For example, an exception originally raised with `raise ERR_Args` retains its error code through the re-throw and matches an outer `except e when ERR_Args` handler.
 
 [discrete]
 ==== API Call Interception
@@ -421,7 +446,9 @@ end
 
 indexterm:[exceptions, raising] Raises an exception with the error code `ERR_Exception`.  `Message` is a string or exception table.  `Level` (default 1) controls the reported source location: level 1 reports the call site, level 2 reports the caller of the calling function, and so on.  Setting `Level` to 0 suppresses source location information in the error message.
 
-Passing an exception table to `error()` re-throws it to the next enclosing handler:
+When a string is passed, the exception table's `message` field contains the raw string without any source location prefix.  The `source` and `line` fields are resolved separately from debug frame metadata.
+
+Passing an exception table to `error()` re-throws it to the next enclosing handler, preserving the original `message`, `source`, `line`, and `code`:
 
 [source,tiri]
 ----
@@ -452,7 +479,7 @@ TIP: Give preference to using `assert()` over the alternative pattern `if <condi
 
 Raises an exception with the specified `ERR` code.  Unlike `check`, all error codes trigger an exception, including safe codes.  The error code is also propagated to the Script object's `Error` field for reporting back to C/C++ client code.
 
-`Code` is an integer expression.  `Message` is an optional string; if omitted, the default description for the error code is used.
+`Code` is an integer expression.  `Message` is an optional string; if omitted, the default description for the error code is used.  The exception table's `source` and `line` fields are resolved from the call site.
 
 [source,tiri]
 ----
