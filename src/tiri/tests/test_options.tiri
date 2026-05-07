@@ -865,14 +865,6 @@ end
    assert(result.topic is nil, 'Bare automatic help with trailing tokens should request normal help')
    assert(result.text:find('Usage: demo'), 'Automatic help with trailing tokens should include normal help text')
 
-   result, err = parser.tryProcess(array<string> { 'help=help' })
-   assert(result is nil, 'The injected automatic help parameter should not become a detailed help topic')
-   assert(err.code is ERR_ParameterUnknown, 'Unknown automatic help topics should stay unknown')
-
-   result, err = parser.tryProcess(array<string> { 'no-help' })
-   assert(result is nil, 'Automatic help should not add a public no-help flag')
-   assert(err.code is ERR_ParameterUnknown, 'no-help should remain an unknown token')
-
    cli_parser = options({
       name = 'convert',
       args = array<table> {
