@@ -43,7 +43,7 @@ glIntroduction = [[
 
 <p indent="1em"><table collapsed="true" cell-padding="0.2em" columns="12%,88%" width="90%">
 <row><th>Parameter</th><th>Description</th></row>
-<row><cell><p>&lt;file&gt;</p></cell><cell>A source file to load and display in the application.</cell></row>
+<row><cell><p>file</p></cell><cell>A source file to load and display in the application.</cell></row>
 <row><cell><p>width</p></cell><cell>Width of the application window</cell></row>
 <row><cell><p>height</p></cell><cell>Height of the application window.</cell></row>
 <row><cell><p>path</p></cell><cell>Path to use in the file selector.</cell></row>

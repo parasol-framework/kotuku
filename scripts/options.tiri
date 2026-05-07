@@ -2285,6 +2285,8 @@ create_parser = function(Config:table):table
    parser.tryProcess = function(Input:any, Options:table):<table, table>
       try
          return parse_input(parser, Input, Options)
+      except ex when ERR_Terminate -- Non-fatal exit requested
+         return nil, nil
       except ex
          return nil, ex
       end
@@ -2320,7 +2322,7 @@ create_parser = function(Config:table):table
       local result, err = parser.tryProcess(Input, Options)
 
       if err then
-         if err.code is ERR_Okay or err.code is ERR_Terminate then return nil end
+         if err.code is ERR_Okay then return nil end
          print(err.message)
          raise err.code, err.message
       end
