@@ -609,6 +609,21 @@ function add_observed_result(Result:table, ArgNames:table, Presence:table, Param
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Return the value to use when a named option appears without an explicit value.
+
+function get_implicit_option_value(Param:table):<bool, any>
+   if Param.implicit != nil then
+      return true, Param.implicit
+   end
+
+   if Param.default != nil then
+      return true, Param.default
+   end
+
+   return false, nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Apply option and flag syntax rules to a value observed in an input source.
 
 function parse_observed_value(Parser:table, Result:table, ArgNames:table, Presence:table, Param:table, ArgName:str,
@@ -626,8 +641,9 @@ function parse_observed_value(Parser:table, Result:table, ArgNames:table, Presen
    end
 
    if Param.multiple and not HasExplicitValue then
-      if Param.default != nil then
-         return set_source_result(Result, ArgNames, Presence, Param, ArgName, Param.default, true)
+      has_implicit, implicit_value = get_implicit_option_value(Param)
+      if has_implicit then
+         return set_source_result(Result, ArgNames, Presence, Param, ArgName, implicit_value, true)
       end
 
       raise ERR_Syntax, f"Parameter '{ArgName}' requires name=value syntax."
@@ -637,8 +653,9 @@ function parse_observed_value(Parser:table, Result:table, ArgNames:table, Presen
       return add_observed_result(Result, ArgNames, Presence, Param, ArgName, RawValue)
    end
 
-   if Param.default != nil then
-      return set_source_result(Result, ArgNames, Presence, Param, ArgName, Param.default, true)
+   has_implicit, implicit_value = get_implicit_option_value(Param)
+   if has_implicit then
+      return set_source_result(Result, ArgNames, Presence, Param, ArgName, implicit_value, true)
    end
 
    raise ERR_Syntax, f"Parameter '{ArgName}' requires name=value syntax."
@@ -740,8 +757,7 @@ end
 
 function get_task_parameters(Options:table):array
    if Options and Options.taskParameters != nil then
-      if Options.taskParameters is false then return nil end
-      assert(type(Options.taskParameters) is 'array', 'Options.taskParameters must be an array or false.')
+      assert(type(Options.taskParameters) is 'array', 'Options.taskParameters must be an array.')
       return Options.taskParameters
    end
 
@@ -785,9 +801,15 @@ function parse_ordered_input(Parser:table, Result:table, ArgNames:table, Presenc
    end
 
    pos_index = 0
+   token_index = 0
    for token in values(Input) do
       assert(type(token) is 'string', 'Command-line input must contain strings')
+      name = split_token(token)
       pos_index = parse_ordered_token(Parser, Result, ArgNames, Presence, token, pos_index)
+      if token_index is 0 and name is Parser.helpArg and Result[Parser.helpArg] != nil then
+         break
+      end
+      token_index++
    end
 end
 
@@ -1321,7 +1343,7 @@ end
 get_help = function(Parser:table, Format:any, Topic:any):str
    check_help_format(Format)
 
-   if Topic then
+   if Topic and Topic != 'true' then
       if Parser._command_lookup and Parser._command_lookup[Topic] then
          return build_command_help(Parser, Topic)
       end
@@ -2285,13 +2307,25 @@ create_parser = function(Config:table):table
    table: Standard exception table when parsing fails.
    ]])
    parser.tryProcess = function(Input:any, Options:table):<table, table>
+      parser._help_result = nil
+      parser._try_process_active = true
+
+      local result:table
       try
-         return parse_input(parser, Input, Options)
+         result = parse_input(parser, Input, Options)
       except ex when ERR_Terminate -- Non-fatal exit requested
-         return nil, nil
+         result = parser._help_result
+         parser._help_result = nil
+         parser._try_process_active = nil
+         return result, nil
       except ex
+         parser._help_result = nil
+         parser._try_process_active = nil
          return nil, ex
       end
+
+      parser._try_process_active = nil
+      return result, nil
    end
 
    @Doc(text=[[
@@ -2347,10 +2381,14 @@ create_parser = function(Config:table):table
 
    if parser.autoHelp and not definitions_have_name(Config.args, parser.helpArg) then
       add_param(parser, {
-         name = parser.helpArg, kind = 'flag', type = 'bool', hidden = true,
+         name = parser.helpArg, type = 'str', hidden = true, implicit = true,
          exec = function(Parser:table, ArgName:str, Value:any, Param:table)
-            topic = Value is true ? nil :> Value
-            print(get_help(Parser, nil, topic))
+            topic = (Value is true or Value is 'true') ? nil :> Value
+            if Parser._try_process_active then
+               Parser._help_result = make_help_result(Parser, topic)
+            else
+               print(get_help(Parser, nil, topic))
+            end
             raise ERR_Terminate -- Stops the process without throwing an error
          end
       })
