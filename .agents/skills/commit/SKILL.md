@@ -11,7 +11,11 @@ Use this template in constructing your Git message:
 ```
 [Label] Single line summary
 
-Any additional detail can be written here if necessary.  Do not apply word-wrapping.  If listing a series of changes, use asterisk based bullet points, one on each line.  Do not add credit or authorship attributions for yourself or others.
+Any additional detail can be written here if necessary.
+Do not apply word-wrapping.
+If listing a series of changes, use asterisk based bullet points, one on each line.
+Do not add credit or authorship attributions for yourself or others.
+Comments, decorative changes and minor refactoring in the code should be ignored if there is no difference to programming logic.
 ```
 
 For example:
