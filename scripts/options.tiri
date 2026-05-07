@@ -1,21 +1,18 @@
 --[[
-Declarative command-line option parsing for Tiri scripts.
+Declarative command-line option parsing for Tiri scripts.  Refer to the Tiri-Options-API.md Wiki for usage information.
 --]]
 
    include 'core'
    import 'json'
    namespace 'options'
 
-local create_parser
+   local create_parser, get_error_instruction, apply_error_instruction, get_help
 
    _LIB[_NS] = function(Config:table):table
       return create_parser(Config)
    end
    options = _LIB[_NS]
 
-local get_error_instruction
-local apply_error_instruction
-local get_help
 
 help_result_marker = {}
 rx_env_camel <const> = <{ regex.new('([a-z0-9])([A-Z])') }>
@@ -1649,7 +1646,7 @@ function is_true_help_value(Value:any):bool
    if Value is nil then return false end
 
    text = tostring(Value):lower()
-   return text is 'true' or text is '1' or text is 'yes' or text is 'on'
+   return text is 'true' or text is '1'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1972,6 +1969,20 @@ function reject_param_command_collision(Parser:table, Param:table)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Reject parameter names that collide with automatic help handling.
+
+function reject_param_help_collision(Parser:table, Param:table)
+   if not Parser.autoHelp then return end
+
+   for name in values(Param.names) do
+      if name is Parser.helpArg then
+         message = f"Parameter name or alias '{name}' conflicts with automatic help; set autoHelp to false."
+         raise ERR_DuplicateValue, message
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Reject command names that cannot be reached by ordered command dispatch.
 
 function reject_command_dispatch_collision(Parser:table, Name:str)
@@ -2002,6 +2013,7 @@ function add_param(Parser:table, Definition:table):table
       end
    end
 
+   reject_param_help_collision(Parser, param)
    reject_param_command_collision(Parser, param)
 
    if param.kind is 'positional' then
@@ -2085,7 +2097,6 @@ create_parser = function(Config:table):table
       defaults    = Config.defaults,
       strict      = Config.strict,
       autoHelp    = Config.autoHelp,
-      helpArg     = Config.helpArg,
       onError     = Config.onError,
       onHelp      = Config.onHelp
    }
@@ -2093,7 +2104,7 @@ create_parser = function(Config:table):table
    parser.name     ?= 'script'
    parser.strict   ?= true
    parser.autoHelp ?= true
-   parser.helpArg  ?= 'help'
+   parser.helpArg  ?= 'help' -- In future, allow translations to user's locale
    validate_name(parser.helpArg)
    assert(parser.onError is nil or type(parser.onError) is 'function', 'onError must be a function.')
    assert(parser.onHelp is nil or type(parser.onHelp) is 'function', 'onHelp must be a function.')
@@ -2289,10 +2300,9 @@ create_parser = function(Config:table):table
    values, or `nil`.  When `Input` is `nil`, parsing reads ordered arguments from the active task parameters after the
    script path.  If ordered task input is unavailable, named script arguments are read from `arg()`.  Explicit arrays
    and tables bypass task input.  Named options use `name=value` syntax unless a default allows a bare option token.
-   Flags accept `name`, `no-name`, or `name=value` syntax.  Automatic help intercepts the configured help token only
-   when it is not declared as a parameter; help requests return a structured help table with `help`, `topic`, and
-   `text` fields instead of printing.  When the parser defines commands, global options are parsed before the command
-   token and the result contains `command`, `globals`, and `args` fields.
+   Flags accept `name`, `no-name`, or `name=value` syntax.  Help requests return a structured help table with `help`,
+   `topic`, and `text` fields instead of printing.  When the parser defines commands, global options are parsed before
+   the command token and the result contains `command`, `globals`, and `args` fields.
 
    `Options.taskParameters` may be an ordered task parameter array used instead of the active task parameters.  Set it
    to `false` to force the `arg()` fallback.
@@ -2324,10 +2334,9 @@ create_parser = function(Config:table):table
    values, or `nil`.  When `Input` is `nil`, parsing reads ordered arguments from the active task parameters after the
    script path.  If ordered task input is unavailable, named script arguments are read from `arg()`.  Explicit arrays
    and tables bypass task input.  Named options use `name=value` syntax unless a default allows a bare option token.
-   Flags accept `name`, `no-name`, or `name=value` syntax.  Automatic help intercepts the configured help token only
-   when it is not declared as a parameter; help requests print generated help or dispatch it through `onHelp`, then
-   return `nil`.  When the parser defines commands, global options are parsed before the command token and the result
-   contains `command`, `globals`, and `args` fields.
+   Flags accept `name`, `no-name`, or `name=value` syntax.  Help requests print generated help or dispatch it through
+   `onHelp`, then return `nil`.  When the parser defines commands, global options are parsed before the command token
+   and the result contains `command`, `globals`, and `args` fields.
 
    Use parser.tryProcess() when parser failures should be returned instead of raised.
 

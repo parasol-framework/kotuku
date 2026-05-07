@@ -858,8 +858,7 @@ end
       name = 'convert',
       args = array<table> {
          { name = 'input', kind = 'positional', type = 'file', required = true },
-         { name = 'output', kind = 'option', type = 'file', required = true },
-         { name = 'help', kind = 'flag', type = 'bool', comment = 'Show help.' }
+         { name = 'output', kind = 'option', type = 'file', required = true }
       }
    })
 
@@ -897,61 +896,42 @@ end
    assert(seen_text:find('File to read'), 'process() should pass generated help text to onHelp')
 end
 
-@Test function AutomaticHelpClaimsDeclaredHelpToken()
-   positional = options({
+@Test function AutomaticHelpRejectsDeclaredHelpToken()
+   expect_options_error({
       args = array<table> {
          { name = 'help', kind = 'positional', type = 'file', required = true }
       }
-   })
+   }, ERR_DuplicateValue, "Parameter name or alias 'help' conflicts with automatic help; set autoHelp to false.")
 
-   result, err = positional.tryProcess(array<string> { 'help' })
-   assert(err is nil, 'Automatic help should not fail when help is also a declared positional')
-   assert(result.help is true, 'Automatic help should take precedence over a declared positional')
-
-   named = options({
+   expect_options_error({
       args = array<table> {
          { name = 'help', type = 'str', required = true }
       }
-   })
+   }, ERR_DuplicateValue, "Parameter name or alias 'help' conflicts with automatic help; set autoHelp to false.")
 
-   result, err = named.tryProcess(array<string> { 'help=help' })
-   assert(err is nil, 'Automatic help should not fail when help is also a declared option')
-   assert(result.topic is 'help', 'Automatic help should treat help=value as a detailed help topic')
-   assert(result.text:find('help:'), 'Automatic help should generate detailed help for the declared parameter')
-
-   flag = options({
+   expect_options_error({
       args = array<table> {
          { name = 'help', kind = 'flag', type = 'bool' }
       }
-   })
+   }, ERR_DuplicateValue, "Parameter name or alias 'help' conflicts with automatic help; set autoHelp to false.")
 
-   result, err = flag.tryProcess(array<string> { 'help' })
-   assert(err is nil, 'Automatic help should not fail when help is also a declared flag')
-   assert(result.help is true, 'Automatic help should take precedence over a declared flag')
-
-   positioned = options({
+   expect_options_error({
       args = array<table> {
-         { name = 'input', kind = 'positional', type = 'file', required = true },
-         { name = 'output', kind = 'positional', type = 'file', required = true },
-         { name = 'help', kind = 'flag', type = 'bool' }
+         { names = array<string> { 'show-help', 'help' }, kind = 'flag', type = 'bool' }
       }
-   })
+   }, ERR_DuplicateValue, "Parameter name or alias 'help' conflicts with automatic help; set autoHelp to false.")
 
-   args = positioned.process(array<string> { 'abc', 'help' })
-   assert(args.input is 'abc', 'Help after another argument should not trigger automatic help')
-   assert(args.output is 'help', 'Help after another argument should remain positional input')
-   assert(args.help is nil, 'Help after another argument should not parse as the declared help flag')
+   parser = options({})
+   try
+      parser.addParam({ name = 'help', kind = 'flag', type = 'bool' })
+   except e
+      assert(e.code is ERR_DuplicateValue, 'addParam() help collision should report a duplicate value')
+      assert(e.message:find("Parameter name or alias 'help' conflicts with automatic help; set autoHelp to false."),
+         'addParam() help collision diagnostic should explain the autoHelp requirement')
+      return
+   end
 
-   args = positioned.process(array<string> { 'help', 'abc' })
-   assert(args.input is 'help', 'Help before another argument should not trigger automatic help')
-   assert(args.output is 'abc', 'A following argument should make help remain positional input')
-   assert(args.help is nil, 'Help before another argument should not parse as the declared help flag')
-
-   result, err = positioned.tryProcess(nil, {
-      taskParameters = array<string> { '--log-warning', 'test.tiri', 'abc', 'help' }
-   })
-   assert(err is nil, 'Task-parameter help after another argument should parse normally')
-   assert(result.input is 'abc' and result.output is 'help', 'Task-parameter help should remain positional input')
+   error('addParam() should reject help parameters when automatic help is enabled')
 end
 
 @Test function ManualHelpParameterBypassesRequiredValidation()
@@ -1028,7 +1008,7 @@ end
    assert(err.code is ERR_ParameterUnknown, 'Unknown help topics should report parameter-unknown')
 end
 
-@Test function AutoHelpCanBeDisabledOrRenamed()
+@Test function AutoHelpCanBeDisabled()
    disabled = options({
       autoHelp = false,
       args = array<table> {
@@ -1037,17 +1017,6 @@ end
    })
 
    expect_error(disabled, array<string> { 'help' }, ERR_ParameterUnknown, "Unknown parameter 'help'.")
-
-   renamed = options({
-      helpArg = 'usage',
-      args = array<table> {
-         { name = 'file' }
-      }
-   })
-
-   result, err = renamed.tryProcess(array<string> { 'usage' })
-   assert(err is nil, 'Renamed help argument should be recognised')
-   assert(result.help is true, 'Renamed help argument should return a help result')
 end
 
 @Test function OnErrorInstructions()
