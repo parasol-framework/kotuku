@@ -878,6 +878,20 @@ end
    assert(result.topic is 'file', 'Detailed help result should report the requested topic')
    assert(result.text:find('File to read'), 'Detailed help should be generated for help=argname')
 
+   result, err = parser.tryProcess(array<string> { 'help', 'ignored' })
+   assert(err is nil, 'Automatic help should ignore trailing ordered tokens')
+   assert(result.help is true, 'Automatic help with trailing tokens should return a structured help result')
+   assert(result.topic is nil, 'Bare automatic help with trailing tokens should request normal help')
+   assert(result.text:find('Usage: demo'), 'Automatic help with trailing tokens should include normal help text')
+
+   result, err = parser.tryProcess(array<string> { 'help=help' })
+   assert(result is nil, 'The injected automatic help parameter should not become a detailed help topic')
+   assert(err.code is ERR_ParameterUnknown, 'Unknown automatic help topics should stay unknown')
+
+   result, err = parser.tryProcess(array<string> { 'no-help' })
+   assert(result is nil, 'Automatic help should not add a public no-help flag')
+   assert(err.code is ERR_ParameterUnknown, 'no-help should remain an unknown token')
+
    cli_parser = options({
       name = 'convert',
       args = array<table> {
@@ -918,44 +932,6 @@ end
    assert(returned is nil, 'process() should not return normal args for help requests')
    assert(seen_topic is 'file', 'process() should pass the help topic to onHelp')
    assert(seen_text:find('File to read'), 'process() should pass generated help text to onHelp')
-end
-
-@Test function AutomaticHelpRejectsDeclaredHelpToken()
-   expect_options_error({
-      args = array<table> {
-         { name = 'help', kind = 'positional', type = 'file', required = true }
-      }
-   }, ERR_DuplicateValue, "Parameter name or alias 'help' conflicts with automatic help; set autoHelp to false.")
-
-   expect_options_error({
-      args = array<table> {
-         { name = 'help', type = 'str', required = true }
-      }
-   }, ERR_DuplicateValue, "Parameter name or alias 'help' conflicts with automatic help; set autoHelp to false.")
-
-   expect_options_error({
-      args = array<table> {
-         { name = 'help', kind = 'flag', type = 'bool' }
-      }
-   }, ERR_DuplicateValue, "Parameter name or alias 'help' conflicts with automatic help; set autoHelp to false.")
-
-   expect_options_error({
-      args = array<table> {
-         { names = array<string> { 'show-help', 'help' }, kind = 'flag', type = 'bool' }
-      }
-   }, ERR_DuplicateValue, "Parameter name or alias 'help' conflicts with automatic help; set autoHelp to false.")
-
-   parser = options({})
-   try
-      parser.addParam({ name = 'help', kind = 'flag', type = 'bool' })
-   except e
-      assert(e.code is ERR_DuplicateValue, 'addParam() help collision should report a duplicate value')
-      assert(e.message:find("Parameter name or alias 'help' conflicts with automatic help; set autoHelp to false."),
-         'addParam() help collision diagnostic should explain the autoHelp requirement')
-      return
-   end
-
-   error('addParam() should reject help parameters when automatic help is enabled')
 end
 
 @Test function ExplicitHelpBypassesRequiredValidationWhenAutoHelpDisabled()

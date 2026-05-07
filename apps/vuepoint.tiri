@@ -58,12 +58,18 @@ glIntroduction = [[
       description = 'A file viewer for recognised documents like SVG, RIPL, JPEG, and PNG.',
       autoHelp    = false,
       args        = array<table> {
+         { name = 'file', type = 'file', comment = 'A source file to load and display in the application.' },
+         { name = 'path', type = 'path', default = ':', comment = 'Path to use in the file selector.' },
          { name = 'width', type = 'int', default = 1024, comment = 'Width of the application window.' },
          { name = 'height', type = 'int', default = 800, comment = 'Height of the application window.' },
-         { name = 'path', type = 'path', default = ':', comment = 'Path to use in the file selector.' },
-         { name = 'file', kind = 'positional', type = 'file', comment = 'A source file to load and display in the application.' },
          { name = 'browser', kind = 'flag', default = true, comment = 'Show or hide the file browser panel.' },
-         { name = 'animate', kind = 'flag', default = true, comment = 'Enables automated animation.' }
+         { name = 'animate', kind = 'flag', default = true, comment = 'Enables automated animation.' },
+         { name = 'help', kind = 'flag', hidden = true,
+            exec = function(Parser:table)
+               print(Parser.getHelp())
+               raise ERR_Terminate
+            end
+      }
       }
    })
 
