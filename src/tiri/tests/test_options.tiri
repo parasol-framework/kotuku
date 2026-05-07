@@ -861,7 +861,7 @@ end
    })
 
    result, err = parser.tryProcess(array<string> { 'help' })
-   assert(err is nil, 'tryProcess() should not treat help as a parse failure')
+   assert(err is nil, f'tryProcess() should not treat help as a parse failure, got {err}')
    assert(result.help is true, 'tryProcess() should return a structured help result')
    assert(result.text:find('Usage: demo'), 'Structured help result should include normal help text')
 

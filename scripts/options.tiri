@@ -872,6 +872,8 @@ end
 -- Raise an error for any required parameter that remains unset after defaults.
 
 function check_required(Parser:table, Result:table)
+   if Result[Parser.helpArg] then return end -- If help is present, required parameters are irrelevant
+
    for param in values(Parser._params) do
       if param.required and Result[param.name] is nil then
          raise ERR_ParameterRequired, f"Required parameter '{param.name}' is missing."
