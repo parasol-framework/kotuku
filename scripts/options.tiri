@@ -1,33 +1,44 @@
 --[[
-Declarative command-line option parsing for Tiri scripts.
+Declarative command-line option parsing for Tiri scripts.  Refer to the Tiri-Options-API.md Wiki for usage information.
 --]]
 
    include 'core'
    import 'json'
    namespace 'options'
 
-local create_parser
+   local create_parser, get_error_instruction, apply_error_instruction, get_help
 
    _LIB[_NS] = function(Config:table):table
       return create_parser(Config)
    end
    options = _LIB[_NS]
 
-local get_error_instruction
-local apply_error_instruction
-local get_help
 
 help_result_marker = {}
-rx_env_camel = <{ regex.new('([a-z0-9])([A-Z])') }>
-rx_env_chars = <{ regex.new('[^A-Za-z0-9]+') }>
-iso_date_pattern =
+rx_env_camel <const> = <{ regex.new('([a-z0-9])([A-Z])') }>
+rx_env_chars <const> = <{ regex.new('[^A-Za-z0-9]+') }>
+duration_multipliers <const> = {
+   ms = 0.001,
+   s  = 1,
+   m  = 60,
+   h  = 3600,
+   d  = 86400
+}
+size_multipliers <const> = {
+   b  = 1,
+   kb = 1024,
+   mb = 1024 * 1024,
+   gb = 1024 * 1024 * 1024,
+   tb = 1024 * 1024 * 1024 * 1024
+}
+iso_date_pattern <const> =
    [[((([0-9]{2}([02468][48]|[13579][26]|[2468]0))|(([02468][048]|[13579][26])00))-02-29|]] ..
    [[[0-9]{4}-((01|03|05|07|08|10|12)-(0[1-9]|[12][0-9]|3[01])|]] ..
    [[(04|06|09|11)-(0[1-9]|[12][0-9]|30)|02-(0[1-9]|1[0-9]|2[0-8])))]]
-iso_time_pattern = [[([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\.[0-9]+)?)?]]
-iso_timezone_pattern = [[(Z|[+\-]([01][0-9]|2[0-3]):[0-5][0-9])?]]
-rx_iso_date = regex.new('^' .. iso_date_pattern .. '$')
-rx_iso_time = regex.new('^' .. iso_time_pattern .. '$')
+iso_time_pattern <const> = [[([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\.[0-9]+)?)?]]
+iso_timezone_pattern <const> = [[(Z|[+\-]([01][0-9]|2[0-3]):[0-5][0-9])?]]
+rx_iso_date <const> = regex.new('^' .. iso_date_pattern .. '$')
+rx_iso_time <const> = regex.new('^' .. iso_time_pattern .. '$')
 rx_iso_datetime = regex.new('^' .. iso_date_pattern .. 'T' .. iso_time_pattern .. iso_timezone_pattern .. '$')
 css_number_pattern = [[([0-9]+(\.[0-9]+)?|\.[0-9]+)]]
 css_signed_number_pattern = [[([+\-]?([0-9]+(\.[0-9]+)?|\.[0-9]+))]]
@@ -58,7 +69,7 @@ oklch_colour_pattern =
    [[oklch\(\s*]] .. css_lightness_pattern .. [[\s+]] .. css_chroma_pattern .. [[\s+]] ..
    css_hue_pattern .. css_slash_alpha_pattern .. [[\s*\)]]
 
-rx_css_colour = regex.new(
+rx_css_colour <const> = regex.new(
    '^(' .. rgb_colour_pattern .. '|' .. hsl_colour_pattern .. '|' .. hsv_colour_pattern .. '|' ..
    oklch_colour_pattern .. ')$',
    regex.ICASE
@@ -101,7 +112,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Verify that a parameter name is usable as a command-line token name.
 
-function validate_name(Name:any, Field:str)
+function validate_name(Name:any)
    if type(Name) != 'string' or Name is '' then
       raise ERR_EmptyString, 'Parameter names must be non-empty strings.'
    end
@@ -118,7 +129,7 @@ function clone_definition(Definition:table):table
    names = normalise_names(Definition)
    canonical = names[0]
 
-   validate_name(canonical, 'name')
+   validate_name(canonical)
 
    param = {}
    for key, value in pairs(Definition) do
@@ -127,7 +138,7 @@ function clone_definition(Definition:table):table
 
    param.name      = canonical
    param.kind     ?= 'option'
-   param.type     ?= 'str'
+   param.type     ?= param.kind is 'flag' ? 'bool' :> 'str'
    param.required ?= false
    param.multiple ?= false
    param.hidden   ?= false
@@ -140,7 +151,7 @@ function clone_definition(Definition:table):table
    end
 
    for name in values(names) do
-      validate_name(name, 'names')
+      validate_name(name)
    end
 
    if param.type is 'enum' and param.choices is nil then
@@ -157,7 +168,7 @@ function clone_command_definition(Parser:table, Definition:table):table
    names = normalise_names(Definition)
    canonical = names[0]
 
-   validate_name(canonical, 'name')
+   validate_name(canonical)
 
    command = {}
    for key, value in pairs(Definition) do
@@ -182,7 +193,7 @@ function clone_command_definition(Parser:table, Definition:table):table
    command._set_defaults = nil
 
    for name in values(names) do
-      validate_name(name, 'names')
+      validate_name(name)
    end
 
    return command
@@ -192,12 +203,12 @@ end
 -- Split a command-line token into its name, value, and explicit-value marker.
 
 function split_token(Token:str):<str, any, bool>
-   parts = Token:split('=')
-   if #parts is 1 then
+   eq = Token:find('=')
+   if eq is nil then
       return Token, nil, false
    end
 
-   return parts[0], Token:substr(#parts[0] + 1), true
+   return Token:substr(0, eq), Token:substr(eq + 1), true
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -299,13 +310,7 @@ function convert_duration(Value:any, Param:table):num
    if type(Value) is 'number' then return Value end
 
    number, unit = split_number_unit(Value, Param, "a duration with an ms, s, m, h, or d suffix")
-   multiplier = ({
-      ms = 0.001,
-      s  = 1,
-      m  = 60,
-      h  = 3600,
-      d  = 86400
-   })[unit]
+   multiplier = duration_multipliers[unit]
 
    if multiplier is nil then
       raise ERR_WrongType, f"Parameter '{Param.name}' requires a duration with an ms, s, m, h, or d suffix."
@@ -321,13 +326,7 @@ function convert_size(Value:any, Param:table):num
    if type(Value) is 'number' then return Value end
 
    number, unit = split_number_unit(Value, Param, "a size with a b, kb, mb, gb, or tb suffix")
-   multiplier = ({
-      b  = 1,
-      kb = 1024,
-      mb = 1024 * 1024,
-      gb = 1024 * 1024 * 1024,
-      tb = 1024 * 1024 * 1024 * 1024
-   })[unit]
+   multiplier = size_multipliers[unit]
 
    if multiplier is nil then
       raise ERR_WrongType, f"Parameter '{Param.name}' requires a size with a b, kb, mb, gb, or tb suffix."
@@ -368,7 +367,7 @@ function convert_regex(Value:any, Param:table):any
       raise ERR_WrongType, f"Parameter '{Param.name}' requires a regex pattern."
    end
 
-   param_name = Param.name
+   local param_name = Param.name
    try
       return regex.new(Value)
    except e
@@ -382,7 +381,7 @@ end
 function convert_json(Value:any, Param:table):any
    if type(Value) != 'string' then return Value end
 
-   param_name = Param.name
+   local param_name = Param.name
    try
       decoded, pos = json.decode(Value)
       if pos < #Value and Value:substr(pos):trim() != '' then
@@ -470,7 +469,9 @@ function convert_builtin(TypeName:str, Value:any, Param:table):any
       if type(Value) is 'number' then return Value end
 
       number = tonumber(Value)
-      assert(number, f"Parameter '{Param.name}' requires a number.")
+      if number is nil then
+         raise ERR_WrongType, f"Parameter '{Param.name}' requires a number."
+      end
       return number
    elseif TypeName is 'int' then
       local number:any
@@ -608,6 +609,21 @@ function add_observed_result(Result:table, ArgNames:table, Presence:table, Param
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Return the value to use when a named option appears without an explicit value.
+
+function get_implicit_option_value(Param:table):<bool, any>
+   if Param.implicit != nil then
+      return true, Param.implicit
+   end
+
+   if Param.default != nil then
+      return true, Param.default
+   end
+
+   return false, nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Apply option and flag syntax rules to a value observed in an input source.
 
 function parse_observed_value(Parser:table, Result:table, ArgNames:table, Presence:table, Param:table, ArgName:str,
@@ -625,8 +641,9 @@ function parse_observed_value(Parser:table, Result:table, ArgNames:table, Presen
    end
 
    if Param.multiple and not HasExplicitValue then
-      if Param.default != nil then
-         return set_source_result(Result, ArgNames, Presence, Param, ArgName, Param.default, true)
+      has_implicit, implicit_value = get_implicit_option_value(Param)
+      if has_implicit then
+         return set_source_result(Result, ArgNames, Presence, Param, ArgName, implicit_value, true)
       end
 
       raise ERR_Syntax, f"Parameter '{ArgName}' requires name=value syntax."
@@ -636,8 +653,9 @@ function parse_observed_value(Parser:table, Result:table, ArgNames:table, Presen
       return add_observed_result(Result, ArgNames, Presence, Param, ArgName, RawValue)
    end
 
-   if Param.default != nil then
-      return set_source_result(Result, ArgNames, Presence, Param, ArgName, Param.default, true)
+   has_implicit, implicit_value = get_implicit_option_value(Param)
+   if has_implicit then
+      return set_source_result(Result, ArgNames, Presence, Param, ArgName, implicit_value, true)
    end
 
    raise ERR_Syntax, f"Parameter '{ArgName}' requires name=value syntax."
@@ -647,6 +665,7 @@ end
 -- Apply a false value to a recognised no- flag token.
 
 function parse_flag_negation(Parser:table, Result:table, ArgNames:table, Presence:table, Name:str):bool
+
    if not Name:startsWith('no-') then return false end
 
    suffix = Name:substr(3)
@@ -669,7 +688,9 @@ end
 
 function parse_positional_value(Parser:table, Result:table, ArgNames:table, Presence:table, Token:str, PosIndex:num):num
    if PosIndex >= #Parser._positionals then
-      assert(not Parser.strict, f"Unknown parameter '{Token}'.")
+      if Parser.strict then
+         raise ERR_ParameterUnknown, f"Unknown parameter '{Token}'."
+      end
       return PosIndex
    end
 
@@ -682,30 +703,6 @@ function parse_positional_value(Parser:table, Result:table, ArgNames:table, Pres
    end
 
    return PosIndex
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Parse one ordered command-line token and apply it to the result table.
-
-function parse_ordered_token(Parser:table, Result:table, ArgNames:table, Presence:table, Token:str, PosIndex:num):num
-   name, value, has_explicit_value = split_token(Token)
-   param = Parser._named_lookup[name]
-
-   if param then
-      parse_observed_value(Parser, Result, ArgNames, Presence, param, name, value, has_explicit_value)
-      return PosIndex
-   end
-
-   if parse_flag_negation(Parser, Result, ArgNames, Presence, name) then
-      return PosIndex
-   end
-
-   if has_explicit_value then
-      assert(not Parser.strict, f"Unknown parameter '{name}'.")
-      return PosIndex
-   end
-
-   return parse_positional_value(Parser, Result, ArgNames, Presence, Token, PosIndex)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -760,8 +757,7 @@ end
 
 function get_task_parameters(Options:table):array
    if Options and Options.taskParameters != nil then
-      if Options.taskParameters is false then return nil end
-      assert(type(Options.taskParameters) is 'array', 'Options.taskParameters must be an array or false.')
+      assert(type(Options.taskParameters) is 'array', 'Options.taskParameters must be an array.')
       return Options.taskParameters
    end
 
@@ -779,45 +775,42 @@ end
 -- Parse ordered command-line tokens, preserving the order of named and positional input.
 
 function parse_ordered_input(Parser:table, Result:table, ArgNames:table, Presence:table, Input:array)
-   pos_index = 0
+   -- Parse one ordered command-line token and apply it to the result table.
 
+   function parse_ordered_token(Parser:table, Result:table, ArgNames:table, Presence:table, Token:str, PosIndex:num):num
+      local name, value, has_explicit_value = split_token(Token)
+      local param = Parser._named_lookup[name]
+
+      if param then
+         parse_observed_value(Parser, Result, ArgNames, Presence, param, name, value, has_explicit_value)
+         return PosIndex
+      end
+
+      if parse_flag_negation(Parser, Result, ArgNames, Presence, name) then
+         return PosIndex
+      end
+
+      if has_explicit_value then
+         if Parser.strict then
+            raise ERR_ParameterUnknown, f"Unknown parameter '{name}'."
+         end
+         return PosIndex
+      end
+
+      return parse_positional_value(Parser, Result, ArgNames, Presence, Token, PosIndex)
+   end
+
+   pos_index = 0
+   token_index = 0
    for token in values(Input) do
       assert(type(token) is 'string', 'Command-line input must contain strings')
+      name = split_token(token)
       pos_index = parse_ordered_token(Parser, Result, ArgNames, Presence, token, pos_index)
-   end
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Fill in parameter-level default values.
-
-function apply_param_defaults(Parser:table, Result:table, ArgNames:table):table
-   for param in values(Parser._params) do
-      if param.default != nil then
-         set_source_result(Result, ArgNames, nil, param, param.name, param.default, false)
+      if token_index is 0 and name is Parser.helpArg and Result[Parser.helpArg] != nil then
+         break
       end
+      token_index++
    end
-
-   return nil
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Apply a table of programmatic defaults as a precedence layer.
-
-function apply_default_table(Parser:table, Result:table, ArgNames:table, Defaults:table):table
-   if Defaults is nil then return nil end
-
-   assert(type(Defaults) is 'table', 'Parser defaults must be a table.')
-
-   for name, value in pairs(Defaults) do
-      param = Parser._lookup[name]
-      if param is nil then
-         raise ERR_ParameterUnknown, f"Unknown default parameter '{name}'."
-      end
-
-      set_source_result(Result, ArgNames, nil, param, name, value, false)
-   end
-
-   return nil
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -843,7 +836,8 @@ function get_environment_value(Parser:table, Param:table):<str, any>
       return nil, nil
    end
 
-   env_name = Parser.envPrefix .. '_' .. env_suffix(Param.name)
+   Param._envSuffix ?= env_suffix(Param.name)
+   env_name = Parser.envPrefix .. '_' .. Param._envSuffix
 
    try
       task = processing.task()
@@ -856,39 +850,6 @@ function get_environment_value(Parser:table, Param:table):<str, any>
    end
 
    return nil, nil
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Apply environment variable values as a precedence layer.
-
-function apply_environment(Parser:table, Result:table, ArgNames:table, Presence:table):table
-   if not Parser.envPrefix then return nil end
-
-   for param in values(Parser._params) do
-      env_name, value = get_environment_value(Parser, param)
-      if env_name then
-         set_source_result(Result, ArgNames, Presence, param, env_name, value, true)
-      end
-   end
-
-   return nil
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Copy parsed input over lower-priority defaults and environment values.
-
-function merge_input_result(Parser:table, Result:table, ArgNames:table, Presence:table, InputResult:table,
-   InputArgNames:table, InputPresence:table):table
-
-   for param in values(Parser._params) do
-      if InputResult[param.name] != nil then
-         Result[param.name] = InputResult[param.name]
-         if ArgNames then ArgNames[param.name] = InputArgNames[param.name] ?? param.name end
-         if InputPresence[param.name] then Presence[param.name] = true end
-      end
-   end
-
-   return nil
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -933,6 +894,8 @@ end
 -- Raise an error for any required parameter that remains unset after defaults.
 
 function check_required(Parser:table, Result:table)
+   if Parser.autoHelp and Result[Parser.helpArg] then return end -- If help is present, required parameters are irrelevant
+
    for param in values(Parser._params) do
       if param.required and Result[param.name] is nil then
          raise ERR_ParameterRequired, f"Required parameter '{param.name}' is missing."
@@ -1103,16 +1066,79 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Generate a compact usage line for the parser.
 
-function build_usage(Parser:table):str
-   text = f"Usage: {Parser.name}"
+function append_usage_positionals(Text:str, Parser:table):str
+   for param in values(Parser._positionals) do
+      if param.hidden then continue end
+      Text ..= ' ' .. usage_token(param)
+   end
+
+   return Text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Return true if the parser has visible named options.
+
+function has_visible_options(Parser:table):bool
+   for param in values(Parser._params) do
+      if param.kind is 'positional' then continue end
+      if param.hidden then continue end
+      return true
+   end
+
+   return false
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Append command usage suffix when commands are registered.
+
+function append_command_usage(Text:str, Parser:table):str
+   if #Parser._commands > 0 then
+      Text ..= ' <command> [args]'
+   end
+
+   return Text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generate a compact usage line for the parser.
+
+function build_full_usage(Parser:table):str
+   text = f"Usage: {Parser.name:lower()}"
+
+   text = append_usage_positionals(text, Parser)
 
    for param in values(Parser._params) do
+      if param.kind is 'positional' then continue end
       if param.hidden then continue end
       text ..= ' ' .. usage_token(param)
    end
 
-   if #Parser._commands > 0 then
-      text ..= ' <command> [args]'
+   return append_command_usage(text, Parser)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generate a shortened usage line when listing every option would exceed the line-length guideline.
+
+function build_short_usage(Parser:table):str
+   text = f"Usage: {Parser.name:lower()}"
+
+   text = append_usage_positionals(text, Parser)
+
+   if has_visible_options(Parser) then
+      text ..= ' [options...]'
+   end
+
+   return append_command_usage(text, Parser)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generate a usage line for the parser.
+
+function build_usage(Parser:table):str
+   text = build_full_usage(Parser)
+
+   if #text > 80 then
+      return build_short_usage(Parser)
    end
 
    return text
@@ -1268,7 +1294,7 @@ function build_command_help(Parser:table, Topic:str):str
    end
 
    lines:push('')
-   lines:push('Usage: ' .. Parser.name .. ' ' .. command.name)
+   lines:push('Usage: ' .. Parser.name:lower() .. ' ' .. command.name)
    if #command.names > 1 then
       aliases = ''
       for index, name in ipairs(command.names) do
@@ -1317,7 +1343,7 @@ end
 get_help = function(Parser:table, Format:any, Topic:any):str
    check_help_format(Format)
 
-   if Topic then
+   if Topic and Topic != 'true' then
       if Parser._command_lookup and Parser._command_lookup[Topic] then
          return build_command_help(Parser, Topic)
       end
@@ -1422,7 +1448,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Validate one converted scalar value against per-parameter validation fields.
 
-function validate_scalar_value(Parser:table, Param:table, ArgName:str, Value:any)
+function validate_scalar_value(Param:table, Value:any)
    if Param.choices then
       assert(type(Param.choices) is 'array' or type(Param.choices) is 'table',
          f"Parameter '{Param.name}' choices must be an array or table.")
@@ -1433,9 +1459,15 @@ function validate_scalar_value(Parser:table, Param:table, ArgName:str, Value:any
    end
 
    if Param.pattern then
-      local pattern = Param.pattern
-      if type(pattern) is 'string' then
-         pattern = regex.new(pattern)
+      local pattern = Param._pattern
+      if pattern is nil or Param._pattern_source != Param.pattern then
+         pattern = Param.pattern
+         if type(pattern) is 'string' then
+            pattern = regex.new(pattern)
+         end
+
+         Param._pattern = pattern
+         Param._pattern_source = Param.pattern
       end
 
       assert(type(pattern) is 'userdata', f"Parameter '{Param.name}' pattern must be a regex or string.")
@@ -1454,20 +1486,18 @@ function validate_param_value(Parser:table, Param:table, ArgName:str, Value:any)
    if Param.multiple then
       assert(type(Value) is 'array', f"Parameter '{Param.name}' should contain an array of values.")
       for item in values(Value) do
-         validate_scalar_value(Parser, Param, ArgName, item)
+         validate_scalar_value(Param, item)
       end
    else
-      validate_scalar_value(Parser, Param, ArgName, Value)
+      validate_scalar_value(Param, Value)
    end
 
    if Param.exec then
       assert(type(Param.exec) is 'function', f"Parameter '{Param.name}' exec must be a function.")
-      try
-         Param.exec(Parser, ArgName, Value, Param)
-      except e
-         raise e.code, e.message
-      end
+      Param.exec(Parser, ArgName, Value, Param)
    end
+
+   return false
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1547,7 +1577,9 @@ function validate_result(Parser:table, Result:table, ArgNames:table, Presence:ta
    for param in values(Parser._params) do
       if Result[param.name] != nil then
          try
-            validate_param_value(Parser, param, ArgNames[param.name] ?? param.name, Result[param.name])
+            if validate_param_value(Parser, param, ArgNames[param.name] ?? param.name, Result[param.name]) then
+               return nil
+            end
          except e
             instruction = get_error_instruction(Parser, e, param, ArgNames[param.name] ?? param.name,
                Result[param.name])
@@ -1556,7 +1588,9 @@ function validate_result(Parser:table, Result:table, ArgNames:table, Presence:ta
             end
 
             if Result[param.name] != nil then
-               validate_param_value(Parser, param, param.name, Result[param.name])
+               if validate_param_value(Parser, param, param.name, Result[param.name]) then
+                  return nil
+               end
             end
          end
       end
@@ -1588,88 +1622,67 @@ function parse_table_input(Parser:table, Result:table, ArgNames:table, Presence:
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Read named script arguments through arg() when no explicit input is supplied.
-
-function parse_arg_fallback(Parser:table, Result:table, ArgNames:table, Presence:table):table
-   for param in values(Parser._params) do
-      for name in values(param.names) do
-         value = arg(name, nil)
-         if value then
-            err = parse_observed_value(Parser, Result, ArgNames, Presence, param, name, value, true)
-            if err then return err end
-            break
-         end
-      end
-   end
-
-   return nil
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Detect automatic help requests in ordered input.
-
-function find_ordered_help(Parser:table, Input:array):<bool, str>
-   if not Parser.autoHelp then return false, nil end
-
-   pos_index = 0
-
-   for token in values(Input) do
-      name, value, has_explicit_value = split_token(token)
-      if Parser._named_lookup[name] then
-         continue
-      end
-
-      if not has_explicit_value and name:startsWith('no-') and Parser._named_lookup[name:substr(3)] then
-         continue
-      end
-
-      if not has_explicit_value and pos_index < #Parser._positionals then
-         param = Parser._positionals[pos_index]
-         if not param.multiple then
-            pos_index++
-         end
-         continue
-      end
-
-      if name is Parser.helpArg then
-         return true, has_explicit_value ? value :> nil
-      end
-   end
-
-   return false, nil
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Detect automatic help requests in keyed table input.
+-- Detect explicit help requests in keyed table input.
 
 function find_table_help(Parser:table, Input:table):<bool, str>
-   if not Parser.autoHelp then return false, nil end
-   if Parser._lookup[Parser.helpArg] then return false, nil end
+   -- Interpret a built-in help token value.
 
-   for name, value in pairs(Input) do
-      if name is Parser.helpArg then
-         if value is true then return true, nil end
-         return true, tostring(value)
+   function builtin_help_result(Value:any, HasExplicitValue:bool, TrueValueIsNormal:bool):<bool, str>
+      if not HasExplicitValue then return true, nil end
+      if TrueValueIsNormal and Value is true then return true, nil end
+      return true, tostring(Value)
+   end
+
+   value = Input[Parser.helpArg]
+   if value is nil then return false, nil end
+
+   -- Return the caller-declared help parameter when it should override built-in help handling.
+
+   function declared_help_param(Parser:table, NamedOnly:bool):table
+      if Parser.autoHelp then return nil end
+
+      if NamedOnly then
+         return Parser._named_lookup[Parser.helpArg]
       end
+
+      return Parser._lookup[Parser.helpArg]
    end
 
-   return false, nil
-end
+   -- Interpret a caller-declared help parameter value.
 
-----------------------------------------------------------------------------------------------------------------------
--- Detect automatic help requests through the arg() fallback.
+   function declared_help_result(Param:table, Value:any, HasExplicitValue:bool):<bool, str>
+      function is_true_help_value(Value:any):bool
+         if Value is true then return true end
+         if Value is nil then return false end
 
-function find_arg_help(Parser:table):<bool, str>
-   if not Parser.autoHelp then return false, nil end
-   if Parser._lookup[Parser.helpArg] then return false, nil end
+         text = tostring(Value):lower()
+         return text is 'true' or text is '1'
+      end
 
-   value = arg(Parser.helpArg, nil)
-   if value then
-      if value is true then return true, nil end
-      return true, tostring(value)
+      function is_false_help_value(Value:any):bool
+         if Value is false then return true end
+         if Value is nil then return false end
+
+         text = tostring(Value):lower()
+         return text is 'false' or text is '0' or text is 'no' or text is 'off'
+      end
+
+      if Param.kind is 'flag' then
+         if HasExplicitValue and is_false_help_value(Value) then return false, nil end
+         if not HasExplicitValue or is_true_help_value(Value) then return true, nil end
+         return true, tostring(Value)
+      end
+
+      if not HasExplicitValue then return false, nil end
+      if is_false_help_value(Value) then return false, nil end
+      if is_true_help_value(Value) then return true, nil end
+      return true, tostring(Value)
    end
 
-   return false, nil
+   param = declared_help_param(Parser, false)
+   if param then return declared_help_result(param, value, true) end
+
+   return builtin_help_result(value, true, true)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1691,6 +1704,68 @@ function resolve_input_result(Parser:table, InputResult:table, InputArgNames:tab
    raw_result = {}
    arg_names = {}
    presence = {}
+
+   -- Apply a table of programmatic defaults as a precedence layer.
+
+   function apply_default_table(Parser:table, Result:table, ArgNames:table, Defaults:table):table
+      if Defaults is nil then return nil end
+
+      assert(type(Defaults) is 'table', 'Parser defaults must be a table.')
+
+      for name, value in pairs(Defaults) do
+         param = Parser._lookup[name]
+         if param is nil then
+            raise ERR_ParameterUnknown, f"Unknown default parameter '{name}'."
+         end
+
+         set_source_result(Result, ArgNames, nil, param, name, value, false)
+      end
+
+      return nil
+   end
+
+   -- Fill in parameter-level default values.
+
+   function apply_param_defaults(Parser:table, Result:table, ArgNames:table):table
+      for param in values(Parser._params) do
+         if param.default != nil then
+            set_source_result(Result, ArgNames, nil, param, param.name, param.default, false)
+         end
+      end
+
+      return nil
+   end
+
+   -- Apply environment variable values as a precedence layer.
+
+   function apply_environment(Parser:table, Result:table, ArgNames:table, Presence:table):table
+      if not Parser.envPrefix then return nil end
+
+      for param in values(Parser._params) do
+         env_name, value = get_environment_value(Parser, param)
+         if env_name then
+            set_source_result(Result, ArgNames, Presence, param, env_name, value, true)
+         end
+      end
+
+      return nil
+   end
+
+   -- Copy parsed input over lower-priority defaults and environment values.
+
+   function merge_input_result(Parser:table, Result:table, ArgNames:table, Presence:table, InputResult:table,
+      InputArgNames:table, InputPresence:table):table
+
+      for param in values(Parser._params) do
+         if InputResult[param.name] != nil then
+            Result[param.name] = InputResult[param.name]
+            if ArgNames then ArgNames[param.name] = InputArgNames[param.name] ?? param.name end
+            if InputPresence[param.name] then Presence[param.name] = true end
+         end
+      end
+
+      return nil
+   end
 
    apply_param_defaults(Parser, raw_result, arg_names)
    apply_default_table(Parser, raw_result, arg_names, Parser.defaults)
@@ -1729,14 +1804,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Determine whether an ordered token belongs to the global parser before a command token.
 
-function is_global_ordered_token(Parser:table, Token:str):bool
-   name, _, has_explicit_value = split_token(Token)
-
-   if Parser._named_lookup[name] then
+function is_global_ordered_token(Parser:table, Name:str, HasExplicitValue:bool):bool
+   if Parser._named_lookup[Name] then
       return true
    end
 
-   if not has_explicit_value and name:startsWith('no-') and Parser._named_lookup[name:substr(3)] then
+   if not HasExplicitValue and Name:startsWith('no-') and Parser._named_lookup[Name:substr(3)] then
       return true
    end
 
@@ -1757,7 +1830,9 @@ function parse_command_ordered_input(Parser:table, Input:array):table
       assert(type(token) is 'string', 'Command-line input must contain strings')
       name, _, has_explicit_value = split_token(token)
 
-      if not is_global_ordered_token(Parser, token) and not has_explicit_value and Parser._command_lookup[name] then
+      if not is_global_ordered_token(Parser, name, has_explicit_value) and not has_explicit_value and
+         Parser._command_lookup[name] then
+
          command = Parser._command_lookup[name]
          index++
          break
@@ -1817,7 +1892,7 @@ function parse_command_table_input(Parser:table, Input:table):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Parse the selected input source into a typed argument table.
+-- Parse the selected input source into a typed argument table.  Setting Input should be reserved for tests only.
 
 function parse_input(Parser:table, Input:any, Options:table):table
    input_result = {}
@@ -1829,31 +1904,19 @@ function parse_input(Parser:table, Input:any, Options:table):table
       task_parameters = get_task_parameters(Options)
       if task_parameters then
          script_arguments = get_script_arguments(task_parameters)
-         wants_help, help_topic = find_ordered_help(Parser, script_arguments)
-         if wants_help then return make_help_result(Parser, help_topic) end
+         if #script_arguments is 0 and Parser.autoHelp then
+            return make_help_result(Parser, nil)
+         end
 
          if has_commands then return parse_command_ordered_input(Parser, script_arguments) end
          parse_ordered_input(Parser, input_result, input_arg_names, input_presence, script_arguments)
       else
-         wants_help, help_topic = find_arg_help(Parser)
-         if wants_help then return make_help_result(Parser, help_topic) end
-
-         if has_commands then
-            raise ERR_ParameterRequired, 'Command is required.'
-         end
-
-         parse_arg_fallback(Parser, input_result, input_arg_names, input_presence)
+         return make_help_result(Parser, nil)
       end
    elseif type(Input) is 'array' then
-      wants_help, help_topic = find_ordered_help(Parser, Input)
-      if wants_help then return make_help_result(Parser, help_topic) end
-
       if has_commands then return parse_command_ordered_input(Parser, Input) end
       parse_ordered_input(Parser, input_result, input_arg_names, input_presence, Input)
    elseif type(Input) is 'table' then
-      wants_help, help_topic = find_table_help(Parser, Input)
-      if wants_help then return make_help_result(Parser, help_topic) end
-
       if has_commands then return parse_command_table_input(Parser, Input) end
       parse_table_input(Parser, input_result, input_arg_names, input_presence, Input)
    else
@@ -1884,20 +1947,19 @@ function reject_param_command_collision(Parser:table, Param:table)
    end
 end
 
-----------------------------------------------------------------------------------------------------------------------
 -- Reject command names that cannot be reached by ordered command dispatch.
 
 function reject_command_dispatch_collision(Parser:table, Name:str)
+   if Name is Parser.helpArg then
+      raise ERR_DuplicateValue, f"Command name or alias '{Name}' conflicts with the reserved help token."
+   end
+
    if Parser._named_lookup[Name] then
       raise ERR_DuplicateValue, f"Command name or alias '{Name}' conflicts with global parameter '{Name}'."
    end
 
    if Name:startsWith('no-') and Parser._named_lookup[Name:substr(3)] then
       raise ERR_DuplicateValue, f"Command name or alias '{Name}' conflicts with global no- token '{Name}'."
-   end
-
-   if Parser.autoHelp and Name is Parser.helpArg then
-      raise ERR_DuplicateValue, f"Command name or alias '{Name}' conflicts with automatic help token '{Name}'."
    end
 end
 
@@ -1982,6 +2044,35 @@ function add_command(Parser:table, Definition:table):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Return true if a caller-supplied parameter definition includes a name or alias.
+
+function definition_has_name(Definition:table, Name:str):bool
+   if Definition.name is Name then return true end
+
+   if Definition.names then
+      for name in values(Definition.names) do
+         if name is Name then return true end
+      end
+   end
+
+   return false
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Return true if any caller-supplied parameter definition includes a name or alias.
+
+function definitions_have_name(Definitions:any, Name:str):bool
+   if Definitions is nil then return false end
+
+   for definition in values(Definitions) do
+      assert(type(definition) is 'table', 'Parameter definition must be a table.')
+      if definition_has_name(definition, Name) then return true end
+   end
+
+   return false
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Construct a parser instance from caller-supplied configuration.
 
 create_parser = function(Config:table):table
@@ -1998,26 +2089,25 @@ create_parser = function(Config:table):table
       defaults    = Config.defaults,
       strict      = Config.strict,
       autoHelp    = Config.autoHelp,
-      helpArg     = Config.helpArg,
       onError     = Config.onError,
       onHelp      = Config.onHelp
    }
 
-   parser.name    ?= 'script'
-   if parser.strict is nil then parser.strict = true end
-   if parser.autoHelp is nil then parser.autoHelp = true end
-   parser.helpArg ?= 'help'
-   validate_name(parser.helpArg, 'helpArg')
+   parser.name     ?= 'script'
+   parser.strict   ?= true
+   parser.autoHelp ?= true
+   parser.helpArg  ?= 'help' -- In future, allow translations to user's locale
+   validate_name(parser.helpArg)
    assert(parser.onError is nil or type(parser.onError) is 'function', 'onError must be a function.')
    assert(parser.onHelp is nil or type(parser.onHelp) is 'function', 'onHelp must be a function.')
 
-   parser._params       = array<table>
-   parser._positionals  = array<table>
-   parser._lookup       = {}
-   parser._named_lookup = {}
-   parser._commands     = array<table>
+   parser._params         = array<table>
+   parser._positionals    = array<table>
+   parser._lookup         = {}
+   parser._named_lookup   = {}
+   parser._commands       = array<table>
    parser._command_lookup = {}
-   parser._set_defaults = nil
+   parser._set_defaults   = nil
 
    @Doc(text=[[
    Add a parameter definition to the parser
@@ -2064,7 +2154,7 @@ create_parser = function(Config:table):table
    Validates and registers a command definition supplied through `commands` or added after construction.  The
    definition may use `name` or `names`; when `names` is supplied, the first name is the canonical command name and
    later names are aliases.  Command aliases must be unique within the parser's command scope and must not collide
-   with global named parameters or the automatic help token.  Command `args` are parsed only after that command is
+   with global named parameters or the reserved help token.  Command `args` are parsed only after that command is
    selected, and command results are returned separately from global parser results.
 
    -INPUT-
@@ -2132,12 +2222,12 @@ create_parser = function(Config:table):table
    parser.validate = function(Args:table):table
       assert(type(Args) is 'table', 'validate() expects an argument table.')
 
-      local raw_result = {}
-      local arg_names = {}
-      local presence = {}
+      raw_result = {}
+      arg_names = {}
+      presence = {}
 
       parse_table_input(parser, raw_result, arg_names, presence, Args)
-      local result = convert_result(parser, raw_result, arg_names, presence)
+      result = convert_result(parser, raw_result, arg_names, presence)
       return validate_result(parser, result, arg_names, presence)
    end
 
@@ -2200,15 +2290,13 @@ create_parser = function(Config:table):table
 
    Input may be an array of command-line tokens such as `array<string> { 'scene.svg', 'verbose' }`, a table of keyed
    values, or `nil`.  When `Input` is `nil`, parsing reads ordered arguments from the active task parameters after the
-   script path.  If ordered task input is unavailable, named script arguments are read from `arg()`.  Explicit arrays
+   script path.  Explicit arrays
    and tables bypass task input.  Named options use `name=value` syntax unless a default allows a bare option token.
-   Flags accept `name`, `no-name`, or `name=value` syntax.  Automatic help intercepts the configured help token only
-   when it is not declared as a parameter; help requests return a structured help table with `help`, `topic`, and
-   `text` fields instead of printing.  When the parser defines commands, global options are parsed before the command
-   token and the result contains `command`, `globals`, and `args` fields.
+   Flags accept `name`, `no-name`, or `name=value` syntax.  Help requests return a structured help table with `help`,
+   `topic`, and `text` fields instead of printing.  When the parser defines commands, global options are parsed before
+   the command token and the result contains `command`, `globals`, and `args` fields.
 
-   `Options.taskParameters` may be an ordered task parameter array used instead of the active task parameters.  Set it
-   to `false` to force the `arg()` fallback.
+   `Options.taskParameters` may be an ordered task parameter array used instead of the active task parameters.
 
    -INPUT-
    Input: Explicit input to parse, or `nil` to use the default ordered task argument source.
@@ -2219,11 +2307,25 @@ create_parser = function(Config:table):table
    table: Standard exception table when parsing fails.
    ]])
    parser.tryProcess = function(Input:any, Options:table):<table, table>
+      parser._help_result = nil
+      parser._try_process_active = true
+
+      local result:table
       try
-         return parse_input(parser, Input, Options)
+         result = parse_input(parser, Input, Options)
+      except ex when ERR_Terminate -- Non-fatal exit requested
+         result = parser._help_result
+         parser._help_result = nil
+         parser._try_process_active = nil
+         return result, nil
       except ex
+         parser._help_result = nil
+         parser._try_process_active = nil
          return nil, ex
       end
+
+      parser._try_process_active = nil
+      return result, nil
    end
 
    @Doc(text=[[
@@ -2235,30 +2337,32 @@ create_parser = function(Config:table):table
 
    Input may be an array of command-line tokens such as `array<string> { 'scene.svg', 'verbose' }`, a table of keyed
    values, or `nil`.  When `Input` is `nil`, parsing reads ordered arguments from the active task parameters after the
-   script path.  If ordered task input is unavailable, named script arguments are read from `arg()`.  Explicit arrays
+   script path.  Explicit arrays
    and tables bypass task input.  Named options use `name=value` syntax unless a default allows a bare option token.
-   Flags accept `name`, `no-name`, or `name=value` syntax.  Automatic help intercepts the configured help token only
-   when it is not declared as a parameter; help requests print generated help or dispatch it through `onHelp`, then
-   return `nil`.  When the parser defines commands, global options are parsed before the command token and the result
-   contains `command`, `globals`, and `args` fields.
+   Flags accept `name`, `no-name`, or `name=value` syntax.  Help requests print generated help or dispatch it through
+   `onHelp`, then return `nil`.  When the parser defines commands, global options are parsed before the command token
+   and the result contains `command`, `globals`, and `args` fields.
 
    Use parser.tryProcess() when parser failures should be returned instead of raised.
 
-   `Options.taskParameters` may be an ordered task parameter array used instead of the active task parameters.  Set it
-   to `false` to force the `arg()` fallback.
+   `Options.taskParameters` may be an ordered task parameter array used instead of the active task parameters.
 
    -INPUT-
    Input: Explicit input to parse, or `nil` to use the default ordered task argument source.
    Options: Optional parser controls, currently `taskParameters`.
 
    -RESULT-
-   table: Parsed argument table, command result table, or `nil` when automatic help is handled.
+   table: Parsed argument table, command result table, or `nil` when help is handled.
    ]])
    parser.process = function(Input:any, Options:table):table
       local result, err = parser.tryProcess(Input, Options)
+
       if err then
+         if err.code is ERR_Okay then return nil end
          print(err.message)
+         raise err.code, err.message
       end
+
       if result and result._helpMarker is help_result_marker then
          if parser.onHelp then
             parser.onHelp(parser, result.text, result.topic)
@@ -2273,7 +2377,28 @@ create_parser = function(Config:table):table
    if Config.args then
       assert(type(Config.args) is 'array' or type(Config.args) is 'table',
          'Parser args must be an array of parameter definitions.')
+   end
 
+   if parser.autoHelp then
+      if definitions_have_name(Config.args, parser.helpArg) then
+         raise ERR_DuplicateValue, f"Parameter name or alias '{parser.helpArg}' conflicts with the reserved help token."
+      end
+
+      add_param(parser, {
+         name = parser.helpArg, type = 'str', hidden = true, implicit = true,
+         exec = function(Parser:table, ArgName:str, Value:any, Param:table)
+            topic = (Value is true or Value is 'true') ? nil :> Value
+            if Parser._try_process_active then
+               Parser._help_result = make_help_result(Parser, topic)
+            else
+               print(get_help(Parser, nil, topic))
+            end
+            raise ERR_Terminate -- Stops the process without throwing an error
+         end
+      })
+   end
+
+   if Config.args then
       for definition in values(Config.args) do
          parser.addParam(definition)
       end

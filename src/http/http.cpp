@@ -618,6 +618,9 @@ static ERR HTTP_Activate(extHTTP *Self)
          set_http_method(Self, "GET", cmd);
          if (Self->Index) cmd << "Range: bytes=" << Self->Index << "-" << CRLF;
       }
+      else if (Self->Method IS HTM::HEAD) {
+         set_http_method(Self, "HEAD", cmd);
+      }
       else if (Self->Method IS HTM::LOCK) {
 
       }
