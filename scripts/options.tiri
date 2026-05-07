@@ -1119,13 +1119,46 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Generate a compact usage line for the parser.
 
-function build_usage(Parser:table):str
-   text = f"Usage: {Parser.name}"
-
+function append_usage_positionals(Text:str, Parser:table):str
    for param in values(Parser._positionals) do
       if param.hidden then continue end
-      text ..= ' ' .. usage_token(param)
+      Text ..= ' ' .. usage_token(param)
    end
+
+   return Text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Return true if the parser has visible named options.
+
+function has_visible_options(Parser:table):bool
+   for param in values(Parser._params) do
+      if param.kind is 'positional' then continue end
+      if param.hidden then continue end
+      return true
+   end
+
+   return false
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Append command usage suffix when commands are registered.
+
+function append_command_usage(Text:str, Parser:table):str
+   if #Parser._commands > 0 then
+      Text ..= ' <command> [args]'
+   end
+
+   return Text
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generate a compact usage line for the parser.
+
+function build_full_usage(Parser:table):str
+   text = f"Usage: {Parser.name:lower()}"
+
+   text = append_usage_positionals(text, Parser)
 
    for param in values(Parser._params) do
       if param.kind is 'positional' then continue end
@@ -1133,8 +1166,32 @@ function build_usage(Parser:table):str
       text ..= ' ' .. usage_token(param)
    end
 
-   if #Parser._commands > 0 then
-      text ..= ' <command> [args]'
+   return append_command_usage(text, Parser)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generate a shortened usage line when listing every option would exceed the line-length guideline.
+
+function build_short_usage(Parser:table):str
+   text = f"Usage: {Parser.name:lower()}"
+
+   text = append_usage_positionals(text, Parser)
+
+   if has_visible_options(Parser) then
+      text ..= ' [options...]'
+   end
+
+   return append_command_usage(text, Parser)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generate a usage line for the parser.
+
+function build_usage(Parser:table):str
+   text = build_full_usage(Parser)
+
+   if #text > 80 then
+      return build_short_usage(Parser)
    end
 
    return text
@@ -1290,7 +1347,7 @@ function build_command_help(Parser:table, Topic:str):str
    end
 
    lines:push('')
-   lines:push('Usage: ' .. Parser.name .. ' ' .. command.name)
+   lines:push('Usage: ' .. Parser.name:lower() .. ' ' .. command.name)
    if #command.names > 1 then
       aliases = ''
       for index, name in ipairs(command.names) do

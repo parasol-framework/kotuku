@@ -783,6 +783,24 @@ end
    assert(usage:find('<INPUT>'), 'Usage should include required positionals')
    assert(usage:find('output=PATH'), 'Usage should include option metavars')
    assert(usage:find('<INPUT>') < usage:find('output=PATH'), 'Usage should list positionals before options')
+   assert(usage is 'Usage: vuepoint <INPUT> [output=PATH] [verbose]',
+      'Short usage should list every visible parameter')
+
+   long_parser = options({
+      name = 'vuepoint',
+      args = array<table> {
+         { name = 'file', kind = 'positional', type = 'file' },
+         { name = 'width', type = 'int' },
+         { name = 'height', type = 'int' },
+         { name = 'path', type = 'path' },
+         { name = 'browser', kind = 'flag' },
+         { name = 'animate', kind = 'flag' }
+      }
+   })
+
+   usage = long_parser.getUsage()
+   assert(usage is 'Usage: vuepoint [<FILE>] [options...]',
+      'Long usage should collapse named options to [options...]')
 
    help = parser.getHelp()
    assert(help:find('View vector documents'), 'Normal help should include the description')
