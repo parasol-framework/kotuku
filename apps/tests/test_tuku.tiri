@@ -6,6 +6,7 @@
 SERVER_PORT <const> = 18952
 glOutputFile <const> = 'temp:tuku-test-output.txt'
 glBodyFile <const> = 'temp:tuku-test-body.txt'
+glUploadFile <const> = 'temp:tuku-test-upload.txt'
 
 function resolveFirstPath(Candidates:array):str
    for candidate in values(Candidates) do
@@ -162,6 +163,7 @@ end
    mSys.DeleteFile(glOutputFile)
    mSys.DeleteFile(glOutputFile .. '.tuku-resume')
    mSys.DeleteFile(glBodyFile)
+   mSys.DeleteFile(glUploadFile)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -221,6 +223,7 @@ end
    assert(result.text:find('max-redirects'), 'Help should include redirect limit option')
    assert(result.text:find('header=HEADER'), 'Help should include future header option')
    assert(result.text:find('json=JSON'), 'Help should include future JSON option')
+   assert(result.text:find('multipart=MULTIPART'), 'Help should include multipart body option')
    assert(result.text:find('debug-socket'), 'Help should include future socket debug option')
 end
 
@@ -404,6 +407,60 @@ end
    assert(response.contentType is 'application/json', 'PATCH JSON should set application/json content type')
    assert(response.parsedBody[0] is 4, 'PATCH JSON array body should be parsed by the server')
    assert(response.parsedBody[2] is 6, 'PATCH JSON array value mismatch')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLinePostsMultipartTextFields()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'multipart={name=Ada,role=Engineer}',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Multipart text POST should return 0: ' .. result.errors)
+
+   response = json.decode(result.output)
+   assert(response.method is 'POST', 'Multipart body option should imply POST')
+   assert(response.contentType:find('multipart/form-data'), 'Multipart should set multipart/form-data content type')
+   assert(response.parsedBody.name is 'Ada', 'Multipart text field "name" should round-trip')
+   assert(response.parsedBody.role is 'Engineer', 'Multipart text field "role" should round-trip')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLinePostsMultipartFile()
+   io.writeAll(glUploadFile, 'uploaded file body')
+
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'multipart={doc=@' .. glUploadFile .. '}',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Multipart file POST should return 0: ' .. result.errors)
+
+   response = json.decode(result.output)
+   assert(response.contentType:find('multipart/form-data'), 'File upload should set multipart/form-data content type')
+   assert(response.parsedBody.doc.filename is 'tuku-test-upload.txt',
+      'Multipart file field should preserve filename: ' .. tostring(response.parsedBody.doc.filename))
+   assert(response.parsedBody.doc.value is 'uploaded file body',
+      'Multipart file field should preserve content: ' .. tostring(response.parsedBody.doc.value))
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineRejectsMultipartWithOtherBodyOptions()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'data=plain',
+      'multipart={name=Ada}',
+      'timeout=5'
+   })
+
+   assert(result.returnCode != 0, 'Multipart combined with another body option should fail')
+   assert(result.text:find("excludes 'multipart'.") or result.text:find("Parameter 'multipart' excludes"),
+      'Unexpected multipart exclusion error output: ' .. result.text)
 end
 
 ----------------------------------------------------------------------------------------------------------------------

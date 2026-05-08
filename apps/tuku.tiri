@@ -1,6 +1,6 @@
 #!/usr/bin/env origo
 --[[
-Tuku: A small HTTP/HTTPS client for Tiri command-line workflows.
+Tuku: A small HTTP/HTTPS client for Tiri command-line workflows.  Documented in the Wiki.
 --]]
 
    include 'http'
@@ -38,17 +38,20 @@ glOptionDefs = array<table> {
      comment = 'Treat HTTP 4xx and 5xx statuses as failures.' },
 
    { name = 'data', type = 'str', group = 'Request Body',
-     excludes = array<string> { 'datafile', 'json', 'form' },
+     excludes = array<string> { 'datafile', 'json', 'form', 'multipart' },
      comment = 'Send a string request body.' },
    { name = 'datafile', type = 'file', exists = true, group = 'Request Body',
-     excludes = array<string> { 'data', 'json', 'form' },
+     excludes = array<string> { 'data', 'json', 'form', 'multipart' },
      comment = 'Read the request body from a file.' },
    { name = 'json', type = 'str', group = 'Request Body',
-     excludes = array<string> { 'data', 'datafile', 'form' },
+     excludes = array<string> { 'data', 'datafile', 'form', 'multipart' },
      comment = 'Send a JSON request body.' },
    { name = 'form', type = 'array', group = 'Request Body',
-     excludes = array<string> { 'data', 'datafile', 'json' },
+     excludes = array<string> { 'data', 'datafile', 'json', 'multipart' },
      comment = 'Send form fields as name=value entries.' },
+   { name = 'multipart', type = 'array', group = 'Request Body',
+     excludes = array<string> { 'data', 'datafile', 'json', 'form' },
+     comment = 'Send multipart/form-data fields as name=value or name=@path entries.' },
    { name = 'contenttype', type = 'str', group = 'Request Body',
      comment = 'Request Content-Type header.' },
 
@@ -95,7 +98,7 @@ glParser = options({
 -- Returns true when the command-line options include any supported request body source.
 
 function hasBodyOption(Args:table):bool
-   return Args.data != nil or Args.datafile != nil or Args.json != nil or Args.form != nil
+   return Args.data != nil or Args.datafile != nil or Args.json != nil or Args.form != nil or Args.multipart != nil
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -118,6 +121,61 @@ function encodeFormBody(Form:array):str
    end
 
    return url.buildQuery(params)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Escapes quoted multipart header values.
+
+function escapeMultipartHeaderValue(Value:str):str
+   return Value:replace('\\', '\\\\'):replace('"', '\\"')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Converts an array of name=value or name=@file arguments into multipart/form-data request content.
+
+function buildMultipartBody(Fields:array):<str, str>
+   boundary = '----TukuBoundary' .. tostring(math.floor(mSys.PreciseTime()))
+   crlf <const> = '\r\n'
+   body = ''
+
+   for field in values(Fields) do
+      text = tostring(field)
+      eq = text:find('=', 0, true)
+      if eq is nil then
+         error("Parameter 'multipart' entries must use name=value syntax.")
+      end
+
+      name = text:substr(0, eq):trim()
+      value = text:substr(eq + 1)
+
+      if name is '' then
+         error("Parameter 'multipart' entries require a field name.")
+      end
+
+      body ..= '--' .. boundary .. crlf
+
+      if value:startsWith('@') then
+         path = value:substr(1)
+         if path is '' then
+            error("Parameter 'multipart' file entries require a path after '@'.")
+         end
+
+         _, filename = io.splitPath(path)
+         filename ??= path
+
+         body ..= 'Content-Disposition: form-data; name="' .. escapeMultipartHeaderValue(name) ..
+            '"; filename="' .. escapeMultipartHeaderValue(filename) .. '"' .. crlf
+         body ..= 'Content-Type: application/octet-stream' .. crlf .. crlf
+         body ..= io.readAll(path) .. crlf
+      else
+         body ..= 'Content-Disposition: form-data; name="' .. escapeMultipartHeaderValue(name) .. '"' .. crlf .. crlf
+         body ..= value .. crlf
+      end
+   end
+
+   body ..= '--' .. boundary .. '--' .. crlf
+
+   return body, 'multipart/form-data; boundary=' .. boundary
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -261,6 +319,11 @@ function normaliseArgs(Args:table):table
       Args.contenttype = 'application/json'
    elseif Args.form != nil and Args.contenttype is nil then
       Args.contenttype = 'application/x-www-form-urlencoded'
+   elseif Args.multipart != nil then
+      Args._multipartBody, multipart_content_type = buildMultipartBody(Args.multipart)
+      if Args.contenttype is nil then
+         Args.contenttype = multipart_content_type
+      end
    end
 
    if Args.user != nil then
@@ -288,6 +351,7 @@ end
 -- Returns the string request body to send for body options that are not file-backed.
 
 function makeRequestBody(Args:table):str
+   if Args._multipartBody != nil then return Args._multipartBody end
    if Args.data != nil then return Args.data end
    if Args.json != nil then return Args.json end
    if Args.form != nil then return encodeFormBody(Args.form) end
@@ -542,6 +606,8 @@ function clearBodyOptions(Args:table)
    Args.datafile = nil
    Args.json = nil
    Args.form = nil
+   Args.multipart = nil
+   Args._multipartBody = nil
    Args.contenttype = nil
 end
 
