@@ -11,6 +11,7 @@ TUKU_VERSION <const> = '2026.5.7'
 TUKU_USER_AGENT <const> = 'Tuku/1.0 Kotuku'
 glResponseHeaderNames = array<string> { 'content-type', 'content-length', 'location' }
 glReportedError = false
+glSilent = false
 
 glOptionDefs = array<table> {
    { name = 'url', type = 'str', group = 'Core',
@@ -227,6 +228,13 @@ function getFileSize(Path:str):num
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Builds the temporary side-file path used while validating resumed responses.
+
+function makeResumeTempPath(Path:str):str
+   return Path .. '.tuku-resume'
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Normalises derived argument values, including method casing and implicit content types, before validation.
 
 function normaliseArgs(Args:table):table
@@ -256,6 +264,10 @@ function normaliseArgs(Args:table):table
 
    if Args.resume and Args.output != nil then
       Args.resumeOffset = getFileSize(Args.output)
+      if Args.resumeOffset > 0 then
+         Args.resumeTempPath = makeResumeTempPath(Args.output)
+         mSys.DeleteFile(Args.resumeTempPath)
+      end
    end
 
    return Args
@@ -278,7 +290,6 @@ function makeRequestFlags(Args:table):num
    flags = HTF_NO_DIALOG
 
    if hasBodyOption(Args) or Args['no-head'] then flags = flags | HTF_NO_HEAD end
-   if Args.resume then flags = flags | HTF_RESUME end
    if Args.raw then flags = flags | HTF_RAW end
    if Args['debug-socket'] then flags = flags | HTF_DEBUG_SOCKET end
    if Args.insecure then flags = flags | HTF_DISABLE_SERVER_VERIFY end
@@ -290,6 +301,11 @@ end
 -- Builds the HTTP object configuration table from validated command-line arguments.
 
 function makeRequestConfig(Args:table):table
+   output_file = Args.output
+   if Args.resumeTempPath != nil then
+      output_file = Args.resumeTempPath
+   end
+
    request = {
       src            = Args.url,
       method         = Args.method,
@@ -310,8 +326,8 @@ function makeRequestConfig(Args:table):table
       request.proxyPort = Args.proxyPort
    end
 
-   if Args.output != nil then
-      request.outputFile = Args.output
+   if output_file != nil then
+      request.outputFile = output_file
    elseif not Args.status then
       -- Streams response body chunks to standard output when the body is not redirected or suppressed.
       request.incoming = function(HTTP:obj, Buffer:array)
@@ -339,6 +355,36 @@ function makeRequestConfig(Args:table):table
    end
 
    return request
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Appends a completed temporary response body to the requested output file.
+
+function appendFile(Source:str, Destination:str)
+   data = io.readAll(Source)
+   file = io.open(Destination, 'a')
+   file:write(data)
+   file:close()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Completes a resumed download only after confirming that the server honoured the Range request.
+
+function finaliseResumeDownload(Args:table, Result:table)
+   if Args.resumeTempPath is nil then return end
+
+   if Result.transportError != ERR_Okay then
+      mSys.DeleteFile(Args.resumeTempPath)
+      return
+   end
+
+   if Result.status is 206 then
+      appendFile(Args.resumeTempPath, Args.output)
+      mSys.DeleteFile(Args.resumeTempPath)
+   else
+      mSys.DeleteFile(Args.resumeTempPath)
+      Result.resumeError = f"Resume request returned HTTP {Result.status} instead of 206 Partial Content."
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -372,12 +418,14 @@ end
 -- Prints a stable, machine-friendly error line before raising a command failure.
 
 function reportError(Type:str, Message:str, Status:num, Code:num)
+   glReportedError = true
+   if glSilent then return end
+
    text = f"tuku: error: type={Type}"
    if Status != nil then text ..= f" status={Status}" end
    if Code != nil then text ..= f" code={Code}" end
    text ..= " message=" .. Message
 
-   glReportedError = true
    print(text)
 end
 
@@ -469,6 +517,12 @@ function parseCommandLine():table
    args, err = glParser.tryProcess()
 
    if err != nil then
+      raw_silent = arg('silent')
+      if raw_silent != nil then
+         raw_silent = tostring(raw_silent):lower()
+         glSilent = raw_silent != 'false' and raw_silent != '0' and raw_silent != 'no' and raw_silent != 'off'
+      end
+
       reportError('argument', err.message, nil, err.code)
       raise err.code, err.message
    end
@@ -516,25 +570,34 @@ end
       args = parseCommandLine()
       if args is nil then return end
 
+      glSilent = args.silent
       args = normaliseArgs(args)
 
       if args.version then
-         print('Tuku ' .. TUKU_VERSION)
+         if not args.silent then
+            print('Tuku ' .. TUKU_VERSION)
+         end
          return
       end
 
       result = fetch(args)
+      finaliseResumeDownload(args, result)
 
-      if args.verbose then
+      if args.verbose and not args.silent then
          printVerboseSummary(args, result)
       end
 
-      if args.headers and not args.verbose then
+      if args.headers and not args.verbose and not args.silent then
          printResponseHeaders(result)
       end
 
-      if args.status then
+      if args.status and not args.silent then
          io.write(tostring(result.status) .. '\n')
+      end
+
+      if result.resumeError != nil then
+         reportError('http', result.resumeError, result.status, ERR_Failed)
+         raise ERR_Failed, result.resumeError
       end
 
       if result.transportError != ERR_Okay and result.status <= 0 then

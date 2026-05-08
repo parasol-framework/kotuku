@@ -63,6 +63,12 @@ end
                end
             end
          },
+         { pattern = '/range-ignore',
+            method = 'GET',
+            handler = function(req, res)
+               res.send('hello from tuku', 'text/plain')
+            end
+         },
          { pattern = f'/http:/127.0.0.1:{SERVER_PORT}/proxy-target',
             method = 'GET',
             handler = function(req, res)
@@ -108,6 +114,7 @@ end
 @AfterAll function cleanup()
    glServer.stop()
    mSys.DeleteFile(glOutputFile)
+   mSys.DeleteFile(glOutputFile .. '.tuku-resume')
    mSys.DeleteFile(glBodyFile)
 end
 
@@ -407,6 +414,24 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
+@Test function CommandLineSilentSuppressesNonBodyOutput()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/headers',
+      'output=' .. glOutputFile,
+      'silent',
+      'verbose',
+      'headers',
+      'status',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Silent diagnostic suppression should return 0: ' .. result.errors)
+   assert(io.readAll(glOutputFile) is 'header-body', 'Silent request should still write the response body')
+   assert(result.text is '', 'Silent should suppress verbose, header and status output: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 @Test function CommandLineResumesOutputDownload()
    io.writeAll(glOutputFile, 'hello ')
 
@@ -419,6 +444,24 @@ end
 
    assert(result.returnCode is 0, 'Resume download should return 0: ' .. result.errors)
    assert(io.readAll(glOutputFile) is 'hello from tuku', 'Resume download should append ranged content')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineResumeRejectsFullResponse()
+   io.writeAll(glOutputFile, 'hello ')
+
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/range-ignore',
+      'output=' .. glOutputFile,
+      'resume',
+      'timeout=5'
+   })
+
+   assert(result.returnCode != 0, 'Resume should fail when the server ignores Range')
+   assert(io.readAll(glOutputFile) is 'hello ', 'Resume should leave the partial output file unchanged')
+   assert(result.text:find('Resume request returned HTTP 200 instead of 206 Partial Content.'),
+      'Resume non-206 diagnostic mismatch: ' .. result.text)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
