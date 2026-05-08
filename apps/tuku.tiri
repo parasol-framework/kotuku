@@ -5,15 +5,16 @@ Tuku: A small HTTP/HTTPS client for Tiri command-line workflows.
 
    include 'http'
    import 'options'
+   import 'net/url'
 
-TUKU_VERSION <const> = '1.0'
+TUKU_VERSION <const> = '2026.5.7'
 TUKU_USER_AGENT <const> = 'Tuku/1.0 Kotuku'
 
 glOptionDefs = array<table> {
    { name = 'url', type = 'str', group = 'Core',
      comment = 'Target HTTP or HTTPS URL.' },
    { name = 'method', type = 'enum', choices = array<string> { 'get', 'head', 'delete', 'options', 'post', 'put' },
-     default = 'get', group = 'Core', comment = 'HTTP method to use.' },
+     group = 'Core', comment = 'HTTP method to use.' },
    { name = 'version', kind = 'flag', group = 'Core',
      comment = 'Print the Tuku version.' },
 
@@ -86,6 +87,59 @@ function hasBodyOption(Args:table):bool
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Converts an array of name=value form arguments into application/x-www-form-urlencoded request content.
+
+function encodeFormBody(Form:array):str
+   params = array<table>
+
+   for field in values(Form) do
+      text = tostring(field)
+      eq = text:find('=')
+      if eq is nil then
+         error("Parameter 'form' entries must use name=value syntax.")
+      end
+
+      params:push({
+         key   = text:substr(0, eq),
+         value = text:substr(eq + 1)
+      })
+   end
+
+   return url.buildQuery(params)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Splits a Name: Value header argument into its key and value components.
+
+function splitHeader(Header:str):<str, str>
+   colon = Header:find(':')
+   if colon is nil then
+      error("Parameter 'header' entries must use Name: Value syntax.")
+   end
+
+   name = Header:substr(0, colon):trim()
+   value = Header:substr(colon + 1):trim()
+
+   if name is '' then
+      error("Parameter 'header' entries require a header name.")
+   end
+
+   return name, value
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Splits username:password into the HTTP fields used by the client object.
+
+function splitUser(User:str):<str, str>
+   colon = User:find(':')
+   if colon is nil then
+      error("Parameter 'user' must use username:password syntax.")
+   end
+
+   return User:substr(0, colon), User:substr(colon + 1)
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Ensures that numeric timeout values are valid before the request is started.
 
 function requirePositive(Name:str, Value:num)
@@ -102,9 +156,9 @@ function rejectPhaseFuture(Name:str)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Validates the Phase 1 option set and reports unsupported methods or deferred parameters as argument errors.
+-- Validates currently supported options and reports deferred parameters as argument errors.
 
-function validatePhaseOneArgs(Args:table)
+function validateArgs(Args:table)
    if Args.version then return end
 
    if Args.url is nil then
@@ -119,19 +173,8 @@ function validatePhaseOneArgs(Args:table)
       error("Parameter 'url' must start with http:// or https://.")
    end
 
-   if Args.method != 'get' and Args.method != 'head' and Args.method != 'delete' and Args.method != 'options' then
-      error("Phase 1 supports method=get, method=head, method=delete, and method=options.")
-   end
-
    if Args.fail then rejectPhaseFuture('fail') end
    if Args.verbose then rejectPhaseFuture('verbose') end
-   if Args.data != nil then rejectPhaseFuture('data') end
-   if Args.datafile != nil then rejectPhaseFuture('datafile') end
-   if Args.json != nil then rejectPhaseFuture('json') end
-   if Args.form != nil then rejectPhaseFuture('form') end
-   if Args.contenttype != nil then rejectPhaseFuture('contenttype') end
-   if Args.header != nil then rejectPhaseFuture('header') end
-   if Args.user != nil then rejectPhaseFuture('user') end
    if Args.proxy != nil then rejectPhaseFuture('proxy') end
    if Args.insecure then rejectPhaseFuture('insecure') end
    if Args.resume then rejectPhaseFuture('resume') end
@@ -144,10 +187,12 @@ end
 -- Normalises derived argument values, including method casing and implicit content types, before validation.
 
 function normaliseArgs(Args:table):table
-   Args.method = Args.method:lower()
-
-   if hasBodyOption(Args) and Args.method is 'get' then
+   if Args.method != nil then
+      Args.method = Args.method:lower()
+   elseif hasBodyOption(Args) then
       Args.method = 'post'
+   else
+      Args.method = 'get'
    end
 
    if Args.json != nil and Args.contenttype is nil then
@@ -156,8 +201,22 @@ function normaliseArgs(Args:table):table
       Args.contenttype = 'application/x-www-form-urlencoded'
    end
 
-   validatePhaseOneArgs(Args)
+   if Args.user != nil then
+      Args.username, Args.password = splitUser(Args.user)
+   end
+
+   validateArgs(Args)
    return Args
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Returns the string request body to send for body options that are not file-backed.
+
+function makeRequestBody(Args:table):str
+   if Args.data != nil then return Args.data end
+   if Args.json != nil then return Args.json end
+   if Args.form != nil then return encodeFormBody(Args.form) end
+   return nil
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -170,6 +229,7 @@ function makeRequestConfig(Args:table):table
       connectTimeout = Args['connect-timeout'],
       dataTimeout    = Args['data-timeout'],
       userAgent      = Args.useragent,
+      flags          = HTF_NO_DIALOG | (hasBodyOption(Args) ? HTF_NO_HEAD :> 0),
       -- Wakes the waiting processing context when the HTTP transfer reaches a terminal state.
       stateChanged   = function(HTTP:obj, State:num)
          if State is HGS_COMPLETED or State is HGS_TERMINATED then
@@ -187,7 +247,41 @@ function makeRequestConfig(Args:table):table
       end
    end
 
+   if Args.contenttype != nil then
+      request.contentType = Args.contenttype
+   end
+
+   if Args.username != nil then
+      request.username = Args.username
+      request.password = Args.password
+   end
+
+   if Args.datafile != nil then
+      request.inputFile = Args.datafile
+   else
+      body = makeRequestBody(Args)
+      if body != nil then
+         request.inputFile = 'string:' .. body
+         request.size = #body
+      end
+   end
+
    return request
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Applies request headers after object construction because custom headers are stored through acSetKey().
+
+function applyRequestHeaders(HTTP:obj, Args:table)
+   if Args.header is nil then return end
+
+   for header in values(Args.header) do
+      name, value = splitHeader(header)
+      err = HTTP.acSetKey(name, value)
+      if err != ERR_Okay then
+         error("Invalid request header '" .. name .. "': " .. mSys.GetErrorMsg(err))
+      end
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -195,6 +289,7 @@ end
 
 function fetch(Args:table):table
    local http = obj.new('http', makeRequestConfig(Args))
+   applyRequestHeaders(http, Args)
    proc = processing.new({ timeout = Args.timeout, signals = array<object> { http } })
 
    err = http.acActivate() -- Send asynchronous request

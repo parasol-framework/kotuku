@@ -1,9 +1,11 @@
 -- Flute tests for the Tuku command-line HTTP client.
 
    import 'net/httpserver'
+   import 'json'
 
 SERVER_PORT <const> = 18952
 glOutputFile <const> = 'temp:tuku-test-output.txt'
+glBodyFile <const> = 'temp:tuku-test-body.txt'
 
 function resolveFirstPath(Candidates:array):str
    for candidate in values(Candidates) do
@@ -53,6 +55,20 @@ end
             handler = function(req, res)
                res.status(204).send('')
             end
+         },
+         { pattern = '/echo',
+            method = 'POST',
+            handler = function(req, res)
+               res.json({
+                  method      = req.method,
+                  body        = req.body,
+                  contentType = req.headers['content-type'],
+                  userAgent   = req.headers['user-agent'],
+                  accept      = req.headers['accept'],
+                  custom      = req.headers['x-tuku-test'],
+                  parsedBody  = req.parsedBody
+               })
+            end
          }
       }
    })
@@ -61,6 +77,17 @@ end
 @AfterAll function cleanup()
    glServer.stop()
    mSys.DeleteFile(glOutputFile)
+   mSys.DeleteFile(glBodyFile)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function quoteTaskParam(Param:str):str
+   if Param:find(' ') is nil and Param:find('"') is nil then
+      return Param
+   end
+
+   return '"' .. Param:replace('"', '\\"') .. '"'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -71,7 +98,7 @@ function runTuku(Parameters:array):table
    local task_params = array<string> { glTukuPath }
 
    for param in values(Parameters) do
-      task_params:push(param)
+      task_params:push(quoteTaskParam(param))
    end
    task_params:push('--log-warning')
 
@@ -111,11 +138,16 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test function CommandLineRejectsFutureBodyOptionsForPhaseOne()
-   result = runTuku(array<string> { f'url=http://127.0.0.1:{SERVER_PORT}/hello', 'json={}' })
+@Test function CommandLineRejectsIncompatibleBodyOptions()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'data=plain',
+      'json={}'
+   })
 
-   assert(result.returnCode != 0, 'Future body option should fail in phase 1')
-   assert(result.errors:find('Phase 1 supports'), 'Unexpected error output: ' .. result.errors)
+   assert(result.returnCode != 0, 'Incompatible body options should fail')
+   assert(result.text:find("Parameter 'data' excludes 'json'."),
+      'Unexpected body option error output: ' .. result.text)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -141,6 +173,91 @@ end
 
    assert(result.returnCode is 0, 'GET should return 0, got ' .. result.returnCode .. ': ' .. result.errors)
    assert(io.readAll(glOutputFile) is 'hello from tuku', 'Output file content mismatch')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLinePostsDataAndCustomHeaders()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'data=plain-body',
+      'contenttype=text/plain',
+      'header={X-Tuku-Test:phase2,Accept:application/json}',
+      'useragent=Tuku-Test/2.0',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'POST data should return 0: ' .. result.errors)
+
+   response = json.decode(result.output)
+   assert(response.method is 'POST', 'Body option should imply POST')
+   assert(response.body is 'plain-body', 'POST body mismatch: ' .. tostring(response.body))
+   assert(response.contentType is 'text/plain', 'Content-Type header mismatch')
+   assert(response.custom is 'phase2', 'Custom header mismatch')
+   assert(response.accept is 'application/json', 'Accept header mismatch')
+   assert(response.userAgent is 'Tuku-Test/2.0', 'User-Agent header mismatch')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLinePostsJsonAndFormBodies()
+   json_result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'json=[1,2,3]',
+      'timeout=5'
+   })
+
+   assert(json_result.returnCode is 0, 'JSON POST should return 0: ' .. json_result.errors)
+   json_response = json.decode(json_result.output)
+   assert(json_response.contentType is 'application/json', 'JSON should set application/json content type')
+   assert(json_response.parsedBody[0] is 1, 'JSON array body should be parsed by the server')
+   assert(json_response.parsedBody[2] is 3, 'JSON array body value mismatch')
+
+   form_result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'form={name=Ada,email=ada@example.com}',
+      'timeout=5'
+   })
+
+   assert(form_result.returnCode is 0, 'Form POST should return 0: ' .. form_result.errors)
+   form_response = json.decode(form_result.output)
+   assert(form_response.contentType is 'application/x-www-form-urlencoded',
+      'Form should set application/x-www-form-urlencoded content type')
+   assert(form_response.body is 'name=Ada&email=ada%40example.com',
+      'Form body was not URL encoded as expected: ' .. tostring(form_response.body))
+   assert(form_response.parsedBody.name is 'Ada', 'Form name should round-trip')
+   assert(form_response.parsedBody.email is 'ada@example.com', 'Form email should round-trip')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLinePostsDataFile()
+   io.writeAll(glBodyFile, 'file-body')
+
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'datafile=' .. glBodyFile,
+      'contenttype=text/plain',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Data file POST should return 0: ' .. result.errors)
+   response = json.decode(result.output)
+   assert(response.body is 'file-body', 'Data file body mismatch')
+   assert(response.contentType is 'text/plain', 'Data file content type mismatch')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineAcceptsUserCredentials()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/hello',
+      'user=tuku:pass',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'GET with user credentials should return 0: ' .. result.errors)
+   assert(result.output is 'hello from tuku', 'User credentials should not disrupt normal GET output')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
