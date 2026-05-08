@@ -13,27 +13,30 @@
 
 glTime = obj.new('time')
 
-rxControlChars    = <{ regex.new([=[[\x00-\x1f\x7f]]=]) }>
-rxQueryFragment   = <{ regex.new([[^([^?#]*)]]) }>
-rxFileExtension   = <{ regex.new([[\.([^.]+)$]]) }>
-rxCookiePair      = <{ regex.new([[\s*([^=]+)=(.+)]]) }>
-rxTrimWhitespace  = <{ regex.new([[^\s*(.*?)\s*$]]) }>
-rxRequestLine     = <{ regex.new([[(\S+)\s+(\S+)\s+(\S+)]]) }>
-rxPathQuery       = <{ regex.new([[([^?]*)\??(.*)]]) }>
-rxHeaderLine      = <{ regex.new([[([^:]+):\s*(.+)]]) }>
-rxRouteParam      = <{ regex.new([[:(\w+)]]) }>
-rxPercentEncoded  = <{ regex.new([[%([0-9A-Fa-f]{2})]]) }>
-rxRouteParamSub   = <{ regex.new([[:[\w_]+]]) }>
-rxEscapedWildcard = <{ regex.new([[\\\*]]) }>
-rxPathComponent   = <{ regex.new([[([^\/]+)]]) }>
-rxHexChunkSize    = <{ regex.new([[^([0-9a-fA-F]+)]]) }>
-rxQueryPair       = <{ regex.new([[([^&]+)]]) }>
-rxKeyValue        = <{ regex.new([[([^=]+)=(.+)]]) }>
-rxCookieItem      = <{ regex.new([[([^;]+)]]) }>
-rxLineIterator    = <{ regex.new([[([^\r\n]+)]]) }>
-rxParentPath      = <{ regex.new([[(.+)\/.+\/]]) }>
+rxControlChars    <const> = <{ regex.new([=[[\x00-\x1f\x7f]]=]) }>
+rxQueryFragment   <const> = <{ regex.new([[^([^?#]*)]]) }>
+rxFileExtension   <const> = <{ regex.new([[\.([^.]+)$]]) }>
+rxCookiePair      <const> = <{ regex.new([[\s*([^=]+)=(.+)]]) }>
+rxTrimWhitespace  <const> = <{ regex.new([[^\s*(.*?)\s*$]]) }>
+rxRequestLine     <const> = <{ regex.new([[(\S+)\s+(\S+)\s+(\S+)]]) }>
+rxPathQuery       <const> = <{ regex.new([[([^?]*)\??(.*)]]) }>
+rxHeaderLine      <const> = <{ regex.new([[([^:]+):\s*(.+)]]) }>
+rxRouteParam      <const> = <{ regex.new([[:(\w+)]]) }>
+rxPercentEncoded  <const> = <{ regex.new([[%([0-9A-Fa-f]{2})]]) }>
+rxRouteParamSub   <const> = <{ regex.new([[:[\w_]+]]) }>
+rxEscapedWildcard <const> = <{ regex.new([[\\\*]]) }>
+rxPathComponent   <const> = <{ regex.new([[([^\/]+)]]) }>
+rxHexChunkSize    <const> = <{ regex.new([[^([0-9a-fA-F]+)]]) }>
+rxQueryPair       <const> = <{ regex.new([[([^&]+)]]) }>
+rxKeyValue        <const> = <{ regex.new([[([^=]+)=(.+)]]) }>
+rxCookieItem      <const> = <{ regex.new([[([^;]+)]]) }>
+rxLineIterator    <const> = <{ regex.new([[([^\r\n]+)]]) }>
+rxParentPath      <const> = <{ regex.new([[(.+)\/.+\/]]) }>
+rxMultipartBoundary <const> = <{ regex.new([[boundary="?([^";]+)"?]], regex.ICASE) }>
+rxMultipartName     <const> = <{ regex.new([[name="([^"]*)"]], regex.ICASE) }>
+rxMultipartFilename <const> = <{ regex.new([[filename="([^"]*)"]], regex.ICASE) }>
 
-glStatusTexts = {
+glStatusTexts <const> = {
       [200] = 'OK', [201] = 'Created', [204] = 'No Content',
       [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
       [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
@@ -41,7 +44,7 @@ glStatusTexts = {
       [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
 }
 
-glMimeTypes = {
+glMimeTypes <const> = {
    -- Text
    html = 'text/html',
    htm  = 'text/html',
@@ -529,9 +532,9 @@ function parseJsonBody(Body:str):table
 
    try
       return json.decode(Body)
-   except e
-      return {}
    end
+
+   return {}
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -539,6 +542,83 @@ end
 
 function parseFormBody(Body:str):table
    return parseQueryString(Body) -- Same parsing logic as query strings
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Remove the CRLF that precedes the next multipart boundary.
+
+function trimMultipartPartValue(Value:str):str
+   if Value:endsWith('\r\n') then
+      return Value:substr(0, #Value - 2)
+   elseif Value:endsWith('\n') then
+      return Value:substr(0, #Value - 1)
+   end
+
+   return Value
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Parse multipart/form-data body fields.  File parts are returned as { filename, value } tables.
+
+function parseMultipartBody(Body:str, ContentType:str):table
+   result = {}
+   Body ?? return result
+
+   boundary = rxMultipartBoundary.extract(ContentType ?? '')
+   if boundary is nil or boundary:trim() is '' then return result end
+
+   marker = '--' .. boundary:trim()
+   for raw_part in values(Body:split(marker)) do
+      if raw_part is '' or raw_part:startsWith('--') then
+         continue
+      end
+
+      part = raw_part
+      if part:startsWith('\r\n') then
+         part = part:substr(2)
+      elseif part:startsWith('\n') then
+         part = part:substr(1)
+      end
+
+      header_end = part:find('\r\n\r\n', 0, true)
+      delimiter_size = 4
+      if header_end is nil then
+         header_end = part:find('\n\n', 0, true)
+         delimiter_size = 2
+      end
+      if header_end is nil then continue end
+
+      header_text = part:substr(0, header_end):replace('\r\n', '\n')
+      value = trimMultipartPartValue(part:substr(header_end + delimiter_size))
+      disposition = nil
+
+      for header_line in values(header_text:split('\n')) do
+         colon = header_line:find(':', 0, true)
+         if colon is nil then continue end
+
+         header_name = header_line:substr(0, colon):trim():lower()
+         header_value = header_line:substr(colon + 1):trim()
+
+         if header_name is 'content-disposition' then
+            disposition = header_value
+         end
+      end
+
+      field_name = rxMultipartName.extract(disposition ?? '')
+      if field_name is nil or field_name is '' then continue end
+
+      filename = rxMultipartFilename.extract(disposition ?? '')
+      if filename != nil then
+         result[field_name] = {
+            filename = filename,
+            value    = value
+         }
+      else
+         result[field_name] = value
+      end
+   end
+
+   return result
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1602,6 +1682,9 @@ function serverIncoming(self, ClientSocket)
          elseif contentType:find('application/x-www-form-urlencoded') then
             logMessage(self, 'Parsing URL-encoded form data')
             state.request.parsedBody = parseFormBody(state.request.body)
+         elseif contentType:find('multipart/form-data') then
+            logMessage(self, 'Parsing multipart form data')
+            state.request.parsedBody = parseMultipartBody(state.request.body, contentType)
          else
             -- Keep raw body for other content types
             state.request.parsedBody = { _raw = state.request.body }
@@ -1939,7 +2022,7 @@ hslib.start = function(Options)
 
    cfg = {
       port     = self.port,
-      flags    = 'SERVER|MULTI_CONNECT',
+      flags    = NSF_SERVER|NSF_MULTI_CONNECT,
       feedback = function(Server, ClientSocket, State)
          if State is NTC_CONNECTED then
             -- New client connection

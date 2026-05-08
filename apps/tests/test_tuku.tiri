@@ -6,6 +6,7 @@
 SERVER_PORT <const> = 18952
 glOutputFile <const> = 'temp:tuku-test-output.txt'
 glBodyFile <const> = 'temp:tuku-test-body.txt'
+glUploadFile <const> = 'temp:tuku-test-upload.txt'
 
 function resolveFirstPath(Candidates:array):str
    for candidate in values(Candidates) do
@@ -32,6 +33,8 @@ end
       '../agents-install/apps/tuku.tiri',
       '../../apps/tuku.tiri'
    })
+   global glFollowNoRedirectHits = 0
+   global glFollowRedirectTargetHits = 0
 
    global glServer = hslib.start({
       port    = SERVER_PORT,
@@ -42,6 +45,72 @@ end
             method = 'GET',
             handler = function(req, res)
                res.send('hello from tuku')
+            end
+         },
+         { pattern = '/follow-counted',
+            method = 'GET',
+            handler = function(req, res)
+               glFollowNoRedirectHits++
+               res.send(tostring(glFollowNoRedirectHits))
+            end
+         },
+         { pattern = '/redirect-counted',
+            method = 'GET',
+            handler = function(req, res)
+               res.redirect('/follow-redirect-target-counted', 302)
+            end
+         },
+         { pattern = '/follow-redirect-target-counted',
+            method = 'GET',
+            handler = function(req, res)
+               glFollowRedirectTargetHits++
+               res.send(tostring(glFollowRedirectTargetHits))
+            end
+         },
+         { pattern = '/redirect-once',
+            method = 'GET',
+            handler = function(req, res)
+               res.redirect('/hello', 302)
+            end
+         },
+         { pattern = '/chain-1',
+            method = 'GET',
+            handler = function(req, res)
+               res.status(301)
+                  .header('Location', f'http://127.0.0.1:{SERVER_PORT}/chain-2')
+                  .send('redirect', 'text/plain')
+            end
+         },
+         { pattern = '/chain-2',
+            method = 'GET',
+            handler = function(req, res)
+               res.redirect('/hello', 302)
+            end
+         },
+         { pattern = '/redirect-303',
+            method = 'POST',
+            handler = function(req, res)
+               res.redirect('/hello', 303)
+            end
+         },
+         { pattern = '/redirect-patch-302',
+            method = 'PATCH',
+            handler = function(req, res)
+               res.redirect('/echo', 302)
+            end
+         },
+         { pattern = '/redirect-put-301',
+            method = 'PUT',
+            handler = function(req, res)
+               res.status(301)
+                  .header('Location', f'http://127.0.0.1:{SERVER_PORT}/echo')
+                  .send('redirect', 'text/plain')
+            end
+         },
+         { pattern = '/redirect-loop',
+            method = 'GET',
+            handler = function(req, res)
+               res.redirect('/redirect-loop', 302)
             end
          },
          { pattern = '/headers',
@@ -120,6 +189,20 @@ end
                   parsedBody  = req.parsedBody
                })
             end
+         },
+         { pattern = '/echo',
+            method = 'PUT',
+            handler = function(req, res)
+               res.json({
+                  method      = req.method,
+                  body        = req.body,
+                  contentType = req.headers['content-type'],
+                  userAgent   = req.headers['user-agent'],
+                  accept      = req.headers['accept'],
+                  custom      = req.headers['x-tuku-test'],
+                  parsedBody  = req.parsedBody
+               })
+            end
          }
       }
    })
@@ -129,7 +212,9 @@ end
    glServer.stop()
    mSys.DeleteFile(glOutputFile)
    mSys.DeleteFile(glOutputFile .. '.tuku-resume')
+   mSys.DeleteFile(glOutputFile .. '.tuku-follow')
    mSys.DeleteFile(glBodyFile)
+   mSys.DeleteFile(glUploadFile)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -147,7 +232,7 @@ end
 function runTuku(Parameters:array):table
    local output = ''
    local errors = ''
-   local task_params = array<string> { glTukuPath }
+   local task_params = array<string> { quoteTaskParam(glTukuPath:replace('\\', '/')) }
 
    for param in values(Parameters) do
       task_params:push(quoteTaskParam(param))
@@ -184,8 +269,12 @@ end
 
    assert(result.returnCode is 0, 'Help should return 0, got ' .. result.returnCode)
    assert(result.text:find('headers'), 'Help should include response headers option')
+   assert(result.text:find('include'), 'Help should include include response headers option')
+   assert(result.text:find('follow'), 'Help should include redirect follow option')
+   assert(result.text:find('max-redirects'), 'Help should include redirect limit option')
    assert(result.text:find('header=HEADER'), 'Help should include future header option')
    assert(result.text:find('json=JSON'), 'Help should include future JSON option')
+   assert(result.text:find('multipart=MULTIPART'), 'Help should include multipart body option')
    assert(result.text:find('debug-socket'), 'Help should include future socket debug option')
 end
 
@@ -226,6 +315,174 @@ end
 
    assert(result.returnCode is 0, 'GET should return 0, got ' .. result.returnCode .. ': ' .. result.errors)
    assert(io.readAll(glOutputFile) is 'hello from tuku', 'Output file content mismatch')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineFollowsSingleRedirect()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/redirect-once',
+      'follow',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Followed redirect should return 0: ' .. result.errors)
+   assert(result.output is 'hello from tuku', 'Followed redirect body mismatch: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineFollowDoesNotReplayNonRedirectResponse()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/follow-counted',
+      'follow',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Followed non-redirect should return 0: ' .. result.errors)
+   assert(result.output is '1', 'Follow should not replay a non-redirect response: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineFollowDoesNotReplayFinalRedirectHop()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/redirect-counted',
+      'follow',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Followed redirect should return 0: ' .. result.errors)
+   assert(result.output is '1', 'Follow should not replay the terminal redirect hop: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineFollowWritesFinalResponseToOutputFile()
+   mSys.DeleteFile(glOutputFile)
+
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/redirect-once',
+      'follow',
+      'output=' .. glOutputFile,
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Followed output request should return 0: ' .. result.errors)
+   assert(io.readAll(glOutputFile) is 'hello from tuku', 'Followed output file content mismatch')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineFollowsRedirectChain()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/chain-1',
+      'follow',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Redirect chain should return 0: ' .. result.errors)
+   assert(result.output is 'hello from tuku', 'Redirect chain body mismatch: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineRedirect303ChangesMethodToGet()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/redirect-303',
+      'data=body',
+      'follow',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, '303 redirect should return 0: ' .. result.errors)
+   assert(result.output is 'hello from tuku', '303 redirect should re-fetch using GET: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineRedirect302PreservesPatchMethodAndBody()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/redirect-patch-302',
+      'method=patch',
+      'json=[7,8,9]',
+      'follow',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, '302 PATCH redirect should return 0: ' .. result.errors)
+
+   response = json.decode(result.output)
+   assert(response.method is 'PATCH', '302 redirect should preserve PATCH method')
+   assert(response.contentType is 'application/json', '302 redirect should preserve PATCH content type')
+   assert(response.parsedBody[0] is 7, '302 redirect should preserve PATCH JSON body')
+   assert(response.parsedBody[2] is 9, '302 redirect should preserve PATCH JSON body tail')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineRedirect301PreservesPutMethodAndBody()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/redirect-put-301',
+      'method=put',
+      'data=put-body',
+      'contenttype=text/plain',
+      'follow',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, '301 PUT redirect should return 0: ' .. result.errors)
+
+   response = json.decode(result.output)
+   assert(response.method is 'PUT', '301 redirect should preserve PUT method')
+   assert(response.body is 'put-body', '301 redirect should preserve PUT body')
+   assert(response.contentType is 'text/plain', '301 redirect should preserve PUT content type')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineRejectsRedirectLoopLimit()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/redirect-loop',
+      'follow',
+      'max-redirects=2',
+      'timeout=5'
+   })
+
+   assert(result.returnCode != 0, 'Redirect loop should fail after the configured redirect limit')
+   assert(result.text:find('tuku: error: type=redirect status=302'),
+      'Redirect loop should emit structured redirect error: ' .. result.text)
+   assert(result.text:find('Maximum redirects exceeded (2).'),
+      'Redirect loop diagnostic mismatch: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineReturnsRedirectStatusWithoutFollow()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/redirect-once',
+      'status',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Redirect without follow should not fail: ' .. result.errors)
+   assert(result.output is '302\n', 'Redirect without follow should report 302, got: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineReturnsPermanentRedirectStatusWithoutFollow()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/chain-1',
+      'headers',
+      'status',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, '301 redirect without follow should not fail: ' .. result.errors)
+   assert(result.output is '301\n', '301 redirect without follow should report 301, got: ' .. result.text)
+   assert(result.text:find(f'tuku: header location=http://127.0.0.1:{SERVER_PORT}/chain-2'),
+      '301 redirect without follow should expose Location header: ' .. result.text)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -299,6 +556,60 @@ end
    assert(response.contentType is 'application/json', 'PATCH JSON should set application/json content type')
    assert(response.parsedBody[0] is 4, 'PATCH JSON array body should be parsed by the server')
    assert(response.parsedBody[2] is 6, 'PATCH JSON array value mismatch')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLinePostsMultipartTextFields()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'multipart={name=Ada,role=Engineer}',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Multipart text POST should return 0: ' .. result.errors)
+
+   response = json.decode(result.output)
+   assert(response.method is 'POST', 'Multipart body option should imply POST')
+   assert(response.contentType:find('multipart/form-data'), 'Multipart should set multipart/form-data content type')
+   assert(response.parsedBody.name is 'Ada', 'Multipart text field "name" should round-trip')
+   assert(response.parsedBody.role is 'Engineer', 'Multipart text field "role" should round-trip')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLinePostsMultipartFile()
+   io.writeAll(glUploadFile, 'uploaded file body')
+
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'multipart={doc=@' .. glUploadFile .. '}',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Multipart file POST should return 0: ' .. result.errors)
+
+   response = json.decode(result.output)
+   assert(response.contentType:find('multipart/form-data'), 'File upload should set multipart/form-data content type')
+   assert(response.parsedBody.doc.filename is 'tuku-test-upload.txt',
+      'Multipart file field should preserve filename: ' .. tostring(response.parsedBody.doc.filename))
+   assert(response.parsedBody.doc.value is 'uploaded file body',
+      'Multipart file field should preserve content: ' .. tostring(response.parsedBody.doc.value))
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineRejectsMultipartWithOtherBodyOptions()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'data=plain',
+      'multipart={name=Ada}',
+      'timeout=5'
+   })
+
+   assert(result.returnCode != 0, 'Multipart combined with another body option should fail')
+   assert(result.text:find("excludes 'multipart'.") or result.text:find("Parameter 'multipart' excludes"),
+      'Unexpected multipart exclusion error output: ' .. result.text)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -443,6 +754,49 @@ end
    assert(result.text:find('tuku: header x-tuku-list=yes'),
       'Headers mode should include custom enumerated response header: ' .. result.text)
    assert(result.output is '200\n', 'Headers and status output should keep status on stdout: ' .. result.output)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineIncludePrintsHeadersBeforeBody()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/headers',
+      'with-headers',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Include mode should return 0: ' .. result.errors)
+
+   status_pos = result.output:find('HTTP 200')
+   header_pos = result.output:find('content-length: 11')
+   body_pos = result.output:find('header-body')
+
+   assert(status_pos != nil, 'Include output should start with HTTP status: ' .. result.output)
+   assert(header_pos != nil, 'Include output should contain response headers: ' .. result.output)
+   assert(body_pos != nil, 'Include output should contain response body: ' .. result.output)
+   assert(status_pos < header_pos and header_pos < body_pos, 'Include output order mismatch: ' .. result.output)
+   assert(result.output:find('\n\nheader-body') != nil,
+      'Include output should separate headers from body with a blank line: ' .. result.output)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineIncludeWritesHeadersToStdoutAndBodyToFile()
+   mSys.DeleteFile(glOutputFile)
+
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/headers',
+      'with-headers',
+      'output=' .. glOutputFile,
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Include output file mode should return 0: ' .. result.errors)
+   assert(result.output:find('HTTP 200') != nil, 'Include output should contain HTTP status: ' .. result.output)
+   assert(result.output:find('content-length: 11') != nil,
+      'Include output should contain response headers: ' .. result.output)
+   assert(result.output:find('header-body') is nil, 'Include output should not duplicate file body on stdout')
+   assert(io.readAll(glOutputFile) is 'header-body', 'Include output file body mismatch')
 end
 
 ----------------------------------------------------------------------------------------------------------------------

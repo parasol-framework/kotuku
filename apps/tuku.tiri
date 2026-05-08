@@ -1,6 +1,6 @@
 #!/usr/bin/env origo
 --[[
-Tuku: A small HTTP/HTTPS client for Tiri command-line workflows.
+Tuku: A small HTTP/HTTPS client for Tiri command-line workflows.  Documented in the Wiki.
 --]]
 
    include 'http'
@@ -28,6 +28,8 @@ glOptionDefs = array<table> {
      comment = 'Print the numeric HTTP status.' },
    { name = 'headers', kind = 'flag', group = 'Output',
      comment = 'Print all response headers as key=value lines.' },
+   { name = 'include', names = array<string> { 'include', 'with-headers' }, kind = 'flag', group = 'Output',
+     comment = 'Print response headers before the response body.' },
    { name = 'silent', kind = 'flag', group = 'Output',
      comment = 'Suppress non-body output.' },
    { name = 'verbose', kind = 'flag', group = 'Output',
@@ -36,17 +38,20 @@ glOptionDefs = array<table> {
      comment = 'Treat HTTP 4xx and 5xx statuses as failures.' },
 
    { name = 'data', type = 'str', group = 'Request Body',
-     excludes = array<string> { 'datafile', 'json', 'form' },
+     excludes = array<string> { 'datafile', 'json', 'form', 'multipart' },
      comment = 'Send a string request body.' },
    { name = 'datafile', type = 'file', exists = true, group = 'Request Body',
-     excludes = array<string> { 'data', 'json', 'form' },
+     excludes = array<string> { 'data', 'json', 'form', 'multipart' },
      comment = 'Read the request body from a file.' },
    { name = 'json', type = 'str', group = 'Request Body',
-     excludes = array<string> { 'data', 'datafile', 'form' },
+     excludes = array<string> { 'data', 'datafile', 'form', 'multipart' },
      comment = 'Send a JSON request body.' },
    { name = 'form', type = 'array', group = 'Request Body',
-     excludes = array<string> { 'data', 'datafile', 'json' },
+     excludes = array<string> { 'data', 'datafile', 'json', 'multipart' },
      comment = 'Send form fields as name=value entries.' },
+   { name = 'multipart', type = 'array', group = 'Request Body',
+     excludes = array<string> { 'data', 'datafile', 'json', 'form' },
+     comment = 'Send multipart/form-data fields as name=value or name=@path entries.' },
    { name = 'contenttype', type = 'str', group = 'Request Body',
      comment = 'Request Content-Type header.' },
 
@@ -74,6 +79,10 @@ glOptionDefs = array<table> {
      comment = 'Disable HTTP chunk handling.' },
    { name = 'no-head', kind = 'flag', group = 'Transfer Controls',
      comment = 'Do not send a HEAD probe before upload methods.' },
+   { name = 'follow', kind = 'flag', group = 'Transfer Controls',
+     comment = 'Follow HTTP redirects.' },
+   { name = 'max-redirects', type = 'int', default = 10, group = 'Transfer Controls',
+     comment = 'Maximum redirects to follow.' },
    { name = 'debug-socket', kind = 'flag', group = 'Transfer Controls',
      comment = 'Log request socket headers and data.' }
 }
@@ -89,7 +98,7 @@ glParser = options({
 -- Returns true when the command-line options include any supported request body source.
 
 function hasBodyOption(Args:table):bool
-   return Args.data != nil or Args.datafile != nil or Args.json != nil or Args.form != nil
+   return Args.data != nil or Args.datafile != nil or Args.json != nil or Args.form != nil or Args.multipart != nil
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -112,6 +121,61 @@ function encodeFormBody(Form:array):str
    end
 
    return url.buildQuery(params)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Escapes quoted multipart header values.
+
+function escapeMultipartHeaderValue(Value:str):str
+   return Value:replace('\\', '\\\\'):replace('"', '\\"')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Converts an array of name=value or name=@file arguments into multipart/form-data request content.
+
+function buildMultipartBody(Fields:array):<str, str>
+   boundary = '----TukuBoundary' .. tostring(math.floor(mSys.PreciseTime()))
+   crlf <const> = '\r\n'
+   body = ''
+
+   for field in values(Fields) do
+      text = tostring(field)
+      eq = text:find('=', 0, true)
+      if eq is nil then
+         error("Parameter 'multipart' entries must use name=value syntax.")
+      end
+
+      name = text:substr(0, eq):trim()
+      value = text:substr(eq + 1)
+
+      if name is '' then
+         error("Parameter 'multipart' entries require a field name.")
+      end
+
+      body ..= '--' .. boundary .. crlf
+
+      if value:startsWith('@') then
+         path = value:substr(1)
+         if path is '' then
+            error("Parameter 'multipart' file entries require a path after '@'.")
+         end
+
+         _, filename = io.splitPath(path)
+         filename ??= path
+
+         body ..= 'Content-Disposition: form-data; name="' .. escapeMultipartHeaderValue(name) ..
+            '"; filename="' .. escapeMultipartHeaderValue(filename) .. '"' .. crlf
+         body ..= 'Content-Type: application/octet-stream' .. crlf .. crlf
+         body ..= io.readAll(path) .. crlf
+      else
+         body ..= 'Content-Disposition: form-data; name="' .. escapeMultipartHeaderValue(name) .. '"' .. crlf .. crlf
+         body ..= value .. crlf
+      end
+   end
+
+   body ..= '--' .. boundary .. '--' .. crlf
+
+   return body, 'multipart/form-data; boundary=' .. boundary
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -199,6 +263,10 @@ function validateArgs(Args:table)
    requirePositive('connect-timeout', Args['connect-timeout'])
    requirePositive('data-timeout', Args['data-timeout'])
 
+   if Args['max-redirects'] < 1 then
+      error("Parameter 'max-redirects' must be at least 1.")
+   end
+
    if Args.url:startsWith('http://') is false and Args.url:startsWith('https://') is false then
       error("Parameter 'url' must start with http:// or https://.")
    end
@@ -236,6 +304,13 @@ function makeResumeTempPath(Path:str):str
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Builds the temporary side-file path used while following redirects for output-file requests.
+
+function makeFollowTempPath(Path:str):str
+   return Path .. '.tuku-follow'
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Normalises derived argument values, including method casing and implicit content types, before validation.
 
 function normaliseArgs(Args:table):table
@@ -251,6 +326,11 @@ function normaliseArgs(Args:table):table
       Args.contenttype = 'application/json'
    elseif Args.form != nil and Args.contenttype is nil then
       Args.contenttype = 'application/x-www-form-urlencoded'
+   elseif Args.multipart != nil then
+      Args._multipartBody, multipart_content_type = buildMultipartBody(Args.multipart)
+      if Args.contenttype is nil then
+         Args.contenttype = multipart_content_type
+      end
    end
 
    if Args.user != nil then
@@ -278,6 +358,7 @@ end
 -- Returns the string request body to send for body options that are not file-backed.
 
 function makeRequestBody(Args:table):str
+   if Args._multipartBody != nil then return Args._multipartBody end
    if Args.data != nil then return Args.data end
    if Args.json != nil then return Args.json end
    if Args.form != nil then return encodeFormBody(Args.form) end
@@ -294,17 +375,37 @@ function makeRequestFlags(Args:table):num
    if Args.raw then flags = flags | HTF_RAW end
    if Args['debug-socket'] then flags = flags | HTF_DEBUG_SOCKET end
    if Args.insecure then flags = flags | HTF_DISABLE_SERVER_VERIFY end
+   flags = flags | HTF_NO_AUTO_REDIRECT
 
    return flags
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Reads a raw boolean argument as a fallback for option names that collide with Tiri command words.
+
+function readRawFlag(Name:str, Current:any):bool
+   raw_no = arg('no-' .. Name)
+   if raw_no != nil then return false end
+
+   raw = arg(Name)
+   if raw is nil then return Current is true end
+
+   text = tostring(raw):lower()
+   return text != 'false' and text != '0' and text != 'no' and text != 'off'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Builds the HTTP object configuration table from validated command-line arguments.
 
 function makeRequestConfig(Args:table):table
-   output_file = Args.output
-   if Args.resumeTempPath != nil then
-      output_file = Args.resumeTempPath
+   output_file = nil
+   if Args._captureOutputPath != nil then
+      output_file = Args._captureOutputPath
+   elseif not Args._suppressBody and not Args._captureBody then
+      output_file = Args.output
+      if Args.resumeTempPath != nil then
+         output_file = Args.resumeTempPath
+      end
    end
 
    request = {
@@ -327,8 +428,20 @@ function makeRequestConfig(Args:table):table
       request.proxyPort = Args.proxyPort
    end
 
-   if output_file != nil then
+   if Args._captureBody then
+      Args._bodyBuffer = ''
+      request.incoming = function(HTTP:obj, Buffer:array)
+         Args._bodyBuffer ..= Buffer:getString()
+      end
+   elseif output_file != nil then
       request.outputFile = output_file
+   elseif Args._suppressBody then
+      -- Redirect probes only need status and headers.
+   elseif Args['include'] and not Args.status then
+      Args._bodyBuffer = ''
+      request.incoming = function(HTTP:obj, Buffer:array)
+         Args._bodyBuffer ..= Buffer:getString()
+      end
    elseif not Args.status then
       -- Streams response body chunks to standard output when the body is not redirected or suppressed.
       request.incoming = function(HTTP:obj, Buffer:array)
@@ -486,6 +599,54 @@ function readResponseHeaders(HTTP:obj):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Returns true when an HTTP status code is a redirect that Tuku can follow.
+
+function isRedirectStatus(Status:num):bool
+   return Status is 301 or Status is 302 or Status is 303 or Status is 307 or Status is 308
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Resolves a redirect Location header against the URL that produced it.
+
+function resolveRedirectUrl(BaseUrl:str, Location:str):str
+   return url.join(BaseUrl, Location)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Removes request body options when redirect semantics require a GET request.
+
+function clearBodyOptions(Args:table)
+   Args.data = nil
+   Args.datafile = nil
+   Args.json = nil
+   Args.form = nil
+   Args.multipart = nil
+   Args._multipartBody = nil
+   Args.contenttype = nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Mutates request arguments for the next hop in a redirect chain.
+
+function applyRedirect(Args:table, Result:table)
+   location = Result.headers.values.location
+   next_url = resolveRedirectUrl(Args.url, location)
+
+   if next_url:startsWith('http://') is false and next_url:startsWith('https://') is false then
+      message = "Redirect location must resolve to an HTTP or HTTPS URL."
+      reportError('redirect', message, Result.status, ERR_Failed)
+      raise ERR_Failed, message
+   end
+
+   if Result.status is 303 or ((Result.status is 301 or Result.status is 302) and Args.method is 'post') then
+      Args.method = 'get'
+      clearBodyOptions(Args)
+   end
+
+   Args.url = next_url
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Prints response header lines in a stable line-oriented format.
 
 function printResponseHeaders(Result:table)
@@ -494,6 +655,57 @@ function printResponseHeaders(Result:table)
       if value != nil then
          print(f"tuku: header {name}={value}")
       end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Prints response headers followed by a blank line and the buffered response body.
+
+function printIncludedResponse(Result:table)
+   io.write('HTTP ' .. tostring(Result.status) .. '\n')
+   for name in values(Result.headers.names) do
+      value = Result.headers.values[name]
+      if value != nil then
+         io.write(f"{name}: {value}\n")
+      end
+   end
+   io.write('\n')
+
+   if Result.body != nil then
+      io.write(Result.body)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Emits or stores a captured final response body after redirect handling has confirmed that it should be kept.
+
+function commitCapturedResponseBody(Args:table, Result:table)
+   if Args.output != nil then
+      if Result.capturePath != nil then
+         if Args.resumeTempPath != nil then return end
+
+         err = mSys.MoveFile(Result.capturePath, Args.output)
+         if err != ERR_Okay then
+            mSys.DeleteFile(Args.output)
+            err = mSys.MoveFile(Result.capturePath, Args.output)
+         end
+
+         if err != ERR_Okay then
+            error('Failed to move followed output file: ' .. mSys.GetErrorMsg(err))
+         end
+      elseif Result.body != nil then
+         io.writeAll(Args.resumeTempPath ?? Args.output, Result.body)
+      end
+
+      return
+   end
+
+   if Result.body is nil then return end
+
+   if Args['include'] or Args.status then
+      -- Include and status modes have their own output handling after fetch() returns.
+   else
+      io.write(Result.body)
    end
 end
 
@@ -533,13 +745,17 @@ function parseCommandLine():table
       return nil
    end
 
+   if args != nil then
+      args['include'] = readRawFlag('include', args['include'])
+   end
+
    return args
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Starts the HTTP transfer, waits for completion, and returns the response summary used by output handling.
+-- Starts one HTTP transfer, waits for completion, and returns the response summary used by output handling.
 
-function fetch(Args:table):table
+function fetchOnce(Args:table):table
    local http = obj.new('http', makeRequestConfig(Args))
    applyTransferHeaders(http, Args)
    applyRequestHeaders(http, Args)
@@ -559,10 +775,58 @@ function fetch(Args:table):table
       status             = http.status,
       bytes              = http.index,
       output             = Args.output,
+      capturePath        = Args._captureOutputPath,
       headers            = readResponseHeaders(http),
+      body               = Args._bodyBuffer,
       transportError     = transport_error,
       transportErrorText = (transport_error is ERR_Okay) ? 'Okay' :> mSys.GetErrorMsg(transport_error)
    }
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Starts the HTTP transfer, optionally following redirects while keeping only the final response body.
+
+function fetch(Args:table):table
+   if not Args.follow then
+      return fetchOnce(Args)
+   end
+
+   redirect_count = 0
+
+   while true do
+      if Args.output != nil then
+         Args._captureOutputPath = Args.resumeTempPath ?? makeFollowTempPath(Args.output)
+         mSys.DeleteFile(Args._captureOutputPath)
+      else
+         Args._captureBody = true
+      end
+
+      result = fetchOnce(Args)
+      Args._captureBody = false
+      Args._captureOutputPath = nil
+
+      if result.transportError != ERR_Okay and result.status <= 0 then
+         if result.capturePath != nil then mSys.DeleteFile(result.capturePath) end
+         return result
+      end
+
+      location = result.headers.values.location
+      if not isRedirectStatus(result.status) or location is nil then
+         commitCapturedResponseBody(Args, result)
+         return result
+      end
+
+      if redirect_count >= Args['max-redirects'] then
+         message = f"Maximum redirects exceeded ({Args['max-redirects']})."
+         reportError('redirect', message, result.status, ERR_Failed)
+         raise ERR_Failed, message
+      end
+
+      if result.capturePath != nil then mSys.DeleteFile(result.capturePath) end
+
+      redirect_count++
+      applyRedirect(Args, result)
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -583,6 +847,14 @@ end
 
       result = fetch(args)
       finaliseResumeDownload(args, result)
+
+      if args['include'] then
+         if not args.silent then
+            printIncludedResponse(result)
+         elseif result.body != nil then
+            io.write(result.body)
+         end
+      end
 
       if args.verbose and not args.silent then
          printVerboseSummary(args, result)
