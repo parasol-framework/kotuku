@@ -33,6 +33,8 @@ end
       '../agents-install/apps/tuku.tiri',
       '../../apps/tuku.tiri'
    })
+   global glFollowNoRedirectHits = 0
+   global glFollowRedirectTargetHits = 0
 
    global glServer = hslib.start({
       port    = SERVER_PORT,
@@ -43,6 +45,26 @@ end
             method = 'GET',
             handler = function(req, res)
                res.send('hello from tuku')
+            end
+         },
+         { pattern = '/follow-counted',
+            method = 'GET',
+            handler = function(req, res)
+               glFollowNoRedirectHits++
+               res.send(tostring(glFollowNoRedirectHits))
+            end
+         },
+         { pattern = '/redirect-counted',
+            method = 'GET',
+            handler = function(req, res)
+               res.redirect('/follow-redirect-target-counted', 302)
+            end
+         },
+         { pattern = '/follow-redirect-target-counted',
+            method = 'GET',
+            handler = function(req, res)
+               glFollowRedirectTargetHits++
+               res.send(tostring(glFollowRedirectTargetHits))
             end
          },
          { pattern = '/redirect-once',
@@ -162,6 +184,7 @@ end
    glServer.stop()
    mSys.DeleteFile(glOutputFile)
    mSys.DeleteFile(glOutputFile .. '.tuku-resume')
+   mSys.DeleteFile(glOutputFile .. '.tuku-follow')
    mSys.DeleteFile(glBodyFile)
    mSys.DeleteFile(glUploadFile)
 end
@@ -277,6 +300,48 @@ end
 
    assert(result.returnCode is 0, 'Followed redirect should return 0: ' .. result.errors)
    assert(result.output is 'hello from tuku', 'Followed redirect body mismatch: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineFollowDoesNotReplayNonRedirectResponse()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/follow-counted',
+      'follow',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Followed non-redirect should return 0: ' .. result.errors)
+   assert(result.output is '1', 'Follow should not replay a non-redirect response: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineFollowDoesNotReplayFinalRedirectHop()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/redirect-counted',
+      'follow',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Followed redirect should return 0: ' .. result.errors)
+   assert(result.output is '1', 'Follow should not replay the terminal redirect hop: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineFollowWritesFinalResponseToOutputFile()
+   mSys.DeleteFile(glOutputFile)
+
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/redirect-once',
+      'follow',
+      'output=' .. glOutputFile,
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Followed output request should return 0: ' .. result.errors)
+   assert(io.readAll(glOutputFile) is 'hello from tuku', 'Followed output file content mismatch')
 end
 
 ----------------------------------------------------------------------------------------------------------------------

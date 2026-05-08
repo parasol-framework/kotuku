@@ -304,6 +304,13 @@ function makeResumeTempPath(Path:str):str
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Builds the temporary side-file path used while following redirects for output-file requests.
+
+function makeFollowTempPath(Path:str):str
+   return Path .. '.tuku-follow'
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Normalises derived argument values, including method casing and implicit content types, before validation.
 
 function normaliseArgs(Args:table):table
@@ -392,7 +399,9 @@ end
 
 function makeRequestConfig(Args:table):table
    output_file = nil
-   if not Args._suppressBody then
+   if Args._captureOutputPath != nil then
+      output_file = Args._captureOutputPath
+   elseif not Args._suppressBody and not Args._captureBody then
       output_file = Args.output
       if Args.resumeTempPath != nil then
          output_file = Args.resumeTempPath
@@ -419,10 +428,15 @@ function makeRequestConfig(Args:table):table
       request.proxyPort = Args.proxyPort
    end
 
-   if output_file != nil then
+   if Args._captureBody then
+      Args._bodyBuffer = ''
+      request.incoming = function(HTTP:obj, Buffer:array)
+         Args._bodyBuffer ..= Buffer:getString()
+      end
+   elseif output_file != nil then
       request.outputFile = output_file
    elseif Args._suppressBody then
-      -- Redirect probes only need status and headers; final response output is fetched separately.
+      -- Redirect probes only need status and headers.
    elseif Args['include'] and not Args.status then
       Args._bodyBuffer = ''
       request.incoming = function(HTTP:obj, Buffer:array)
@@ -663,6 +677,39 @@ function printIncludedResponse(Result:table)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Emits or stores a captured final response body after redirect handling has confirmed that it should be kept.
+
+function commitCapturedResponseBody(Args:table, Result:table)
+   if Args.output != nil then
+      if Result.capturePath != nil then
+         if Args.resumeTempPath != nil then return end
+
+         err = mSys.MoveFile(Result.capturePath, Args.output)
+         if err != ERR_Okay then
+            mSys.DeleteFile(Args.output)
+            err = mSys.MoveFile(Result.capturePath, Args.output)
+         end
+
+         if err != ERR_Okay then
+            error('Failed to move followed output file: ' .. mSys.GetErrorMsg(err))
+         end
+      elseif Result.body != nil then
+         io.writeAll(Args.resumeTempPath ?? Args.output, Result.body)
+      end
+
+      return
+   end
+
+   if Result.body is nil then return end
+
+   if Args['include'] or Args.status then
+      -- Include and status modes have their own output handling after fetch() returns.
+   else
+      io.write(Result.body)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Prints the verbose transfer summary in a stable line-oriented format.
 
 function printVerboseSummary(Args:table, Result:table)
@@ -728,6 +775,7 @@ function fetchOnce(Args:table):table
       status             = http.status,
       bytes              = http.index,
       output             = Args.output,
+      capturePath        = Args._captureOutputPath,
       headers            = readResponseHeaders(http),
       body               = Args._bodyBuffer,
       transportError     = transport_error,
@@ -736,7 +784,7 @@ function fetchOnce(Args:table):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Starts the HTTP transfer, optionally following redirects before fetching the final response with normal output.
+-- Starts the HTTP transfer, optionally following redirects while keeping only the final response body.
 
 function fetch(Args:table):table
    if not Args.follow then
@@ -746,17 +794,26 @@ function fetch(Args:table):table
    redirect_count = 0
 
    while true do
-      Args._suppressBody = true
+      if Args.output != nil then
+         Args._captureOutputPath = Args.resumeTempPath ?? makeFollowTempPath(Args.output)
+         mSys.DeleteFile(Args._captureOutputPath)
+      else
+         Args._captureBody = true
+      end
+
       result = fetchOnce(Args)
-      Args._suppressBody = false
+      Args._captureBody = false
+      Args._captureOutputPath = nil
 
       if result.transportError != ERR_Okay and result.status <= 0 then
+         if result.capturePath != nil then mSys.DeleteFile(result.capturePath) end
          return result
       end
 
       location = result.headers.values.location
       if not isRedirectStatus(result.status) or location is nil then
-         break
+         commitCapturedResponseBody(Args, result)
+         return result
       end
 
       if redirect_count >= Args['max-redirects'] then
@@ -765,11 +822,11 @@ function fetch(Args:table):table
          raise ERR_Failed, message
       end
 
+      if result.capturePath != nil then mSys.DeleteFile(result.capturePath) end
+
       redirect_count++
       applyRedirect(Args, result)
    end
-
-   return fetchOnce(Args)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
