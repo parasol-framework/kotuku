@@ -313,6 +313,12 @@ static BCREG snap_usedef(jit_State *J, uint8_t *udf, const BCIns *pc, BCREG maxs
             else if (op IS BC_TSETM) {
                for (s = bc_a(ins) - 1; s < maxslot; s++) USE_SLOT(s);
             }
+            else if (op IS BC_TRYENTER) {
+               // Exception handlers can read any local in scope at the try entry point.
+               // Conservatively mark all slots as used to prevent purging.
+               for (s = 0; s < maxslot; s++) USE_SLOT(s);
+               return maxslot;
+            }
             break;
          default: break;
       }

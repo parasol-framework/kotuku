@@ -74,6 +74,39 @@ function constant_target(Value)
    return offset, label
 end
 
+function jit_regex_failure_convert(Value:any, Param:table):any
+   global jit_regex_failure_param_name = Param.name
+   global jit_regex_failure_value = Value
+
+   try
+      return regex.new(jit_regex_failure_value)
+   except e
+      raise ERR_WrongType, f"Parameter '{jit_regex_failure_param_name}' requires a valid regex pattern."
+   end
+end
+
+@Test(hotpath=80) function JITTryRegexFailurePreservesParamName()
+   jit.on()
+   jit.flush()
+   jit.opt.start("hotloop=3", "hotexit=1", "minstitch=0")
+
+   local param = { name = 'pattern', type = 'regex' }
+   local expected_message = "Parameter 'pattern' requires a valid regex pattern."
+
+   for i = 0, 99 do
+      local err
+      try
+         jit_regex_failure_convert('(', param)
+      except e
+         err = e
+      end
+
+      assert(err != nil, "Invalid regex should raise an error")
+      assert(err.code is ERR_WrongType, f"Expected ERR_WrongType, got {err.code}")
+      assert(err.message is expected_message, f"Expected '{expected_message}', got '{err.message}'")
+   end
+end
+
 @Test(hotpath=80) function JITVariableNumericHashLookup()
    jit.on()
    jit.flush()
