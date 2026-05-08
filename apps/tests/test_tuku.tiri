@@ -403,6 +403,22 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
+@Test function CommandLineReturnsPermanentRedirectStatusWithoutFollow()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/chain-1',
+      'headers',
+      'status',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, '301 redirect without follow should not fail: ' .. result.errors)
+   assert(result.output is '301\n', '301 redirect without follow should report 301, got: ' .. result.text)
+   assert(result.text:find(f'tuku: header location=http://127.0.0.1:{SERVER_PORT}/chain-2'),
+      '301 redirect without follow should expose Location header: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 @Test function CommandLinePostsDataAndCustomHeaders()
    result = runTuku(array<string> {
       f'url=http://127.0.0.1:{SERVER_PORT}/echo',

@@ -375,7 +375,7 @@ function makeRequestFlags(Args:table):num
    if Args.raw then flags = flags | HTF_RAW end
    if Args['debug-socket'] then flags = flags | HTF_DEBUG_SOCKET end
    if Args.insecure then flags = flags | HTF_DISABLE_SERVER_VERIFY end
-   if Args.follow then flags = flags | HTF_NO_AUTO_REDIRECT end
+   flags = flags | HTF_NO_AUTO_REDIRECT
 
    return flags
 end
