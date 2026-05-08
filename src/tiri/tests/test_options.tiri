@@ -793,6 +793,29 @@ end
    assert(help:find('End of help.'), 'Normal help should include the epilog')
 end
 
+@Test function HelpNormalisesMultilineBlockWhitespace()
+   parser = options({
+      name        = 'server',
+      description = [[
+Serve static files from a folder.
+]],
+      epilog      = [[
+Examples:
+  origo apps/httpserver folder=docs/html
+]],
+      args = array<table> {
+         { name = 'folder', type = 'folder', comment = 'Folder to serve.' }
+      }
+   })
+
+   help = parser.getHelp()
+
+   assert(not help:find('\n\n\n'), 'Help should not contain repeated blank lines between generated blocks')
+   assert(help:find('server\n\nServe static files'), 'Description should be separated by one blank line')
+   assert(help:find('Folder to serve.\n\nExamples:'), 'Epilog should be separated by one blank line')
+   assert(not help:endsWith('\n'), 'Help should not end with a trailing newline')
+end
+
 @Test function DetailedHelpAndHiddenParameters()
    parser = options({
       name = 'tool',

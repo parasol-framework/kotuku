@@ -894,7 +894,8 @@ end
 -- Raise an error for any required parameter that remains unset after defaults.
 
 function check_required(Parser:table, Result:table)
-   if Parser.autoHelp and Result[Parser.helpArg] then return end -- If help is present, required parameters are irrelevant
+   -- If help is present, required parameters are irrelevant.
+   if Parser.autoHelp and Result[Parser.helpArg] then return end
 
    for param in values(Parser._params) do
       if param.required and Result[param.name] is nil then
@@ -931,10 +932,40 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Join prepared text lines into one help string.
 
+function append_help_line(Output:array, Line:str)
+   if Line:trim() is '' then
+      if #Output > 0 and Output[#Output - 1] != '' then
+         Output:push('')
+      end
+
+      return
+   end
+
+   Output:push(Line:rtrim())
+end
+
 function line_list(Lines:array):str
-   text = ''
+   output = array<string>
 
    for line in values(Lines) do
+      text = tostring(line)
+
+      if text:find('\n') then
+         text = text:trim()
+         for item in values(text:split('\n')) do
+            append_help_line(output, item)
+         end
+      else
+         append_help_line(output, text)
+      end
+   end
+
+   while #output > 0 and output[#output - 1] is '' do
+      output:pop()
+   end
+
+   text = ''
+   for line in values(output) do
       if text != '' then text ..= '\n' end
       text ..= line
    end
