@@ -24,6 +24,8 @@ glOptionDefs = array<table> {
      comment = 'Save the response body to a file.' },
    { name = 'status', kind = 'flag', group = 'Output',
      comment = 'Print the numeric HTTP status.' },
+   { name = 'headers', kind = 'flag', group = 'Output',
+     comment = 'Print all response headers as key=value lines.' },
    { name = 'silent', kind = 'flag', group = 'Output',
      comment = 'Suppress non-body output.' },
    { name = 'verbose', kind = 'flag', group = 'Output',
@@ -142,6 +144,30 @@ function splitUser(User:str):<str, str>
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Splits host:port proxy arguments into the HTTP fields used by the client object.
+
+function splitProxy(Proxy:str):<str, num>
+   colon = Proxy:find(':')
+   if colon is nil then
+      error("Parameter 'proxy' must use host:port syntax.")
+   end
+
+   host = Proxy:substr(0, colon):trim()
+   port_text = Proxy:substr(colon + 1):trim()
+   port = tonumber(port_text)
+
+   if host is '' then
+      error("Parameter 'proxy' requires a proxy host.")
+   end
+
+   if port is nil or math.floor(port) != port or port < 1 or port > 65535 then
+      error("Parameter 'proxy' requires a port between 1 and 65535.")
+   end
+
+   return host, port
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Ensures that numeric timeout values are valid before the request is started.
 
 function requirePositive(Name:str, Value:num)
@@ -175,12 +201,29 @@ function validateArgs(Args:table)
       error("Parameter 'url' must start with http:// or https://.")
    end
 
-   if Args.proxy != nil then rejectPhaseFuture('proxy') end
-   if Args.insecure then rejectPhaseFuture('insecure') end
-   if Args.resume then rejectPhaseFuture('resume') end
-   if Args.raw then rejectPhaseFuture('raw') end
-   if Args['no-head'] then rejectPhaseFuture('no-head') end
-   if Args['debug-socket'] then rejectPhaseFuture('debug-socket') end
+   if Args.resume then
+      if Args.output is nil then
+         error("Parameter 'resume' requires 'output'.")
+      end
+
+      if Args.method != 'get' then
+         error("Parameter 'resume' can only be used with method=get.")
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Returns the size of an existing file, or zero if the file is absent or inaccessible.
+
+function getFileSize(Path:str):num
+   try
+      file = obj.new('file', { path = Path, flags = 'READ' })
+      size = file.size
+      file.free()
+      return size
+   except
+      return 0
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -205,7 +248,16 @@ function normaliseArgs(Args:table):table
       Args.username, Args.password = splitUser(Args.user)
    end
 
+   if Args.proxy != nil then
+      Args.proxyHost, Args.proxyPort = splitProxy(Args.proxy)
+   end
+
    validateArgs(Args)
+
+   if Args.resume and Args.output != nil then
+      Args.resumeOffset = getFileSize(Args.output)
+   end
+
    return Args
 end
 
@@ -220,6 +272,21 @@ function makeRequestBody(Args:table):str
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Builds the HTTP flag mask from transfer-control arguments.
+
+function makeRequestFlags(Args:table):num
+   flags = HTF_NO_DIALOG
+
+   if hasBodyOption(Args) or Args['no-head'] then flags = flags | HTF_NO_HEAD end
+   if Args.resume then flags = flags | HTF_RESUME end
+   if Args.raw then flags = flags | HTF_RAW end
+   if Args['debug-socket'] then flags = flags | HTF_DEBUG_SOCKET end
+   if Args.insecure then flags = flags | HTF_DISABLE_SERVER_VERIFY end
+
+   return flags
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Builds the HTTP object configuration table from validated command-line arguments.
 
 function makeRequestConfig(Args:table):table
@@ -229,7 +296,7 @@ function makeRequestConfig(Args:table):table
       connectTimeout = Args['connect-timeout'],
       dataTimeout    = Args['data-timeout'],
       userAgent      = Args.useragent,
-      flags          = HTF_NO_DIALOG | (hasBodyOption(Args) ? HTF_NO_HEAD :> 0),
+      flags          = makeRequestFlags(Args),
       -- Wakes the waiting processing context when the HTTP transfer reaches a terminal state.
       stateChanged   = function(HTTP:obj, State:num)
          if State is HGS_COMPLETED or State is HGS_TERMINATED then
@@ -237,6 +304,11 @@ function makeRequestConfig(Args:table):table
          end
       end
    }
+
+   if Args.proxyHost != nil then
+      request.proxyServer = Args.proxyHost
+      request.proxyPort = Args.proxyPort
+   end
 
    if Args.output != nil then
       request.outputFile = Args.output
@@ -267,6 +339,18 @@ function makeRequestConfig(Args:table):table
    end
 
    return request
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Applies transfer-control headers that are derived from validated command-line options.
+
+function applyTransferHeaders(HTTP:obj, Args:table)
+   if Args.resume and Args.resumeOffset != nil and Args.resumeOffset > 0 then
+      err = HTTP.acSetKey('Range', f"bytes={Args.resumeOffset}-")
+      if err != ERR_Okay then
+         error('Failed to set resume range header: ' .. mSys.GetErrorMsg(err))
+      end
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -307,19 +391,61 @@ function getResponseHeader(HTTP:obj, Name:str):str
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Returns the selected response headers that are useful for command-line automation.
+-- Returns available response header names, falling back to the phase 3 common keys on older HTTP builds.
+
+function readResponseHeaderNames(HTTP:obj):array
+   names = array<string>
+   seen = {}
+
+   if HTTP.responseKeys != nil then
+      for key in values(HTTP.responseKeys) do
+         if not seen[key] then
+            names:push(key)
+            seen[key] = true
+         end
+      end
+   end
+
+   if #names is 0 then
+      for name in values(glResponseHeaderNames) do
+         names:push(name)
+      end
+   end
+
+   names:sort()
+   return names
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Returns response headers that are useful for command-line automation.
 
 function readResponseHeaders(HTTP:obj):table
    headers = {}
+   names = readResponseHeaderNames(HTTP)
 
-   for name in values(glResponseHeaderNames) do
+   for name in values(names) do
       value = getResponseHeader(HTTP, name)
       if value != nil then
          headers[name] = value
       end
    end
 
-   return headers
+   return {
+      names  = names,
+      values = headers
+   }
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Prints response header lines in a stable line-oriented format.
+
+function printResponseHeaders(Result:table)
+   for name in values(Result.headers.names) do
+      value = Result.headers.values[name]
+      if value != nil then
+         print(f"tuku: header {name}={value}")
+      end
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -333,12 +459,7 @@ function printVerboseSummary(Args:table, Result:table)
    print('tuku: output=' .. (Result.output ?? 'stdout'))
    print('tuku: transport=' .. Result.transportErrorText)
 
-   for name in values(glResponseHeaderNames) do
-      value = Result.headers[name]
-      if value != nil then
-         print(f"tuku: header {name}={value}")
-      end
-   end
+   printResponseHeaders(Result)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -365,6 +486,7 @@ end
 
 function fetch(Args:table):table
    local http = obj.new('http', makeRequestConfig(Args))
+   applyTransferHeaders(http, Args)
    applyRequestHeaders(http, Args)
    proc = processing.new({ timeout = Args.timeout, signals = array<object> { http } })
 
@@ -405,6 +527,10 @@ end
 
       if args.verbose then
          printVerboseSummary(args, result)
+      end
+
+      if args.headers and not args.verbose then
+         printResponseHeaders(result)
       end
 
       if args.status then

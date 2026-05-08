@@ -49,7 +49,24 @@ end
             handler = function(req, res)
                res.header('Content-Type', 'text/plain')
                res.header('Location', '/next')
+               res.header('X-Tuku-List', 'yes')
                res.send('header-body')
+            end
+         },
+         { pattern = '/range',
+            method = 'GET',
+            handler = function(req, res)
+               if req.headers['range'] is 'bytes=6-' then
+                  res.status(206).header('Content-Range', 'bytes 6-14/15').send('from tuku', 'text/plain')
+               else
+                  res.send('hello from tuku', 'text/plain')
+               end
+            end
+         },
+         { pattern = f'/http:/127.0.0.1:{SERVER_PORT}/proxy-target',
+            method = 'GET',
+            handler = function(req, res)
+               res.send('proxied tuku', 'text/plain')
             end
          },
          { pattern = '/missing',
@@ -145,6 +162,7 @@ end
    result = runTuku(array<string> { 'help' })
 
    assert(result.returnCode is 0, 'Help should return 0, got ' .. result.returnCode)
+   assert(result.text:find('headers'), 'Help should include response headers option')
    assert(result.text:find('header=HEADER'), 'Help should include future header option')
    assert(result.text:find('json=JSON'), 'Help should include future JSON option')
    assert(result.text:find('debug-socket'), 'Help should include future socket debug option')
@@ -363,4 +381,122 @@ end
       'Verbose summary should include content-length header: ' .. result.text)
    assert(result.text:find('tuku: header location=/next'),
       'Verbose summary should include location header: ' .. result.text)
+   assert(result.text:find('tuku: header x-tuku-list=yes'),
+      'Verbose summary should include enumerated custom response header: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineHeadersPrintsFullResponseHeaderList()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/headers',
+      'headers',
+      'status',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Headers mode should return 0: ' .. result.errors)
+   assert(result.text:find('tuku: header content-length=11'),
+      'Headers mode should include content-length: ' .. result.text)
+   assert(result.text:find('tuku: header location=/next'),
+      'Headers mode should include location: ' .. result.text)
+   assert(result.text:find('tuku: header x-tuku-list=yes'),
+      'Headers mode should include custom enumerated response header: ' .. result.text)
+   assert(result.output is '200\n', 'Headers and status output should keep status on stdout: ' .. result.output)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineResumesOutputDownload()
+   io.writeAll(glOutputFile, 'hello ')
+
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/range',
+      'output=' .. glOutputFile,
+      'resume',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Resume download should return 0: ' .. result.errors)
+   assert(io.readAll(glOutputFile) is 'hello from tuku', 'Resume download should append ranged content')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineValidatesResumeRequirements()
+   no_output = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/range',
+      'resume',
+      'timeout=5'
+   })
+
+   assert(no_output.returnCode != 0, 'Resume without output should fail')
+   assert(no_output.text:find("Parameter 'resume' requires 'output'."),
+      'Resume without output diagnostic mismatch: ' .. no_output.text)
+
+   post_resume = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'output=' .. glOutputFile,
+      'resume',
+      'data=body',
+      'timeout=5'
+   })
+
+   assert(post_resume.returnCode != 0, 'Resume with POST should fail')
+   assert(post_resume.text:find("Parameter 'resume' can only be used with method=get."),
+      'Resume method diagnostic mismatch: ' .. post_resume.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineAcceptsTransferControlFlags()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/hello',
+      'raw',
+      'no-head',
+      'debug-socket',
+      'insecure',
+      'status',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Transfer control flags should be accepted: ' .. result.errors)
+   assert(result.output is '200\n', 'Transfer control flags should not disrupt status output: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineProxyParsesHostPort()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/proxy-target',
+      f'proxy=127.0.0.1:{SERVER_PORT}',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'Proxy request should return 0: ' .. result.errors)
+   assert(result.output is 'proxied tuku', 'Proxy request body mismatch: ' .. result.text)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLineRejectsInvalidProxy()
+   missing_port = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/hello',
+      'proxy=127.0.0.1',
+      'timeout=5'
+   })
+
+   assert(missing_port.returnCode != 0, 'Proxy without port should fail')
+   assert(missing_port.text:find("Parameter 'proxy' must use host:port syntax."),
+      'Proxy missing port diagnostic mismatch: ' .. missing_port.text)
+
+   bad_port = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/hello',
+      'proxy=127.0.0.1:70000',
+      'timeout=5'
+   })
+
+   assert(bad_port.returnCode != 0, 'Proxy with out-of-range port should fail')
+   assert(bad_port.text:find("Parameter 'proxy' requires a port between 1 and 65535."),
+      'Proxy bad port diagnostic mismatch: ' .. bad_port.text)
 end
