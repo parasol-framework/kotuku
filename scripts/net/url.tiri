@@ -640,11 +640,12 @@ url.sameOrigin = function(A:str, B:str):bool
    a = url.parse(A)
    b = url.parse(B)
    if not a or not b then return false end
+   if not a.scheme or not a.host or not b.scheme or not b.host then return false end
 
-   if (a.scheme or ''):lower() != (b.scheme or ''):lower() then return false end
-   if (a.host or ''):lower() != (b.host or ''):lower() then return false end
+   if a.scheme:lower() != b.scheme:lower() then return false end
+   if a.host:lower() != b.host:lower() then return false end
 
-   port_a = a.port or DEFAULT_PORTS[(a.scheme or ''):lower()]
-   port_b = b.port or DEFAULT_PORTS[(b.scheme or ''):lower()]
+   port_a = a.port or DEFAULT_PORTS[a.scheme:lower()]
+   port_b = b.port or DEFAULT_PORTS[b.scheme:lower()]
    return port_a is port_b
 end
