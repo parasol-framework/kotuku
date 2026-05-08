@@ -16,7 +16,8 @@ glSilent = false
 glOptionDefs = array<table> {
    { name = 'url', type = 'str', group = 'Core',
      comment = 'Target HTTP or HTTPS URL.' },
-   { name = 'method', type = 'enum', choices = array<string> { 'get', 'head', 'delete', 'options', 'post', 'put' },
+   { name = 'method', type = 'enum',
+     choices = array<string> { 'get', 'head', 'delete', 'options', 'post', 'put', 'patch' },
      group = 'Core', comment = 'HTTP method to use.' },
    { name = 'version', kind = 'flag', group = 'Core',
      comment = 'Print the Tuku version.' },

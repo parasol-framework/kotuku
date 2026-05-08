@@ -106,6 +106,20 @@ end
                   parsedBody  = req.parsedBody
                })
             end
+         },
+         { pattern = '/echo',
+            method = 'PATCH',
+            handler = function(req, res)
+               res.json({
+                  method      = req.method,
+                  body        = req.body,
+                  contentType = req.headers['content-type'],
+                  userAgent   = req.headers['user-agent'],
+                  accept      = req.headers['accept'],
+                  custom      = req.headers['x-tuku-test'],
+                  parsedBody  = req.parsedBody
+               })
+            end
          }
       }
    })
@@ -266,6 +280,25 @@ end
       'Form body was not URL encoded as expected: ' .. tostring(form_response.body))
    assert(form_response.parsedBody.name is 'Ada', 'Form name should round-trip')
    assert(form_response.parsedBody.email is 'ada@example.com', 'Form email should round-trip')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function CommandLinePatchesJsonBody()
+   result = runTuku(array<string> {
+      f'url=http://127.0.0.1:{SERVER_PORT}/echo',
+      'method=patch',
+      'json=[4,5,6]',
+      'timeout=5'
+   })
+
+   assert(result.returnCode is 0, 'PATCH JSON should return 0: ' .. result.errors)
+
+   response = json.decode(result.output)
+   assert(response.method is 'PATCH', 'PATCH request method should round-trip')
+   assert(response.contentType is 'application/json', 'PATCH JSON should set application/json content type')
+   assert(response.parsedBody[0] is 4, 'PATCH JSON array body should be parsed by the server')
+   assert(response.parsedBody[2] is 6, 'PATCH JSON array value mismatch')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
