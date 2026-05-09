@@ -481,7 +481,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    }
    else log.msg("A debugger is active.");
 #else
-   glConsoleEnabled = isatty(STDOUT_FILENO);
+   glConsoleEnabled = isatty(STDOUT_FILENO) or isatty(STDERR_FILENO);
 #endif
 
    // Sockets are used on Unix systems to tell our processes when new messages are available for them to read.
