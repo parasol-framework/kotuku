@@ -71,7 +71,7 @@ end
    output_text = ''
 
    task = obj.new('task', {
-      location = '(sleep 0.01; echo late) &',
+      location = '(sleep 0.01; echo late) &', -- Run task in background
       flags = TSF_SHELL,
       outputCallback = function(Task, Buffer)
          output_text ..= Buffer:getString()
@@ -84,7 +84,7 @@ end
          output_text ..= Buffer:getString()
       end,
       exitCallback = function(Task)
-         print(f'Exit trigger called.  Output length: {#output_text}')
+         print(f'Exit trigger called.')
          exit_called = true
          processing.signal()
       end
@@ -92,10 +92,8 @@ end
 
    check task.acActivate()
 
-   processing.sleep(3.0)
-   -- NOTE: stdout can have output pending for processing in spite of task exit.
-   processing.halt(0.3) -- need to wait for  echo to complete
-   --task.free()
+   processing.sleep(1.0) -- Should return almost immediately because the shell detaches
+   processing.halt(0.3) -- Need to wait for echo to complete in the background
 
    assert(exit_called is true, 'Task ExitCallback was not invoked after the shell process exited.')
    assert(output_text:find('late'), 'Expected output from a background descendant after shell exit, got: ' .. output_text)
