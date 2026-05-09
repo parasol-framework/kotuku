@@ -1729,6 +1729,54 @@ function make_help_result(Parser:table, Topic:any):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Load JSON defaults from a configured user config file when the selected file exists.
+
+function load_user_config_defaults(Parser:table, RawResult:table):table
+   Parser._user_config_defaults = nil
+
+   Parser.userConfig ?? return
+
+   config_param = Parser._lookup.config
+   config_param ?? return
+
+   raw_path = RawResult.config
+   raw_path ?? return
+
+   config_path = convert_value(Parser, config_param, raw_path)
+   config_path = tostring(config_path)
+   config_path ?? return
+
+   err, location = mSys.AnalysePath(config_path)
+   if err != ERR_Okay then return end
+
+   if location != LOC_FILE then
+      raise ERR_ExpectedFile, f"User config path '{config_path}' is not a file."
+   end
+
+   file = io.open(config_path, 'r')
+   content = file:read('*a')
+   file:close()
+
+   local defaults:any
+   local pos:num
+   try
+      defaults, pos = json.decode(content)
+      if pos < #content and content:substr(pos):trim() != '' then
+         raise ERR_Syntax, 'Trailing content after JSON value.'
+      end
+   except e
+      raise ERR_WrongType, f"User config '{config_path}' requires valid JSON."
+   end
+
+   if type(defaults) != 'table' then
+      raise ERR_WrongType, f"User config '{config_path}' requires a JSON object."
+   end
+
+   Parser._user_config_defaults = defaults
+   return defaults
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Apply precedence, conversion, and validation to an already parsed input layer.
 
 function resolve_input_result(Parser:table, InputResult:table, InputArgNames:table, InputPresence:table):table
@@ -1746,6 +1794,7 @@ function resolve_input_result(Parser:table, InputResult:table, InputArgNames:tab
       for name, value in pairs(Defaults) do
          param = Parser._lookup[name]
          if param is nil then
+            if name:startsWith('_') then continue end -- Ignore private keys
             raise ERR_ParameterUnknown, f"Unknown default parameter '{name}'."
          end
 
@@ -1800,6 +1849,22 @@ function resolve_input_result(Parser:table, InputResult:table, InputArgNames:tab
 
    apply_param_defaults(Parser, raw_result, arg_names)
    apply_default_table(Parser, raw_result, arg_names, Parser.defaults)
+
+   if not (Parser.autoHelp and InputResult[Parser.helpArg] != nil) then
+      apply_default_table(Parser, raw_result, arg_names, Parser._set_defaults)
+      apply_environment(Parser, raw_result, arg_names, presence)
+      merge_input_result(Parser, raw_result, arg_names, presence, InputResult, InputArgNames, InputPresence)
+      load_user_config_defaults(Parser, raw_result)
+
+      raw_result = {}
+      arg_names = {}
+      presence = {}
+
+      apply_param_defaults(Parser, raw_result, arg_names)
+      apply_default_table(Parser, raw_result, arg_names, Parser.defaults)
+      apply_default_table(Parser, raw_result, arg_names, Parser._user_config_defaults)
+   end
+
    apply_default_table(Parser, raw_result, arg_names, Parser._set_defaults)
    apply_environment(Parser, raw_result, arg_names, presence)
    merge_input_result(Parser, raw_result, arg_names, presence, InputResult, InputArgNames, InputPresence)
@@ -2118,6 +2183,7 @@ create_parser = function(Config:table):table
       license     = Config.license,
       envPrefix   = Config.envPrefix,
       defaults    = Config.defaults,
+      userConfig  = Config.userConfig,
       strict      = Config.strict,
       autoHelp    = Config.autoHelp,
       onError     = Config.onError,
@@ -2129,6 +2195,7 @@ create_parser = function(Config:table):table
    parser.autoHelp ?= true
    parser.helpArg  ?= 'help' -- In future, allow translations to user's locale
    validate_name(parser.helpArg)
+   assert(parser.userConfig is nil or (type(parser.userConfig) is 'string') or (type(parser.userConfig) is 'bool'), 'userConfig must be a string or boolean.')
    assert(parser.onError is nil or type(parser.onError) is 'function', 'onError must be a function.')
    assert(parser.onHelp is nil or type(parser.onHelp) is 'function', 'onHelp must be a function.')
 
@@ -2139,6 +2206,7 @@ create_parser = function(Config:table):table
    parser._commands       = array<table>
    parser._command_lookup = {}
    parser._set_defaults   = nil
+   parser._user_config_defaults = nil
 
    @Doc(text=[[
    Add a parameter definition to the parser
@@ -2426,6 +2494,17 @@ create_parser = function(Config:table):table
             end
             raise ERR_Terminate -- Stops the process without throwing an error
          end
+      })
+   end
+
+   if parser.userConfig then -- Can be true, empty string or file path
+      if definitions_have_name(Config.args, 'config') then
+         raise ERR_DuplicateValue, "Parameter name or alias 'config' conflicts with the reserved config token."
+      end
+
+      add_param(parser, {
+         name = 'config', type = 'path', default = type(parser.userConfig) is 'string' ? parser.userConfig :> nil, group = 'Configuration',
+         comment = 'JSON config file with option defaults.'
       })
    end
 

@@ -1,0 +1,5 @@
+{
+   "_comment": "HTTP server config file.  Copy to user:config/httpserver_cfg.json for httpserver to automatically use it.",
+   "port": 8080,
+   "folder": "docs/html/"
+}
