@@ -66,6 +66,12 @@ static void cleanup_task_fds(int input_fd, int out_fd, int out_errfd, int in_fd,
    if (in_fd != -1)     close(in_fd);
    if (in_errfd != -1)  close(in_errfd);
 }
+
+static void set_task_pipe_nonblocking(int FD)
+{
+   auto flags = fcntl(FD, F_GETFL);
+   if (flags != -1) fcntl(FD, F_SETFL, flags | O_NONBLOCK);
+}
 #endif
 
 #ifdef __unix__
@@ -222,14 +228,8 @@ static void check_incoming(extTask *Self)
 // sent to a callback function.
 
 #ifdef __unix__
-static void task_stdout(HOSTHANDLE FD, APTR Task)
+static int read_task_stdout(HOSTHANDLE FD, APTR Task)
 {
-   thread_local uint8_t recursive = 0;
-
-   if (recursive) return;
-
-   recursive++;
-
    int len;
    char buffer[TASK_IO_BUFFER_SIZE];
    if ((len = read(FD, buffer, sizeof(buffer)-1)) > 0) {
@@ -248,18 +248,39 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
          }));
       }
    }
-   recursive--;
+
+   return len;
 }
 
-static void task_stderr(HOSTHANDLE FD, APTR Task)
+static void process_task_stdout(HOSTHANDLE FD, APTR Task, bool Drain)
 {
-   char buffer[TASK_IO_BUFFER_SIZE];
-   int len;
    thread_local uint8_t recursive = 0;
 
    if (recursive) return;
 
    recursive++;
+   do {
+      auto len = read_task_stdout(FD, Task);
+      if ((not Drain) or (len <= 0)) break;
+   } while (true);
+   recursive--;
+}
+
+static void task_stdout(HOSTHANDLE FD, APTR Task)
+{
+   process_task_stdout(FD, Task, false);
+}
+
+static void drain_task_stdout(HOSTHANDLE FD, APTR Task)
+{
+   process_task_stdout(FD, Task, true);
+}
+
+static int read_task_stderr(HOSTHANDLE FD, APTR Task)
+{
+   char buffer[TASK_IO_BUFFER_SIZE];
+   int len;
+
    if ((len = read(FD, buffer, sizeof(buffer)-1)) > 0) {
       buffer[len] = 0;
 
@@ -276,7 +297,32 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
          }));
       }
    }
+
+   return len;
+}
+
+static void process_task_stderr(HOSTHANDLE FD, APTR Task, bool Drain)
+{
+   thread_local uint8_t recursive = 0;
+
+   if (recursive) return;
+
+   recursive++;
+   do {
+      auto len = read_task_stderr(FD, Task);
+      if ((not Drain) or (len <= 0)) break;
+   } while (true);
    recursive--;
+}
+
+static void task_stderr(HOSTHANDLE FD, APTR Task)
+{
+   process_task_stderr(FD, Task, false);
+}
+
+static void drain_task_stderr(HOSTHANDLE FD, APTR Task)
+{
+   process_task_stderr(FD, Task, true);
 }
 #endif
 
@@ -457,7 +503,8 @@ static ERR msg_quit(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSi
 #ifdef __unix__
 static void task_process_end(extTask *Task, int ReturnCode, bool Returned)
 {
-   check_incoming(Task);
+   if (Task->InFD != -1) drain_task_stdout(Task->InFD, Task);
+   if (Task->ErrFD != -1) drain_task_stderr(Task->ErrFD, Task);
 
    if (Returned) {
       Task->ReturnCode = ReturnCode;
@@ -1003,12 +1050,14 @@ static ERR TASK_Activate(extTask *Self)
       glTasks.emplace_back(Self);
 
       if (in_fd != -1) {
+         set_task_pipe_nonblocking(in_fd);
          RegisterFD(in_fd, RFD::READ, &task_stdout, Self);
          Self->InFD = in_fd;
          close(out_fd);
       }
 
       if (in_errfd != -1) {
+         set_task_pipe_nonblocking(in_errfd);
          RegisterFD(in_errfd, RFD::READ, &task_stderr, Self);
          Self->ErrFD = in_errfd;
          close(out_errfd);
