@@ -721,6 +721,7 @@ static ERR TASK_Activate(extTask *Self)
    if (Self->Location.empty()) return log.warning(ERR::MissingPath);
 
    #ifndef __unix__
+      // This is a backup in case SIGCHLD signals don't work.  It terminates automatically if no processes remain.
       if (not glJanitorActive) {
          kt::SwitchContext ctx(glCurrentTask);
          auto call = C_FUNCTION(process_janitor);
@@ -1094,21 +1095,32 @@ static ERR TASK_Activate(extTask *Self)
 
          // Find out what error code was returned
 
-         if ((wait_result IS pid) and WIFEXITED(status)) {
-            Self->ReturnCode = (int8_t)WEXITSTATUS(status);
-            Self->ReturnCodeSet = true;
-         }
-         else if ((wait_result IS pid) and WIFSIGNALED(status)) {
-            Self->ReturnCode = 128 + WTERMSIG(status);
-            Self->ReturnCodeSet = true;
-         }
+         if (wait_result IS pid) {
+            bool returned = false;
+            int return_code = 0;
 
-         if (kill(pid, 0)) {
-            for (auto it = glTasks.begin(); it != glTasks.end(); it++) {
-               if (it->ProcessID IS pid) {
-                  glTasks.erase(it);
-                  break;
+            if (WIFEXITED(status)) {
+               return_code = (int8_t)WEXITSTATUS(status);
+               returned = true;
+            }
+            else if (WIFSIGNALED(status)) {
+               return_code = 128 + WTERMSIG(status);
+               returned = true;
+            }
+
+            if (returned) {
+               Self->ReturnCode = return_code;
+               Self->ReturnCodeSet = true;
+
+               for (auto &task : glTasks) {
+                  if (task.ProcessID IS pid) {
+                     task.ReturnCode = return_code;
+                     task.Returned = true;
+                     break;
+                  }
                }
+
+               validate_process(pid);
             }
          }
       }
