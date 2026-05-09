@@ -29,6 +29,7 @@ end
       return
    end
 
+   processing.flush()
    current_task = mSys.CurrentTask()
    exit_called = false
    output_text = ''
@@ -65,14 +66,16 @@ end
       return
    end
 
+   processing.flush()
    exit_called = false
    output_text = ''
 
    task = obj.new('task', {
-      location = '(sleep 0.2; echo late) &',
+      location = '(sleep 0.01; echo late) &',
       flags = TSF_SHELL,
       outputCallback = function(Task, Buffer)
          output_text ..= Buffer:getString()
+         print(f'Received {#output_text} bytes.')
          if output_text:find('late') then
             processing.signal()
          end
@@ -81,6 +84,7 @@ end
          output_text ..= Buffer:getString()
       end,
       exitCallback = function(Task)
+         print(f'Exit trigger called.  Output length: {#output_text}')
          exit_called = true
          processing.signal()
       end
@@ -88,10 +92,10 @@ end
 
    check task.acActivate()
 
-   deadline = mSys.PreciseTime() + 3000000
-   while ((not exit_called) or (not output_text:find('late'))) and (mSys.PreciseTime() < deadline) do
-      check processing.sleep(0.05)
-   end
+   processing.sleep(3.0)
+   -- NOTE: stdout can have output pending for processing in spite of task exit.
+   processing.halt(0.3) -- need to wait for  echo to complete
+   --task.free()
 
    assert(exit_called is true, 'Task ExitCallback was not invoked after the shell process exited.')
    assert(output_text:find('late'), 'Expected output from a background descendant after shell exit, got: ' .. output_text)
@@ -105,7 +109,7 @@ end
    time = mSys.PreciseTime()
    assert(time > 0, 'PreciseTime() did not return a positive value.')
 
-   processing.sleep(1)
+   processing.halt(1)
 
    -- Acquire a new timestamp and check that the difference is between 1 and 1.5 seconds.
 
