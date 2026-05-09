@@ -707,9 +707,18 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function sendHttpResponse(self, Client, statusCode, statusText, headers, body)
+function closeHttpResponse(Client)
+   msg('Closing client socket per connection: close')
+   Client.acDeactivate()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function sendHttpResponse(self, Client, statusCode, statusText, headers, body, CloseSocket)
    response = "HTTP/1.1 " .. statusCode .. " " .. statusText .. "\r\n"
    head_only = isHeadRequest(Client)
+   close_socket = true
+   if CloseSocket is false then close_socket = false end
 
    if (not headers['content-length']) and (body) then headers['content-length'] = tostring(#body)end
 
@@ -752,9 +761,8 @@ function sendHttpResponse(self, Client, statusCode, statusText, headers, body)
 
    assert(written is #response, 'Unable to write response in one call (breach of contract).')
 
-   if headers['connection'] is 'close' then -- The HTTP server is responsible for socket closure, so do it now.
-      msg('Closing client socket per connection: close')
-      Client.acDeactivate()
+   if (headers['connection'] is 'close') and close_socket then -- The HTTP server is responsible for socket closure.
+      closeHttpResponse(Client)
    end
 end
 
@@ -940,7 +948,7 @@ function serveFile(self, ClientSocket, FilePath:str, Request)
          ['content-type'] = mimeType,
          ['content-length'] = tostring(fileSize),
          ['accept-ranges'] = 'bytes'
-      })
+      }, nil, false)
 
       buffer = string.alloc(self.fileChunkSize)
       totalSent = 0
@@ -958,6 +966,7 @@ function serveFile(self, ClientSocket, FilePath:str, Request)
             err, written = ClientSocket.acWrite(buffer:substr(0, bytes_read))
             if err != ERR_Okay then
                logMessage(self, 'Error writing to ClientSocket: ' .. mSys.GetErrorMsg(err))
+               closeHttpResponse(ClientSocket)
                return
             end
             assert(written is bytes_read, 'Unable to write response in one call (breach of contract).')
@@ -967,6 +976,8 @@ function serveFile(self, ClientSocket, FilePath:str, Request)
             break
          end
       end
+
+      closeHttpResponse(ClientSocket)
    else
       -- Small files: read all at once
       buffer = string.alloc(fileSize)
