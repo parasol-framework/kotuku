@@ -252,28 +252,38 @@ static int read_task_stdout(HOSTHANDLE FD, APTR Task)
    return len;
 }
 
-static void process_task_stdout(HOSTHANDLE FD, APTR Task, bool Drain)
+static void close_task_stdout(extTask *Task, HOSTHANDLE FD)
+{
+   if (Task->InFD IS FD) Task->InFD = -1;
+   RegisterFD(FD, RFD::READ|RFD::REMOVE, &task_stdout, Task);
+   close(FD);
+}
+
+static int process_task_stdout(HOSTHANDLE FD, APTR Task, bool Drain)
 {
    thread_local uint8_t recursive = 0;
 
-   if (recursive) return;
+   if (recursive) return -1;
 
+   int len = -1;
    recursive++;
    do {
-      auto len = read_task_stdout(FD, Task);
+      len = read_task_stdout(FD, Task);
       if ((not Drain) or (len <= 0)) break;
    } while (true);
    recursive--;
+
+   return len;
 }
 
 static void task_stdout(HOSTHANDLE FD, APTR Task)
 {
-   process_task_stdout(FD, Task, false);
+   if (process_task_stdout(FD, Task, false) IS 0) close_task_stdout((extTask *)Task, FD);
 }
 
-static void drain_task_stdout(HOSTHANDLE FD, APTR Task)
+static bool drain_task_stdout(HOSTHANDLE FD, APTR Task)
 {
-   process_task_stdout(FD, Task, true);
+   return process_task_stdout(FD, Task, true) IS 0;
 }
 
 static int read_task_stderr(HOSTHANDLE FD, APTR Task)
@@ -301,28 +311,38 @@ static int read_task_stderr(HOSTHANDLE FD, APTR Task)
    return len;
 }
 
-static void process_task_stderr(HOSTHANDLE FD, APTR Task, bool Drain)
+static void close_task_stderr(extTask *Task, HOSTHANDLE FD)
+{
+   if (Task->ErrFD IS FD) Task->ErrFD = -1;
+   RegisterFD(FD, RFD::READ|RFD::REMOVE, &task_stderr, Task);
+   close(FD);
+}
+
+static int process_task_stderr(HOSTHANDLE FD, APTR Task, bool Drain)
 {
    thread_local uint8_t recursive = 0;
 
-   if (recursive) return;
+   if (recursive) return -1;
 
+   int len = -1;
    recursive++;
    do {
-      auto len = read_task_stderr(FD, Task);
+      len = read_task_stderr(FD, Task);
       if ((not Drain) or (len <= 0)) break;
    } while (true);
    recursive--;
+
+   return len;
 }
 
 static void task_stderr(HOSTHANDLE FD, APTR Task)
 {
-   process_task_stderr(FD, Task, false);
+   if (process_task_stderr(FD, Task, false) IS 0) close_task_stderr((extTask *)Task, FD);
 }
 
-static void drain_task_stderr(HOSTHANDLE FD, APTR Task)
+static bool drain_task_stderr(HOSTHANDLE FD, APTR Task)
 {
-   process_task_stderr(FD, Task, true);
+   return process_task_stderr(FD, Task, true) IS 0;
 }
 #endif
 
@@ -503,24 +523,12 @@ static ERR msg_quit(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSi
 #ifdef __unix__
 static void task_process_end(extTask *Task, int ReturnCode, bool Returned)
 {
-   if (Task->InFD != -1) drain_task_stdout(Task->InFD, Task);
-   if (Task->ErrFD != -1) drain_task_stderr(Task->ErrFD, Task);
+   if ((Task->InFD != -1) and (drain_task_stdout(Task->InFD, Task))) close_task_stdout(Task, Task->InFD);
+   if ((Task->ErrFD != -1) and (drain_task_stderr(Task->ErrFD, Task))) close_task_stderr(Task, Task->ErrFD);
 
    if (Returned) {
       Task->ReturnCode = ReturnCode;
       Task->ReturnCodeSet = true;
-   }
-
-   if (Task->InFD != -1) {
-      RegisterFD(Task->InFD, RFD::READ|RFD::REMOVE, &task_stdout, Task);
-      close(Task->InFD);
-      Task->InFD = -1;
-   }
-
-   if (Task->ErrFD != -1) {
-      RegisterFD(Task->ErrFD, RFD::READ|RFD::REMOVE, &task_stderr, Task);
-      close(Task->ErrFD);
-      Task->ErrFD = -1;
    }
 
    if (Task->ExitCallback.isC()) {
