@@ -701,10 +701,8 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
             return queue_error;
          }
 
-         if (queue_len < remaining) {
-            Args->Result = int(len + queue_len);
-            return ERR::BufferOverflow;
-         }
+         auto queue_overflow = queue_len < remaining;
+         if (queue_overflow) Args->Result = int(len + queue_len);
 
          if (ssl_write_blocked) {
             #if !defined(DISABLE_SSL) and !defined(_WIN32)
@@ -718,6 +716,8 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
                win_socketstate(Self->Handle, std::nullopt, true);
             #endif
          }
+
+         if (queue_overflow) return ERR::BufferOverflow;
       }
       else return error;
    }
