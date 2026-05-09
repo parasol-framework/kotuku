@@ -720,12 +720,14 @@ static ERR TASK_Activate(extTask *Self)
 
    if (Self->Location.empty()) return log.warning(ERR::MissingPath);
 
-   if (not glJanitorActive) {
-      kt::SwitchContext ctx(glCurrentTask);
-      auto call = C_FUNCTION(process_janitor);
-      SubscribeTimer(0.06, &call, &glProcessJanitor);
-      glJanitorActive = true;
-   }
+   #ifndef __unix__
+      if (not glJanitorActive) {
+         kt::SwitchContext ctx(glCurrentTask);
+         auto call = C_FUNCTION(process_janitor);
+         SubscribeTimer(60, &call, &glProcessJanitor);
+         glJanitorActive = true;
+      }
+   #endif
 
 #ifdef _WIN32
    // Determine the launch folder
@@ -1078,8 +1080,9 @@ static ERR TASK_Activate(extTask *Self)
          // potentially pick this up but that's fine as waitpid() will just fail with -1 in that case.
 
          int status = 0;
+         int wait_result = 0;
          int64_t ticks = PreciseTime() + int64_t(Self->TimeOut * 1000000.0);
-         while (!waitpid(pid, &status, WNOHANG)) {
+         while ((wait_result = waitpid(pid, &status, WNOHANG)) IS 0) {
             ProcessMessages(PMF::NIL, 100);
 
             auto remaining = ticks - PreciseTime();
@@ -1091,8 +1094,12 @@ static ERR TASK_Activate(extTask *Self)
 
          // Find out what error code was returned
 
-         if (WIFEXITED(status)) {
+         if ((wait_result IS pid) and WIFEXITED(status)) {
             Self->ReturnCode = (int8_t)WEXITSTATUS(status);
+            Self->ReturnCodeSet = true;
+         }
+         else if ((wait_result IS pid) and WIFSIGNALED(status)) {
+            Self->ReturnCode = 128 + WTERMSIG(status);
             Self->ReturnCodeSet = true;
          }
 
@@ -2374,16 +2381,32 @@ static ERR GET_ReturnCode(extTask *Self, int *Value)
    int status = 0;
    int result = waitpid(Self->ProcessID, &status, WNOHANG);
 
-   if ((result IS -1) or (result IS Self->ProcessID)) {
+   if (result IS Self->ProcessID) {
       // The process has exited.  Find out what error code was returned and pass it as the result.
 
       if (WIFEXITED(status)) {
          Self->ReturnCode = (int8_t)WEXITSTATUS(status);
          Self->ReturnCodeSet = true;
       }
+      else if (WIFSIGNALED(status)) {
+         Self->ReturnCode = 128 + WTERMSIG(status);
+         Self->ReturnCodeSet = true;
+      }
 
       *Value = Self->ReturnCode;
+      for (auto &task : glTasks) {
+         if (task.ProcessID IS Self->ProcessID) {
+            task.ReturnCode = Self->ReturnCode;
+            task.Returned = true;
+            break;
+         }
+      }
+
+      validate_process(Self->ProcessID);
       return ERR::Okay;
+   }
+   else if (result IS -1) {
+      return ERR::TaskStillExists;
    }
    else return ERR::TaskStillExists;
 
