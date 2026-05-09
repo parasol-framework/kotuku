@@ -4,60 +4,10 @@
    import 'net/httpserver'
    import 'options'
 
-function validatePortOption(Parser:table, ArgName:str, Value:any, Param:table)
-   if Value < 1 or Value > 65535 then
-      error("Parameter 'port' must be between 1 and 65535.")
-   end
-end
+----------------------------------------------------------------------------------------------------------------------
 
-function validateTimeoutOption(Parser:table, ArgName:str, Value:any, Param:table)
-   if Value < 1 or Value > 300 then
-      error("Parameter 'timeout' must be between 1 and 300 seconds.")
-   end
-end
-
-function validateRateLimitOption(Parser:table, ArgName:str, Value:any, Param:table)
-   if Value < 0 or Value > 1000 then
-      error("Parameter 'ratelimit' must be between 0 and 1000.")
-   end
-end
-
-function makeParserDefaults(Parser:table, Defaults:table):table
-   parser_defaults = {}
-
-   for name, value in pairs(Defaults) do
-      if Parser.getParam(name) then
-         parser_defaults[name] = value
-      end
-   end
-
-   return parser_defaults
-end
-
-function applyParserOptions(Target:table, Values:table)
-   for name, value in pairs(Values) do
-      Target[name] = value
-   end
-end
-
-   glConfigParser = options({
-      name     = 'HTTPServer',
-      strict   = false,
-      autoHelp = false,
-      args     = array<table> {
-         { name = 'config', type = 'path', default = 'user:config/http_server_cfg.tiri' }
-      }
-   })
-
-   glConfigArgs = glConfigParser.process()
-   glConfigFile = glConfigArgs.config
-   global glOptions = {}
    global glSelf = obj.find('self')
    global glPath = glSelf.workingPath
-
-   if mSys.AnalysePath(glConfigFile) is ERR_Okay then
-      loadFile(glConfigFile, glOptions)
-   end
 
    glParser = options({
       name        = 'HTTPServer',
@@ -65,40 +15,51 @@ end
 HTTPServer serves static files from a local folder, with config-file defaults and command-line overrides.
 ]],
       epilog      = [[
-If a config file is stored at user:config/http_server_cfg.tiri then it will be loaded automatically.  Options can be
+If a config file is stored at user:config/httpserver_cfg.json then it will be loaded automatically.  Options can be
 overridden via the command-line, or you can refer to a different file via the config parameter.
 
 Index files are checked in this order: index.html, index.htm, default.html, default.htm
 
 Examples:
   origo apps/httpserver folder=docs/html port=8080
-  origo apps/httpserver config=apps/httpserver_cfg.tiri verbose
+  origo apps/httpserver config=apps/httpserver_cfg.json verbose
 ]],
+      userConfig  = 'user:config/httpserver_cfg.json',
       autoHelp    = false,
       args        = array<table> {
-         { name = 'config', type = 'path', default = 'user:config/http_server_cfg.tiri', group = 'Configuration',
-           comment = 'Tiri config file with options assigned to a glOptions table.' },
-
-         { name = 'folder', type = 'folder', exists = true, group = 'Server',
+         { name = 'folder', type = 'folder', exists = true, required = true, group = 'Server',
            comment = 'Required. Folder containing HTML pages and static files to serve.',
            description = 'Folder containing HTML pages and static files to serve; can also come from config.' },
-         { name = 'port', type = 'int', default = 8080, group = 'Server', exec = validatePortOption,
-           comment = 'Port number to listen on.' },
+         { name = 'port', type = 'int', default = 8080, group = 'Server', comment = 'Port number to listen on.',
+           exec = function(Parser:table, ArgName:str, Value:any, Param:table)
+              if Value < 1 or Value > 65535 then
+                 error("Parameter 'port' must be between 1 and 65535.")
+              end
+           end
+         },
          { name = 'bind', type = 'str', group = 'Server',
            comment = "Bind to a specific IP address, for example '127.0.0.1' for localhost only." },
-
          { name = 'verbose', kind = 'flag', default = false, group = 'Behaviour',
            comment = 'Enable verbose logging.' },
-         { name = 'timeout', type = 'int', default = 30, group = 'Behaviour', exec = validateTimeoutOption,
-           comment = 'Request timeout in seconds.' },
+         { name = 'timeout', type = 'int', default = 30, group = 'Behaviour', comment = 'Request timeout in seconds.',
+           exec = function(Parser:table, ArgName:str, Value:any, Param:table)
+              if Value < 1 or Value > 300 then
+                 error("Parameter 'timeout' must be between 1 and 300 seconds.")
+              end
+           end
+         },
          { names = array<string> { 'autoIndex', 'autoindex' }, kind = 'flag', default = true, group = 'Behaviour',
            comment = 'Enable automatic directory listing.' },
          { names = array<string> { 'rateLimit', 'ratelimit' }, type = 'int', group = 'Behaviour',
-           exec = validateRateLimitOption,
-           comment = 'Maximum requests per rate-limit window; 0 disables rate limiting.' },
+           comment = 'Maximum requests per rate-limit window; 0 disables rate limiting.',
+           exec = function(Parser:table, ArgName:str, Value:any, Param:table)
+              if Value < 0 or Value > 1000 then
+                 error("Parameter 'ratelimit' must be between 0 and 1000.")
+              end
+           end
+         },
          { names = array<string> { 'rateLimitWindow', 'ratelimitwindow' }, type = 'int', group = 'Behaviour',
            comment = 'Rate-limit window in seconds.' },
-
          { name = 'help', type = 'str', hidden = true, implicit = true,
            exec = function(Parser:table, ArgName:str, Value:any, Param:table)
               topic = (Value is true or Value is 'true') ? nil :> Value
@@ -108,10 +69,8 @@ Examples:
       }
    })
 
-   glParser.setDefaults(makeParserDefaults(glParser, glOptions))
-   parsed_options = glParser.process()
-   if parsed_options is nil then return end
-   applyParserOptions(glOptions, parsed_options)
+   glOptions = glParser.process()
+   if glOptions is nil then return end
 
    err, resolved_path = mSys.ResolvePath(glOptions.folder)
    if err is ERR_Okay and resolved_path then

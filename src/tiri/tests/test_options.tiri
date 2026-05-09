@@ -62,6 +62,16 @@ function set_test_env(Name:str, Value:any)
    assert(err is ERR_Okay, f"Failed to set environment variable '{Name}': {mSys.GetErrorMsg(err)}")
 end
 
+function write_test_file(Path:str, Content:str)
+   local file = io.open(Path, 'w')
+   file:write(Content)
+   file:close()
+end
+
+function delete_test_file(Path:str)
+   mSys.DeleteFile(Path)
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 @Test function ConstructEmptyParser()
@@ -549,6 +559,154 @@ end
    assert(args.count is 5, 'Input values should override environment values')
 
    set_test_env('KOTUKU_OPTIONS_PRECEDENCE_COUNT', nil)
+end
+
+@Test function UserConfigJsonDefaults()
+   local config_path = 'temp:options-user-config-defaults.json'
+   delete_test_file(config_path)
+   write_test_file(config_path, '{"count":"12","mode":"json","verbose":"true"}')
+
+   parser = options({
+      userConfig = config_path,
+      args = array<table> {
+         { name = 'count', type = 'int', required = true },
+         { name = 'mode', type = 'str' },
+         { name = 'verbose', kind = 'flag', type = 'bool' }
+      }
+   })
+
+   args = parser.process(array<string> { })
+   assert(args.config is config_path, 'Injected config parameter should report the selected path')
+   assert(args.count is 12, 'JSON config should satisfy required parameters')
+   assert(args.mode is 'json', 'JSON config should supply string defaults')
+   assert(args.verbose is true, 'JSON config defaults should be converted')
+
+   delete_test_file(config_path)
+end
+
+@Test function UserConfigPathOverrideAndMissingSkip()
+   local default_path = 'temp:options-user-config-default.json'
+   local override_path = 'temp:options-user-config-override.json'
+   local missing_path = 'temp:options-user-config-missing.json'
+
+   delete_test_file(default_path)
+   delete_test_file(override_path)
+   delete_test_file(missing_path)
+   write_test_file(default_path, '{"count":"1"}')
+   write_test_file(override_path, '{"count":"2"}')
+
+   parser = options({
+      userConfig = default_path,
+      args = array<table> {
+         { name = 'count', type = 'int', default = '9' }
+      }
+   })
+
+   args = parser.process(array<string> { 'config=' .. override_path })
+   assert(args.config is override_path, 'Explicit config path should override userConfig')
+   assert(args.count is 2, 'Explicit config path should load the selected JSON file')
+
+   missing_parser = options({
+      userConfig = missing_path,
+      args = array<table> {
+         { name = 'count', type = 'int', default = '7' }
+      }
+   })
+
+   args = missing_parser.process(array<string> { })
+   assert(args.config is missing_path, 'Missing config path should remain visible as the selected config value')
+   assert(args.count is 7, 'Missing user config files should be skipped without changing defaults')
+
+   delete_test_file(default_path)
+   delete_test_file(override_path)
+end
+
+@Test function UserConfigPrecedenceWithSetDefaultsAndInput()
+   local default_path = 'temp:options-user-config-precedence-default.json'
+   local set_path = 'temp:options-user-config-precedence-set.json'
+
+   delete_test_file(default_path)
+   delete_test_file(set_path)
+   write_test_file(default_path, '{"count":"2","mode":"default"}')
+   write_test_file(set_path, '{"count":"3","mode":"set-config"}')
+
+   parser = options({
+      userConfig = default_path,
+      args = array<table> {
+         { name = 'count', type = 'int' },
+         { name = 'mode', type = 'str' }
+      }
+   })
+   parser.setDefaults({ config = set_path, count = '4' })
+
+   args = parser.process(array<string> { })
+   assert(args.config is set_path, 'setDefaults() should be able to select the user config path')
+   assert(args.count is 4, 'setDefaults() should override JSON config defaults')
+   assert(args.mode is 'set-config', 'JSON selected by setDefaults().config should still provide lower defaults')
+
+   args = parser.process(array<string> { 'count=5' })
+   assert(args.count is 5, 'Explicit input should override JSON and setDefaults() values')
+   assert(args.mode is 'set-config', 'Explicit input should not discard unrelated JSON defaults')
+
+   delete_test_file(default_path)
+   delete_test_file(set_path)
+end
+
+@Test function UserConfigValidationFailuresAndHelp()
+   local bad_json_path = 'temp:options-user-config-bad.json'
+   local array_json_path = 'temp:options-user-config-array.json'
+
+   delete_test_file(bad_json_path)
+   delete_test_file(array_json_path)
+   write_test_file(bad_json_path, '{"count":')
+   write_test_file(array_json_path, '["count"]')
+
+   expect_options_error({
+      userConfig = 'temp:options-user-config.json',
+      args = array<table> {
+         { name = 'config' }
+      }
+   }, ERR_DuplicateValue, "Parameter name or alias 'config' conflicts with the reserved config token.")
+
+   bad_json_parser = options({
+      userConfig = bad_json_path,
+      args = array<table> {
+         { name = 'count', type = 'int' }
+      }
+   })
+   expect_error(bad_json_parser, array<string> { }, ERR_WrongType, 'requires valid JSON')
+
+   array_json_parser = options({
+      userConfig = array_json_path,
+      args = array<table> {
+         { name = 'count', type = 'int' }
+      }
+   })
+   expect_error(array_json_parser, array<string> { }, ERR_WrongType, 'requires a JSON object')
+
+   folder_parser = options({
+      userConfig = 'temp:',
+      args = array<table> {
+         { name = 'count', type = 'int' }
+      }
+   })
+   expect_error(folder_parser, array<string> { }, ERR_ExpectedFile, "User config path 'temp:' is not a file.")
+
+   help_parser = options({
+      name = 'user-config-help',
+      userConfig = bad_json_path,
+      args = array<table> {
+         { name = 'count', type = 'int', required = true, comment = 'Count value' }
+      }
+   })
+
+   result, err = help_parser.tryProcess(array<string> { 'help' })
+   assert(err is nil, 'Help requests should not load invalid user config files')
+   assert(result.help is true, 'Help should still be returned for parsers with userConfig')
+   assert(result.text:find('Usage: user-config-help'), 'Help should include the parser usage text')
+
+   delete_test_file(bad_json_path)
+   delete_test_file(array_json_path)
 end
 
 @Test function SourcePrecedenceDefersConversion()
