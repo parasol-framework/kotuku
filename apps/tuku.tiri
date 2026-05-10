@@ -19,8 +19,7 @@ glOptionDefs = array<table> {
    { name = 'method', type = 'enum',
      choices = array<string> { 'get', 'head', 'delete', 'options', 'post', 'put', 'patch' },
      group = 'Core', comment = 'HTTP method to use.' },
-   { name = 'version', kind = 'flag', group = 'Core',
-     comment = 'Print the Tuku version.' },
+   { name = 'version', kind = 'flag', group = 'Core', comment = 'Print the Tuku version.' },
 
    { name = 'output', type = 'file', group = 'Output',
      comment = 'Save the response body to a file.' },

@@ -1,5 +1,5 @@
 #!/usr/bin/env origo
--- HTTPServer serves static files from a local folder, with config-file defaults and command-line overrides.
+-- Tuku Server is an HTTP server for files from a local folder, with config-file defaults and command-line overrides.
 
    import 'net/httpserver'
    import 'options'
@@ -10,21 +10,22 @@
    global glPath = glSelf.workingPath
 
    glParser = options({
-      name        = 'HTTPServer',
+      name        = 'Tuku Server',
+      cmdName     = 'tuku_server',
       description = [[
-HTTPServer serves static files from a local folder, with config-file defaults and command-line overrides.
+Tuku Server is an HTTP server, serving static files from a local folder, with config-file defaults and command-line overrides.
 ]],
       epilog      = [[
-If a config file is stored at user:config/httpserver_cfg.json then it will be loaded automatically.  Options can be
+If a config file is stored at user:config/tuku_server_cfg.json then it will be loaded automatically.  Options can be
 overridden via the command-line, or you can refer to a different file via the config parameter.
 
 Index files are checked in this order: index.html, index.htm, default.html, default.htm
 
 Examples:
-  origo apps/httpserver folder=docs/html port=8080
-  origo apps/httpserver config=apps/httpserver_cfg.json verbose
+  origo apps/tuku_server folder=docs/html port=8080
+  origo apps/tuku_server config=apps/tuku_server_cfg.json verbose
 ]],
-      userConfig  = 'user:config/httpserver_cfg.json',
+      userConfig  = 'user:config/tuku_server_cfg.json',
       args        = array<table> {
          { name = 'folder', type = 'folder', exists = true, required = true, group = 'Server',
            comment = 'Required. Folder containing HTML pages and static files to serve.',
@@ -76,7 +77,7 @@ Examples:
 
    glServer = hslib.start(glOptions)
 
-   print('HTTP server configuration:')
+   print('Server configuration:')
    print('  Folder: ' .. glServer.folder)
    print('  Port: ' .. tostring(glServer.port))
    print('  Bind address: ' .. (glServer.bind or 'all interfaces'))

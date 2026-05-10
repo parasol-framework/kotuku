@@ -1134,7 +1134,7 @@ end
 -- Generate a compact usage line for the parser.
 
 function build_full_usage(Parser:table):str
-   text = f"Usage: {Parser.name:lower()}"
+   text = f"Usage: {Parser.cmdName}"
 
    text = append_usage_positionals(text, Parser)
 
@@ -1151,7 +1151,7 @@ end
 -- Generate a shortened usage line when listing every option would exceed the line-length guideline.
 
 function build_short_usage(Parser:table):str
-   text = f"Usage: {Parser.name:lower()}"
+   text = f"Usage: {Parser.cmdName}"
 
    text = append_usage_positionals(text, Parser)
 
@@ -1325,7 +1325,7 @@ function build_command_help(Parser:table, Topic:str):str
    end
 
    lines:push('')
-   lines:push('Usage: ' .. Parser.name:lower() .. ' ' .. command.name)
+   lines:push('Usage: ' .. Parser.cmdName .. ' ' .. command.name)
    if #command.names > 1 then
       aliases = ''
       for index, name in ipairs(command.names) do
@@ -2203,6 +2203,7 @@ create_parser = function(Config:table):table
 
    local parser = {
       name        = Config.name,
+      cmdName     = Config.cmdName,
       description = Config.description,
       epilog      = Config.epilog,
       copyright   = Config.copyright,
@@ -2217,6 +2218,7 @@ create_parser = function(Config:table):table
    }
 
    parser.name     ?= 'script'
+   parser.cmdName  ?= parser.name:lower()
    parser.strict   ?= true
    parser.autoHelp ?= true
    parser.helpArg  ?= 'help' -- In future, allow translations to user's locale

@@ -836,10 +836,10 @@ if (KOTUKU_INSTALL)
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/apps/data" DESTINATION "${SHARE_TARGET}/apps")
    install (FILES
       "${PROJECT_SOURCE_DIR}/apps/find.tiri"
-      "${PROJECT_SOURCE_DIR}/apps/httpserver.tiri"
-      "${PROJECT_SOURCE_DIR}/apps/httpserver_cfg.json"
       "${PROJECT_SOURCE_DIR}/apps/paintbox.tiri"
       "${PROJECT_SOURCE_DIR}/apps/tuku.tiri"
+      "${PROJECT_SOURCE_DIR}/apps/tuku_server.tiri"
+      "${PROJECT_SOURCE_DIR}/apps/tuku_server_cfg.json"
       "${PROJECT_SOURCE_DIR}/apps/vuepoint.tiri"
       DESTINATION "${SHARE_TARGET}/apps")
 

@@ -1082,6 +1082,25 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 
 //********************************************************************************************************************
 
+#if defined(__linux__) && !defined(__ANDROID__)
+static std::string linux_host_temp_path(void)
+{
+   static constexpr CSTRING env_vars[] = { "TMPDIR", "TEMP", "TMP" };
+
+   for (auto env_var : env_vars) {
+      if (auto path = getenv(env_var); path and path[0]) {
+         std::string result(path);
+         if (result.back() != '/') result.push_back('/');
+         return result;
+      }
+   }
+
+   return "/tmp/";
+}
+#endif
+
+//********************************************************************************************************************
+
 static ERR init_volumes(const std::forward_list<std::string> &Volumes)
 {
    kt::Log log("Core");
@@ -1129,6 +1148,9 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
       SetVolume("drive1", "/", "devices/storage", "Linux", "fixed", VOLUME::REPLACE|VOLUME::SYSTEM);
       SetVolume("etc", "/etc", "tools/cog", nullptr, nullptr, VOLUME::REPLACE|VOLUME::SYSTEM);
       SetVolume("usr", "/usr", nullptr, nullptr, nullptr, VOLUME::REPLACE|VOLUME::SYSTEM);
+
+      auto host_temp_path = linux_host_temp_path();
+      SetVolume("HostTemp:", host_temp_path.c_str(), "items/trash", "Temp", nullptr, VOLUME::REPLACE|VOLUME::HIDDEN);
    #endif
 
    // Configure some standard volumes.

@@ -35,6 +35,7 @@ rxParentPath      <const> = <{ regex.new([[(.+)\/.+\/]]) }>
 rxMultipartBoundary <const> = <{ regex.new([[boundary="?([^";]+)"?]], regex.ICASE) }>
 rxMultipartName     <const> = <{ regex.new([[name="([^"]*)"]], regex.ICASE) }>
 rxMultipartFilename <const> = <{ regex.new([[filename="([^"]*)"]], regex.ICASE) }>
+rxByteRange         <const> = <{ regex.new([[^bytes=([0-9]*)-([0-9]*)$]], regex.ICASE) }>
 
 glStatusTexts <const> = {
       [200] = 'OK', [201] = 'Created', [204] = 'No Content',
@@ -709,7 +710,9 @@ end
 
 function closeHttpResponse(Client)
    msg('Closing client socket per connection: close')
-   Client.acDeactivate()
+   processing.delayedCall(function()
+      Client.acDeactivate()
+   end)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -916,7 +919,87 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function serveFile(self, ClientSocket, FilePath:str, Request)
+function parseByteRange(Header:str, FileSize:num):table
+   Header ?? return nil
+
+   captures = rxByteRange.match(Header:trim())
+   captures ?? return nil
+
+   start_text = captures[1]
+   end_text = captures[2]
+
+   if start_text is '' and end_text is '' then return nil end
+
+   local start_byte:num
+   local end_byte:num
+
+   if start_text is '' then
+      suffix_size = tonumber(end_text)
+      if not suffix_size or suffix_size <= 0 then return nil end
+
+      if suffix_size > FileSize then suffix_size = FileSize end
+      start_byte = FileSize - suffix_size
+      end_byte = FileSize - 1
+   else
+      start_byte = tonumber(start_text)
+      if not start_byte then return nil end
+
+      if end_text is '' then
+         end_byte = FileSize - 1
+      else
+         end_byte = tonumber(end_text)
+         if not end_byte then return nil end
+      end
+   end
+
+   if FileSize <= 0 or start_byte < 0 or end_byte < start_byte or start_byte >= FileSize then return nil end
+   if end_byte >= FileSize then end_byte = FileSize - 1 end
+
+   return {
+      startByte = start_byte,
+      endByte   = end_byte,
+      length    = end_byte - start_byte + 1
+   }
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function streamFileBody(self:table, ClientSocket:obj, File:obj, Length:num):bool
+   buffer = string.alloc(self.fileChunkSize)
+   total_sent = 0
+
+   while total_sent < Length do
+      to_read = math.min(self.fileChunkSize, Length - total_sent)
+      err, bytes_read = File.acRead(buffer, to_read)
+
+      if err != ERR_Okay then
+         logMessage(self, 'Error streaming file: ' .. mSys.GetErrorMsg(err))
+         closeHttpResponse(ClientSocket)
+         return false
+      end
+
+      if bytes_read > 0 then
+         err, written = ClientSocket.acWrite(buffer:substr(0, bytes_read))
+         if err != ERR_Okay then
+            logMessage(self, 'Error writing to ClientSocket: ' .. mSys.GetErrorMsg(err))
+            closeHttpResponse(ClientSocket)
+            return false
+         end
+         assert(written is bytes_read, 'Unable to write response in one call (breach of contract).')
+
+         total_sent += bytes_read
+      else
+         break
+      end
+   end
+
+   closeHttpResponse(ClientSocket)
+   return total_sent is Length
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function serveFile(self:table, ClientSocket:obj, FilePath:str, Request:table)
    local file
    try
       file = obj.new('file', { path = FilePath, flags = 'READ' })
@@ -931,6 +1014,7 @@ function serveFile(self, ClientSocket, FilePath:str, Request)
 
    fileSize = file.size
    mimeType = getMimeType(FilePath)
+   range = parseByteRange(Request.range, fileSize)
 
    -- For HEAD requests, only send headers without body
    if Request.method is 'HEAD' then
@@ -942,6 +1026,22 @@ function serveFile(self, ClientSocket, FilePath:str, Request)
       return
    end
 
+   if range then
+      check file.acSeek(range.startByte, SEEK_START)
+
+      sendHttpResponse(self, ClientSocket, 206, "Partial Content", {
+         ['content-type'] = mimeType,
+         ['content-length'] = tostring(range.length),
+         ['content-range'] = f"bytes {range.startByte}-{range.endByte}/{fileSize}",
+         ['accept-ranges'] = 'bytes'
+      }, nil, false)
+
+      if not streamFileBody(self, ClientSocket, file, range.length) then
+         logMessage(self, 'Range response ended before expected length: ' .. range.length)
+      end
+      return
+   end
+
    -- Stream large files in chunks
    if fileSize > self.fileChunkSize then
       sendHttpResponse(self, ClientSocket, 200, "OK", {
@@ -950,35 +1050,9 @@ function serveFile(self, ClientSocket, FilePath:str, Request)
          ['accept-ranges'] = 'bytes'
       }, nil, false)
 
-      buffer = string.alloc(self.fileChunkSize)
-      totalSent = 0
-
-      while totalSent < fileSize do
-         toRead = math.min(self.fileChunkSize, fileSize - totalSent)
-         err, bytes_read = file.acRead(buffer, toRead)
-
-         if err != ERR_Okay then
-            logMessage(self, 'Error streaming file: ' .. mSys.GetErrorMsg(err))
-            closeHttpResponse(ClientSocket)
-            return
-         end
-
-         if bytes_read > 0 then
-            err, written = ClientSocket.acWrite(buffer:substr(0, bytes_read))
-            if err != ERR_Okay then
-               logMessage(self, 'Error writing to ClientSocket: ' .. mSys.GetErrorMsg(err))
-               closeHttpResponse(ClientSocket)
-               return
-            end
-            assert(written is bytes_read, 'Unable to write response in one call (breach of contract).')
-
-            totalSent += bytes_read
-         else
-            break
-         end
+      if not streamFileBody(self, ClientSocket, file, fileSize) then
+         logMessage(self, 'File response ended before expected length: ' .. fileSize)
       end
-
-      closeHttpResponse(ClientSocket)
    else
       -- Small files: read all at once
       buffer = string.alloc(fileSize)
@@ -1071,7 +1145,7 @@ a:hover { text-decoration: underline; }
          name = info.Name
 
          -- Skip hidden files and system files for security
-         if name:startsWith('.') then
+         if not name:startsWith('.') then
             isFolder = info.flags has RDF_FOLDER
             size     = isFolder ? '-' :> formatFileSize(info.size)
             modTime  = printableTime(info.modified)
