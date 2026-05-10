@@ -1344,6 +1344,7 @@ class extDocument : public objDocument {
    int16_t  FocusIndex;         // Tab focus index
    int16_t  Invisible;          // Incremented for sections within a hidden index
    uint8_t  Processing;         // If > 0, the page layout is being altered
+   bool   Unloading;        // True if the document is being unloaded
    bool   PathGuard;        // True if a document is currently being loaded via the Path
    bool   RefreshTemplates; // True if the template index requires refreshing.
    bool   UpdatingLayout;   // True if the page layout is in the process of being updated

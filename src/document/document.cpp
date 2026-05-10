@@ -205,46 +205,35 @@ inline std::vector<FUNCTION> copy_triggers(extDocument *Self, DRT Trigger)
    return Self->Triggers[int(Trigger)];
 }
 
-static bool has_script_listener(extDocument *Self, OBJECTPTR Context)
+// Return true if Object is associated with a trigger
+
+static bool has_script_listener(extDocument *Self, OBJECTPTR Object)
 {
    for (auto &triggers : Self->Triggers) {
       for (auto &trigger : triggers) {
-         if ((trigger.isScript()) and (trigger.Context IS Context)) return true;
+         if ((trigger.isScript()) and (trigger.Context IS Object)) return true;
       }
    }
    return false;
 }
 
-inline bool has_script_event_callback(extDocument *Self, OBJECTPTR Context)
+// Returns true if Object is associated with the client's EventCallback
+
+inline bool has_script_event_callback(extDocument *Self, OBJECTPTR Object)
 {
-   return (Self->EventCallback.isScript()) and (Self->EventCallback.Context IS Context);
+   return (Self->EventCallback.isScript()) and (Self->EventCallback.Context IS Object);
 }
 
-inline bool has_script_free_callback(extDocument *Self, OBJECTPTR Context)
+// Returns true if Object is associated with the client's EventCallback OR a trigger
+
+inline bool has_script_free_callback(extDocument *Self, OBJECTPTR Object)
 {
-   return has_script_event_callback(Self, Context) or has_script_listener(Self, Context);
+   return has_script_event_callback(Self, Object) or has_script_listener(Self, Object);
 }
 
 inline void unsubscribe_script_context(extDocument *Self, OBJECTPTR Context)
 {
    if ((Context) and (not has_script_free_callback(Self, Context))) UnsubscribeAction(Context, AC::Free);
-}
-
-static void unsubscribe_script_listeners(extDocument *Self)
-{
-   std::vector<OBJECTPTR> contexts;
-
-   {
-      for (auto &triggers : Self->Triggers) {
-         for (auto &trigger : triggers) {
-            if (trigger.isScript()) contexts.push_back(trigger.Context);
-         }
-      }
-   }
-
-   for (auto context : contexts) {
-      if (not has_script_event_callback(Self, context)) UnsubscribeAction(context, AC::Free);
-   }
 }
 
 //********************************************************************************************************************

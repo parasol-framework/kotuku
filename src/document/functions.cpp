@@ -378,9 +378,13 @@ static ERR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unload
 
 static ERR unload_doc(extDocument *Self, ULD Flags)
 {
+   auto error = ERR::Okay;
+
    kt::Log log(__FUNCTION__);
 
    log.branch("Flags: $%.2x", int(Flags));
+
+   Self->Unloading = true;
 
    #ifdef DBG_STREAM
       print_stream(Self->Stream);
@@ -433,23 +437,30 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    Self->MouseOverChain.clear();
    Self->Tabs.clear();
 
-   unsubscribe_script_listeners(Self);
+   for (auto &triggers : Self->Triggers) {
+      for (auto &trigger : triggers) {
+         if (not has_script_event_callback(Self, trigger.Context)) {
+            UnsubscribeAction(trigger.Context, AC::Free);
+         }
+      }
+   }
 
    for (auto &t : Self->Triggers) t.clear();
 
    if ((Flags & ULD::TERMINATE) != ULD::NIL) Self->Vars.clear();
 
-   if (Self->SVG)         { FreeResource(Self->SVG); Self->SVG = nullptr; }
-   if (Self->Keywords)    { FreeResource(Self->Keywords); Self->Keywords = nullptr; }
-   if (Self->Author)      { FreeResource(Self->Author); Self->Author = nullptr; }
-   if (Self->Copyright)   { FreeResource(Self->Copyright); Self->Copyright = nullptr; }
+   if (Self->SVG)         { FreeResource(Self->SVG);         Self->SVG = nullptr; }
+   if (Self->Keywords)    { FreeResource(Self->Keywords);    Self->Keywords = nullptr; }
+   if (Self->Author)      { FreeResource(Self->Author);      Self->Author = nullptr; }
+   if (Self->Copyright)   { FreeResource(Self->Copyright);   Self->Copyright = nullptr; }
    if (Self->Description) { FreeResource(Self->Description); Self->Description = nullptr; }
-   if (Self->Title)       { FreeResource(Self->Title); Self->Title = nullptr; }
+   if (Self->Title)       { FreeResource(Self->Title);       Self->Title = nullptr; }
 
-   // Free templates only if they have been modified (no longer at the default settings).
+   // Free templates only if they have been modified (no longer at the default settings)
+   // or if the document is being destroyed.
 
    if (Self->Templates) {
-      if (Self->TemplatesModified != Self->Templates->Modified) {
+      if ((Self->TemplatesModified != Self->Templates->Modified) or (Self->terminating())) {
          FreeResource(Self->Templates);
          Self->Templates = nullptr;
       }
@@ -475,9 +486,9 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
       }
    }
 
-   if (!Self->Templates) {
-      if (!(Self->Templates = objXML::create::local(fl::Name("xmlTemplates"), fl::Statement(glDefaultStyles),
-         fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS)))) return ERR::CreateObject;
+   if (not Self->Templates) {
+      if (not (Self->Templates = objXML::create::local(fl::Name("xmlTemplates"), fl::Statement(glDefaultStyles),
+         fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS)))) error = ERR::CreateObject;
 
       Self->TemplatesModified = Self->Templates->Modified;
       Self->RefreshTemplates = true;
@@ -512,11 +523,10 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    Self->NoWhitespace   = true;
    Self->UpdatingLayout = true;
 
-   if ((Flags & ULD::REDRAW) != ULD::NIL) {
-      Self->Viewport->draw();
-   }
+   if (((Flags & ULD::REDRAW) != ULD::NIL) and (Self->Viewport)) Self->Viewport->draw();
 
-   return ERR::Okay;
+   Self->Unloading = false;
+   return error;
 }
 
 //********************************************************************************************************************
