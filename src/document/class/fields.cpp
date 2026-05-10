@@ -159,12 +159,10 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
 {
    kt::Log log;
 
-   if (Self->PathRecursion.exchange(1, std::memory_order_acq_rel)) return log.warning(ERR::Recursion);
+   if ((!Value) or (!*Value)) return ERR::NoData;
+   if (Self->PathGuard) return log.warning(ERR::Recursion);
 
-   if ((!Value) or (!*Value)) {
-      Self->PathRecursion.store(0, std::memory_order_release);
-      return ERR::NoData;
-   }
+   Self->PathGuard = true;
 
    Self->Error = ERR::Okay;
    auto value = std::string_view(Value);
@@ -224,7 +222,7 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    report_event(Self, DEF::PATH, 0, nullptr);
 
    auto error = Self->Error;
-   Self->PathRecursion.store(0, std::memory_order_release);
+   Self->PathGuard = false;
    return error;
 }
 
