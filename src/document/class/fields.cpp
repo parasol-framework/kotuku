@@ -69,17 +69,23 @@ static ERR GET_EventCallback(extDocument *Self, FUNCTION **Value)
 
 static ERR SET_EventCallback(extDocument *Self, FUNCTION *Value)
 {
+   OBJECTPTR old_context = nullptr;
+   if (Self->EventCallback.isScript()) old_context = Self->EventCallback.Context;
+
+   bool subscribe_context = false;
+   if ((Value) and (Value->isScript())) subscribe_context = not has_script_free_callback(Self, Value->Context);
+
    if (Value) {
-      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Context, AC::Free);
       Self->EventCallback = *Value;
-      if (Self->EventCallback.isScript()) {
-         SubscribeAction(Self->EventCallback.Context, AC::Free, C_FUNCTION(notify_free_event));
+      if (subscribe_context) {
+         SubscribeAction(Self->EventCallback.Context, AC::Free, C_FUNCTION(notify_free_script_context));
       }
    }
    else {
-      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Context, AC::Free);
       Self->EventCallback.clear();
    }
+
+   unsubscribe_script_context(Self, old_context);
    return ERR::Okay;
 }
 

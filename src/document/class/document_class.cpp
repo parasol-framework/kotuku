@@ -50,12 +50,27 @@ static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result
    Self->Resources.clear();
 }
 
-// Used by EventCallback for subscribers that disappear without notice.
+static void remove_script_listeners(extDocument *Self, OBJECTPTR Listener)
+{
+   for (int t=0; t < int(DRT::END); t++) {
+restart:
+      auto &triggers = Self->Triggers[t];
+      for (auto cb=triggers.begin(); cb != triggers.end(); cb++) {
+         if (cb->Context IS Listener) {
+            Self->Triggers[t].erase(cb);
+            goto restart;
+         }
+      }
+   }
+}
 
-static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+// Used by script callbacks for subscribers that disappear without notice.
+
+static void notify_free_script_context(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
-   Self->EventCallback.clear();
+   if ((Self->EventCallback.isScript()) and (Self->EventCallback.Context IS Object)) Self->EventCallback.clear();
+   remove_script_listeners(Self, Object);
 }
 
 //********************************************************************************************************************
@@ -87,22 +102,6 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR R
                Self->Page->draw();
                break;
             }
-         }
-      }
-   }
-}
-
-static void notify_listener_free(OBJECTPTR Listener, ACTIONID ActionID, ERR Result, APTR Args)
-{
-   auto Self = (extDocument *)CurrentContext();
-
-   for (int t=0; t < int(DRT::END); t++) {
-restart:
-      auto &triggers = Self->Triggers[t];
-      for (auto cb=triggers.begin(); cb != triggers.end(); cb++) {
-         if (cb->Context IS Listener) {
-            Self->Triggers[t].erase(cb);
-            goto restart;
          }
       }
    }
@@ -227,14 +226,17 @@ static ERR DOCUMENT_AddListener(extDocument *Self, doc::AddListener *Args)
    if ((not Args) or (Args->Trigger IS DRT::NIL) or (not Args->Function)) return ERR::NullArgs;
    if (not valid_trigger(Args->Trigger)) return ERR::OutOfRange;
 
+   bool subscribe_context = false;
+   if (Args->Function->isScript()) {
+      subscribe_context = not has_script_free_callback(Self, Args->Function->Context);
+   }
+
    Self->Triggers[int(Args->Trigger)].push_back(*Args->Function);
 
    // Scripts can't auto-remove listeners, so a Free subscription is necessary.  Functional
    // subscribers are expected to self-manage however.
 
-   if (Args->Function->isScript()) {
-      SubscribeAction(Args->Function->Context, AC::Free, C_FUNCTION(notify_listener_free));
-   }
+   if (subscribe_context) SubscribeAction(Args->Function->Context, AC::Free, C_FUNCTION(notify_free_script_context));
    return ERR::Okay;
 }
 
@@ -1859,6 +1861,7 @@ static ERR DOCUMENT_RemoveListener(extDocument *Self, doc::RemoveListener *Args)
    }
    else if (Args->Function->isScript()) {
       OBJECTPTR context = Args->Function->Context;
+      bool removed_listener = false;
 
       {
          for (auto it = Self->Triggers[Args->Trigger].begin(); it != Self->Triggers[Args->Trigger].end(); it++) {
@@ -1866,12 +1869,13 @@ static ERR DOCUMENT_RemoveListener(extDocument *Self, doc::RemoveListener *Args)
                 (it->Context IS Args->Function->Context) and
                 (it->ProcedureID IS Args->Function->ProcedureID)) {
                Self->Triggers[Args->Trigger].erase(it);
+               removed_listener = true;
                break;
             }
          }
       }
 
-      if (not has_script_listener(Self, context)) UnsubscribeAction(context, AC::Free);
+      if (removed_listener) unsubscribe_script_context(Self, context);
       return ERR::Okay;
    }
 

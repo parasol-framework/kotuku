@@ -149,7 +149,7 @@ static ERR  load_doc(extDocument *, std::string, bool, ULD = ULD::NIL);
 static void notify_disable_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
 static void notify_enable_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
 static void notify_focus_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
-static void notify_free_event(OBJECTPTR, ACTIONID, ERR, APTR);
+static void notify_free_script_context(OBJECTPTR, ACTIONID, ERR, APTR);
 static void notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
 static ERR  feedback_view(objVectorViewport *, FM);
 static void process_parameters(extDocument *, const std::string_view);
@@ -215,6 +215,21 @@ static bool has_script_listener(extDocument *Self, OBJECTPTR Context)
    return false;
 }
 
+inline bool has_script_event_callback(extDocument *Self, OBJECTPTR Context)
+{
+   return (Self->EventCallback.isScript()) and (Self->EventCallback.Context IS Context);
+}
+
+inline bool has_script_free_callback(extDocument *Self, OBJECTPTR Context)
+{
+   return has_script_event_callback(Self, Context) or has_script_listener(Self, Context);
+}
+
+inline void unsubscribe_script_context(extDocument *Self, OBJECTPTR Context)
+{
+   if ((Context) and (not has_script_free_callback(Self, Context))) UnsubscribeAction(Context, AC::Free);
+}
+
 static void unsubscribe_script_listeners(extDocument *Self)
 {
    std::vector<OBJECTPTR> contexts;
@@ -227,7 +242,9 @@ static void unsubscribe_script_listeners(extDocument *Self)
       }
    }
 
-   for (auto context : contexts) UnsubscribeAction(context, AC::Free);
+   for (auto context : contexts) {
+      if (not has_script_event_callback(Self, context)) UnsubscribeAction(context, AC::Free);
+   }
 }
 
 //********************************************************************************************************************
