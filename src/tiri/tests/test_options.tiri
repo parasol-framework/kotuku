@@ -100,6 +100,38 @@ end
    assert(parser.getParam('v').name is 'verbose', 'Alias parameter lookup should work')
 end
 
+@Test function ParserCommandNameControlsUsage()
+   parser = options({
+      name    = 'Tuku Server',
+      cmdName = 'tuku_server',
+      args = array<table> {
+         { name = 'folder', type = 'folder' }
+      },
+      commands = array<table> {
+         { name = 'serve', comment = 'Serve static files.' }
+      }
+   })
+
+   usage = parser.getUsage()
+   help = parser.getHelp(nil, 'serve')
+
+   assert(parser.cmdName is 'tuku_server', 'Explicit cmdName should be retained on the parser')
+   assert(usage:startsWith('Usage: tuku_server'), 'Usage should use cmdName instead of the display name')
+   assert(help:find('Usage: tuku_server serve'), 'Command help should use cmdName instead of the display name')
+end
+
+@Test function ParserCommandNameDefaultsToLowerCaseName()
+   parser = options({
+      name = 'PaintBox',
+      args = array<table> {
+         { name = 'width', type = 'int' }
+      }
+   })
+
+   assert(parser.cmdName is 'paintbox', 'Missing cmdName should default to the lower-case parser name')
+   assert(parser.getUsage() is 'Usage: paintbox [width=WIDTH]', 'Fallback cmdName should drive usage output')
+end
+
 @Test function DuplicateAliasesFail()
    try
       options({
