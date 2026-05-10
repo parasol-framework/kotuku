@@ -38,6 +38,11 @@ This documentation is intended for technical reference and is not suitable as an
 #include <time.h>
 #endif
 
+#ifdef __APPLE__
+ #include <limits.h>
+ #include <mach-o/dyld.h>
+#endif
+
 #ifdef __unix__
  #ifndef __USE_GNU
   #define __USE_GNU
@@ -281,19 +286,35 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          if (glRootPath.back() != '\\') glRootPath += '\\';
       #else
          // Get the folder of the running process.
-         char buffer[128];
-         char procfile[50];
-         snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
+         #ifdef __APPLE__
+            char buffer[PATH_MAX];
+            uint32_t buffer_size = sizeof(buffer);
 
-         if (auto len = readlink(procfile, buffer, sizeof(buffer)-1); len > 0) {
-            glRootPath.assign(buffer, len);
+            if (_NSGetExecutablePath(buffer, &buffer_size) IS 0) {
+               glRootPath.assign(buffer);
+            }
+            else {
+               std::string dyn_buffer(buffer_size, '\0');
+               if (_NSGetExecutablePath(dyn_buffer.data(), &buffer_size) IS 0) {
+                  glRootPath.assign(dyn_buffer.data());
+               }
+            }
+         #else
+            char buffer[128];
+            char procfile[50];
+            snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
+
+            if (auto len = readlink(procfile, buffer, sizeof(buffer)-1); len > 0) glRootPath.assign(buffer, len);
+         #endif
+
+         if (!glRootPath.empty()) {
             // Strip process name
             auto i = glRootPath.find_last_of("/");
             if (i != std::string::npos) glRootPath.resize(i+1);
 
             // If the binary is in a 'bin' folder then the root is considered to be the parent folder.
             if (glRootPath.ends_with("bin/")) glRootPath.resize(glRootPath.size()-4);
-        }
+         }
       #endif
    }
 
@@ -844,14 +865,16 @@ void print_diagnosis(int Signal)
 
          // Copy process status to the output file
 
-         snprintf(filename, sizeof(filename), "/proc/%d/status", glCurrentTask->ProcessID);
-         if (auto pf = fopen(filename, "r")) {
-            if ((len = fread(buffer, 1, sizeof(buffer)-1, pf)) > 0) {
-               buffer[len] = 0;
-               fprintf(fd, "\n%s\n", buffer);
+         #ifdef __linux__
+            snprintf(filename, sizeof(filename), "/proc/%d/status", glCurrentTask->ProcessID);
+            if (auto pf = fopen(filename, "r")) {
+               if ((len = fread(buffer, 1, sizeof(buffer)-1, pf)) > 0) {
+                  buffer[len] = 0;
+                  fprintf(fd, "\n%s\n", buffer);
+               }
+               fclose(pf);
             }
-            fclose(pf);
-         }
+         #endif
       }
       fclose(fd);
    }
@@ -1121,7 +1144,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
    // OPF::MODULE_PATH : modules : glModulePath = %ROOT%/lib/kotuku
    // OPF::SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/kotuku
 
-   #ifdef _WIN32
+   #if defined(_WIN32)
       SetVolume("kotuku", glRootPath.c_str(), "programs/filemanager", nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("system", glRootPath.c_str(), "misc/brick", nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
 
@@ -1131,7 +1154,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
       }
       else SetVolume("modules", "system:lib/", "misc/brick", nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       #endif
-   #elif __unix__
+   #elif defined(__unix__) or defined(__APPLE__)
       SetVolume("kotuku", glRootPath.c_str(), "programs/filemanager", nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("system", glSystemPath.c_str(), "misc/brick", nullptr, nullptr, VOLUME::REPLACE|VOLUME::SYSTEM);
 
@@ -1145,7 +1168,12 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
       }
       #endif
 
-      SetVolume("drive1", "/", "devices/storage", "Linux", "fixed", VOLUME::REPLACE|VOLUME::SYSTEM);
+      #ifdef __linux__
+         SetVolume("drive1", "/", "devices/storage", "Linux", "fixed", VOLUME::REPLACE|VOLUME::SYSTEM);
+      #elif defined(__APPLE__)
+         SetVolume("drive1", "/", "devices/storage", "Mac", "fixed", VOLUME::REPLACE|VOLUME::SYSTEM);
+      #endif
+
       SetVolume("etc", "/etc", "tools/cog", nullptr, nullptr, VOLUME::REPLACE|VOLUME::SYSTEM);
       SetVolume("usr", "/usr", nullptr, nullptr, nullptr, VOLUME::REPLACE|VOLUME::SYSTEM);
 
@@ -1159,6 +1187,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
       SetVolume("assets", "EXT:FileAssets", nullptr, nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("templates", "assets:templates/", "misc/openbook", nullptr, nullptr, VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("config", "localcache:config/|assets:config/", "tools/cog", nullptr, nullptr, VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("HostTemp:", "temp:", "items/trash", "Temp", nullptr, VOLUME::REPLACE|VOLUME::HIDDEN);
    #else
       SetVolume("templates", "scripts:templates/", "misc/openbook", nullptr, nullptr, VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("config", "system:config/", "tools/cog", nullptr, nullptr, VOLUME::HIDDEN|VOLUME::SYSTEM);
