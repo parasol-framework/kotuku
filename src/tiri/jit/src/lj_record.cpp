@@ -104,14 +104,16 @@ static void rec_try_emit_tvalue_store(jit_State *J, TRef SlotAddr, TRef ValueRef
    }
 }
 
-static void rec_try_materialise_slots(jit_State *J, bool ForceLoad)
+static void rec_try_materialise_slots(jit_State *J, bool ForceLoad, BCREG SlotLimit)
 {
-   if (J->maxslot IS 0) return;
+   BCREG slot_limit = SlotLimit;
+   if (slot_limit > J->maxslot) slot_limit = J->maxslot;
+   if (slot_limit IS 0) return;
 
    IRBuilder ir(J);
    bool stored = false;
 
-   for (BCREG slot = 0; slot < J->maxslot; slot++) {
+   for (BCREG slot = 0; slot < slot_limit; slot++) {
       TRef value_ref = J->base[slot];
       if (not value_ref and ForceLoad) value_ref = sload(J, slot);
       if (not value_ref or (value_ref & (TREF_FRAME | TREF_CONT))) continue;
@@ -132,7 +134,7 @@ static void rec_try_materialise_slots(jit_State *J, bool ForceLoad)
 
 void lj_record_try_materialise(jit_State *J)
 {
-   rec_try_materialise_slots(J, false);
+   rec_try_materialise_slots(J, false, J->maxslot);
 }
 
 //********************************************************************************************************************
@@ -3395,7 +3397,8 @@ void lj_record_ins(jit_State *J)
 
    case BC_TRYENTER: {
       uint16_t try_index = (uint16_t)bc_d(ins);
-      rec_try_materialise_slots(J, true);
+      // Operand A is the first free register at try entry; handlers cannot see stack slots above it.
+      rec_try_materialise_slots(J, true, bc_a(ins));
       lj_snap_add(J);
       TRef tr_func = getcurrf(J);
       TRef tr_base = REF_BASE;

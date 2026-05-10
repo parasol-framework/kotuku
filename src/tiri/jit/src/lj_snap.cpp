@@ -314,10 +314,13 @@ static BCREG snap_usedef(jit_State *J, uint8_t *udf, const BCIns *pc, BCREG maxs
                for (s = bc_a(ins) - 1; s < maxslot; s++) USE_SLOT(s);
             }
             else if (op IS BC_TRYENTER) {
-               // Exception handlers can read any local in scope at the try entry point.
-               // Conservatively mark all slots as used to prevent purging.
-               for (s = 0; s < maxslot; s++) USE_SLOT(s);
-               return maxslot;
+               // Operand A is the first free register at try entry, matching TryBlockDesc::entry_slots.
+               // Exception handlers can read any slot below this boundary, but not stale temporaries above it.
+               BCREG entry_slots = bc_a(ins);
+               if (entry_slots > maxslot) entry_slots = maxslot;
+               for (s = 0; s < entry_slots; s++) USE_SLOT(s);
+               for (; s < maxslot; s++) DEF_SLOT(s);
+               return entry_slots;
             }
             break;
          default: break;
