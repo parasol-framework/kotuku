@@ -94,6 +94,18 @@ enum class SHS : uint8_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(SHS)
 
+#ifndef DISABLE_SSL
+struct TLSSession {
+   #ifdef _WIN32
+      SSL_HANDLE Handle = nullptr;
+   #else
+      SSL *Handle = nullptr;
+      BIO *BIOHandle = nullptr;
+      SHS HandshakeStatus = SHS::NIL;
+   #endif
+};
+#endif
+
 //********************************************************************************************************************
 
 #ifdef _WIN32
@@ -115,13 +127,7 @@ class extClientSocket : public objClientSocket {
    uint8_t ErrorCountdown = 8;  // Counts down on each error, disconnect occurs at zero.
 
    #ifndef DISABLE_SSL
-      #ifdef _WIN32
-         SSL_HANDLE SSLHandle;
-      #else
-         SSL *SSLHandle;     // SSL connection handle for this client
-         BIO *BIOHandle;     // SSL BIO handle for this client
-         SHS HandshakeStatus; // Tracks the current actions of SSL handshaking.
-      #endif
+      TLSSession TLS;
    #endif
 };
 
@@ -150,14 +156,7 @@ class extNetSocket : public objNetSocket {
       int16_t WinRecursion; // For win32_netresponse()
    #endif
    #ifndef DISABLE_SSL
-      // These handles are only used when the NetSocket is a client of a server.
-      #ifdef _WIN32
-         SSL_HANDLE SSLHandle;
-      #else
-        SSL *SSLHandle;
-        SHS HandshakeStatus; // Tracks the current actions of SSL handshaking.
-        BIO *BIOHandle;
-      #endif
+      TLSSession TLS;
    #endif
 
    extNetSocket() {
@@ -191,15 +190,17 @@ JUMPTABLE_CORE
 #ifndef DISABLE_SSL
   #ifdef _WIN32
     // Windows SSL wrapper forward declarations
-    template <class T> ERR sslConnect(T *);
-    template <class T> void sslDisconnect(T *);
-    static ERR sslSetup(extNetSocket *);
+    template <class T> ERR tls_connect(T *);
+    template <class T> void tls_disconnect(T *);
+    static ERR tls_setup(extNetSocket *);
+    static ERR tls_accept_client(extClientSocket *, extNetSocket *);
   #else
     // OpenSSL forward declarations
     static bool ssl_init = false;
-    static ERR sslConnect(extNetSocket *);
+    static ERR tls_connect(extNetSocket *);
     static ERR sslLinkSocket(extNetSocket *);
-    static ERR sslSetup(extNetSocket *);
+    static ERR tls_setup(extNetSocket *);
+    static ERR tls_accept_client(extClientSocket *, extNetSocket *);
   #endif
 #endif
 
@@ -810,11 +811,11 @@ ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
    switch(hash) {
       case kt::strhash("EnableSSL"):
          if ((Socket->Flags & NSF::SSL) IS NSF::NIL) {
-            if (auto error = sslSetup((extNetSocket *)Socket); error IS ERR::Okay) {
-               if (error = sslConnect((extNetSocket *)Socket); error IS ERR::Okay) {
+            if (auto error = tls_setup((extNetSocket *)Socket); error IS ERR::Okay) {
+               if (error = tls_connect((extNetSocket *)Socket); error IS ERR::Okay) {
                   Socket->Flags |= NSF::SSL;
                }
-               else sslDisconnect((extNetSocket*)Socket);
+               else tls_disconnect((extNetSocket*)Socket);
                return error;
             }
             else return error;
@@ -824,7 +825,7 @@ ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
       case kt::strhash("DisableSSL"): // Disconnect SSL (i.e. go back to unencrypted mode)
          if ((Socket->Flags & NSF::SSL) != NSF::NIL) {
             Socket->Flags &= ~NSF::SSL;
-            sslDisconnect((extNetSocket *)Socket);
+            tls_disconnect((extNetSocket *)Socket);
          }
          break;
 
@@ -863,6 +864,42 @@ ERR NetworkPlatform::prepare_bind_address(CSTRING Address, int Port, bool IPv6, 
 }
 
 //********************************************************************************************************************
+
+#ifndef DISABLE_SSL
+template <class T> bool tls_active(T *Self)
+{
+   return Self->TLS.Handle;
+}
+
+template <class T> bool tls_handshake_pending(T *Self)
+{
+   #ifdef _WIN32
+      return (Self->TLS.Handle) and (Self->State IS NTC::HANDSHAKING);
+   #else
+      return (Self->TLS.Handle) and (Self->TLS.HandshakeStatus != SHS::NIL);
+   #endif
+}
+
+template <class T> bool tls_waiting_for_read(T *Self)
+{
+   #ifdef _WIN32
+      return false;
+   #else
+      return (Self->TLS.Handle) and (Self->TLS.HandshakeStatus IS SHS::READ);
+   #endif
+}
+
+template <class T> bool tls_waiting_for_write(T *Self)
+{
+   #ifdef _WIN32
+      return false;
+   #else
+      return (Self->TLS.Handle) and (Self->TLS.HandshakeStatus IS SHS::WRITE);
+   #endif
+}
+#endif
+
+//********************************************************************************************************************
 // Template function to handle SSL and socket sending for both NetSocket and ClientSocket
 
 template<typename T>
@@ -873,12 +910,12 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
    if (!*Length) return ERR::Okay;
 
 #ifndef DISABLE_SSL
-   if (Self->SSLHandle) {
+   if (Self->TLS.Handle) {
       #ifdef _WIN32
          log.traceBranch("SSL Length: %d", int(*Length));
 
          size_t bytes_sent;
-         if (auto error = ssl_write(Self->SSLHandle, Buffer, *Length, &bytes_sent); error IS SSL_OK) {
+         if (auto error = ssl_write(Self->TLS.Handle, Buffer, *Length, &bytes_sent); error IS SSL_OK) {
             if (*Length != bytes_sent) log.traceWarning("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
             *Length = bytes_sent;
             return ERR::Okay;
@@ -893,12 +930,12 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
       #else
          log.traceBranch("SSL Length: %d", int(*Length));
 
-         if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
-         else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
+         if (Self->TLS.HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
+         else if (Self->TLS.HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
 
-         if (Self->HandshakeStatus != SHS::NIL) {
+         if (Self->TLS.HandshakeStatus != SHS::NIL) {
             *Length = 0;
-            if (Self->HandshakeStatus IS SHS::READ) {
+            if (Self->TLS.HandshakeStatus IS SHS::READ) {
                ssl_suspend_write_queue(Self->Handle.hosthandle());
                return ERR::Busy;
             }
@@ -906,11 +943,11 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
          }
 
          ssl_clear_error_queue();
-         auto bytes_sent = SSL_write(Self->SSLHandle, Buffer, *Length);
+         auto bytes_sent = SSL_write(Self->TLS.Handle, Buffer, *Length);
 
          if (bytes_sent <= 0) {
             *Length = 0;
-            auto ssl_error = SSL_get_error(Self->SSLHandle, bytes_sent);
+            auto ssl_error = SSL_get_error(Self->TLS.Handle, bytes_sent);
 
             switch(ssl_error){
                case SSL_ERROR_WANT_WRITE:
@@ -919,7 +956,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 
                case SSL_ERROR_WANT_READ: {
                   log.trace("Handshake requested by server.");
-                  Self->HandshakeStatus = SHS::READ;
+                  Self->TLS.HandshakeStatus = SHS::READ;
                   auto read_callback = std::is_same<T, extNetSocket>::value ?
                      ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
                   ssl_suspend_write_queue(Self->Handle.hosthandle());

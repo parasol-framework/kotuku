@@ -451,15 +451,15 @@ static void netsocket_incoming_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
 #ifndef DISABLE_SSL
   #ifdef _WIN32
-   if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
+   if ((Self->TLS.Handle) and (Self->State IS NTC::HANDSHAKING)) {
       kt::Log log(__FUNCTION__);
       log.traceBranch("Windows SSL handshake in progress, reading raw data.");
       size_t result;
       std::vector<uint8_t> buffer;
       if (ERR error = network_platform().append_receive(Self->Handle, buffer, 4096, result); error IS ERR::Okay) {
-         sslHandshakeReceived(Self, buffer.data(), int(buffer.size()));
+         tls_handshake_received(Self, buffer.data(), int(buffer.size()));
 
-         if ((Self->State != NTC::CONNECTED) or (!ssl_has_decrypted_data(Self->SSLHandle) and !ssl_has_encrypted_data(Self->SSLHandle))) {
+         if ((Self->State != NTC::CONNECTED) or (!ssl_has_decrypted_data(Self->TLS.Handle) and !ssl_has_encrypted_data(Self->TLS.Handle))) {
             // In most cases we return without further processing unless we're definitely connected and
             // there is data sitting in the queue or SSL has data available (decrypted or encrypted).
             return;
@@ -472,13 +472,13 @@ static void netsocket_incoming_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
    }
 
   #else
-    if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
+    if ((Self->TLS.Handle) and (Self->State IS NTC::HANDSHAKING)) {
       log.traceBranch("Continuing SSL handshake...");
-      sslConnect(Self);
+      tls_connect(Self);
       return;
     }
 
-    if (Self->HandshakeStatus != SHS::NIL) { // TODO: Check State is not HANDSHAKING instead
+    if (Self->TLS.HandshakeStatus != SHS::NIL) { // TODO: Check State is not HANDSHAKING instead
       log.trace("SSL is handshaking.");
       return;
     }
@@ -549,7 +549,7 @@ restart:
    }
 #ifndef DISABLE_SSL
  #ifdef _WIN32
-   else if (Self->SSLHandle and (ssl_has_decrypted_data(Self->SSLHandle) or ssl_has_encrypted_data(Self->SSLHandle))) {
+   else if (Self->TLS.Handle and (ssl_has_decrypted_data(Self->TLS.Handle) or ssl_has_encrypted_data(Self->TLS.Handle))) {
       // SSL has buffered data that needs processing - continue without waiting for socket notification
       log.trace("SSL has buffered data, continuing processing");
       Self->IncomingRecursion = 1;
@@ -586,12 +586,12 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
 #ifndef DISABLE_SSL
 #ifndef _WIN32
-   if ((Self->SSLHandle) and (Self->HandshakeStatus IS SHS::READ)) {
+   if ((Self->TLS.Handle) and (Self->TLS.HandshakeStatus IS SHS::READ)) {
       ssl_suspend_write_queue(Self->Handle.hosthandle());
       return;
    }
 
-   if ((Self->SSLHandle) and (Self->HandshakeStatus IS SHS::WRITE)) {
+   if ((Self->TLS.Handle) and (Self->TLS.HandshakeStatus IS SHS::WRITE)) {
       ssl_resume_write_handshake(Self->Handle.hosthandle(), Self);
       return;
    }
@@ -615,7 +615,7 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
    while (!Self->WriteQueue.Buffer.empty()) {
       size_t len = Self->WriteQueue.Buffer.size() - Self->WriteQueue.Index;
       #ifndef DISABLE_SSL
-         if ((!Self->SSLHandle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+         if ((!Self->TLS.Handle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
       #else
          if (len > glMaxWriteLen) len = glMaxWriteLen;
       #endif

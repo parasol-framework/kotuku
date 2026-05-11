@@ -66,13 +66,13 @@ template <class T> void ssl_resume_write_queue(HOSTHANDLE SocketFD, T *Self)
    network_platform().register_write(network_platform().socket_from_hosthandle(SocketFD), outgoing_callback, Self);
 }
 
-static bool ssl_has_buffered_read_data(SSL *SSLHandle)
+static bool ssl_has_buffered_read_data(SSL *Handle)
 {
-   if (!SSLHandle) return false;
-   if (SSL_pending(SSLHandle) > 0) return true;
+   if (!Handle) return false;
+   if (SSL_pending(Handle) > 0) return true;
 
    #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      return SSL_has_pending(SSLHandle) != 0;
+      return SSL_has_pending(Handle) != 0;
    #else
       return false;
    #endif
@@ -124,24 +124,24 @@ static bool ssl_unexpected_eof()
    #endif
 }
 
-template <class T> void sslDisconnect(T *Self)
+template <class T> void tls_disconnect(T *Self)
 {
-   if (Self->SSLHandle) {
+   if (Self->TLS.Handle) {
       kt::Log log(__FUNCTION__);
 
       log.traceBranch("Closing SSL connection.");
 
-      SSL_set_info_callback(Self->SSLHandle, nullptr);
+      SSL_set_info_callback(Self->TLS.Handle, nullptr);
 
       // Perform proper bidirectional SSL shutdown
 
       ssl_clear_error_queue();
-      if (auto shutdown_result = SSL_shutdown(Self->SSLHandle); shutdown_result IS 0) {
+      if (auto shutdown_result = SSL_shutdown(Self->TLS.Handle); shutdown_result IS 0) {
          // First shutdown call completed, perform second shutdown for bidirectional close
          ssl_clear_error_queue();
-         shutdown_result = SSL_shutdown(Self->SSLHandle);
+         shutdown_result = SSL_shutdown(Self->TLS.Handle);
          if (shutdown_result < 0) {
-            int ssl_error = SSL_get_error(Self->SSLHandle, shutdown_result);
+            int ssl_error = SSL_get_error(Self->TLS.Handle, shutdown_result);
             if ((ssl_error != SSL_ERROR_WANT_READ) and (ssl_error != SSL_ERROR_WANT_WRITE)) {
                log.warning("SSL_shutdown failed: %s", ssl_error_name(ssl_error));
                if (ssl_error IS SSL_ERROR_SSL) ssl_log_error_queue(log, "SSL_shutdown");
@@ -149,9 +149,9 @@ template <class T> void sslDisconnect(T *Self)
          }
       }
 
-      SSL_free(Self->SSLHandle);
-      Self->SSLHandle = nullptr;
-      Self->BIOHandle = nullptr; // BIO is terminated by SSL_free()
+      SSL_free(Self->TLS.Handle);
+      Self->TLS.Handle = nullptr;
+      Self->TLS.BIOHandle = nullptr; // BIO is terminated by SSL_free()
    }
 }
 
@@ -334,7 +334,7 @@ static ERR loadPKCS12Certificate(const std::string &p12Path, std::optional<const
 // This only needs to be called once to setup the unique SSL context for the NetSocket object and the locations of the
 // certificates.
 
-static ERR sslSetup(extNetSocket *Self)
+static ERR tls_setup(extNetSocket *Self)
 {
    kt::Log log(__FUNCTION__);
 
@@ -440,8 +440,8 @@ static ERR sslSetup(extNetSocket *Self)
          else return log.warning(ERR::SystemCall);
       }
 
-      if ((Self->SSLHandle = SSL_new(glClientSSLNV))) {
-         if (GetResource(RES::LOG_LEVEL) > 7) SSL_set_info_callback(Self->SSLHandle, &sslMsgCallback);
+      if ((Self->TLS.Handle = SSL_new(glClientSSLNV))) {
+         if (GetResource(RES::LOG_LEVEL) > 7) SSL_set_info_callback(Self->TLS.Handle, &sslMsgCallback);
          return ERR::Okay;
       }
       else return log.warning(ERR::SystemCall);
@@ -503,8 +503,8 @@ static ERR sslSetup(extNetSocket *Self)
    }
 
    if (glClientSSL) {
-      if ((Self->SSLHandle = SSL_new(glClientSSL))) {
-         if (GetResource(RES::LOG_LEVEL) > 7) SSL_set_info_callback(Self->SSLHandle, &sslMsgCallback);
+      if ((Self->TLS.Handle = SSL_new(glClientSSL))) {
+         if (GetResource(RES::LOG_LEVEL) > 7) SSL_set_info_callback(Self->TLS.Handle, &sslMsgCallback);
          return ERR::Okay;
       }
       else log.warning(ERR::SystemCall);
@@ -521,14 +521,60 @@ static ERR sslLinkSocket(extNetSocket *Self)
 
    log.traceBranch();
 
-   if ((Self->BIOHandle = BIO_new_socket(Self->Handle, BIO_NOCLOSE))) {
-      SSL_set_bio(Self->SSLHandle, Self->BIOHandle, Self->BIOHandle);
-//      SSL_ctrl(Self->SSLHandle, SSL_CTRL_MODE,(SSL_MODE_AUTO_RETRY), nullptr); // SSL library will process 'non-application' data automatically [good]
-      SSL_ctrl(Self->SSLHandle, SSL_CTRL_MODE,(SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER), nullptr);
-      SSL_ctrl(Self->SSLHandle, SSL_CTRL_MODE,(SSL_MODE_ENABLE_PARTIAL_WRITE), nullptr);
+   if ((Self->TLS.BIOHandle = BIO_new_socket(Self->Handle, BIO_NOCLOSE))) {
+      SSL_set_bio(Self->TLS.Handle, Self->TLS.BIOHandle, Self->TLS.BIOHandle);
+//      SSL_ctrl(Self->TLS.Handle, SSL_CTRL_MODE,(SSL_MODE_AUTO_RETRY), nullptr); // SSL library will process 'non-application' data automatically [good]
+      SSL_ctrl(Self->TLS.Handle, SSL_CTRL_MODE,(SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER), nullptr);
+      SSL_ctrl(Self->TLS.Handle, SSL_CTRL_MODE,(SSL_MODE_ENABLE_PARTIAL_WRITE), nullptr);
       return ERR::Okay;
    }
    else return ERR::SystemCall;
+}
+
+//********************************************************************************************************************
+// Setup SSL state for a newly accepted server-side client socket.
+
+static ERR tls_accept_client(extClientSocket *Self, extNetSocket *Server)
+{
+   kt::Log log(__FUNCTION__);
+
+   if (auto client_ssl = SSL_new(glServerSSL)) { // Use glServerSSL because we represent the server side.
+      if (auto client_bio = BIO_new_socket(Self->Handle, BIO_NOCLOSE)) {
+         SSL_set_bio(client_ssl, client_bio, client_bio);
+
+         Self->TLS.Handle = client_ssl;
+         Self->TLS.BIOHandle = client_bio;
+
+         ssl_clear_error_queue();
+         if (auto result = SSL_accept(client_ssl); result IS 1) {
+            log.trace("SSL handshake successful.");
+            Self->setState(NTC::CONNECTED);
+         }
+         else {
+            Self->setState(NTC::HANDSHAKING);
+
+            auto ssl_error = SSL_get_error(client_ssl, result);
+            if ((ssl_error IS SSL_ERROR_WANT_READ) or (ssl_error IS SSL_ERROR_WANT_WRITE)) {
+               log.msg("SSL handshake in progress...");
+            }
+            else {
+               log.warning("SSL handshake failed: %s", ssl_error_name(ssl_error));
+               if (ssl_error IS SSL_ERROR_SSL) ssl_log_error_queue(log, "SSL_accept");
+               Self->TLS.Handle = nullptr;
+               Self->TLS.BIOHandle = nullptr;
+               SSL_free(client_ssl);
+               return ERR::SystemCall;
+            }
+         }
+
+         return ERR::Okay;
+      }
+      else {
+         SSL_free(client_ssl);
+         return log.warning(ERR::SystemCall);
+      }
+   }
+   else return log.warning(ERR::SystemCall);
 }
 
 //********************************************************************************************************************
@@ -540,17 +586,17 @@ static ERR sslLinkSocket(extNetSocket *Self)
 // NTC::HANDSHAKING may be used to indicate that the connection is ongoing.  If a failure occurs, the state is set to
 // NTC::DISCONNECTED and the Error field is set appropriately.
 
-static ERR sslConnect(extNetSocket *Self)
+static ERR tls_connect(extNetSocket *Self)
 {
    kt::Log log(__FUNCTION__);
 
    log.traceBranch();
 
-   if (!Self->SSLHandle) return ERR::FieldNotSet;
+   if (!Self->TLS.Handle) return ERR::FieldNotSet;
 
    // Ensure the SSL BIO is linked to the socket before attempting connection
 
-   if (!Self->BIOHandle) {
+   if (!Self->TLS.BIOHandle) {
       if (auto error = sslLinkSocket(Self); error != ERR::Okay) {
          log.warning("Failed to link SSL socket to BIO.");
          return error;
@@ -565,7 +611,7 @@ static ERR sslConnect(extNetSocket *Self)
       struct in_addr addr;
       if (inet_aton(Self->Address, &addr) == 0) {
          // Address is not an IP, so it's likely a hostname - set SNI
-         if (SSL_set_tlsext_host_name(Self->SSLHandle, Self->Address)) {
+         if (SSL_set_tlsext_host_name(Self->TLS.Handle, Self->Address)) {
             log.msg("SNI set to: %s", Self->Address);
          }
          else log.warning("Failed to set SNI hostname: %s", Self->Address);
@@ -573,8 +619,8 @@ static ERR sslConnect(extNetSocket *Self)
    }
 
    ssl_clear_error_queue();
-   if (auto result = SSL_connect(Self->SSLHandle); result <= 0) {
-      result = SSL_get_error(Self->SSLHandle, result);
+   if (auto result = SSL_connect(Self->TLS.Handle); result <= 0) {
+      result = SSL_get_error(Self->TLS.Handle, result);
 
       // The SSL routine may respond with WANT_READ or WANT_WRITE when
       // non-blocking sockets are used.  This is technically not an error.
@@ -631,15 +677,15 @@ template <class T> void ssl_handshake_write_impl(HOSTHANDLE SocketFD, T *Self)
       ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
 
    ssl_clear_error_queue();
-   if (auto result = SSL_do_handshake(Self->SSLHandle); result IS 1) { // Handshake successful, connection established
+   if (auto result = SSL_do_handshake(Self->TLS.Handle); result IS 1) { // Handshake successful, connection established
       network_platform().remove_write(Socket);
-      Self->HandshakeStatus = SHS::NIL;
+      Self->TLS.HandshakeStatus = SHS::NIL;
       ssl_resume_write_queue(Socket.hosthandle(), Self);
    }
-   else switch (auto ssl_error = SSL_get_error(Self->SSLHandle, result)) {
+   else switch (auto ssl_error = SSL_get_error(Self->TLS.Handle, result)) {
       case SSL_ERROR_WANT_READ:
          network_platform().remove_write(Socket);
-         Self->HandshakeStatus = SHS::READ;
+         Self->TLS.HandshakeStatus = SHS::READ;
          network_platform().register_read(Socket, read_callback, Self);
          break;
 
@@ -650,7 +696,7 @@ template <class T> void ssl_handshake_write_impl(HOSTHANDLE SocketFD, T *Self)
       default:
          log.warning("SSL_do_handshake failed: %s", ssl_error_name(ssl_error));
          if (ssl_error IS SSL_ERROR_SSL) ssl_log_error_queue(log, "SSL_do_handshake");
-         Self->HandshakeStatus = SHS::NIL;
+         Self->TLS.HandshakeStatus = SHS::NIL;
    }
 }
 
@@ -667,25 +713,25 @@ template <class T> void ssl_handshake_read_impl(HOSTHANDLE SocketFD, T *Self)
       ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
 
    ssl_clear_error_queue();
-   if (auto result = SSL_do_handshake(Self->SSLHandle); result IS 1) { // Handshake successful, connection established
+   if (auto result = SSL_do_handshake(Self->TLS.Handle); result IS 1) { // Handshake successful, connection established
       network_platform().remove_read(Socket);
-      Self->HandshakeStatus = SHS::NIL;
+      Self->TLS.HandshakeStatus = SHS::NIL;
       ssl_resume_write_queue(Socket.hosthandle(), Self);
    }
-   else switch (auto ssl_error = SSL_get_error(Self->SSLHandle, result)) {
+   else switch (auto ssl_error = SSL_get_error(Self->TLS.Handle, result)) {
       case SSL_ERROR_WANT_READ:
          // Continue monitoring for read readiness - no action needed
          break;
 
       case SSL_ERROR_WANT_WRITE:
          network_platform().remove_read(Socket);
-         Self->HandshakeStatus = SHS::WRITE;
+         Self->TLS.HandshakeStatus = SHS::WRITE;
          network_platform().register_write(Socket, write_callback, Self);
          break;
 
       default:
          log.warning("SSL_do_handshake failed: %s", ssl_error_name(ssl_error));
          if (ssl_error IS SSL_ERROR_SSL) ssl_log_error_queue(log, "SSL_do_handshake");
-         Self->HandshakeStatus = SHS::NIL;
+         Self->TLS.HandshakeStatus = SHS::NIL;
    }
 }
