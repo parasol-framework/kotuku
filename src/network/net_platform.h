@@ -11,7 +11,7 @@
 #include <kotuku/main.h>
 #include <kotuku/modules/network.h>
 
-#ifdef _WIN32
+#if defined(_WIN32)
    #define INADDR_NONE 0xffffffff
 
    #define SOCK_STREAM 1
@@ -98,7 +98,7 @@
 
    static const struct in6_addr in6addr_any = {{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}};
 
-#else
+#elif defined(__linux__)
    #include <arpa/inet.h>
    #include <netdb.h>
    #include <unistd.h>
@@ -108,6 +108,8 @@
    #include <netinet/tcp.h>
    #include <netinet/in.h>
    #include <errno.h>
+#else
+   #error "Network module has no platform backend for this platform"
 #endif
 
 class SocketHandle {

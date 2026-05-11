@@ -2,6 +2,12 @@
 # If you need to do a deep debug of the network log, enable KOTUKU_VLOG at project level (it won't work
 # at module level).
 
+if (NOT (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux"))
+   message (STATUS "Network module disabled: unsupported platform '${CMAKE_SYSTEM_NAME}'.")
+   set (INC_MOD_NETWORK FALSE PARENT_SCOPE)
+   return ()
+endif ()
+
 set (MOD network)
 set (INC_MOD_NETWORK TRUE PARENT_SCOPE)
 
@@ -18,8 +24,10 @@ target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/network.cpp")
 
 if (WIN32)
    target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/net_windows.cpp")
-else ()
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
    target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/net_linux.cpp")
+else ()
+   message (FATAL_ERROR "Network module has no platform backend for '${CMAKE_SYSTEM_NAME}'.")
 endif ()
 
 if (DISABLE_SSL)
