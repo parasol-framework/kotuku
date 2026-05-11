@@ -576,9 +576,16 @@ SSL_ERROR_CODE ssl_load_server_certificate(SSL_HANDLE SSL, const std::string &Ce
 
 //********************************************************************************************************************
 
-void ssl_set_server_certificate(SSL_HANDLE Server, SSL_HANDLE Client)
+SSL_ERROR_CODE ssl_set_server_certificate(SSL_HANDLE Server, SSL_HANDLE Client)
 {
-   Client->server_certificate = Server->server_certificate;
+   if ((!Server) or (!Client) or (!Server->server_certificate)) return SSL_ERROR_ARGS;
+
+   auto server_certificate = CertDuplicateCertificateContext(Server->server_certificate);
+   if (!server_certificate) return SSL_ERROR_MEMORY;
+
+   if (Client->server_certificate) CertFreeCertificateContext(Client->server_certificate);
+   Client->server_certificate = server_certificate;
+   return SSL_OK;
 }
 
 #include "ssl_handshake.cpp"

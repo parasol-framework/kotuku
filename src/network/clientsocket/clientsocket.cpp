@@ -519,9 +519,15 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
          // Server-side SSL setup - create SSL context and wait for client handshake
          Self->SSLHandle = ssl_create_context(false, true); // No verification, server mode
          if (Self->SSLHandle) {
-            ssl_set_server_certificate(server->SSLHandle, Self->SSLHandle);
-            ssl_set_socket(Self->SSLHandle, (void*)(size_t)Self->Handle.socket()); // Set socket handle for server-side SSL
-            Self->State = NTC::HANDSHAKING;
+            if (ssl_set_server_certificate(server->SSLHandle, Self->SSLHandle) IS SSL_OK) {
+               ssl_set_socket(Self->SSLHandle, (void*)(size_t)Self->Handle.socket()); // Set socket handle for server-side SSL
+               Self->State = NTC::HANDSHAKING;
+            }
+            else {
+               ssl_free_context(Self->SSLHandle);
+               Self->SSLHandle = nullptr;
+               Self->State = NTC::DISCONNECTED;
+            }
          }
          else Self->State = NTC::DISCONNECTED;
       }
