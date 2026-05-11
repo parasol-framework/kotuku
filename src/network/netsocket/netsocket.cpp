@@ -1123,6 +1123,69 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    else return ERR::Okay;
 }
 
+//********************************************************************************************************************
+
+struct multicast_group_address {
+   bool IsIPv6 = false;
+
+   #ifdef __linux__
+      struct ip_mreq Mreq4;
+      struct ipv6_mreq Mreq6;
+   #endif
+};
+
+static ERR parse_multicast_group(CSTRING Group, multicast_group_address &Address)
+{
+   if (!Group) return ERR::Args;
+
+   struct sockaddr_in addr4;
+   struct sockaddr_in6 addr6;
+   kt::clearmem(&addr4, sizeof(addr4));
+   kt::clearmem(&addr6, sizeof(addr6));
+
+   #ifdef __linux__
+      kt::clearmem(&Address.Mreq4, sizeof(Address.Mreq4));
+      kt::clearmem(&Address.Mreq6, sizeof(Address.Mreq6));
+   #endif
+
+   if (unified_inet_pton(AF_INET6, Group, &addr6.sin6_addr) IS 1) {
+      Address.IsIPv6 = true;
+
+      #ifdef __linux__
+         Address.Mreq6.ipv6mr_multiaddr = addr6.sin6_addr;
+         Address.Mreq6.ipv6mr_interface = 0;
+      #endif
+
+      return ERR::Okay;
+   }
+   else if (unified_inet_pton(AF_INET, Group, &addr4.sin_addr) IS 1) {
+      Address.IsIPv6 = false;
+
+      #ifdef __linux__
+         Address.Mreq4.imr_multiaddr = addr4.sin_addr;
+         Address.Mreq4.imr_interface.s_addr = INADDR_ANY;
+      #endif
+
+      return ERR::Okay;
+   }
+   else return ERR::Args;
+}
+
+#ifdef __linux__
+
+static int set_multicast_membership(SocketHandle Handle, const multicast_group_address &Address, int IPv4Option,
+   int IPv6Option)
+{
+   if (Address.IsIPv6) {
+      return setsockopt(Handle, IPPROTO_IPV6, IPv6Option, (char *)&Address.Mreq6, sizeof(Address.Mreq6));
+   }
+   else {
+      return setsockopt(Handle, IPPROTO_IP, IPv4Option, (char *)&Address.Mreq4, sizeof(Address.Mreq4));
+   }
+}
+
+#endif
+
 /*********************************************************************************************************************
 
 -METHOD-
@@ -1155,42 +1218,24 @@ static ERR NETSOCKET_JoinMulticastGroup(extNetSocket *Self, struct ns::JoinMulti
 
    log.branch("%s", Args->Group);
 
-   // Parse the multicast address
-   struct sockaddr_storage mcast_addr;
-   bool is_ipv6 = false;
-
-   auto addr4 = (struct sockaddr_in *)&mcast_addr;
-   auto addr6 = (struct sockaddr_in6 *)&mcast_addr;
-
-   if (unified_inet_pton(AF_INET6, Args->Group, &addr6->sin6_addr) IS 1) is_ipv6 = true;
-   else if (unified_inet_pton(AF_INET, Args->Group, &addr4->sin_addr) IS 1) is_ipv6 = false;
-   else {
+   multicast_group_address group_address;
+   if (parse_multicast_group(Args->Group, group_address) != ERR::Okay) {
       log.warning("Invalid multicast address: %s", Args->Group);
       return ERR::Args;
    }
 
-   // Join the multicast group
 #ifdef __linux__
-   if (is_ipv6) {
-      struct ipv6_mreq mreq6;
-      mreq6.ipv6mr_multiaddr = addr6->sin6_addr;
-      mreq6.ipv6mr_interface = 0;
-      if (setsockopt(Self->Handle, IPPROTO_IPV6, IPV6_JOIN_GROUP, (char*)&mreq6, sizeof(mreq6)) != 0) {
+   if (set_multicast_membership(Self->Handle, group_address, IP_ADD_MEMBERSHIP, IPV6_JOIN_GROUP) != 0) {
+      if (group_address.IsIPv6) {
          log.warning("Failed to join IPv6 multicast group: %s", strerror(errno));
-         return ERR::Failed;
       }
-   }
-   else {
-      struct ip_mreq mreq;
-      mreq.imr_multiaddr = addr4->sin_addr;
-      mreq.imr_interface.s_addr = INADDR_ANY;
-      if (setsockopt(Self->Handle, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) != 0) {
+      else {
          log.warning("Failed to join IPv4 multicast group: %s", strerror(errno));
-         return ERR::Failed;
       }
+      return ERR::Failed;
    }
 #elif _WIN32
-   if (win_join_multicast_group(Self->Handle, Args->Group, is_ipv6) != ERR::Okay) {
+   if (win_join_multicast_group(Self->Handle, Args->Group, group_address.IsIPv6) != ERR::Okay) {
       return log.warning(ERR::Failed);
    }
 #endif
@@ -1228,45 +1273,24 @@ static ERR NETSOCKET_LeaveMulticastGroup(extNetSocket *Self, struct ns::LeaveMul
 
    log.branch("%s", Args->Group);
 
-   // Parse the multicast address
-   struct sockaddr_storage mcast_addr;
-   bool is_ipv6 = false;
-
-   auto addr4 = (struct sockaddr_in *)&mcast_addr;
-   auto addr6 = (struct sockaddr_in6 *)&mcast_addr;
-
-   if (unified_inet_pton(AF_INET6, Args->Group, &addr6->sin6_addr) IS 1) is_ipv6 = true;
-   else if (unified_inet_pton(AF_INET, Args->Group, &addr4->sin_addr) IS 1) is_ipv6 = false;
-   else {
+   multicast_group_address group_address;
+   if (parse_multicast_group(Args->Group, group_address) != ERR::Okay) {
       log.warning("Invalid multicast address: %s", Args->Group);
       return ERR::Args;
    }
 
-   // Leave the multicast group
 #ifdef __linux__
-   if (is_ipv6) {
-      struct ipv6_mreq mreq6;
-      mreq6.ipv6mr_multiaddr = addr6->sin6_addr;
-      mreq6.ipv6mr_interface = 0; // Use default interface
-
-      if (setsockopt(Self->Handle, IPPROTO_IPV6, IPV6_LEAVE_GROUP, (char*)&mreq6, sizeof(mreq6)) != 0) {
+   if (set_multicast_membership(Self->Handle, group_address, IP_DROP_MEMBERSHIP, IPV6_LEAVE_GROUP) != 0) {
+      if (group_address.IsIPv6) {
          log.warning("Failed to leave IPv6 multicast group: %s", strerror(errno));
-         return ERR::Failed;
       }
-   }
-   else {
-      struct ip_mreq mreq;
-      mreq.imr_multiaddr = addr4->sin_addr;
-      mreq.imr_interface.s_addr = INADDR_ANY; // Use default interface
-
-      if (setsockopt(Self->Handle, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) != 0) {
+      else {
          log.warning("Failed to leave IPv4 multicast group: %s", strerror(errno));
-         return ERR::Failed;
       }
+      return ERR::Failed;
    }
 #elif _WIN32
-   // Use winsock wrapper - will be added to winsockwrappers.cpp
-   if (win_leave_multicast_group(Self->Handle, Args->Group, is_ipv6) != ERR::Okay) {
+   if (win_leave_multicast_group(Self->Handle, Args->Group, group_address.IsIPv6) != ERR::Okay) {
       log.warning("Failed to leave multicast group: %s", Args->Group);
       return ERR::Failed;
    }
