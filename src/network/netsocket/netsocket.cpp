@@ -1351,6 +1351,89 @@ and automatically send it once the first connection has been made.
 
 *********************************************************************************************************************/
 
+template <class T>
+static ERR queue_socket_write(T *Self, struct acWrite *Args, size_t MsgLimit)
+{
+   kt::Log log(__FUNCTION__);
+
+   log.trace("Saving %d bytes to queue.", Args->Length);
+
+   auto len = std::min<size_t>(Args->Length, MsgLimit);
+   if (auto error = Self->WriteQueue.write(Args->Buffer, len); error != ERR::Okay) return error;
+
+   Args->Result = int(len);
+   return (len < size_t(Args->Length)) ? ERR::BufferOverflow : ERR::Okay;
+}
+
+template <class T>
+static void register_socket_write(T *Self, void (*WriteCallback)(HOSTHANDLE, APTR))
+{
+   #ifdef __linux__
+      RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, WriteCallback, Self);
+   #elif _WIN32
+      win_socketstate(Self->Handle, std::nullopt, true);
+   #endif
+}
+
+template <class T>
+static ERR write_connected_socket_data(T *Self, struct acWrite *Args, size_t MsgLimit,
+   void (*WriteCallback)(HOSTHANDLE, APTR), bool &FatalError)
+{
+   kt::Log log(__FUNCTION__);
+
+   size_t len;
+   ERR error;
+
+   if (Self->WriteQueue.Buffer.empty()) {
+      len = Args->Length;
+      error = send_data(Self, Args->Buffer, &len);
+   }
+   else {
+      len = 0;
+      error = ERR::BufferOverflow;
+   }
+
+   if ((error IS ERR::Okay) and (len >= size_t(Args->Length))) return ERR::Okay;
+
+   bool ssl_read_blocked = false;
+   bool ssl_write_blocked = false;
+
+   #if !defined(DISABLE_SSL) and !defined(_WIN32)
+      ssl_read_blocked = (error IS ERR::Busy) and (Self->SSLHandle) and (Self->HandshakeStatus IS SHS::READ);
+      ssl_write_blocked = (error IS ERR::BufferOverflow) and (Self->SSLHandle) and
+         (Self->HandshakeStatus IS SHS::WRITE);
+   #endif
+
+   if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (ssl_read_blocked) or (len > 0)) {
+      auto remaining = size_t(Args->Length) - len;
+
+      log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), int(remaining),
+         Args->Length);
+
+      auto queue_len = std::min<size_t>(remaining, MsgLimit);
+      if (auto queue_error = Self->WriteQueue.write((int8_t *)Args->Buffer + len, queue_len);
+          queue_error != ERR::Okay) {
+         Args->Result = int(len);
+         return queue_error;
+      }
+
+      auto queue_overflow = queue_len < remaining;
+      if (queue_overflow) Args->Result = int(len + queue_len);
+
+      if (ssl_write_blocked) {
+         #if !defined(DISABLE_SSL) and !defined(_WIN32)
+            ssl_resume_write_handshake(Self->Handle.hosthandle(), Self);
+         #endif
+      }
+      else if (!ssl_read_blocked) register_socket_write(Self, WriteCallback);
+
+      return queue_overflow ? ERR::BufferOverflow : ERR::Okay;
+   }
+
+   FatalError = true;
+   return error;
+}
+
 static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 {
    kt::Log log;
@@ -1367,70 +1450,20 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    }
 
    if ((Self->Handle.is_invalid()) or (Self->State != NTC::CONNECTED)) { // Queue the write prior to server connection
-      log.trace("Saving %d bytes to queue.", Args->Length);
-      auto len = std::min<size_t>(Args->Length, Self->MsgLimit);
-      if (auto error = Self->WriteQueue.write(Args->Buffer, len); error != ERR::Okay) return error;
-      Args->Result = int(len);
-      return (len < size_t(Args->Length)) ? ERR::BufferOverflow : ERR::Okay;
+      return queue_socket_write(Self, Args, Self->MsgLimit);
    }
 
    // Note that if a write queue has been setup, there is no way that we can write to the server until the queue has
    // been exhausted.  Thus we have add more data to the queue if it already exists.
 
-   size_t len;
-   ERR error;
-   if (Self->WriteQueue.Buffer.empty()) { // No prior buffer to send
-      len = Args->Length;
-      error = send_data(Self, Args->Buffer, &len);
-      // len now reflects the total bytes that were sent to the server.
+   bool fatal_error = false;
+   auto error = write_connected_socket_data(Self, Args, Self->MsgLimit, &netsocket_outgoing, fatal_error);
+   if (fatal_error) {
+      Self->ErrorCountdown--;
+      if (!Self->ErrorCountdown) Self->setState(NTC::DISCONNECTED);
+      return error;
    }
-   else { // Content remains in the write queue
-      len = 0;
-      error = ERR::BufferOverflow;
-   }
-
-   if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
-      bool ssl_read_blocked = false;
-      bool ssl_write_blocked = false;
-      #if !defined(DISABLE_SSL) and !defined(_WIN32)
-         ssl_read_blocked = (error IS ERR::Busy) and (Self->SSLHandle) and (Self->HandshakeStatus IS SHS::READ);
-         ssl_write_blocked = (error IS ERR::BufferOverflow) and (Self->SSLHandle) and
-            (Self->HandshakeStatus IS SHS::WRITE);
-      #endif
-
-      if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (ssl_read_blocked) or (len > 0))  {
-         // Put data into the write queue and register the socket for write events
-         log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
-         auto remaining = size_t(Args->Length) - len;
-         auto queue_len = std::min<size_t>(remaining, Self->MsgLimit);
-         if (auto queue_error = Self->WriteQueue.write((int8_t *)Args->Buffer + len, queue_len);
-             queue_error != ERR::Okay) {
-            Args->Result = int(len);
-            return queue_error;
-         }
-         auto queue_overflow = queue_len < remaining;
-         if (queue_overflow) Args->Result = int(len + queue_len);
-         if (ssl_write_blocked) {
-            #if !defined(DISABLE_SSL) and !defined(_WIN32)
-               ssl_resume_write_handshake(Self->Handle.hosthandle(), Self);
-            #endif
-         }
-         else if (!ssl_read_blocked) {
-            #ifdef __linux__
-               RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
-            #elif _WIN32
-               win_socketstate(Self->Handle, std::nullopt, true);
-            #endif
-         }
-
-         if (queue_overflow) return ERR::BufferOverflow;
-      }
-      else {
-         Self->ErrorCountdown--;
-         if (!Self->ErrorCountdown) Self->setState(NTC::DISCONNECTED);
-         return error;
-      }
-   }
+   else if (error != ERR::Okay) return error;
    else log.trace("Successfully wrote all %d bytes to the server.", Args->Length);
 
    Args->Result = Args->Length;
