@@ -297,13 +297,31 @@ function (register_generated_header_target ARG_TARGET)
 endfunction ()
 
 # --------------------------------------------------------------------------------------------------------------------
-# Add generated header dependencies only when generation is enabled and the referenced targets exist.  This keeps
-# normal builds parallel while avoiding missing generated headers in BUILD_DEFS configurations.
+# Add generated header dependencies immediately when possible, otherwise queue them until all subdirectories have
+# declared their targets.  This keeps normal builds parallel while avoiding missing generated headers in BUILD_DEFS
+# configurations.
 
 function (add_generated_header_dependencies ARG_TARGET)
-   if (BUILD_DEFS AND TARGET ${ARG_TARGET})
+   if (BUILD_DEFS)
       foreach (ARG_DEPENDENCY IN LISTS ARGN)
-         if (TARGET ${ARG_DEPENDENCY})
+         if (TARGET ${ARG_TARGET} AND TARGET ${ARG_DEPENDENCY})
+            add_dependencies (${ARG_TARGET} ${ARG_DEPENDENCY})
+         else ()
+            set_property (GLOBAL APPEND PROPERTY KOTUKU_PENDING_GENERATED_HEADER_DEPENDENCIES
+               "${ARG_TARGET}|${ARG_DEPENDENCY}")
+         endif ()
+      endforeach ()
+   endif ()
+endfunction ()
+
+function (resolve_generated_header_dependencies)
+   if (BUILD_DEFS)
+      get_property (KOTUKU_PENDING_HEADER_TARGETS GLOBAL PROPERTY KOTUKU_PENDING_GENERATED_HEADER_DEPENDENCIES)
+      foreach (ARG_DEPENDENCY_PAIR IN LISTS KOTUKU_PENDING_HEADER_TARGETS)
+         string (REPLACE "|" ";" ARG_DEPENDENCY_PARTS "${ARG_DEPENDENCY_PAIR}")
+         list (GET ARG_DEPENDENCY_PARTS 0 ARG_TARGET)
+         list (GET ARG_DEPENDENCY_PARTS 1 ARG_DEPENDENCY)
+         if (TARGET ${ARG_TARGET} AND TARGET ${ARG_DEPENDENCY})
             add_dependencies (${ARG_TARGET} ${ARG_DEPENDENCY})
          endif ()
       endforeach ()
@@ -856,6 +874,7 @@ add_generated_header_dependencies (unicode core_defs)
 add_generated_header_dependencies (vector display_defs font_defs picture_defs xml_defs)
 add_generated_header_dependencies (xml xquery_defs)
 add_generated_header_dependencies (xquery regex_defs xml_defs)
+resolve_generated_header_dependencies ()
 
 # --------------------------------------------------------------------------------------------------------------------
 # Create a combined static library that links all modules together
