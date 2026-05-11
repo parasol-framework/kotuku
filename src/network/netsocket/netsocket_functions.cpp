@@ -375,7 +375,7 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       if (!Self->Clients) Self->Clients = client_ip;
       else {
          if (Self->LastClient) Self->LastClient->Next = client_ip;
-         if (Self->Clients) Self->Clients->Prev = Self->LastClient;
+         client_ip->Prev = Self->LastClient;
       }
       Self->LastClient = client_ip;
    }
@@ -418,7 +418,11 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
             }
          }
       }
-      else log.warning(ERR::Init);
+      else {
+         log.warning(ERR::Init);
+         FreeResource(client_socket);
+         return;
+      }
    }
    else {
       CLOSESOCKET(clientfd);

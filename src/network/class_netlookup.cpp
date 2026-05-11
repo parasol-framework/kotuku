@@ -495,15 +495,16 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntr
       else if (Host->h_addrtype IS AF_INET6) {
          for (unsigned i=0; Host->h_addr_list[i]; i++) {
             auto addr = ((struct in6_addr **)Host->h_addr_list)[i];
-            cache.Addresses.push_back({
-               ((uint32_t *)addr)[0], ((uint32_t *)addr)[1], ((uint32_t *)addr)[2], ((uint32_t *)addr)[3], IPADDR::V6
-            });
+            IPAddress ip_address = { 0, 0, 0, 0, IPADDR::V6 };
+            kt::copymem(addr->s6_addr, ip_address.Data, 16);
+            cache.Addresses.push_back(ip_address);
          }
       }
    }
 
    {
-      std::unique_lock<std::shared_mutex> lock(glAddressesMutex);
+      std::shared_mutex &cache_mutex = (&Store IS &glHosts) ? glHostsMutex : glAddressesMutex;
+      std::unique_lock<std::shared_mutex> lock(cache_mutex);
       auto &entry = Store[Key];
       entry = std::move(cache);
       Cache = entry;
@@ -539,14 +540,15 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEnt
       }
       else if (scan->ai_family IS AF_INET6) {
          auto addr = (struct sockaddr_in6 *)scan->ai_addr;
-         cache.Addresses.push_back({
-            ((uint32_t *)addr)[0], ((uint32_t *)addr)[1], ((uint32_t *)addr)[2], ((uint32_t *)addr)[3], IPADDR::V6
-         });
+         IPAddress ip_address = { 0, 0, 0, 0, IPADDR::V6 };
+         kt::copymem(addr->sin6_addr.s6_addr, ip_address.Data, 16);
+         cache.Addresses.push_back(ip_address);
       }
    }
 
    {
-      std::unique_lock<std::shared_mutex> lock(glAddressesMutex);
+      std::shared_mutex &cache_mutex = (&Store IS &glHosts) ? glHostsMutex : glAddressesMutex;
+      std::unique_lock<std::shared_mutex> lock(cache_mutex);
       auto &entry = Store[Key];
       entry = std::move(cache);
       Cache = entry;

@@ -883,7 +883,9 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    // calls from going to sleep.
 
    if (fcntl(Self->Handle, F_SETFL, fcntl(Self->Handle, F_GETFL) | O_NONBLOCK)) {
-      return log.warning(convert_socket_error());
+      error = log.warning(convert_socket_error());
+      free_socket(Self);
+      return error;
    }
 
    // Set the send timeout so that connect() will timeout after a reasonable time
@@ -941,7 +943,11 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    }
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      if (!Self->Port) return log.warning(ERR::FieldNotSet);
+      if (!Self->Port) {
+         error = log.warning(ERR::FieldNotSet);
+         free_socket(Self);
+         return error;
+      }
       Self->State = NTC::MULTISTATE; // Permanent value to indicate that the socket serves multiple clients.
 
       if (Self->IPV6) {
@@ -951,6 +957,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             // Use parse_bind_address if Address is specified, otherwise bind to all interfaces
             if (Self->Address) {
                if (auto error = parse_bind_address(Self->Address, true, &addr); error != ERR::Okay) {
+                  free_socket(Self);
                   return error;
                }
                addr.sin6_port = net::HostToShort(Self->Port);
@@ -968,7 +975,12 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
             if ((result = bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
                if ((Self->Flags & NSF::UDP) IS NSF::NIL) { // TCP server - needs listen()
-                  listen(Self->Handle, Self->Backlog);
+                  if (listen(Self->Handle, Self->Backlog) IS -1) {
+                     const int system_error = errno;
+                     log.warning("listen() failed with error: %s", strerror(system_error));
+                     free_socket(Self);
+                     return convert_socket_error(system_error);
+                  }
                   RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &server_accept_client, Self);
                }
                else { // UDP server - just register for data reception
@@ -976,7 +988,11 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                }
                return ERR::Okay;
             }
-            else return log.warning(convert_socket_error());
+            else {
+               error = log.warning(convert_socket_error());
+               free_socket(Self);
+               return error;
+            }
          #elif _WIN32
             // Windows IPv6 dual-stack server binding
             struct sockaddr_in6 addr;
@@ -984,6 +1000,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             // Use parse_bind_address if Address is specified, otherwise bind to all interfaces
             if (Self->Address) {
                if (auto error = parse_bind_address(Self->Address, true, &addr); error != ERR::Okay) {
+                  free_socket(Self);
                   return error;
                }
                addr.sin6_port = net::HostToShort(Self->Port);
@@ -1002,6 +1019,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                   }
                   else {
                      log.warning("Listen failed on port %d, error: %s", Self->Port, GetErrorMsg(error));
+                     free_socket(Self);
                      return error;
                   }
                }
@@ -1011,9 +1029,11 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             }
             else {
                log.warning("Bind failed on port %d, error: %s", Self->Port, GetErrorMsg(error));
+               free_socket(Self);
                return error;
             }
          #else
+            free_socket(Self);
             return ERR::NoSupport;
          #endif
       }
@@ -1024,6 +1044,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
          // Use parse_bind_address if Address is specified, otherwise bind to all interfaces
          if (Self->Address) {
             if (auto error = parse_bind_address(Self->Address, false, &addr); error != ERR::Okay) {
+               free_socket(Self);
                return error;
             }
             addr.sin_port = net::HostToShort(Self->Port);
@@ -1042,7 +1063,12 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
             if ((result = bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
                if ((Self->Flags & NSF::UDP) IS NSF::NIL) { // TCP server - needs listen()
-                  listen(Self->Handle, Self->Backlog);
+                  if (listen(Self->Handle, Self->Backlog) IS -1) {
+                     const int system_error = errno;
+                     log.warning("listen() failed with error: %s", strerror(system_error));
+                     free_socket(Self);
+                     return convert_socket_error(system_error);
+                  }
                   RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &server_accept_client, Self);
                }
                else { // UDP server - just register for data reception
@@ -1053,6 +1079,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             else {
                const int system_error = errno;
                log.warning("bind() failed with error: %s", strerror(system_error));
+               free_socket(Self);
                return convert_socket_error(system_error);
             }
          #elif _WIN32
@@ -1063,6 +1090,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                   }
                   else {
                      log.warning("Listen failed on port %d, error: %s", Self->Port, GetErrorMsg(error));
+                     free_socket(Self);
                      return error;
                   }
                }
@@ -1072,6 +1100,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             }
             else {
                log.warning("Bind failed on port %d, error: %s", Self->Port, GetErrorMsg(error));
+               free_socket(Self);
                return error;
             }
          #endif
@@ -1079,6 +1108,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    }
    else if ((Self->Address) and (Self->Port > 0)) {
       if ((error = Self->connect(Self->Address, Self->Port, 0)) != ERR::Okay) {
+         free_socket(Self);
          return error;
       }
       else return ERR::Okay;
@@ -1277,6 +1307,8 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    kt::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
+   Args->Result = 0;
+   if (Args->Length < 0) return log.warning(ERR::Args);
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) { // Not allowed - client must read from the ClientSocket.
       return ERR::NoSupport;
@@ -1285,7 +1317,6 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    if (Self->Handle.is_invalid()) return log.warning(ERR::Disconnected);
 
    Self->ReadCalled = true;
-   Args->Result = 0;
 
    if (!Args->Length) return ERR::Okay;
 
@@ -1438,6 +1469,8 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    if (!Args) return log.warning(ERR::NullArgs);
 
    Args->Result = 0;
+   if (Args->Length < 0) return log.warning(ERR::Args);
+   if ((!Args->Buffer) and (Args->Length > 0)) return log.warning(ERR::NullArgs);
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       log.warning("Write to the ClientSocket objects of this server.");
@@ -1538,8 +1571,10 @@ static ERR NETSOCKET_RecvFrom(extNetSocket *Self, struct ns::RecvFrom *Args)
 {
    kt::Log log;
 
+   if (!Args) return log.warning(ERR::NullArgs);
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return log.warning(ERR::NoSupport);
-   if ((!Args->Buffer) or (!Args->BufferSize) or (!Args->Source)) return log.warning(ERR::NullArgs);
+   if ((!Args->Buffer) or (!Args->Source)) return log.warning(ERR::NullArgs);
+   if (Args->BufferSize <= 0) return log.warning(ERR::Args);
 
    Self->ReadCalled = true;
 

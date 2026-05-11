@@ -38,7 +38,8 @@ enum {
 
 enum {
    WM_NETWORK = WM_USER + 101, // WM_USER = 1024, 1125
-   WM_RESOLVENAME // 1126
+   WM_RESOLVENAME, // 1126
+   WM_NETWORK_RESPONSE
 };
 
 #define IS ==
@@ -52,6 +53,13 @@ public:
    HANDLE ResolveHandle = INVALID_HANDLE_VALUE; // For win_async_resolvename() and WM_RESOLVENAME
    WSW_SOCKET SocketHandle = 0; // Winsock socket FD (same as the key)
    int Flags = 0;
+};
+
+struct queued_netresponse {
+   struct Object *SocketObject;
+   WSW_SOCKET Handle;
+   int Message;
+   ERR Error;
 };
 
 static std::recursive_mutex csNetLookup;
@@ -92,6 +100,15 @@ struct hostent * win_gethostbyaddr(const struct IPAddress *Address)
 
 static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, LPARAM lParam)
 {
+   if (msgcode IS WM_NETWORK_RESPONSE) {
+      auto response = (queued_netresponse *)lParam;
+      if (response) {
+         win32_netresponse(response->SocketObject, response->Handle, response->Message, response->Error);
+         delete response;
+      }
+      return 0;
+   }
+
    int winerror = WSAGETSELECTERROR(lParam);
    int event = WSAGETSELECTEVENT(lParam);
 
@@ -566,11 +583,27 @@ ERR win_leave_multicast_group(WSW_SOCKET Socket, const char *Group, bool IPv6)
 
 //********************************************************************************************************************
 
+void win32_queue_netresponse(struct Object *SocketObject, WSW_SOCKET Handle, int Message, ERR Error)
+{
+   auto response = new queued_netresponse{ SocketObject, Handle, Message, Error };
+
+   if ((!glNetWindow) or (!PostMessage(glNetWindow, WM_NETWORK_RESPONSE, 0, (LPARAM)response))) {
+      win32_netresponse(SocketObject, Handle, Message, Error);
+      delete response;
+   }
+}
+
+//********************************************************************************************************************
+
 ERR WIN_SEND(WSW_SOCKET Socket, const void *Buffer, size_t *Length, int Flags)
 {
    if (!*Length) return ERR::Okay;
-   *Length = send(Socket, reinterpret_cast<const char *>(Buffer), *Length, Flags);
-   if (*Length >= 0) return ERR::Okay;
+   int send_length = (*Length > size_t(0x7fffffff)) ? 0x7fffffff : int(*Length);
+   int result = send(Socket, (const char *)Buffer, send_length, Flags);
+   if (result >= 0) {
+      *Length = result;
+      return ERR::Okay;
+   }
    else {
       *Length = 0;
 

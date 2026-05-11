@@ -1021,9 +1021,12 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 
    // Fallback to regular socket send
 #ifdef __linux__
-   *Length = send(Self->Handle, Buffer, *Length, 0);
+   auto result = send(Self->Handle, Buffer, *Length, 0);
 
-   if (*Length >= 0) return ERR::Okay;
+   if (result >= 0) {
+      *Length = result;
+      return ERR::Okay;
+   }
    else {
       *Length = 0;
       if (errno IS EAGAIN) return ERR::BufferOverflow;

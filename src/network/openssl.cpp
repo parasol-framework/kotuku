@@ -213,12 +213,14 @@ static ERR loadCustomCertificateOpenSSL(extNetSocket *Self, SSL_CTX *ctx)
    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
    std::string cert_path, key_path;
-   if (ResolvePath(Self->SSLCertificate, RSF::NIL, &cert_path) IS ERR::Okay) {
+   if (auto cert_error = ResolvePath(Self->SSLCertificate, RSF::NIL, &cert_path); cert_error IS ERR::Okay) {
       auto opt_password = std::make_optional<const std::string>();
       auto opt_key_path = std::make_optional<const std::string>();
 
       if (Self->SSLPrivateKey) {
-         ResolvePath(Self->SSLPrivateKey, RSF::NIL, &key_path);
+         if (auto key_error = ResolvePath(Self->SSLPrivateKey, RSF::NIL, &key_path); key_error != ERR::Okay) {
+            return log.warning(key_error);
+         }
          opt_key_path.emplace(key_path);
       }
 
@@ -232,8 +234,9 @@ static ERR loadCustomCertificateOpenSSL(extNetSocket *Self, SSL_CTX *ctx)
       }
       else return log.warning(ERR::InvalidData);
    }
+   else return log.warning(cert_error);
 
-   return ERR::Okay;
+   return ERR::Failed;
 }
 
 //********************************************************************************************************************

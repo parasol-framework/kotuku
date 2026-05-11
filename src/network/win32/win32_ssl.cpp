@@ -58,12 +58,16 @@ static ERR sslSetup(extNetSocket *Self)
          log.msg("Loading custom SSL server certificate: %s", Self->SSLCertificate);
 
          std::string cert_path, key_path;
-         if (ResolvePath(Self->SSLCertificate, RSF::NIL, &cert_path) IS ERR::Okay) {
+         if (auto cert_error = ResolvePath(Self->SSLCertificate, RSF::NIL, &cert_path); cert_error IS ERR::Okay) {
             auto opt_password = std::make_optional<const std::string>();
             auto opt_key_path = std::make_optional<const std::string>();
 
             if (Self->SSLPrivateKey) {
-               ResolvePath(Self->SSLPrivateKey, RSF::NIL, &key_path);
+               if (auto key_error = ResolvePath(Self->SSLPrivateKey, RSF::NIL, &key_path); key_error != ERR::Okay) {
+                  ssl_free_context(Self->SSLHandle);
+                  Self->SSLHandle = nullptr;
+                  return log.warning(key_error);
+               }
                opt_key_path.emplace(key_path);
             }
 
@@ -75,10 +79,17 @@ static ERR sslSetup(extNetSocket *Self)
                return log.warning(ERR::Failed);
             }
          }
+         else {
+            ssl_free_context(Self->SSLHandle);
+            Self->SSLHandle = nullptr;
+            return log.warning(cert_error);
+         }
       }
       else {
          if (!load_pkcs12_certificate(Self->SSLHandle, glCertPath + "localhost.p12")) {
             if (!load_pem_certificate(Self->SSLHandle, glCertPath + "localhost.pem")) {
+               ssl_free_context(Self->SSLHandle);
+               Self->SSLHandle = nullptr;
                return log.warning(ERR::Failed);
             }
          }

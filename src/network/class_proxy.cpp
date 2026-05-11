@@ -81,6 +81,24 @@ public:
 
 static ERR find_proxy(extProxy *);
 
+static bool parse_record_id(const std::string &GroupName, int &Record)
+{
+   if (GroupName.empty()) return false;
+
+   int record = 0;
+   for (auto ch : GroupName) {
+      if ((ch < '0') or (ch > '9')) return false;
+
+      int digit = ch - '0';
+      if (record > ((0x7fffffff - digit) / 10)) return false;
+
+      record = (record * 10) + digit;
+   }
+
+   Record = record;
+   return true;
+}
+
 //********************************************************************************************************************
 
 #ifdef _WIN32
@@ -378,7 +396,10 @@ template<typename KeysType>
 static bool matchesEnabledFilter(const KeysType& keys, int findEnabled) {
    if (findEnabled IS -1) return true;
 
-   if (keys.contains("Enabled")) return std::stoi(keys.at("Enabled")) IS findEnabled;
+   if (keys.contains("Enabled")) {
+      int enabled;
+      return parse_record_id(keys.at("Enabled"), enabled) and (enabled IS findEnabled);
+   }
    return false;
 }
 
@@ -412,6 +433,8 @@ static ERR find_proxy(extProxy *Self)
          log.trace("Checking group: %s", group->first.c_str());
 
          const auto& keys = group->second;
+         int record;
+         if (!parse_record_id(group->first, record)) continue;
 
          // Apply filters
          if (!matchesPortFilter(keys, Self->FindPort)) continue;
@@ -768,7 +791,7 @@ static ERR get_record(extProxy *Self)
 
    log.traceBranch("Group: %s", Self->GroupName.c_str());
 
-   Self->Record = std::stoi(Self->GroupName);
+   if (!parse_record_id(Self->GroupName, Self->Record)) return ERR::Search;
 
    const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
 
