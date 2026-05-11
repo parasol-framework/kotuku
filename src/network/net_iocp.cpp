@@ -61,7 +61,9 @@ static ERR iocp_completion_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR 
    if (!lock.granted()) return ERR::Okay;
 
    if ((completion->Type != IocpOperationType::CONNECT) and (completion->Type != IocpOperationType::READ) and
-       (completion->Type != IocpOperationType::WRITE)) return ERR::Okay;
+       (completion->Type != IocpOperationType::WRITE) and (completion->Type != IocpOperationType::ACCEPT)) {
+      return ERR::Okay;
+   }
 
    auto callback = (void (*)(HOSTHANDLE, APTR))completion->Callback;
    callback(SocketHandle(completion->Socket).hosthandle(), lock.obj);
@@ -205,16 +207,12 @@ public:
 
    ERR bind(SocketHandle Handle, const NetworkEndpoint &Endpoint) override
    {
-      (void)Handle;
-      (void)Endpoint;
-      return ERR::NoSupport;
+      return iocp_bind(Handle.socket(), &endpoint_storage(Endpoint), Endpoint.Size);
    }
 
    ERR listen(SocketHandle Handle, int Backlog) override
    {
-      (void)Handle;
-      (void)Backlog;
-      return ERR::NoSupport;
+      return iocp_listen(Handle.socket(), Backlog);
    }
 
    ERR get_local_ip(SocketHandle Handle, IPAddress &Address) override
@@ -230,15 +228,31 @@ public:
    AcceptedSocket accept(void *Reference, SocketHandle Server, bool IPv6) override
    {
       (void)Reference;
-      (void)Server;
       (void)IPv6;
-      return AcceptedSocket();
+
+      AcceptedSocket accepted;
+      NetworkEndpoint endpoint;
+      kt::clearmem(&endpoint, sizeof(endpoint));
+      int length = sizeof(endpoint.Storage);
+      WSW_SOCKET client = 0;
+
+      if (iocp_accept(Server.socket(), client, endpoint.Storage, &length) != ERR::Okay) {
+         return AcceptedSocket();
+      }
+
+      accepted.Handle = SocketHandle(client);
+      endpoint.Size = length;
+      if (endpoint_to_ip(endpoint_storage(endpoint), accepted.Address) != ERR::Okay) {
+         iocp_close_socket(accepted.Handle.socket());
+         return AcceptedSocket();
+      }
+
+      return accepted;
    }
 
    void set_socket_reference(SocketHandle Handle, void *Reference) override
    {
-      (void)Handle;
-      (void)Reference;
+      iocp_set_socket_reference(Handle.socket(), Reference);
    }
 
    ERR set_non_blocking(SocketHandle Handle) override
@@ -255,10 +269,8 @@ public:
 
    ERR register_accept(SocketHandle Handle, void (*Callback)(HOSTHANDLE, APTR), APTR Data) override
    {
-      (void)Handle;
-      (void)Callback;
-      (void)Data;
-      return ERR::NoSupport;
+      auto object_id = Data ? ((OBJECTPTR)Data)->UID : 0;
+      return iocp_register_accept(Handle.socket(), object_id, uintptr_t(Callback), uintptr_t(Data));
    }
 
    ERR register_write(SocketHandle Handle, void (*Callback)(HOSTHANDLE, APTR), APTR Data) override

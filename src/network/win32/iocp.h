@@ -38,11 +38,17 @@ WSW_SOCKET iocp_create_socket(void *Reference, bool UDP, bool &IPv6);
 void iocp_close_socket(WSW_SOCKET Socket);
 void iocp_deregister_socket(WSW_SOCKET Socket);
 int iocp_shutdown_socket(WSW_SOCKET Socket, int How);
+void iocp_set_socket_reference(WSW_SOCKET Socket, void *Reference);
 
 ERR iocp_prepare_connect(WSW_SOCKET Socket, const void *Address, int AddressSize);
 ERR iocp_begin_connect_wait(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback, uintptr_t Data);
 ERR iocp_complete_connect(WSW_SOCKET Socket);
 bool iocp_validate_completion(WSW_SOCKET Socket, uint64_t Generation);
+
+ERR iocp_bind(WSW_SOCKET Socket, const void *Address, int AddressSize);
+ERR iocp_listen(WSW_SOCKET Socket, int Backlog);
+ERR iocp_register_accept(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback, uintptr_t Data);
+ERR iocp_accept(WSW_SOCKET Server, WSW_SOCKET &Client, void *Address, int *AddressSize);
 
 ERR iocp_register_read(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback, uintptr_t Data);
 ERR iocp_register_write(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback, uintptr_t Data);

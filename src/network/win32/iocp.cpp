@@ -30,6 +30,7 @@ struct IocpOperation {
    int ObjectID = 0;
    uintptr_t Callback = 0;
    uintptr_t Data = 0;
+   WSW_SOCKET AcceptedSocket = 0;
    std::unique_ptr<uint8_t[]> Buffer;
    size_t BufferSize = 0;
    size_t BytesTransferred = 0;
@@ -42,12 +43,19 @@ struct IocpCompletionTarget {
    uintptr_t Data = 0;
 };
 
+struct IocpAcceptedSocket {
+   WSW_SOCKET Socket = 0;
+   std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> Address = {};
+   int AddressSize = 0;
+};
+
 struct IocpSocketRecord {
    void *Reference = nullptr;
    IocpCompletionTarget Connect;
    IocpCompletionTarget Read;
    IocpCompletionTarget Write;
    IocpCompletionTarget Accept;
+   std::vector<IocpAcceptedSocket> AcceptedSockets;
    std::vector<uint8_t> ReadBuffer;
    size_t ReadOffset = 0;
    std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> ConnectAddress = {};
@@ -55,7 +63,9 @@ struct IocpSocketRecord {
    ERR ConnectResult = ERR::NotInitialised;
    ERR ReadResult = ERR::Okay;
    uint64_t Generation = 0;
+   bool IPv6 = false;
    bool Cancelled = false;
+   bool AcceptPending = false;
    bool ReadPending = false;
    bool WritePending = false;
 };
@@ -72,6 +82,8 @@ static bool glWinsockInitialised = false;
 
 static constexpr int MAX_IOCP_THREADS = 4;
 static constexpr size_t IOCP_READ_BUFFER_SIZE = 65536;
+static constexpr size_t IOCP_ACCEPT_ADDRESS_SIZE = sizeof(sockaddr_storage) + 16;
+static constexpr size_t IOCP_ACCEPT_BUFFER_SIZE = IOCP_ACCEPT_ADDRESS_SIZE * 2;
 
 //********************************************************************************************************************
 
@@ -121,6 +133,71 @@ static LPFN_CONNECTEX get_connect_ex(SOCKET Socket)
 
 //********************************************************************************************************************
 
+static LPFN_ACCEPTEX get_accept_ex(SOCKET Socket)
+{
+   LPFN_ACCEPTEX accept_ex = nullptr;
+   GUID guid = WSAID_ACCEPTEX;
+   DWORD bytes = 0;
+
+   auto result = WSAIoctl(Socket, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, sizeof(guid), &accept_ex,
+      sizeof(accept_ex), &bytes, nullptr, nullptr);
+   if (result IS SOCKET_ERROR) return nullptr;
+   return accept_ex;
+}
+
+//********************************************************************************************************************
+
+static LPFN_GETACCEPTEXSOCKADDRS get_accept_ex_sockaddrs(SOCKET Socket)
+{
+   LPFN_GETACCEPTEXSOCKADDRS get_addresses = nullptr;
+   GUID guid = WSAID_GETACCEPTEXSOCKADDRS;
+   DWORD bytes = 0;
+
+   auto result = WSAIoctl(Socket, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, sizeof(guid), &get_addresses,
+      sizeof(get_addresses), &bytes, nullptr, nullptr);
+   if (result IS SOCKET_ERROR) return nullptr;
+   return get_addresses;
+}
+
+//********************************************************************************************************************
+
+static SOCKET create_tcp_socket(bool IPv6, bool &ActualIPv6)
+{
+   SOCKET socket = INVALID_SOCKET;
+
+   if (IPv6) {
+      socket = WSASocket(AF_INET6, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+      ActualIPv6 = socket != INVALID_SOCKET;
+      if (socket != INVALID_SOCKET) {
+         DWORD v6only = 0;
+         setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY, (char *)&v6only, sizeof(v6only));
+      }
+   }
+
+   if (socket IS INVALID_SOCKET) {
+      socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+      ActualIPv6 = false;
+   }
+
+   if (socket != INVALID_SOCKET) {
+      DWORD nodelay = 1;
+      setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, (char *)&nodelay, sizeof(nodelay));
+   }
+
+   return socket;
+}
+
+//********************************************************************************************************************
+
+static void close_accepted_socket(const IocpOperation &Operation)
+{
+   if ((Operation.Type IS IocpOperationType::ACCEPT) and (Operation.AcceptedSocket != WSW_SOCKET(INVALID_SOCKET))) {
+      closesocket(socket_from_handle(Operation.AcceptedSocket));
+   }
+}
+
+//********************************************************************************************************************
+
 static ERR bind_ephemeral(SOCKET Socket, const sockaddr *RemoteAddress)
 {
    if (!RemoteAddress) return ERR::NullArgs;
@@ -162,6 +239,59 @@ static void store_operation_result(IocpSocketRecord &Record, const IocpOperation
    else if (Operation.Type IS IocpOperationType::WRITE) {
       Record.WritePending = false;
    }
+   else if (Operation.Type IS IocpOperationType::ACCEPT) {
+      Record.AcceptPending = false;
+
+      if (Error != ERR::Okay) {
+         close_accepted_socket(Operation);
+         return;
+      }
+
+      auto server_socket = socket_from_handle(Operation.Socket);
+      auto accepted_socket = socket_from_handle(Operation.AcceptedSocket);
+
+      if (setsockopt(accepted_socket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char *)&server_socket,
+          sizeof(server_socket)) IS SOCKET_ERROR) {
+         close_accepted_socket(Operation);
+         return;
+      }
+
+      auto handle = CreateIoCompletionPort((HANDLE)accepted_socket, glCompletionPort, ULONG_PTR(accepted_socket), 0);
+      if (handle IS nullptr) {
+         close_accepted_socket(Operation);
+         return;
+      }
+
+      sockaddr *local_address = nullptr;
+      sockaddr *remote_address = nullptr;
+      int local_size = 0;
+      int remote_size = 0;
+      auto get_addresses = get_accept_ex_sockaddrs(server_socket);
+      if (!get_addresses) {
+         close_accepted_socket(Operation);
+         return;
+      }
+
+      get_addresses(Operation.Buffer.get(), 0, IOCP_ACCEPT_ADDRESS_SIZE, IOCP_ACCEPT_ADDRESS_SIZE, &local_address,
+         &local_size, &remote_address, &remote_size);
+
+      if ((!remote_address) or (remote_size <= 0) or (remote_size > int(IOCP_ENDPOINT_STORAGE_SIZE))) {
+         close_accepted_socket(Operation);
+         return;
+      }
+
+      IocpAcceptedSocket accepted;
+      accepted.Socket = Operation.AcceptedSocket;
+      accepted.AddressSize = remote_size;
+      std::memcpy(accepted.Address.data(), remote_address, size_t(remote_size));
+      Record.AcceptedSockets.push_back(accepted);
+
+      glSockets[accepted.Socket] = {
+         .Generation = glNextGeneration++,
+         .IPv6 = Record.IPv6,
+         .Cancelled = false
+      };
+   }
 }
 
 //********************************************************************************************************************
@@ -173,11 +303,17 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
    {
       std::lock_guard<std::mutex> lock(glIocpMutex);
       auto record = glSockets.find(Operation.Socket);
-      if (record IS glSockets.end()) return;
-      if ((record->second.Cancelled) or (record->second.Generation != Operation.Generation)) return;
+      if (record IS glSockets.end()) {
+         close_accepted_socket(Operation);
+         return;
+      }
+      if ((record->second.Cancelled) or (record->second.Generation != Operation.Generation)) {
+         close_accepted_socket(Operation);
+         return;
+      }
 
-      store_operation_result(record->second, Operation, Error);
       auto target = completion_target(record->second, Operation.Type);
+      store_operation_result(record->second, Operation, Error);
 
       message.Type = Operation.Type;
       message.Socket = Operation.Socket;
@@ -269,6 +405,80 @@ static ERR post_read(WSW_SOCKET Socket)
       queue_operation_completion(*operation, 0, operation->Result);
       delete operation;
       return ERR::Okay;
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR post_accept(WSW_SOCKET Socket)
+{
+   IocpCompletionTarget target;
+   uint64_t generation = 0;
+   bool server_ipv6 = false;
+
+   {
+      std::lock_guard<std::mutex> lock(glIocpMutex);
+      auto record = glSockets.find(Socket);
+      if (record IS glSockets.end()) return ERR::Search;
+      if (record->second.Cancelled) return ERR::Cancelled;
+      if (record->second.AcceptPending) return ERR::Okay;
+
+      target = record->second.Accept;
+      if ((!target.Callback) or (target.ObjectID <= 0)) return ERR::Okay;
+
+      record->second.AcceptPending = true;
+      generation = record->second.Generation;
+      server_ipv6 = record->second.IPv6;
+   }
+
+   bool accepted_ipv6 = false;
+   auto accepted_socket = create_tcp_socket(server_ipv6, accepted_ipv6);
+   if (accepted_socket IS INVALID_SOCKET) {
+      std::lock_guard<std::mutex> lock(glIocpMutex);
+      auto record = glSockets.find(Socket);
+      if (record != glSockets.end()) record->second.AcceptPending = false;
+      return convert_error();
+   }
+
+   auto operation = new IocpOperation();
+   operation->Type = IocpOperationType::ACCEPT;
+   operation->Socket = Socket;
+   operation->Generation = generation;
+   operation->ObjectID = target.ObjectID;
+   operation->Callback = target.Callback;
+   operation->Data = target.Data;
+   operation->AcceptedSocket = handle_from_socket(accepted_socket);
+   operation->BufferSize = IOCP_ACCEPT_BUFFER_SIZE;
+   operation->Buffer = std::make_unique<uint8_t[]>(operation->BufferSize);
+
+   DWORD bytes = 0;
+   auto accept_ex = get_accept_ex(socket_from_handle(Socket));
+   if (!accept_ex) {
+      {
+         std::lock_guard<std::mutex> lock(glIocpMutex);
+         auto record = glSockets.find(Socket);
+         if (record != glSockets.end()) record->second.AcceptPending = false;
+      }
+      close_accepted_socket(*operation);
+      delete operation;
+      return convert_error();
+   }
+
+   auto result = accept_ex(socket_from_handle(Socket), accepted_socket, operation->Buffer.get(), 0,
+      IOCP_ACCEPT_ADDRESS_SIZE, IOCP_ACCEPT_ADDRESS_SIZE, &bytes, &operation->Overlapped);
+
+   if ((!result) and (WSAGetLastError() != WSA_IO_PENDING)) {
+      auto error = convert_error();
+      {
+         std::lock_guard<std::mutex> lock(glIocpMutex);
+         auto record = glSockets.find(Socket);
+         if (record != glSockets.end()) record->second.AcceptPending = false;
+      }
+      close_accepted_socket(*operation);
+      delete operation;
+      return error;
    }
 
    return ERR::Okay;
@@ -388,22 +598,9 @@ WSW_SOCKET iocp_create_socket(void *Reference, bool UDP, bool &IPv6)
       return WSW_SOCKET(INVALID_SOCKET);
    }
 
-   SOCKET socket = WSASocket(AF_INET6, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
-   IPv6 = true;
-
-   if (socket != INVALID_SOCKET) {
-      DWORD v6only = 0;
-      setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY, (char *)&v6only, sizeof(v6only));
-   }
-   else {
-      socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
-      IPv6 = false;
-   }
+   SOCKET socket = create_tcp_socket(true, IPv6);
 
    if (socket IS INVALID_SOCKET) return WSW_SOCKET(INVALID_SOCKET);
-
-   DWORD nodelay = 1;
-   setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, (char *)&nodelay, sizeof(nodelay));
 
    auto handle = CreateIoCompletionPort((HANDLE)socket, glCompletionPort, ULONG_PTR(socket), 0);
    if (handle IS nullptr) {
@@ -417,6 +614,7 @@ WSW_SOCKET iocp_create_socket(void *Reference, bool UDP, bool &IPv6)
    glSockets[result] = {
       .Reference = Reference,
       .Generation = glNextGeneration++,
+      .IPv6 = IPv6,
       .Cancelled = false
    };
 
@@ -449,6 +647,15 @@ void iocp_deregister_socket(WSW_SOCKET Socket)
 int iocp_shutdown_socket(WSW_SOCKET Socket, int How)
 {
    return shutdown(socket_from_handle(Socket), How);
+}
+
+//********************************************************************************************************************
+
+void iocp_set_socket_reference(WSW_SOCKET Socket, void *Reference)
+{
+   std::lock_guard<std::mutex> lock(glIocpMutex);
+   auto record = glSockets.find(Socket);
+   if (record != glSockets.end()) record->second.Reference = Reference;
 }
 
 //********************************************************************************************************************
@@ -574,6 +781,65 @@ bool iocp_validate_completion(WSW_SOCKET Socket, uint64_t Generation)
 
 //********************************************************************************************************************
 
+ERR iocp_bind(WSW_SOCKET Socket, const void *Address, int AddressSize)
+{
+   if ((!Address) or (AddressSize <= 0)) return ERR::Args;
+   if (bind(socket_from_handle(Socket), (const sockaddr *)Address, AddressSize) IS SOCKET_ERROR) return convert_error();
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+ERR iocp_listen(WSW_SOCKET Socket, int Backlog)
+{
+   if (listen(socket_from_handle(Socket), Backlog) IS SOCKET_ERROR) return convert_error();
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+ERR iocp_register_accept(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback, uintptr_t Data)
+{
+   if (auto error = set_completion_target(Socket, IocpOperationType::ACCEPT, ObjectID, Callback, Data);
+       error != ERR::Okay) return error;
+
+   return post_accept(Socket);
+}
+
+//********************************************************************************************************************
+
+ERR iocp_accept(WSW_SOCKET Server, WSW_SOCKET &Client, void *Address, int *AddressSize)
+{
+   Client = WSW_SOCKET(INVALID_SOCKET);
+   if ((!Address) or (!AddressSize)) return ERR::NullArgs;
+
+   bool rearm_accept = false;
+
+   {
+      std::lock_guard<std::mutex> lock(glIocpMutex);
+      auto record = glSockets.find(Server);
+      if (record IS glSockets.end()) return ERR::Search;
+      if (record->second.Cancelled) return ERR::Cancelled;
+      if (record->second.AcceptedSockets.empty()) return ERR::Search;
+
+      auto accepted = record->second.AcceptedSockets.front();
+      record->second.AcceptedSockets.erase(record->second.AcceptedSockets.begin());
+
+      Client = accepted.Socket;
+      auto copy_size = std::min(*AddressSize, accepted.AddressSize);
+      std::memcpy(Address, accepted.Address.data(), size_t(copy_size));
+      *AddressSize = copy_size;
+
+      auto target = record->second.Accept;
+      rearm_accept = (target.Callback) and (target.ObjectID > 0) and (!record->second.AcceptPending);
+   }
+
+   if (rearm_accept) post_accept(Server);
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
 ERR iocp_register_read(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback, uintptr_t Data)
 {
    if (auto error = set_completion_target(Socket, IocpOperationType::READ, ObjectID, Callback, Data);
@@ -645,6 +911,7 @@ ERR iocp_receive(WSW_SOCKET Socket, void *Buffer, size_t Length, size_t &Receive
 
    ERR result = ERR::Okay;
    bool rearm_read = false;
+   bool recall_read = false;
 
    {
       std::lock_guard<std::mutex> lock(glIocpMutex);
@@ -664,6 +931,7 @@ ERR iocp_receive(WSW_SOCKET Socket, void *Buffer, size_t Length, size_t &Receive
             if (record->second.ReadResult IS ERR::Okay) rearm_read = true;
             else result = record->second.ReadResult;
          }
+         else recall_read = true;
       }
       else {
          result = record->second.ReadResult;
@@ -673,6 +941,9 @@ ERR iocp_receive(WSW_SOCKET Socket, void *Buffer, size_t Length, size_t &Receive
 
    if (rearm_read) {
       if (auto error = post_read(Socket); error != ERR::Okay) return error;
+   }
+   else if (recall_read) {
+      if (auto error = queue_record_completion(Socket, IocpOperationType::READ); error != ERR::Okay) return error;
    }
 
    return result;
