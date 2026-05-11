@@ -29,6 +29,7 @@ Pure Windows implementation that avoids all Kotuku headers to prevent conflicts.
 #include <span>
 
 #include "ssl_wrapper.h"
+#include "../ssl_certificate_policy.hpp"
 
 static void ssl_debug_log(int level, const char* format, ...);
 extern "C" void ssl_debug_to_kotuku_log(const char* message, int level);
@@ -601,15 +602,18 @@ SSL_ERROR_CODE ssl_load_server_certificate(SSL_HANDLE SSL, const std::string &Ce
 {
    if (!SSL->is_server_mode) return SSL_ERROR_FAILED;
 
-   std::string ext = CertPath.substr(CertPath.find_last_of(".") + 1);
-   std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
    bool success = false;
-   if ((ext == "p12") or (ext == "pfx")) { // Load PKCS#12 certificate
-      success = load_pkcs12_certificate(SSL, CertPath);
-   }
-   else if ((ext == "pem") or (ext == "crt") or (ext == "cert")) { // Load PEM certificate
-      success = load_pem_certificate(SSL, CertPath);
+   switch (ssl_certificate_format(CertPath)) {
+      case SSLCERTFORMAT::PKCS12:
+         success = load_pkcs12_certificate(SSL, CertPath);
+         break;
+
+      case SSLCERTFORMAT::PEM:
+         success = load_pem_certificate(SSL, CertPath);
+         break;
+
+      default:
+         break;
    }
 
    return success ? SSL_OK : SSL_ERROR_FAILED;

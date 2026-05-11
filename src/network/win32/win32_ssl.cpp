@@ -57,32 +57,18 @@ static ERR sslSetup(extNetSocket *Self)
       if (Self->SSLCertificate) {
          log.msg("Loading custom SSL server certificate: %s", Self->SSLCertificate);
 
-         std::string cert_path, key_path;
-         if (auto cert_error = ResolvePath(Self->SSLCertificate, RSF::NIL, &cert_path); cert_error IS ERR::Okay) {
-            auto opt_password = std::make_optional<const std::string>();
-            auto opt_key_path = std::make_optional<const std::string>();
-
-            if (Self->SSLPrivateKey) {
-               if (auto key_error = ResolvePath(Self->SSLPrivateKey, RSF::NIL, &key_path); key_error != ERR::Okay) {
-                  ssl_free_context(Self->SSLHandle);
-                  Self->SSLHandle = nullptr;
-                  return log.warning(key_error);
-               }
-               opt_key_path.emplace(key_path);
-            }
-
-            if (Self->SSLKeyPassword) opt_password.emplace(Self->SSLKeyPassword);
-
-            if (auto error = ssl_load_server_certificate(Self->SSLHandle, cert_path, opt_key_path, opt_password); error != SSL_OK) {
-               ssl_free_context(Self->SSLHandle);
-               Self->SSLHandle = nullptr;
-               return log.warning(ERR::Failed);
-            }
-         }
-         else {
+         ssl_certificate_paths paths;
+         if (auto error = resolve_ssl_certificate_paths(Self, paths); error != ERR::Okay) {
             ssl_free_context(Self->SSLHandle);
             Self->SSLHandle = nullptr;
-            return log.warning(cert_error);
+            return log.warning(error);
+         }
+
+         auto error = ssl_load_server_certificate(Self->SSLHandle, paths.Certificate, paths.PrivateKey, paths.Password);
+         if (error != SSL_OK) {
+            ssl_free_context(Self->SSLHandle);
+            Self->SSLHandle = nullptr;
+            return log.warning(ERR::Failed);
          }
       }
       else {

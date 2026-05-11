@@ -37,6 +37,8 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <kotuku/modules/network.h>
 #include <kotuku/strings.hpp>
 
+#include "ssl_certificate_policy.hpp"
+
 #ifndef DISABLE_SSL
   #ifdef _WIN32
     #include "win32/ssl_wrapper.h"
@@ -476,6 +478,41 @@ static std::string glCertPath;
 //********************************************************************************************************************
 
 #ifndef DISABLE_SSL
+   struct ssl_certificate_paths {
+      std::string Certificate;
+      std::string PrivateKeyPath;
+      std::optional<const std::string> PrivateKey;
+      std::optional<const std::string> Password;
+      SSLCERTFORMAT Format = SSLCERTFORMAT::NIL;
+   };
+
+   static ERR resolve_ssl_certificate_paths(extNetSocket *Self, ssl_certificate_paths &Paths)
+   {
+      if ((!Self) or (!Self->SSLCertificate) or (!*Self->SSLCertificate)) return ERR::FieldNotSet;
+
+      Paths.Format = ssl_certificate_format(Self->SSLCertificate);
+      if (Paths.Format IS SSLCERTFORMAT::NIL) return ERR::InvalidData;
+
+      if (auto error = ResolvePath(Self->SSLCertificate, RSF::NIL, &Paths.Certificate); error != ERR::Okay) {
+         return error;
+      }
+
+      if (Self->SSLPrivateKey) {
+         if (ssl_private_key_format(Self->SSLPrivateKey) IS SSLCERTFORMAT::NIL) return ERR::InvalidData;
+
+         if (auto error = ResolvePath(Self->SSLPrivateKey, RSF::NIL, &Paths.PrivateKeyPath); error != ERR::Okay) {
+            return error;
+         }
+         Paths.PrivateKey.emplace(Paths.PrivateKeyPath);
+      }
+
+      if (Self->SSLKeyPassword) Paths.Password.emplace(Self->SSLKeyPassword);
+
+      return ERR::Okay;
+   }
+
+//********************************************************************************************************************
+
   #ifdef _WIN32
     #include "win32/win32_ssl.cpp"
   #else

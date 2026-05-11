@@ -204,6 +204,27 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
 // Called when a server socket handle detects a new client wanting to connect to it.
 // Used by Win32 (Windows message loop) & Linux (FD hook)
 
+static ERR sockaddr_to_client_ip(const struct sockaddr *Address, int Family, uint8_t *IP)
+{
+   if ((!Address) or (!IP)) return ERR::NullArgs;
+
+   kt::clearmem(IP, 8);
+
+   if (Family IS AF_INET) {
+      auto addr = (const struct sockaddr_in *)Address;
+      kt::copymem(&addr->sin_addr.s_addr, IP, 4);
+      return ERR::Okay;
+   }
+   else if (Family IS AF_INET6) {
+      auto addr = (const struct sockaddr_in6 *)Address;
+      kt::copymem(addr->sin6_addr.s6_addr, IP, 8);
+      return ERR::Okay;
+   }
+   else return ERR::Args;
+}
+
+//********************************************************************************************************************
+
 static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
    kt::Log log(__FUNCTION__);
@@ -250,25 +271,21 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
          setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
 
          if (addr_storage.ss_family IS AF_INET6) { // IPv6 connection
-            struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr_storage;
-            ip[0] = addr6->sin6_addr.s6_addr[0];
-            ip[1] = addr6->sin6_addr.s6_addr[1];
-            ip[2] = addr6->sin6_addr.s6_addr[2];
-            ip[3] = addr6->sin6_addr.s6_addr[3];
-            ip[4] = addr6->sin6_addr.s6_addr[4];
-            ip[5] = addr6->sin6_addr.s6_addr[5];
-            ip[6] = addr6->sin6_addr.s6_addr[6];
-            ip[7] = addr6->sin6_addr.s6_addr[7];
+            auto error = sockaddr_to_client_ip((struct sockaddr *)&addr_storage, addr_storage.ss_family, ip);
+            if (error != ERR::Okay) {
+               log.warning(error);
+               close(clientfd);
+               return;
+            }
             log.trace("Accepted IPv6 client connection");
          }
          else if (addr_storage.ss_family IS AF_INET) { // IPv4 connection on dual-stack socket
-            struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr_storage;
-            uint32_t ipv4_addr = net::LongToHost(addr4->sin_addr.s_addr);
-            ip[0] = ipv4_addr & 0xff;
-            ip[1] = (ipv4_addr >> 8) & 0xff;
-            ip[2] = (ipv4_addr >> 16) & 0xff;
-            ip[3] = (ipv4_addr >> 24) & 0xff;
-            ip[4] = ip[5] = ip[6] = ip[7] = 0;
+            auto error = sockaddr_to_client_ip((struct sockaddr *)&addr_storage, addr_storage.ss_family, ip);
+            if (error != ERR::Okay) {
+               log.warning(error);
+               close(clientfd);
+               return;
+            }
             log.trace("Accepted IPv4 client connection on dual-stack socket");
          }
          else {
@@ -285,25 +302,21 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
          if (clientfd IS NOHANDLE) return;
 
          if (family IS AF_INET6) { // IPv6 connection
-            struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr_storage;
-            ip[0] = addr6->sin6_addr.s6_addr[0];
-            ip[1] = addr6->sin6_addr.s6_addr[1];
-            ip[2] = addr6->sin6_addr.s6_addr[2];
-            ip[3] = addr6->sin6_addr.s6_addr[3];
-            ip[4] = addr6->sin6_addr.s6_addr[4];
-            ip[5] = addr6->sin6_addr.s6_addr[5];
-            ip[6] = addr6->sin6_addr.s6_addr[6];
-            ip[7] = addr6->sin6_addr.s6_addr[7];
+            auto error = sockaddr_to_client_ip((struct sockaddr *)&addr_storage, family, ip);
+            if (error != ERR::Okay) {
+               log.warning(error);
+               CLOSESOCKET(clientfd);
+               return;
+            }
             log.trace("Accepted IPv6 client connection on Windows");
          }
          else if (family IS AF_INET) { // IPv4 connection on dual-stack socket
-            struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr_storage;
-            uint32_t ipv4_addr = net::LongToHost(addr4->sin_addr.s_addr);
-            ip[0] = ipv4_addr & 0xff;
-            ip[1] = (ipv4_addr >> 8) & 0xff;
-            ip[2] = (ipv4_addr >> 16) & 0xff;
-            ip[3] = (ipv4_addr >> 24) & 0xff;
-            ip[4] = ip[5] = ip[6] = ip[7] = 0;
+            auto error = sockaddr_to_client_ip((struct sockaddr *)&addr_storage, family, ip);
+            if (error != ERR::Okay) {
+               log.warning(error);
+               CLOSESOCKET(clientfd);
+               return;
+            }
             log.trace("Accepted IPv4 client connection on dual-stack socket (Windows)");
          }
          else {
@@ -337,14 +350,11 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
          return;
       }
 
-      ip[0] = addr.sin_addr.s_addr;
-      ip[1] = addr.sin_addr.s_addr>>8;
-      ip[2] = addr.sin_addr.s_addr>>16;
-      ip[3] = addr.sin_addr.s_addr>>24;
-      ip[4] = 0;
-      ip[5] = 0;
-      ip[6] = 0;
-      ip[7] = 0;
+      if (auto error = sockaddr_to_client_ip((struct sockaddr *)&addr, AF_INET, ip); error != ERR::Okay) {
+         log.warning(error);
+         CLOSESOCKET(clientfd);
+         return;
+      }
    }
 
    // Check if this IP address already has a client structure from an earlier socket connection.
