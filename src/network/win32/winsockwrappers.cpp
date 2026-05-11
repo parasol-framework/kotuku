@@ -113,41 +113,50 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
    int event = WSAGETSELECTEVENT(lParam);
 
    if (msgcode IS WM_NETWORK) {
-      const lock_guard<recursive_mutex> lock(csNetLookup);
       auto socket_handle = (WSW_SOCKET)wParam;
-      if (glNetLookup.contains(socket_handle)) {
-         int state;
-         int resub_write = false;
-         switch (event) {
-            case FD_READ:    state = NTE_READ; break;
-            case FD_WRITE:   state = NTE_WRITE; resub_write = true; break; // Keep the socket subscribed while writing
-            case FD_ACCEPT:  state = NTE_ACCEPT; break;
-            case FD_CLOSE:   state = NTE_CLOSE; break;
-            case FD_CONNECT: state = NTE_CONNECT; break;
-            default:         state = 0; break;
-         }
+      int state;
+      int resub_write = false;
+      switch (event) {
+         case FD_READ:    state = NTE_READ; break;
+         case FD_WRITE:   state = NTE_WRITE; resub_write = true; break; // Keep the socket subscribed while writing
+         case FD_ACCEPT:  state = NTE_ACCEPT; break;
+         case FD_CLOSE:   state = NTE_CLOSE; break;
+         case FD_CONNECT: state = NTE_CONNECT; break;
+         default:         state = 0; break;
+      }
 
-         ERR error;
-         if (winerror IS WSAEWOULDBLOCK) error = ERR::Okay;
-         else if (winerror) error = convert_error(winerror);
-         else error = ERR::Okay;
+      ERR error;
+      if (winerror IS WSAEWOULDBLOCK) error = ERR::Okay;
+      else if (winerror) error = convert_error(winerror);
+      else error = ERR::Okay;
+
+      void *reference = nullptr;
+      int flags = 0;
+      bool read_disabled = false;
+
+      {
+         const lock_guard<recursive_mutex> lock(csNetLookup);
+         if (!glNetLookup.contains(socket_handle)) return 0;
 
          socket_info &info = glNetLookup[socket_handle];
-         bool read_disabled = false;
-         if ((info.Flags & FD_READ) and (!glSocketsDisabled)) {
-            WSAAsyncSelect(socket_handle, glNetWindow, WM_NETWORK, info.Flags & (~FD_READ));
+         reference = info.Reference;
+         flags = info.Flags;
+
+         if ((state IS NTE_WRITE) and (!(flags & FD_WRITE))) {
+            return 0; // Ignore queued write messages after write events are disabled.
+         }
+
+         if ((flags & FD_READ) and (!glSocketsDisabled)) {
+            WSAAsyncSelect(socket_handle, glNetWindow, WM_NETWORK, flags & (~FD_READ));
             read_disabled = true;
          }
+      }
 
-         if (info.Reference) {
-            if ((state IS NTE_WRITE) and (!(info.Flags & FD_WRITE))) {
-               // Do nothing when receiving queued write messages for a socket that has turned them off.
-               return 0;
-            }
-            else win32_netresponse((struct Object *)info.Reference, socket_handle, state, error);
-         }
-         else printf("win_messages() Missing reference for FD %d, state %d\n", socket_handle, state);
+      if (reference) win32_netresponse((struct Object *)reference, socket_handle, state, error);
+      else printf("win_messages() Missing reference for FD %d, state %d\n", socket_handle, state);
 
+      {
+         const lock_guard<recursive_mutex> lock(csNetLookup);
          // Re-enable read events if we disabled them and sockets are still active
          if ((read_disabled) and (!glSocketsDisabled)) {
             if (glNetLookup.contains(socket_handle) and (glNetLookup[socket_handle].Flags & FD_READ)) {
@@ -160,8 +169,8 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
                WSAAsyncSelect(socket_handle, glNetWindow, WM_NETWORK, glNetLookup[socket_handle].Flags);
             }
          }
-         return 0;
       }
+      return 0;
    }
    else return DefWindowProc(window, msgcode, wParam, lParam);
 
@@ -429,10 +438,12 @@ template <class T> ERR WIN_APPEND(WSW_SOCKET SocketHandle, std::vector<uint8_t> 
    Result = 0;
    if (!Len) return ERR::Okay;
    auto offset = Buffer.size();
-   Buffer.resize(Buffer.size() + Len);
-   auto result = recv(SocketHandle, (char *)Buffer.data() + offset, Len, 0);
+   std::vector<uint8_t> temp;
+   temp.resize(Len);
+   auto result = recv(SocketHandle, (char *)temp.data(), Len, 0);
    if (result > 0) {
-      if (size_t(result) < Len) Buffer.resize(offset + result);
+      Buffer.resize(offset + result);
+      memcpy(Buffer.data() + offset, temp.data(), result);
       Result = result;
       return ERR::Okay;
    }

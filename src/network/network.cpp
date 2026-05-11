@@ -309,6 +309,7 @@ class extNetSocket : public objNetSocket {
    uint8_t InUse;                 // Recursion counter to signal that the object is doing something.
    uint8_t IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
    uint8_t OutgoingRecursion;
+   bool CloseAfterWrite = false;  // True if termination is waiting for queued data to flush
    uint8_t ErrorCountdown = 8;    // Counts down on each error, disconnect occurs at zero.
    TIMER   TimerHandle = 0;       // Timer subscription handle for timeout
    #ifdef _WIN32
@@ -400,27 +401,18 @@ static void CLOSESOCKET_THREADED(SocketHandle Handle)
    win_deregister_socket(Handle);
 #endif
 
-   // Clean up completed threads periodically to prevent collection growth
-
-   static std::atomic<int> cleanup_counter{0};
-   if (++cleanup_counter % 50 == 0) {
+   {
       std::lock_guard<std::mutex> lock(glmThreads);
-      std::erase_if(glThreads, [](const auto& thread_ptr) {
-         if ((!thread_ptr) or (!thread_ptr->joinable())) return true;
-         // For completed threads, join them and remove from collection
-         if (thread_ptr->get_id() == std::jthread::id{}) {
-            if (thread_ptr->joinable()) thread_ptr->join();
-            return true;
-         }
-         return false;
-      });
+      for (auto it = glThreads.begin(); it != glThreads.end();) {
+         if (*it and (*it)->joinable()) (*it)->join();
+         it = glThreads.erase(it);
+      }
    }
 
    std::lock_guard<std::mutex> lock(glmThreads);
    auto thread_ptr = std::make_shared<std::jthread>();
    *thread_ptr = std::jthread([] (SocketHandle Handle) { CLOSESOCKET(Handle); }, Handle);
    glThreads.insert(thread_ptr);
-   // Don't detach, threads need to be joinable for proper cleanup
 }
 
 //********************************************************************************************************************

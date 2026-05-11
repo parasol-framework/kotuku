@@ -165,7 +165,7 @@ static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nl::Block
 {
    kt::Log log;
 
-   if (!Args->Address) return log.warning(ERR::NullArgs);
+   if ((!Args) or (!Args->Address)) return log.warning(ERR::NullArgs);
 
    log.branch("Address: %s", Args->Address);
 
@@ -211,7 +211,7 @@ static ERR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nl::ResolveN
 {
    kt::Log log;
 
-   if (!Args->HostName) return log.error(ERR::NullArgs);
+   if ((!Args) or (!Args->HostName)) return log.error(ERR::NullArgs);
 
    log.branch("Host: %s", Args->HostName);
 
@@ -290,7 +290,7 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
 {
    kt::Log log;
 
-   if (!Args->Address) return log.warning(ERR::NullArgs);
+   if ((!Args) or (!Args->Address)) return log.warning(ERR::NullArgs);
    if (Self->Callback.Type IS CALL::NIL) return log.warning(ERR::FieldNotSet);
 
    log.branch("Address: %s", Args->Address);
@@ -323,7 +323,9 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
          DNSEntry dummy;
          rb.Error = resolve_address(rb.Address.c_str(), &rb.IP, dummy);
          auto ser = rb.serialise();
-         SendMessage(glResolveAddrMsgID, MSF::NIL, ser.data(), ser.size()); // See resolve_addr_receiver()
+         if (auto error = SendMessage(glResolveAddrMsgID, MSF::NIL, ser.data(), ser.size()); error != ERR::Okay) {
+            kt::Log(__FUNCTION__).warning("Failed to queue address resolution result: %s", GetErrorMsg(error));
+         }
       }, std::move(rb))));
 
       return ERR::Okay;
@@ -357,7 +359,7 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
 {
    kt::Log log;
 
-   if (!Args->HostName) return log.error(ERR::NullArgs);
+   if ((!Args) or (!Args->HostName)) return log.error(ERR::NullArgs);
 
    log.branch("Host: %s", Args->HostName);
 
@@ -382,11 +384,13 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
    }
 
    resolve_buffer rb(Self->UID, Args->HostName);
-   Self->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([Self](resolve_buffer rb) {
+   Self->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](resolve_buffer rb) {
       DNSEntry dummy;
       rb.Error = resolve_name(rb.Address.c_str(), dummy);
       auto ser = rb.serialise();
-      SendMessage(glResolveNameMsgID, MSF::NIL, ser.data(), ser.size()); // See resolve_name_receiver()
+      if (auto error = SendMessage(glResolveNameMsgID, MSF::NIL, ser.data(), ser.size()); error != ERR::Okay) {
+         kt::Log(__FUNCTION__).warning("Failed to queue name resolution result: %s", GetErrorMsg(error));
+      }
    }, std::move(rb))));
 
    return ERR::Okay;
@@ -587,13 +591,13 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry &Info)
       result = getnameinfo((struct sockaddr *)&sa, sizeof(sa), host_name, sizeof(host_name), service, sizeof(service), NI_NAMEREQD);
    }
    else {
-      const struct sockaddr_in6 sa = {
+      struct sockaddr_in6 sa = {
          .sin6_family   = AF_INET6,
          .sin6_port     = 0,
          .sin6_flowinfo = 0,
          .sin6_scope_id = 0
       };
-      kt::copymem(IP->Data, (APTR)sa.sin6_addr.s6_addr, 16);
+      kt::copymem(IP->Data, sa.sin6_addr.s6_addr, 16);
       result = getnameinfo((struct sockaddr *)&sa, sizeof(sa), host_name, sizeof(host_name), service, sizeof(service), NI_NAMEREQD);
    }
 

@@ -209,8 +209,8 @@ static ERR PROXY_DeleteRecord(extProxy *Self)
    auto cfg = objConfig::create {fl::Path("user:config/network/proxies.cfg") };
    if (!cfg.ok()) return log.error(ERR::CreateObject);
 
-   cfg->deleteGroup(Self->GroupName.c_str());
-   cfg->saveSettings();
+   if (auto error = cfg->deleteGroup(Self->GroupName.c_str()); error != ERR::Okay) return log.warning(error);
+   if (auto error = cfg->saveSettings(); error != ERR::Okay) return log.warning(error);
    return ERR::Okay;
 }
 
@@ -514,17 +514,21 @@ static ERR PROXY_SaveSettings(extProxy *Self)
       #ifdef _WIN32
          objTask *task = CurrentTask();
 
-         if (Self->Enabled) task->setEnv(HKEY_PROXY "ProxyEnable", "1");
-         else task->setEnv(HKEY_PROXY "ProxyEnable", "0");
+         ERR error;
+         if (Self->Enabled) error = task->setEnv(HKEY_PROXY "ProxyEnable", "1");
+         else error = task->setEnv(HKEY_PROXY "ProxyEnable", "0");
+         if (error != ERR::Okay) return log.warning(error);
 
          if ((!Self->Server) or (!Self->Server[0])) {
             log.trace("Clearing proxy server value.");
-            task->setEnv(HKEY_PROXY "ProxyServer", "");
+            if (auto error = task->setEnv(HKEY_PROXY "ProxyServer", ""); error != ERR::Okay) return log.warning(error);
          }
          else if (Self->Port IS 0) { // Proxy is for all ports
             std::string buffer = std::format("{}:{}", Self->Server, Self->ServerPort);
             log.trace("Changing all-port proxy to: %s", buffer.c_str());
-            task->setEnv(HKEY_PROXY "ProxyServer", buffer.c_str());
+            if (auto error = task->setEnv(HKEY_PROXY "ProxyServer", buffer.c_str()); error != ERR::Okay) {
+               return log.warning(error);
+            }
          }
          else {
             std::string portname;
@@ -555,9 +559,11 @@ static ERR PROXY_SaveSettings(extProxy *Self)
                }
                serverList += newEntry;
 
-               task->setEnv(HKEY_PROXY "ProxyServer", serverList.c_str());
+               if (auto error = task->setEnv(HKEY_PROXY "ProxyServer", serverList.c_str()); error != ERR::Okay) {
+                  return log.warning(error);
+               }
             }
-            else log.error("Windows' host proxy settings do not support port %d", Self->Port);
+            else return log.error(ERR::NoSupport);
          }
 
       #endif
@@ -735,7 +741,7 @@ The port used to communicate with the proxy server must be defined here.
 
 static ERR SET_ServerPort(extProxy *Self, int Value)
 {
-   if (Value > 0 and Value <= 65536) {
+   if (Value > 0 and Value <= 0xffff) {
       Self->ServerPort = Value;
       return ERR::Okay;
    }

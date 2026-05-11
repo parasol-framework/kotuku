@@ -143,6 +143,7 @@ struct ssl_context {
    SSLBuffer io_buffer;
    SSLBuffer recv_buffer;                      // Persistent buffer for incomplete SSL messages
    SSLBuffer send_buffer;                      // Buffer for SSL encryption
+   SSLBuffer handshake_buffer;                 // Pending handshake token data for non-blocking sends
    SSLBuffer decrypted_buffer;                 // Buffer for leftover decrypted data
    size_t decrypted_buffer_offset;             // Bytes already returned to user
    SECURITY_STATUS last_security_status;
@@ -172,6 +173,7 @@ struct ssl_context {
       , io_buffer(SSL_INITIAL_BUFFER_SIZE)
       , recv_buffer(SSL_INITIAL_BUFFER_SIZE)
       , send_buffer(SSL_INITIAL_BUFFER_SIZE)
+      , handshake_buffer(SSL_INITIAL_BUFFER_SIZE)
       , decrypted_buffer(SSL_MAX_RECORD_SIZE)
       , decrypted_buffer_offset(0)
       , last_security_status(SEC_E_OK)
@@ -191,6 +193,7 @@ struct ssl_context {
       io_buffer.reserve(SSL_IO_BUFFER_SIZE);
       recv_buffer.reserve(SSL_IO_BUFFER_SIZE);
       send_buffer.reserve(SSL_IO_BUFFER_SIZE);
+      handshake_buffer.reserve(SSL_IO_BUFFER_SIZE);
       decrypted_buffer.reserve(SSL_MAX_RECORD_SIZE);
    }
 
@@ -245,6 +248,44 @@ static void set_error_status(ssl_context* Ctx, SECURITY_STATUS Status)
 {
    Ctx->last_security_status = Status;
    Ctx->last_win32_error = GetLastError();
+}
+
+//********************************************************************************************************************
+
+static SSL_ERROR_CODE flush_handshake_buffer(SSL_HANDLE SSL)
+{
+   while (!SSL->handshake_buffer.empty()) {
+      auto pending = SSL->handshake_buffer.used_data();
+      int sent = send(SSL->socket_handle, (const char*)pending.data(), int(pending.size()), 0);
+
+      if (sent > 0) SSL->handshake_buffer.consume_front(sent);
+      else if (sent == 0) return SSL_ERROR_WOULD_BLOCK;
+      else {
+         int error = WSAGetLastError();
+         SSL->last_win32_error = error;
+         if (error == WSAEWOULDBLOCK) return SSL_ERROR_WOULD_BLOCK;
+         return SSL_ERROR_FAILED;
+      }
+   }
+
+   return SSL_OK;
+}
+
+//********************************************************************************************************************
+
+static SSL_ERROR_CODE queue_handshake_token(SSL_HANDLE SSL, void *Buffer, DWORD Size)
+{
+   if ((Size > 0) and (Buffer)) {
+      std::span<const unsigned char> token_span((const unsigned char*)Buffer, Size);
+      if (!SSL->handshake_buffer.append(token_span)) {
+         FreeContextBuffer(Buffer);
+         return SSL_ERROR_MEMORY;
+      }
+   }
+
+   if (Buffer) FreeContextBuffer(Buffer);
+
+   return flush_handshake_buffer(SSL);
 }
 
 //********************************************************************************************************************

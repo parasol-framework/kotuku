@@ -466,7 +466,7 @@ static void free_client(extNetSocket *Socket, objNetClient *Client)
    }
    else {
       Socket->Clients = Client->Next;
-      if ((Socket->Clients) and (Socket->Clients->Next)) Socket->Clients->Next->Prev = nullptr;
+      if (Socket->Clients) Socket->Clients->Prev = nullptr;
    }
 
    FreeResource(Client);
@@ -646,7 +646,15 @@ restart:
 
    if (error IS ERR::Terminate) {
       log.traceBranch("Socket % " PRId64 " will be terminated.", int64_t(SocketFD));
-      if (Self->Handle.is_valid()) free_socket(Self);
+      if (Self->Handle.is_valid()) {
+         Self->CloseAfterWrite = true;
+         Self->Incoming.clear();
+         #ifdef __linux__
+            RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
+         #elif _WIN32
+            win_socketstate(Self->Handle, std::nullopt, true);
+         #endif
+      }
    }
    else if (Self->IncomingRecursion > 1) {
       // If netsocket_incoming() was called again during the callback, there is more
@@ -744,6 +752,13 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
    }
 
    // Before feeding new data into the queue, the current buffer must be empty.
+
+   if (Self->CloseAfterWrite and Self->WriteQueue.Buffer.empty()) {
+      Self->InUse--;
+      Self->OutgoingRecursion--;
+      free_socket(Self);
+      return;
+   }
 
    if ((Self->WriteQueue.Buffer.empty()) or
        (Self->WriteQueue.Index >= Self->WriteQueue.Buffer.size())) {

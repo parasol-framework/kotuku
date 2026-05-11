@@ -750,7 +750,7 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
    if (!result) {
       if (addr_storage.ss_family IS AF_INET6) {
          auto addr6 = (struct sockaddr_in6 *)&addr_storage;
-         kt::copymem(Args->Address->Data, &addr6->sin6_addr.s6_addr, 16);
+         kt::copymem(addr6->sin6_addr.s6_addr, Args->Address->Data, 16);
          Args->Address->Type = IPADDR::V6;
       }
       else if (addr_storage.ss_family IS AF_INET) {
@@ -1149,6 +1149,7 @@ static ERR NETSOCKET_JoinMulticastGroup(extNetSocket *Self, struct ns::JoinMulti
 {
    kt::Log log;
 
+   if (!Args) return log.warning(ERR::NullArgs);
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return ERR::NoSupport;
    if (!Args->Group) return ERR::Args;
 
@@ -1221,6 +1222,7 @@ static ERR NETSOCKET_LeaveMulticastGroup(extNetSocket *Self, struct ns::LeaveMul
 {
    kt::Log log;
 
+   if (!Args) return log.warning(ERR::NullArgs);
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return ERR::NoSupport;
    if (!Args->Group) return ERR::Args;
 
@@ -1479,8 +1481,10 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 
    if ((Self->Handle.is_invalid()) or (Self->State != NTC::CONNECTED)) { // Queue the write prior to server connection
       log.trace("Saving %d bytes to queue.", Args->Length);
-      Self->WriteQueue.write(Args->Buffer, std::min<size_t>(Args->Length, Self->MsgLimit));
-      return ERR::Okay;
+      auto len = std::min<size_t>(Args->Length, Self->MsgLimit);
+      if (auto error = Self->WriteQueue.write(Args->Buffer, len); error != ERR::Okay) return error;
+      Args->Result = int(len);
+      return (len < size_t(Args->Length)) ? ERR::BufferOverflow : ERR::Okay;
    }
 
    // Note that if a write queue has been setup, there is no way that we can write to the server until the queue has
@@ -1510,7 +1514,15 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (ssl_read_blocked) or (len > 0))  {
          // Put data into the write queue and register the socket for write events
          log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
-         Self->WriteQueue.write((int8_t *)Args->Buffer + len, std::min<size_t>(Args->Length - len, Self->MsgLimit));
+         auto remaining = size_t(Args->Length) - len;
+         auto queue_len = std::min<size_t>(remaining, Self->MsgLimit);
+         if (auto queue_error = Self->WriteQueue.write((int8_t *)Args->Buffer + len, queue_len);
+             queue_error != ERR::Okay) {
+            Args->Result = int(len);
+            return queue_error;
+         }
+         auto queue_overflow = queue_len < remaining;
+         if (queue_overflow) Args->Result = int(len + queue_len);
          if (ssl_write_blocked) {
             #if !defined(DISABLE_SSL) and !defined(_WIN32)
                ssl_resume_write_handshake(Self->Handle.hosthandle(), Self);
@@ -1523,6 +1535,8 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
                win_socketstate(Self->Handle, std::nullopt, true);
             #endif
          }
+
+         if (queue_overflow) return ERR::BufferOverflow;
       }
       else {
          Self->ErrorCountdown--;
@@ -1667,6 +1681,7 @@ static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
 {
    kt::Log log;
 
+   if (!Args) return log.warning(ERR::NullArgs);
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return log.warning(ERR::InvalidState);
    if ((!Args->Dest) or (!Args->Data) or (!Args->Length)) return log.warning(ERR::NullArgs);
    if (Args->Length <= 0) return log.warning(ERR::Args);
