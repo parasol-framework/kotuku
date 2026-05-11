@@ -271,21 +271,6 @@ inline void setIPV6(IPAddress &IP, uint8_t *Address, uint16_t Port) {
 }
 
 //********************************************************************************************************************
-// Unified IP address conversion functions to eliminate platform-specific duplication
-
-static uint32_t unified_inet_addr(CSTRING Str) {
-   return network_platform().inet_addr(Str);
-}
-
-static int unified_inet_pton(int af, CSTRING src, void *dst) {
-   return network_platform().inet_pton(af, src, dst);
-}
-
-static CSTRING unified_inet_ntop(int af, const void *src, char *dst, size_t size) {
-   return network_platform().inet_ntop(af, src, dst, size);
-}
-
-//********************************************************************************************************************
 
 static OBJECTPTR clNetLookup = nullptr;
 static OBJECTPTR clProxy = nullptr;
@@ -495,18 +480,9 @@ CSTRING AddressToStr(IPAddress *Address)
 
    if (!Address) return nullptr;
 
-   if (Address->Type IS IPADDR::V6) {
-      char ipv6_str[46]; // 46 bytes is sufficient for both platforms
-      const char *result = unified_inet_ntop(AF_INET6, Address->Data, ipv6_str, sizeof(ipv6_str));
-      if (result) return kt::strclone(result);
-      return nullptr;
-   }
-   else if (Address->Type IS IPADDR::V4) {
-      struct in_addr addr;
-      addr.s_addr = network_platform().host_to_long(Address->Data[0]);
-
-      char buffer[16];
-      auto result = network_platform().inet_ntop(AF_INET, &addr, buffer, sizeof(buffer));
+   if ((Address->Type IS IPADDR::V4) or (Address->Type IS IPADDR::V6)) {
+      char buffer[46]; // 46 bytes is sufficient for both IPv4 and IPv6 addresses.
+      auto result = network_platform().address_to_string(*Address, buffer, sizeof(buffer));
       return result ? kt::strclone(result) : nullptr;
    }
    else {
@@ -578,28 +554,7 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
       return ERR::Okay;
    }
 
-   // Try IPv6 first (contains colons)
-   if (strchr(Str, ':')) {
-      struct in6_addr ipv6_addr;
-      if (unified_inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
-         kt::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
-         Address->Type = IPADDR::V6;
-         return ERR::Okay;
-      }
-      return ERR::Failed;
-   }
-
-   // IPv4
-   uint32_t result = unified_inet_addr(Str);
-
-   if (result IS INADDR_NONE) return ERR::Failed;
-
-   Address->Type = IPADDR::V4;
-   Address->Data[0] = network_platform().long_to_host(result);
-   Address->Data[1] = 0;
-   Address->Data[2] = 0;
-   Address->Data[3] = 0;
-   return ERR::Okay;
+   return network_platform().parse_address(Str, *Address);
 }
 
 /*********************************************************************************************************************

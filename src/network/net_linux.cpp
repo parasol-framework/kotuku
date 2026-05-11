@@ -177,7 +177,7 @@ public:
          kt::copymem((CPTR)IP.Data, &addr6->sin6_addr.s6_addr, 16);
 
          Endpoint.Size = sizeof(struct sockaddr_in6);
-         Endpoint.Family = AF_INET6;
+         Endpoint.Family = IPADDR::V6;
          Endpoint.Label = "IPv6";
          return ERR::Okay;
       }
@@ -193,7 +193,7 @@ public:
             kt::copymem(&ipv4_net, &addr6->sin6_addr.s6_addr[12], sizeof(ipv4_net));
 
             Endpoint.Size = sizeof(struct sockaddr_in6);
-            Endpoint.Family = AF_INET6;
+            Endpoint.Family = IPADDR::V6;
             Endpoint.Label = "IPv4-mapped IPv6";
             return ERR::Okay;
          }
@@ -204,7 +204,7 @@ public:
             addr4->sin_addr.s_addr = host_to_long(IP.Data[0]);
 
             Endpoint.Size = sizeof(struct sockaddr_in);
-            Endpoint.Family = AF_INET;
+            Endpoint.Family = IPADDR::V4;
             Endpoint.Label = "IPv4";
             return ERR::Okay;
          }
@@ -264,7 +264,7 @@ public:
          addr6->sin6_port = host_to_short(uint16_t(Port));
 
          Endpoint.Size = sizeof(struct sockaddr_in6);
-         Endpoint.Family = AF_INET6;
+         Endpoint.Family = IPADDR::V6;
          Endpoint.Label = "IPv6";
       }
       else {
@@ -274,7 +274,7 @@ public:
          addr4->sin_port = host_to_short(uint16_t(Port));
 
          Endpoint.Size = sizeof(struct sockaddr_in);
-         Endpoint.Family = AF_INET;
+         Endpoint.Family = IPADDR::V4;
          Endpoint.Label = "IPv4";
       }
 
@@ -637,19 +637,35 @@ public:
       return ERR::Okay;
    }
 
-   uint32_t inet_addr(CSTRING Value) override
+   ERR parse_address(CSTRING Value, IPAddress &Address) override
    {
-      return ::inet_addr(Value);
+      kt::clearmem(&Address, sizeof(Address));
+
+      if (strchr(Value, ':')) {
+         struct in6_addr ipv6_addr;
+         if (::inet_pton(AF_INET6, Value, &ipv6_addr) != 1) return ERR::Failed;
+         kt::copymem(ipv6_addr.s6_addr, Address.Data, 16);
+         Address.Type = IPADDR::V6;
+         return ERR::Okay;
+      }
+
+      uint32_t result = ::inet_addr(Value);
+      if (result IS INADDR_NONE) return ERR::Failed;
+
+      Address.Type = IPADDR::V4;
+      Address.Data[0] = long_to_host(result);
+      return ERR::Okay;
    }
 
-   int inet_pton(int Family, CSTRING Source, APTR Dest) override
+   CSTRING address_to_string(const IPAddress &Address, STRING Dest, size_t Size) override
    {
-      return ::inet_pton(Family, Source, Dest);
-   }
-
-   CSTRING inet_ntop(int Family, CPTR Source, STRING Dest, size_t Size) override
-   {
-      return ::inet_ntop(Family, Source, Dest, Size);
+      if (Address.Type IS IPADDR::V6) return ::inet_ntop(AF_INET6, Address.Data, Dest, Size);
+      else if (Address.Type IS IPADDR::V4) {
+         struct in_addr addr;
+         addr.s_addr = host_to_long(Address.Data[0]);
+         return ::inet_ntop(AF_INET, &addr, Dest, Size);
+      }
+      else return nullptr;
    }
 
    uint32_t host_to_long(uint32_t Value) override

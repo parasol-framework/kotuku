@@ -167,7 +167,7 @@ static constexpr size_t NETWORK_ENDPOINT_STORAGE_SIZE = 128;
 struct NetworkEndpoint {
    alignas(uint64_t) uint8_t Storage[NETWORK_ENDPOINT_STORAGE_SIZE] = {};
    int Size = 0;
-   int Family = 0;
+   IPADDR Family = IPADDR::NIL;
    CSTRING Label = nullptr;
 };
 
@@ -233,9 +233,8 @@ public:
    virtual ERR sync_host_proxies(objConfig *Config) = 0;
    virtual ERR save_host_proxy(CSTRING Server, int ServerPort, int Port, bool Enabled) = 0;
 
-   virtual uint32_t inet_addr(CSTRING Value) = 0;
-   virtual int inet_pton(int Family, CSTRING Source, APTR Dest) = 0;
-   virtual CSTRING inet_ntop(int Family, CPTR Source, STRING Dest, size_t Size) = 0;
+   virtual ERR parse_address(CSTRING Value, IPAddress &Address) = 0;
+   virtual CSTRING address_to_string(const IPAddress &Address, STRING Dest, size_t Size) = 0;
    virtual uint32_t host_to_long(uint32_t Value) = 0;
    virtual uint32_t long_to_host(uint32_t Value) = 0;
    virtual uint16_t host_to_short(uint16_t Value) = 0;
