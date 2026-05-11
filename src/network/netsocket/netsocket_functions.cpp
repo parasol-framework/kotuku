@@ -461,7 +461,7 @@ static void netsocket_incoming_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       log.traceBranch("Windows SSL handshake in progress, reading raw data.");
       size_t result;
       std::vector<uint8_t> buffer;
-      if (ERR error = network_platform().append_receive(Self->Handle, buffer, 4096, result); error IS ERR::Okay) {
+      if (ERR error = network_platform().append_receive(Self->Handle, buffer, 32768, result); error IS ERR::Okay) {
          tls_handshake_received(Self, buffer.data(), int(buffer.size()));
 
          if ((Self->State != NTC::CONNECTED) or (!ssl_has_decrypted_data(Self->TLS.Handle) and !ssl_has_encrypted_data(Self->TLS.Handle))) {
@@ -474,6 +474,18 @@ static void netsocket_incoming_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
          log.warning(error);
          return;
       }
+   }
+   else if ((Self->TLS.Handle) and (Self->State IS NTC::CONNECTED) and (!ssl_has_decrypted_data(Self->TLS.Handle))) {
+      if (auto error = tls_receive_encrypted(Self); error IS ERR::Disconnected) {
+         free_socket(Self);
+         return;
+      }
+      else if (error != ERR::Okay) {
+         log.warning(error);
+         return;
+      }
+
+      if (!ssl_has_decrypted_data(Self->TLS.Handle)) return;
    }
 
   #else
@@ -585,6 +597,13 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
    if (Self->Terminating) return;
 
    if (Self->State IS NTC::HANDSHAKING) {
+      #ifndef DISABLE_SSL
+         #ifdef _WIN32
+            if (Self->TLS.Handle) {
+               if (auto error = tls_flush_output(Self); error != ERR::Okay) log.traceWarning(error);
+            }
+         #endif
+      #endif
       log.trace("Handshaking...");
       return;
    }
@@ -627,9 +646,12 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
       if (len > 0) {
          error = send_data(Self, Self->WriteQueue.Buffer.data() + Self->WriteQueue.Index, &len);
+         if (len > 0) {
+            log.trace("Sent %d of %d bytes from the queue.", Self->UID, int(len),
+               int(Self->WriteQueue.Buffer.size() - Self->WriteQueue.Index));
+            Self->WriteQueue.Index += len;
+         }
          if ((error != ERR::Okay) or (!len)) break;
-         log.trace("Sent %d of %d bytes from the queue.", Self->UID, int(len), int(Self->WriteQueue.Buffer.size() - Self->WriteQueue.Index));
-         Self->WriteQueue.Index += len;
       }
 
       if (Self->WriteQueue.Index >= Self->WriteQueue.Buffer.size()) {
@@ -641,15 +663,15 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
    // Before feeding new data into the queue, the current buffer must be empty.
 
-   if (Self->CloseAfterWrite and Self->WriteQueue.Buffer.empty()) {
+   if ((error IS ERR::Okay) and Self->CloseAfterWrite and Self->WriteQueue.Buffer.empty()) {
       Self->InUse--;
       Self->OutgoingRecursion--;
       free_socket(Self);
       return;
    }
 
-   if ((Self->WriteQueue.Buffer.empty()) or
-       (Self->WriteQueue.Index >= Self->WriteQueue.Buffer.size())) {
+   if ((error IS ERR::Okay) and ((Self->WriteQueue.Buffer.empty()) or
+       (Self->WriteQueue.Index >= Self->WriteQueue.Buffer.size()))) {
       if (Self->Outgoing.defined()) {
          if (Self->Outgoing.isC()) {
             auto routine = (ERR (*)(extNetSocket *, APTR))Self->Outgoing.Routine;

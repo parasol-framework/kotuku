@@ -114,6 +114,11 @@ static IocpCompletionTarget completion_target(const IocpSocketRecord &Record, Io
 
 static ERR convert_error(int Error = 0)
 {
+   if (Error IS ERROR_NETNAME_DELETED) return ERR::Disconnected;
+   if (Error IS ERROR_OPERATION_ABORTED) return ERR::Cancelled;
+   if (Error IS ERROR_CONNECTION_ABORTED) return ERR::ConnectionAborted;
+   if (Error IS ERROR_SEM_TIMEOUT) return ERR::TimeOut;
+
    return convert_socket_error(Error);
 }
 

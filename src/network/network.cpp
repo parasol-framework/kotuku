@@ -27,6 +27,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <unordered_set>
 #include <ctime>
 #include <type_traits>
+#include <array>
 
 #include <string.h>
 
@@ -190,8 +191,12 @@ JUMPTABLE_CORE
 #ifndef DISABLE_SSL
   #ifdef _WIN32
     // Windows SSL wrapper forward declarations
+    static void netsocket_outgoing(HOSTHANDLE, APTR);
+    static void clientsocket_outgoing(HOSTHANDLE, APTR);
     template <class T> ERR tls_connect(T *);
     template <class T> void tls_disconnect(T *);
+    template <class T> ERR tls_flush_output(T *);
+    template <class T> ERR tls_receive_encrypted(T *);
     static ERR tls_setup(extNetSocket *);
     static ERR tls_accept_client(extClientSocket *, extNetSocket *);
   #else
@@ -914,10 +919,16 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
       #ifdef _WIN32
          log.traceBranch("SSL Length: %d", int(*Length));
 
+         if (auto flush_error = tls_flush_output(Self); flush_error != ERR::Okay) {
+            *Length = 0;
+            return flush_error;
+         }
+
          size_t bytes_sent;
          if (auto error = ssl_write(Self->TLS.Handle, Buffer, *Length, &bytes_sent); error IS SSL_OK) {
             if (*Length != bytes_sent) log.traceWarning("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
             *Length = bytes_sent;
+            if (auto flush_error = tls_flush_output(Self); flush_error != ERR::Okay) return flush_error;
             return ERR::Okay;
          }
          else {

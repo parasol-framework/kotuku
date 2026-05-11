@@ -852,6 +852,14 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          if (Self->State IS NTC::HANDSHAKING) return log.traceWarning(ERR::InvalidState);
          else if (Self->State != NTC::CONNECTED) return log.warning(ERR::Disconnected);
 
+         if (!ssl_has_decrypted_data(Self->TLS.Handle)) {
+            if (auto receive_error = tls_receive_encrypted(Self); receive_error IS ERR::Disconnected) {
+               free_socket(Self);
+               return ERR::Disconnected;
+            }
+            else if (receive_error != ERR::Okay) return receive_error;
+         }
+
          int bytes_read = 0;
          if (auto error = ssl_read(Self->TLS.Handle, Args->Buffer, Args->Length, &bytes_read); error IS SSL_OK) {
             Args->Result = bytes_read;

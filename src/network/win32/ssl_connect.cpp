@@ -174,11 +174,9 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
       }
 
       if (out_buffer.pvBuffer and out_buffer.cbBuffer > 0) {
-         auto bytes_sent = send(SSL->socket_handle, (const char *)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
-         if (bytes_sent < 0) return SSL_ERROR_FAILED;
-         else if (unsigned(bytes_sent) != out_buffer.cbBuffer) return SSL_ERROR_FAILED;
-
-         FreeContextBuffer(out_buffer.pvBuffer);
+         if (auto error = queue_handshake_token(SSL, out_buffer.pvBuffer, out_buffer.cbBuffer); error != SSL_OK) {
+            return error;
+         }
       }
 
       if (status == SEC_E_OK) return SSL_OK;
