@@ -200,6 +200,32 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
 
 //********************************************************************************************************************
 
+static IPAddress client_identity(IPAddress Address)
+{
+   Address.Port = 0;
+   return Address;
+}
+
+static bool same_client_ip(const IPAddress &Left, const IPAddress &Right)
+{
+   if (Left.Type != Right.Type) return false;
+
+   if (Left.Type IS IPADDR::V4) return Left.Data[0] IS Right.Data[0];
+   else if (Left.Type IS IPADDR::V6) return std::memcmp(Left.Data, Right.Data, sizeof(Left.Data)) IS 0;
+   else return false;
+}
+
+static std::string client_ip_label(const IPAddress &Address)
+{
+   IPAddress printable = client_identity(Address);
+   CSTRING value = net::AddressToStr(&printable);
+   std::string label = value ? value : "<invalid>";
+   if (value) FreeResource((APTR)value);
+   return label;
+}
+
+//********************************************************************************************************************
+
 static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
    kt::Log log(__FUNCTION__);
@@ -239,21 +265,22 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       return;
    }
 
-   if ((accepted.Family != AF_INET) and (accepted.Family != AF_INET6)) {
-      log.warning("Unsupported address family: %d", accepted.Family);
+   if ((accepted.Address.Type != IPADDR::V4) and (accepted.Address.Type != IPADDR::V6)) {
+      log.warning("Unsupported address type: %d", int(accepted.Address.Type));
       network_platform().close_socket(clientfd);
       return;
    }
 
-   if (accepted.Family IS AF_INET6) log.trace("Accepted IPv6 client connection");
+   if (accepted.Address.Type IS IPADDR::V6) log.trace("Accepted IPv6 client connection");
    else if (Self->IPV6) log.trace("Accepted IPv4 client connection on dual-stack socket");
 
    // Check if this IP address already has a client structure from an earlier socket connection.
    // (One NetClient represents a single IP address; Multiple ClientSockets can connect from that IP address)
 
    objNetClient *client_ip;
+   auto accepted_ip = client_identity(accepted.Address);
    for (client_ip=Self->Clients; client_ip; client_ip=client_ip->Next) {
-      if (((int64_t *)&accepted.IP)[0] IS ((int64_t *)&client_ip->IP)[0]) break;
+      if (same_client_ip(accepted_ip, client_ip->IP)) break;
    }
 
    if (!client_ip) {
@@ -269,7 +296,7 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
          return;
       }
 
-      ((int64_t *)&client_ip->IP)[0] = ((int64_t *)&accepted.IP)[0];
+      client_ip->IP = accepted_ip;
       client_ip->TotalConnections = 0;
       Self->TotalClients++;
 
@@ -281,14 +308,16 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       Self->LastClient = client_ip;
    }
    else if (client_ip->TotalConnections >= Self->SocketLimit) {
-      log.warning("Socket limit of %d reached for IP %d.%d.%d.%d", Self->SocketLimit, client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
+      auto label = client_ip_label(client_ip->IP);
+      log.warning("Socket limit of %d reached for IP %s", Self->SocketLimit, label.c_str());
       network_platform().close_socket(clientfd);
       return;
    }
 
    if ((Self->Flags & NSF::MULTI_CONNECT) IS NSF::NIL) { // Check if the IP is already registered and alive
       if (client_ip->Connections) {
-         log.msg("Preventing second connection attempt from IP %d.%d.%d.%d", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
+         auto label = client_ip_label(client_ip->IP);
+         log.msg("Preventing second connection attempt from IP %s", label.c_str());
          network_platform().close_socket(clientfd);
          return;
       }
@@ -348,7 +377,8 @@ static void free_client(extNetSocket *Socket, objNetClient *Client)
    if (recursive) return;
    recursive++;
 
-   log.branch("%d:%d:%d:%d, Connections: %d", Client->IP[0], Client->IP[1], Client->IP[2], Client->IP[3], Client->TotalConnections);
+   auto label = client_ip_label(Client->IP);
+   log.branch("%s, Connections: %d", label.c_str(), Client->TotalConnections);
 
    // Free all sockets (connections) related to this client IP
 

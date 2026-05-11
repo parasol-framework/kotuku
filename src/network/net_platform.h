@@ -173,8 +173,7 @@ struct NetworkEndpoint {
 
 struct AcceptedSocket {
    SocketHandle Handle;
-   uint8_t IP[8] = {};
-   int Family = 0;
+   IPAddress Address = {};
 };
 
 struct HostLookupResult {

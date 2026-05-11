@@ -635,9 +635,9 @@ end
 -- Core Proxy Server Implementation
 
 function getClientIP(ClientSocket:obj):str
-   if ClientSocket.client and ClientSocket.client.ip then
-      ip = ClientSocket.client.ip
-      return ip[1] .. '.' .. ip[2] .. '.' .. ip[3] .. '.' .. ip[4]
+   local ip = ClientSocket.client?.ip
+   if ip then
+      return mNet.AddressToStr(ip) or 'unknown'
    end
 
    return 'unknown'

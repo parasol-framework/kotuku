@@ -48,6 +48,16 @@ static ERR NETCLIENT_NewPlacement(objNetClient *Self)
 -FIELD-
 IP: The IP address of the client.
 
+*********************************************************************************************************************/
+
+static ERR GET_IP(objNetClient *Self, struct IPAddress **Value)
+{
+   *Value = &Self->IP;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Next: The next client IP with connections to the server socket.
 
@@ -68,12 +78,12 @@ TotalConnections: The total number of current socket connections for the IP addr
 #include "netclient_def.c"
 
 static const FieldArray clNetClientFields[] = {
-   { "IP",          FDF_ARRAY|FDF_BYTE|FDF_R, nullptr, nullptr, 8 },
    { "Next",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
    { "Prev",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
    { "Connections", FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::CLIENTSOCKET },
    { "ClientData",  FDF_POINTER|FDF_RW },
    { "TotalConnections", FDF_INT|FDF_R },
+   { "IP",          FDF_POINTER|FDF_STRUCT|FDF_R, GET_IP, nullptr, "IPAddress" },
    END_FIELD
 };
 

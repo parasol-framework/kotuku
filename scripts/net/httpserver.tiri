@@ -11,6 +11,8 @@
    _LIB[_NS] = { }
    hslib = _LIB[_NS]
 
+global mNet ?= mod.load('network')
+
 glTime = obj.new('time')
 
 rxControlChars    <const> = <{ regex.new([=[[\x00-\x1f\x7f]]=]) }>
@@ -1583,8 +1585,8 @@ function serverIncoming(self, ClientSocket)
       state.chunk_received    = 0
 
       -- Get client IP for rate limiting
-      ip_array = ClientSocket.client.ip
-      state.ip = ip_array[0] .. '.' .. ip_array[1] .. '.' .. ip_array[2] .. '.' .. ip_array[3]
+      local ip = ClientSocket.client?.ip
+      state.ip = ip and mNet.AddressToStr(ip) or 'unknown'
 
       -- Check rate limit
       if not checkRateLimit(self, state.ip) then

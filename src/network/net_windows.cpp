@@ -51,25 +51,6 @@ static ERR endpoint_to_ip(const struct sockaddr_storage &Address, IPAddress &IP)
    else return ERR::Args;
 }
 
-static ERR copy_accepted_ip(const struct sockaddr_storage &Address, int Family, uint8_t *IP)
-{
-   if (!IP) return ERR::NullArgs;
-
-   kt::clearmem(IP, 8);
-
-   if (Family IS AF_INET) {
-      auto addr = (const struct sockaddr_in *)&Address;
-      kt::copymem(&addr->sin_addr.s_addr, IP, 4);
-      return ERR::Okay;
-   }
-   else if (Family IS AF_INET6) {
-      auto addr = (const struct sockaddr_in6 *)&Address;
-      kt::copymem((APTR)addr->sin6_addr.s6_addr, IP, 8);
-      return ERR::Okay;
-   }
-   else return ERR::Args;
-}
-
 static ERR convert_lookup_error(int Result)
 {
    switch (Result) {
@@ -378,15 +359,16 @@ public:
       struct sockaddr_storage address;
       int len = sizeof(address);
 
-      if (IPv6) accepted.Handle = SocketHandle(win_accept_ipv6(Reference, Server.socket(), (struct sockaddr *)&address,
-         &len, &accepted.Family));
+      if (IPv6) {
+         accepted.Handle = SocketHandle(win_accept_ipv6(Reference, Server.socket(), (struct sockaddr *)&address, &len,
+            nullptr));
+      }
       else {
-         accepted.Family = AF_INET;
          accepted.Handle = SocketHandle(win_accept(Reference, Server.socket(), (struct sockaddr *)&address, &len));
       }
 
       if (accepted.Handle.is_valid()) {
-         if (copy_accepted_ip(address, accepted.Family, accepted.IP) != ERR::Okay) {
+         if (endpoint_to_ip(address, accepted.Address) != ERR::Okay) {
             close_socket(accepted.Handle);
             accepted.Handle = SocketHandle();
          }
