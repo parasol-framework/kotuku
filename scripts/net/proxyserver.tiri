@@ -13,15 +13,17 @@
    _LIB[_NS] = { }
    proxylib = _LIB[_NS]
 
+   global mNet ?= mod.load('network')
+
 -- Deferred regex patterns
-rxPercentEncoded   = <{ regex.new([[%([0-9A-Fa-f]{2})]]) }>
-rxLineIterator     = <{ regex.new([[([^\r\n]+)]]) }>
-rxHttpRequest      = <{ regex.new([[(\S+)\s+(\S+)\s+(\S+)]]) }>
-rxHeaderPair       = <{ regex.new([[([^:]+):\s*(.+)]]) }>
-rxStatusLine       = <{ regex.new([[(\S+)\s+(\d+)\s*(.*)]]) }>
-rxHostPort         = <{ regex.new([[([^:]+):(\d+)]]) }>
-rxHostOptPort      = <{ regex.new([[([^:]+):?(\d*)]]) }>
-rxUrlParts         = <{ regex.new([[(https?):\/\/([^:\/]+):?(\d*)]]) }>
+rxPercentEncoded <const> = <{ regex.new([[%([0-9A-Fa-f]{2})]]) }>
+rxLineIterator   <const> = <{ regex.new([[([^\r\n]+)]]) }>
+rxHttpRequest    <const> = <{ regex.new([[(\S+)\s+(\S+)\s+(\S+)]]) }>
+rxHeaderPair     <const> = <{ regex.new([[([^:]+):\s*(.+)]]) }>
+rxStatusLine     <const> = <{ regex.new([[(\S+)\s+(\d+)\s*(.*)]]) }>
+rxHostPort       <const> = <{ regex.new([[([^:]+):(\d+)]]) }>
+rxHostOptPort    <const> = <{ regex.new([[([^:]+):?(\d*)]]) }>
+rxUrlParts       <const> = <{ regex.new([[(https?):\/\/([^:\/]+):?(\d*)]]) }>
 
 -- HTTP Status texts for responses
 glStatusTexts = {
@@ -635,9 +637,9 @@ end
 -- Core Proxy Server Implementation
 
 function getClientIP(ClientSocket:obj):str
-   if ClientSocket.client and ClientSocket.client.ip then
-      ip = ClientSocket.client.ip
-      return ip[1] .. '.' .. ip[2] .. '.' .. ip[3] .. '.' .. ip[4]
+   local ip = ClientSocket.client?.ip
+   if ip then
+      return mNet.AddressToStr(ip) or 'unknown'
    end
 
    return 'unknown'

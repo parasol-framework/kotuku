@@ -130,12 +130,15 @@ class objNetClient : public Object {
 
    using create = kt::Create<objNetClient>;
 
-   char IP[8];                       // The IP address of the client.
    objNetClient * Next;              // The next client IP with connections to the server socket.
    objNetClient * Prev;              // The previous client IP with connections to the server socket.
    objClientSocket * Connections;    // Pointer to the first established socket connection for the client IP.
    APTR ClientData;                  // A custom pointer available for userspace.
    int  TotalConnections;            // The total number of current socket connections for the IP address.
+
+#ifdef PRV_NETCLIENT
+    struct IPAddress IP; // IP address of the client.
+#endif
 
    // Action stubs
 
@@ -688,4 +691,3 @@ extern uint32_t LongToHost(uint32_t Value);
 extern ERR SetSSL(objNetSocket *NetSocket, CSTRING Command, CSTRING Value);
 } // namespace
 #endif // KOTUKU_STATIC
-

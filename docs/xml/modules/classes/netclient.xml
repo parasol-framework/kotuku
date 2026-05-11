@@ -42,7 +42,7 @@
       <name>IP</name>
       <comment>The IP address of the client.</comment>
       <access read="R">Read</access>
-      <type>INT8</type>
+      <type>INT8 []</type>
     </field>
 
     <field>

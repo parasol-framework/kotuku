@@ -60,6 +60,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <cstring>
 #include <thread>
 #include <optional>
+#include <string_view>
 
 //********************************************************************************************************************
 
@@ -93,6 +94,18 @@ enum class SHS : uint8_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(SHS)
 
+#ifndef DISABLE_SSL
+struct TLSSession {
+   #ifdef _WIN32
+      SSL_HANDLE Handle = nullptr;
+   #else
+      SSL *Handle = nullptr;
+      BIO *BIOHandle = nullptr;
+      SHS HandshakeStatus = SHS::NIL;
+   #endif
+};
+#endif
+
 //********************************************************************************************************************
 
 #ifdef _WIN32
@@ -114,13 +127,7 @@ class extClientSocket : public objClientSocket {
    uint8_t ErrorCountdown = 8;  // Counts down on each error, disconnect occurs at zero.
 
    #ifndef DISABLE_SSL
-      #ifdef _WIN32
-         SSL_HANDLE SSLHandle;
-      #else
-         SSL *SSLHandle;     // SSL connection handle for this client
-         BIO *BIOHandle;     // SSL BIO handle for this client
-         SHS HandshakeStatus; // Tracks the current actions of SSL handshaking.
-      #endif
+      TLSSession TLS;
    #endif
 };
 
@@ -149,14 +156,7 @@ class extNetSocket : public objNetSocket {
       int16_t WinRecursion; // For win32_netresponse()
    #endif
    #ifndef DISABLE_SSL
-      // These handles are only used when the NetSocket is a client of a server.
-      #ifdef _WIN32
-         SSL_HANDLE SSLHandle;
-      #else
-        SSL *SSLHandle;
-        SHS HandshakeStatus; // Tracks the current actions of SSL handshaking.
-        BIO *BIOHandle;
-      #endif
+      TLSSession TLS;
    #endif
 
    extNetSocket() {
@@ -190,15 +190,17 @@ JUMPTABLE_CORE
 #ifndef DISABLE_SSL
   #ifdef _WIN32
     // Windows SSL wrapper forward declarations
-    template <class T> ERR sslConnect(T *);
-    template <class T> void sslDisconnect(T *);
-    static ERR sslSetup(extNetSocket *);
+    template <class T> ERR tls_connect(T *);
+    template <class T> void tls_disconnect(T *);
+    static ERR tls_setup(extNetSocket *);
+    static ERR tls_accept_client(extClientSocket *, extNetSocket *);
   #else
     // OpenSSL forward declarations
     static bool ssl_init = false;
-    static ERR sslConnect(extNetSocket *);
+    static ERR tls_connect(extNetSocket *);
     static ERR sslLinkSocket(extNetSocket *);
-    static ERR sslSetup(extNetSocket *);
+    static ERR tls_setup(extNetSocket *);
+    static ERR tls_accept_client(extClientSocket *, extNetSocket *);
   #endif
 #endif
 
@@ -271,18 +273,135 @@ inline void setIPV6(IPAddress &IP, uint8_t *Address, uint16_t Port) {
 }
 
 //********************************************************************************************************************
-// Unified IP address conversion functions to eliminate platform-specific duplication
 
-static uint32_t unified_inet_addr(CSTRING Str) {
-   return network_platform().inet_addr(Str);
+static bool decimal_digit(char Value)
+{
+   return (Value >= '0') and (Value <= '9');
 }
 
-static int unified_inet_pton(int af, CSTRING src, void *dst) {
-   return network_platform().inet_pton(af, src, dst);
+static bool parse_ipv4_literal(std::string_view Text, uint32_t &Address)
+{
+   uint32_t address = 0;
+   size_t pos = 0;
+
+   for (int octet_count = 0; octet_count < 4; ++octet_count) {
+      if ((pos >= Text.size()) or (!decimal_digit(Text[pos]))) return false;
+
+      uint32_t octet = 0;
+      while ((pos < Text.size()) and decimal_digit(Text[pos])) {
+         octet = (octet * 10) + uint32_t(Text[pos] - '0');
+         if (octet > 255) return false;
+         ++pos;
+      }
+
+      address = (address << 8) | octet;
+
+      if (octet_count < 3) {
+         if ((pos >= Text.size()) or (Text[pos] != '.')) return false;
+         ++pos;
+      }
+   }
+
+   if (pos != Text.size()) return false;
+
+   Address = address;
+   return true;
 }
 
-static CSTRING unified_inet_ntop(int af, const void *src, char *dst, size_t size) {
-   return network_platform().inet_ntop(af, src, dst, size);
+static int ipv6_hex_value(char Value)
+{
+   if ((Value >= '0') and (Value <= '9')) return Value - '0';
+   if ((Value >= 'a') and (Value <= 'f')) return 10 + Value - 'a';
+   if ((Value >= 'A') and (Value <= 'F')) return 10 + Value - 'A';
+   return -1;
+}
+
+static bool parse_ipv6_piece_list(std::string_view Text, uint16_t *Pieces, size_t &Count)
+{
+   Count = 0;
+   if (Text.empty()) return true;
+
+   size_t start = 0;
+   while (start < Text.size()) {
+      if (Count >= 8) return false;
+
+      auto end = Text.find(':', start);
+      auto segment = (end IS std::string_view::npos) ? Text.substr(start) : Text.substr(start, end - start);
+      if (segment.empty()) return false;
+
+      if (segment.find('.') != std::string_view::npos) {
+         if (end != std::string_view::npos) return false;
+
+         uint32_t ipv4 = 0;
+         if (!parse_ipv4_literal(segment, ipv4)) return false;
+         if (Count > 6) return false;
+
+         Pieces[Count++] = uint16_t(ipv4 >> 16);
+         Pieces[Count++] = uint16_t(ipv4 & 0xffff);
+         return true;
+      }
+
+      if (segment.size() > 4) return false;
+
+      uint16_t piece = 0;
+      for (auto ch : segment) {
+         auto digit = ipv6_hex_value(ch);
+         if (digit < 0) return false;
+         piece = uint16_t((piece << 4) | uint16_t(digit));
+      }
+
+      Pieces[Count++] = piece;
+
+      if (end IS std::string_view::npos) return true;
+      start = end + 1;
+      if (start >= Text.size()) return false;
+   }
+
+   return true;
+}
+
+static bool parse_ipv6_literal(std::string_view Text, IPAddress &Address)
+{
+   if (Text.empty()) return false;
+   if (Text.find('%') != std::string_view::npos) return false;
+
+   uint16_t pieces[8] = {};
+   size_t piece_count = 0;
+
+   auto double_colon = Text.find("::");
+   if (double_colon != std::string_view::npos) {
+      if (Text.find("::", double_colon + 2) != std::string_view::npos) return false;
+
+      uint16_t left[8] = {};
+      uint16_t right[8] = {};
+      size_t left_count = 0;
+      size_t right_count = 0;
+
+      if (!parse_ipv6_piece_list(Text.substr(0, double_colon), left, left_count)) return false;
+      if (!parse_ipv6_piece_list(Text.substr(double_colon + 2), right, right_count)) return false;
+      if ((left_count + right_count) >= 8) return false;
+
+      for (size_t i = 0; i < left_count; ++i) pieces[piece_count++] = left[i];
+
+      auto zero_count = 8 - left_count - right_count;
+      for (size_t i = 0; i < zero_count; ++i) pieces[piece_count++] = 0;
+      for (size_t i = 0; i < right_count; ++i) pieces[piece_count++] = right[i];
+   }
+   else {
+      if (!parse_ipv6_piece_list(Text, pieces, piece_count)) return false;
+      if (piece_count != 8) return false;
+   }
+
+   kt::clearmem(&Address, sizeof(Address));
+   Address.Type = IPADDR::V6;
+
+   auto bytes = (uint8_t *)Address.Data;
+   for (size_t i = 0; i < 8; ++i) {
+      bytes[i * 2] = uint8_t(pieces[i] >> 8);
+      bytes[(i * 2) + 1] = uint8_t(pieces[i] & 0xff);
+   }
+
+   return true;
 }
 
 //********************************************************************************************************************
@@ -495,18 +614,9 @@ CSTRING AddressToStr(IPAddress *Address)
 
    if (!Address) return nullptr;
 
-   if (Address->Type IS IPADDR::V6) {
-      char ipv6_str[46]; // 46 bytes is sufficient for both platforms
-      const char *result = unified_inet_ntop(AF_INET6, Address->Data, ipv6_str, sizeof(ipv6_str));
-      if (result) return kt::strclone(result);
-      return nullptr;
-   }
-   else if (Address->Type IS IPADDR::V4) {
-      struct in_addr addr;
-      addr.s_addr = network_platform().host_to_long(Address->Data[0]);
-
-      char buffer[16];
-      auto result = network_platform().inet_ntop(AF_INET, &addr, buffer, sizeof(buffer));
+   if ((Address->Type IS IPADDR::V4) or (Address->Type IS IPADDR::V6)) {
+      char buffer[46]; // 46 bytes is sufficient for both IPv4 and IPv6 addresses.
+      auto result = network_platform().address_to_string(*Address, buffer, sizeof(buffer));
       return result ? kt::strclone(result) : nullptr;
    }
    else {
@@ -545,61 +655,35 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
 {
    if ((!Str) or (!Address)) return ERR::NullArgs;
 
-   // Handle special cases
-   if (kt::iequals(Str, "localhost") or kt::iequals(Str, "127.0.0.1")) {
-      Address->Type = IPADDR::V4;
-      Address->Data[0] = 0x7f000001; // 127.0.0.1
-      Address->Data[1] = Address->Data[2] = Address->Data[3] = 0;
+   auto port = Address->Port;
+   kt::clearmem(Address, sizeof(*Address));
+
+   if (kt::iequals(Str, "localhost")) {
+      setIPV4(*Address, 0x7f000001, port); // 127.0.0.1
       return ERR::Okay;
    }
-   else if (kt::iequals(Str, "::1")) {
-      Address->Type = IPADDR::V6;
-      kt::clearmem(&Address->Data, sizeof(Address->Data));
-      ((uint8_t*)Address->Data)[15] = 1; // ::1 in byte format
-      return ERR::Okay;
-   }
-   else if (kt::iequals(Str, "::")) {
-      // Bind to all interfaces (IPv6)
-      Address->Type = IPADDR::V6;
-      kt::clearmem(&Address->Data, sizeof(Address->Data));
-      return ERR::Okay;
-   }
-   else if (kt::iequals(Str, "0.0.0.0") or kt::iequals(Str, "*") or kt::iequals(Str, "")) {
-      // Bind to all interfaces
-      Address->Type = IPADDR::V4;
-      kt::clearmem(&Address->Data, sizeof(Address->Data));
-      return ERR::Okay;
-   }
-   else if (kt::iequals(Str, "255.255.255.255")) {
-      // Needed to prevent confusion with INADDR_NONE
-      Address->Type = IPADDR::V4;
-      Address->Data[0] = 0xffffffff;
-      Address->Data[1] = Address->Data[2] = Address->Data[3] = 0;
+   else if ((!Str[0]) or kt::iequals(Str, "*")) {
+      setIPV4(*Address, 0, port);
       return ERR::Okay;
    }
 
-   // Try IPv6 first (contains colons)
-   if (strchr(Str, ':')) {
-      struct in6_addr ipv6_addr;
-      if (unified_inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
-         kt::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
-         Address->Type = IPADDR::V6;
+   std::string_view text(Str);
+
+   if (text.find(':') != std::string_view::npos) {
+      if (parse_ipv6_literal(text, *Address)) {
+         Address->Port = port;
          return ERR::Okay;
       }
-      return ERR::Failed;
+   }
+   else {
+      uint32_t ipv4 = 0;
+      if (parse_ipv4_literal(text, ipv4)) {
+         setIPV4(*Address, ipv4, port);
+         return ERR::Okay;
+      }
    }
 
-   // IPv4
-   uint32_t result = unified_inet_addr(Str);
-
-   if (result IS INADDR_NONE) return ERR::Failed;
-
-   Address->Type = IPADDR::V4;
-   Address->Data[0] = network_platform().long_to_host(result);
-   Address->Data[1] = 0;
-   Address->Data[2] = 0;
-   Address->Data[3] = 0;
-   return ERR::Okay;
+   return ERR::Failed;
 }
 
 /*********************************************************************************************************************
@@ -727,11 +811,11 @@ ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
    switch(hash) {
       case kt::strhash("EnableSSL"):
          if ((Socket->Flags & NSF::SSL) IS NSF::NIL) {
-            if (auto error = sslSetup((extNetSocket *)Socket); error IS ERR::Okay) {
-               if (error = sslConnect((extNetSocket *)Socket); error IS ERR::Okay) {
+            if (auto error = tls_setup((extNetSocket *)Socket); error IS ERR::Okay) {
+               if (error = tls_connect((extNetSocket *)Socket); error IS ERR::Okay) {
                   Socket->Flags |= NSF::SSL;
                }
-               else sslDisconnect((extNetSocket*)Socket);
+               else tls_disconnect((extNetSocket*)Socket);
                return error;
             }
             else return error;
@@ -741,7 +825,7 @@ ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
       case kt::strhash("DisableSSL"): // Disconnect SSL (i.e. go back to unencrypted mode)
          if ((Socket->Flags & NSF::SSL) != NSF::NIL) {
             Socket->Flags &= ~NSF::SSL;
-            sslDisconnect((extNetSocket *)Socket);
+            tls_disconnect((extNetSocket *)Socket);
          }
          break;
 
@@ -759,6 +843,63 @@ ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
 } // namespace
 
 //********************************************************************************************************************
+
+ERR NetworkPlatform::prepare_bind_address(CSTRING Address, int Port, bool IPv6, NetworkEndpoint &Endpoint)
+{
+   kt::clearmem(&Endpoint, sizeof(Endpoint));
+
+   if ((Port < 0) or (Port > 65535)) return ERR::OutOfRange;
+
+   IPAddress ip;
+   kt::clearmem(&ip, sizeof(ip));
+
+   if (Address) {
+      if (auto error = net::StrToAddress(Address, &ip); error != ERR::Okay) return ERR::InvalidValue;
+   }
+   else {
+      ip.Type = IPv6 ? IPADDR::V6 : IPADDR::V4;
+   }
+
+   return build_address(ip, Port, IPv6, Endpoint);
+}
+
+//********************************************************************************************************************
+
+#ifndef DISABLE_SSL
+template <class T> bool tls_active(T *Self)
+{
+   return Self->TLS.Handle;
+}
+
+template <class T> bool tls_handshake_pending(T *Self)
+{
+   #ifdef _WIN32
+      return (Self->TLS.Handle) and (Self->State IS NTC::HANDSHAKING);
+   #else
+      return (Self->TLS.Handle) and (Self->TLS.HandshakeStatus != SHS::NIL);
+   #endif
+}
+
+template <class T> bool tls_waiting_for_read(T *Self)
+{
+   #ifdef _WIN32
+      return false;
+   #else
+      return (Self->TLS.Handle) and (Self->TLS.HandshakeStatus IS SHS::READ);
+   #endif
+}
+
+template <class T> bool tls_waiting_for_write(T *Self)
+{
+   #ifdef _WIN32
+      return false;
+   #else
+      return (Self->TLS.Handle) and (Self->TLS.HandshakeStatus IS SHS::WRITE);
+   #endif
+}
+#endif
+
+//********************************************************************************************************************
 // Template function to handle SSL and socket sending for both NetSocket and ClientSocket
 
 template<typename T>
@@ -769,12 +910,12 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
    if (!*Length) return ERR::Okay;
 
 #ifndef DISABLE_SSL
-   if (Self->SSLHandle) {
+   if (Self->TLS.Handle) {
       #ifdef _WIN32
          log.traceBranch("SSL Length: %d", int(*Length));
 
          size_t bytes_sent;
-         if (auto error = ssl_write(Self->SSLHandle, Buffer, *Length, &bytes_sent); error IS SSL_OK) {
+         if (auto error = ssl_write(Self->TLS.Handle, Buffer, *Length, &bytes_sent); error IS SSL_OK) {
             if (*Length != bytes_sent) log.traceWarning("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
             *Length = bytes_sent;
             return ERR::Okay;
@@ -789,12 +930,12 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
       #else
          log.traceBranch("SSL Length: %d", int(*Length));
 
-         if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
-         else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
+         if (Self->TLS.HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
+         else if (Self->TLS.HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
 
-         if (Self->HandshakeStatus != SHS::NIL) {
+         if (Self->TLS.HandshakeStatus != SHS::NIL) {
             *Length = 0;
-            if (Self->HandshakeStatus IS SHS::READ) {
+            if (Self->TLS.HandshakeStatus IS SHS::READ) {
                ssl_suspend_write_queue(Self->Handle.hosthandle());
                return ERR::Busy;
             }
@@ -802,11 +943,11 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
          }
 
          ssl_clear_error_queue();
-         auto bytes_sent = SSL_write(Self->SSLHandle, Buffer, *Length);
+         auto bytes_sent = SSL_write(Self->TLS.Handle, Buffer, *Length);
 
          if (bytes_sent <= 0) {
             *Length = 0;
-            auto ssl_error = SSL_get_error(Self->SSLHandle, bytes_sent);
+            auto ssl_error = SSL_get_error(Self->TLS.Handle, bytes_sent);
 
             switch(ssl_error){
                case SSL_ERROR_WANT_WRITE:
@@ -815,7 +956,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 
                case SSL_ERROR_WANT_READ: {
                   log.trace("Handshake requested by server.");
-                  Self->HandshakeStatus = SHS::READ;
+                  Self->TLS.HandshakeStatus = SHS::READ;
                   auto read_callback = std::is_same<T, extNetSocket>::value ?
                      ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
                   ssl_suspend_write_queue(Self->Handle.hosthandle());

@@ -377,21 +377,21 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
          bool ssl_valid = true;
 
          #ifdef _WIN32
-         if ((Self->SSLHandle) and ((Self->Flags & NSF::SERVER) IS NSF::NIL)) {
+         if ((Self->TLS.Handle) and ((Self->Flags & NSF::SERVER) IS NSF::NIL)) {
             // Only perform certificate validation if DISABLE_SERVER_VERIFY flag is not set
             if ((Self->Flags & NSF::DISABLE_SERVER_VERIFY) != NSF::NIL) {
                log.trace("SSL certificate validation skipped.");
             }
-            else ssl_valid = ssl_get_verify_result(Self->SSLHandle);
+            else ssl_valid = ssl_get_verify_result(Self->TLS.Handle);
          }
          #else
-         if (Self->SSLHandle) {
+         if (Self->TLS.Handle) {
             // Only perform certificate validation if DISABLE_SERVER_VERIFY flag is not set
             if ((Self->Flags & NSF::DISABLE_SERVER_VERIFY) != NSF::NIL) {
                log.trace("SSL certificate validation skipped.");
             }
             else {
-               if (SSL_get_verify_result(Self->SSLHandle) != X509_V_OK) ssl_valid = false;
+               if (SSL_get_verify_result(Self->TLS.Handle) != X509_V_OK) ssl_valid = false;
                else log.trace("SSL certificate validation successful.");
             }
          }

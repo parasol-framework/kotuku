@@ -55,12 +55,14 @@ typedef int SOCKET_HANDLE;
   )
 
   class("NetClient", { src="netclient/netclient.cpp", output="netclient/netclient_def.c", comment="Simple data storage class utilised by NetSocket to represent a client machine/IP." }, [[
-    char(8) IP                     # IP address in 4/8-byte format
     obj(NetClient) Next            # Next client in the chain
     obj(NetClient) Prev            # Previous client in the chain
     obj(ClientSocket) Connections  # Pointer to a list of connections opened by this client.
     ptr ClientData                 # Free for user data storage.
     int TotalConnections           # Count of all socket-based connections
+  ]],
+  [[
+    struct IPAddress IP; // IP address of the client.
   ]])
 
   class("ClientSocket", {

@@ -209,8 +209,8 @@ static void complete_socket_connect(extNetSocket *Socket, ERR Result)
    clear_connect_timer(Socket);
 
    #ifndef DISABLE_SSL
-      if (Socket->SSLHandle) {
-         sslConnect(Socket);
+      if (Socket->TLS.Handle) {
+         tls_connect(Socket);
          if (Socket->Error != ERR::Okay) return;
          if (Socket->State IS NTC::HANDSHAKING) network_platform().register_read(Socket->Handle, &netsocket_incoming,
             Socket);
@@ -523,7 +523,7 @@ static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectS
 static ERR NETSOCKET_Free(extNetSocket *Self)
 {
 #ifndef DISABLE_SSL
-   sslDisconnect(Self);
+   tls_disconnect(Self);
 #endif
 
    if (Self->TimerHandle)    { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
@@ -649,7 +649,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    // Initialise SSL ahead of any connections being made.
 
    if ((Self->Flags & NSF::SSL) != NSF::NIL) {
-      if ((error = sslSetup(Self)) != ERR::Okay) return error;
+      if ((error = tls_setup(Self)) != ERR::Okay) return error;
    }
 #endif
 
@@ -846,14 +846,14 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    if (!Args->Length) return ERR::Okay;
 
 #ifndef DISABLE_SSL
-   if (Self->SSLHandle) {
+   if (Self->TLS.Handle) {
       #ifdef _WIN32
          // If we're in the middle of SSL handshake, return nothing.  The automated incoming data handler is managing the object state.
          if (Self->State IS NTC::HANDSHAKING) return log.traceWarning(ERR::InvalidState);
          else if (Self->State != NTC::CONNECTED) return log.warning(ERR::Disconnected);
 
          int bytes_read = 0;
-         if (auto error = ssl_read(Self->SSLHandle, Args->Buffer, Args->Length, &bytes_read); error IS SSL_OK) {
+         if (auto error = ssl_read(Self->TLS.Handle, Args->Buffer, Args->Length, &bytes_read); error IS SSL_OK) {
             Args->Result = bytes_read;
             return ERR::Okay;
          }
@@ -867,10 +867,10 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          bool read_blocked;
          int pending;
 
-         if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
-         else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
+         if (Self->TLS.HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
+         else if (Self->TLS.HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
 
-         if (Self->HandshakeStatus != SHS::NIL) { // Still handshaking
+         if (Self->TLS.HandshakeStatus != SHS::NIL) { // Still handshaking
             log.trace("SSL handshake still in progress.");
             return ERR::Okay;
          }
@@ -880,8 +880,8 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          do {
             read_blocked = false;
             ssl_clear_error_queue();
-            if (auto result = SSL_read(Self->SSLHandle, Buffer, BufferSize); result <= 0) {
-               auto ssl_error = SSL_get_error(Self->SSLHandle, result);
+            if (auto result = SSL_read(Self->TLS.Handle, Buffer, BufferSize); result <= 0) {
+               auto ssl_error = SSL_get_error(Self->TLS.Handle, result);
                switch (ssl_error) {
                   case SSL_ERROR_ZERO_RETURN:
                      free_socket(Self);
@@ -894,7 +894,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
                      // need to wait on the socket to be writeable, then restart the read when it is.
 
                       log.msg("SSL socket handshake requested by server.");
-                      Self->HandshakeStatus = SHS::WRITE;
+                      Self->TLS.HandshakeStatus = SHS::WRITE;
                      network_platform().register_write(Self->Handle, ssl_handshake_write_netsocket, Self);
                       return ERR::Okay;
 
@@ -922,7 +922,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
                Buffer = (APTR)((char *)Buffer + result);
                BufferSize -= result;
             }
-         } while ((pending = SSL_pending(Self->SSLHandle)) and (!read_blocked) and (BufferSize > 0));
+         } while ((pending = SSL_pending(Self->TLS.Handle)) and (!read_blocked) and (BufferSize > 0));
 
          log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
 
@@ -1014,9 +1014,9 @@ static ERR write_connected_socket_data(T *Self, struct acWrite *Args, size_t Msg
    bool ssl_write_blocked = false;
 
    #if !defined(DISABLE_SSL) and !defined(_WIN32)
-      ssl_read_blocked = (error IS ERR::Busy) and (Self->SSLHandle) and (Self->HandshakeStatus IS SHS::READ);
-      ssl_write_blocked = (error IS ERR::BufferOverflow) and (Self->SSLHandle) and
-         (Self->HandshakeStatus IS SHS::WRITE);
+      ssl_read_blocked = (error IS ERR::Busy) and (Self->TLS.Handle) and (Self->TLS.HandshakeStatus IS SHS::READ);
+      ssl_write_blocked = (error IS ERR::BufferOverflow) and (Self->TLS.Handle) and
+         (Self->TLS.HandshakeStatus IS SHS::WRITE);
    #endif
 
    if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (ssl_read_blocked) or (len > 0)) {

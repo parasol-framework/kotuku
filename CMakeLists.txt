@@ -101,6 +101,16 @@ option (ENABLE_CPACK      "Enable CPack Windows packaging support" OFF)
 option (FULL_OPTIMISATION "Use the highest levels of optimisation available" OFF)
 option (ENABLE_SSL_BUNDLE_UPDATE "Enable the manual update_ssl_bundle target for downloading the SSL certificate bundle." OFF)
 
+set (KOTUKU_NETWORK_SUPPORTED FALSE)
+if (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+   set (KOTUKU_NETWORK_SUPPORTED TRUE)
+endif ()
+
+if (NOT DISABLE_NETWORK AND NOT KOTUKU_NETWORK_SUPPORTED)
+   message (STATUS "Network API disabled: unsupported platform '${CMAKE_SYSTEM_NAME}'.")
+   set (DISABLE_NETWORK ON CACHE BOOL "Disable Network API" FORCE)
+endif ()
+
 get_property (KOTUKU_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
 if (KOTUKU_MULTI_CONFIG AND CMAKE_BUILD_TYPE STREQUAL "FastBuild")

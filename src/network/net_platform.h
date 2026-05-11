@@ -11,7 +11,7 @@
 #include <kotuku/main.h>
 #include <kotuku/modules/network.h>
 
-#ifdef _WIN32
+#if defined(_WIN32)
    #define INADDR_NONE 0xffffffff
 
    #define SOCK_STREAM 1
@@ -98,7 +98,7 @@
 
    static const struct in6_addr in6addr_any = {{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}};
 
-#else
+#elif defined(__linux__)
    #include <arpa/inet.h>
    #include <netdb.h>
    #include <unistd.h>
@@ -108,6 +108,8 @@
    #include <netinet/tcp.h>
    #include <netinet/in.h>
    #include <errno.h>
+#else
+   #error "Network module has no platform backend for this platform"
 #endif
 
 class SocketHandle {
@@ -165,14 +167,13 @@ static constexpr size_t NETWORK_ENDPOINT_STORAGE_SIZE = 128;
 struct NetworkEndpoint {
    alignas(uint64_t) uint8_t Storage[NETWORK_ENDPOINT_STORAGE_SIZE] = {};
    int Size = 0;
-   int Family = 0;
+   IPADDR Family = IPADDR::NIL;
    CSTRING Label = nullptr;
 };
 
 struct AcceptedSocket {
    SocketHandle Handle;
-   uint8_t IP[8] = {};
-   int Family = 0;
+   IPAddress Address = {};
 };
 
 struct HostLookupResult {
@@ -195,7 +196,7 @@ public:
    virtual int shutdown_socket(SocketHandle Handle, int How) = 0;
 
    virtual ERR build_address(const IPAddress &IP, int Port, bool IPv6, NetworkEndpoint &Endpoint) = 0;
-   virtual ERR prepare_bind_address(CSTRING Address, int Port, bool IPv6, NetworkEndpoint &Endpoint) = 0;
+   ERR prepare_bind_address(CSTRING Address, int Port, bool IPv6, NetworkEndpoint &Endpoint);
    virtual ERR connect(SocketHandle Handle, const NetworkEndpoint &Endpoint) = 0;
    virtual ERR begin_connect_wait(SocketHandle Handle, void (*Callback)(HOSTHANDLE, APTR), APTR Data) = 0;
    virtual ERR complete_connect(SocketHandle Handle) = 0;
@@ -232,9 +233,7 @@ public:
    virtual ERR sync_host_proxies(objConfig *Config) = 0;
    virtual ERR save_host_proxy(CSTRING Server, int ServerPort, int Port, bool Enabled) = 0;
 
-   virtual uint32_t inet_addr(CSTRING Value) = 0;
-   virtual int inet_pton(int Family, CSTRING Source, APTR Dest) = 0;
-   virtual CSTRING inet_ntop(int Family, CPTR Source, STRING Dest, size_t Size) = 0;
+   virtual CSTRING address_to_string(const IPAddress &Address, STRING Dest, size_t Size) = 0;
    virtual uint32_t host_to_long(uint32_t Value) = 0;
    virtual uint32_t long_to_host(uint32_t Value) = 0;
    virtual uint16_t host_to_short(uint16_t Value) = 0;
