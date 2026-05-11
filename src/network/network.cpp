@@ -37,7 +37,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <kotuku/modules/network.h>
 #include <kotuku/strings.hpp>
 
-#include "ssl_certificate_policy.hpp"
+#include "ssl_certificate_policy.h"
 
 #ifndef DISABLE_SSL
   #ifdef _WIN32
