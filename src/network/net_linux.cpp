@@ -20,12 +20,6 @@ static const struct sockaddr_storage & endpoint_storage(const NetworkEndpoint &E
    return *(const struct sockaddr_storage *)Endpoint.Storage;
 }
 
-static bool same_text(CSTRING Left, CSTRING Right)
-{
-   if ((!Left) or (!Right)) return false;
-   return strcasecmp(Left, Right) IS 0;
-}
-
 static ERR endpoint_to_ip(const struct sockaddr_storage &Address, IPAddress &IP)
 {
    kt::clearmem(&IP, sizeof(IP));
@@ -210,75 +204,6 @@ public:
          }
       }
       else return ERR::InvalidData;
-   }
-
-   ERR prepare_bind_address(CSTRING Address, int Port, bool IPv6, NetworkEndpoint &Endpoint) override
-   {
-      kt::clearmem(&Endpoint, sizeof(Endpoint));
-      auto &storage = endpoint_storage(Endpoint);
-
-      if ((Port < 0) or (Port > 65535)) return ERR::OutOfRange;
-
-      if (Address) {
-         IPAddress ip;
-         kt::clearmem(&ip, sizeof(ip));
-
-         if (same_text(Address, "localhost") or same_text(Address, "127.0.0.1")) {
-            ip.Type = IPADDR::V4;
-            ip.Data[0] = 0x7f000001;
-         }
-         else if (same_text(Address, "::1")) {
-            ip.Type = IPADDR::V6;
-            ((uint8_t *)ip.Data)[15] = 1;
-         }
-         else if (same_text(Address, "::")) {
-            ip.Type = IPADDR::V6;
-         }
-         else if (same_text(Address, "0.0.0.0") or same_text(Address, "*") or same_text(Address, "")) {
-            ip.Type = IPADDR::V4;
-         }
-         else if (same_text(Address, "255.255.255.255")) {
-            ip.Type = IPADDR::V4;
-            ip.Data[0] = 0xffffffff;
-         }
-         else if (strchr(Address, ':')) {
-            struct in6_addr ipv6_addr;
-            if (::inet_pton(AF_INET6, Address, &ipv6_addr) != 1) return ERR::InvalidValue;
-            ip.Type = IPADDR::V6;
-            kt::copymem(ipv6_addr.s6_addr, ip.Data, 16);
-         }
-         else {
-            uint32_t result = ::inet_addr(Address);
-            if (result IS INADDR_NONE) return ERR::InvalidValue;
-            ip.Type = IPADDR::V4;
-            ip.Data[0] = long_to_host(result);
-         }
-
-         return build_address(ip, Port, IPv6, Endpoint);
-      }
-
-      if (IPv6) {
-         auto addr6 = (struct sockaddr_in6 *)&storage;
-         addr6->sin6_family = AF_INET6;
-         addr6->sin6_addr = in6addr_any;
-         addr6->sin6_port = host_to_short(uint16_t(Port));
-
-         Endpoint.Size = sizeof(struct sockaddr_in6);
-         Endpoint.Family = IPADDR::V6;
-         Endpoint.Label = "IPv6";
-      }
-      else {
-         auto addr4 = (struct sockaddr_in *)&storage;
-         addr4->sin_family = AF_INET;
-         addr4->sin_addr.s_addr = INADDR_ANY;
-         addr4->sin_port = host_to_short(uint16_t(Port));
-
-         Endpoint.Size = sizeof(struct sockaddr_in);
-         Endpoint.Family = IPADDR::V4;
-         Endpoint.Label = "IPv4";
-      }
-
-      return ERR::Okay;
    }
 
    ERR connect(SocketHandle Handle, const NetworkEndpoint &Endpoint) override
@@ -634,26 +559,6 @@ public:
 
    ERR save_host_proxy(CSTRING Server, int ServerPort, int Port, bool Enabled) override
    {
-      return ERR::Okay;
-   }
-
-   ERR parse_address(CSTRING Value, IPAddress &Address) override
-   {
-      kt::clearmem(&Address, sizeof(Address));
-
-      if (strchr(Value, ':')) {
-         struct in6_addr ipv6_addr;
-         if (::inet_pton(AF_INET6, Value, &ipv6_addr) != 1) return ERR::Failed;
-         kt::copymem(ipv6_addr.s6_addr, Address.Data, 16);
-         Address.Type = IPADDR::V6;
-         return ERR::Okay;
-      }
-
-      uint32_t result = ::inet_addr(Value);
-      if (result IS INADDR_NONE) return ERR::Failed;
-
-      Address.Type = IPADDR::V4;
-      Address.Data[0] = long_to_host(result);
       return ERR::Okay;
    }
 

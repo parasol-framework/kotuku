@@ -60,6 +60,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <cstring>
 #include <thread>
 #include <optional>
+#include <string_view>
 
 //********************************************************************************************************************
 
@@ -268,6 +269,138 @@ inline void setIPV6(IPAddress &IP, uint8_t *Address, uint16_t Port) {
    IP.Type = IPADDR::V6;
    IP.Port = Port;
    kt::copymem(Address, &IP.Data, 16);
+}
+
+//********************************************************************************************************************
+
+static bool decimal_digit(char Value)
+{
+   return (Value >= '0') and (Value <= '9');
+}
+
+static bool parse_ipv4_literal(std::string_view Text, uint32_t &Address)
+{
+   uint32_t address = 0;
+   size_t pos = 0;
+
+   for (int octet_count = 0; octet_count < 4; ++octet_count) {
+      if ((pos >= Text.size()) or (!decimal_digit(Text[pos]))) return false;
+
+      uint32_t octet = 0;
+      while ((pos < Text.size()) and decimal_digit(Text[pos])) {
+         octet = (octet * 10) + uint32_t(Text[pos] - '0');
+         if (octet > 255) return false;
+         ++pos;
+      }
+
+      address = (address << 8) | octet;
+
+      if (octet_count < 3) {
+         if ((pos >= Text.size()) or (Text[pos] != '.')) return false;
+         ++pos;
+      }
+   }
+
+   if (pos != Text.size()) return false;
+
+   Address = address;
+   return true;
+}
+
+static int ipv6_hex_value(char Value)
+{
+   if ((Value >= '0') and (Value <= '9')) return Value - '0';
+   if ((Value >= 'a') and (Value <= 'f')) return 10 + Value - 'a';
+   if ((Value >= 'A') and (Value <= 'F')) return 10 + Value - 'A';
+   return -1;
+}
+
+static bool parse_ipv6_piece_list(std::string_view Text, uint16_t *Pieces, size_t &Count)
+{
+   Count = 0;
+   if (Text.empty()) return true;
+
+   size_t start = 0;
+   while (start < Text.size()) {
+      if (Count >= 8) return false;
+
+      auto end = Text.find(':', start);
+      auto segment = (end IS std::string_view::npos) ? Text.substr(start) : Text.substr(start, end - start);
+      if (segment.empty()) return false;
+
+      if (segment.find('.') != std::string_view::npos) {
+         if (end != std::string_view::npos) return false;
+
+         uint32_t ipv4 = 0;
+         if (!parse_ipv4_literal(segment, ipv4)) return false;
+         if (Count > 6) return false;
+
+         Pieces[Count++] = uint16_t(ipv4 >> 16);
+         Pieces[Count++] = uint16_t(ipv4 & 0xffff);
+         return true;
+      }
+
+      if (segment.size() > 4) return false;
+
+      uint16_t piece = 0;
+      for (auto ch : segment) {
+         auto digit = ipv6_hex_value(ch);
+         if (digit < 0) return false;
+         piece = uint16_t((piece << 4) | uint16_t(digit));
+      }
+
+      Pieces[Count++] = piece;
+
+      if (end IS std::string_view::npos) return true;
+      start = end + 1;
+      if (start >= Text.size()) return false;
+   }
+
+   return true;
+}
+
+static bool parse_ipv6_literal(std::string_view Text, IPAddress &Address)
+{
+   if (Text.empty()) return false;
+   if (Text.find('%') != std::string_view::npos) return false;
+
+   uint16_t pieces[8] = {};
+   size_t piece_count = 0;
+
+   auto double_colon = Text.find("::");
+   if (double_colon != std::string_view::npos) {
+      if (Text.find("::", double_colon + 2) != std::string_view::npos) return false;
+
+      uint16_t left[8] = {};
+      uint16_t right[8] = {};
+      size_t left_count = 0;
+      size_t right_count = 0;
+
+      if (!parse_ipv6_piece_list(Text.substr(0, double_colon), left, left_count)) return false;
+      if (!parse_ipv6_piece_list(Text.substr(double_colon + 2), right, right_count)) return false;
+      if ((left_count + right_count) >= 8) return false;
+
+      for (size_t i = 0; i < left_count; ++i) pieces[piece_count++] = left[i];
+
+      auto zero_count = 8 - left_count - right_count;
+      for (size_t i = 0; i < zero_count; ++i) pieces[piece_count++] = 0;
+      for (size_t i = 0; i < right_count; ++i) pieces[piece_count++] = right[i];
+   }
+   else {
+      if (!parse_ipv6_piece_list(Text, pieces, piece_count)) return false;
+      if (piece_count != 8) return false;
+   }
+
+   kt::clearmem(&Address, sizeof(Address));
+   Address.Type = IPADDR::V6;
+
+   auto bytes = (uint8_t *)Address.Data;
+   for (size_t i = 0; i < 8; ++i) {
+      bytes[i * 2] = uint8_t(pieces[i] >> 8);
+      bytes[(i * 2) + 1] = uint8_t(pieces[i] & 0xff);
+   }
+
+   return true;
 }
 
 //********************************************************************************************************************
@@ -521,40 +654,35 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
 {
    if ((!Str) or (!Address)) return ERR::NullArgs;
 
-   // Handle special cases
-   if (kt::iequals(Str, "localhost") or kt::iequals(Str, "127.0.0.1")) {
-      Address->Type = IPADDR::V4;
-      Address->Data[0] = 0x7f000001; // 127.0.0.1
-      Address->Data[1] = Address->Data[2] = Address->Data[3] = 0;
+   auto port = Address->Port;
+   kt::clearmem(Address, sizeof(*Address));
+
+   if (kt::iequals(Str, "localhost")) {
+      setIPV4(*Address, 0x7f000001, port); // 127.0.0.1
       return ERR::Okay;
    }
-   else if (kt::iequals(Str, "::1")) {
-      Address->Type = IPADDR::V6;
-      kt::clearmem(&Address->Data, sizeof(Address->Data));
-      ((uint8_t*)Address->Data)[15] = 1; // ::1 in byte format
-      return ERR::Okay;
-   }
-   else if (kt::iequals(Str, "::")) {
-      // Bind to all interfaces (IPv6)
-      Address->Type = IPADDR::V6;
-      kt::clearmem(&Address->Data, sizeof(Address->Data));
-      return ERR::Okay;
-   }
-   else if (kt::iequals(Str, "0.0.0.0") or kt::iequals(Str, "*") or kt::iequals(Str, "")) {
-      // Bind to all interfaces
-      Address->Type = IPADDR::V4;
-      kt::clearmem(&Address->Data, sizeof(Address->Data));
-      return ERR::Okay;
-   }
-   else if (kt::iequals(Str, "255.255.255.255")) {
-      // Needed to prevent confusion with INADDR_NONE
-      Address->Type = IPADDR::V4;
-      Address->Data[0] = 0xffffffff;
-      Address->Data[1] = Address->Data[2] = Address->Data[3] = 0;
+   else if ((!Str[0]) or kt::iequals(Str, "*")) {
+      setIPV4(*Address, 0, port);
       return ERR::Okay;
    }
 
-   return network_platform().parse_address(Str, *Address);
+   std::string_view text(Str);
+
+   if (text.find(':') != std::string_view::npos) {
+      if (parse_ipv6_literal(text, *Address)) {
+         Address->Port = port;
+         return ERR::Okay;
+      }
+   }
+   else {
+      uint32_t ipv4 = 0;
+      if (parse_ipv4_literal(text, ipv4)) {
+         setIPV4(*Address, ipv4, port);
+         return ERR::Okay;
+      }
+   }
+
+   return ERR::Failed;
 }
 
 /*********************************************************************************************************************
@@ -712,6 +840,27 @@ ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
 }
 
 } // namespace
+
+//********************************************************************************************************************
+
+ERR NetworkPlatform::prepare_bind_address(CSTRING Address, int Port, bool IPv6, NetworkEndpoint &Endpoint)
+{
+   kt::clearmem(&Endpoint, sizeof(Endpoint));
+
+   if ((Port < 0) or (Port > 65535)) return ERR::OutOfRange;
+
+   IPAddress ip;
+   kt::clearmem(&ip, sizeof(ip));
+
+   if (Address) {
+      if (auto error = net::StrToAddress(Address, &ip); error != ERR::Okay) return ERR::InvalidValue;
+   }
+   else {
+      ip.Type = IPv6 ? IPADDR::V6 : IPADDR::V4;
+   }
+
+   return build_address(ip, Port, IPv6, Endpoint);
+}
 
 //********************************************************************************************************************
 // Template function to handle SSL and socket sending for both NetSocket and ClientSocket
