@@ -416,6 +416,11 @@ static void netsocket_connect_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
    kt::SwitchContext context(Self);
 
+   if (Self->Handle.hosthandle() != SocketFD) {
+      log.warning(ERR::SanityCheckFailed);
+      return;
+   }
+
    log.trace("Connection from server received.");
 
    auto result = network_platform().complete_connect(Self->Handle);
