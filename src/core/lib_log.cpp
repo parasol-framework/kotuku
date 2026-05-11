@@ -83,11 +83,15 @@ in a large number of new log messages.  Raising the base-line by 2 before creati
 noise if the user has the log level set to 5 (API).  Re-running the program with a log level of 7 or more would
 make the messages visible again.
 
+A secondary use of this function is to increase the verbosity of log messages when debugging an area of interest.
+For instance, if a program is run with a warning level of 2 and we want to see the log outupt for a function at API
+level, call AdjustLogLevel() with a `Delta` of -3 to raise the base-line to 5.
+
 Adjustments to the base-line are accumulative, so small increments of 1 or 2 are encouraged.  To revert logging to the
 previous base-line, call this function again with a negation of the previously passed value.
 
 -INPUT-
-int Delta: The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 6.
+int Delta: The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 9.
 
 -RESULT-
 int: Returns the absolute base-line value that was active prior to calling this function.
@@ -98,7 +102,7 @@ int AdjustLogLevel(int Delta)
 {
    if (glLogLevel >= 9) return tlBaseLine; // Do nothing if trace logging is active.
    int old_level = tlBaseLine;
-   if ((Delta >= -6) and (Delta <= 6)) tlBaseLine += Delta;
+   if ((Delta >= -9) and (Delta <= 9)) tlBaseLine += Delta;
    return old_level;
 }
 
@@ -193,7 +197,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
    else if (level < 0) level = 0;
 
    if (((log_levels[level] & Flags) != VLF::NIL) or
-       ((glLogLevel > 1) and ((Flags & (VLF::WARNING|VLF::ERROR|VLF::CRITICAL)) != VLF::NIL)))  {
+       ((level > 1) and ((Flags & (VLF::WARNING|VLF::ERROR|VLF::CRITICAL)) != VLF::NIL)))  {
       CSTRING name, action;
       int8_t msgstate;
       int8_t adjust = 0;
@@ -209,7 +213,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       #if defined(__unix__) and !defined(__ANDROID__)
          bool flushdbg;
-         if ((fd IS stderr) and (glLogLevel >= 3)) {
+         if ((fd IS stderr) and (level >= 3)) {
             flushdbg = true;
             if (tlPublicLockCount) flushdbg = false;
             if (flushdbg) fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags & (~O_NONBLOCK));
@@ -218,7 +222,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       #endif
 
       #ifdef ESC_OUTPUT // Highlight errors if the log output is crowded
-         if ((not file_output) and (glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) {
+         if ((not file_output) and (level > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) {
             #ifdef _WIN32
                fprintf(fd, "!");
                adjust = 1;
@@ -255,7 +259,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
             if (obj->Name[0]) name = obj->Name;
             else name = obj->Class->Name;
 
-            if (glLogLevel > 5) {
+            if (level > 5) {
                if (ctx->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx->Field->Name, Message);
                else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, Message);
             }
@@ -272,7 +276,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       #else
          char msgheader[COLUMN1+1];
-         if (glLogLevel > 2) {
+         if (level > 2) {
             fmsg(Header, msgheader, msgstate, adjust); // Print header with indenting
          }
          else {
@@ -285,7 +289,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
          if (obj->Class) {
             name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
-            if (glLogLevel > 5) {
+            if (level > 5) {
                if (ctx.field) {
                   fprintf(fd, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx.field->Name);
                }
@@ -301,7 +305,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
          vfprintf(fd, Message, Args);
 
          #if defined(ESC_OUTPUT) and !defined(_WIN32)
-            if ((not file_output) and (glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) fprintf(fd, "\033[0m");
+            if ((not file_output) and (level > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) fprintf(fd, "\033[0m");
          #endif
 
          fprintf(fd, "\n");
