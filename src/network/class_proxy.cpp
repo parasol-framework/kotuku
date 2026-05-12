@@ -26,15 +26,7 @@ each entry the proxy database.  You may change existing values of any proxy and 
 
 #include <memory>
 #include <string_view>
-#include <optional>
 #include <unordered_map>
-#include <functional>
-#include <format>
-#include <array>
-
-#ifdef _WIN32
-#define HKEY_PROXY "\\HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\"
-#endif
 
 //********************************************************************************************************************
 // Global proxy configuration access.  Acquire glProxyMutex before using.
@@ -81,81 +73,25 @@ public:
 
 static ERR find_proxy(extProxy *);
 
+static bool parse_record_id(const std::string &GroupName, int &Record)
+{
+   if (GroupName.empty()) return false;
+
+   int record = 0;
+   for (auto ch : GroupName) {
+      if ((ch < '0') or (ch > '9')) return false;
+
+      int digit = ch - '0';
+      if (record > ((0x7fffffff - digit) / 10)) return false;
+
+      record = (record * 10) + digit;
+   }
+
+   Record = record;
+   return true;
+}
+
 //********************************************************************************************************************
-
-#ifdef _WIN32
-
-class WindowsProxyParser {
-public:
-   struct ProxyEntry {
-      std::string name;
-      std::string server;
-      int port;
-      int serverPort;
-      bool enabled;
-   };
-
-   static std::vector<ProxyEntry> parseProxyString(const std::string_view servers, const bool enabled) {
-      std::vector<ProxyEntry> entries;
-
-      static constexpr std::array<std::pair<std::string_view, int>, 3> protocolPorts = {{
-         {"ftp", 21}, {"http", 80}, {"https", 443}
-      }};
-
-      size_t pos = 0;
-      while (pos < servers.length()) {
-         auto entry = parseNextEntry(servers, pos, protocolPorts, enabled);
-         if (entry) entries.push_back(*entry);
-      }
-
-      return entries;
-   }
-
-private:
-   static std::optional<ProxyEntry> parseNextEntry(
-      const std::string_view servers, size_t& pos,
-      const std::array<std::pair<std::string_view, int>, 3>& protocolPorts,
-      const bool enabled) {
-
-      while (pos < servers.length() and servers[pos] == ';') ++pos;
-      if (pos >= servers.length()) return std::nullopt;
-
-      size_t start = pos;
-      while (pos < servers.length() and servers[pos] != ';') ++pos;
-
-      std::string entry(servers.substr(start, pos - start));
-
-      // Parse protocol=server:port format
-      auto equalPos = entry.find('=');
-      if (equalPos != std::string::npos) {
-         std::string protocol = entry.substr(0, equalPos);
-         std::string serverPart = entry.substr(equalPos + 1);
-
-         auto colonPos = serverPart.find(':');
-         if (colonPos != std::string::npos) {
-            std::string server = serverPart.substr(0, colonPos);
-            int serverPort = std::stoi(serverPart.substr(colonPos + 1));
-
-            auto it = std::find_if(protocolPorts.begin(), protocolPorts.end(),
-               [&protocol](const auto& pair) { return pair.first == protocol; });
-            if (it != protocolPorts.end()) {
-               return ProxyEntry{ std::format("Windows {}", protocol), server, it->second, serverPort, enabled };
-            }
-         }
-      }
-      else { // Global proxy format: server:port
-         auto colonPos = entry.find(':');
-         if (colonPos != std::string::npos) {
-            std::string server = entry.substr(0, colonPos);
-            int serverPort = std::stoi(entry.substr(colonPos + 1));
-            return ProxyEntry{ "Windows", server, 0, serverPort, enabled };
-         }
-      }
-
-      return std::nullopt;
-   }
-};
-#endif
 
 static void clear_values(extProxy *);
 static ERR get_record(extProxy *);
@@ -182,17 +118,11 @@ static ERR PROXY_DeleteRecord(extProxy *Self)
 
    log.branch();
 
-   if (Self->Host) {
-      #ifdef _WIN32
-      // Windows host proxy deletion logic would go here
-      #endif
-   }
-
    auto cfg = objConfig::create {fl::Path("user:config/network/proxies.cfg") };
    if (!cfg.ok()) return log.error(ERR::CreateObject);
 
-   cfg->deleteGroup(Self->GroupName.c_str());
-   cfg->saveSettings();
+   if (auto error = cfg->deleteGroup(Self->GroupName.c_str()); error != ERR::Okay) return log.warning(error);
+   if (auto error = cfg->saveSettings(); error != ERR::Okay) return log.warning(error);
    return ERR::Okay;
 }
 
@@ -268,55 +198,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
    const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
 
    if (auto config [[maybe_unused]] = get_proxy_config()) {
-      #ifdef _WIN32
-         // Remove existing host proxy settings
-         ConfigGroups *groups;
-         if (config->get(FID_Data, groups) IS ERR::Okay) {
-            std::vector<std::string> hostGroups;
-            for (const auto& [group, keys] : groups[0]) {
-               if (keys.contains("Host")) hostGroups.push_back(group);
-            }
-
-            for (const auto& group : hostGroups) {
-               config->deleteGroup(group.c_str());
-            }
-         }
-
-         // Process Windows proxy settings using modern parser
-         auto task = CurrentTask();
-         CSTRING value;
-         if (task->getEnv(HKEY_PROXY "ProxyEnable", &value) IS ERR::Okay) {
-            bool enabled = (strtol(value, nullptr, 0) > 0);
-
-            CSTRING servers;
-            if (task->getEnv(HKEY_PROXY "ProxyServer", &servers) IS ERR::Okay and servers[0]) {
-               log.msg("Host has defined default proxies: %s", servers);
-
-               auto proxyEntries = WindowsProxyParser::parseProxyString(servers, enabled);
-
-               int id = 0;
-               config->read("ID", "Value", id);
-
-               for (const auto& entry : proxyEntries) {
-                  ++id;
-                  config->write("ID", "Value", std::to_string(id));
-
-                  std::string group = std::to_string(id);
-                  config->write(group, "Name", entry.name);
-                  config->write(group, "Server", entry.server);
-                  config->write(group, "Port", std::to_string(entry.port));
-                  config->write(group, "ServerPort", std::to_string(entry.serverPort));
-                  config->write(group, "Enabled", std::to_string(entry.enabled ? 1 : 0));
-                  config->write(group, "Host", "1");
-
-                  log.trace("Added Windows proxy: %s -> %s:%d",
-                     entry.name, entry.server, entry.serverPort);
-               }
-            }
-         }
-         else log.msg("Host does not have proxies enabled (registry setting: %s)", HKEY_PROXY);
-
-      #endif
+      if (auto error = network_platform().sync_host_proxies(config); error != ERR::Okay) return log.warning(error);
 
       if (Args) {
          Self->FindPort = (Args->Port > 0) ? std::to_string(Args->Port) : "";
@@ -378,7 +260,10 @@ template<typename KeysType>
 static bool matchesEnabledFilter(const KeysType& keys, int findEnabled) {
    if (findEnabled IS -1) return true;
 
-   if (keys.contains("Enabled")) return std::stoi(keys.at("Enabled")) IS findEnabled;
+   if (keys.contains("Enabled")) {
+      int enabled;
+      return parse_record_id(keys.at("Enabled"), enabled) and (enabled IS findEnabled);
+   }
    return false;
 }
 
@@ -412,6 +297,8 @@ static ERR find_proxy(extProxy *Self)
          log.trace("Checking group: %s", group->first.c_str());
 
          const auto& keys = group->second;
+         int record;
+         if (!parse_record_id(group->first, record)) continue;
 
          // Apply filters
          if (!matchesPortFilter(keys, Self->FindPort)) continue;
@@ -488,58 +375,7 @@ static ERR PROXY_SaveSettings(extProxy *Self)
    log.branch("Host: %d", Self->Host);
 
    if (Self->Host) {
-      #ifdef _WIN32
-         objTask *task = CurrentTask();
-
-         if (Self->Enabled) task->setEnv(HKEY_PROXY "ProxyEnable", "1");
-         else task->setEnv(HKEY_PROXY "ProxyEnable", "0");
-
-         if ((!Self->Server) or (!Self->Server[0])) {
-            log.trace("Clearing proxy server value.");
-            task->setEnv(HKEY_PROXY "ProxyServer", "");
-         }
-         else if (Self->Port IS 0) { // Proxy is for all ports
-            std::string buffer = std::format("{}:{}", Self->Server, Self->ServerPort);
-            log.trace("Changing all-port proxy to: %s", buffer.c_str());
-            task->setEnv(HKEY_PROXY "ProxyServer", buffer.c_str());
-         }
-         else {
-            std::string portname;
-            switch(Self->Port) {
-               case 21: portname = "ftp"; break;
-               case 80: portname = "http"; break;
-               case 443: portname = "https"; break;
-            }
-
-            if (!portname.empty()) {
-               CSTRING servers;
-               task->getEnv(HKEY_PROXY "ProxyServer", &servers);
-               std::string serverList = servers ? servers : "";
-
-               // Remove existing entry for this protocol
-               const std::string searchPattern = std::format("{}=", portname);
-               if (auto pos = serverList.find(searchPattern); pos != std::string::npos) {
-                  auto endPos = serverList.find(';', pos);
-                  if (endPos IS std::string::npos) endPos = serverList.length();
-                  else ++endPos; // Include the semicolon
-                  serverList.erase(pos, endPos - pos);
-               }
-
-               // Add the new entry
-               const std::string newEntry = std::format("{}={}:{}", portname, Self->Server, Self->ServerPort);
-               if (!serverList.empty() and serverList.back() != ';') {
-                  serverList += ';';
-               }
-               serverList += newEntry;
-
-               task->setEnv(HKEY_PROXY "ProxyServer", serverList.c_str());
-            }
-            else log.error("Windows' host proxy settings do not support port %d", Self->Port);
-         }
-
-      #endif
-
-      return ERR::Okay;
+      return network_platform().save_host_proxy(Self->Server, Self->ServerPort, Self->Port, Self->Enabled);
    }
 
    const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
@@ -712,7 +548,7 @@ The port used to communicate with the proxy server must be defined here.
 
 static ERR SET_ServerPort(extProxy *Self, int Value)
 {
-   if (Value > 0 and Value <= 65536) {
+   if (Value > 0 and Value <= 0xffff) {
       Self->ServerPort = Value;
       return ERR::Okay;
    }
@@ -768,7 +604,7 @@ static ERR get_record(extProxy *Self)
 
    log.traceBranch("Group: %s", Self->GroupName.c_str());
 
-   Self->Record = std::stoi(Self->GroupName);
+   if (!parse_record_id(Self->GroupName, Self->Record)) return ERR::Search;
 
    const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
 

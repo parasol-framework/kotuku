@@ -14,50 +14,11 @@ typedef void * HANDLE; // Generic handle capable of handling ints or pointers.
 typedef void * HOSTHANDLE; // Forward declaration for core system handle type
 enum class ERR : int;
 struct socket_info;
-typedef unsigned int WSW_SOCKET; // Identical to the windows SOCKET type
+typedef uintptr_t WSW_SOCKET; // Pointer-sized storage for Winsock SOCKET handles without including winsock.h
 struct sockaddr;
 struct hostent;
+struct addrinfo;
 
-// Unified handle wrapper that eliminates the need for manual casting between
-// WSW_SOCKET and HOSTHANDLE when interfacing with the core system
-
-class SocketHandle {
-private:
-   WSW_SOCKET socket_val;
-
-public:
-   static constexpr WSW_SOCKET INVALID_SOCKET_VAL = static_cast<WSW_SOCKET>(~0);
-
-   // Constructors
-   SocketHandle() : socket_val(INVALID_SOCKET_VAL) {}
-   SocketHandle(WSW_SOCKET sock) : socket_val(sock) {}
-   SocketHandle(int sock) : socket_val(static_cast<WSW_SOCKET>(sock)) {}
-   SocketHandle(HOSTHANDLE handle) : socket_val(static_cast<WSW_SOCKET>(reinterpret_cast<uintptr_t>(handle))) {}
-
-   // Conversion operators for seamless integration
-   operator WSW_SOCKET() const { return socket_val; }
-   operator HOSTHANDLE() const { return reinterpret_cast<HOSTHANDLE>(static_cast<uintptr_t>(socket_val)); }
-   operator bool() const { return socket_val != INVALID_SOCKET_VAL; } // For boolean tests
-
-   // Explicit accessors for clarity when needed
-   WSW_SOCKET socket() const { return socket_val; }
-   HOSTHANDLE hosthandle() const { return reinterpret_cast<HOSTHANDLE>(static_cast<uintptr_t>(socket_val)); }
-   int int_value() const { return static_cast<int>(socket_val); } // For printf-style formatting with %d
-
-   // Comparison operators
-   bool operator==(const SocketHandle& other) const { return socket_val == other.socket_val; }
-   bool operator!=(const SocketHandle& other) const { return socket_val != other.socket_val; }
-   bool operator==(WSW_SOCKET sock) const { return socket_val == sock; }
-   bool operator!=(WSW_SOCKET sock) const { return socket_val != sock; }
-
-   // Validity check
-   bool is_valid() const { return socket_val != INVALID_SOCKET_VAL; }
-   bool is_invalid() const { return socket_val == INVALID_SOCKET_VAL; }
-
-   // Assignment operators
-   SocketHandle& operator=(WSW_SOCKET sock) { socket_val = sock; return *this; }
-   SocketHandle& operator=(int sock) { socket_val = static_cast<WSW_SOCKET>(sock); return *this; }
-};
 void win32_netresponse(struct Object *, WSW_SOCKET, int, ERR);
 void win_net_processing(int, void *);
 WSW_SOCKET win_accept(void *, WSW_SOCKET, sockaddr *, int *);
@@ -67,6 +28,8 @@ void win_deregister_socket(WSW_SOCKET);
 ERR win_connect(WSW_SOCKET, const sockaddr *, int);
 hostent * win_gethostbyaddr(const IPAddress *);
 hostent * win_gethostbyname(const char *);
+int win_getaddrinfo(const char *, const char *, const addrinfo *, addrinfo **);
+void win_freeaddrinfo(addrinfo *);
 int win_getpeername(WSW_SOCKET, sockaddr *, int *);
 int win_getsockname(WSW_SOCKET, sockaddr *, int *);
 uint32_t win_inet_addr(const char *);

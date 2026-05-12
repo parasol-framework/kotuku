@@ -388,13 +388,18 @@ timer_cycle:
       if (glValidateProcessID) { validate_process(glValidateProcessID); glValidateProcessID = 0; }
 
       #ifdef _WIN32
-         // Process any incoming window messages that occurred during our earlier processing. The hook for glNetProcessMessages() is found
-         // in the network module and is required to prevent flooding of the Windows message queue.
+         // Process any incoming window messages that occurred during our earlier processing. The hook for
+         // glNetProcessMessages() is found in the network module and is required to prevent flooding of the Windows
+         // message queue.
 
          if (tlMainThread) {
-            if (glNetProcessMessages) glNetProcessMessages(NETMSG_START, nullptr);
+            #ifndef ENABLE_IOCP
+               if (glNetProcessMessages) glNetProcessMessages(NETMSG_START, nullptr);
+            #endif
             winProcessMessages();
-            if (glNetProcessMessages) glNetProcessMessages(NETMSG_END, nullptr);
+            #ifndef ENABLE_IOCP
+               if (glNetProcessMessages) glNetProcessMessages(NETMSG_END, nullptr);
+            #endif
          }
       #endif
 
@@ -423,9 +428,13 @@ timer_cycle:
             tlMessageBreak = false;
 
             if (wait) {
-               if (glNetProcessMessages) glNetProcessMessages(NETMSG_START, nullptr);
+               #ifndef ENABLE_IOCP
+                  if (glNetProcessMessages) glNetProcessMessages(NETMSG_START, nullptr);
+               #endif
                winProcessMessages();
-               if (glNetProcessMessages) glNetProcessMessages(NETMSG_END, nullptr);
+               #ifndef ENABLE_IOCP
+                  if (glNetProcessMessages) glNetProcessMessages(NETMSG_END, nullptr);
+               #endif
             }
          }
          else {

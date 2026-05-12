@@ -107,7 +107,7 @@ enum class NTC : int {
 #ifdef __linux__
 typedef int SOCKET_HANDLE;
 #elif _WIN32
-typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32 instead of SOCKET for now to avoid including winsock.h
+typedef uintptr_t SOCKET_HANDLE; // Pointer-sized storage for Winsock SOCKET handles without including winsock.h
 #elif __APPLE__
 typedef int SOCKET_HANDLE;
 #else
@@ -130,12 +130,15 @@ class objNetClient : public Object {
 
    using create = kt::Create<objNetClient>;
 
-   char IP[8];                       // The IP address of the client.
    objNetClient * Next;              // The next client IP with connections to the server socket.
    objNetClient * Prev;              // The previous client IP with connections to the server socket.
    objClientSocket * Connections;    // Pointer to the first established socket connection for the client IP.
    APTR ClientData;                  // A custom pointer available for userspace.
    int  TotalConnections;            // The total number of current socket connections for the IP address.
+
+#ifdef PRV_NETCLIENT
+    struct IPAddress IP; // IP address of the client.
+#endif
 
    // Action stubs
 

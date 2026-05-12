@@ -2,6 +2,12 @@
 # If you need to do a deep debug of the network log, enable KOTUKU_VLOG at project level (it won't work
 # at module level).
 
+if (NOT (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux"))
+   message (STATUS "Network module disabled: unsupported platform '${CMAKE_SYSTEM_NAME}'.")
+   set (INC_MOD_NETWORK FALSE PARENT_SCOPE)
+   return ()
+endif ()
+
 set (MOD network)
 set (INC_MOD_NETWORK TRUE PARENT_SCOPE)
 
@@ -15,6 +21,19 @@ add_library (${MOD})
 set_module_defaults (${MOD} "Net")
 
 target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/network.cpp")
+
+if (WIN32)
+   if (ENABLE_IOCP)
+      target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/net_iocp.cpp")
+      target_sources (${MOD} PRIVATE "win32/iocp.cpp")
+   else ()
+      target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/net_windows.cpp")
+   endif ()
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+   target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/net_linux.cpp")
+else ()
+   message (FATAL_ERROR "Network module has no platform backend for '${CMAKE_SYSTEM_NAME}'.")
+endif ()
 
 if (DISABLE_SSL)
    message (STATUS "Network module will not be compiled with SSL support (disabled by DISABLE_SSL).")
@@ -35,8 +54,13 @@ endif ()
 
 if (WIN32)
    target_compile_definitions (${MOD} PRIVATE "_WINSOCK_DEPRECATED_NO_WARNINGS")
-   target_sources (${MOD} PRIVATE "win32/winsockwrappers.cpp")
-   list (APPEND NETWORK_LIBS wsock32 gdi32 ws2_32)
+   if (ENABLE_IOCP)
+      target_compile_definitions (${MOD} PRIVATE "ENABLE_IOCP")
+      list (APPEND NETWORK_LIBS ws2_32)
+   else ()
+      target_sources (${MOD} PRIVATE "win32/winsockwrappers.cpp")
+      list (APPEND NETWORK_LIBS wsock32 gdi32 ws2_32)
+   endif ()
 endif ()
 
 target_link_libraries (${MOD} PRIVATE ${NETWORK_LIBS})

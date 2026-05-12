@@ -210,11 +210,7 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
       if ((Self->Handle.is_valid()) and (Self->State IS NTC::CONNECTED)) {
          // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
-         #ifdef __linux__
-            RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
-         #elif _WIN32
-            win_socketstate(Self->Handle, std::nullopt, true);
-         #endif
+         network_platform().register_write(Self->Handle, &netsocket_outgoing, Self);
       }
       else log.trace("Will not listen for socket-writes (no socket handle, or state %d != NTC::CONNECTED).", Self->State);
    }
@@ -256,7 +252,7 @@ static ERR SET_Handle(extNetSocket *Self, APTR Value)
    // The user can set Handle prior to initialisation in order to create a NetSocket object that is linked to a
    // socket created from outside the core platform code base.
 
-   Self->Handle = SocketHandle(int((MAXINT)Value));
+   Self->Handle = SocketHandle(SOCKET_HANDLE((MAXINT)Value));
    Self->ExternalSocket = true;
    return ERR::Okay;
 }
@@ -281,12 +277,7 @@ static ERR SET_SSLCertificate(extNetSocket *Self, CSTRING Value)
 
       LOC type;
       if ((AnalysePath(Value, &type) IS ERR::Okay) and (type IS LOC::FILE)) {
-         // Check file extension for supported formats
-         std::string path(Value);
-         std::string ext = path.substr(path.find_last_of(".") + 1);
-         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-         if ((ext IS "pem") or (ext IS "crt") or (ext IS "cert") or (ext IS "p12") or (ext IS "pfx")) {
+         if (ssl_certificate_format(Value) != SSLCERTFORMAT::NIL) {
             Self->SSLCertificate = kt::strclone(Value);
          }
          else return log.warning(ERR::InvalidData);
@@ -317,11 +308,7 @@ static ERR SET_SSLPrivateKey(extNetSocket *Self, CSTRING Value)
 
       LOC type;
       if ((AnalysePath(Value, &type) IS ERR::Okay) and (type IS LOC::FILE)) {
-         // Check file extension for supported formats
-         std::string path(Value);
-         std::string ext = path.substr(path.find_last_of(".") + 1);
-         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-         if ((ext IS "pem") or (ext IS "key")) {
+         if (ssl_private_key_format(Value) != SSLCERTFORMAT::NIL) {
             Self->SSLPrivateKey = kt::strclone(Value);
          }
          else return log.warning(ERR::InvalidData);
@@ -390,21 +377,21 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
          bool ssl_valid = true;
 
          #ifdef _WIN32
-         if ((Self->SSLHandle) and ((Self->Flags & NSF::SERVER) IS NSF::NIL)) {
+         if ((Self->TLS.Handle) and ((Self->Flags & NSF::SERVER) IS NSF::NIL)) {
             // Only perform certificate validation if DISABLE_SERVER_VERIFY flag is not set
             if ((Self->Flags & NSF::DISABLE_SERVER_VERIFY) != NSF::NIL) {
                log.trace("SSL certificate validation skipped.");
             }
-            else ssl_valid = ssl_get_verify_result(Self->SSLHandle);
+            else ssl_valid = ssl_get_verify_result(Self->TLS.Handle);
          }
          #else
-         if (Self->SSLHandle) {
+         if (Self->TLS.Handle) {
             // Only perform certificate validation if DISABLE_SERVER_VERIFY flag is not set
             if ((Self->Flags & NSF::DISABLE_SERVER_VERIFY) != NSF::NIL) {
                log.trace("SSL certificate validation skipped.");
             }
             else {
-               if (SSL_get_verify_result(Self->SSLHandle) != X509_V_OK) ssl_valid = false;
+               if (SSL_get_verify_result(Self->TLS.Handle) != X509_V_OK) ssl_valid = false;
                else log.trace("SSL certificate validation successful.");
             }
          }
@@ -452,11 +439,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
 
       if ((Self->State IS NTC::CONNECTED) and ((!Self->WriteQueue.Buffer.empty()) or (Self->Outgoing.defined()))) {
          log.msg("Sending queued data to server on connection.");
-         #ifdef __linux__
-            RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
-         #elif _WIN32
-            win_socketstate(Self->Handle, std::nullopt, true);
-         #endif
+         network_platform().register_write(Self->Handle, &netsocket_outgoing, Self);
       }
    }
 
