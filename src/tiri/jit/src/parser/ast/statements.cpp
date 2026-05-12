@@ -66,13 +66,12 @@ bool AstBuilder::is_enum_declaration_rhs(size_t Offset) const
 }
 
 //********************************************************************************************************************
-// Checks whether an assignment target can act as an enum declaration prefix without consuming the RHS.
+// Checks whether an assignment target has enum declaration prefix name syntax without consuming the RHS.
 
 bool AstBuilder::is_enum_declaration_prefix(const Identifier &Prefix) const
 {
    std::string prefix = identifier_text(Prefix);
-   return not Prefix.is_blank and not prefix.empty() and not Prefix.has_close and
-      (Prefix.type IS TiriType::Unknown) and is_upper_identifier(prefix);
+   return not Prefix.is_blank and not prefix.empty() and is_upper_identifier(prefix);
 }
 
 //********************************************************************************************************************
@@ -275,7 +274,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    // Check for plain = or conditional ?=/??= assignment
    if (this->ctx.check(TokenKind::Equals)) {
       this->ctx.tokens().advance();
-      if (this->is_enum_declaration_rhs(0)) {
+      if (this->is_enum_declaration_rhs(0) and this->is_enum_declaration_prefix(name_list.front())) {
          if (not (name_list.size() IS 1)) {
             return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
                "enum declaration requires a single prefix name");
@@ -379,7 +378,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    // Check for plain = or conditional ?=/??= assignment
    if (this->ctx.check(TokenKind::Equals)) {
       this->ctx.tokens().advance();
-      if (this->is_enum_declaration_rhs(0)) {
+      if (this->is_enum_declaration_rhs(0) and this->is_enum_declaration_prefix(name_list.front())) {
          if (not (name_list.size() IS 1)) {
             return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
                "enum declaration requires a single prefix name");

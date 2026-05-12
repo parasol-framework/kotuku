@@ -88,12 +88,17 @@ end
 
 @Test function EnumTableCallWithLowercaseTarget()
    enum = function(Table)
-      assert(Table.ONE is 1, 'Table-call argument should be passed to the contextual enum identifier')
-      return 42
+      return Table.ONE
    end
 
    x = enum { ONE = 1 }
-   assert(x is 42, 'Lowercase assignment target should parse enum {...} as a normal table call')
+   assert(x is 1, 'Lowercase assignment target should parse enum {...} as a normal table call')
+
+   local local_result = enum { ONE = 2 }
+   assert(local_result is 2, 'Local declaration should parse enum {...} as a normal table call')
+
+   global global_enum_table_call_result = enum { ONE = 3 }
+   assert(global_enum_table_call_result is 3, 'Global declaration should parse enum {...} as a normal table call')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

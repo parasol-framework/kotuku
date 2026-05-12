@@ -972,6 +972,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 
       if (token.kind() IS TokenKind::LeftParen or token.kind() IS TokenKind::LeftBrace or
             token.kind() IS TokenKind::String) {
+         if (token.kind() IS TokenKind::LeftBrace and token.span().line != base->span.line) break;
+
          // For table tokens in a choose expression context, check if this starts a table pattern for the next case.
          // If the matching brace is followed by -> or 'when', don't treat it as a table-call argument.
          if (token.kind() IS TokenKind::LeftBrace and this->in_choose_expression and not this->in_guard_expression) {
