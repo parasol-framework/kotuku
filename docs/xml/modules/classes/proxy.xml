@@ -131,6 +131,7 @@ if (proxy.ok()) {
       <type>STRING</type>
       <description>
 <p>The GatewayFilter defines the IP address of the gateway that this proxy is limited to. It is intended to limit the results of searches performed by the <method>Find</method> method.</p>
+<p>Gateway matching is not currently implemented.  Records that define this field are skipped by <method>Find</method>.</p>
       </description>
     </field>
 
@@ -152,6 +153,7 @@ if (proxy.ok()) {
       <description>
 <p>The NetworkFilter defines the name of the network that this proxy is limited to. It is intended to limit the results of searches performed by the <method>Find</method> method.</p>
 <p>This filter must not be set if the proxy needs to work on an unnamed network.</p>
+<p>Network matching is not currently implemented.  Records that define this field are skipped by <method>Find</method>.</p>
       </description>
     </field>
 

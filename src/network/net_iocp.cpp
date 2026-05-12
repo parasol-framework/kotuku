@@ -12,8 +12,6 @@
 
 #define HKEY_PROXY "\\HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\"
 
-static_assert(sizeof(struct sockaddr_storage) <= NETWORK_ENDPOINT_STORAGE_SIZE);
-
 static MsgHandler *glIocpCompletionHandler = nullptr;
 static MSGID glIocpCompletionMsgID = MSGID::NIL;
 
@@ -33,43 +31,6 @@ extern "C" {
       unsigned long HostNameLength, char *ServiceName, unsigned long ServiceNameLength, int Flags);
    const char * WSAAPI inet_ntop(int Family, const void *Address, char *StringBuffer, size_t StringBufferLength);
 }
-
-//********************************************************************************************************************
-
-static struct sockaddr_storage & endpoint_storage(NetworkEndpoint &Endpoint)
-{
-   return *(struct sockaddr_storage *)Endpoint.Storage;
-}
-
-static const struct sockaddr_storage & endpoint_storage(const NetworkEndpoint &Endpoint)
-{
-   return *(const struct sockaddr_storage *)Endpoint.Storage;
-}
-
-//********************************************************************************************************************
-
-static ERR endpoint_to_ip(const struct sockaddr_storage &Address, IPAddress &IP)
-{
-   kt::clearmem(&IP, sizeof(IP));
-
-   if (Address.ss_family IS AF_INET) {
-      auto addr = (const struct sockaddr_in *)&Address;
-      IP.Type = IPADDR::V4;
-      IP.Port = iocp_ntohs(addr->sin_port);
-      IP.Data[0] = iocp_ntohl(addr->sin_addr.s_addr);
-      return ERR::Okay;
-   }
-   else if (Address.ss_family IS AF_INET6) {
-      auto addr = (const struct sockaddr_in6 *)&Address;
-      IP.Type = IPADDR::V6;
-      IP.Port = iocp_ntohs(addr->sin6_port);
-      kt::copymem((APTR)addr->sin6_addr.s6_addr, IP.Data, 16);
-      return ERR::Okay;
-   }
-   else return ERR::Args;
-}
-
-//********************************************************************************************************************
 
 static ERR convert_lookup_error(int Result)
 {
