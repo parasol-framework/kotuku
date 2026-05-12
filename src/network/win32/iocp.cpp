@@ -12,6 +12,7 @@
 #include <array>
 #include <cstring>
 #include <deque>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -35,6 +36,7 @@ struct IocpOperation {
    std::unique_ptr<uint8_t[]> Buffer;
    std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> Address = {};
    int AddressSize = 0;
+   uint64_t Sequence = 0;
    size_t BufferSize = 0;
    size_t BytesTransferred = 0;
    ERR Result = ERR::Busy;
@@ -58,6 +60,17 @@ struct IocpDatagram {
    ERR Result = ERR::Okay;
 };
 
+struct IocpReadCompletion {
+   std::vector<uint8_t> Buffer;
+   ERR Result = ERR::Okay;
+};
+
+struct IocpStoreResult {
+   bool Notify = true;
+   bool RearmAccept = false;
+   bool PostRead = false;
+};
+
 struct IocpSocketRecord {
    int ObjectID = 0;
    IocpCompletionTarget Connect;
@@ -67,18 +80,23 @@ struct IocpSocketRecord {
    std::deque<IocpAcceptedSocket> AcceptedSockets;
    std::vector<IocpDatagram> Datagrams;
    std::vector<uint8_t> ReadBuffer;
+   std::map<uint64_t, IocpReadCompletion> ReadCompletions;
+   size_t BufferedReadBytes = 0;
    size_t ReadOffset = 0;
    std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> ConnectAddress = {};
    int ConnectAddressSize = 0;
    ERR ConnectResult = ERR::NotInitialised;
    ERR ReadResult = ERR::Okay;
    uint64_t Generation = 0;
+   uint64_t NextReadSequence = 0;
+   uint64_t NextReadCompletionSequence = 0;
    int AcceptDepth = 16;
    size_t AcceptPendingCount = 0;
+   size_t ReadPendingCount = 0;
    bool IPv6 = false;
    bool UDP = false;
    bool Cancelled = false;
-   bool ReadPending = false;
+   bool UdpReadPending = false;
    bool WritePending = false;
 };
 
@@ -95,6 +113,8 @@ static bool glWinsockInitialised = false;
 
 static constexpr ULONG_PTR IOCP_SHUTDOWN_KEY = ULONG_PTR(~uintptr_t(0));
 static constexpr size_t IOCP_READ_BUFFER_SIZE = 65536;
+static constexpr size_t IOCP_TCP_READ_HIGH_WATER = 1024 * 1024;
+static constexpr size_t IOCP_TCP_READ_DEPTH = 4;
 static constexpr size_t IOCP_UDP_BUFFER_SIZE = 65536;
 static constexpr size_t IOCP_ACCEPT_ADDRESS_SIZE = sizeof(sockaddr_storage) + 16;
 static constexpr size_t IOCP_ACCEPT_BUFFER_SIZE = IOCP_ACCEPT_ADDRESS_SIZE * 2;
@@ -106,6 +126,7 @@ static constexpr int IOCP_MAX_ACCEPT_DEPTH = 128;
 
 static ERR post_accept(WSW_SOCKET Socket);
 static ERR post_accept_pool(WSW_SOCKET Socket);
+static ERR post_read_pool(WSW_SOCKET Socket);
 
 //********************************************************************************************************************
 
@@ -321,6 +342,56 @@ static void close_accepted_socket(const IocpOperation &Operation)
 
 //********************************************************************************************************************
 
+static bool tcp_read_post_needed(const IocpSocketRecord &Record)
+{
+   if (Record.UDP) return false;
+   if (Record.Cancelled) return false;
+   if (Record.ReadResult != ERR::Okay) return false;
+   if (!Record.ReadCompletions.empty()) return false;
+   if (Record.BufferedReadBytes >= IOCP_TCP_READ_HIGH_WATER) return false;
+   if (Record.ReadPendingCount >= IOCP_TCP_READ_DEPTH) return false;
+   if ((!Record.Read.Callback) or (Record.Read.ObjectID <= 0)) return false;
+   return true;
+}
+
+//********************************************************************************************************************
+
+static size_t append_ordered_tcp_reads(IocpSocketRecord &Record)
+{
+   size_t appended = 0;
+
+   while (Record.ReadResult IS ERR::Okay) {
+      auto completion = Record.ReadCompletions.find(Record.NextReadCompletionSequence);
+      if (completion IS Record.ReadCompletions.end()) break;
+
+      auto read = std::move(completion->second);
+      Record.ReadCompletions.erase(completion);
+      Record.NextReadCompletionSequence++;
+
+      if (read.Result != ERR::Okay) {
+         Record.ReadResult = read.Result;
+         Record.ReadCompletions.clear();
+         break;
+      }
+
+      if (read.Buffer.empty()) {
+         Record.ReadResult = ERR::Disconnected;
+         Record.ReadCompletions.clear();
+         break;
+      }
+
+      auto offset = Record.ReadBuffer.size();
+      Record.ReadBuffer.resize(offset + read.Buffer.size());
+      std::memcpy(Record.ReadBuffer.data() + offset, read.Buffer.data(), read.Buffer.size());
+      Record.BufferedReadBytes += read.Buffer.size();
+      appended += read.Buffer.size();
+   }
+
+   return appended;
+}
+
+//********************************************************************************************************************
+
 static ERR bind_ephemeral(SOCKET Socket, const sockaddr *RemoteAddress)
 {
    if (!RemoteAddress) return ERR::NullArgs;
@@ -346,18 +417,35 @@ static ERR bind_ephemeral(SOCKET Socket, const sockaddr *RemoteAddress)
 
 //********************************************************************************************************************
 
-static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation &Operation, ERR Error)
+static IocpStoreResult store_operation_result(IocpSocketRecord &Record, const IocpOperation &Operation, ERR Error)
 {
+   IocpStoreResult result;
+
    if (Operation.Type IS IocpOperationType::CONNECT) Record.ConnectResult = Error;
    else if (Operation.Type IS IocpOperationType::READ) {
-      Record.ReadPending = false;
-      Record.ReadResult = ((Error IS ERR::Okay) and (!Operation.BytesTransferred)) ? ERR::Disconnected : Error;
+      result.Notify = false;
+      if (Record.ReadPendingCount > 0) Record.ReadPendingCount--;
 
-      if ((Record.ReadResult IS ERR::Okay) and (Operation.BytesTransferred > 0) and (Operation.Buffer)) {
-         auto offset = Record.ReadBuffer.size();
-         Record.ReadBuffer.resize(offset + Operation.BytesTransferred);
-         std::memcpy(Record.ReadBuffer.data() + offset, Operation.Buffer.get(), Operation.BytesTransferred);
+      if ((Record.ReadResult IS ERR::Okay) and (Operation.Sequence >= Record.NextReadCompletionSequence)) {
+         IocpReadCompletion completion;
+         completion.Result = Error;
+
+         if ((Error IS ERR::Okay) and (Operation.BytesTransferred > 0)) {
+            if (Operation.Buffer) {
+               completion.Buffer.resize(Operation.BytesTransferred);
+               std::memcpy(completion.Buffer.data(), Operation.Buffer.get(), Operation.BytesTransferred);
+            }
+            else completion.Result = ERR::Failed;
+         }
+
+         if (Record.ReadCompletions.emplace(Operation.Sequence, std::move(completion)).second) {
+            auto prior_result = Record.ReadResult;
+            auto appended = append_ordered_tcp_reads(Record);
+            result.Notify = (appended > 0) or ((prior_result IS ERR::Okay) and (Record.ReadResult != ERR::Okay));
+         }
       }
+
+      result.PostRead = tcp_read_post_needed(Record);
    }
    else if (Operation.Type IS IocpOperationType::WRITE) {
       Record.WritePending = false;
@@ -366,7 +454,7 @@ static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation
       // The completion only confirms that backend-owned datagram storage can be released.
    }
    else if (Operation.Type IS IocpOperationType::UDP_RECEIVE) {
-      Record.ReadPending = false;
+      Record.UdpReadPending = false;
       Record.ReadResult = Error;
 
       if ((Error IS ERR::Okay) and (Operation.Buffer) and
@@ -387,7 +475,8 @@ static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation
 
       if (Error != ERR::Okay) {
          close_accepted_socket(Operation);
-         return true;
+         result.RearmAccept = true;
+         return result;
       }
 
       auto server_socket = socket_from_handle(Operation.Socket);
@@ -396,13 +485,15 @@ static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation
       if (setsockopt(accepted_socket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char *)&server_socket,
           sizeof(server_socket)) IS SOCKET_ERROR) {
          close_accepted_socket(Operation);
-         return true;
+         result.RearmAccept = true;
+         return result;
       }
 
       auto handle = CreateIoCompletionPort((HANDLE)accepted_socket, glCompletionPort, ULONG_PTR(accepted_socket), 0);
       if (handle IS nullptr) {
          close_accepted_socket(Operation);
-         return true;
+         result.RearmAccept = true;
+         return result;
       }
 
       sockaddr *local_address = nullptr;
@@ -412,7 +503,8 @@ static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation
       auto get_addresses = get_accept_ex_sockaddrs(server_socket);
       if (!get_addresses) {
          close_accepted_socket(Operation);
-         return true;
+         result.RearmAccept = true;
+         return result;
       }
 
       get_addresses(Operation.Buffer.get(), 0, IOCP_ACCEPT_ADDRESS_SIZE, IOCP_ACCEPT_ADDRESS_SIZE, &local_address,
@@ -420,7 +512,8 @@ static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation
 
       if ((!remote_address) or (remote_size <= 0) or (remote_size > int(IOCP_ENDPOINT_STORAGE_SIZE))) {
          close_accepted_socket(Operation);
-         return true;
+         result.RearmAccept = true;
+         return result;
       }
 
       IocpAcceptedSocket accepted;
@@ -436,10 +529,11 @@ static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation
          .Cancelled = false
       };
 
-      return true;
+      result.RearmAccept = true;
+      return result;
    }
 
-   return false;
+   return result;
 }
 
 //********************************************************************************************************************
@@ -480,6 +574,8 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
 {
    iocp_completion_message message;
    bool rearm_accept = false;
+   bool post_reads = false;
+   bool notify_completion = true;
 
    {
       std::lock_guard<std::mutex> lock(glIocpMutex);
@@ -501,8 +597,10 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
          else Error = tail_error;
       }
 
-      rearm_accept = store_operation_result(record->second, Operation, Error) and
-         (target.Callback) and (target.ObjectID > 0);
+      auto store_result = store_operation_result(record->second, Operation, Error);
+      rearm_accept = store_result.RearmAccept and (target.Callback) and (target.ObjectID > 0);
+      post_reads = store_result.PostRead;
+      notify_completion = store_result.Notify;
 
       message.Type = Operation.Type;
       message.Socket = Operation.Socket;
@@ -513,9 +611,10 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
       message.Error = Error;
    }
 
+   if (post_reads) post_read_pool(Operation.Socket);
    if (rearm_accept) post_accept(Operation.Socket);
 
-   if ((message.ObjectID > 0) and (message.Callback) and (glPostMessage)) {
+   if ((notify_completion) and (message.ObjectID > 0) and (message.Callback) and (glPostMessage)) {
       glPostMessage(glCompletionMsgID, &message, sizeof(message));
    }
 }
@@ -560,14 +659,14 @@ static ERR post_udp_receive(WSW_SOCKET Socket)
       auto record = glSockets.find(Socket);
       if (record IS glSockets.end()) return ERR::Search;
       if (record->second.Cancelled) return ERR::Cancelled;
-      if (record->second.ReadPending) return ERR::Okay;
+      if (record->second.UdpReadPending) return ERR::Okay;
       if (!record->second.Datagrams.empty()) return ERR::Okay;
       if (record->second.ReadResult != ERR::Okay) return ERR::Okay;
 
       target = record->second.Read;
       if ((!target.Callback) or (target.ObjectID <= 0)) return ERR::Okay;
 
-      record->second.ReadPending = true;
+      record->second.UdpReadPending = true;
       generation = record->second.Generation;
       ipv6 = record->second.IPv6;
    }
@@ -620,6 +719,7 @@ static ERR post_read(WSW_SOCKET Socket)
 {
    IocpCompletionTarget target;
    uint64_t generation = 0;
+   uint64_t sequence = 0;
    bool udp = false;
 
    {
@@ -629,15 +729,12 @@ static ERR post_read(WSW_SOCKET Socket)
       udp = record->second.UDP;
       if (record->second.Cancelled) return ERR::Cancelled;
       if (!udp) {
-         if (record->second.ReadPending) return ERR::Okay;
-         if (!record->second.ReadBuffer.empty()) return ERR::Okay;
-         if (record->second.ReadResult != ERR::Okay) return ERR::Okay;
+         if (!tcp_read_post_needed(record->second)) return ERR::Okay;
 
-         target = record->second.Read;
-         if ((!target.Callback) or (target.ObjectID <= 0)) return ERR::Okay;
-
-         record->second.ReadPending = true;
+         record->second.ReadPendingCount++;
          generation = record->second.Generation;
+         sequence = record->second.NextReadSequence++;
+         target = record->second.Read;
       }
    }
 
@@ -649,6 +746,7 @@ static ERR post_read(WSW_SOCKET Socket)
    operation->Generation = generation;
    operation->ObjectID = target.ObjectID;
    operation->Callback = target.Callback;
+   operation->Sequence = sequence;
    operation->BufferSize = IOCP_READ_BUFFER_SIZE;
    operation->Buffer = std::make_unique<uint8_t[]>(operation->BufferSize);
 
@@ -669,6 +767,40 @@ static ERR post_read(WSW_SOCKET Socket)
    }
 
    return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static bool read_post_needed(WSW_SOCKET Socket, ERR &Error)
+{
+   std::lock_guard<std::mutex> lock(glIocpMutex);
+   auto record = glSockets.find(Socket);
+   if (record IS glSockets.end()) {
+      Error = ERR::Search;
+      return false;
+   }
+   if (record->second.Cancelled) {
+      Error = ERR::Cancelled;
+      return false;
+   }
+
+   Error = ERR::Okay;
+   return tcp_read_post_needed(record->second);
+}
+
+//********************************************************************************************************************
+
+static ERR post_read_pool(WSW_SOCKET Socket)
+{
+   ERR error = ERR::Okay;
+   size_t posted = 0;
+
+   while (read_post_needed(Socket, error)) {
+      if (auto post_error = post_read(Socket); post_error != ERR::Okay) return posted ? ERR::Okay : post_error;
+      posted++;
+   }
+
+   return error;
 }
 
 //********************************************************************************************************************
@@ -1194,14 +1326,14 @@ ERR iocp_register_read(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback)
       auto record = glSockets.find(Socket);
       if (record IS glSockets.end()) return ERR::Search;
       udp = record->second.UDP;
-      buffered = udp ? !record->second.Datagrams.empty() : !record->second.ReadBuffer.empty();
+      buffered = udp ? !record->second.Datagrams.empty() : record->second.BufferedReadBytes > 0;
       terminal = record->second.ReadResult != ERR::Okay;
    }
 
    if ((buffered) or (terminal)) {
       return queue_record_completion(Socket, udp ? IocpOperationType::UDP_RECEIVE : IocpOperationType::READ);
    }
-   else return post_read(Socket);
+   else return udp ? post_read(Socket) : post_read_pool(Socket);
 }
 
 //********************************************************************************************************************
@@ -1282,30 +1414,35 @@ ERR iocp_receive(WSW_SOCKET Socket, void *Buffer, size_t Length, size_t &Receive
       if (record IS glSockets.end()) return ERR::Search;
       if (record->second.Cancelled) return ERR::Cancelled;
 
-      auto available = record->second.ReadBuffer.size() - record->second.ReadOffset;
+      auto available = record->second.BufferedReadBytes;
       if (available > 0) {
          Received = std::min(Length, available);
          std::memcpy(Buffer, record->second.ReadBuffer.data() + record->second.ReadOffset, Received);
          record->second.ReadOffset += Received;
+         record->second.BufferedReadBytes -= Received;
 
-         if (record->second.ReadOffset >= record->second.ReadBuffer.size()) {
+         if (record->second.BufferedReadBytes <= 0) {
             record->second.ReadBuffer.clear();
             record->second.ReadOffset = 0;
             if (record->second.ReadResult IS ERR::Okay) rearm_read = true;
             else recall_read = true;
          }
          else recall_read = true;
+
+         if ((record->second.ReadResult IS ERR::Okay) and (tcp_read_post_needed(record->second))) {
+            rearm_read = true;
+         }
       }
       else {
          result = record->second.ReadResult;
-         if ((result IS ERR::Okay) and (!record->second.ReadPending)) rearm_read = true;
+         if (result IS ERR::Okay) rearm_read = true;
       }
    }
 
    if (rearm_read) {
-      if (auto error = post_read(Socket); error != ERR::Okay) return error;
+      if (auto error = post_read_pool(Socket); error != ERR::Okay) return error;
    }
-   else if (recall_read) {
+   if (recall_read) {
       if (auto error = queue_record_completion(Socket, IocpOperationType::READ); error != ERR::Okay) return error;
    }
 
@@ -1469,7 +1606,7 @@ ERR iocp_receive_from(WSW_SOCKET Socket, void *Buffer, size_t BufferSize, size_t
       }
       else {
          result = record->second.ReadResult;
-         if ((result IS ERR::Okay) and (!record->second.ReadPending)) rearm_read = true;
+         if ((result IS ERR::Okay) and (!record->second.UdpReadPending)) rearm_read = true;
       }
    }
 
