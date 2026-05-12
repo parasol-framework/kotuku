@@ -671,8 +671,6 @@ template <class T> void ssl_handshake_write_impl(HOSTHANDLE SocketFD, T *Self)
 
    log.trace("Socket: %" PF64, (MAXINT)SocketFD);
 
-   auto write_callback = std::is_same<T, extNetSocket>::value ?
-      ssl_handshake_write_netsocket : ssl_handshake_write_clientsocket;
    auto read_callback = std::is_same<T, extNetSocket>::value ?
       ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
 
@@ -709,8 +707,6 @@ template <class T> void ssl_handshake_read_impl(HOSTHANDLE SocketFD, T *Self)
 
    auto write_callback = std::is_same<T, extNetSocket>::value ?
       ssl_handshake_write_netsocket : ssl_handshake_write_clientsocket;
-   auto read_callback = std::is_same<T, extNetSocket>::value ?
-      ssl_handshake_read_netsocket : ssl_handshake_read_clientsocket;
 
    ssl_clear_error_queue();
    if (auto result = SSL_do_handshake(Self->TLS.Handle); result IS 1) { // Handshake successful, connection established
