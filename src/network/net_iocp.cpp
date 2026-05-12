@@ -76,10 +76,6 @@ static ERR convert_lookup_error(int Result)
 
 static ERR iocp_completion_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   (void)Custom;
-   (void)MsgID;
-   (void)MsgType;
-
    if ((!Message) or (MsgSize != int(sizeof(iocp_completion_message)))) return ERR::Okay;
 
    auto completion = (iocp_completion_message *)Message;
@@ -113,8 +109,6 @@ class IocpNet : public NetworkPlatform {
 public:
    ERR initialise(OBJECTPTR Module) override
    {
-      (void)Module;
-
       glIocpCompletionMsgID = (MSGID)AllocateID(IDTYPE::MESSAGE);
 
       auto completion_function = C_FUNCTION(iocp_completion_receiver);
@@ -143,8 +137,6 @@ public:
 
    SocketHandle create_socket(void *Reference, bool Read, bool Write, bool UDP, bool &IPv6) override
    {
-      (void)Read;
-      (void)Write;
       return SocketHandle(iocp_create_socket(Reference, UDP, IPv6));
    }
 
@@ -257,9 +249,6 @@ public:
 
    AcceptedSocket accept(void *Reference, SocketHandle Server, bool IPv6) override
    {
-      (void)Reference;
-      (void)IPv6;
-
       AcceptedSocket accepted;
       NetworkEndpoint endpoint;
       kt::clearmem(&endpoint, sizeof(endpoint));
@@ -287,7 +276,6 @@ public:
 
    ERR set_non_blocking(SocketHandle Handle) override
    {
-      (void)Handle;
       return ERR::Okay;
    }
 
@@ -393,8 +381,6 @@ public:
 
    ERR resolve_address(CSTRING Key, const IPAddress &Address, HostLookupResult &Result) override
    {
-      (void)Key;
-
       char host_name[256];
       char service[128];
       int result;
@@ -469,16 +455,11 @@ public:
 
    ERR sync_host_proxies(objConfig *Config) override
    {
-      (void)Config;
       return ERR::Okay;
    }
 
    ERR save_host_proxy(CSTRING Server, int ServerPort, int Port, bool Enabled) override
    {
-      (void)Server;
-      (void)ServerPort;
-      (void)Port;
-      (void)Enabled;
       return ERR::NoSupport;
    }
 
