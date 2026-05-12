@@ -11,6 +11,7 @@
 #include <atomic>
 #include <array>
 #include <cstring>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -63,7 +64,7 @@ struct IocpSocketRecord {
    IocpCompletionTarget Read;
    IocpCompletionTarget Write;
    IocpCompletionTarget Accept;
-   std::vector<IocpAcceptedSocket> AcceptedSockets;
+   std::deque<IocpAcceptedSocket> AcceptedSockets;
    std::vector<IocpDatagram> Datagrams;
    std::vector<uint8_t> ReadBuffer;
    size_t ReadOffset = 0;
@@ -72,10 +73,11 @@ struct IocpSocketRecord {
    ERR ConnectResult = ERR::NotInitialised;
    ERR ReadResult = ERR::Okay;
    uint64_t Generation = 0;
+   int AcceptDepth = 16;
+   size_t AcceptPendingCount = 0;
    bool IPv6 = false;
    bool UDP = false;
    bool Cancelled = false;
-   bool AcceptPending = false;
    bool ReadPending = false;
    bool WritePending = false;
 };
@@ -96,10 +98,14 @@ static constexpr size_t IOCP_READ_BUFFER_SIZE = 65536;
 static constexpr size_t IOCP_UDP_BUFFER_SIZE = 65536;
 static constexpr size_t IOCP_ACCEPT_ADDRESS_SIZE = sizeof(sockaddr_storage) + 16;
 static constexpr size_t IOCP_ACCEPT_BUFFER_SIZE = IOCP_ACCEPT_ADDRESS_SIZE * 2;
+static constexpr int IOCP_DEFAULT_ACCEPT_DEPTH = 16;
+static constexpr int IOCP_MIN_ACCEPT_DEPTH = 4;
+static constexpr int IOCP_MAX_ACCEPT_DEPTH = 128;
 
 //********************************************************************************************************************
 
 static ERR post_accept(WSW_SOCKET Socket);
+static ERR post_accept_pool(WSW_SOCKET Socket);
 
 //********************************************************************************************************************
 
@@ -159,6 +165,14 @@ static ERR convert_send_to_error(int Error)
       default:
          return convert_error(Error);
    }
+}
+
+//********************************************************************************************************************
+
+static int accept_depth_from_backlog(int Backlog)
+{
+   if (Backlog <= 0) return IOCP_DEFAULT_ACCEPT_DEPTH;
+   return std::clamp(Backlog, IOCP_MIN_ACCEPT_DEPTH, IOCP_MAX_ACCEPT_DEPTH);
 }
 
 //********************************************************************************************************************
@@ -369,7 +383,7 @@ static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation
       }
    }
    else if (Operation.Type IS IocpOperationType::ACCEPT) {
-      Record.AcceptPending = false;
+      if (Record.AcceptPendingCount > 0) Record.AcceptPendingCount--;
 
       if (Error != ERR::Okay) {
          close_accepted_socket(Operation);
@@ -415,11 +429,14 @@ static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation
       std::memcpy(accepted.Address.data(), remote_address, size_t(remote_size));
       Record.AcceptedSockets.push_back(accepted);
 
-      glSockets[accepted.Socket] = {
+      auto server_ipv6 = Record.IPv6;
+      glSockets[Operation.AcceptedSocket] = {
          .Generation = glNextGeneration++,
-         .IPv6 = Record.IPv6,
+         .IPv6 = server_ipv6,
          .Cancelled = false
       };
+
+      return true;
    }
 
    return false;
@@ -667,12 +684,12 @@ static ERR post_accept(WSW_SOCKET Socket)
       auto record = glSockets.find(Socket);
       if (record IS glSockets.end()) return ERR::Search;
       if (record->second.Cancelled) return ERR::Cancelled;
-      if (record->second.AcceptPending) return ERR::Okay;
+      if (record->second.AcceptPendingCount >= size_t(record->second.AcceptDepth)) return ERR::Okay;
 
       target = record->second.Accept;
       if ((!target.Callback) or (target.ObjectID <= 0)) return ERR::Okay;
 
-      record->second.AcceptPending = true;
+      record->second.AcceptPendingCount++;
       generation = record->second.Generation;
       server_ipv6 = record->second.IPv6;
    }
@@ -682,7 +699,9 @@ static ERR post_accept(WSW_SOCKET Socket)
    if (accepted_socket IS INVALID_SOCKET) {
       std::lock_guard<std::mutex> lock(glIocpMutex);
       auto record = glSockets.find(Socket);
-      if (record != glSockets.end()) record->second.AcceptPending = false;
+      if ((record != glSockets.end()) and (record->second.AcceptPendingCount > 0)) {
+         record->second.AcceptPendingCount--;
+      }
       return convert_error();
    }
 
@@ -702,7 +721,9 @@ static ERR post_accept(WSW_SOCKET Socket)
       {
          std::lock_guard<std::mutex> lock(glIocpMutex);
          auto record = glSockets.find(Socket);
-         if (record != glSockets.end()) record->second.AcceptPending = false;
+         if ((record != glSockets.end()) and (record->second.AcceptPendingCount > 0)) {
+            record->second.AcceptPendingCount--;
+         }
       }
       close_accepted_socket(*operation);
       release_operation(operation);
@@ -717,7 +738,9 @@ static ERR post_accept(WSW_SOCKET Socket)
       {
          std::lock_guard<std::mutex> lock(glIocpMutex);
          auto record = glSockets.find(Socket);
-         if (record != glSockets.end()) record->second.AcceptPending = false;
+         if ((record != glSockets.end()) and (record->second.AcceptPendingCount > 0)) {
+            record->second.AcceptPendingCount--;
+         }
       }
       close_accepted_socket(*operation);
       release_operation(operation);
@@ -725,6 +748,46 @@ static ERR post_accept(WSW_SOCKET Socket)
    }
 
    return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static bool accept_post_needed(WSW_SOCKET Socket, ERR &Error)
+{
+   std::lock_guard<std::mutex> lock(glIocpMutex);
+   auto record = glSockets.find(Socket);
+   if (record IS glSockets.end()) {
+      Error = ERR::Search;
+      return false;
+   }
+   if (record->second.Cancelled) {
+      Error = ERR::Cancelled;
+      return false;
+   }
+
+   auto target = record->second.Accept;
+   if ((!target.Callback) or (target.ObjectID <= 0)) {
+      Error = ERR::Okay;
+      return false;
+   }
+
+   Error = ERR::Okay;
+   return record->second.AcceptPendingCount < size_t(record->second.AcceptDepth);
+}
+
+//********************************************************************************************************************
+
+static ERR post_accept_pool(WSW_SOCKET Socket)
+{
+   ERR error = ERR::Okay;
+   size_t posted = 0;
+
+   while (accept_post_needed(Socket, error)) {
+      if (auto post_error = post_accept(Socket); post_error != ERR::Okay) return posted ? ERR::Okay : post_error;
+      posted++;
+   }
+
+   return error;
 }
 
 //********************************************************************************************************************
@@ -1072,6 +1135,11 @@ ERR iocp_bind(WSW_SOCKET Socket, const void *Address, int AddressSize)
 ERR iocp_listen(WSW_SOCKET Socket, int Backlog)
 {
    if (listen(socket_from_handle(Socket), Backlog) IS SOCKET_ERROR) return convert_error();
+
+   std::lock_guard<std::mutex> lock(glIocpMutex);
+   auto record = glSockets.find(Socket);
+   if (record != glSockets.end()) record->second.AcceptDepth = accept_depth_from_backlog(Backlog);
+
    return ERR::Okay;
 }
 
@@ -1082,7 +1150,7 @@ ERR iocp_register_accept(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback)
    if (auto error = set_completion_target(Socket, IocpOperationType::ACCEPT, ObjectID, Callback);
        error != ERR::Okay) return error;
 
-   return post_accept(Socket);
+   return post_accept_pool(Socket);
 }
 
 //********************************************************************************************************************
@@ -1092,8 +1160,6 @@ ERR iocp_accept(WSW_SOCKET Server, WSW_SOCKET &Client, void *Address, int *Addre
    Client = WSW_SOCKET(INVALID_SOCKET);
    if ((!Address) or (!AddressSize)) return ERR::NullArgs;
 
-   bool rearm_accept = false;
-
    {
       std::lock_guard<std::mutex> lock(glIocpMutex);
       auto record = glSockets.find(Server);
@@ -1102,18 +1168,14 @@ ERR iocp_accept(WSW_SOCKET Server, WSW_SOCKET &Client, void *Address, int *Addre
       if (record->second.AcceptedSockets.empty()) return ERR::Search;
 
       auto accepted = record->second.AcceptedSockets.front();
-      record->second.AcceptedSockets.erase(record->second.AcceptedSockets.begin());
+      record->second.AcceptedSockets.pop_front();
 
       Client = accepted.Socket;
       auto copy_size = std::min(*AddressSize, accepted.AddressSize);
       std::memcpy(Address, accepted.Address.data(), size_t(copy_size));
       *AddressSize = copy_size;
-
-      auto target = record->second.Accept;
-      rearm_accept = (target.Callback) and (target.ObjectID > 0) and (!record->second.AcceptPending);
    }
 
-   if (rearm_accept) post_accept(Server);
    return ERR::Okay;
 }
 
