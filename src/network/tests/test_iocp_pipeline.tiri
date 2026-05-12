@@ -15,7 +15,8 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(network=true, windows_platform=true) function RapidAcceptBurst()
+@Test; @Requires(network=true, windows_platform=true)
+function RapidAcceptBurst()
    client_count    = 32
    connected       = 0
    server_received = 0
@@ -92,7 +93,8 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(network=true, windows_platform=true) function LargeTCPReceive()
+@Test; @Requires(network=true, windows_platform=true)
+function LargeTCPReceive()
    target_size = 2 * 1024 * 1024
    payload     = string.rep('P', target_size)
    received    = 0
@@ -144,7 +146,8 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(network=true, windows_platform=true) function SlowReaderBackpressure()
+@Test; @Requires(network=true, windows_platform=true)
+function SlowReaderBackpressure()
    target_size = 1536 * 1024
    payload     = string.rep('S', target_size)
    received    = 0
@@ -199,7 +202,8 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(network=true, windows_platform=true) function PendingOperationTeardown()
+@Test; @Requires(network=true, windows_platform=true)
+function PendingOperationTeardown()
    port = nextPort()
    connected = false
 
@@ -232,4 +236,271 @@ end
    processing.halt(0.3)
 
    assert(connected, 'Pending teardown test did not establish a connection')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test; @Requires(network=true, windows_platform=true)
+function PendingConnectFreeDropsCompletion()
+   late_feedback = 0
+   freed         = false
+
+   client = obj.new('netsocket', {
+      name = 'IocpPendingConnectFreeClient',
+      feedback = function(Socket, State)
+         if freed then late_feedback++ end
+      end
+   })
+
+   err = client.mtConnect('192.0.2.1', 12345, 2.0)
+   if err != ERR_Okay then
+      logOutput('Pending connect completed synchronously: ' .. mSys.GetErrorMsg(err))
+      return
+   end
+
+   freed = true
+   client.free()
+   client = nil
+
+   processing.collect()
+   processing.halt(0.6)
+
+   assert(late_feedback is 0, 'Freed pending connect received a late feedback callback')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test; @Requires(network=true, windows_platform=true)
+function PendingAcceptFreeDropsCompletion()
+   late_accept_feedback = 0
+   freed                = false
+   port                 = nextPort()
+
+   server = obj.new('netsocket', {
+      name    = 'IocpPendingAcceptFreeServer',
+      address = '127.0.0.1',
+      port    = port,
+      flags   = NSF_SERVER,
+      feedback = function(Socket, Client, State)
+         if freed then late_accept_feedback++ end
+      end
+   })
+
+   processing.halt(0.1)
+
+   freed = true
+   server.free()
+   server = nil
+
+   processing.collect()
+   processing.halt(0.6)
+
+   assert(late_accept_feedback is 0, 'Freed listener received a late accept feedback callback')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test; @Requires(network=true, windows_platform=true)
+function PendingTCPReadWriteFreeDropsCompletion()
+   port                  = nextPort()
+   connected             = false
+   client_freed          = false
+   late_client_callbacks = 0
+   accepted_client       = nil
+   target_size           = 2 * 1024 * 1024
+   payload               = string.rep('W', target_size)
+
+   server = obj.new('netsocket', {
+      name     = 'IocpPendingTCPFreeServer',
+      address  = '127.0.0.1',
+      port     = port,
+      flags    = NSF_SERVER,
+      msgLimit = target_size + 65536,
+      feedback = function(Socket, Client, State)
+         if State is NTC_CONNECTED then
+            accepted_client = Client
+            connected = true
+            Socket.acSignal()
+         end
+      end,
+      incoming = function(Socket, Client)
+         processing.halt(0.25)
+         buffer = string.alloc(65536)
+         err, read_len = Client.acRead(buffer)
+         if (err != ERR_Okay) and (err != ERR_Disconnected) then
+            error('Server read failed during pending TCP free test: ' .. mSys.GetErrorMsg(err))
+         end
+      end
+   })
+
+   client = obj.new('netsocket', {
+      name     = 'IocpPendingTCPFreeClient',
+      msgLimit = target_size + 65536,
+      feedback = function(Socket, State)
+         if client_freed then late_client_callbacks++ end
+      end,
+      incoming = function(Socket)
+         if client_freed then late_client_callbacks++ end
+         buffer = string.alloc(256)
+         err, read_len = Socket.acRead(buffer)
+         if (err != ERR_Okay) and (err != ERR_Disconnected) then
+            error('Client read failed during pending TCP free test: ' .. mSys.GetErrorMsg(err))
+         end
+      end
+   })
+
+   proc = processing.new({ timeout = 4.0, signals = array<object> { server } })
+   check client.mtConnect('127.0.0.1', port)
+   check proc.sleep()
+
+   assert(connected, 'Pending TCP free test did not establish a connection')
+
+   err, len = client.acWrite(payload)
+   assert((err is ERR_Okay) or (err is ERR_BufferOverflow),
+      'Client write failed during pending TCP free test: ' .. mSys.GetErrorMsg(err))
+   assert(len > 0, 'Client write did not queue any data during pending TCP free test')
+
+   client_freed = true
+   client.free()
+   client = nil
+
+   processing.collect()
+
+   if accepted_client then
+      err, len = accepted_client.acWrite('late-read-trigger')
+      if (err != ERR_Okay) and (err != ERR_Disconnected) then
+         error('Server write failed during pending TCP free test: ' .. mSys.GetErrorMsg(err))
+      end
+   end
+
+   processing.halt(0.8)
+   server.acDeactivate()
+
+   assert(late_client_callbacks is 0, 'Freed TCP client received a late read, write, or feedback callback')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test; @Requires(network=true, windows_platform=true)
+function PendingUDPReceiveSendFreeDropsCompletion()
+   port               = nextPort()
+   server_freed       = false
+   sender_freed       = false
+   late_udp_callbacks = 0
+
+   source = struct.new('IPAddress')
+   buffer = string.alloc(65536)
+
+   server = obj.new('netsocket', {
+      name          = 'IocpPendingUDPFreeServer',
+      address       = '127.0.0.1',
+      port          = port,
+      flags         = NSF_SERVER|NSF_UDP,
+      maxPacketSize = 65507,
+      incoming = function(Socket)
+         if server_freed then late_udp_callbacks++ end
+         err, read_len = Socket.mtRecvFrom(source, buffer)
+         if (err != ERR_Okay) and (err != ERR_Disconnected) then
+            error('UDP receive failed during pending UDP free test: ' .. mSys.GetErrorMsg(err))
+         end
+      end
+   })
+
+   sender = obj.new('netsocket', {
+      name          = 'IocpPendingUDPFreeSender',
+      flags         = NSF_UDP,
+      maxPacketSize = 65507,
+      incoming = function(Socket)
+         if sender_freed then late_udp_callbacks++ end
+      end,
+      feedback = function(Socket, State)
+         if sender_freed then late_udp_callbacks++ end
+      end
+   })
+
+   dest = struct.new('IPAddress')
+   check mNet.StrToAddress('127.0.0.1', dest)
+   dest.port = server.port
+
+   processing.halt(0.1)
+
+   server_freed = true
+   server.free()
+   server = nil
+
+   processing.collect()
+
+   packet = string.rep('U', 4096)
+   for i = 0, 63 do
+      err, len = sender.mtSendTo(dest, packet)
+      if (err != ERR_Okay) and (err != ERR_BufferOverflow) and (err != ERR_Disconnected) then
+         error('UDP send failed during pending UDP free test: ' .. mSys.GetErrorMsg(err))
+      end
+   end
+
+   sender_freed = true
+   sender.free()
+   sender = nil
+
+   processing.collect()
+   processing.halt(0.8)
+
+   assert(late_udp_callbacks is 0, 'Freed UDP socket received a late receive, send, or feedback callback')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test; @Requires(network=true, ssl=true, windows_platform=true)
+function PendingSSLFreeDropsCompletion()
+   port                  = nextPort()
+   client_freed          = false
+   late_client_callbacks = 0
+
+   server = obj.new('netsocket', {
+      name    = 'IocpPendingSSLFreeServer',
+      address = '127.0.0.1',
+      port    = port,
+      flags   = NSF_SERVER|NSF_SSL,
+      feedback = function(Socket, Client, State)
+         if State is NTC_CONNECTED then
+            Client.acWrite('ssl-late-read-trigger')
+         end
+      end,
+      incoming = function(Socket, Client)
+         buffer = string.alloc(256)
+         err, read_len = Client.acRead(buffer)
+         if (err != ERR_Okay) and (err != ERR_Disconnected) and (err != ERR_InvalidState) then
+            error('SSL server read failed during pending SSL free test: ' .. mSys.GetErrorMsg(err))
+         end
+      end
+   })
+
+   client = obj.new('netsocket', {
+      name  = 'IocpPendingSSLFreeClient',
+      flags = NSF_SSL|NSF_DISABLE_SERVER_VERIFY,
+      feedback = function(Socket, State)
+         if client_freed then late_client_callbacks++ end
+      end,
+      incoming = function(Socket)
+         if client_freed then late_client_callbacks++ end
+         buffer = string.alloc(256)
+         err, read_len = Socket.acRead(buffer)
+         if (err != ERR_Okay) and (err != ERR_Disconnected) and (err != ERR_InvalidState) then
+            error('SSL client read failed during pending SSL free test: ' .. mSys.GetErrorMsg(err))
+         end
+      end
+   })
+
+   check client.mtConnect('127.0.0.1', port)
+   processing.halt(0.05)
+
+   client_freed = true
+   client.free()
+   client = nil
+
+   processing.collect()
+   processing.halt(1.0)
+   server.acDeactivate()
+
+   assert(late_client_callbacks is 0, 'Freed SSL client received a late handshake or read callback')
 end
