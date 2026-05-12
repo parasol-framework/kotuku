@@ -95,6 +95,7 @@ private:
 
    ParserResult<std::vector<Identifier>> parse_name_list();
    [[nodiscard]] bool is_enum_declaration_rhs(size_t Offset) const;
+   [[nodiscard]] bool is_enum_declaration_prefix(const Identifier &) const;
    ParserResult<EnumExpansion> parse_enum_declaration(const Identifier &);
    ParserResult<StmtNodePtr> make_enum_declaration_stmt(SourceSpan, Identifier, bool);
    struct ParameterListResult {

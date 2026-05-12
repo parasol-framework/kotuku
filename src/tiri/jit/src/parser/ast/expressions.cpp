@@ -41,7 +41,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
          ExprNodePtr& target = targets.front();
          if (target and target->kind IS AstNodeKind::IdentifierExpr) {
             auto *name_ref = std::get_if<NameRef>(&target->data);
-            if (name_ref) {
+            if (name_ref and this->is_enum_declaration_prefix(name_ref->identifier)) {
                return this->make_enum_declaration_stmt(target->span, name_ref->identifier, false);
             }
          }
@@ -970,7 +970,27 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
          continue;
       }
 
-      if (token.kind() IS TokenKind::LeftParen or token.kind() IS TokenKind::String) {
+      if (token.kind() IS TokenKind::LeftParen or token.kind() IS TokenKind::LeftBrace or
+            token.kind() IS TokenKind::String) {
+         // For table tokens in a choose expression context, check if this starts a table pattern for the next case.
+         // If the matching brace is followed by -> or 'when', don't treat it as a table-call argument.
+         if (token.kind() IS TokenKind::LeftBrace and this->in_choose_expression and not this->in_guard_expression) {
+            int brace_depth = 1;
+            size_t pos = 1;
+            while (brace_depth > 0 and pos < 100) {
+               Token ahead = this->ctx.tokens().peek(pos);
+               if (ahead.kind() IS TokenKind::LeftBrace) brace_depth++;
+               else if (ahead.kind() IS TokenKind::RightBrace) brace_depth--;
+               else if (ahead.kind() IS TokenKind::EndOfFile) break;
+               pos++;
+            }
+
+            if (brace_depth IS 0) {
+               Token after_brace = this->ctx.tokens().peek(pos);
+               if (after_brace.kind() IS TokenKind::CaseArrow or after_brace.kind() IS TokenKind::When) break;
+            }
+         }
+
          // For string tokens, check if this is actually the start of a choose case pattern
          // (string followed by ->). If so, don't treat it as a call argument.
          if (token.kind() IS TokenKind::String) {

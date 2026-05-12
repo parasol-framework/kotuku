@@ -86,6 +86,16 @@ end
    assert(enum is 7, 'enum should remain usable as a normal identifier outside enum declaration syntax')
 end
 
+@Test function EnumTableCallWithLowercaseTarget()
+   enum = function(Table)
+      assert(Table.ONE is 1, 'Table-call argument should be passed to the contextual enum identifier')
+      return 42
+   end
+
+   x = enum { ONE = 1 }
+   assert(x is 42, 'Lowercase assignment target should parse enum {...} as a normal table call')
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Error cases
 

@@ -66,6 +66,16 @@ bool AstBuilder::is_enum_declaration_rhs(size_t Offset) const
 }
 
 //********************************************************************************************************************
+// Checks whether an assignment target can act as an enum declaration prefix without consuming the RHS.
+
+bool AstBuilder::is_enum_declaration_prefix(const Identifier &Prefix) const
+{
+   std::string prefix = identifier_text(Prefix);
+   return not Prefix.is_blank and not prefix.empty() and not Prefix.has_close and
+      (Prefix.type IS TiriType::Unknown) and is_upper_identifier(prefix);
+}
+
+//********************************************************************************************************************
 // Parses an enum declaration RHS and expands it to generated constant identifiers and numeric literal values.
 
 ParserResult<AstBuilder::EnumExpansion> AstBuilder::parse_enum_declaration(const Identifier &Prefix)
