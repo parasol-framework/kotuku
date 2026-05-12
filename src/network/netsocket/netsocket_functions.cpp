@@ -21,14 +21,10 @@ static void free_socket(extNetSocket *Self)
    if (!Self->terminating()) {
       if (Self->State != NTC::DISCONNECTED) Self->setState(NTC::DISCONNECTED);
    }
-
-   log.trace("Resetting exception handler.");
-
-   SetResourcePtr(RES::EXCEPTION_HANDLER, nullptr); // Stop winsock from fooling with our exception handler
 }
 
 //********************************************************************************************************************
-// Store data in the queue
+// Store data in the queue.
 
 ERR NetQueue::write(CPTR Message, size_t Length)
 {
@@ -65,138 +61,6 @@ ERR NetQueue::write(CPTR Message, size_t Length)
 
    return ERR::Okay;
 }
-
-//********************************************************************************************************************
-// This function is called from winsockwrappers.c whenever a network event occurs on a NetSocket.  Callbacks
-// set against the NetSocket object will send/receive data on the socket.
-//
-// Recursion typically occurs on calls to ProcessMessages() during incoming and outgoing data transmissions.  This is
-// not important if the same transmission message is being repeated, but does require careful management if, for
-// example, a disconnection were to occur during a read/write operation for example.  Using DataFeeds is a more
-// reliable method of managing recursion problems, but burdens the message queue.
-
-#if defined(_WIN32) and !defined(ENABLE_IOCP)
-void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message, ERR Error)
-{
-   kt::Log log(__FUNCTION__);
-
-   extNetSocket *Socket;
-   extClientSocket *ClientSocket;
-
-   if (SocketObject->terminating()) { // Sanity check
-      log.warning(ERR::MarkedForDeletion);
-      return;
-   }
-
-   if (SocketObject->classID() IS CLASSID::CLIENTSOCKET) {
-      ClientSocket = (extClientSocket *)SocketObject;
-      Socket = (extNetSocket *)ClientSocket->Client->Owner;
-      if (ClientSocket->Handle != Handle) {
-         log.warning(ERR::SanityCheckFailed);
-         return;
-      }
-   }
-   else {
-      Socket = (extNetSocket *)SocketObject;
-      ClientSocket = nullptr;
-      if (Socket->Handle != Handle) {
-         log.warning(ERR::SanityCheckFailed);
-         return;
-      }
-   }
-
-   #ifndef NDEBUG
-   static constexpr const char* const msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
-   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, Handle, ClientSocket, msg[Message], int(Error), Socket->InUse, Socket->WinRecursion);
-   #endif
-
-   // Safety first
-
-   kt::ScopedObjectLock lock(Socket);
-   if (!lock.granted()) return;
-
-   kt::ScopedObjectLock lock_client(ClientSocket); // Not locked if ClientSocket is nullptr
-   if ((ClientSocket) and (!lock_client.granted())) return;
-
-   kt::SwitchContext context(Socket);
-
-   Socket->InUse++;
-
-   if (Message IS NTE_READ) {
-      if (Error != ERR::Okay) log.warning("Socket failed on incoming data, error %d.", int(Error));
-
-      if (Socket->WinRecursion) log.traceWarning(ERR::Recursion);
-      else {
-         Socket->WinRecursion++;
-         #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-         if (ClientSocket) server_incoming_from_client((HOSTHANDLE)Handle, ClientSocket);
-         else netsocket_incoming(0, Socket);
-         #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
-         Socket->WinRecursion--;
-      }
-   }
-   else if (Message IS NTE_WRITE) {
-      if (Error != ERR::Okay) log.warning("Socket failed on outgoing data, error %d.", int(Error));
-
-      if (Socket->WinRecursion) log.traceWarning(ERR::Recursion);
-      else {
-         Socket->WinRecursion++;
-         #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-         if (ClientSocket) clientsocket_outgoing((HOSTHANDLE)Handle, ClientSocket);
-         else netsocket_outgoing(0, Socket);
-         #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
-         Socket->WinRecursion--;
-      }
-   }
-   else if (Message IS NTE_CLOSE) {
-      if (ClientSocket) {
-         log.branch("Client socket closed.");
-         FreeResource(ClientSocket);
-         // Note: Disconnection feedback is sent to the NetSocket by the ClientSocket destructor.
-      }
-      else {
-         log.branch("Connection closed by host, error %d.", int(Error));
-
-         // Prevent multiple close messages from the same socket
-         if (Socket->State IS NTC::DISCONNECTED) {
-            log.trace("Ignoring duplicate close message for socket %d", Handle);
-            Socket->InUse--;
-            return;
-         }
-
-         Socket->setState(NTC::DISCONNECTED);
-         free_socket(Socket);
-      }
-   }
-   else if (Message IS NTE_ACCEPT) {
-      log.traceBranch("Accept message received for new client %d.", Handle);
-      server_accept_client(Socket->Handle.hosthandle(), Socket);
-   }
-   else if (Message IS NTE_CONNECT) {
-      if (Error IS ERR::Okay) {
-         if (ClientSocket) { // Server mode - connect message shouldn't be received for ClientSocket
-            log.warning("Unexpected connect message for ClientSocket, ignoring.");
-            Socket->InUse--;
-            return;
-         }
-         else {
-            log.traceBranch("Connection to host granted.");
-            complete_socket_connect(Socket, network_platform().complete_connect(SocketHandle(Handle)));
-         }
-      }
-      else {
-         log.msg("Connection state changed, error: %s", GetErrorMsg(Error));
-
-         if (Socket->TimerHandle) { UpdateTimer(Socket->TimerHandle, 0); Socket->TimerHandle = 0; }
-
-         Socket->Error = Error;
-         Socket->setState(NTC::DISCONNECTED);
-      }
-   }
-
-   Socket->InUse--;
-}
-#endif
 
 //********************************************************************************************************************
 
@@ -408,8 +272,6 @@ static void free_client(extNetSocket *Socket, objNetClient *Client)
 }
 
 //********************************************************************************************************************
-// See win32_netresponse() for the Windows version.
-
 static void netsocket_connect_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
    kt::Log log(__FUNCTION__);
@@ -433,7 +295,7 @@ static void netsocket_connect_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 // Incoming information from the server can be read with either the Incoming callback routine (the developer is
 // expected to call the Read action from this).
 //
-// This function is called from win32_netresponse() and is managed outside of the normal message queue.
+// This function is managed outside of the normal message queue.
 
 static void netsocket_incoming_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {

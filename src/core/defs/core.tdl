@@ -4,10 +4,6 @@ module({ name="Core", copyright="Paul Manias 1996-2026", timestamp=20241015 }, f
   c_include("<stdarg.h>", "<inttypes.h>", "<string.h>", "<stdlib.h>")
   cpp_include("<list>", "<map>", "<string>", "<set>", "<vector>", "<unordered_map>", "<bit>", "<atomic>", "<array>", "<charconv>", "<sstream>", "<cmath>", "<type_traits>", "ankerl/unordered_dense.h")
 
-  platform("Windows", function()
-     enum("NETMSG", {}, "START", "END")
-  end)
-
   privateNames({ "ScriptArg", "CoreBase", "RootModule" })
 
   priority([==[
@@ -343,8 +339,6 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "LOG_DEPTH: The current depth of log messages.",
     "JNI_ENV: Return the current JNI environment string.",
     "THREAD_ID: Return the ID of the current thread.",
-    "EXCEPTION_HANDLER: Internal",
-    "NET_PROCESSING: Internal windows resource for Network module",
     "PROCESS_STATE: Life-cycle stage of the running process",
     "TOTAL_MEMORY: The total amount of installed memory.",
     "TOTAL_SWAP: The total amount of available swap space.",

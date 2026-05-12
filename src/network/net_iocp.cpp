@@ -3,6 +3,15 @@
 #include "net_platform.h"
 #include "win32/iocp.h"
 
+#include <array>
+#include <charconv>
+#include <cstdlib>
+#include <format>
+#include <optional>
+#include <string_view>
+
+#define HKEY_PROXY "\\HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\"
+
 static_assert(sizeof(struct sockaddr_storage) <= NETWORK_ENDPOINT_STORAGE_SIZE);
 
 static MsgHandler *glIocpCompletionHandler = nullptr;
@@ -72,6 +81,95 @@ static ERR convert_lookup_error(int Result)
       case EAI_SYSTEM: return ERR::SystemCall;
       default: return ERR::Failed;
    }
+}
+
+//********************************************************************************************************************
+
+struct WindowsProxyEntry {
+   std::string Name;
+   std::string Server;
+   int Port = 0;
+   int ServerPort = 0;
+   bool Enabled = false;
+};
+
+//********************************************************************************************************************
+
+static std::optional<int> parse_proxy_port(std::string_view Value)
+{
+   int port = 0;
+   auto result = std::from_chars(Value.data(), Value.data() + Value.size(), port);
+   if ((result.ec != std::errc()) or (result.ptr != Value.data() + Value.size())) return std::nullopt;
+   return port;
+}
+
+//********************************************************************************************************************
+
+static std::optional<WindowsProxyEntry> parse_proxy_entry(std::string_view Entry, bool Enabled)
+{
+   static constexpr std::array<std::pair<std::string_view, int>, 3> protocol_ports = {{
+      {"ftp", 21}, {"http", 80}, {"https", 443}
+   }};
+
+   auto equal_pos = Entry.find('=');
+   if (equal_pos != std::string_view::npos) {
+      auto protocol = Entry.substr(0, equal_pos);
+      auto server_part = Entry.substr(equal_pos + 1);
+      auto colon_pos = server_part.find(':');
+      if (colon_pos IS std::string_view::npos) return std::nullopt;
+
+      auto port = parse_proxy_port(server_part.substr(colon_pos + 1));
+      if (!port) return std::nullopt;
+
+      for (const auto &protocol_port : protocol_ports) {
+         if (protocol_port.first IS protocol) {
+            return WindowsProxyEntry {
+               std::format("Windows {}", protocol),
+               std::string(server_part.substr(0, colon_pos)),
+               protocol_port.second,
+               *port,
+               Enabled
+            };
+         }
+      }
+   }
+   else {
+      auto colon_pos = Entry.find(':');
+      if (colon_pos IS std::string_view::npos) return std::nullopt;
+
+      auto port = parse_proxy_port(Entry.substr(colon_pos + 1));
+      if (!port) return std::nullopt;
+
+      return WindowsProxyEntry {
+         "Windows",
+         std::string(Entry.substr(0, colon_pos)),
+         0,
+         *port,
+         Enabled
+      };
+   }
+
+   return std::nullopt;
+}
+
+//********************************************************************************************************************
+
+static std::vector<WindowsProxyEntry> parse_proxy_string(std::string_view Servers, bool Enabled)
+{
+   std::vector<WindowsProxyEntry> entries;
+
+   size_t pos = 0;
+   while (pos < Servers.length()) {
+      while ((pos < Servers.length()) and (Servers[pos] IS ';')) ++pos;
+      if (pos >= Servers.length()) break;
+
+      size_t start = pos;
+      while ((pos < Servers.length()) and (Servers[pos] != ';')) ++pos;
+
+      if (auto entry = parse_proxy_entry(Servers.substr(start, pos - start), Enabled)) entries.push_back(*entry);
+   }
+
+   return entries;
 }
 
 //********************************************************************************************************************
@@ -466,12 +564,115 @@ public:
 
    ERR sync_host_proxies(objConfig *Config) override
    {
+      kt::Log log(__FUNCTION__);
+
+      if (!Config) return ERR::NullArgs;
+
+      ConfigGroups *groups;
+      if (Config->get(FID_Data, groups) IS ERR::Okay) {
+         std::vector<std::string> host_groups;
+         for (const auto &[group, keys] : groups[0]) {
+            if (keys.contains("Host")) host_groups.push_back(group);
+         }
+
+         for (const auto &group : host_groups) {
+            Config->deleteGroup(group.c_str());
+         }
+      }
+
+      auto task = CurrentTask();
+      CSTRING value;
+      if (task->getEnv(HKEY_PROXY "ProxyEnable", &value) != ERR::Okay) {
+         log.msg("Host does not have proxies enabled (registry setting: %s)", HKEY_PROXY);
+         return ERR::Okay;
+      }
+
+      bool enabled = (strtol(value, nullptr, 0) > 0);
+
+      CSTRING servers;
+      if ((task->getEnv(HKEY_PROXY "ProxyServer", &servers) IS ERR::Okay) and servers[0]) {
+         log.msg("Host has defined default proxies: %s", servers);
+
+         auto proxy_entries = parse_proxy_string(servers, enabled);
+
+         int id = 0;
+         Config->read("ID", "Value", id);
+
+         for (const auto &entry : proxy_entries) {
+            ++id;
+            Config->write("ID", "Value", std::to_string(id));
+
+            std::string group = std::to_string(id);
+            Config->write(group, "Name", entry.Name);
+            Config->write(group, "Server", entry.Server);
+            Config->write(group, "Port", std::to_string(entry.Port));
+            Config->write(group, "ServerPort", std::to_string(entry.ServerPort));
+            Config->write(group, "Enabled", std::to_string(entry.Enabled ? 1 : 0));
+            Config->write(group, "Host", "1");
+
+            log.trace("Added Windows proxy: %s -> %s:%d", entry.Name.c_str(), entry.Server.c_str(), entry.ServerPort);
+         }
+      }
+
       return ERR::Okay;
    }
 
    ERR save_host_proxy(CSTRING Server, int ServerPort, int Port, bool Enabled) override
    {
-      return ERR::NoSupport;
+      kt::Log log(__FUNCTION__);
+      objTask *task = CurrentTask();
+
+      ERR error;
+      if (Enabled) error = task->setEnv(HKEY_PROXY "ProxyEnable", "1");
+      else error = task->setEnv(HKEY_PROXY "ProxyEnable", "0");
+      if (error != ERR::Okay) return log.warning(error);
+
+      if ((!Server) or (!Server[0])) {
+         log.trace("Clearing proxy server value.");
+         if (auto error = task->setEnv(HKEY_PROXY "ProxyServer", ""); error != ERR::Okay) return log.warning(error);
+      }
+      else if (Port IS 0) {
+         std::string buffer = std::format("{}:{}", Server, ServerPort);
+         log.trace("Changing all-port proxy to: %s", buffer.c_str());
+         if (auto error = task->setEnv(HKEY_PROXY "ProxyServer", buffer.c_str()); error != ERR::Okay) {
+            return log.warning(error);
+         }
+      }
+      else {
+         std::string port_name;
+         switch(Port) {
+            case 21: port_name = "ftp"; break;
+            case 80: port_name = "http"; break;
+            case 443: port_name = "https"; break;
+         }
+
+         if (!port_name.empty()) {
+            CSTRING servers;
+            task->getEnv(HKEY_PROXY "ProxyServer", &servers);
+            std::string server_list = servers ? servers : "";
+
+            const std::string search_pattern = std::format("{}=", port_name);
+            if (auto pos = server_list.find(search_pattern); pos != std::string::npos) {
+               auto end_pos = server_list.find(';', pos);
+               if (end_pos IS std::string::npos) end_pos = server_list.length();
+               else ++end_pos;
+               server_list.erase(pos, end_pos - pos);
+            }
+
+            const std::string new_entry = std::format("{}={}:{}", port_name, Server, ServerPort);
+            if (!server_list.empty() and server_list.back() != ';') {
+               server_list += ';';
+            }
+            server_list += new_entry;
+
+            if (auto error = task->setEnv(HKEY_PROXY "ProxyServer", server_list.c_str()); error != ERR::Okay) {
+               return log.warning(error);
+            }
+         }
+         else return log.error(ERR::NoSupport);
+      }
+
+      return ERR::Okay;
    }
 
    CSTRING address_to_string(const IPAddress &Address, STRING Dest, size_t Size) override

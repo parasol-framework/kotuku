@@ -109,10 +109,6 @@ struct TLSSession {
 
 //********************************************************************************************************************
 
-#if defined(_WIN32) and !defined(ENABLE_IOCP)
-   #include "win32/winsockwrappers.h"
-#endif
-
 #ifdef __linux__
    #include "socket_errors.h"
 #endif
@@ -153,9 +149,6 @@ class extNetSocket : public objNetSocket {
    bool CloseAfterWrite = false;  // True if termination is waiting for queued data to flush
    uint8_t ErrorCountdown = 8;    // Counts down on each error, disconnect occurs at zero.
    TIMER   TimerHandle = 0;       // Timer subscription handle for timeout
-   #ifdef _WIN32
-      int16_t WinRecursion; // For win32_netresponse()
-   #endif
    #ifndef DISABLE_SSL
       TLSSession TLS;
    #endif
@@ -181,7 +174,7 @@ class extNetLookup : public objNetLookup {
 //********************************************************************************************************************
 // Returns true if the object is a NetSocket or ClientSocket in a valid state.
 
-#if defined(_WIN32) and defined(ENABLE_IOCP)
+#if defined(_WIN32)
 bool validate_iocp_completion_object(OBJECTPTR Object, SocketHandle Handle)
 {
    if ((!Object) or Object->terminating()) return false;
@@ -200,10 +193,6 @@ bool validate_iocp_completion_object(OBJECTPTR Object, SocketHandle Handle)
 #endif
 
 //********************************************************************************************************************
-
-#if defined(_WIN32) and !defined(ENABLE_IOCP)
-   #include "win32/winsockwrappers.h"
-#endif
 
 #include "module_def.c"
 
