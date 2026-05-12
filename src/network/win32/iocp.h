@@ -6,7 +6,7 @@
 
 #include <kotuku/system/errors.h>
 
-typedef uint32_t WSW_SOCKET;
+typedef uintptr_t WSW_SOCKET;
 typedef ERR (*iocp_post_message)(int MsgID, const void *Message, int Size);
 
 static constexpr size_t IOCP_ENDPOINT_STORAGE_SIZE = 128;

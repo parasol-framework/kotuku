@@ -100,6 +100,10 @@ static constexpr size_t IOCP_ACCEPT_BUFFER_SIZE = IOCP_ACCEPT_ADDRESS_SIZE * 2;
 
 //********************************************************************************************************************
 
+static ERR post_accept(WSW_SOCKET Socket);
+
+//********************************************************************************************************************
+
 static IocpCompletionTarget completion_target(const IocpSocketRecord &Record, IocpOperationType Type)
 {
    if (Type IS IocpOperationType::CONNECT) return Record.Connect;
@@ -293,7 +297,7 @@ static ERR bind_ephemeral(SOCKET Socket, const sockaddr *RemoteAddress)
 
 //********************************************************************************************************************
 
-static void store_operation_result(IocpSocketRecord &Record, const IocpOperation &Operation, ERR Error)
+static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation &Operation, ERR Error)
 {
    if (Operation.Type IS IocpOperationType::CONNECT) Record.ConnectResult = Error;
    else if (Operation.Type IS IocpOperationType::READ) {
@@ -331,7 +335,7 @@ static void store_operation_result(IocpSocketRecord &Record, const IocpOperation
 
       if (Error != ERR::Okay) {
          close_accepted_socket(Operation);
-         return;
+         return true;
       }
 
       auto server_socket = socket_from_handle(Operation.Socket);
@@ -340,13 +344,13 @@ static void store_operation_result(IocpSocketRecord &Record, const IocpOperation
       if (setsockopt(accepted_socket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char *)&server_socket,
           sizeof(server_socket)) IS SOCKET_ERROR) {
          close_accepted_socket(Operation);
-         return;
+         return true;
       }
 
       auto handle = CreateIoCompletionPort((HANDLE)accepted_socket, glCompletionPort, ULONG_PTR(accepted_socket), 0);
       if (handle IS nullptr) {
          close_accepted_socket(Operation);
-         return;
+         return true;
       }
 
       sockaddr *local_address = nullptr;
@@ -356,7 +360,7 @@ static void store_operation_result(IocpSocketRecord &Record, const IocpOperation
       auto get_addresses = get_accept_ex_sockaddrs(server_socket);
       if (!get_addresses) {
          close_accepted_socket(Operation);
-         return;
+         return true;
       }
 
       get_addresses(Operation.Buffer.get(), 0, IOCP_ACCEPT_ADDRESS_SIZE, IOCP_ACCEPT_ADDRESS_SIZE, &local_address,
@@ -364,7 +368,7 @@ static void store_operation_result(IocpSocketRecord &Record, const IocpOperation
 
       if ((!remote_address) or (remote_size <= 0) or (remote_size > int(IOCP_ENDPOINT_STORAGE_SIZE))) {
          close_accepted_socket(Operation);
-         return;
+         return true;
       }
 
       IocpAcceptedSocket accepted;
@@ -379,6 +383,8 @@ static void store_operation_result(IocpSocketRecord &Record, const IocpOperation
          .Cancelled = false
       };
    }
+
+   return false;
 }
 
 //********************************************************************************************************************
@@ -386,6 +392,7 @@ static void store_operation_result(IocpSocketRecord &Record, const IocpOperation
 static void queue_operation_completion(const IocpOperation &Operation, size_t BytesTransferred, ERR Error)
 {
    iocp_completion_message message;
+   bool rearm_accept = false;
 
    {
       std::lock_guard<std::mutex> lock(glIocpMutex);
@@ -400,7 +407,8 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
       }
 
       auto target = completion_target(record->second, Operation.Type);
-      store_operation_result(record->second, Operation, Error);
+      rearm_accept = store_operation_result(record->second, Operation, Error) and
+         (target.Callback) and (target.ObjectID > 0);
 
       message.Type = Operation.Type;
       message.Socket = Operation.Socket;
@@ -411,6 +419,8 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
       message.BytesTransferred = BytesTransferred;
       message.Error = Error;
    }
+
+   if (rearm_accept) post_accept(Operation.Socket);
 
    if ((message.ObjectID > 0) and (message.Callback) and (glPostMessage)) {
       glPostMessage(glCompletionMsgID, &message, sizeof(message));

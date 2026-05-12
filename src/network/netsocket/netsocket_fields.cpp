@@ -252,7 +252,7 @@ static ERR SET_Handle(extNetSocket *Self, APTR Value)
    // The user can set Handle prior to initialisation in order to create a NetSocket object that is linked to a
    // socket created from outside the core platform code base.
 
-   Self->Handle = SocketHandle(int((MAXINT)Value));
+   Self->Handle = SocketHandle(SOCKET_HANDLE((MAXINT)Value));
    Self->ExternalSocket = true;
    return ERR::Okay;
 }
