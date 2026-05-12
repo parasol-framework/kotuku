@@ -1,6 +1,7 @@
 -- Flute tests that need to exercise the JIT in specific ways.
 
 local glCfg
+local ir_xstore <const> = 78  -- IRDEF order; traceIR exposes the opcode as traceIR(...).ot >> 8.
 
 @BeforeAll
 function SetupJitTests()
@@ -53,6 +54,21 @@ function get_trace()
       return cached_trace_no, cached_trace_info
    end
    return build_trace()
+end
+
+function ir_opcode(IrOt)
+   return IrOt >> 8
+end
+
+function count_trace_opcode(TraceNo, Info, Opcode)
+   local count = 0
+   for idx = 1, Info.nins do
+      local _, ir_ot = jit.util.traceIR(TraceNo, idx)
+      if ir_ot != nil and ir_opcode(ir_ot) is Opcode then
+         count++
+      end
+   end
+   return count
 end
 
 function sample_vararg(Left, Right, ...)
@@ -143,6 +159,44 @@ function jit_try_inner_locals_preserve_entry_local(Pattern, Iteration)
    return "missing-error"
 end
 
+function jit_try_forced_materialisation_probe(Count)
+   local entry_label = "entry"
+
+   try
+      local inner_label = "inner"
+      if Count < 0 then
+         return inner_label
+      end
+   except e
+      return "error"
+   end
+
+   return entry_label
+end
+
+function build_try_materialisation_trace()
+   cached_trace_no = nil
+   cached_trace_info = nil
+
+   jit.on()
+   jit.flush()
+   jit.opt.start("hotloop=1", "hotexit=1", "minstitch=0")
+
+   for i = 0, 99 do
+      local result = jit_try_forced_materialisation_probe(i)
+      assert(result is "entry", f"Expected materialisation probe to return entry local, got '{result}'")
+   end
+
+   for trace_no = 1, 30 do
+      local info = jit.util.traceInfo(trace_no)
+      if info != nil and info.tryEnterStores > 0 then
+         return trace_no, info
+      end
+   end
+
+   error("Failed to create a try-entry materialisation trace for inspection")
+end
+
 @Test(hotpath=80) function JITTryRegexFailurePreservesParamName()
    jit.on()
    jit.flush()
@@ -209,6 +263,37 @@ end
       local expected = "entry-" .. tostring(i % 7)
       local result = jit_try_inner_locals_preserve_entry_local("(", i)
       assert(result is expected, f"Expected handler to see entry local '{expected}', got '{result}'")
+   end
+end
+
+@Test(hotpath=80) function JITTryMaterialisationTraceEmitsXStores()
+   local trace_no, info = build_try_materialisation_trace()
+   local xstore_count = count_trace_opcode(trace_no, info, ir_xstore)
+
+   assert(info.tryStores > 0, "Try materialisation trace should report emitted stores")
+   assert(info.tryEnterStores is info.tryStores, "Probe should only emit forced try-entry materialisation stores")
+   assert(xstore_count >= info.tryStores,
+      f"Expected at least {info.tryStores} XSTORE instructions, found {xstore_count}")
+end
+
+@Test(hotpath=80) function JITTryMaterialisationTraceSnapshotsStayBounded()
+   local trace_no, info = build_try_materialisation_trace()
+
+   assert(info.nexit > 0, "Try materialisation trace should expose snapshots")
+   for snap_no = 0, info.nexit - 1 do
+      local snapshot = jit.util.traceSnap(trace_no, snap_no)
+      assert(snapshot != nil, f"Expected snapshot {snap_no} for try materialisation trace")
+      local nslots = snapshot[1]
+      assert(type(nslots) is "number" and nslots >= 0, f"Snapshot {snap_no} should report a slot count")
+
+      for entry_idx = 2, #snapshot - 1 do
+         local slot = snapshot[entry_idx] >> 24
+         if slot is 255 then
+            continue
+         end
+         assert(slot < nslots,
+            f"Snapshot {snap_no} entry {entry_idx} slot {slot} should be below nslots {nslots}")
+      end
    end
 end
 
