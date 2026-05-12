@@ -428,6 +428,11 @@ public:
       return ERR::Okay;
    }
 
+   bool has_pending_write(SocketHandle Handle) override
+   {
+      return iocp_has_pending_write(Handle.socket());
+   }
+
    ERR enable_broadcast(SocketHandle Handle) override
    {
       return iocp_enable_broadcast(Handle.socket());

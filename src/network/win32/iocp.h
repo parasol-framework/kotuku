@@ -54,6 +54,7 @@ ERR iocp_register_write(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback);
 ERR iocp_remove_read(WSW_SOCKET Socket);
 ERR iocp_remove_write(WSW_SOCKET Socket);
 ERR iocp_recall_read(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback);
+bool iocp_has_pending_write(WSW_SOCKET Socket);
 
 ERR iocp_receive(WSW_SOCKET Socket, void *Buffer, size_t Length, size_t &Received);
 ERR iocp_append_receive(WSW_SOCKET Socket, std::vector<uint8_t> &Buffer, size_t Length, size_t &Received);

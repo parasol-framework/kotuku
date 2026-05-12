@@ -214,6 +214,7 @@ public:
    virtual ERR remove_write(SocketHandle Handle) = 0;
    virtual ERR register_recall_read(SocketHandle Handle, void (*Callback)(HOSTHANDLE, APTR), APTR Data) = 0;
    virtual ERR deregister_fd(SocketHandle Handle) = 0;
+   virtual bool has_pending_write(SocketHandle Handle) = 0;
 
    virtual ERR enable_broadcast(SocketHandle Handle) = 0;
    virtual ERR set_multicast_ttl(SocketHandle Handle, int TTL, bool IPv6) = 0;

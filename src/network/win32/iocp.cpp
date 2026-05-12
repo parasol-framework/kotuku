@@ -409,6 +409,38 @@ static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation
 
 //********************************************************************************************************************
 
+static ERR post_write_tail(const IocpOperation &Operation, size_t Offset)
+{
+   if ((!Operation.Buffer) or (Offset >= Operation.BufferSize)) return ERR::Okay;
+
+   auto remaining = Operation.BufferSize - Offset;
+   auto operation = new IocpOperation();
+   operation->Type = IocpOperationType::WRITE;
+   operation->Socket = Operation.Socket;
+   operation->Generation = Operation.Generation;
+   operation->ObjectID = Operation.ObjectID;
+   operation->Callback = Operation.Callback;
+   operation->BufferSize = remaining;
+   operation->Buffer = std::make_unique<uint8_t[]>(operation->BufferSize);
+   std::memcpy(operation->Buffer.get(), Operation.Buffer.get() + Offset, remaining);
+
+   WSABUF wsabuf;
+   wsabuf.buf = (CHAR *)operation->Buffer.get();
+   wsabuf.len = ULONG(operation->BufferSize);
+
+   DWORD bytes = 0;
+   auto result = WSASend(socket_from_handle(Operation.Socket), &wsabuf, 1, &bytes, 0, &operation->Overlapped, nullptr);
+   if ((result IS SOCKET_ERROR) and (WSAGetLastError() != WSA_IO_PENDING)) {
+      auto error = convert_error();
+      delete operation;
+      return error;
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
 static void queue_operation_completion(const IocpOperation &Operation, size_t BytesTransferred, ERR Error)
 {
    iocp_completion_message message;
@@ -427,6 +459,13 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
       }
 
       auto target = completion_target(record->second, Operation.Type);
+
+      if ((Operation.Type IS IocpOperationType::WRITE) and (Error IS ERR::Okay) and
+          (BytesTransferred > 0) and (BytesTransferred < Operation.BufferSize)) {
+         if (auto tail_error = post_write_tail(Operation, BytesTransferred); tail_error IS ERR::Okay) return;
+         else Error = tail_error;
+      }
+
       rearm_accept = store_operation_result(record->second, Operation, Error) and
          (target.Callback) and (target.ObjectID > 0);
 
@@ -812,7 +851,12 @@ WSW_SOCKET iocp_create_socket(int ObjectID, bool UDP, bool &IPv6)
 void iocp_close_socket(WSW_SOCKET Socket)
 {
    iocp_deregister_socket(Socket);
-   closesocket(socket_from_handle(Socket));
+
+   auto native_socket = socket_from_handle(Socket);
+   if (native_socket IS INVALID_SOCKET) return;
+
+   shutdown(native_socket, SD_SEND);
+   closesocket(native_socket);
 }
 
 //********************************************************************************************************************
@@ -1081,6 +1125,16 @@ ERR iocp_remove_write(WSW_SOCKET Socket)
 
 //********************************************************************************************************************
 
+bool iocp_has_pending_write(WSW_SOCKET Socket)
+{
+   std::lock_guard<std::mutex> lock(glIocpMutex);
+   auto record = glSockets.find(Socket);
+   if (record IS glSockets.end()) return false;
+   return (not record->second.Cancelled) and record->second.WritePending;
+}
+
+//********************************************************************************************************************
+
 ERR iocp_recall_read(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback)
 {
    if (auto error = set_completion_target(Socket, IocpOperationType::READ, ObjectID, Callback);
@@ -1125,7 +1179,7 @@ ERR iocp_receive(WSW_SOCKET Socket, void *Buffer, size_t Length, size_t &Receive
             record->second.ReadBuffer.clear();
             record->second.ReadOffset = 0;
             if (record->second.ReadResult IS ERR::Okay) rearm_read = true;
-            else result = record->second.ReadResult;
+            else recall_read = true;
          }
          else recall_read = true;
       }

@@ -367,7 +367,8 @@ static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *Cli
       }
    }
 
-   if ((error IS ERR::Okay) and (ClientSocket->CloseAfterWrite) and (ClientSocket->WriteQueue.Buffer.empty())) {
+   if ((error IS ERR::Okay) and (ClientSocket->CloseAfterWrite) and (ClientSocket->WriteQueue.Buffer.empty()) and
+       (not network_platform().has_pending_write(ClientSocket->Handle))) {
       ClientSocket->CloseAfterWrite = false;
       disconnect(ClientSocket);
       ClientSocket->InUse--;
@@ -400,7 +401,7 @@ static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *Cli
       // If the write queue is empty then we remove the FD-Write registration so that
       // we don't tax system resources.
 
-      if (ClientSocket->WriteQueue.Buffer.empty()) {
+      if (ClientSocket->WriteQueue.Buffer.empty() and (not network_platform().has_pending_write(ClientSocket->Handle))) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Server->UID, ClientSocket->Handle.int_value());
          network_platform().remove_write(ClientSocket->Handle);
       }
@@ -427,7 +428,8 @@ static ERR CLIENTSOCKET_Deactivate(extClientSocket *Self)
    kt::Log log;
    log.branch();
 
-   if ((Self->State IS NTC::CONNECTED) and (not Self->WriteQueue.Buffer.empty())) {
+   if ((Self->State IS NTC::CONNECTED) and
+       ((not Self->WriteQueue.Buffer.empty()) or network_platform().has_pending_write(Self->Handle))) {
       log.msg("Delaying disconnect until queued data is flushed.");
       Self->CloseAfterWrite = true;
       network_platform().register_write(Self->Handle, &clientsocket_outgoing, Self);
