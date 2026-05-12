@@ -74,9 +74,6 @@ class objTime;
 class objCompression;
 class objCompressedStream;
 
-#define NETMSG_START 0
-#define NETMSG_END 1
-
 // Clipboard modes
 
 enum class CLIPMODE : uint32_t {
@@ -1106,15 +1103,13 @@ enum class RES : int {
    LOG_DEPTH = 10,
    JNI_ENV = 11,
    THREAD_ID = 12,
-   EXCEPTION_HANDLER = 13,
-   NET_PROCESSING = 14,
-   PROCESS_STATE = 15,
-   TOTAL_MEMORY = 16,
-   TOTAL_SWAP = 17,
-   CPU_SPEED = 18,
-   FREE_MEMORY = 19,
-   MEMORY_USAGE = 20,
-   MAIN_THREAD = 21,
+   PROCESS_STATE = 13,
+   TOTAL_MEMORY = 14,
+   TOTAL_SWAP = 15,
+   CPU_SPEED = 16,
+   FREE_MEMORY = 17,
+   MEMORY_USAGE = 18,
+   MAIN_THREAD = 19,
 };
 
 // Path types for SetResourcePath()

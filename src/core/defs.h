@@ -831,7 +831,6 @@ extern thread_local PERMIT glDefaultPermissions;
 extern ERR (*glMessageHandler)(struct Message *);
 extern void (*glVideoRecovery)(void);
 extern void (*glKeyboardRecovery)(void);
-extern void (*glNetProcessMessages)(int, APTR);
 
 #ifdef _WIN32
 extern "C" WINHANDLE glProcessHandle;

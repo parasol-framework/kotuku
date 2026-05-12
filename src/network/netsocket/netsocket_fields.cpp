@@ -443,8 +443,6 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
       }
    }
 
-   SetResourcePtr(RES::EXCEPTION_HANDLER, nullptr); // Stop winsock from fooling with the Core exception handler
-
    return ERR::Okay;
 }
 

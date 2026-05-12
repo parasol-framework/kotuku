@@ -11,7 +11,7 @@
 <meta name="description" content="Kōtuku documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
 <link rel="icon" href="/favicon.ico">
-<title>Kōtuku Wiki - Tiri HTTPServer API</title>
+<title>Kōtuku Wiki - Tiri HTTP Server API</title>
 <link href="../css/bootstrap.min.css" rel="stylesheet">
 <link href="../css/module-template.css" rel="stylesheet">
 <link href="../css/github-markdown.css" rel="stylesheet">
@@ -68,10 +68,11 @@
             <ul class="btn-toggle-nav list-unstyled pb-1">
             <li class="api-ref"><a class="rounded" href="Tiri-Reference-Manual.html">Tiri Reference Manual</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-GUI-API.html">GUI API</a></li>
-            <li class="api-ref"><a class="rounded" href="Tiri-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-HTTP-Server-API.html">HTTP Server API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-IO-API.html">I/O API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-JSON-API.html">JSON API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-Options-API.html">Options API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Proxy-Server-API.html">Proxy Server API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-URL-API.html">URL API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-VFX-API.html">VFX API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-Widgets.html">Widgets</a></li>
@@ -256,9 +257,8 @@
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
 
-<h1>Tiri HTTPServer API</h1>
-<h2 id="http-server">HTTP Server</h2>
-<p>The HTTPServer interface provides a comprehensive HTTP service that runs in the background of the calling application. It supports static file serving, directory indexing, security headers, rate limiting, and comprehensive request handling.</p>
+<h1>Tiri HTTP Server API</h1>
+<p>The HTTP Server library provides a comprehensive HTTP service that runs in the background of the calling application. It supports static file serving, directory indexing, security headers, rate limiting, and comprehensive request handling.</p>
 <p>The server is designed for security and reliability, implementing features such as path validation, directory traversal protection, rate limiting, and proper error handling.</p>
 <p>It can be loaded with the line:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>import <span class="st">&#39;net/httpserver&#39;</span></span></code></pre></div>

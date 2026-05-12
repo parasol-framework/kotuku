@@ -23,12 +23,8 @@ set_module_defaults (${MOD} "Net")
 target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/network.cpp")
 
 if (WIN32)
-   if (ENABLE_IOCP)
-      target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/net_iocp.cpp")
-      target_sources (${MOD} PRIVATE "win32/iocp.cpp")
-   else ()
-      target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/net_windows.cpp")
-   endif ()
+   target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/net_iocp.cpp")
+   target_sources (${MOD} PRIVATE "win32/iocp.cpp")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
    target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/net_linux.cpp")
 else ()
@@ -54,13 +50,7 @@ endif ()
 
 if (WIN32)
    target_compile_definitions (${MOD} PRIVATE "_WINSOCK_DEPRECATED_NO_WARNINGS")
-   if (ENABLE_IOCP)
-      target_compile_definitions (${MOD} PRIVATE "ENABLE_IOCP")
-      list (APPEND NETWORK_LIBS ws2_32)
-   else ()
-      target_sources (${MOD} PRIVATE "win32/winsockwrappers.cpp")
-      list (APPEND NETWORK_LIBS wsock32 gdi32 ws2_32)
-   endif ()
+   list (APPEND NETWORK_LIBS ws2_32)
 endif ()
 
 target_link_libraries (${MOD} PRIVATE ${NETWORK_LIBS})
@@ -113,11 +103,9 @@ else()
 endif()
 
 set (NETWORK_TESTS
-   bind_address dns_parallel server_io client_server error_handling ipv6 concurrency ssl
+   bind_address dns_parallel server_io client_server error_handling ipv6 concurrency ssl iocp_pipeline
    # UDP Tests
-   udp_basic udp_ipv6 udp_broadcast_multicast udp_tcp_coexistence
-   # Performance test (may take a while)
-   # udp_performance
+   udp_basic udp_ipv6 udp_broadcast_multicast udp_tcp_coexistence udp_performance
 )
 
 foreach (TEST_NAME ${NETWORK_TESTS})

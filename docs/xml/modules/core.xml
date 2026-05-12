@@ -2761,11 +2761,6 @@ static ResourceManager glNodeManager = {
       <const name="Z"/>
     </constants>
 
-    <constants lookup="NETMSG">
-      <const name="END"/>
-      <const name="START"/>
-    </constants>
-
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
       <const name="ASYNC_ACTIVE">Read-only indicator that asynchronous actions are queued or executing against this object.</const>
       <const name="COLLECT">Marked for garbage collection.</const>
