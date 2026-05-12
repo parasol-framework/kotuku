@@ -33,10 +33,11 @@ struct iocp_completion_message {
 ERR iocp_initialise(int MsgID, iocp_post_message PostMessage);
 void iocp_expunge();
 
-WSW_SOCKET iocp_create_socket(bool UDP, bool &IPv6);
+WSW_SOCKET iocp_create_socket(int ObjectID, bool UDP, bool &IPv6);
 void iocp_close_socket(WSW_SOCKET Socket);
 void iocp_deregister_socket(WSW_SOCKET Socket);
 int iocp_shutdown_socket(WSW_SOCKET Socket, int How);
+void iocp_set_socket_object(WSW_SOCKET Socket, int ObjectID);
 
 ERR iocp_prepare_connect(WSW_SOCKET Socket, const void *Address, int AddressSize);
 ERR iocp_begin_connect_wait(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback);

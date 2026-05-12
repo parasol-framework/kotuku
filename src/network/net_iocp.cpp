@@ -144,10 +144,10 @@ public:
 
    SocketHandle create_socket(void *Reference, bool Read, bool Write, bool UDP, bool &IPv6) override
    {
-      (void)Reference;
       (void)Read;
       (void)Write;
-      return SocketHandle(iocp_create_socket(UDP, IPv6));
+      auto object_id = Reference ? ((OBJECTPTR)Reference)->UID : 0;
+      return SocketHandle(iocp_create_socket(object_id, UDP, IPv6));
    }
 
    SocketHandle socket_from_hosthandle(HOSTHANDLE Handle) override
@@ -281,8 +281,8 @@ public:
 
    void set_socket_reference(SocketHandle Handle, void *Reference) override
    {
-      (void)Handle;
-      (void)Reference;
+      auto object_id = Reference ? ((OBJECTPTR)Reference)->UID : 0;
+      iocp_set_socket_object(Handle.socket(), object_id);
    }
 
    ERR set_non_blocking(SocketHandle Handle) override

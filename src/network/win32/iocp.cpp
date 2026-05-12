@@ -58,6 +58,7 @@ struct IocpDatagram {
 };
 
 struct IocpSocketRecord {
+   int ObjectID = 0;
    IocpCompletionTarget Connect;
    IocpCompletionTarget Read;
    IocpCompletionTarget Write;
@@ -121,6 +122,25 @@ static ERR convert_error(int Error = 0)
    if (Error IS ERROR_SEM_TIMEOUT) return ERR::TimeOut;
 
    return convert_socket_error(Error);
+}
+
+//********************************************************************************************************************
+
+static ERR convert_send_to_error(int Error)
+{
+   switch (Error) {
+      case WSAEWOULDBLOCK:
+      case WSAEALREADY:
+         return ERR::BufferOverflow;
+      case WSAEINPROGRESS:
+         return ERR::Busy;
+      case WSAENETUNREACH:
+         return ERR::NetworkUnreachable;
+      case WSAEINVAL:
+         return ERR::Args;
+      default:
+         return convert_error(Error);
+   }
 }
 
 //********************************************************************************************************************
@@ -310,6 +330,9 @@ static bool store_operation_result(IocpSocketRecord &Record, const IocpOperation
    else if (Operation.Type IS IocpOperationType::WRITE) {
       Record.WritePending = false;
    }
+   else if (Operation.Type IS IocpOperationType::UDP_SEND) {
+      // The completion only confirms that backend-owned datagram storage can be released.
+   }
    else if (Operation.Type IS IocpOperationType::UDP_RECEIVE) {
       Record.ReadPending = false;
       Record.ReadResult = Error;
@@ -410,7 +433,7 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
       message.Type = Operation.Type;
       message.Socket = Operation.Socket;
       message.Generation = Operation.Generation;
-      message.ObjectID = target.ObjectID;
+      message.ObjectID = target.ObjectID ? target.ObjectID : Operation.ObjectID;
       message.Callback = target.Callback;
       message.BytesTransferred = BytesTransferred;
       message.Error = Error;
@@ -753,7 +776,7 @@ void iocp_expunge()
 
 //********************************************************************************************************************
 
-WSW_SOCKET iocp_create_socket(bool UDP, bool &IPv6)
+WSW_SOCKET iocp_create_socket(int ObjectID, bool UDP, bool &IPv6)
 {
    if (glCompletionPort IS INVALID_HANDLE_VALUE) {
       IPv6 = false;
@@ -774,6 +797,7 @@ WSW_SOCKET iocp_create_socket(bool UDP, bool &IPv6)
 
    std::lock_guard<std::mutex> lock(glIocpMutex);
    glSockets[result] = {
+      .ObjectID = ObjectID,
       .Generation = glNextGeneration++,
       .IPv6 = IPv6,
       .UDP = UDP,
@@ -809,6 +833,15 @@ void iocp_deregister_socket(WSW_SOCKET Socket)
 int iocp_shutdown_socket(WSW_SOCKET Socket, int How)
 {
    return shutdown(socket_from_handle(Socket), How);
+}
+
+//********************************************************************************************************************
+
+void iocp_set_socket_object(WSW_SOCKET Socket, int ObjectID)
+{
+   std::lock_guard<std::mutex> lock(glIocpMutex);
+   auto record = glSockets.find(Socket);
+   if (record != glSockets.end()) record->second.ObjectID = ObjectID;
 }
 
 //********************************************************************************************************************
@@ -1192,30 +1225,51 @@ ERR iocp_send(WSW_SOCKET Socket, const void *Buffer, size_t &Length)
 ERR iocp_send_to(WSW_SOCKET Socket, const void *Buffer, size_t &Length, const void *Address, int AddressSize)
 {
    if ((!Buffer) and (Length > 0)) return ERR::NullArgs;
-   if ((!Address) or (AddressSize <= 0)) return ERR::Args;
+   if ((!Address) or (AddressSize <= 0) or (AddressSize > int(IOCP_ENDPOINT_STORAGE_SIZE))) return ERR::Args;
    if (!Length) return ERR::Okay;
 
-   auto result = sendto(socket_from_handle(Socket), (const char *)Buffer, int(Length), 0, (const sockaddr *)Address,
-      AddressSize);
-   if (result >= 0) {
-      Length = size_t(result);
-      return ERR::Okay;
+   uint64_t generation = 0;
+   int object_id = 0;
+   size_t requested = std::min<size_t>(Length, 0x7fffffff);
+
+   {
+      std::lock_guard<std::mutex> lock(glIocpMutex);
+      auto record = glSockets.find(Socket);
+      if (record IS glSockets.end()) return ERR::Search;
+      if (record->second.Cancelled) return ERR::Cancelled;
+
+      generation = record->second.Generation;
+      object_id = record->second.ObjectID;
    }
 
-   Length = 0;
-   switch (WSAGetLastError()) {
-      case WSAEWOULDBLOCK:
-      case WSAEALREADY:
-         return ERR::BufferOverflow;
-      case WSAEINPROGRESS:
-         return ERR::Busy;
-      case WSAENETUNREACH:
-         return ERR::NetworkUnreachable;
-      case WSAEINVAL:
-         return ERR::Args;
-      default:
-         return convert_error();
+   auto operation = new IocpOperation();
+   operation->Type = IocpOperationType::UDP_SEND;
+   operation->Socket = Socket;
+   operation->Generation = generation;
+   operation->ObjectID = object_id;
+   operation->BufferSize = requested;
+   operation->Buffer = std::make_unique<uint8_t[]>(operation->BufferSize);
+   operation->AddressSize = AddressSize;
+   std::memcpy(operation->Buffer.get(), Buffer, requested);
+   std::memcpy(operation->Address.data(), Address, size_t(AddressSize));
+
+   WSABUF wsabuf;
+   wsabuf.buf = (CHAR *)operation->Buffer.get();
+   wsabuf.len = ULONG(operation->BufferSize);
+
+   DWORD bytes = 0;
+   auto result = WSASendTo(socket_from_handle(Socket), &wsabuf, 1, &bytes, 0,
+      (const sockaddr *)operation->Address.data(), operation->AddressSize, &operation->Overlapped, nullptr);
+   auto socket_error = (result IS SOCKET_ERROR) ? WSAGetLastError() : 0;
+   if ((result IS SOCKET_ERROR) and (socket_error != WSA_IO_PENDING)) {
+      auto error = convert_send_to_error(socket_error);
+      delete operation;
+      Length = 0;
+      return error;
    }
+
+   Length = requested;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
