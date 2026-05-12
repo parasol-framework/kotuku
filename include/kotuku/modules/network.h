@@ -107,7 +107,7 @@ enum class NTC : int {
 #ifdef __linux__
 typedef int SOCKET_HANDLE;
 #elif _WIN32
-typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32 instead of SOCKET for now to avoid including winsock.h
+typedef uintptr_t SOCKET_HANDLE; // Pointer-sized storage for Winsock SOCKET handles without including winsock.h
 #elif __APPLE__
 typedef int SOCKET_HANDLE;
 #else

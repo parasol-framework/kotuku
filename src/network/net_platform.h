@@ -118,7 +118,7 @@ private:
 
 public:
    #ifdef _WIN32
-      static constexpr SOCKET_HANDLE INVALID_SOCKET_VAL = SOCKET_HANDLE(~0u);
+      static constexpr SOCKET_HANDLE INVALID_SOCKET_VAL = SOCKET_HANDLE(~uintptr_t(0));
    #else
       static constexpr SOCKET_HANDLE INVALID_SOCKET_VAL = -1;
    #endif

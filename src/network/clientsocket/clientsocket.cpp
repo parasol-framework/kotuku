@@ -61,6 +61,10 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
           return error;
       }
       else { // Normal SSL data read for established connections
+         if (!ssl_has_decrypted_data(Self->TLS.Handle)) {
+            if (auto receive_error = tls_receive_encrypted(Self); receive_error != ERR::Okay) return receive_error;
+         }
+
          int bytes_read = 0;
          auto ssl_error = ssl_read(Self->TLS.Handle, Buffer, BufferSize, &bytes_read);
          if ((ssl_error IS SSL_OK) and (bytes_read > 0)) {
@@ -183,6 +187,12 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
          ERR error = network_platform().receive(client->Handle, buffer.data(), buffer.size(), bytes_received);
          if ((error IS ERR::Okay) and (bytes_received > 0)) {
             SSL_ERROR_CODE accept_result = ssl_accept(client->TLS.Handle, buffer.data(), bytes_received);
+            auto flush_error = tls_flush_output(client);
+            if ((flush_error != ERR::Okay) and (flush_error != ERR::BufferOverflow)) {
+               log.warning(flush_error);
+               client->setState(NTC::DISCONNECTED);
+               return;
+            }
 
             switch (accept_result) {
                case SSL_OK:
@@ -205,6 +215,19 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
          }
          if (not ssl_connected) return;
          if (not ssl_has_decrypted_data(client->TLS.Handle) and !ssl_has_encrypted_data(client->TLS.Handle)) return;
+      }
+      else if ((client->TLS.Handle) and (client->State IS NTC::CONNECTED) and
+          (!ssl_has_decrypted_data(client->TLS.Handle))) {
+         if (auto error = tls_receive_encrypted(client); error IS ERR::Disconnected) {
+            disconnect(client);
+            return;
+         }
+         else if (error != ERR::Okay) {
+            log.warning(error);
+            return;
+         }
+
+         if (!ssl_has_decrypted_data(client->TLS.Handle)) return;
       }
    #else
       if (client->State IS NTC::HANDSHAKING) {
@@ -289,6 +312,9 @@ static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *Cli
 
 #ifndef DISABLE_SSL
    if ((ClientSocket->TLS.Handle) and (ClientSocket->State IS NTC::HANDSHAKING)) {
+      #ifdef _WIN32
+         if (auto error = tls_flush_output(ClientSocket); error != ERR::Okay) log.traceWarning(error);
+      #endif
       log.trace("Still connecting via SSL...");
       return;
    }
@@ -330,8 +356,8 @@ static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *Cli
 
       if (len > 0) {
          error = send_data(ClientSocket, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len);
+         if (len > 0) ClientSocket->WriteQueue.Index += len;
          if ((error != ERR::Okay) or (not len)) break;
-         ClientSocket->WriteQueue.Index += len;
       }
 
       if (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Buffer.size()) {

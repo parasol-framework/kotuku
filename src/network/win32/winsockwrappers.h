@@ -14,7 +14,7 @@ typedef void * HANDLE; // Generic handle capable of handling ints or pointers.
 typedef void * HOSTHANDLE; // Forward declaration for core system handle type
 enum class ERR : int;
 struct socket_info;
-typedef unsigned int WSW_SOCKET; // Identical to the windows SOCKET type
+typedef uintptr_t WSW_SOCKET; // Pointer-sized storage for Winsock SOCKET handles without including winsock.h
 struct sockaddr;
 struct hostent;
 struct addrinfo;

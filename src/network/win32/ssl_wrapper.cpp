@@ -11,6 +11,9 @@ Pure Windows implementation that avoids all Kotuku headers to prevent conflicts.
 #define WIN32_LEAN_AND_MEAN
 #define SECURITY_WIN32
 #define NOMINMAX
+#ifndef IS
+#define IS ==
+#endif
 
 #include <winsock2.h>
 #include <windows.h>
@@ -27,6 +30,7 @@ Pure Windows implementation that avoids all Kotuku headers to prevent conflicts.
 #include <array>
 #include <algorithm>
 #include <span>
+#include <climits>
 
 #include "ssl_wrapper.h"
 #include "../ssl_certificate_policy.h"
@@ -255,20 +259,7 @@ static void set_error_status(ssl_context* Ctx, SECURITY_STATUS Status)
 
 static SSL_ERROR_CODE flush_handshake_buffer(SSL_HANDLE SSL)
 {
-   while (!SSL->handshake_buffer.empty()) {
-      auto pending = SSL->handshake_buffer.used_data();
-      int sent = send(SSL->socket_handle, (const char*)pending.data(), int(pending.size()), 0);
-
-      if (sent > 0) SSL->handshake_buffer.consume_front(sent);
-      else if (sent == 0) return SSL_ERROR_WOULD_BLOCK;
-      else {
-         int error = WSAGetLastError();
-         SSL->last_win32_error = error;
-         if (error == WSAEWOULDBLOCK) return SSL_ERROR_WOULD_BLOCK;
-         return SSL_ERROR_FAILED;
-      }
-   }
-
+   (void)SSL;
    return SSL_OK;
 }
 
@@ -287,6 +278,25 @@ static SSL_ERROR_CODE queue_handshake_token(SSL_HANDLE SSL, void *Buffer, DWORD 
    if (Buffer) FreeContextBuffer(Buffer);
 
    return flush_handshake_buffer(SSL);
+}
+
+//********************************************************************************************************************
+
+static void flush_pending_output_before_free(SSL_HANDLE SSL)
+{
+   if ((!SSL) or (SSL->socket_handle IS INVALID_SOCKET)) return;
+
+   while (ssl_has_pending_output(SSL)) {
+      auto pending_data = (const char *)ssl_pending_output_data(SSL);
+      auto pending_size = ssl_pending_output_size(SSL);
+      if ((!pending_data) or (!pending_size)) return;
+
+      int send_size = int(std::min(pending_size, size_t(INT_MAX)));
+      int sent = send(SSL->socket_handle, pending_data, send_size, 0);
+      if (sent <= 0) return;
+
+      ssl_consume_pending_output(SSL, size_t(sent));
+   }
 }
 
 //********************************************************************************************************************
@@ -396,8 +406,7 @@ void ssl_shutdown(SSL_HANDLE SSL)
       0, SECURITY_NATIVE_DREP, &shutdown_desc, 0, nullptr, &out_desc, &ctx_attrs, &expiry);
 
    if (out_buffer.pvBuffer and out_buffer.cbBuffer > 0) {
-      send(SSL->socket_handle, (const char*)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
-      FreeContextBuffer(out_buffer.pvBuffer);
+      queue_handshake_token(SSL, out_buffer.pvBuffer, out_buffer.cbBuffer);
    }
 }
 
@@ -405,6 +414,7 @@ void ssl_free_context(SSL_HANDLE SSL)
 {
    if (SSL) {
       ssl_shutdown(SSL);
+      flush_pending_output_before_free(SSL);
       delete SSL;
    }
 }
@@ -450,11 +460,58 @@ bool ssl_has_encrypted_data(SSL_HANDLE SSL)
 }
 
 //********************************************************************************************************************
+
+bool ssl_has_pending_output(SSL_HANDLE SSL)
+{
+   return SSL and !SSL->handshake_buffer.empty();
+}
+
+//********************************************************************************************************************
+
+const void * ssl_pending_output_data(SSL_HANDLE SSL)
+{
+   if ((!SSL) or SSL->handshake_buffer.empty()) return nullptr;
+   return SSL->handshake_buffer.used_data().data();
+}
+
+//********************************************************************************************************************
+
+size_t ssl_pending_output_size(SSL_HANDLE SSL)
+{
+   if (!SSL) return 0;
+   return SSL->handshake_buffer.size();
+}
+
+//********************************************************************************************************************
+
+void ssl_consume_pending_output(SSL_HANDLE SSL, size_t Bytes)
+{
+   if (SSL and (Bytes > 0)) SSL->handshake_buffer.consume_front(Bytes);
+}
+
+//********************************************************************************************************************
+
+SSL_ERROR_CODE ssl_queue_encrypted_input(SSL_HANDLE SSL, const void *Buffer, int Length)
+{
+   if ((!SSL) or (!Buffer) or (Length <= 0)) return SSL_ERROR_ARGS;
+
+   std::span<const unsigned char> buffer_span((const unsigned char *)Buffer, size_t(Length));
+   return SSL->recv_buffer.append(buffer_span) ? SSL_OK : SSL_ERROR_MEMORY;
+}
+
+//********************************************************************************************************************
 // Get last security status
 
 int ssl_last_security_status(SSL_HANDLE SSL)
 {
    return int(((ssl_context*)SSL)->last_security_status);
+}
+
+//********************************************************************************************************************
+
+size_t ssl_encrypted_input_size(SSL_HANDLE SSL)
+{
+   return SSL ? SSL->recv_buffer.size() : 0;
 }
 
 //********************************************************************************************************************

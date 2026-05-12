@@ -110,6 +110,67 @@ static ERR tls_accept_client(extClientSocket *Self, extNetSocket *Server)
 }
 
 //********************************************************************************************************************
+
+template <class T> static void tls_register_write(T *Self)
+{
+   auto write_callback = std::is_same<T, extNetSocket>::value ? netsocket_outgoing : clientsocket_outgoing;
+   network_platform().register_write(Self->Handle, write_callback, Self);
+}
+
+//********************************************************************************************************************
+
+template <class T> ERR tls_flush_output(T *Self)
+{
+   if ((!Self) or (!Self->TLS.Handle)) return ERR::FieldNotSet;
+
+   while (ssl_has_pending_output(Self->TLS.Handle)) {
+      auto pending_data = ssl_pending_output_data(Self->TLS.Handle);
+      auto pending_size = ssl_pending_output_size(Self->TLS.Handle);
+      if ((!pending_data) or (!pending_size)) return ERR::Okay;
+
+      size_t sent = pending_size;
+      auto error = network_platform().send(Self->Handle, pending_data, sent);
+      if (sent > 0) ssl_consume_pending_output(Self->TLS.Handle, sent);
+
+      if ((error IS ERR::BufferOverflow) or (sent < pending_size)) {
+         tls_register_write(Self);
+         return ERR::BufferOverflow;
+      }
+      else if (error != ERR::Okay) return error;
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+template <class T> ERR tls_receive_encrypted(T *Self)
+{
+   if ((!Self) or (!Self->TLS.Handle)) return ERR::FieldNotSet;
+
+   std::array<uint8_t, 4096> buffer;
+   size_t bytes_received = 0;
+
+   auto error = network_platform().receive(Self->Handle, buffer.data(), buffer.size(), bytes_received);
+   if ((error IS ERR::Okay) and (bytes_received > 0)) {
+      if (auto ssl_error = ssl_queue_encrypted_input(Self->TLS.Handle, buffer.data(), int(bytes_received));
+          ssl_error != SSL_OK) {
+         kt::Log(__FUNCTION__).warning("Failed to queue encrypted SSL input: %d", ssl_error);
+         return ERR::Failed;
+      }
+
+      auto prepare_error = ssl_prepare_read(Self->TLS.Handle);
+      if ((prepare_error != SSL_OK) and (prepare_error != SSL_ERROR_WOULD_BLOCK)) {
+         if (prepare_error IS SSL_ERROR_DISCONNECTED) return ERR::Disconnected;
+         kt::Log(__FUNCTION__).warning("Failed to decrypt SSL input: %d", prepare_error);
+         return ERR::Failed;
+      }
+   }
+
+   return error;
+}
+
+//********************************************************************************************************************
 // Handle SSL handshake data.
 //
 // Handshaking can return error code 0x80090308 (SEC_E_INVALID_TOKEN), this can mean that Windows received malformed
@@ -126,6 +187,8 @@ template <class T> ERR tls_handshake_received(T *Self, const void *Data, int Len
 
    int handshake_consumed = 0;
    SSL_ERROR_CODE result = ssl_continue_handshake(Self->TLS.Handle, Data, Length, handshake_consumed);
+   auto flush_error = tls_flush_output(Self);
+   if ((flush_error != ERR::Okay) and (flush_error != ERR::BufferOverflow)) return flush_error;
 
    switch (result) {
       case SSL_OK:
@@ -134,7 +197,8 @@ template <class T> ERR tls_handshake_received(T *Self, const void *Data, int Len
          return ERR::Okay;
 
       case SSL_NEED_DATA:
-         log.trace("SSL handshake continuing, waiting for more data.");
+         log.trace("SSL handshake continuing, waiting for more data.  Buffered: %d bytes.",
+            int(ssl_encrypted_input_size(Self->TLS.Handle)));
          // Stay in HANDSHAKING state
          return ERR::Okay;
 
@@ -164,6 +228,8 @@ template <class T> ERR tls_connect(T *Self)
 
    std::string hostname = Self->Address ? Self->Address : "";
    auto result = ssl_connect(Self->TLS.Handle, (void *)(size_t)Self->Handle.socket(), hostname);
+   auto flush_error = tls_flush_output(Self);
+   if ((flush_error != ERR::Okay) and (flush_error != ERR::BufferOverflow)) return flush_error;
 
    switch (result) {
       case SSL_OK:

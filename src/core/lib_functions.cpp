@@ -769,7 +769,7 @@ int64_t SetResource(RES Resource, int64_t Value)
 
       case RES::LOG_DEPTH: tlDepth = Value; break;
 
-#ifdef _WIN32
+#if defined(_WIN32) and !defined(ENABLE_IOCP)
       case RES::NET_PROCESSING: glNetProcessMessages = (void (*)(int, APTR))L64PTR(Value); break;
 #else
       case RES::NET_PROCESSING: break;

@@ -522,10 +522,6 @@ static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectS
 
 static ERR NETSOCKET_Free(extNetSocket *Self)
 {
-#ifndef DISABLE_SSL
-   tls_disconnect(Self);
-#endif
-
    if (Self->TimerHandle)    { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
    if (Self->Address)        { FreeResource(Self->Address); Self->Address = nullptr; }
    if (Self->NetLookup)      { FreeResource(Self->NetLookup); Self->NetLookup = nullptr; }
@@ -536,6 +532,10 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
    if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC::Free);
    if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC::Free);
    if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC::Free);
+
+#ifndef DISABLE_SSL
+   tls_disconnect(Self);
+#endif
 
    while (Self->Clients) free_client(Self, Self->Clients);
 
@@ -851,6 +851,14 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          // If we're in the middle of SSL handshake, return nothing.  The automated incoming data handler is managing the object state.
          if (Self->State IS NTC::HANDSHAKING) return log.traceWarning(ERR::InvalidState);
          else if (Self->State != NTC::CONNECTED) return log.warning(ERR::Disconnected);
+
+         if (!ssl_has_decrypted_data(Self->TLS.Handle)) {
+            if (auto receive_error = tls_receive_encrypted(Self); receive_error IS ERR::Disconnected) {
+               free_socket(Self);
+               return ERR::Disconnected;
+            }
+            else if (receive_error != ERR::Okay) return receive_error;
+         }
 
          int bytes_read = 0;
          if (auto error = ssl_read(Self->TLS.Handle, Args->Buffer, Args->Length, &bytes_read); error IS SSL_OK) {
