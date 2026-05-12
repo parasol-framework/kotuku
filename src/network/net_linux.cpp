@@ -322,6 +322,11 @@ public:
       return DeregisterFD(Handle.hosthandle());
    }
 
+   bool has_pending_write(SocketHandle Handle) override
+   {
+      return false;
+   }
+
    ERR enable_broadcast(SocketHandle Handle) override
    {
       int broadcast = 1;

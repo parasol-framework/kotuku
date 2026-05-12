@@ -525,7 +525,8 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
    // Before feeding new data into the queue, the current buffer must be empty.
 
-   if ((error IS ERR::Okay) and Self->CloseAfterWrite and Self->WriteQueue.Buffer.empty()) {
+   if ((error IS ERR::Okay) and Self->CloseAfterWrite and Self->WriteQueue.Buffer.empty() and
+       (not network_platform().has_pending_write(Self->Handle))) {
       Self->InUse--;
       Self->OutgoingRecursion--;
       free_socket(Self);
@@ -551,7 +552,8 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       // we don't tax the system resources.  The WriteSocket function is also dropped because it is intended to
       // be assigned temporarily.
 
-      if ((!Self->Outgoing.defined()) and (Self->WriteQueue.Buffer.empty())) {
+      if ((!Self->Outgoing.defined()) and (Self->WriteQueue.Buffer.empty()) and
+          (not network_platform().has_pending_write(Self->Handle))) {
          log.trace("Write-queue listening on socket %d will now stop.", Self->UID, Self->Handle.int_value());
          if (auto error = network_platform().remove_write(Self->Handle); error != ERR::Okay) log.warning(error);
       }
