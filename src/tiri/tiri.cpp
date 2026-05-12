@@ -214,7 +214,7 @@ void load_include_for_class(lua_State *Lua, objMetaClass *MetaClass)
    ActionList(&glActions, nullptr); // Get the global action table from the Core
 
    glDelayedCallMsgID = MSGID(AllocateID(IDTYPE::MESSAGE));
-   auto func = C_FUNCTION(delayed_msg_handler, nullptr);
+   auto func = C_FUNCTION(delayed_msg_handler);
    if (auto error = AddMsgHandler(glDelayedCallMsgID, &func, &glDelayedCallHandle); error != ERR::Okay) {
       return ERR::Function;
    }
