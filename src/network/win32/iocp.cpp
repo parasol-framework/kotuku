@@ -85,12 +85,13 @@ static std::vector<std::jthread> glWorkers;
 static std::mutex glIocpMutex;
 static std::unordered_map<WSW_SOCKET, IocpSocketRecord> glSockets;
 static std::atomic_bool glShutdownRequested = false;
+static std::atomic_size_t glPendingOperations = 0;
 static std::atomic_uint64_t glNextGeneration = 1;
 static int glCompletionMsgID = 0;
 static iocp_post_message glPostMessage = nullptr;
 static bool glWinsockInitialised = false;
 
-static constexpr int MAX_IOCP_THREADS = 4;
+static constexpr ULONG_PTR IOCP_SHUTDOWN_KEY = ULONG_PTR(~uintptr_t(0));
 static constexpr size_t IOCP_READ_BUFFER_SIZE = 65536;
 static constexpr size_t IOCP_UDP_BUFFER_SIZE = 65536;
 static constexpr size_t IOCP_ACCEPT_ADDRESS_SIZE = sizeof(sockaddr_storage) + 16;
@@ -99,6 +100,23 @@ static constexpr size_t IOCP_ACCEPT_BUFFER_SIZE = IOCP_ACCEPT_ADDRESS_SIZE * 2;
 //********************************************************************************************************************
 
 static ERR post_accept(WSW_SOCKET Socket);
+
+//********************************************************************************************************************
+
+static IocpOperation *create_operation()
+{
+   glPendingOperations.fetch_add(1);
+   return new IocpOperation();
+}
+
+//********************************************************************************************************************
+
+static void release_operation(IocpOperation *Operation)
+{
+   delete Operation;
+   glPendingOperations.fetch_sub(1);
+   glPendingOperations.notify_all();
+}
 
 //********************************************************************************************************************
 
@@ -414,7 +432,7 @@ static ERR post_write_tail(const IocpOperation &Operation, size_t Offset)
    if ((!Operation.Buffer) or (Offset >= Operation.BufferSize)) return ERR::Okay;
 
    auto remaining = Operation.BufferSize - Offset;
-   auto operation = new IocpOperation();
+   auto operation = create_operation();
    operation->Type = IocpOperationType::WRITE;
    operation->Socket = Operation.Socket;
    operation->Generation = Operation.Generation;
@@ -432,7 +450,7 @@ static ERR post_write_tail(const IocpOperation &Operation, size_t Offset)
    auto result = WSASend(socket_from_handle(Operation.Socket), &wsabuf, 1, &bytes, 0, &operation->Overlapped, nullptr);
    if ((result IS SOCKET_ERROR) and (WSAGetLastError() != WSA_IO_PENDING)) {
       auto error = convert_error();
-      delete operation;
+      release_operation(operation);
       return error;
    }
 
@@ -549,7 +567,7 @@ static ERR post_udp_receive(WSW_SOCKET Socket)
       return ERR::Okay;
    }
 
-   auto operation = new IocpOperation();
+   auto operation = create_operation();
    operation->Type = IocpOperationType::UDP_RECEIVE;
    operation->Socket = Socket;
    operation->Generation = generation;
@@ -572,7 +590,7 @@ static ERR post_udp_receive(WSW_SOCKET Socket)
       operation->Result = error;
       operation->BytesTransferred = 0;
       queue_operation_completion(*operation, 0, operation->Result);
-      delete operation;
+      release_operation(operation);
       return ERR::Okay;
    }
 
@@ -608,7 +626,7 @@ static ERR post_read(WSW_SOCKET Socket)
 
    if (udp) return post_udp_receive(Socket);
 
-   auto operation = new IocpOperation();
+   auto operation = create_operation();
    operation->Type = IocpOperationType::READ;
    operation->Socket = Socket;
    operation->Generation = generation;
@@ -629,7 +647,7 @@ static ERR post_read(WSW_SOCKET Socket)
       operation->Result = error;
       operation->BytesTransferred = 0;
       queue_operation_completion(*operation, 0, operation->Result);
-      delete operation;
+      release_operation(operation);
       return ERR::Okay;
    }
 
@@ -668,7 +686,7 @@ static ERR post_accept(WSW_SOCKET Socket)
       return convert_error();
    }
 
-   auto operation = new IocpOperation();
+   auto operation = create_operation();
    operation->Type = IocpOperationType::ACCEPT;
    operation->Socket = Socket;
    operation->Generation = generation;
@@ -687,7 +705,7 @@ static ERR post_accept(WSW_SOCKET Socket)
          if (record != glSockets.end()) record->second.AcceptPending = false;
       }
       close_accepted_socket(*operation);
-      delete operation;
+      release_operation(operation);
       return convert_error();
    }
 
@@ -702,7 +720,7 @@ static ERR post_accept(WSW_SOCKET Socket)
          if (record != glSockets.end()) record->second.AcceptPending = false;
       }
       close_accepted_socket(*operation);
-      delete operation;
+      release_operation(operation);
       return error;
    }
 
@@ -713,13 +731,13 @@ static ERR post_accept(WSW_SOCKET Socket)
 
 static void worker_thread()
 {
-   while (not glShutdownRequested) {
+   while (true) {
       DWORD bytes = 0;
       ULONG_PTR key = 0;
       OVERLAPPED *overlapped = nullptr;
 
       auto result = GetQueuedCompletionStatus(glCompletionPort, &bytes, &key, &overlapped, INFINITE);
-      if (glShutdownRequested) break;
+      if ((!overlapped) and (key IS IOCP_SHUTDOWN_KEY)) break;
       if (!overlapped) continue;
 
       auto operation = CONTAINING_RECORD(overlapped, IocpOperation, Overlapped);
@@ -731,7 +749,7 @@ static void worker_thread()
       operation->Result = error;
       queue_operation_completion(*operation, operation->BytesTransferred, operation->Result);
 
-      delete operation;
+      release_operation(operation);
    }
 }
 
@@ -775,8 +793,7 @@ ERR iocp_initialise(int MsgID, iocp_post_message PostMessage)
       return ERR::SystemCall;
    }
 
-   auto hardware_threads = std::thread::hardware_concurrency();
-   auto worker_count = std::min<unsigned>(std::max<unsigned>(hardware_threads, 2), MAX_IOCP_THREADS);
+   auto worker_count = std::clamp<unsigned>(std::thread::hardware_concurrency(), 2, 64);
 
    glShutdownRequested = false;
    glWorkers.reserve(worker_count);
@@ -791,8 +808,42 @@ void iocp_expunge()
 {
    glShutdownRequested = true;
 
-   for (size_t i = 0; i < glWorkers.size(); ++i) {
-      PostQueuedCompletionStatus(glCompletionPort, 0, 0, nullptr);
+   if (glCompletionPort != INVALID_HANDLE_VALUE) {
+      std::vector<WSW_SOCKET> sockets;
+
+      {
+         std::lock_guard<std::mutex> lock(glIocpMutex);
+         sockets.reserve(glSockets.size());
+         for (auto &record : glSockets) {
+            record.second.Cancelled = true;
+            record.second.Generation++;
+            sockets.push_back(record.first);
+
+            for (auto &accepted : record.second.AcceptedSockets) sockets.push_back(accepted.Socket);
+         }
+      }
+
+      std::sort(sockets.begin(), sockets.end());
+      sockets.erase(std::unique(sockets.begin(), sockets.end()), sockets.end());
+
+      for (auto socket : sockets) {
+         auto native_socket = socket_from_handle(socket);
+         if (native_socket IS INVALID_SOCKET) continue;
+
+         CancelIoEx((HANDLE)native_socket, nullptr);
+         shutdown(native_socket, SD_BOTH);
+         closesocket(native_socket);
+      }
+
+      while (true) {
+         auto pending = glPendingOperations.load();
+         if (!pending) break;
+         glPendingOperations.wait(pending);
+      }
+
+      for (size_t i = 0; i < glWorkers.size(); ++i) {
+         PostQueuedCompletionStatus(glCompletionPort, 0, IOCP_SHUTDOWN_KEY, nullptr);
+      }
    }
 
    glWorkers.clear();
@@ -954,7 +1005,7 @@ ERR iocp_begin_connect_wait(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback)
       return ERR::Okay;
    }
 
-   auto operation = new IocpOperation();
+   auto operation = create_operation();
    operation->Type = IocpOperationType::CONNECT;
    operation->Socket = Socket;
    operation->Generation = generation;
@@ -965,7 +1016,7 @@ ERR iocp_begin_connect_wait(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback)
    auto result = connect_ex(socket, remote_address, address_size, nullptr, 0, &bytes, &operation->Overlapped);
    if ((!result) and (WSAGetLastError() != WSA_IO_PENDING)) {
       auto connect_error = convert_error();
-      delete operation;
+      release_operation(operation);
       failed_operation.Result = connect_error;
       queue_operation_completion(failed_operation, 0, failed_operation.Result);
    }
@@ -1242,7 +1293,7 @@ ERR iocp_send(WSW_SOCKET Socket, const void *Buffer, size_t &Length)
       generation = record->second.Generation;
    }
 
-   auto operation = new IocpOperation();
+   auto operation = create_operation();
    operation->Type = IocpOperationType::WRITE;
    operation->Socket = Socket;
    operation->Generation = generation;
@@ -1265,7 +1316,7 @@ ERR iocp_send(WSW_SOCKET Socket, const void *Buffer, size_t &Length)
          auto record = glSockets.find(Socket);
          if (record != glSockets.end()) record->second.WritePending = false;
       }
-      delete operation;
+      release_operation(operation);
       Length = 0;
       return error;
    }
@@ -1296,7 +1347,7 @@ ERR iocp_send_to(WSW_SOCKET Socket, const void *Buffer, size_t &Length, const vo
       object_id = record->second.ObjectID;
    }
 
-   auto operation = new IocpOperation();
+   auto operation = create_operation();
    operation->Type = IocpOperationType::UDP_SEND;
    operation->Socket = Socket;
    operation->Generation = generation;
@@ -1317,7 +1368,7 @@ ERR iocp_send_to(WSW_SOCKET Socket, const void *Buffer, size_t &Length, const vo
    auto socket_error = (result IS SOCKET_ERROR) ? WSAGetLastError() : 0;
    if ((result IS SOCKET_ERROR) and (socket_error != WSA_IO_PENDING)) {
       auto error = convert_send_to_error(socket_error);
-      delete operation;
+      release_operation(operation);
       Length = 0;
       return error;
    }
