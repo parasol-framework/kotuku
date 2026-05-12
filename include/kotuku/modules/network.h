@@ -8,12 +8,6 @@
 
 #define MODVERSION_NETWORK (1)
 
-#ifdef __cplusplus
-#include <unordered_set>
-#include <map>
-#include <mutex>
-#endif
-
 class objNetClient;
 class objClientSocket;
 class objProxy;
@@ -99,10 +93,6 @@ enum class NTC : int {
 #define SCV_KEYUSAGE_NO_CERTSIGN 32
 #define SCV_APPLICATION_VERIFICATION 50
 
-
-#if defined(ENABLE_SSL) && !defined(_WIN32)
- #include "openssl/ssl.h"
-#endif
 
 #ifdef __linux__
 typedef int SOCKET_HANDLE;
