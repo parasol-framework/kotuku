@@ -91,7 +91,7 @@ static const SocketErrorEntry glSocketErrors[] = {
    { 0, ERR::NIL }
 };
 
-static ERR convert_socket_error(int Error = 0, ERR Default = ERR::SystemCall)
+static inline ERR convert_socket_error(int Error = 0, ERR Default = ERR::SystemCall)
 {
 #ifdef _WIN32
    if (Error IS 0) Error = WSAGetLastError();
