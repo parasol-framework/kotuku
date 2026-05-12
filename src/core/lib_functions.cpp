@@ -602,7 +602,8 @@ ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 
 #ifdef _WIN32
    if (FD IS (HOSTHANDLE)-1) return log.warning(ERR::Args);
-   if ((Flags & RFD::SOCKET) != RFD::NIL) return log.warning(ERR::NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
+   // Network sockets are managed by the Network module backend.
+   if ((Flags & RFD::SOCKET) != RFD::NIL) return log.warning(ERR::NoSupport);
 #else
    if (FD IS -1) return log.warning(ERR::Args);
 #endif
@@ -755,25 +756,11 @@ int64_t SetResource(RES Resource, int64_t Value)
    switch(Resource) {
       case RES::CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
 
-      case RES::EXCEPTION_HANDLER:
-         // Note: You can set your own crash handler, or set a value of NULL - this resets the existing handler which is useful if an external DLL function is suspected to have changed the filter.
-
-         #ifdef _WIN32
-            winSetUnhandledExceptionFilter((int (*)(int, APTR, int, int *))L64PTR(Value));
-         #endif
-         break;
-
       case RES::LOG_LEVEL:
          if ((Value >= 0) and (Value <= 9)) glLogLevel = Value;
          break;
 
       case RES::LOG_DEPTH: tlDepth = Value; break;
-
-#if defined(_WIN32) and !defined(ENABLE_IOCP)
-      case RES::NET_PROCESSING: glNetProcessMessages = (void (*)(int, APTR))L64PTR(Value); break;
-#else
-      case RES::NET_PROCESSING: break;
-#endif
 
       case RES::JNI_ENV: glJNIEnv = L64PTR(Value); break;
 

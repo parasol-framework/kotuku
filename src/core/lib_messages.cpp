@@ -388,18 +388,10 @@ timer_cycle:
       if (glValidateProcessID) { validate_process(glValidateProcessID); glValidateProcessID = 0; }
 
       #ifdef _WIN32
-         // Process any incoming window messages that occurred during our earlier processing. The hook for
-         // glNetProcessMessages() is found in the network module and is required to prevent flooding of the Windows
-         // message queue.
+         // Process any incoming window messages that occurred during our earlier processing.
 
          if (tlMainThread) {
-            #ifndef ENABLE_IOCP
-               if (glNetProcessMessages) glNetProcessMessages(NETMSG_START, nullptr);
-            #endif
             winProcessMessages();
-            #ifndef ENABLE_IOCP
-               if (glNetProcessMessages) glNetProcessMessages(NETMSG_END, nullptr);
-            #endif
          }
       #endif
 
@@ -428,13 +420,7 @@ timer_cycle:
             tlMessageBreak = false;
 
             if (wait) {
-               #ifndef ENABLE_IOCP
-                  if (glNetProcessMessages) glNetProcessMessages(NETMSG_START, nullptr);
-               #endif
                winProcessMessages();
-               #ifndef ENABLE_IOCP
-                  if (glNetProcessMessages) glNetProcessMessages(NETMSG_END, nullptr);
-               #endif
             }
          }
          else {
@@ -1089,7 +1075,7 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       else {
          for (auto it = glFDTable.begin(); it != glFDTable.end(); ) {
             auto &fd = *it;
-            if ((fd.Flags & RFD::SOCKET) != RFD::NIL); // Ignore network socket FDs (triggered as normal windows messages)
+            if ((fd.Flags & RFD::SOCKET) != RFD::NIL); // Network sockets are managed by the Network module backend.
             else if ((fd.Flags & RFD::ALWAYS_CALL) != RFD::NIL) {
                if (fd.Routine) fd.Routine(fd.FD, fd.Data);
             }

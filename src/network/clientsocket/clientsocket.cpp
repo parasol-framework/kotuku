@@ -680,8 +680,6 @@ static ERR CS_SET_State(extClientSocket *Self, NTC Value)
       }
    }
 
-   SetResourcePtr(RES::EXCEPTION_HANDLER, nullptr); // Stop winsock from fooling with our exception handler
-
    return ERR::Okay;
 }
 

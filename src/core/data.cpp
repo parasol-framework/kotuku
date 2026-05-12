@@ -243,7 +243,6 @@ thread_local TaskMessage *tlCurrentMsg = nullptr;
 ERR (*glMessageHandler)(struct Message *) = nullptr;
 void (*glVideoRecovery)(void) = nullptr;
 void (*glKeyboardRecovery)(void) = nullptr;
-void (*glNetProcessMessages)(int, APTR) = nullptr;
 
 #ifdef __ANDROID__
 static struct AndroidBase *AndroidBase = nullptr;
