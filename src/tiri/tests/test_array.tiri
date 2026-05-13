@@ -460,6 +460,34 @@ end
       "Empty double array tostring() failed, got '" .. tostring(empty_double_array) .. "'")
 end
 
+@Test function ArrayConcatMetamethod()
+   char_array = array<char> { 72, 105 }
+   byte_array = array<byte> { 33 }
+
+   assert('Say: ' .. char_array is 'Say: Hi', 'String plus char array concat failed')
+   assert(char_array .. ' there' is 'Hi there', 'Char array plus string concat failed')
+   assert(char_array .. byte_array is 'Hi!', 'Char array plus byte array concat failed')
+   assert(char_array .. 123 is 'Hi123', 'Char array plus number concat failed')
+
+   nul_array = array<byte> { 65, 0, 66 }
+   nul_result = nul_array .. 'C'
+   assert(nul_result is nul_array:getString() .. 'C', 'Byte array concat should preserve embedded NUL bytes')
+   assert(#nul_result is 4, "Byte array concat should preserve full length, got " .. tostring(#nul_result))
+
+   int_array = array<int> { 1, 2, 3 }
+   try
+      bad_result = int_array .. 'x'
+   success
+      error('Integer array left-hand concat should fail')
+   end
+
+   try
+      bad_result = 'x' .. int_array
+   success
+      error('Integer array right-hand concat should fail')
+   end
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test array.find() functionality
 

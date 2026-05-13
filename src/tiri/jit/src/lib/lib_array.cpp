@@ -18,6 +18,8 @@
 #include "lj_err.h"
 #include "lj_tab.h"
 #include "lj_str.h"
+#include "lj_strfmt.h"
+#include "lj_buf.h"
 #include "lj_array.h"
 #include "lj_bulk.h"
 #include "lj_meta.h"
@@ -2860,6 +2862,41 @@ static int array_tostring(lua_State *L)
 }
 
 //********************************************************************************************************************
+// __concat metamethod.
+
+static GCstr * array_concat_value(lua_State *L, cTValue *Value)
+{
+   if (tvisstr(Value)) return strV(Value);
+   if (tvisnumber(Value)) return lj_strfmt_number(L, Value);
+
+   if (tvisarray(Value)) {
+      GCarray *arr = arrayV(Value);
+      if (arr->elemtype IS AET::BYTE) return lj_str_new(L, arr->get<const char>(), arr->len);
+   }
+
+   return nullptr;
+}
+
+static int array_concat_meta(lua_State *L)
+{
+   cTValue *left = L->base;
+   cTValue *right = L->base + 1;
+
+   GCstr *left_str = array_concat_value(L, left);
+   if (not left_str) lj_err_optype(L, left, ErrMsg::OPCAT);
+   setstrV(L, L->top++, left_str);
+
+   GCstr *right_str = array_concat_value(L, right);
+   if (not right_str) lj_err_optype(L, right, ErrMsg::OPCAT);
+   setstrV(L, L->top++, right_str);
+
+   GCstr *result = lj_buf_cat2str(L, left_str, right_str);
+   L->top -= 2;
+   setstrV(L, L->top++, result);
+   return 1;
+}
+
+//********************************************************************************************************************
 // Registers the array library and sets up the base metatable for arrays.
 // Unlike the Lua table, arrays are created via conventional means, i.e. array.new().
 //
@@ -2886,6 +2923,9 @@ extern "C" int luaopen_array(lua_State *L)
    // Byte arrays are commonly used as string buffers, so tostring() exposes their contents directly.
    lua_pushcfunction(L, array_tostring);
    lua_setfield(L, -2, "__tostring");
+
+   lua_pushcfunction(L, array_concat_meta);
+   lua_setfield(L, -2, "__concat");
 
    // NOBARRIER: basemt is a GC root.
    setgcref(basemt_it(g, LJ_TARRAY), obj2gco(lib));
