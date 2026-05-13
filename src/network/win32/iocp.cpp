@@ -26,88 +26,88 @@
 #include "iocp.h"
 
 struct IocpOperation {
-   OVERLAPPED Overlapped = {};
-   IocpOperationType Type = IocpOperationType::CONNECT;
-   WSW_SOCKET Socket = 0;
-   uint64_t Generation = 0;
-   int ObjectID = 0;
-   uintptr_t Callback = 0;
-   WSW_SOCKET AcceptedSocket = 0;
-   std::unique_ptr<uint8_t[]> Buffer;
-   std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> Address = {};
-   int AddressSize = 0;
-   uint64_t Sequence = 0;
-   size_t BufferSize = 0;
-   size_t SendAccountedSize = 0;
-   size_t BytesTransferred = 0;
-   ERR Result = ERR::Busy;
+   OVERLAPPED Overlapped = {}; // Native overlapped state submitted to Winsock.
+   IocpOperationType Type = IocpOperationType::CONNECT; // Operation kind used when processing completion.
+   WSW_SOCKET Socket = 0;     // Socket that owns this operation.
+   uint64_t Generation = 0;   // Socket generation expected when the completion returns.
+   int ObjectID = 0;          // Fallback object UID captured when the operation was posted.
+   uintptr_t Callback = 0;    // Fallback callback captured when the operation was posted.
+   WSW_SOCKET AcceptedSocket = 0; // Socket returned by AcceptEx operations.
+   std::unique_ptr<uint8_t[]> Buffer; // Backend-owned operation buffer.
+   std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> Address = {}; // Endpoint storage for UDP or accept results.
+   int AddressSize = 0;          // Size of the endpoint stored in Address.
+   uint64_t Sequence = 0;        // Ordered sequence number for TCP read operations.
+   size_t BufferSize = 0;        // Number of bytes available in Buffer.
+   size_t SendAccountedSize = 0; // Original send size charged against the socket send limit.
+   size_t BytesTransferred = 0;  // Number of bytes reported by the completion port.
+   ERR Result = ERR::Busy;       // Result assigned before the completion is queued to the main thread.
 };
 
 struct IocpCompletionTarget {
-   int ObjectID = 0;
-   uintptr_t Callback = 0;
+   int ObjectID = 0;       // UID of the object that should receive the completion.
+   uintptr_t Callback = 0; // Callback function to invoke for the completion.
 };
 
 struct IocpAcceptedSocket {
-   WSW_SOCKET Socket = 0;
-   std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> Address = {};
-   int AddressSize = 0;
+   WSW_SOCKET Socket = 0; // Accepted client socket handle.
+   std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> Address = {}; // Remote endpoint captured from AcceptEx.
+   int AddressSize = 0;   // Size of the accepted remote endpoint.
 };
 
 struct IocpDatagram {
-   std::vector<uint8_t> Buffer;
-   std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> Address = {};
-   int AddressSize = 0;
-   ERR Result = ERR::Okay;
+   std::vector<uint8_t> Buffer; // Datagram payload waiting for the caller.
+   std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> Address = {}; // Source endpoint for the datagram.
+   int AddressSize = 0;        // Size of the stored source endpoint.
+   ERR Result = ERR::Okay;     // Receive result associated with this datagram.
 };
 
 struct IocpSendRequest {
-   std::unique_ptr<uint8_t[]> Buffer;
-   size_t BufferSize = 0;
+   std::unique_ptr<uint8_t[]> Buffer; // Backend-owned TCP payload waiting for WSASend.
+   size_t BufferSize = 0;             // Number of payload bytes in Buffer.
 };
 
 struct IocpReadCompletion {
-   std::vector<uint8_t> Buffer;
-   ERR Result = ERR::Okay;
+   std::vector<uint8_t> Buffer; // Completed TCP bytes waiting for ordered delivery.
+   ERR Result = ERR::Okay;      // Read result for this sequence.
 };
 
 struct IocpStoreResult {
-   bool Notify = true;
-   bool RearmAccept = false;
-   bool PostRead = false;
-   bool PostSend = false;
+   bool Notify = true;       // True when a main-thread completion should be posted.
+   bool RearmAccept = false; // True when the accept pool should be replenished.
+   bool PostRead = false;    // True when additional TCP reads should be posted.
+   bool PostSend = false;    // True when queued TCP sends should be posted.
 };
 
 struct IocpSocketRecord {
-   mutable std::mutex Mutex;
-   int ObjectID = 0;
-   IocpCompletionTarget Connect;
-   IocpCompletionTarget Read;
-   IocpCompletionTarget Write;
-   IocpCompletionTarget Accept;
-   std::deque<IocpAcceptedSocket> AcceptedSockets;
-   std::deque<IocpSendRequest> SendQueue;
-   std::vector<IocpDatagram> Datagrams;
-   std::vector<uint8_t> ReadBuffer;
-   std::map<uint64_t, IocpReadCompletion> ReadCompletions;
-   size_t BufferedReadBytes = 0;
-   size_t ReadOffset = 0;
-   std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> ConnectAddress = {};
-   int ConnectAddressSize = 0;
-   ERR ConnectResult = ERR::NotInitialised;
-   ERR ReadResult = ERR::Okay;
-   uint64_t Generation = 0;
-   uint64_t NextReadSequence = 0;
-   uint64_t NextReadCompletionSequence = 0;
-   int AcceptDepth = 16;
-   size_t AcceptPendingCount = 0;
-   size_t ReadPendingCount = 0;
-   size_t SendPendingCount = 0;
-   size_t SendPendingBytes = 0;
-   bool IPv6 = false;
-   bool UDP = false;
-   bool Cancelled = false;
-   bool UdpReadPending = false;
+   mutable std::mutex Mutex;     // Protects all mutable per-socket state in this record.
+   int ObjectID = 0;             // UID of the object currently associated with this socket.
+   IocpCompletionTarget Connect; // Target to notify when a connect operation completes.
+   IocpCompletionTarget Read;    // Target to notify when buffered read data is available.
+   IocpCompletionTarget Write;   // Target to notify when write capacity becomes available.
+   IocpCompletionTarget Accept;  // Target to notify when accepted sockets are ready.
+   std::deque<IocpAcceptedSocket> AcceptedSockets; // FIFO queue of completed AcceptEx sockets.
+   std::deque<IocpSendRequest> SendQueue; // Backend-owned TCP send buffers waiting to be posted.
+   std::vector<IocpDatagram> Datagrams;   // Completed UDP datagrams waiting for acRead or mtRecvFrom.
+   std::vector<uint8_t> ReadBuffer;       // Ordered TCP bytes buffered for acRead.
+   std::map<uint64_t, IocpReadCompletion> ReadCompletions; // Out-of-order TCP read completions by sequence.
+   size_t BufferedReadBytes = 0;   // Number of unread bytes currently held in ReadBuffer.
+   size_t ReadOffset = 0;          // Offset of the next unread byte in ReadBuffer.
+   std::array<uint8_t, IOCP_ENDPOINT_STORAGE_SIZE> ConnectAddress = {}; // Remote endpoint for pending connect.
+   int ConnectAddressSize = 0;     // Size of the stored connect endpoint.
+   ERR ConnectResult = ERR::NotInitialised; // Result reported for the latest connect operation.
+   ERR ReadResult = ERR::Okay;     // Terminal read state once the peer disconnects or an error occurs.
+   uint64_t Generation = 0;        // Monotonic token used to reject stale completions.
+   uint64_t NextReadSequence = 0;  // Sequence number assigned to the next posted TCP read.
+   uint64_t NextReadCompletionSequence = 0; // Next TCP read sequence eligible for ordered delivery.
+   int AcceptDepth = 16;           // Maximum number of AcceptEx operations kept in flight.
+   size_t AcceptPendingCount = 0;  // Number of AcceptEx operations currently pending.
+   size_t ReadPendingCount = 0;    // Number of TCP WSARecv operations currently pending.
+   size_t SendPendingCount = 0;    // Number of TCP WSASend operations currently pending.
+   size_t SendPendingBytes = 0;    // Accepted TCP send bytes still queued or in flight.
+   bool IPv6 = false;              // True when the socket was created for IPv6 or dual-stack use.
+   bool UDP = false;               // True when this record represents a UDP socket.
+   bool Cancelled = false;         // Set once shutdown or deregistration has invalidated the record.
+   bool UdpReadPending = false;    // True while a UDP receive operation is posted.
 };
 
 using IocpSocketRecordPtr = std::shared_ptr<IocpSocketRecord>;
@@ -609,14 +609,14 @@ static ERR post_write_tail(const IocpOperation &Operation, size_t Offset)
 
    auto remaining = Operation.BufferSize - Offset;
    auto operation = create_operation();
-   operation->Type = IocpOperationType::WRITE;
-   operation->Socket = Operation.Socket;
-   operation->Generation = Operation.Generation;
-   operation->ObjectID = Operation.ObjectID;
-   operation->Callback = Operation.Callback;
-   operation->BufferSize = remaining;
+   operation->Type              = IocpOperationType::WRITE;
+   operation->Socket            = Operation.Socket;
+   operation->Generation        = Operation.Generation;
+   operation->ObjectID          = Operation.ObjectID;
+   operation->Callback          = Operation.Callback;
+   operation->BufferSize        = remaining;
    operation->SendAccountedSize = Operation.SendAccountedSize ? Operation.SendAccountedSize : Operation.BufferSize;
-   operation->Buffer = std::make_unique<uint8_t[]>(operation->BufferSize);
+   operation->Buffer            = std::make_unique<uint8_t[]>(operation->BufferSize);
    std::memcpy(operation->Buffer.get(), Operation.Buffer.get() + Offset, remaining);
 
    WSABUF wsabuf;
@@ -666,16 +666,16 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
       }
 
       auto store_result = store_operation_result(*record, Operation, Error);
-      rearm_accept = store_result.RearmAccept and (target.Callback) and (target.ObjectID > 0);
-      post_reads = store_result.PostRead;
-      post_sends = store_result.PostSend;
+      rearm_accept      = store_result.RearmAccept and (target.Callback) and (target.ObjectID > 0);
+      post_reads        = store_result.PostRead;
+      post_sends        = store_result.PostSend;
       notify_completion = store_result.Notify;
 
-      message.Type = Operation.Type;
-      message.Socket = Operation.Socket;
+      message.Type       = Operation.Type;
+      message.Socket     = Operation.Socket;
       message.Generation = Operation.Generation;
-      message.ObjectID = target.ObjectID ? target.ObjectID : Operation.ObjectID;
-      message.Callback = target.Callback;
+      message.ObjectID   = target.ObjectID ? target.ObjectID : Operation.ObjectID;
+      message.Callback   = target.Callback;
       message.BytesTransferred = BytesTransferred;
       message.Error = Error;
    }
@@ -1726,12 +1726,12 @@ ERR iocp_send_to(WSW_SOCKET Socket, const void *Buffer, size_t &Length, const vo
    }
 
    auto operation = create_operation();
-   operation->Type = IocpOperationType::UDP_SEND;
-   operation->Socket = Socket;
-   operation->Generation = generation;
-   operation->ObjectID = object_id;
-   operation->BufferSize = requested;
-   operation->Buffer = std::make_unique<uint8_t[]>(operation->BufferSize);
+   operation->Type        = IocpOperationType::UDP_SEND;
+   operation->Socket      = Socket;
+   operation->Generation  = generation;
+   operation->ObjectID    = object_id;
+   operation->BufferSize  = requested;
+   operation->Buffer      = std::make_unique<uint8_t[]>(operation->BufferSize);
    operation->AddressSize = AddressSize;
    std::memcpy(operation->Buffer.get(), Buffer, requested);
    std::memcpy(operation->Address.data(), Address, size_t(AddressSize));
