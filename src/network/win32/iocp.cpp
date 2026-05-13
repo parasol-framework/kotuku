@@ -79,6 +79,7 @@ struct IocpStoreResult {
 };
 
 struct IocpSocketRecord {
+   mutable std::mutex Mutex;
    int ObjectID = 0;
    IocpCompletionTarget Connect;
    IocpCompletionTarget Read;
@@ -109,10 +110,12 @@ struct IocpSocketRecord {
    bool UdpReadPending = false;
 };
 
+using IocpSocketRecordPtr = std::shared_ptr<IocpSocketRecord>;
+
 static HANDLE glCompletionPort = INVALID_HANDLE_VALUE;
 static std::vector<std::jthread> glWorkers;
-static std::mutex glIocpMutex;
-static std::unordered_map<WSW_SOCKET, IocpSocketRecord> glSockets;
+static std::mutex glRegistryMutex;
+static std::unordered_map<WSW_SOCKET, IocpSocketRecordPtr> glSockets;
 static std::atomic_bool glShutdownRequested = false;
 static std::atomic_size_t glPendingOperations = 0;
 static std::atomic_uint64_t glNextGeneration = 1;
@@ -155,6 +158,23 @@ static void release_operation(IocpOperation *Operation)
    delete Operation;
    glPendingOperations.fetch_sub(1);
    glPendingOperations.notify_all();
+}
+
+//********************************************************************************************************************
+
+static IocpSocketRecordPtr find_socket_record(WSW_SOCKET Socket)
+{
+   std::lock_guard<std::mutex> lock(glRegistryMutex);
+   auto record = glSockets.find(Socket);
+   if (record IS glSockets.end()) return nullptr;
+   return record->second;
+}
+
+//********************************************************************************************************************
+
+static IocpSocketRecordPtr create_socket_record()
+{
+   return std::make_shared<IocpSocketRecord>();
 }
 
 //********************************************************************************************************************
@@ -561,12 +581,18 @@ static IocpStoreResult store_operation_result(IocpSocketRecord &Record, const Io
       std::memcpy(accepted.Address.data(), remote_address, size_t(remote_size));
       Record.AcceptedSockets.push_back(accepted);
 
-      auto server_ipv6 = Record.IPv6;
-      glSockets[Operation.AcceptedSocket] = {
-         .Generation = glNextGeneration++,
-         .IPv6 = server_ipv6,
-         .Cancelled = false
-      };
+      auto accepted_record = create_socket_record();
+      {
+         std::lock_guard<std::mutex> accepted_lock(accepted_record->Mutex);
+         accepted_record->Generation = glNextGeneration++;
+         accepted_record->IPv6 = Record.IPv6;
+         accepted_record->Cancelled = false;
+      }
+
+      {
+         std::lock_guard<std::mutex> registry_lock(glRegistryMutex);
+         glSockets[Operation.AcceptedSocket] = accepted_record;
+      }
 
       result.RearmAccept = true;
       return result;
@@ -619,18 +645,19 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
    bool notify_completion = true;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Operation.Socket);
-      if (record IS glSockets.end()) {
-         close_accepted_socket(Operation);
-         return;
-      }
-      if ((record->second.Cancelled) or (record->second.Generation != Operation.Generation)) {
+      auto record = find_socket_record(Operation.Socket);
+      if (!record) {
          close_accepted_socket(Operation);
          return;
       }
 
-      auto target = completion_target(record->second, Operation.Type);
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if ((record->Cancelled) or (record->Generation != Operation.Generation)) {
+         close_accepted_socket(Operation);
+         return;
+      }
+
+      auto target = completion_target(*record, Operation.Type);
 
       if ((Operation.Type IS IocpOperationType::WRITE) and (Error IS ERR::Okay) and
           (BytesTransferred > 0) and (BytesTransferred < Operation.BufferSize)) {
@@ -638,7 +665,7 @@ static void queue_operation_completion(const IocpOperation &Operation, size_t By
          else Error = tail_error;
       }
 
-      auto store_result = store_operation_result(record->second, Operation, Error);
+      auto store_result = store_operation_result(*record, Operation, Error);
       rearm_accept = store_result.RearmAccept and (target.Callback) and (target.ObjectID > 0);
       post_reads = store_result.PostRead;
       post_sends = store_result.PostSend;
@@ -669,17 +696,18 @@ static ERR queue_record_completion(WSW_SOCKET Socket, IocpOperationType Type)
    iocp_completion_message message;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      if (record->second.Cancelled) return ERR::Cancelled;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
 
-      auto target = completion_target(record->second, Type);
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if (record->Cancelled) return ERR::Cancelled;
+
+      auto target = completion_target(*record, Type);
       if ((!target.Callback) or (target.ObjectID <= 0)) return ERR::Okay;
 
       message.Type = Type;
       message.Socket = Socket;
-      message.Generation = record->second.Generation;
+      message.Generation = record->Generation;
       message.ObjectID = target.ObjectID;
       message.Callback = target.Callback;
       message.Error = ERR::Okay;
@@ -698,20 +726,21 @@ static ERR post_udp_receive(WSW_SOCKET Socket)
    bool ipv6 = false;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      if (record->second.Cancelled) return ERR::Cancelled;
-      if (record->second.UdpReadPending) return ERR::Okay;
-      if (!record->second.Datagrams.empty()) return ERR::Okay;
-      if (record->second.ReadResult != ERR::Okay) return ERR::Okay;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
 
-      target = record->second.Read;
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if (record->Cancelled) return ERR::Cancelled;
+      if (record->UdpReadPending) return ERR::Okay;
+      if (!record->Datagrams.empty()) return ERR::Okay;
+      if (record->ReadResult != ERR::Okay) return ERR::Okay;
+
+      target = record->Read;
       if ((!target.Callback) or (target.ObjectID <= 0)) return ERR::Okay;
 
-      record->second.UdpReadPending = true;
-      generation = record->second.Generation;
-      ipv6 = record->second.IPv6;
+      record->UdpReadPending = true;
+      generation = record->Generation;
+      ipv6 = record->IPv6;
    }
 
    if (auto error = bind_udp_ephemeral(socket_from_handle(Socket), ipv6); error != ERR::Okay) {
@@ -766,18 +795,19 @@ static ERR post_read(WSW_SOCKET Socket)
    bool udp = false;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      udp = record->second.UDP;
-      if (record->second.Cancelled) return ERR::Cancelled;
-      if (!udp) {
-         if (!tcp_read_post_needed(record->second)) return ERR::Okay;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
 
-         record->second.ReadPendingCount++;
-         generation = record->second.Generation;
-         sequence = record->second.NextReadSequence++;
-         target = record->second.Read;
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      udp = record->UDP;
+      if (record->Cancelled) return ERR::Cancelled;
+      if (!udp) {
+         if (!tcp_read_post_needed(*record)) return ERR::Okay;
+
+         record->ReadPendingCount++;
+         generation = record->Generation;
+         sequence = record->NextReadSequence++;
+         target = record->Read;
       }
    }
 
@@ -816,19 +846,20 @@ static ERR post_read(WSW_SOCKET Socket)
 
 static bool read_post_needed(WSW_SOCKET Socket, ERR &Error)
 {
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   auto record = glSockets.find(Socket);
-   if (record IS glSockets.end()) {
+   auto record = find_socket_record(Socket);
+   if (!record) {
       Error = ERR::Search;
       return false;
    }
-   if (record->second.Cancelled) {
+
+   std::lock_guard<std::mutex> lock(record->Mutex);
+   if (record->Cancelled) {
       Error = ERR::Cancelled;
       return false;
    }
 
    Error = ERR::Okay;
-   return tcp_read_post_needed(record->second);
+   return tcp_read_post_needed(*record);
 }
 
 //********************************************************************************************************************
@@ -855,17 +886,18 @@ static ERR post_send(WSW_SOCKET Socket)
    uint64_t generation = 0;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      if (record->second.Cancelled) return ERR::Cancelled;
-      if (!tcp_send_post_needed(record->second)) return ERR::Okay;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
 
-      target = record->second.Write;
-      generation = record->second.Generation;
-      request = std::move(record->second.SendQueue.front());
-      record->second.SendQueue.pop_front();
-      record->second.SendPendingCount++;
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if (record->Cancelled) return ERR::Cancelled;
+      if (!tcp_send_post_needed(*record)) return ERR::Okay;
+
+      target = record->Write;
+      generation = record->Generation;
+      request = std::move(record->SendQueue.front());
+      record->SendQueue.pop_front();
+      record->SendPendingCount++;
    }
 
    if ((!request.Buffer) or (!request.BufferSize)) return ERR::Okay;
@@ -902,19 +934,20 @@ static ERR post_send(WSW_SOCKET Socket)
 
 static bool send_post_needed(WSW_SOCKET Socket, ERR &Error)
 {
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   auto record = glSockets.find(Socket);
-   if (record IS glSockets.end()) {
+   auto record = find_socket_record(Socket);
+   if (!record) {
       Error = ERR::Search;
       return false;
    }
-   if (record->second.Cancelled) {
+
+   std::lock_guard<std::mutex> lock(record->Mutex);
+   if (record->Cancelled) {
       Error = ERR::Cancelled;
       return false;
    }
 
    Error = ERR::Okay;
-   return tcp_send_post_needed(record->second);
+   return tcp_send_post_needed(*record);
 }
 
 //********************************************************************************************************************
@@ -941,27 +974,27 @@ static ERR post_accept(WSW_SOCKET Socket)
    bool server_ipv6 = false;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      if (record->second.Cancelled) return ERR::Cancelled;
-      if (record->second.AcceptPendingCount >= size_t(record->second.AcceptDepth)) return ERR::Okay;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
 
-      target = record->second.Accept;
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if (record->Cancelled) return ERR::Cancelled;
+      if (record->AcceptPendingCount >= size_t(record->AcceptDepth)) return ERR::Okay;
+
+      target = record->Accept;
       if ((!target.Callback) or (target.ObjectID <= 0)) return ERR::Okay;
 
-      record->second.AcceptPendingCount++;
-      generation = record->second.Generation;
-      server_ipv6 = record->second.IPv6;
+      record->AcceptPendingCount++;
+      generation = record->Generation;
+      server_ipv6 = record->IPv6;
    }
 
    bool accepted_ipv6 = false;
    auto accepted_socket = create_tcp_socket(server_ipv6, accepted_ipv6);
    if (accepted_socket IS INVALID_SOCKET) {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if ((record != glSockets.end()) and (record->second.AcceptPendingCount > 0)) {
-         record->second.AcceptPendingCount--;
+      if (auto record = find_socket_record(Socket); record) {
+         std::lock_guard<std::mutex> lock(record->Mutex);
+         if (record->AcceptPendingCount > 0) record->AcceptPendingCount--;
       }
       return convert_error();
    }
@@ -980,10 +1013,9 @@ static ERR post_accept(WSW_SOCKET Socket)
    auto accept_ex = get_accept_ex(socket_from_handle(Socket));
    if (!accept_ex) {
       {
-         std::lock_guard<std::mutex> lock(glIocpMutex);
-         auto record = glSockets.find(Socket);
-         if ((record != glSockets.end()) and (record->second.AcceptPendingCount > 0)) {
-            record->second.AcceptPendingCount--;
+         if (auto record = find_socket_record(Socket); record) {
+            std::lock_guard<std::mutex> lock(record->Mutex);
+            if (record->AcceptPendingCount > 0) record->AcceptPendingCount--;
          }
       }
       close_accepted_socket(*operation);
@@ -997,10 +1029,9 @@ static ERR post_accept(WSW_SOCKET Socket)
    if ((!result) and (WSAGetLastError() != WSA_IO_PENDING)) {
       auto error = convert_error();
       {
-         std::lock_guard<std::mutex> lock(glIocpMutex);
-         auto record = glSockets.find(Socket);
-         if ((record != glSockets.end()) and (record->second.AcceptPendingCount > 0)) {
-            record->second.AcceptPendingCount--;
+         if (auto record = find_socket_record(Socket); record) {
+            std::lock_guard<std::mutex> lock(record->Mutex);
+            if (record->AcceptPendingCount > 0) record->AcceptPendingCount--;
          }
       }
       close_accepted_socket(*operation);
@@ -1015,25 +1046,26 @@ static ERR post_accept(WSW_SOCKET Socket)
 
 static bool accept_post_needed(WSW_SOCKET Socket, ERR &Error)
 {
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   auto record = glSockets.find(Socket);
-   if (record IS glSockets.end()) {
+   auto record = find_socket_record(Socket);
+   if (!record) {
       Error = ERR::Search;
       return false;
    }
-   if (record->second.Cancelled) {
+
+   std::lock_guard<std::mutex> lock(record->Mutex);
+   if (record->Cancelled) {
       Error = ERR::Cancelled;
       return false;
    }
 
-   auto target = record->second.Accept;
+   auto target = record->Accept;
    if ((!target.Callback) or (target.ObjectID <= 0)) {
       Error = ERR::Okay;
       return false;
    }
 
    Error = ERR::Okay;
-   return record->second.AcceptPendingCount < size_t(record->second.AcceptDepth);
+   return record->AcceptPendingCount < size_t(record->AcceptDepth);
 }
 
 //********************************************************************************************************************
@@ -1081,16 +1113,17 @@ static void worker_thread()
 
 static ERR set_completion_target(WSW_SOCKET Socket, IocpOperationType Type, int ObjectID, uintptr_t Callback)
 {
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   auto record = glSockets.find(Socket);
-   if (record IS glSockets.end()) return ERR::Search;
-   if (record->second.Cancelled) return ERR::Cancelled;
+   auto record = find_socket_record(Socket);
+   if (!record) return ERR::Search;
+
+   std::lock_guard<std::mutex> lock(record->Mutex);
+   if (record->Cancelled) return ERR::Cancelled;
 
    auto target = IocpCompletionTarget { ObjectID, Callback };
-   if (Type IS IocpOperationType::READ) record->second.Read = target;
-   else if (Type IS IocpOperationType::WRITE) record->second.Write = target;
-   else if (Type IS IocpOperationType::ACCEPT) record->second.Accept = target;
-   else if (Type IS IocpOperationType::CONNECT) record->second.Connect = target;
+   if (Type IS IocpOperationType::READ) record->Read = target;
+   else if (Type IS IocpOperationType::WRITE) record->Write = target;
+   else if (Type IS IocpOperationType::ACCEPT) record->Accept = target;
+   else if (Type IS IocpOperationType::CONNECT) record->Connect = target;
    else return ERR::NoSupport;
 
    return ERR::Okay;
@@ -1134,16 +1167,24 @@ void iocp_expunge()
 
    if (glCompletionPort != INVALID_HANDLE_VALUE) {
       std::vector<WSW_SOCKET> sockets;
+      std::vector<IocpSocketRecordPtr> records;
 
       {
-         std::lock_guard<std::mutex> lock(glIocpMutex);
+         std::lock_guard<std::mutex> lock(glRegistryMutex);
          sockets.reserve(glSockets.size());
-         for (auto &record : glSockets) {
-            record.second.Cancelled = true;
-            record.second.Generation++;
-            sockets.push_back(record.first);
+         for (auto &entry : glSockets) {
+            sockets.push_back(entry.first);
+            records.push_back(entry.second);
+         }
+      }
 
-            for (auto &accepted : record.second.AcceptedSockets) sockets.push_back(accepted.Socket);
+      for (auto &record : records) {
+         std::lock_guard<std::mutex> record_lock(record->Mutex);
+         record->Cancelled = true;
+         record->Generation++;
+
+         for (auto &accepted : record->AcceptedSockets) {
+            sockets.push_back(accepted.Socket);
          }
       }
 
@@ -1173,7 +1214,7 @@ void iocp_expunge()
    glWorkers.clear();
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
+      std::lock_guard<std::mutex> lock(glRegistryMutex);
       glSockets.clear();
    }
 
@@ -1209,14 +1250,18 @@ WSW_SOCKET iocp_create_socket(int ObjectID, bool UDP, bool &IPv6)
 
    WSW_SOCKET result = handle_from_socket(socket);
 
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   glSockets[result] = {
-      .ObjectID = ObjectID,
-      .Generation = glNextGeneration++,
-      .IPv6 = IPv6,
-      .UDP = UDP,
-      .Cancelled = false
-   };
+   auto record = create_socket_record();
+   {
+      std::lock_guard<std::mutex> record_lock(record->Mutex);
+      record->ObjectID = ObjectID;
+      record->Generation = glNextGeneration++;
+      record->IPv6 = IPv6;
+      record->UDP = UDP;
+      record->Cancelled = false;
+   }
+
+   std::lock_guard<std::mutex> lock(glRegistryMutex);
+   glSockets[result] = record;
 
    return result;
 }
@@ -1238,12 +1283,18 @@ void iocp_close_socket(WSW_SOCKET Socket)
 
 void iocp_deregister_socket(WSW_SOCKET Socket)
 {
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   auto record = glSockets.find(Socket);
-   if (record != glSockets.end()) {
-      record->second.Cancelled = true;
-      record->second.Generation++;
-      glSockets.erase(record);
+   if (auto record = find_socket_record(Socket); record) {
+      std::lock_guard<std::mutex> record_lock(record->Mutex);
+      record->Cancelled = true;
+      record->Generation++;
+   }
+
+   {
+      std::lock_guard<std::mutex> lock(glRegistryMutex);
+      auto record = glSockets.find(Socket);
+      if (record != glSockets.end()) {
+         glSockets.erase(record);
+      }
    }
 }
 
@@ -1258,9 +1309,11 @@ int iocp_shutdown_socket(WSW_SOCKET Socket, int How)
 
 void iocp_set_socket_object(WSW_SOCKET Socket, int ObjectID)
 {
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   auto record = glSockets.find(Socket);
-   if (record != glSockets.end()) record->second.ObjectID = ObjectID;
+   auto record = find_socket_record(Socket);
+   if (record) {
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      record->ObjectID = ObjectID;
+   }
 }
 
 //********************************************************************************************************************
@@ -1269,14 +1322,15 @@ ERR iocp_prepare_connect(WSW_SOCKET Socket, const void *Address, int AddressSize
 {
    if ((!Address) or (AddressSize <= 0) or (AddressSize > int(IOCP_ENDPOINT_STORAGE_SIZE))) return ERR::Args;
 
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   auto record = glSockets.find(Socket);
-   if (record IS glSockets.end()) return ERR::Search;
-   if (record->second.Cancelled) return ERR::Cancelled;
+   auto record = find_socket_record(Socket);
+   if (!record) return ERR::Search;
 
-   std::memcpy(record->second.ConnectAddress.data(), Address, size_t(AddressSize));
-   record->second.ConnectAddressSize = AddressSize;
-   record->second.ConnectResult = ERR::Busy;
+   std::lock_guard<std::mutex> lock(record->Mutex);
+   if (record->Cancelled) return ERR::Cancelled;
+
+   std::memcpy(record->ConnectAddress.data(), Address, size_t(AddressSize));
+   record->ConnectAddressSize = AddressSize;
+   record->ConnectResult = ERR::Busy;
    return ERR::Busy;
 }
 
@@ -1290,19 +1344,20 @@ ERR iocp_begin_connect_wait(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback)
    IocpCompletionTarget target;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      if (record->second.Cancelled) return ERR::Cancelled;
-      if (record->second.ConnectAddressSize <= 0) return ERR::NotInitialised;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
 
-      record->second.Connect = { ObjectID, Callback };
-      record->second.ConnectResult = ERR::Busy;
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if (record->Cancelled) return ERR::Cancelled;
+      if (record->ConnectAddressSize <= 0) return ERR::NotInitialised;
 
-      address = record->second.ConnectAddress;
-      address_size = record->second.ConnectAddressSize;
-      generation = record->second.Generation;
-      target = record->second.Connect;
+      record->Connect = { ObjectID, Callback };
+      record->ConnectResult = ERR::Busy;
+
+      address = record->ConnectAddress;
+      address_size = record->ConnectAddressSize;
+      generation = record->Generation;
+      target = record->Connect;
    }
 
    IocpOperation failed_operation;
@@ -1355,10 +1410,11 @@ ERR iocp_complete_connect(WSW_SOCKET Socket)
    ERR result = ERR::Okay;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      result = record->second.ConnectResult;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
+
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      result = record->ConnectResult;
    }
 
    if (result IS ERR::Okay) {
@@ -1375,11 +1431,12 @@ ERR iocp_complete_connect(WSW_SOCKET Socket)
 
 bool iocp_validate_completion(WSW_SOCKET Socket, uint64_t Generation)
 {
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   auto record = glSockets.find(Socket);
-   if (record IS glSockets.end()) return false;
-   if (record->second.Cancelled) return false;
-   return record->second.Generation IS Generation;
+   auto record = find_socket_record(Socket);
+   if (!record) return false;
+
+   std::lock_guard<std::mutex> lock(record->Mutex);
+   if (record->Cancelled) return false;
+   return record->Generation IS Generation;
 }
 
 //********************************************************************************************************************
@@ -1397,9 +1454,10 @@ ERR iocp_listen(WSW_SOCKET Socket, int Backlog)
 {
    if (listen(socket_from_handle(Socket), Backlog) IS SOCKET_ERROR) return convert_error();
 
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   auto record = glSockets.find(Socket);
-   if (record != glSockets.end()) record->second.AcceptDepth = accept_depth_from_backlog(Backlog);
+   if (auto record = find_socket_record(Socket); record) {
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      record->AcceptDepth = accept_depth_from_backlog(Backlog);
+   }
 
    return ERR::Okay;
 }
@@ -1422,14 +1480,15 @@ ERR iocp_accept(WSW_SOCKET Server, WSW_SOCKET &Client, void *Address, int *Addre
    if ((!Address) or (!AddressSize)) return ERR::NullArgs;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Server);
-      if (record IS glSockets.end()) return ERR::Search;
-      if (record->second.Cancelled) return ERR::Cancelled;
-      if (record->second.AcceptedSockets.empty()) return ERR::Search;
+      auto record = find_socket_record(Server);
+      if (!record) return ERR::Search;
 
-      auto accepted = record->second.AcceptedSockets.front();
-      record->second.AcceptedSockets.pop_front();
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if (record->Cancelled) return ERR::Cancelled;
+      if (record->AcceptedSockets.empty()) return ERR::Search;
+
+      auto accepted = record->AcceptedSockets.front();
+      record->AcceptedSockets.pop_front();
 
       Client = accepted.Socket;
       auto copy_size = std::min(*AddressSize, accepted.AddressSize);
@@ -1451,12 +1510,13 @@ ERR iocp_register_read(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback)
    bool terminal = false;
    bool udp = false;
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      udp = record->second.UDP;
-      buffered = udp ? !record->second.Datagrams.empty() : record->second.BufferedReadBytes > 0;
-      terminal = record->second.ReadResult != ERR::Okay;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
+
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      udp = record->UDP;
+      buffered = udp ? !record->Datagrams.empty() : record->BufferedReadBytes > 0;
+      terminal = record->ReadResult != ERR::Okay;
    }
 
    if ((buffered) or (terminal)) {
@@ -1474,10 +1534,11 @@ ERR iocp_register_write(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback)
 
    bool capacity_available = false;
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      capacity_available = tcp_send_capacity_available(record->second);
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
+
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      capacity_available = tcp_send_capacity_available(*record);
    }
 
    return capacity_available ? queue_record_completion(Socket, IocpOperationType::WRITE) : ERR::Okay;
@@ -1501,10 +1562,11 @@ ERR iocp_remove_write(WSW_SOCKET Socket)
 
 bool iocp_has_pending_write(WSW_SOCKET Socket)
 {
-   std::lock_guard<std::mutex> lock(glIocpMutex);
-   auto record = glSockets.find(Socket);
-   if (record IS glSockets.end()) return false;
-   return (not record->second.Cancelled) and (record->second.SendPendingBytes > 0);
+   auto record = find_socket_record(Socket);
+   if (!record) return false;
+
+   std::lock_guard<std::mutex> lock(record->Mutex);
+   return (not record->Cancelled) and (record->SendPendingBytes > 0);
 }
 
 //********************************************************************************************************************
@@ -1516,10 +1578,11 @@ ERR iocp_recall_read(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback)
 
    bool udp = false;
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      udp = record->second.UDP;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
+
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      udp = record->UDP;
    }
 
    return queue_record_completion(Socket, udp ? IocpOperationType::UDP_RECEIVE : IocpOperationType::READ);
@@ -1538,32 +1601,33 @@ ERR iocp_receive(WSW_SOCKET Socket, void *Buffer, size_t Length, size_t &Receive
    bool recall_read = false;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      if (record->second.Cancelled) return ERR::Cancelled;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
 
-      auto available = record->second.BufferedReadBytes;
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if (record->Cancelled) return ERR::Cancelled;
+
+      auto available = record->BufferedReadBytes;
       if (available > 0) {
          Received = std::min(Length, available);
-         std::memcpy(Buffer, record->second.ReadBuffer.data() + record->second.ReadOffset, Received);
-         record->second.ReadOffset += Received;
-         record->second.BufferedReadBytes -= Received;
+         std::memcpy(Buffer, record->ReadBuffer.data() + record->ReadOffset, Received);
+         record->ReadOffset += Received;
+         record->BufferedReadBytes -= Received;
 
-         if (record->second.BufferedReadBytes <= 0) {
-            record->second.ReadBuffer.clear();
-            record->second.ReadOffset = 0;
-            if (record->second.ReadResult IS ERR::Okay) rearm_read = true;
+         if (record->BufferedReadBytes <= 0) {
+            record->ReadBuffer.clear();
+            record->ReadOffset = 0;
+            if (record->ReadResult IS ERR::Okay) rearm_read = true;
             else recall_read = true;
          }
          else recall_read = true;
 
-         if ((record->second.ReadResult IS ERR::Okay) and (tcp_read_post_needed(record->second))) {
+         if ((record->ReadResult IS ERR::Okay) and (tcp_read_post_needed(*record))) {
             rearm_read = true;
          }
       }
       else {
-         result = record->second.ReadResult;
+         result = record->ReadResult;
          if (result IS ERR::Okay) rearm_read = true;
       }
    }
@@ -1606,13 +1670,13 @@ ERR iocp_send(WSW_SOCKET Socket, const void *Buffer, size_t &Length)
    size_t accepted = 0;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      if (record->second.Cancelled) return ERR::Cancelled;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
 
-      auto capacity = IOCP_TCP_SEND_HIGH_WATER - std::min(record->second.SendPendingBytes,
-         IOCP_TCP_SEND_HIGH_WATER);
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if (record->Cancelled) return ERR::Cancelled;
+
+      auto capacity = IOCP_TCP_SEND_HIGH_WATER - std::min(record->SendPendingBytes, IOCP_TCP_SEND_HIGH_WATER);
       if (!capacity) {
          Length = 0;
          return ERR::BufferOverflow;
@@ -1625,8 +1689,8 @@ ERR iocp_send(WSW_SOCKET Socket, const void *Buffer, size_t &Length)
       request.Buffer = std::make_unique<uint8_t[]>(request.BufferSize);
       std::memcpy(request.Buffer.get(), Buffer, request.BufferSize);
 
-      record->second.SendQueue.push_back(std::move(request));
-      record->second.SendPendingBytes += accepted;
+      record->SendQueue.push_back(std::move(request));
+      record->SendPendingBytes += accepted;
    }
 
    Length = accepted;
@@ -1651,13 +1715,14 @@ ERR iocp_send_to(WSW_SOCKET Socket, const void *Buffer, size_t &Length, const vo
    size_t requested = std::min<size_t>(Length, 0x7fffffff);
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      if (record->second.Cancelled) return ERR::Cancelled;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
 
-      generation = record->second.Generation;
-      object_id = record->second.ObjectID;
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if (record->Cancelled) return ERR::Cancelled;
+
+      generation = record->Generation;
+      object_id = record->ObjectID;
    }
 
    auto operation = create_operation();
@@ -1706,21 +1771,22 @@ ERR iocp_receive_from(WSW_SOCKET Socket, void *Buffer, size_t BufferSize, size_t
    bool has_datagram = false;
 
    {
-      std::lock_guard<std::mutex> lock(glIocpMutex);
-      auto record = glSockets.find(Socket);
-      if (record IS glSockets.end()) return ERR::Search;
-      if (record->second.Cancelled) return ERR::Cancelled;
+      auto record = find_socket_record(Socket);
+      if (!record) return ERR::Search;
 
-      if (!record->second.Datagrams.empty()) {
-         datagram = std::move(record->second.Datagrams.front());
-         record->second.Datagrams.erase(record->second.Datagrams.begin());
+      std::lock_guard<std::mutex> lock(record->Mutex);
+      if (record->Cancelled) return ERR::Cancelled;
+
+      if (!record->Datagrams.empty()) {
+         datagram = std::move(record->Datagrams.front());
+         record->Datagrams.erase(record->Datagrams.begin());
          has_datagram = true;
-         recall_read = !record->second.Datagrams.empty();
-         if ((!recall_read) and (record->second.ReadResult IS ERR::Okay)) rearm_read = true;
+         recall_read = !record->Datagrams.empty();
+         if ((!recall_read) and (record->ReadResult IS ERR::Okay)) rearm_read = true;
       }
       else {
-         result = record->second.ReadResult;
-         if ((result IS ERR::Okay) and (!record->second.UdpReadPending)) rearm_read = true;
+         result = record->ReadResult;
+         if ((result IS ERR::Okay) and (!record->UdpReadPending)) rearm_read = true;
       }
    }
 
