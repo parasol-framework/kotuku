@@ -1,6 +1,10 @@
 --$TIRI:Include
 
-module({ name="Core", copyright="Paul Manias 1996-2026", timestamp=20241015 }, function()
+module({ name="Core", copyright="Paul Manias 1996-2026", timestamp=20241015,
+  src={ "../core.cpp", "../lib_objects.cpp", "../lib_events.cpp", "../lib_fields_read.cpp", "../lib_fields_write.cpp", "../lib_filesystem.cpp",
+        "../lib_functions.cpp", "../lib_locking.cpp", "../lib_log.cpp", "../lib_messages.cpp", "../lib_memory.cpp", "../fs_folders.cpp",
+        "../fs_identify.cpp", "../fs_resolution.cpp", "../fs_volumes.cpp"
+  } }, function()
   c_include("<stdarg.h>", "<inttypes.h>", "<string.h>", "<stdlib.h>")
   cpp_include("<list>", "<map>", "<string>", "<set>", "<vector>", "<unordered_map>", "<bit>", "<atomic>", "<array>", "<charconv>", "<sstream>", "<cmath>", "<type_traits>", "ankerl/unordered_dense.h")
 
