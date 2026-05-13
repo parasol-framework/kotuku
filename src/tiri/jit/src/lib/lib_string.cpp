@@ -180,19 +180,14 @@ LJLIB_CF(string_rep)      LJLIB_REC(.)
 //
 // 1. Takes a size parameter - Uses lj_lib_checkint(L, 1) to get the size from the first argument
 // 2. Validates the size - Checks that size is not negative and throws an error if it is
-// 3. Reserves buffer space - Uses lj_buf_need(sb, (MSize)size) to ensure the buffer has enough capacity
-// 4. Advances the write pointer - Sets sb->w += size to reserve the space without filling it
-// 5. Returns the string - Creates and returns the string with the reserved space
+// 3. Allocates a mutable GC string buffer outside the normal string interning table.
+// 4. Returns the mutable string with the requested length.
 
 LJLIB_CF(string_alloc)
 {
    int32_t size = lj_lib_checkint(L, 1);
    LJ_CHECK_ARG(L, 1, size >= 0, ErrMsg::NUMRNG);
-   SBuf *sb = lj_buf_tmp_(L);
-   lj_buf_reset(sb);
-   (void)lj_buf_need(sb, (MSize)size);
-   sb->w += size;  //  Advance write pointer to reserve space
-   setstrV(L, L->top - 1, lj_buf_str(L, sb));
+   setstrV(L, L->top - 1, lj_str_newbuf(L, MSize(size)));
    lj_gc_check(L);
    return 1;
 }

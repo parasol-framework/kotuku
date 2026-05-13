@@ -148,6 +148,31 @@ static GCstr * lj_str_alloc(lua_State *L, const char *str, MSize len, uint32_t h
 }
 
 //********************************************************************************************************************
+// Allocate a mutable string buffer outside the interning table.
+
+GCstr * lj_str_newbuf(lua_State *L, MSize len)
+{
+   auto *g = G(L);
+
+   if (len >= LJ_MAX_STR) {
+      if (len) lj_err_msg(L, ErrMsg::STROV);
+      len = 0;
+   }
+
+   auto *s = (GCstr *)lj_mem_newgco(L, lj_str_size(len));
+   s->gct      = ~LJ_TSTR;
+   s->len      = len;
+   s->hash     = 0;
+   s->sid      = g->str.id++;
+   s->reserved = 0;
+   s->flags    = STRF_MUTABLE_BUFFER;
+
+   // Clear last 4 bytes of allocated memory. Implies zero-termination, too.
+   *(uint32_t *)(strdatawr(s) + (len & ~MSize(3))) = 0;
+   return s;
+}
+
+//********************************************************************************************************************
 // Intern a string and return string object.  Throws on failure.
 
 GCstr * lj_str_new(lua_State *L, const char *str, size_t lenx)
@@ -186,7 +211,7 @@ GCstr * lj_str_new(lua_State *L, const char *str, size_t lenx)
 
 void lj_str_free(global_State *g, GCstr *s)
 {
-   g->str.num--;
+   if (not lj_str_ismutable(s)) g->str.num--;
    lj_mem_free(g, s, lj_str_size(s->len));
 }
 

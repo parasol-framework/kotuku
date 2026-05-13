@@ -8,13 +8,22 @@ function enforce_hotpath() end
    s = string.alloc(10)
    assert(#s is 10, "String size is not 10 characters, got " .. #s)
 
+   s2 = string.alloc(10)
+   assert(not (s is s2), "Same-sized string.alloc() buffers should be distinct objects")
+
    -- Test zero size
    empty = string.alloc(0)
    assert(#empty is 0, "Zero alloc should create empty string, got " .. #empty)
 
+   empty2 = string.alloc(0)
+   assert(not (empty is empty2), "Zero-sized string.alloc() buffers should be distinct objects")
+
    -- Test large size
    big = string.alloc(1000)
    assert(#big is 1000, "Large alloc failed, expected 1000, got " .. #big)
+
+   slice = string.substr(s, #s, #s)
+   assert(slice is "", "Slices copied from mutable buffers should be normal interned strings")
 end
 
 @Test function Index()
