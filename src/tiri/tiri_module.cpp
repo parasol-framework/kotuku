@@ -12,6 +12,7 @@
 #include "lauxlib.h"
 #include "lj_obj.h"
 #include "lj_object.h"
+#include "lj_str.h"
 #include "lib.h"
 
 #include "hashes.h"
@@ -50,6 +51,11 @@ static std::set<std::string, CaseInsensitiveCompare> glLoadedConstants; // Store
 
 static int module_call(lua_State *);
 static int process_results(prvTiri *, APTR, const FunctionField *);
+
+[[nodiscard]] static GCstr * string_arg(lua_State *Lua, int Arg) noexcept
+{
+   return strV(Lua->base + Arg - 1);
+}
 
 //********************************************************************************************************************
 
@@ -517,6 +523,42 @@ static int module_call(lua_State *Lua)
                   return 0;
                }
             }
+            else if (lua_type(Lua, i) IS LUA_TSTRING) {
+               auto string = string_arg(Lua, i);
+               if (not lj_str_ismutable(string)) {
+                  cleanup();
+                  luaL_argerror(Lua, i, "Mutable buffer required.");
+                  return 0;
+               }
+
+               ((APTR *)(buffer + j))[0] = strdatawr(string);
+               arg_values[in] = buffer + j;
+               arg_types[in++] = &ffi_type_pointer;
+               j += sizeof(APTR);
+
+               if (args[i+1].Type & (FD_BUFSIZE|FD_ARRAYSIZE)) {
+                  if (args[i+1].Type & FD_INT) {
+                     ((int *)(buffer + j))[0] = int(string->len);
+                     arg_values[in]  = buffer + j;
+                     arg_types[in++] = &ffi_type_sint32;
+                     i++;
+                     j += sizeof(int);
+                  }
+                  else if (args[i+1].Type & FD_INT64) {
+                     ((int64_t *)(buffer + j))[0] = string->len;
+                     arg_values[in]  = buffer + j;
+                     arg_types[in++] = &ffi_type_sint64;
+                     i++;
+                     j += sizeof(int64_t);
+                  }
+                  else log.warning("Integer type unspecified for BUFSIZE argument in %s()", mod->Functions[index].Name);
+               }
+               else {
+                  cleanup();
+                  luaL_error(Lua, ERR::InvalidType, "Function '%s' is not compatible with Tiri.", mod->Functions[index].Name);
+                  return 0;
+               }
+            }
             else {
                cleanup();
                luaL_error(Lua, ERR::Args, "A memory buffer is required in arg #%d.", i);
@@ -619,6 +661,21 @@ static int module_call(lua_State *Lua)
             allocated_string_views.push_back(view_ptr);
             ((std::string_view **)(buffer + j))[0] = view_ptr;
          }
+         else if (argtype & FD_MUTABLE) {
+            if (type != LUA_TSTRING) {
+               cleanup();
+               luaL_argerror(Lua, i, "Mutable buffer required.");
+               return 0;
+            }
+
+            auto string = string_arg(Lua, i);
+            if (not lj_str_ismutable(string)) {
+               cleanup();
+               luaL_argerror(Lua, i, "Mutable buffer required.");
+               return 0;
+            }
+            ((CSTRING *)(buffer + j))[0] = strdatawr(string);
+         }
          else if ((type IS LUA_TSTRING) or (type IS LUA_TNUMBER) or (type IS LUA_TBOOLEAN)) {
             ((CSTRING *)(buffer + j))[0] = lua_tostring(Lua, i);
          }
@@ -680,14 +737,14 @@ static int module_call(lua_State *Lua)
                }
                else {
                   if (args[i+1].Type & FD_INT) {
-                     ((int *)(buffer + j))[0] = arr->len;
+                     ((int *)(buffer + j))[0] = (argtype & FD_BUFFER) ? arr->len * arr->elemsize : arr->len;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_sint32;
                      j += sizeof(int);
                      i++;
                   }
                   else if (args[i+1].Type & FD_INT64) {
-                     ((int64_t *)(buffer + j))[0] = arr->len;
+                     ((int64_t *)(buffer + j))[0] = (argtype & FD_BUFFER) ? arr->len * arr->elemsize : arr->len;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_sint64;
                      j += sizeof(int64_t);
@@ -716,8 +773,15 @@ static int module_call(lua_State *Lua)
          auto arg_type = lua_type(Lua, i);
          if (arg_type IS LUA_TSTRING) {
             // Lua strings need to be converted to C strings
-            size_t strlen;
-            ((CSTRING *)(buffer + j))[0] = lua_tolstring(Lua, i, &strlen);
+            auto string = string_arg(Lua, i);
+            if ((argtype & FD_MUTABLE) and (not lj_str_ismutable(string))) {
+               cleanup();
+               luaL_argerror(Lua, i, "Mutable buffer required.");
+               return 0;
+            }
+
+            size_t strlen = string->len;
+            ((CSTRING *)(buffer + j))[0] = (argtype & FD_MUTABLE) ? strdatawr(string) : strdata(string);
             arg_values[in] = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(CSTRING);

@@ -120,6 +120,24 @@ static int object_method_call(lua_State *Lua)
 //********************************************************************************************************************
 // Build argument buffer for actions and methods.
 
+static bool check_mutable_string_arg(lua_State *Lua, int Arg, GCstr *String)
+{
+   if (not lj_str_ismutable(String)) {
+      luaL_argerror(Lua, Arg, "Mutable buffer required.");
+      return false;
+   }
+   return true;
+}
+
+static bool check_buffer_size_arg(lua_State *Lua, int Arg, int64_t Size, size_t Capacity)
+{
+   if ((Size < 0) or (uint64_t(Size) > uint64_t(Capacity))) {
+      luaL_argerror(Lua, Arg, "Buffer size exceeds supplied buffer capacity.");
+      return false;
+   }
+   return true;
+}
+
 ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *argbuffer, int *ResultCount)
 {
    kt::Log log(__FUNCTION__);
@@ -133,8 +151,12 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
    int i, n;
    int resultcount = 0;
    int j = 0;
+   size_t buffer_capacity = 0;
+   bool buffer_capacity_known = false;
    for (i=0,n=1; (args[i].Name) and (j < ArgsSize) and (top > 0); i++,n++,top--) {
       int type = lua_type(Lua, n);
+
+      if (not (args[i].Type & FD_BUFSIZE)) buffer_capacity_known = false;
 
       if (args[i].Type & FD_RESULT) resultcount = resultcount + 1;
 
@@ -154,6 +176,8 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
                // more arguments are specified in the function call.
 
                size_t memsize = array->len * array->elemsize;
+               buffer_capacity = memsize;
+               buffer_capacity_known = true;
                if (args[i+1].Type & FD_INT)  ((int *)(argbuffer + j))[0] = int(memsize);
                else if (args[i+1].Type & FD_INT64) ((int64_t *)(argbuffer + j))[0] = int64_t(memsize);
             }
@@ -168,6 +192,8 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
                // Buffer size is optional (can be nil), so set the buffer size parameter by default.
                // The user can override it if more arguments are specified in the function call.
 
+               buffer_capacity = fstruct->AlignedSize;
+               buffer_capacity_known = true;
                if (args[i+1].Type & FD_INT) ((int *)(argbuffer + j))[0] = fstruct->AlignedSize;
                else if (args[i+1].Type & FD_INT64) ((int64_t *)(argbuffer + j))[0] = fstruct->AlignedSize;
             }
@@ -175,12 +201,16 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
          }
          else if (type IS LUA_TSTRING) {
             //log.trace("Arg: %s, Value: Buffer (Source is String)", args[i].Name);
-            size_t len;
-            CSTRING str = lua_tolstring(Lua, n, &len);
+            auto string = strV(Lua->base + n - 1);
+            if ((args[i].Type & FD_MUTABLE) and (not check_mutable_string_arg(Lua, n, string))) return ERR::WrongType;
+            size_t len = string->len;
+            CSTRING str = (args[i].Type & FD_MUTABLE) ? strdatawr(string) : strdata(string);
             ((CSTRING *)(argbuffer + j))[0] = str;
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
+               buffer_capacity = len;
+               buffer_capacity_known = true;
                if (args[i+1].Type & FD_INT) ((int *)(argbuffer + j))[0] = len;
                else if (args[i+1].Type & FD_INT64) ((int64_t *)(argbuffer + j))[0] = len;
             }
@@ -197,7 +227,16 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
       }
       else if (args[i].Type & FD_STR) {
          j = ALIGN64(j);
-         if ((type IS LUA_TSTRING) or (type IS LUA_TNUMBER)) {
+         if (args[i].Type & FD_MUTABLE) {
+            if (type != LUA_TSTRING) {
+               luaL_argerror(Lua, n, "Mutable buffer required.");
+               return ERR::WrongType;
+            }
+            auto string = strV(Lua->base + n - 1);
+            if (not check_mutable_string_arg(Lua, n, string)) return ERR::WrongType;
+            ((CSTRING *)(argbuffer + j))[0] = strdatawr(string);
+         }
+         else if ((type IS LUA_TSTRING) or (type IS LUA_TNUMBER)) {
             ((CSTRING *)(argbuffer + j))[0] = lua_tostring(Lua, n);
          }
          else if (type <= 0) {
@@ -255,7 +294,9 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
          }
          else if (type IS LUA_TSTRING) {
             //log.trace("Arg: %s, Value: Pointer (Source is String)", args[i].Name);
-            ((CSTRING *)(argbuffer + j))[0] = lua_tostring(Lua, n);
+            auto string = strV(Lua->base + n - 1);
+            if ((args[i].Type & FD_MUTABLE) and (not check_mutable_string_arg(Lua, n, string))) return ERR::WrongType;
+            ((CSTRING *)(argbuffer + j))[0] = (args[i].Type & FD_MUTABLE) ? strdatawr(string) : strdata(string);
          }
          else if (type IS LUA_TNUMBER) {
             luaL_argerror(Lua, n, "Unable to convert number to a pointer.");
@@ -284,9 +325,25 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
             }
             else luaL_argerror(Lua, n, "Unable to convert usertype to an integer.");
          }
-         else if (type IS LUA_TBOOLEAN) ((int *)(argbuffer + j))[0] = lua_toboolean(Lua, n);
-         else if (type != LUA_TNIL) ((int *)(argbuffer + j))[0] = lua_tointeger(Lua, n);
-         else if (args[i].Type & FD_BUFSIZE); // Do not alter as the FD_BUFFER support would have managed it
+         else if (type IS LUA_TBOOLEAN) {
+            auto value = lua_toboolean(Lua, n);
+            if ((args[i].Type & FD_BUFSIZE) and buffer_capacity_known) {
+               if (not check_buffer_size_arg(Lua, n, value, buffer_capacity)) return ERR::WrongType;
+               buffer_capacity_known = false;
+            }
+            ((int *)(argbuffer + j))[0] = value;
+         }
+         else if (type != LUA_TNIL) {
+            auto value = lua_tointeger(Lua, n);
+            if ((args[i].Type & FD_BUFSIZE) and buffer_capacity_known) {
+               if (not check_buffer_size_arg(Lua, n, value, buffer_capacity)) return ERR::WrongType;
+               buffer_capacity_known = false;
+            }
+            ((int *)(argbuffer + j))[0] = value;
+         }
+         else if (args[i].Type & FD_BUFSIZE) {
+            buffer_capacity_known = false; // Do not alter as the FD_BUFFER support would have managed it
+         }
          else ((int *)(argbuffer + j))[0] = 0;
          //log.trace("Arg: %s, Value: %d / $%.8x", args[i].Name, ((int *)(argbuffer + j))[0], ((int *)(argbuffer + j))[0]);
          j += sizeof(int);
@@ -299,7 +356,17 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *
       }
       else if (args[i].Type & FD_INT64) {
          j = ALIGN64(j);
-         ((int64_t *)(argbuffer + j))[0] = lua_tointeger(Lua, n);
+         if ((args[i].Type & FD_BUFSIZE) and (type IS LUA_TNIL)) {
+            buffer_capacity_known = false;
+         }
+         else {
+            auto value = lua_tointeger(Lua, n);
+            if ((args[i].Type & FD_BUFSIZE) and buffer_capacity_known) {
+               if (not check_buffer_size_arg(Lua, n, value, buffer_capacity)) return ERR::WrongType;
+               buffer_capacity_known = false;
+            }
+            ((int64_t *)(argbuffer + j))[0] = value;
+         }
          //log.trace("Arg: %s, Value: %" PF64, args[i].Name, ((LARGE *)(argbuffer + j))[0]);
          j += sizeof(int64_t);
       }

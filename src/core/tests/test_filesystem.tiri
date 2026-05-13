@@ -138,6 +138,45 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
+@Test function MutableStringReadBuffer()
+   read_path = glTempRoot .. 'mutable_string_read.txt'
+   expected = 'Mutable string buffer content'
+
+   resetPath(read_path)
+   writeFile(read_path, expected)
+
+   fl = obj.new('file', { src=read_path, flags=FL_READ } )
+   buffer = string.alloc(#expected)
+   err, result = fl.acRead(buffer)
+   assert(err is ERR_Okay, 'Failed to read into mutable string buffer: ' .. mSys.GetErrorMsg(err))
+   assert(result is #expected, 'Read length should match expected content size.')
+   assert(string.substr(buffer, 0, result) is expected, 'Mutable string buffer read returned unexpected content.')
+
+   try
+      fl.acSeek(POS_START, 0)
+      fl.acRead('literal')
+   success
+      error('acRead() should reject interned strings for mutable buffers')
+   end
+
+   try
+      fl.acSeek(POS_START, 0)
+      fl.acRead(buffer, #buffer + 1)
+   success
+      error('acRead() should reject sizes larger than the supplied buffer')
+   end
+
+   write_path = glTempRoot .. 'immutable_string_write.txt'
+   resetPath(write_path)
+   write_file = obj.new('file', { src=write_path, flags=FL_NEW|FL_WRITE } )
+   err, result = write_file.acWrite('ordinary input', #'ordinary input')
+   assert(err is ERR_Okay, 'acWrite() should continue accepting ordinary immutable strings.')
+   write_file.free()
+   assert(readFile(write_path) is 'ordinary input', 'Immutable string write did not persist expected content.')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 @Test function FileIcons()
    if mSys.AnalysePath('icons:') != ERR_Okay then
       -- Icons not available, skip test
@@ -344,6 +383,17 @@ end
    err = mSys.ReadFileToBuffer('~' .. glTempRoot .. 'buffer_read', approx_buffer)
    assert(err is ERR_Okay, 'ReadFileToBuffer() failed for an approximated path: ' .. mSys.GetErrorMsg(err))
    assert(approx_buffer:getString() is expected, 'ReadFileToBuffer() did not resolve the approximated path correctly.')
+
+   string_buffer = string.alloc(#expected)
+   err = mSys.ReadFileToBuffer(read_path, string_buffer)
+   assert(err is ERR_Okay, 'ReadFileToBuffer() failed for a mutable string buffer: ' .. mSys.GetErrorMsg(err))
+   assert(string.substr(string_buffer, 0, #expected) is expected, 'ReadFileToBuffer() did not fill the mutable string buffer.')
+
+   try
+      mSys.ReadFileToBuffer(read_path, 'literal')
+   success
+      error('ReadFileToBuffer() should reject interned strings for mutable buffers')
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
