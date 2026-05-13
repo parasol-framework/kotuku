@@ -187,7 +187,7 @@ To use this function effectively, call it repeatedly in a loop until all of the 
 resource(BASE64DECODE) State: Pointer to a BASE64DECODE structure, initialised to zero.
 cstr Input: A base 64 input string.  The pointer will be updated when the function returns.
 bufsize InputSize: The size of the `Input` string.
-buf(ptr) Output:  The output buffer.  The size of the buffer must be greater or equal to the size of Input.
+^buf(ptr) Output:  The output buffer.  The size of the buffer must be greater or equal to the size of Input.
 &int Written: The total number of bytes written to `Output` is returned here.
 
 -END-

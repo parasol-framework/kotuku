@@ -29,11 +29,11 @@ This test verifies that UDP and TCP sockets can coexist and operate independentl
       address = '127.0.0.1',
       flags = 'SERVER|UDP',
       incoming = function(Socket)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          source = struct.new('IPAddress')
          err, bytesRead = Socket.mtRecvFrom(source, buffer)
          if (err is ERR_Okay) and (bytesRead > 0) then
-            msg = buffer:sub(0, bytesRead)
+            msg = buffer:getString(0, bytesRead)
             logOutput('[UDP Server] Received: "' .. msg .. '"')
             if (msg:startsWith('UDP Test')) then
                udpReceived = true
@@ -58,10 +58,10 @@ This test verifies that UDP and TCP sockets can coexist and operate independentl
          end
       end,
       incoming = function(Socket, Client)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, readLen = Client.acRead(buffer)
          if (err is ERR_Okay and readLen > 0) then
-            msg = buffer:sub(0, readLen)
+            msg = buffer:getString(0, readLen)
             logOutput('[TCP Server] Received: "' .. msg .. '"')
             if (msg:startsWith('TCP Test')) then
                tcpReceived = true
@@ -80,11 +80,11 @@ This test verifies that UDP and TCP sockets can coexist and operate independentl
    udpClient = obj.new('netsocket', {
       flags = 'UDP',
       incoming = function(Socket)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          source = struct.new('IPAddress')
          err, bytesRead = Socket.mtRecvFrom(source, buffer)
          if (err is ERR_Okay) and (bytesRead > 0) then
-            msg = buffer:sub(0, bytesRead)
+            msg = buffer:getString(0, bytesRead)
             logOutput('[UDP Client] Received response: "' .. msg .. '"')
          end
       end
@@ -103,10 +103,10 @@ This test verifies that UDP and TCP sockets can coexist and operate independentl
          end
       end,
       incoming = function(Socket)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, readLen = Socket.acRead(buffer)
          if (err is ERR_Okay and readLen > 0) then
-            msg = buffer:sub(0, readLen)
+            msg = buffer:getString(0, readLen)
             logOutput('[TCP Client] Received: "' .. msg .. '"')
          end
       end
@@ -144,7 +144,7 @@ end
          address = '127.0.0.1',
          flags = 'SERVER|UDP',
          incoming = function(Socket)
-            buffer = string.alloc(256)
+            buffer = array<byte, 256>
             source = struct.new('IPAddress')
             err, bytesRead = Socket.mtRecvFrom(source, buffer)
             if (err is ERR_Okay and bytesRead > 0) then
@@ -174,7 +174,7 @@ end
          flags = 'SERVER|UDP|BROADCAST',
          multicastTTL = 2,
          incoming = function(Socket)
-            buffer = string.alloc(256)
+            buffer = array<byte, 256>
             source = struct.new('IPAddress')
             err, bytesRead = Socket.mtRecvFrom(source, buffer)
             if (err is ERR_Okay and bytesRead > 0) then

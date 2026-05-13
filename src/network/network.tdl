@@ -1,17 +1,13 @@
 --$TIRI:Include
 
-module({ name="Network", copyright="Paul Manias © 2005-2026", version=1.0, prefix="net", status="stable", timestamp=20240611 }, function()
+module({ name="Network", copyright="Paul Manias © 2005-2026", version=1.0, prefix="net", status="stable", timestamp=20240611,
+    src="network.cpp"
+  }, function()
   restrict(function()
     loadFile(glPath .. 'common.tdl')
   end)
 
-  cpp_include("<unordered_set>", "<map>", "<mutex>")
-
   c_insert([[
-
-#if defined(ENABLE_SSL) && !defined(_WIN32)
- #include "openssl/ssl.h"
-#endif
 
 #ifdef __linux__
 typedef int SOCKET_HANDLE;

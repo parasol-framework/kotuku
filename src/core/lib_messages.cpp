@@ -476,7 +476,7 @@ without any further indication.
 -INPUT-
 &int Handle: Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.
 int(MSGID) Type:   The message type to filter for, or zero to scan all messages in the queue.
-buf(ptr) Buffer: Optional pointer to a buffer that is large enough to hold any message data.
+^buf(ptr) Buffer: Optional pointer to a buffer that is large enough to hold any message data.
 bufsize Size: The byte-size of the supplied `Buffer`.
 
 -ERRORS-

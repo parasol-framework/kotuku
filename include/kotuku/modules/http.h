@@ -347,7 +347,7 @@ class objHTTP : public Object {
    template <class T> inline ERR setContentType(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
@@ -359,7 +359,7 @@ class objHTTP : public Object {
    template <class T> inline ERR setLocation(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[34];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setOutgoing(FUNCTION Value) noexcept {
@@ -371,7 +371,7 @@ class objHTTP : public Object {
    template <class T> inline ERR setRealm(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setStateChanged(FUNCTION Value) noexcept {
@@ -383,13 +383,13 @@ class objHTTP : public Object {
    template <class T> inline ERR setUsername(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[37];
-      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPassword(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
-      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
    }
 
 };

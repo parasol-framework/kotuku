@@ -13,7 +13,6 @@ set (INC_MOD_NETWORK TRUE PARENT_SCOPE)
 
 idl_gen ("${MOD}.tdl" NAME "${MOD}_defs" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    APPEND_IDL "module_def.c"
-   FILES "network.cpp"
    ARGS "output-defs=module_def.c" "output-proto=module_def.c")
 
 add_library (${MOD})
@@ -104,6 +103,7 @@ endif()
 
 set (NETWORK_TESTS
    bind_address dns_parallel server_io client_server error_handling ipv6 concurrency ssl iocp_pipeline
+   performance
    # UDP Tests
    udp_basic udp_ipv6 udp_broadcast_multicast udp_tcp_coexistence udp_performance
 )

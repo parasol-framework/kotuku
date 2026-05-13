@@ -27,7 +27,6 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <unordered_set>
 #include <ctime>
 #include <type_traits>
-#include <array>
 
 #include <string.h>
 
@@ -221,12 +220,6 @@ JUMPTABLE_CORE
 
 //********************************************************************************************************************
 
-struct CaseInsensitiveMap {
-   bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
-   }
-};
-
 struct CaseInsensitiveHash {
    std::size_t operator()(const std::string& s) const noexcept {
       std::string lower = s;
@@ -280,14 +273,6 @@ inline void setIPV4(IPAddress &IP, uint32_t IPV4HostOrder, uint16_t Port) {
    IP.Data[0] = IPV4HostOrder;
    IP.Data[1] = IP.Data[2] = IP.Data[3] = 0;
 }
-
-inline void setIPV6(IPAddress &IP, uint8_t *Address, uint16_t Port) {
-   IP.Type = IPADDR::V6;
-   IP.Port = Port;
-   kt::copymem(Address, &IP.Data, 16);
-}
-
-//********************************************************************************************************************
 
 static bool decimal_digit(char Value)
 {
@@ -880,41 +865,6 @@ ERR NetworkPlatform::prepare_bind_address(CSTRING Address, int Port, bool IPv6, 
 
 //********************************************************************************************************************
 
-#ifndef DISABLE_SSL
-template <class T> bool tls_active(T *Self)
-{
-   return Self->TLS.Handle;
-}
-
-template <class T> bool tls_handshake_pending(T *Self)
-{
-   #ifdef _WIN32
-      return (Self->TLS.Handle) and (Self->State IS NTC::HANDSHAKING);
-   #else
-      return (Self->TLS.Handle) and (Self->TLS.HandshakeStatus != SHS::NIL);
-   #endif
-}
-
-template <class T> bool tls_waiting_for_read(T *Self)
-{
-   #ifdef _WIN32
-      return false;
-   #else
-      return (Self->TLS.Handle) and (Self->TLS.HandshakeStatus IS SHS::READ);
-   #endif
-}
-
-template <class T> bool tls_waiting_for_write(T *Self)
-{
-   #ifdef _WIN32
-      return false;
-   #else
-      return (Self->TLS.Handle) and (Self->TLS.HandshakeStatus IS SHS::WRITE);
-   #endif
-}
-#endif
-
-//********************************************************************************************************************
 // Template function to handle SSL and socket sending for both NetSocket and ClientSocket
 
 template<typename T>

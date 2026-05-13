@@ -477,7 +477,7 @@ http.acActivate()
     <field>
       <name>UserAgent</name>
       <comment>Specifies the name of the user-agent string that is sent in HTTP requests.</comment>
-      <access read="R" write="S">Read/Set</access>
+      <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
 <p>This field describes the <code>user-agent</code> value that will be sent in HTTP requests.  The default value is <code>Kotuku Client</code>.</p>

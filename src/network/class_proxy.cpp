@@ -267,6 +267,13 @@ static bool matchesEnabledFilter(const KeysType& keys, int findEnabled) {
    return false;
 }
 
+template<typename KeysType>
+static bool matchesDeferredFilter(const KeysType &Keys, CSTRING FieldName)
+{
+   auto filter = Keys.find(FieldName);
+   return (filter IS Keys.end()) or filter->second.empty();
+}
+
 static ERR find_proxy(extProxy *Self)
 {
    kt::Log log(__FUNCTION__);
@@ -290,7 +297,7 @@ static ERR find_proxy(extProxy *Self)
          if (group != groups->end()) ++group;
       }
 
-      log.trace("Finding next proxy. Port: '%d', Enabled: %d", Self->FindPort, Self->FindEnabled);
+      log.trace("Finding next proxy. Port: '%s', Enabled: %d", Self->FindPort.c_str(), Self->FindEnabled);
 
       // Search for matching proxy
       for (; group != groups->end(); ++group) {
@@ -304,14 +311,8 @@ static ERR find_proxy(extProxy *Self)
          if (!matchesPortFilter(keys, Self->FindPort)) continue;
          if (!matchesEnabledFilter(keys, Self->FindEnabled)) continue;
 
-         // TODO: Implement network and gateway filters
-         if (keys.contains("NetworkFilter")) {
-            log.error("Network filters not supported yet.");
-         }
-
-         if (keys.contains("GatewayFilter")) {
-            log.error("Gateway filters not supported yet.");
-         }
+         if (!matchesDeferredFilter(keys, "NetworkFilter")) continue;
+         if (!matchesDeferredFilter(keys, "GatewayFilter")) continue;
 
          log.trace("Found matching proxy.");
          Self->GroupName = group->first;
@@ -422,6 +423,8 @@ GatewayFilter: The IP address of the gateway that the proxy is limited to.
 The GatewayFilter defines the IP address of the gateway that this proxy is limited to. It is intended to limit the
 results of searches performed by the #Find() method.
 
+Gateway matching is not currently implemented.  Records that define this field are skipped by #Find().
+
 *********************************************************************************************************************/
 
 static ERR SET_GatewayFilter(extProxy *Self, CSTRING Value)
@@ -464,6 +467,8 @@ The NetworkFilter defines the name of the network that this proxy is limited to.
 searches performed by the #Find() method.
 
 This filter must not be set if the proxy needs to work on an unnamed network.
+
+Network matching is not currently implemented.  Records that define this field are skipped by #Find().
 
 *********************************************************************************************************************/
 

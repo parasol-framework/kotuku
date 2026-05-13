@@ -1111,7 +1111,7 @@ For TCP sockets, use the standard Read action instead.
 
 -INPUT-
 ptr(struct(IPAddress)) Source: Source IP address of the received packet.
-buf(ptr) Buffer:    Pointer to the buffer where received data will be stored.
+^buf(ptr) Buffer:   Output buffer for received data.
 bufsize BufferSize: Size of the receive buffer in bytes.
 &int BytesRead:     Number of bytes actually received.
 

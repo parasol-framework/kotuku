@@ -110,7 +110,7 @@ static int processing_halt(lua_State *Lua)
 {
    double seconds;
    if (lua_type(Lua, 1) IS LUA_TNUMBER) seconds = lua_tonumber(Lua, 1);
-   else luaL_argerror(Lua, 1, "Seconds must be a number.");
+   else return luaL_argerror(Lua, 1, "Seconds must be a number.");
 
    if (seconds < 0) luaL_error(Lua, ERR::Args, "Seconds must be a positive number.");
 

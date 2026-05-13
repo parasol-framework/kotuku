@@ -317,7 +317,7 @@ The compression method used to compress the data will be identified in the first
 -INPUT-
 buf(ptr) Input: Pointer to the source data.
 bufsize InputSize: Byte length of the source data.
-buf(ptr) Output: Pointer to a destination buffer.
+^buf(ptr) Output: Pointer to a destination buffer.
 bufsize OutputSize: Available space in the destination buffer.
 &int Result: The size of the compressed data will be returned in this parameter.
 
@@ -610,7 +610,7 @@ before CompressStream was called.
 buf(ptr) Input: Pointer to the source data.
 bufsize Length: Amount of data to compress, in bytes.
 ptr(func) Callback: This callback function will be called with a pointer to the compressed data.
-buf(ptr) Output: Optional.  Points to a buffer that will receive the compressed data.  Must be equal to or larger than the #MinOutputSize field.
+^buf(ptr) Output: Optional.  Points to a buffer that will receive the compressed data.  Must be equal to or larger than the #MinOutputSize field.
 bufsize OutputSize: Indicates the size of the `Output` buffer, otherwise set to zero.
 
 -ERRORS-
@@ -721,7 +721,7 @@ The expected format of the `Callback` function is specified in the #CompressStre
 
 -INPUT-
 ptr(func) Callback: Refers to a function that will be called for each compressed block of data.
-buf(ptr) Output: Optional pointer to a buffer that will receive the compressed data.  If not set, the compression object will use its own buffer.
+^buf(ptr) Output: Optional pointer to a buffer that will receive the compressed data.  If not set, the compression object will use its own buffer.
 bufsize OutputSize: Size of the `Output` buffer (ignored if Output is `NULL`).
 
 -ERRORS-
@@ -859,7 +859,7 @@ When there is no more data in the decompression stream or if an error has occurr
 buf(ptr) Input: Pointer to data to decompress.
 bufsize Length: Amount of data to decompress from the Input parameter.
 ptr(func) Callback: Refers to a function that will be called for each decompressed block of information.
-buf(ptr) Output: Optional pointer to a buffer that will receive the decompressed data.  If not set, the compression object will use its own buffer.
+^buf(ptr) Output: Optional pointer to a buffer that will receive the decompressed data.  If not set, the compression object will use its own buffer.
 bufsize OutputSize: Size of the buffer specified in Output (value ignored if `Output` is `NULL`).
 
 -ERRORS-
@@ -992,7 +992,7 @@ an error code of `ERR::BufferOverflow`.
 
 -INPUT-
 buf(ptr) Input: Pointer to the compressed data.
-buf(ptr) Output: Pointer to the decompression buffer.
+^buf(ptr) Output: Pointer to the decompression buffer.
 bufsize OutputSize: Size of the decompression buffer.
 &int Result: The amount of bytes decompressed will be returned in this parameter.
 
