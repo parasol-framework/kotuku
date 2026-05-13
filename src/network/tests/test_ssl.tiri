@@ -77,13 +77,13 @@ function BasicSSLCommunication()
          end
       end,
       incoming = function(Socket:obj, Client:obj)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, read_len = Client.acRead(buffer)
 
          if err is ERR_Okay then
             if read_len is 0 then return end
 
-            emsg = buffer:substr(0, read_len)
+            emsg = buffer:getString(0, read_len)
             logOutput('[Server] Received encrypted message of ' .. read_len .. ' bytes: "' .. tostring(emsg) .. '"')
 
             -- Verify message integrity over SSL
@@ -126,13 +126,13 @@ function BasicSSLCommunication()
          end
       end,
       incoming = function(Socket)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, read_len = Socket.acRead(buffer)
 
          if err is ERR_Okay then
             if read_len is 0 then return end
 
-            emsg = buffer:substr(0, read_len)
+            emsg = buffer:getString(0, read_len)
             logOutput('[Client] Received encrypted message of ' .. read_len .. ' bytes: "' .. tostring(emsg) .. '"')
 
             -- Echo back the message to verify bidirectional SSL
@@ -192,11 +192,11 @@ function SSLStateTransitions()
       end,
       incoming = function(Socket, Client)
          logOutput('[Server] Incoming data callback triggered')
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, read_len = Client.acRead(buffer)
          if err is ERR_Okay then
             if read_len is 0 then return end
-            emsg = buffer:substr(0, read_len)
+            emsg = buffer:getString(0, read_len)
             logOutput('[Server] Received: ' .. emsg)
             data_exchange_complete = true
             Socket.mtDisconnectSocket(Client)
@@ -219,11 +219,11 @@ function SSLStateTransitions()
       end,
       incoming = function(Socket)
          logOutput('[Client] Incoming data callback triggered')
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, read_len = Socket.acRead(buffer)
          if err is ERR_Okay then
             if read_len is 0 then return end
-            emsg = buffer:substr(0, read_len)
+            emsg = buffer:getString(0, read_len)
             logOutput('[Client] Received: ' .. emsg)
             check Socket.acWrite('SSL_STATES_VERIFIED')
          elseif (err != ERR_Disconnected) then
@@ -285,11 +285,11 @@ function SSLDataIntegrity()
          end
       end,
       incoming = function(Socket:obj, Client:obj)
-         buffer = string.alloc(10240) -- Large buffer for big messages
+         buffer = array<byte, 10240> -- Large buffer for big messages
          err, read_len = Client.acRead(buffer)
 
          if err is ERR_Okay and read_len > 0 then
-            received = buffer:substr(0, read_len)
+            received = buffer:getString(0, read_len)
             expected = test_messages[msgIndex]
 
             logOutput('[Server] Received echo ' .. msgIndex .. ' (' .. read_len .. ' bytes)')
@@ -320,11 +320,11 @@ function SSLDataIntegrity()
    ssl_client = obj.new('netsocket', {
       name = 'SSLIntegrityClient',
       incoming = function(Socket)
-         buffer = string.alloc(10240)
+         buffer = array<byte, 10240>
          err, read_len = Socket.acRead(buffer)
 
          if err is ERR_Okay then
-            emsg = buffer:substr(0, read_len)
+            emsg = buffer:getString(0, read_len)
             logOutput('[Client] Received message (' .. read_len .. ' bytes), echoing back...')
 
             -- Echo back exactly what was received
@@ -388,10 +388,10 @@ function HTTPSConnection()
             -- Try to read any remaining data before disconnection
             if connection_established and not data_received then
                logOutput('Attempting final data read...')
-               buffer = string.alloc(8192)
+               buffer = array<byte, 8192>
                err, read_len = Socket.acRead(buffer)
                if err is ERR_Okay and read_len > 0 then
-                  chunk = buffer:substr(0, read_len)
+                  chunk = buffer:getString(0, read_len)
                   page_content ..= chunk
                   logOutput(f'Read {read_len} bytes during disconnect (total: {#page_content})')
                   data_received = true
@@ -408,7 +408,7 @@ function HTTPSConnection()
 
          -- Read all available data in this callback
          while true do
-            buffer = string.alloc(8192)
+            buffer = array<byte, 8192>
             err, read_len = Socket.acRead(buffer)
 
             if err is ERR_Okay then
@@ -420,7 +420,7 @@ function HTTPSConnection()
 
                chunks_received++
                callback_total += read_len
-               chunk = buffer:substr(0, read_len)
+               chunk = buffer:getString(0, read_len)
                page_content ..= chunk
 
                logOutput('Chunk ' .. chunks_received .. ' received: ' .. read_len .. ' bytes from ' ..
@@ -560,10 +560,10 @@ function CustomCertificate()
          end
       end,
       incoming = function(Socket, Client)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, read_len = Client.acRead(buffer)
          if err is ERR_Okay and read_len > 0 then
-            message = buffer:substr(0, read_len)
+            message = buffer:getString(0, read_len)
             logOutput('[Server] Received: ' .. message)
             custom_cert_test_complete = true
             Socket.mtDisconnectSocket(Client)

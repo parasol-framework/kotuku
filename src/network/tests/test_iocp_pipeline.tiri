@@ -259,7 +259,7 @@ function SlowReaderBackpressure()
             processing.halt(0.25)
          end
 
-         buffer = string.alloc(65536)
+         buffer = array<byte, 65536>
          while received < target_size do
             err, read_len = Client.acRead(buffer)
             if err is ERR_Disconnected then return end
@@ -418,7 +418,7 @@ function PendingTCPReadWriteFreeDropsCompletion()
       end,
       incoming = function(Socket, Client)
          processing.halt(0.25)
-         buffer = string.alloc(65536)
+         buffer = array<byte, 65536>
          err, read_len = Client.acRead(buffer)
          if (err != ERR_Okay) and (err != ERR_Disconnected) then
             error('Server read failed during pending TCP free test: ' .. mSys.GetErrorMsg(err))
@@ -434,7 +434,7 @@ function PendingTCPReadWriteFreeDropsCompletion()
       end,
       incoming = function(Socket)
          if client_freed then late_client_callbacks++ end
-         buffer = string.alloc(256)
+         buffer = array<byte, 256>
          err, read_len = Socket.acRead(buffer)
          if (err != ERR_Okay) and (err != ERR_Disconnected) then
             error('Client read failed during pending TCP free test: ' .. mSys.GetErrorMsg(err))
@@ -482,7 +482,7 @@ function PendingUDPReceiveSendFreeDropsCompletion()
    late_udp_callbacks = 0
 
    source = struct.new('IPAddress')
-   buffer = string.alloc(65536)
+   buffer = array<byte, 65536>
 
    server = obj.new('netsocket', {
       name          = 'IocpPendingUDPFreeServer',
@@ -560,7 +560,7 @@ function PendingSSLFreeDropsCompletion()
          end
       end,
       incoming = function(Socket, Client)
-         buffer = string.alloc(256)
+         buffer = array<byte, 256>
          err, read_len = Client.acRead(buffer)
          if (err != ERR_Okay) and (err != ERR_Disconnected) and (err != ERR_InvalidState) then
             error('SSL server read failed during pending SSL free test: ' .. mSys.GetErrorMsg(err))
@@ -576,7 +576,7 @@ function PendingSSLFreeDropsCompletion()
       end,
       incoming = function(Socket)
          if client_freed then late_client_callbacks++ end
-         buffer = string.alloc(256)
+         buffer = array<byte, 256>
          err, read_len = Socket.acRead(buffer)
          if (err != ERR_Okay) and (err != ERR_Disconnected) and (err != ERR_InvalidState) then
             error('SSL client read failed during pending SSL free test: ' .. mSys.GetErrorMsg(err))

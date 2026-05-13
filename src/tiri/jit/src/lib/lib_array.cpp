@@ -2842,6 +2842,24 @@ LJLIB_CF(array_clone)
 }
 
 //********************************************************************************************************************
+// __tostring metamethod.
+
+static int array_tostring(lua_State *L)
+{
+   GCarray *arr = lj_lib_checkarray(L, 1);
+
+   if (arr->elemtype IS AET::BYTE) {
+      GCstr *s = lj_str_new(L, arr->get<const char>(), arr->len);
+      setstrV(L, L->top++, s);
+      return 1;
+   }
+
+   CSTRING type_name = elemtype_name(arr->elemtype);
+   lua_pushfstring(L, "array<%s, %d>", type_name, int(arr->len));
+   return 1;
+}
+
+//********************************************************************************************************************
 // Registers the array library and sets up the base metatable for arrays.
 // Unlike the Lua table, arrays are created via conventional means, i.e. array.new().
 //
@@ -2864,6 +2882,10 @@ extern "C" int luaopen_array(lua_State *L)
    // Add __call metamethod to the library table for iteration support.  Enables: for ... in ... do
    lua_pushcfunction(L, array_call);
    lua_setfield(L, -2, "__call");
+
+   // Byte arrays are commonly used as string buffers, so tostring() exposes their contents directly.
+   lua_pushcfunction(L, array_tostring);
+   lua_setfield(L, -2, "__tostring");
 
    // NOBARRIER: basemt is a GC root.
    setgcref(basemt_it(g, LJ_TARRAY), obj2gco(lib));

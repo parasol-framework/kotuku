@@ -433,8 +433,31 @@ end
 
 @Test function ToString()
    str_array = array.new('hello')
-   assert(string.startsWith(tostring(str_array), 'array:'), "String array tostring() failed, got '" .. tostring(str_array) .. "'")
+   assert(tostring(str_array) is 'hello', "String array tostring() failed, got '" .. tostring(str_array) .. "'")
    assert(#str_array is 5, "String array length failed, expected 5, got " .. tostring(#str_array))
+
+   char_array = array<char> { 72, 101, 108, 108, 111 }
+   assert(tostring(char_array) is 'Hello', "Char array tostring() failed, got '" .. tostring(char_array) .. "'")
+   assert(string.format('%s', char_array) is 'Hello', 'Char array string.format() conversion failed')
+   assert(f'{char_array}' is 'Hello', 'Char array f-string conversion failed')
+
+   byte_array = array<byte> { 65, 66, 67 }
+   assert(tostring(byte_array) is 'ABC', "Byte array tostring() failed, got '" .. tostring(byte_array) .. "'")
+
+   nul_array = array<byte> { 65, 0, 66 }
+   nul_text = tostring(nul_array)
+   assert(nul_text is nul_array:getString(), 'Byte array tostring() should match getString() with embedded NUL bytes')
+   assert(#nul_text is 3, "Byte array tostring() should preserve full length, got " .. tostring(#nul_text))
+
+   int_array = array<int> { 1, 2, 3 }
+   assert(tostring(int_array) is 'array<int, 3>', "Integer array tostring() failed, got '" .. tostring(int_array) .. "'")
+
+   string_array = array<string> { 'hello', 'world' }
+   assert(tostring(string_array) is 'array<string, 2>', "String array tostring() failed, got '" .. tostring(string_array) .. "'")
+
+   empty_double_array = array<double, 0>
+   assert(tostring(empty_double_array) is 'array<double, 0>',
+      "Empty double array tostring() failed, got '" .. tostring(empty_double_array) .. "'")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

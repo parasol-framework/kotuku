@@ -170,7 +170,7 @@ end
       end,
       incoming = function(Socket)
          -- Read only a small chunk per notification; an explicit halt here makes the timeout scale with buffered data.
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, read_len = Socket.acRead(buffer)
          if err != ERR_Okay then
             logOutput('[Client] Read error: ' .. mSys.GetErrorMsg(err))

@@ -135,7 +135,7 @@ end
       flags   = NSF_SERVER|NSF_UDP,
       maxPacketSize = 65507,  -- Maximum UDP packet size
       incoming = function(Socket)
-         local buffer = string.alloc(65600)  -- Larger than max packet
+         local buffer = array<byte, 65600>  -- Larger than max packet
          local source = struct.new('IPAddress')
 
          local err, bytesRead = Socket.mtRecvFrom(source, buffer)

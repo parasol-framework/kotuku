@@ -23,12 +23,12 @@ glTestTimeout = 3.0
       address = '::1',  -- IPv6 loopback
       flags   = 'SERVER|UDP',
       incoming = function(Socket)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
          assert(err is ERR_Okay, 'Server failed to receive IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
 
          if bytesRead > 0 then
-            msg = buffer:sub(0, bytesRead)
+            msg = buffer:getString(0, bytesRead)
             logOutput('[IPv6 UDP Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(sv_source) .. ':' .. sv_source.port)
             assert(msg:startsWith('Hello IPv6'), 'Unexpected message received')
             msg_recv = true
@@ -72,13 +72,13 @@ end
       address = '::',  -- Bind to all interfaces (dual-stack)
       flags   = NSF_SERVER|NSF_UDP,
       incoming = function(Socket)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          source = struct.new('IPAddress')
          err, bytesRead = Socket.mtRecvFrom(source, buffer)
          assert(err is ERR_Okay, 'Server failed to receive dual-stack UDP data: ' .. mSys.GetErrorMsg(err))
 
          if bytesRead > 0 then
-            msg = buffer:sub(0, bytesRead)
+            msg = buffer:getString(0, bytesRead)
             logOutput('[Dual-Stack UDP Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(source) .. ':' .. source.port)
 
             if msg:endsWith('IPv4') then
