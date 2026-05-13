@@ -381,34 +381,34 @@ AsyncAction(AC::Activate, object, nullptr, callback);</code></pre>
 public variables and methods is helpful in accelerating development for new users. The following table lists the publicly declared fields:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">Class</td>
 <td style="text-align: left;"><code>objMetaClass *</code></td>
 <td style="text-align: left;">A direct reference to the class that manages the object, this is defined on creation.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">ChildPrivate</td>
 <td style="text-align: left;"><code>APTR</code></td>
 <td style="text-align: left;">For sub-classes only, allows private storage to be allocated and referenced here.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">CreatorMeta</td>
 <td style="text-align: left;"><code>APTR</code></td>
 <td style="text-align: left;">For client use only, allows custom data of any kind to be stored. This is the only field that can be written directly by the client.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">Owner</td>
 <td style="text-align: left;"><code>Object *</code></td>
 <td style="text-align: left;">A direct reference to the object that has ownership, this is defined on creation.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">UID</td>
 <td style="text-align: left;"><code>OBJECTID</code></td>
 <td style="text-align: left;">The unique identifier for this object.</td>
@@ -418,53 +418,53 @@ public variables and methods is helpful in accelerating development for new user
 <p>The following C++ methods are available for reading <code>Object</code> state information.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Method</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>bool initialised()</code></td>
 <td style="text-align: left;">Returns <code>true</code> if the object has been initialised.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>bool defined(NF Flags)</code></td>
 <td style="text-align: left;">Returns <code>true</code> if any of the <code>NF</code> type <code>Flags</code> are currently defined for this object.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>bool isSubClass()</code></td>
 <td style="text-align: left;">Returns <code>true</code> if the object is the member of a sub-class.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>OBJECTID ownerID()</code></td>
 <td style="text-align: left;">Returns the ID of the owner.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>CLASSID classID()</code></td>
 <td style="text-align: left;">Returns the ID of the object&#39;s class (can be a sub-class).</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>CLASSID baseClassID()</code></td>
 <td style="text-align: left;">Returns the ID of the object&#39;s base-class (never a sub-class).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>NF flags()</code></td>
 <td style="text-align: left;">Return all <code>NF</code> state flags currently defined for this object.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>CSTRING className()</code></td>
 <td style="text-align: left;">Return the name of the class that this object belongs to.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>bool collecting()</code></td>
 <td style="text-align: left;">Returns <code>true</code> if the object is being collected, or otherwise marked for collection.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>bool terminating()</code></td>
 <td style="text-align: left;">Returns <code>true</code> if the object is being terminated.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>bool hasOwner(OBJECTID ID)</code></td>
 <td style="text-align: left;">Return true if the referenced object <code>ID</code> has ownership.</td>
 </tr>
@@ -473,17 +473,17 @@ public variables and methods is helpful in accelerating development for new user
 <p>The following C++ methods control object locking.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Method</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>ERR lock(int Timeout)</code></td>
 <td style="text-align: left;">Efficiently obtains an object lock without a call to <code>LockObject()</code>, keeping overhead to the bare minimum. Will fail if the object is being collected.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>void unlock()</code></td>
 <td style="text-align: left;">Reverse a previous call to <code>lock()</code>.</td>
 </tr>
@@ -492,41 +492,41 @@ public variables and methods is helpful in accelerating development for new user
 <p>The following C++ methods simplify the process of getting and setting fields via virtual accessors.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Method</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>ERR set(FIELD UID, T Value)</code></td>
 <td style="text-align: left;">Set a field of type T. All primitive types are supported, while special types include <code>FRGB</code>, <code>FUNCTION</code>, <code>std::string</code> and <code>Unit</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>ERR setFields(Args&amp;&amp;... pFields)</code></td>
 <td style="text-align: left;">Set one or more field values using field initialisers (same technique as <code>create()</code>).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>ERR set(FIELD UID, T *Value, size_t Elements, int Type [Optional])</code></td>
 <td style="text-align: left;">Set an array of type T, pointed to by Value and consisting of total Elements.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>ERR set(FIELD UID, ARRAY &amp;Value, int Type [Optional])</code></td>
 <td style="text-align: left;">Set an array of any type, where ARRAY can be a std::array<T>, std::vector<T> or kt::vector<T>. An FD descriptor can be defined in Type if the array type cannot be discerned at compile time.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>ERR get(FIELD UID, T *Value)</code></td>
 <td style="text-align: left;">Retrieve a field value of type <code>T</code>, which can be an integral, pointer, Unit or CSTRING.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>ERR get(FIELD UID, std::string &amp;Value)</code></td>
 <td style="text-align: left;">Copy a field value to a string buffer. Supports in-built type conversion and array fields are converted to CSV lists.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>ERR get(FIELD UID, T * &amp;Result, int &amp;Elements, bool TypeCheck = true)</code></td>
 <td style="text-align: left;">Retrieve a direct pointer to the contents of an array field with elements of type <code>T</code>. The total number of items will be stored in <code>Elements</code>. Set <code>TypeCheck</code> to false if <code>T</code> is abstracted.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>T get(FIELD UID)</code></td>
 <td style="text-align: left;">Retrieve a field value of type <code>T</code>. No error checking is supported, and the value will be zero on failure.</td>
 </tr>

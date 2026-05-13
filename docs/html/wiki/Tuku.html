@@ -282,29 +282,29 @@
 <h3 id="core">Core</h3>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>url</code></td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Target HTTP or HTTPS URL. Required unless <code>version</code> or <code>help</code> is used.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>method</code></td>
 <td style="text-align: left;">enum</td>
 <td style="text-align: left;">HTTP method: <code>get</code>, <code>head</code>, <code>delete</code>, <code>options</code>, <code>post</code>, <code>put</code>, or <code>patch</code>. Default: <code>get</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>version</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Print the Tuku version and exit.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>help</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Print usage information and exit.</td>
@@ -314,44 +314,44 @@
 <h3 id="output">Output</h3>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>output</code></td>
 <td style="text-align: left;">file</td>
 <td style="text-align: left;">Save the response body to a file instead of standard output.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>status</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Print the numeric HTTP status code to standard output.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>headers</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Print all response headers as <code>tuku: header key=value</code> lines.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>include</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Print response headers before the response body. Alias: <code>with-headers</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>silent</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Suppress non-body output.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>verbose</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Print a structured transfer summary after the request completes.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>fail</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Treat HTTP 4xx and 5xx statuses as failures, raising <code>ERR_Failed</code>.</td>
@@ -362,39 +362,39 @@
 <p>Only one body option may be used per request. Providing any body option implies <code>method=post</code> unless <code>method</code> is set explicitly.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>data</code></td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Send a string as the request body.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>datafile</code></td>
 <td style="text-align: left;">file</td>
 <td style="text-align: left;">Read the request body from a file.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>json</code></td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Send a JSON string as the request body. Implies <code>contenttype=application/json</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>form</code></td>
 <td style="text-align: left;">array</td>
 <td style="text-align: left;">Send form fields as <code>name=value</code> entries. Implies <code>contenttype=application/x-www-form-urlencoded</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>multipart</code></td>
 <td style="text-align: left;">array</td>
 <td style="text-align: left;">Send multipart form fields as <code>name=value</code> or file fields as <code>name=@path</code>. Implies a <code>multipart/form-data</code> content type with a generated boundary.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>contenttype</code></td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Explicitly set the Content-Type request header, overriding implicit defaults.</td>
@@ -404,24 +404,24 @@
 <h3 id="request-headers">Request Headers</h3>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>header</code></td>
 <td style="text-align: left;">array</td>
 <td style="text-align: left;">Custom request headers in <code>Name: Value</code> form.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>useragent</code></td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">User-Agent request header. Default: <code>Tuku/1.0 Kotuku</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>user</code></td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Authentication credentials as <code>username:password</code>.</td>
@@ -431,7 +431,7 @@
 <h3 id="connection">Connection</h3>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Default</th>
@@ -439,31 +439,31 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>timeout</code></td>
 <td style="text-align: left;">number</td>
 <td style="text-align: left;">30</td>
 <td style="text-align: left;">Overall transfer timeout in seconds.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>connect-timeout</code></td>
 <td style="text-align: left;">number</td>
 <td style="text-align: left;">10</td>
 <td style="text-align: left;">Initial connection timeout in seconds.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>data-timeout</code></td>
 <td style="text-align: left;">number</td>
 <td style="text-align: left;">30</td>
 <td style="text-align: left;">Send/receive data timeout in seconds.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>proxy</code></td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">Proxy server as <code>host:port</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>insecure</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;"></td>
@@ -474,39 +474,39 @@
 <h3 id="transfer-controls">Transfer Controls</h3>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>resume</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Resume a partial download. Requires <code>output</code> and <code>method=get</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>raw</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Disable HTTP chunk handling.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>no-head</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Do not send a HEAD probe before upload methods.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>follow</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Follow HTTP redirects.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>max-redirects</code></td>
 <td style="text-align: left;">integer</td>
 <td style="text-align: left;">Maximum redirects to follow when <code>follow</code> is set. Default: <code>10</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>debug-socket</code></td>
 <td style="text-align: left;">flag</td>
 <td style="text-align: left;">Log request socket headers and data.</td>
@@ -602,25 +602,25 @@ redirects switch the next request to <code>GET</code>; <code>307</code> and <cod
 <pre><code>tuku: error: type=TYPE [status=NNN] [code=NNN] message=DESCRIPTION</code></pre>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>type</code></td>
 <td style="text-align: left;">Error category: <code>argument</code>, <code>transport</code>, <code>http</code>, <code>redirect</code>, or <code>runtime</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>status</code></td>
 <td style="text-align: left;">HTTP status code, present for <code>http</code> errors.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>code</code></td>
 <td style="text-align: left;">Internal error code, present for <code>transport</code> and <code>runtime</code> errors.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>message</code></td>
 <td style="text-align: left;">Human-readable description of the error.</td>
 </tr>
@@ -642,37 +642,37 @@ tuku: header content-type=text/html; charset=UTF-8
 tuku: header content-length=1256</code></pre>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Line</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>method</code></td>
 <td style="text-align: left;">HTTP method used (upper-case).</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>url</code></td>
 <td style="text-align: left;">Request URL.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>status</code></td>
 <td style="text-align: left;">HTTP status code.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>bytes</code></td>
 <td style="text-align: left;">Number of bytes received.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>output</code></td>
 <td style="text-align: left;">Output target: a file path or <code>stdout</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>transport</code></td>
 <td style="text-align: left;">Transport result: <code>Okay</code> on success, or an error description.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>header</code></td>
 <td style="text-align: left;">One line per response header, in <code>key=value</code> format.</td>
 </tr>

@@ -416,11 +416,11 @@
 <li><a href="#credits">Credits</a></li>
 </ul>
 <h2 id="resources">Resources</h2>
-<p>For more information on the usage of available classes and modules, please refer to the Kōtuku API at [<a href="http://www.kotuku.dev](https://www.kotuku.dev)">www.kotuku.dev](https://www.kotuku.dev)</a>.</p>
+<p>For more information on the usage of available classes and modules, please refer to the Kōtuku API at <a href="https://www.kotuku.dev"><span>www.kotuku.dev</span></a>.</p>
 <p>For general information on the syntax provided by Lua, please read the following online manuals:</p>
 <ul>
-<li>[<a href="http://www.lua.org/manual/](http://www.lua.org/manual/)">www.lua.org/manual/](http://www.lua.org/manual/)</a></li>
-<li>[<a href="http://www.lua.org/pil/](http://www.lua.org/pil/)">www.lua.org/pil/](http://www.lua.org/pil/)</a></li>
+<li><a href="http://www.lua.org/manual/"><span>www.lua.org/manual/</span></a></li>
+<li><a href="http://www.lua.org/pil/"><span>www.lua.org/pil/</span></a></li>
 <li><a href="http://lua-users.org/wiki/SampleCode">lua-users.org/wiki/SampleCode</a></li>
 </ul>
 <hr>
@@ -506,59 +506,59 @@
 <h4 id="comparison-and-logical-operators">Comparison and Logical Operators</h4>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Unicode</th>
 <th>ASCII</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>≠</code></td>
 <td><code>!=</code></td>
 <td>Not equal</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>≤</code></td>
 <td><code>&lt;=</code></td>
 <td>Less than or equal</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>≥</code></td>
 <td><code>&gt;=</code></td>
 <td>Greater than or equal</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>«</code></td>
 <td><code>&lt;&lt;</code></td>
 <td>Left shift</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>»</code></td>
 <td><code>&gt;&gt;</code></td>
 <td>Right shift</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>‥</code></td>
 <td><code>..</code></td>
 <td>Concatenation</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>…</code></td>
 <td><code>...</code></td>
 <td>Varargs (horizontal ellipsis)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>⁇</code></td>
 <td><code>??</code></td>
 <td>Null coalescing (if-empty)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>▷</code></td>
 <td><code>:&gt;</code></td>
 <td>Ternary separator</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>⧺</code></td>
 <td><code>++</code></td>
 <td>Increment</td>
@@ -568,24 +568,24 @@
 <h4 id="arithmetic-operators">Arithmetic Operators</h4>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Unicode</th>
 <th>ASCII</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>×</code></td>
 <td><code>*</code></td>
 <td>Multiplication</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>÷</code></td>
 <td><code>/</code></td>
 <td>Division</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>↑</code></td>
 <td><code>**</code></td>
 <td>Exponentiation (right-associative)</td>
@@ -751,7 +751,7 @@
 <p><strong>Syntax:</strong></p>
 <div class="sourceCode" id="cb15"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">max_size</span> <span class="at">&lt;const&gt;</span> <span class="op">=</span> <span class="dv">100</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">prefix</span> <span class="at">&lt;const&gt;</span><span class="op">:</span><span class="va">str</span> <span class="op">=</span> <span class="st">&quot;test_&quot;</span></span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="cn">DEBUG_MODE</span> <span class="op">&lt;</span><span class="va">const</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">true</span></span></code></pre></div>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="cn">DEBUG_MODE</span> <span class="op">&lt;</span><span class="va">const</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">true</span></span></code></pre></div>
 <p>The <code>&lt;const&gt;</code> attribute can appear before or after a type annotation:</p>
 <div class="sourceCode" id="cb16"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">value</span> <span class="at">&lt;const&gt;</span><span class="op">:</span><span class="va">num</span> <span class="op">=</span> <span class="dv">42</span>    <span class="co">-- Attribute before type</span></span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">value</span><span class="op">:</span><span class="va">num</span> <span class="op">&lt;</span><span class="va">const</span><span class="op">&gt;</span> <span class="op">=</span> <span class="dv">42</span>    <span class="co">-- Type before attribute (also valid)</span></span></code></pre></div>
@@ -763,7 +763,7 @@
 <div class="sourceCode" id="cb18"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">x</span> <span class="at">&lt;const&gt;</span> <span class="op">=</span> <span class="dv">1</span></span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="va">x</span> <span class="op">=</span> <span class="dv">2</span>                     <span class="co">-- Error: cannot assign to const local &#39;x&#39;</span></span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="cn">CONFIG</span> <span class="op">&lt;</span><span class="va">const</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">{}</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="cn">CONFIG</span> <span class="op">&lt;</span><span class="va">const</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">{}</span></span>
 <span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="cn">CONFIG</span> <span class="op">=</span> <span class="op">{}</span>               <span class="co">-- Error: cannot assign to const global &#39;CONFIG&#39;</span></span></code></pre></div>
 <p><strong>Table contents are mutable:</strong></p>
 <p>The <code>&lt;const&gt;</code> attribute protects the variable binding, not the contents of the value. Table and object contents can still be modified:</p>
@@ -789,7 +789,7 @@
 <p>Enum declarations generate a group of numeric constants from a shared prefix. The enum prefix is used only to build the
 generated names; it does not create a runtime table or value.</p>
 <p><strong>Syntax:</strong></p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="va">global</span><span class="op">|</span><span class="kw">local</span><span class="op">]</span> <span class="cn">PREFIX</span> <span class="op">=</span> enum <span class="op">{</span></span>
+<div class="sourceCode" id="cb22"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="kw">global</span><span class="op">|</span><span class="kw">local</span><span class="op">]</span> <span class="cn">PREFIX</span> <span class="op">=</span> enum <span class="op">{</span></span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>   <span class="cn">MEMBER</span> <span class="op">=</span> <span class="dv">0</span><span class="op">,</span></span>
 <span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>   <span class="cn">NEXT_MEMBER</span><span class="op">,</span></span>
 <span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
@@ -806,7 +806,7 @@ generated names; it does not create a runtime table or value.</p>
 <p>The <code>local</code>, <code>global</code>, and bare assignment forms are supported:</p>
 <div class="sourceCode" id="cb24"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="cn">MODE</span> <span class="op">=</span> enum <span class="op">{</span> <span class="cn">FAST</span><span class="op">,</span> <span class="cn">SLOW</span> <span class="op">}</span>             <span class="co">-- Local constants</span></span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="cn">STATE</span> <span class="op">=</span> enum <span class="op">{</span> <span class="cn">IDLE</span><span class="op">,</span> <span class="cn">RUNNING</span> <span class="op">}</span>   <span class="co">-- Local constants</span></span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="cn">ERR</span> <span class="op">=</span> enum <span class="op">{</span> <span class="cn">OKAY</span> <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> <span class="cn">FAIL</span> <span class="op">}</span>   <span class="co">-- Global constants</span></span></code></pre></div>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="cn">ERR</span> <span class="op">=</span> enum <span class="op">{</span> <span class="cn">OKAY</span> <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> <span class="cn">FAIL</span> <span class="op">}</span>   <span class="co">-- Global constants</span></span></code></pre></div>
 <p>If the first member has no explicit value, it starts at <code>0</code>. Later members without explicit values increment from the
 previous member value:</p>
 <div class="sourceCode" id="cb25"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="cn">SAMPLE</span> <span class="op">=</span> enum <span class="op">{</span></span>
@@ -875,45 +875,45 @@ Annotations follow the parameter name after a colon and constrain the expected a
 <h3 id="supported-type-names">Supported Type Names</h3>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Name</th>
 <th>Notes</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>any</code></td>
 <td>Accepts any type</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>nil</code></td>
 <td>Explicit nil</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>num</code></td>
 <td>Numeric values</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>str</code></td>
 <td>Text strings</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>bool</code></td>
 <td>Boolean values</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>table</code></td>
 <td>Tables and dictionaries</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>func</code></td>
 <td>Callable values</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>thread</code></td>
 <td>Coroutines</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>obj</code></td>
 <td>Kōtuku objects (userdata)</td>
 </tr>
@@ -946,7 +946,7 @@ Annotations follow the parameter name after a colon and constrain the expected a
 <span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a><span class="va">name</span> <span class="op">=</span> <span class="st">&quot;Bob&quot;</span>         <span class="co">-- Valid</span></span>
 <span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="va">name</span> <span class="op">=</span> <span class="dv">42</span>            <span class="co">-- Error: cannot assign &#39;number&#39; to variable of type &#39;string&#39;</span></span>
 <span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="va">glItems</span> <span class="op">=</span> <span class="op">{}</span>    <span class="co">-- glItems is fixed to &#39;table&#39;</span></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="va">glItems</span> <span class="op">=</span> <span class="op">{}</span>    <span class="co">-- glItems is fixed to &#39;table&#39;</span></span>
 <span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a><span class="va">glItems</span> <span class="op">=</span> <span class="op">{</span> <span class="va">a</span> <span class="op">=</span> <span class="dv">1</span> <span class="op">}</span>    <span class="co">-- Valid</span></span>
 <span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a><span class="va">glItems</span> <span class="op">=</span> <span class="st">&quot;list&quot;</span>       <span class="co">-- Error: cannot assign &#39;string&#39; to variable of type &#39;table&#39;</span></span></code></pre></div>
 <p>This behaviour is automatic and requires no additional syntax. The compiler infers the type from the first assignment
@@ -1122,13 +1122,13 @@ type inference cannot determine the return type before analysing the function bo
 <span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">config</span>             <span class="co">-- Explicit nil initialisation</span></span></code></pre></div>
 <h3 id="global-variables">Global Variables</h3>
 <p>To create or access global variables, use the <code>global</code> keyword. It is recommended that global declarations appear before any reference to the variable:</p>
-<div class="sourceCode" id="cb49"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="cn">DEBUG_MODE</span> <span class="op">=</span> <span class="kw">true</span></span>
-<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="cn">APP_VERSION</span></span>
+<div class="sourceCode" id="cb49"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="cn">DEBUG_MODE</span> <span class="op">=</span> <span class="kw">true</span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="cn">APP_VERSION</span></span>
 <span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="kw">function</span> configure<span class="op">()</span>     <span class="co">-- Global function is accessible in the parent context</span></span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="kw">function</span> configure<span class="op">()</span>     <span class="co">-- Global function is accessible in the parent context</span></span>
 <span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>   <span class="cn">APP_VERSION</span> <span class="op">&lt;</span><span class="va">const</span><span class="op">&gt;</span> <span class="op">=</span> <span class="st">&quot;1.0&quot;</span>  <span class="co">-- Assigns to the global and makes it immutable</span></span>
-<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>   <span class="va">global</span> <span class="cn">LATE_CREATION</span> <span class="op">=</span> <span class="kw">true</span>  <span class="co">-- Valid, but won&#39;t exist until this function runs</span></span>
-<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a>   <span class="va">global</span> <span class="cn">DEBUG_MODE</span> <span class="op">=</span> <span class="kw">false</span>    <span class="co">-- Modifies the original global without shadowing it</span></span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">global</span> <span class="cn">LATE_CREATION</span> <span class="op">=</span> <span class="kw">true</span>  <span class="co">-- Valid, but won&#39;t exist until this function runs</span></span>
+<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a>   <span class="kw">global</span> <span class="cn">DEBUG_MODE</span> <span class="op">=</span> <span class="kw">false</span>    <span class="co">-- Modifies the original global without shadowing it</span></span>
 <span id="cb49-8"><a href="#cb49-8" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="cn">DEBUG_MODE</span> <span class="op">=</span> <span class="kw">true</span>      <span class="co">-- Valid; this local shadows the global within this scope</span></span>
 <span id="cb49-9"><a href="#cb49-9" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="cn">DEBUG_MODE</span><span class="op">)</span>            <span class="co">-- Prints local &#39;true&#39;</span></span>
 <span id="cb49-10"><a href="#cb49-10" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
@@ -1345,29 +1345,29 @@ type inference cannot determine the return type before analysing the function bo
 <p>The <code>except</code> blocks catch exceptions raised within the preceding <code>try</code> block. Multiple <code>except</code> handlers are permitted, each with their own optional filter using the <code>when</code> clause. An unfiltered handler is recommended at the end to catch unexpected errors. The exception parameter <code>e</code> (or any name of your choosing) is a table containing information about the error:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Field</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>code</code></td>
 <td>The <code>ERR</code> code, e.g. <code>ERR_Failed</code>. <code>ERR_Exception</code> is the default for Lua errors.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>message</code></td>
 <td>Human-readable error description.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>line</code></td>
 <td>Line number where the error occurred.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>trace</code></td>
 <td>Native array of stack frames (only with <code>try&lt;trace&gt;</code> enabled).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>stackTrace</code></td>
 <td>Formatted traceback string (only with <code>try&lt;trace&gt;</code> enabled).</td>
 </tr>
@@ -1493,21 +1493,21 @@ type inference cannot determine the return type before analysing the function bo
 <p>The <code>trace</code> field contains an array of frame tables, each with the following fields:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Field</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>source</code></td>
 <td>Source file name (may be <code>nil</code>).</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>line</code></td>
 <td>Line number (0 if unknown).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>func</code></td>
 <td>Function name (may be <code>nil</code> for anonymous functions).</td>
 </tr>
@@ -1968,37 +1968,37 @@ offer a declarative style for working with numeric sequences.</p>
 <p><strong>Method Return Types:</strong></p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Method</th>
 <th>Returns</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>filter()</code></td>
 <td>Table</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>reduce()</code></td>
 <td>Single value (type depends on reducer)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>map()</code></td>
 <td>Table</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>take()</code></td>
 <td>Table</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>any()</code></td>
 <td>Boolean</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>all()</code></td>
 <td>Boolean</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>find()</code></td>
 <td>Value or <code>nil</code></td>
 </tr>
@@ -2214,11 +2214,11 @@ complex expression positions, the compiler may wrap the <code>choose</code> in a
 </ul>
 <p><strong>Example - Exporting Globals:</strong></p>
 <div class="sourceCode" id="cb134"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb134-1"><a href="#cb134-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- helpers.tiri</span></span>
-<span id="cb134-2"><a href="#cb134-2" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="kw">function</span> formatDate<span class="op">(</span><span class="va">Timestamp</span><span class="op">)</span></span>
+<span id="cb134-2"><a href="#cb134-2" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="kw">function</span> formatDate<span class="op">(</span><span class="va">Timestamp</span><span class="op">)</span></span>
 <span id="cb134-3"><a href="#cb134-3" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="fu">os.date</span><span class="op">(</span><span class="st">&#39;%Y-%m-%d&#39;</span><span class="op">,</span> <span class="va">Timestamp</span><span class="op">)</span></span>
 <span id="cb134-4"><a href="#cb134-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb134-5"><a href="#cb134-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb134-6"><a href="#cb134-6" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="cn">HELPER_VERSION</span> <span class="op">=</span> <span class="st">&#39;1.0&#39;</span></span>
+<span id="cb134-6"><a href="#cb134-6" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="cn">HELPER_VERSION</span> <span class="op">=</span> <span class="st">&#39;1.0&#39;</span></span>
 <span id="cb134-7"><a href="#cb134-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb134-8"><a href="#cb134-8" aria-hidden="true" tabindex="-1"></a><span class="co">-- Private to helpers.tiri</span></span>
 <span id="cb134-9"><a href="#cb134-9" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">internal_cache</span> <span class="op">=</span> <span class="op">{}</span></span></code></pre></div>
@@ -2231,7 +2231,7 @@ complex expression positions, the compiler may wrap the <code>choose</code> in a
 <p><strong>Conditional Pre-Processing:</strong></p>
 <p>The <code>import</code> statement works seamlessly with compile-time conditionals. Imported files can use <code>@if(imported=true)</code> to include code only when being imported, or <code>@if(imported=false)</code> for code that runs only when executed directly:</p>
 <div class="sourceCode" id="cb136"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb136-1"><a href="#cb136-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- library.tiri</span></span>
-<span id="cb136-2"><a href="#cb136-2" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="kw">function</span> doWork<span class="op">()</span></span>
+<span id="cb136-2"><a href="#cb136-2" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="kw">function</span> doWork<span class="op">()</span></span>
 <span id="cb136-3"><a href="#cb136-3" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Always available</span></span>
 <span id="cb136-4"><a href="#cb136-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb136-5"><a href="#cb136-5" aria-hidden="true" tabindex="-1"></a></span>
@@ -2282,37 +2282,37 @@ end</code></pre>
 <p>For consistency, we use a set of commonly named global variables to store module function tables. This is because loading an API more than once is undesirable. The following table illustrates the global names that we use for the default set of APIs.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Module</th>
 <th>Global Name</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>audio</td>
 <td>mAudio</td>
 </tr>
-<tr class="even">
+<tr>
 <td>core</td>
 <td>mSys</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>display</td>
 <td>mGfx</td>
 </tr>
-<tr class="even">
+<tr>
 <td>font</td>
 <td>mFont</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>network</td>
 <td>mNet</td>
 </tr>
-<tr class="even">
+<tr>
 <td>vector</td>
 <td>mVec</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>xml</td>
 <td>mXML</td>
 </tr>
@@ -2497,17 +2497,17 @@ end</code></pre>
 <p>Controls the garbage collector. The optional <code>Mode</code> parameter specifies the collection mode:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Mode</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>full</code></td>
 <td>Performs a full garbage collection cycle (default).</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>step</code></td>
 <td>Performs an incremental collection step.</td>
 </tr>
@@ -2516,14 +2516,14 @@ end</code></pre>
 <p>The optional <code>Options</code> table supports the following fields:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>stepSize</code></td>
 <td>integer</td>
 <td>Step size for incremental collection (only used with <code>&quot;step&quot;</code> mode).</td>
@@ -2551,39 +2551,39 @@ end</code></pre>
 <p>Returns a table containing garbage collector statistics. This is useful for monitoring memory usage and GC behaviour.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>memoryKB</code></td>
 <td>integer</td>
 <td>Memory usage in kilobytes.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>memoryBytes</code></td>
 <td>integer</td>
 <td>Remainder bytes (total bytes = memoryKB × 1024 + memoryBytes).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>memoryMB</code></td>
 <td>number</td>
 <td>Total memory usage in megabytes (convenience field).</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>isRunning</code></td>
 <td>boolean</td>
 <td><code>true</code> if the garbage collector is currently running.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>pause</code></td>
 <td>integer</td>
 <td>Current pause multiplier (controls GC frequency, default 200).</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>stepMul</code></td>
 <td>integer</td>
 <td>Current step multiplier (controls GC speed, default 200).</td>
@@ -2743,49 +2743,49 @@ processing.sleep()</code></pre>
 <p>Notice that each field name is defined using the same order and names as identified in the structure. Each name is prefixed with a lower-case character that indicates the field type. Using the correct field types is the most crucial part of the structure definition and each must be chosen from the following table:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Character</th>
 <th>Field Type</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>l</td>
 <td>Integer (32-bit)</td>
 </tr>
-<tr class="even">
+<tr>
 <td>d</td>
 <td>Double (64-bit)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>x</td>
 <td>Integer (64-bit)</td>
 </tr>
-<tr class="even">
+<tr>
 <td>f</td>
 <td>Float (32-bit)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>w</td>
 <td>Integer (16-bit)</td>
 </tr>
-<tr class="even">
+<tr>
 <td>c</td>
 <td>Char (8-bit)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>p</td>
 <td>Pointer. You can use &#39;:StructName&#39; as a suffix to reference other structures.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>s</td>
 <td>String</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>o</td>
 <td>Object (Pointer)</td>
 </tr>
-<tr class="even">
+<tr>
 <td>u</td>
 <td>Unsigned (Use in conjunction with a type)</td>
 </tr>
@@ -2810,21 +2810,21 @@ processing.sleep()</code></pre>
 <p>The following flags can be combined to modify regex compilation:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Flag</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>regex.ICASE</code></td>
 <td>Case insensitive matching</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>regex.MULTILINE</code></td>
 <td>^ and $ match line boundaries</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>regex.DOT_ALL</code></td>
 <td>. matches newlines</td>
 </tr>
@@ -2835,45 +2835,45 @@ processing.sleep()</code></pre>
 <p>The following <code>RMATCH</code> flags can be used with the optional <code>Flags</code> parameter in <code>test()</code>, <code>match()</code>, <code>search()</code>, <code>replace()</code>, and <code>split()</code> methods:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Flag</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>regex.NOT_BEGIN_OF_LINE</code></td>
 <td>Do not treat the beginning of text as start of line</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>regex.NOT_END_OF_LINE</code></td>
 <td>Do not treat the end of text as end of line</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>regex.NOT_BEGIN_OF_WORD</code></td>
 <td>Do not treat the beginning of text as start of word</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>regex.NOT_END_OF_WORD</code></td>
 <td>Do not treat the end of text as end of word</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>regex.NOT_NULL</code></td>
 <td>Do not match empty sequences</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>regex.CONTINUOUS</code></td>
 <td>Only match at the beginning of text</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>regex.PREV_AVAILABLE</code></td>
 <td>Previous character is available for look-behind</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>regex.REPLACE_NO_COPY</code></td>
 <td>Do not copy non-matching parts in replace operations</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>regex.REPLACE_FIRST_ONLY</code></td>
 <td>Replace only the first occurrence</td>
 </tr>
@@ -2903,7 +2903,7 @@ processing.sleep()</code></pre>
 <span id="cb166-6"><a href="#cb166-6" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <h3 id="performance-considerations">Performance Considerations</h3>
 <p>Regex objects are compiled once and can be reused many times, making them significantly more efficient than traditional string matching for complex patterns. Store regex objects in deferred expressions to create them on demand and avoid recreating them:</p>
-<div class="sourceCode" id="cb167"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb167-1"><a href="#cb167-1" aria-hidden="true" tabindex="-1"></a><span class="va">global</span> <span class="va">emailValidator</span> <span class="op">=</span> <span class="op">&lt;{</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;^[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}$&#39;</span><span class="op">)</span> <span class="op">}&gt;</span></span>
+<div class="sourceCode" id="cb167"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb167-1"><a href="#cb167-1" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="va">emailValidator</span> <span class="op">=</span> <span class="op">&lt;{</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;^[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}$&#39;</span><span class="op">)</span> <span class="op">}&gt;</span></span>
 <span id="cb167-2"><a href="#cb167-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb167-3"><a href="#cb167-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="va">email</span> <span class="kw">in</span> values<span class="op">(</span><span class="va">emailList</span><span class="op">)</span> <span class="cf">do</span></span>
 <span id="cb167-4"><a href="#cb167-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">emailValidator</span><span class="op">.</span>test<span class="op">(</span><span class="va">email</span><span class="op">)</span> <span class="cf">then</span></span>
@@ -3032,74 +3032,74 @@ processing.sleep()</code></pre>
 <p><strong>Supported Element Types:</strong></p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Type</th>
 <th>Size</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>byte</code></td>
 <td>1</td>
 <td>Unsigned 8-bit integer (0-255)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>int16</code></td>
 <td>2</td>
 <td>Signed 16-bit integer</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>int</code></td>
 <td>4</td>
 <td>Signed 32-bit integer</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>int64</code></td>
 <td>8</td>
 <td>Signed 64-bit integer</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>float</code></td>
 <td>4</td>
 <td>32-bit floating point</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>double</code></td>
 <td>8</td>
 <td>64-bit floating point</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>string</code></td>
 <td>8</td>
 <td>String reference</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>object</code></td>
 <td>varies</td>
 <td>Object reference</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>struct</code></td>
 <td>varies</td>
 <td>Structure reference</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>table</code></td>
 <td>varies</td>
 <td>Table reference</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>array</code></td>
 <td>varies</td>
 <td>Array reference (use for creating multi-dimensional arrays)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>any</code></td>
 <td>16</td>
 <td>Any type from the above (note: convenience comes at a cost of efficiency)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>pointer</code></td>
 <td>8</td>
 <td>Memory pointer (unavailable for client use)</td>
@@ -3437,24 +3437,24 @@ They can be used anywhere an expression is valid. The generated bytecode receive
 literal, so no runtime metadata lookup is required.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Expression</th>
 <th>Type</th>
 <th>Resolved value</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>@FunctionName</code></td>
 <td><code>str</code></td>
 <td>The enclosing function name.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>@SourceFile</code></td>
 <td><code>str</code></td>
 <td>The current source file path.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>@SourceLine</code></td>
 <td><code>num</code></td>
 <td>The 1-based source line number of the annotation expression.</td>
@@ -3493,29 +3493,29 @@ annotations and must appear before a function declaration or in the syntax docum
 <p><strong>Supported Argument Types:</strong></p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Type</th>
 <th>Example</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>String</td>
 <td><code>name=&#39;Test Name&#39;</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td>Number</td>
 <td><code>timeout=5.0</code>, <code>priority=1</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Boolean</td>
 <td><code>enabled=true</code>, <code>network=false</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td>Array</td>
 <td><code>labels=[&#39;unit&#39;, &#39;smoke&#39;, &#39;critical&#39;]</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Bare Identifier</td>
 <td><code>deprecated</code> (equivalent to <code>deprecated=true</code>)</td>
 </tr>
@@ -3542,7 +3542,7 @@ annotations and must appear before a function declaration or in the syntax docum
 <span id="cb213-5"><a href="#cb213-5" aria-hidden="true" tabindex="-1"></a>@<span class="va">Test</span> <span class="kw">local</span> <span class="kw">function</span> localFunc<span class="op">()</span> <span class="kw">end</span></span>
 <span id="cb213-6"><a href="#cb213-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb213-7"><a href="#cb213-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- Global functions</span></span>
-<span id="cb213-8"><a href="#cb213-8" aria-hidden="true" tabindex="-1"></a>@<span class="va">Test</span> <span class="va">global</span> <span class="kw">function</span> globalFunc<span class="op">()</span> <span class="kw">end</span></span></code></pre></div>
+<span id="cb213-8"><a href="#cb213-8" aria-hidden="true" tabindex="-1"></a>@<span class="va">Test</span> <span class="kw">global</span> <span class="kw">function</span> globalFunc<span class="op">()</span> <span class="kw">end</span></span></code></pre></div>
 <h3 id="documentation-annotation">Documentation Annotation</h3>
 <p>The <code>@Doc</code> annotation attaches source documentation to a function. It is primarily intended for tooling such as the Tiri LSP and API documentation extraction. When <code>debug.validate(Source, &quot;symbols&quot;)</code> is used, the parser returns a <code>symbols</code> table that includes the function signature, source span, annotations, parameter types, result types, and structured documentation parsed from <code>@Doc(text=...)</code>.</p>
 <div class="sourceCode" id="cb214"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb214-1"><a href="#cb214-1" aria-hidden="true" tabindex="-1"></a><span class="va">source</span> <span class="op">=</span> <span class="vs">[=[</span></span>
@@ -3577,29 +3577,29 @@ function they document.</p>
 matched exactly.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Marker</th>
 <th>Line Format</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>-INPUT-</code></td>
 <td><code>Name: Description</code></td>
 <td>Documents a parameter. Signature names and types are merged into the symbol data.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>-RESULTS-</code></td>
 <td><code>type: Description</code></td>
 <td>Documents a result value. May be repeated for multi-result functions.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>-ERRORS-</code></td>
 <td><code>Code: Description</code></td>
 <td>Documents an error code that may be thrown or returned.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>-EXAMPLE-</code></td>
 <td>free-form text</td>
 <td>Provides example code until the next marker or end of the documentation block.</td>
@@ -3621,29 +3621,29 @@ matched exactly.</p>
 <span id="cb215-11"><a href="#cb215-11" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Entry</th>
 <th>Line Format</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>@desc</code></td>
 <td><code>@desc Description</code></td>
 <td>Sets the function summary.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>@input</code></td>
 <td><code>@input Description</code></td>
 <td>Documents the next parameter in function declaration order.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>@result</code></td>
 <td><code>@result Description</code></td>
 <td>Documents one result value. Types are taken from the signature or inferred from the function body, falling back to <code>any</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>@error</code></td>
 <td><code>@error Code: Description</code></td>
 <td>Documents one error code.</td>
@@ -3660,29 +3660,29 @@ matched exactly.</p>
 <p><strong>Supported Conditions:</strong></p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Condition</th>
 <th>Value Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>imported</code></td>
 <td>boolean</td>
 <td><code>true</code> when file is being imported; <code>false</code> when file is the main script.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>debug</code></td>
 <td>boolean</td>
 <td><code>true</code> when log level is higher than &#39;warning&#39;; <code>false</code> otherwise.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>platform</code></td>
 <td>string</td>
 <td>Matches against current platform: <code>&quot;windows&quot;</code>, <code>&quot;linux&quot;</code>, <code>&quot;osx&quot;</code>, <code>&quot;native&quot;</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>exists</code></td>
 <td>string</td>
 <td>Checks for existence of a file at compile time: <code>exists=&#39;path/to/file&#39;</code>. The path is calculated relative to the script.</td>
@@ -3714,29 +3714,29 @@ matched exactly.</p>
 <p>The following annotations are recommended for general-purpose code organisation:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Annotation</th>
 <th>Arguments</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>@Doc</code></td>
 <td><code>text:str</code></td>
 <td>Attaches parser-readable documentation to a function for LSP support and documentation extraction.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>@Deprecated</code></td>
 <td><code>message:str</code>, <code>since:str</code></td>
 <td>Marks a function as deprecated. Tools may emit warnings when deprecated functions are called.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>@Override</code></td>
 <td>(none)</td>
 <td>Indicates that a function overrides a parent implementation. Useful for documentation and tooling.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>@SuppressWarnings</code></td>
 <td><code>&lt;flags&gt;</code></td>
 <td>Suppresses specific warnings. Flags are bare identifiers: <code>@SuppressWarnings(unused, deprecated)</code></td>
@@ -3762,44 +3762,44 @@ matched exactly.</p>
 <p>The Flute test framework recognises the following annotations for test discovery and configuration:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Annotation</th>
 <th>Arguments</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>@Test</code></td>
 <td><code>name:str</code>, <code>timeout:num</code>, <code>priority:num</code>, <code>labels:array</code></td>
 <td>Marks a function as a test case</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>@BeforeEach</code></td>
 <td>(none)</td>
 <td>Runs before each test in the file</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>@AfterEach</code></td>
 <td>(none)</td>
 <td>Runs after each test in the file</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>@BeforeAll</code></td>
 <td>(none)</td>
 <td>Runs once before all tests in the file</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>@AfterAll</code></td>
 <td>(none)</td>
 <td>Runs once after all tests in the file</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>@Disabled</code></td>
 <td><code>reason:str</code></td>
 <td>Skips the test with an optional reason</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>@Requires</code></td>
 <td><code>display:bool</code>, <code>network:bool</code>, <code>audio:bool</code></td>
 <td>Specifies runtime requirements; test is skipped if requirements are not met</td>
@@ -3809,7 +3809,7 @@ matched exactly.</p>
 <p><strong>Test Argument Reference:</strong></p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Argument</th>
 <th>Type</th>
 <th>Default</th>
@@ -3817,25 +3817,25 @@ matched exactly.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>name</code></td>
 <td>string</td>
 <td>function name</td>
 <td>Display name for the test</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>timeout</code></td>
 <td>number</td>
 <td>3.0</td>
 <td>Maximum execution time in seconds</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>priority</code></td>
 <td>number</td>
 <td>0</td>
 <td>Execution order (lower runs first)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>labels</code></td>
 <td>array</td>
 <td><code>[]</code></td>
@@ -3846,29 +3846,29 @@ matched exactly.</p>
 <p><strong>Requirements Reference:</strong></p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Requirement</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>audio</code></td>
 <td>Requires working audio module</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>display</code></td>
 <td>Requires working display module</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>font</code></td>
 <td>Requires working font module</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>network</code></td>
 <td>Requires working network module</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>ssl</code></td>
 <td>Requires SSL to be built-in to network module</td>
 </tr>
@@ -3898,54 +3898,54 @@ matched exactly.</p>
 <p>Returns an array of all registered file sources for the current script execution. Each entry in the returned array contains the following fields:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>index</code></td>
 <td>number</td>
 <td>File index (0 = main file, 255 = overflow fallback)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>path</code></td>
 <td>string</td>
 <td>Full resolved path to the source file</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>filename</code></td>
 <td>string</td>
 <td>Short filename for error display</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>namespace</code></td>
 <td>string</td>
 <td>Declared namespace (empty string if none)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>firstLine</code></td>
 <td>number</td>
 <td>First line number in unified line space</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>sourceLines</code></td>
 <td>number</td>
 <td>Total number of lines in the source file</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>parentIndex</code></td>
 <td>number</td>
 <td>Index of the file that imported this one (0 for main)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>importLine</code></td>
 <td>number</td>
 <td>Line number in parent where import occurred (0 for main)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>isOverflow</code></td>
 <td>boolean</td>
 <td>True if this is the overflow fallback entry (index 255)</td>
@@ -3992,29 +3992,29 @@ matched exactly.</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Parameter</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>func</code></td>
 <td>function</td>
 <td>The function to annotate</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>annotations</code></td>
 <td>string or table</td>
 <td>Annotation data (see below)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>source</code></td>
 <td>string</td>
 <td>Source file path (default: <code>&#39;&lt;runtime&gt;&#39;</code>)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>name</code></td>
 <td>string</td>
 <td>Function name (default: inferred or <code>&#39;&lt;anonymous&gt;&#39;</code>)</td>
@@ -4040,14 +4040,14 @@ matched exactly.</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Parameter</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>func</code></td>
 <td>function</td>
 <td>The function to query</td>

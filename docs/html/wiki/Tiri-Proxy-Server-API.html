@@ -284,89 +284,89 @@ fails.</p>
 <p>Valid options are:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Description</th>
 <th style="text-align: left;">Default</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>port</code></td>
 <td style="text-align: left;">Listening port. Values outside <code>1..65535</code> are ignored and the default is used.</td>
 <td style="text-align: left;"><code>8080</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>bind</code></td>
 <td style="text-align: left;">Optional local address to bind, such as <code>&#39;127.0.0.1&#39;</code>. When unset, the server listens on all interfaces.</td>
 <td style="text-align: left;"><code>nil</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>verbose</code></td>
 <td style="text-align: left;">Enables timestamped diagnostic logging.</td>
 <td style="text-align: left;"><code>false</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>timeout</code></td>
 <td style="text-align: left;">Connection inactivity timeout in seconds. A value less than or equal to zero disables timeout expiry.</td>
 <td style="text-align: left;"><code>30</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>upstreamProxy</code></td>
 <td style="text-align: left;">Optional upstream proxy in <code>host:port</code> form.</td>
 <td style="text-align: left;"><code>nil</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>recordFlows</code></td>
 <td style="text-align: left;">Records request/response metadata in memory.</td>
 <td style="text-align: left;"><code>true</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>maxFlows</code></td>
 <td style="text-align: left;">Maximum number of flows retained in memory. Older flow IDs are pruned first.</td>
 <td style="text-align: left;"><code>1000</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>enableMITM</code></td>
 <td style="text-align: left;">Present for future MITM support. The current proxy still treats <code>CONNECT</code> as an opaque tunnel.</td>
 <td style="text-align: left;"><code>false</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>caCert</code></td>
 <td style="text-align: left;">Certificate path used only by the placeholder MITM certificate loader.</td>
 <td style="text-align: left;"><code>nil</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>caKey</code></td>
 <td style="text-align: left;">Private key path used only by the placeholder MITM certificate loader.</td>
 <td style="text-align: left;"><code>nil</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>caPassword</code></td>
 <td style="text-align: left;">Private key password used only by the placeholder MITM certificate loader.</td>
 <td style="text-align: left;"><code>nil</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>onConnect</code></td>
 <td style="text-align: left;">Callback called as <code>onConnect(ClientSocket)</code> when a client connects.</td>
 <td style="text-align: left;"><code>nil</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>onRequest</code></td>
 <td style="text-align: left;">Callback called as <code>onRequest(Request)</code> after request headers are parsed.</td>
 <td style="text-align: left;"><code>nil</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>onResponse</code></td>
 <td style="text-align: left;">Callback called as <code>onResponse(Response, Flow)</code> after response headers are parsed or a tunnel is established.</td>
 <td style="text-align: left;"><code>nil</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>onFlowRecord</code></td>
 <td style="text-align: left;">Callback called as <code>onFlowRecord(Flow)</code> when a flow is created.</td>
 <td style="text-align: left;"><code>nil</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>onError</code></td>
 <td style="text-align: left;">Callback called as <code>onError(Error)</code> when the proxy reports an operational error.</td>
 <td style="text-align: left;"><code>nil</code></td>
@@ -443,37 +443,37 @@ As with request interceptors, return the response table when you want the flow t
 <p>Parsed request tables contain:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>method</code></td>
 <td style="text-align: left;">HTTP method from the request line.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>url</code></td>
 <td style="text-align: left;">Request target exactly as parsed from the request line.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>version</code></td>
 <td style="text-align: left;">HTTP version, usually <code>HTTP/1.1</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>headers</code></td>
 <td style="text-align: left;">Header table with lower-case header names.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>body</code></td>
 <td style="text-align: left;">Currently <code>nil</code>; bodies are streamed.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>streamed</code></td>
 <td style="text-align: left;"><code>true</code> for parsed proxy messages.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>raw</code></td>
 <td style="text-align: left;">Raw header block used to parse the request.</td>
 </tr>
@@ -482,37 +482,37 @@ As with request interceptors, return the response table when you want the flow t
 <p>Parsed response tables contain:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>version</code></td>
 <td style="text-align: left;">HTTP version from the status line.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>status</code></td>
 <td style="text-align: left;">Numeric HTTP status.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>statusText</code></td>
 <td style="text-align: left;">HTTP reason phrase.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>headers</code></td>
 <td style="text-align: left;">Header table with lower-case header names.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>body</code></td>
 <td style="text-align: left;">Currently <code>nil</code>; bodies are streamed.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>streamed</code></td>
 <td style="text-align: left;"><code>true</code> for parsed proxy messages.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>raw</code></td>
 <td style="text-align: left;">Raw header block used to parse the response.</td>
 </tr>
@@ -578,49 +578,49 @@ disabled, <code>Flow</code> arguments are <code>nil</code>.</p>
 <p>Error tables can contain:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>code</code></td>
 <td style="text-align: left;">Stable error code such as <code>malformed_request</code>, <code>connection_timeout</code>, or <code>upstream_connect_failed</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>message</code></td>
 <td style="text-align: left;">Human-readable error message.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>timestamp</code></td>
 <td style="text-align: left;">Time the error was reported.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>clientIP</code></td>
 <td style="text-align: left;">Client address when a connection state is available.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>phase</code></td>
 <td style="text-align: left;">Internal connection phase when available.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>targetHost</code></td>
 <td style="text-align: left;">Target host when known.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>targetPort</code></td>
 <td style="text-align: left;">Target port when known.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>method</code></td>
 <td style="text-align: left;">Request method when known.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>url</code></td>
 <td style="text-align: left;">Request URL when known.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>error</code></td>
 <td style="text-align: left;">Underlying exception or system error text when available.</td>
 </tr>
@@ -629,49 +629,49 @@ disabled, <code>Flow</code> arguments are <code>nil</code>.</p>
 <p>Common error codes include:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Code</th>
 <th style="text-align: left;">Meaning</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>invalid_upstream_proxy</code></td>
 <td style="text-align: left;"><code>upstreamProxy</code> was not in valid <code>host:port</code> form.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>malformed_request</code></td>
 <td style="text-align: left;">The client sent an invalid HTTP request header block.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>malformed_connect_target</code></td>
 <td style="text-align: left;">A <code>CONNECT</code> request target was not in <code>host:port</code> form.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>target_resolution_failed</code></td>
 <td style="text-align: left;">The proxy could not determine the origin host for an HTTP request.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>https_without_connect</code></td>
 <td style="text-align: left;">The client attempted absolute-form HTTPS relay instead of <code>CONNECT</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>connection_timeout</code></td>
 <td style="text-align: left;">A connection was inactive for longer than <code>timeout</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>upstream_connect_failed</code></td>
 <td style="text-align: left;">The proxy could not connect to the target or upstream proxy.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>upstream_proxy_connect_failed</code></td>
 <td style="text-align: left;">The configured upstream proxy rejected a <code>CONNECT</code> request.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>request_interceptor_failed</code></td>
 <td style="text-align: left;">A request interceptor raised an error.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>response_interceptor_failed</code></td>
 <td style="text-align: left;">A response interceptor raised an error.</td>
 </tr>

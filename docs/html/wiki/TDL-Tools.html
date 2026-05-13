@@ -263,41 +263,41 @@
 <p>The idl-c script is located in Kōtuku&#39;s <code>scripts/dev/</code> folder. The following command-line parameters are accepted:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Arg</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">src</td>
 <td style="text-align: left;">The source TDL file (required).</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">output</td>
 <td style="text-align: left;">Output path for the C++ header. Not required if the TDL defines a named module.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">feedback</td>
 <td style="text-align: left;">Feedback level, can be set to <code>verbose</code> for extra log messages.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">output-defs</td>
 <td style="text-align: left;">C++ interface definitions (e.g. the module function table) will be output to this file if specified.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">output-proto</td>
 <td style="text-align: left;">Function prototypes will be output to this file if specified.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">prototypes</td>
 <td style="text-align: left;">Can be set to <code>static</code> to output static prototype functions in conjunction with <code>output-proto</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">sdk</td>
 <td style="text-align: left;">Refers to the path of the Kōtuku SDK. Not normally required as it can be inferred.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">files</td>
 <td style="text-align: left;">A list of source files that need to be processed in conjunction with the TDL file.</td>
 </tr>
@@ -325,33 +325,33 @@
 <p>The idl-compile script is located in Kōtuku&#39;s <code>scripts/dev/</code> folder. The following command-line parameters are accepted:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Arg</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">src</td>
 <td style="text-align: left;">The source TDL file (required).</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">output</td>
 <td style="text-align: left;">Output path for the C++ header. Not required if the TDL defines a named module.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">feedback</td>
 <td style="text-align: left;">Feedback level, can be set to <code>verbose</code> for extra log messages.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">sdk</td>
 <td style="text-align: left;">Refers to the path of the Kōtuku SDK. Not normally required as it can be inferred.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">format</td>
 <td style="text-align: left;">Set to &#39;c&#39; if the IDL should be output as a C char string named <code>glIDL</code>. It is otherwise generated as a constant for a <code>.h</code> C header, and named <code>MOD_IDL</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">append</td>
 <td style="text-align: left;">If true, the generated output will be appended to the target output file.</td>
 </tr>
@@ -368,29 +368,29 @@
 <p>The following options are available:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">NAME</td>
 <td style="text-align: left;">Required. Defines the CMake target name for add_custom_target().</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">OUTPUT</td>
 <td style="text-align: left;">Required. Defines the <code>output</code> parameter for idl-c and also acts as a CMake dependency. <em>Must be a full path</em>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">FILES</td>
 <td style="text-align: left;">A list of C/C++ source files to be passed to the idl-c <code>files</code> parameter.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">ARGS</td>
 <td style="text-align: left;">Additional arguments to be passed directly to the idl-c script.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">APPEND_IDL</td>
 <td style="text-align: left;">Run the idl-compile script and <em>append</em> the output to the given path.</td>
 </tr>

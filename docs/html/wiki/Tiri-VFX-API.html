@@ -277,25 +277,25 @@ end)</code></pre>
 <p>For the following effects, the <code>Callback</code> function prototype is <code>function(State)</code> and it will be called on completion of the effect. The <code>State</code> is a table providing the following key-values:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Key</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">name</td>
 <td style="text-align: left;">Matches the name of the effect function.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">seconds</td>
 <td style="text-align: left;">The original number of Seconds specified by the client.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">delay</td>
 <td style="text-align: left;">The original Delay specified by the client.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">time</td>
 <td style="text-align: left;">A timestamp indicating when the effect started.</td>
 </tr>
@@ -316,29 +316,29 @@ end)</code></pre>
 <p>The following table lists the available styles and their option values. Note that angles are always measured in degrees.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Style</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">shutter</td>
 <td style="text-align: left;">Draw a basic shutter effect that looks similar to a window blind being adjusted. The <code>segments</code> option controls the total number of bars that will be drawn; <code>rotate</code> is an angle that adjusts the rotation of the bars.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">simple</td>
 <td style="text-align: left;">A straight-forward &#39;top-down&#39; wipe that comes with a <code>rotate</code> option to adjust the angle.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">radial</td>
 <td style="text-align: left;">Draw a series of concentric circles to create a ripple effect. Options are: <code>segments</code> defines the total number of concentric circles; <code>cx</code> and <code>cy</code> define the point of origin for the circles.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">spiral</td>
 <td style="text-align: left;">Draw a spiral that radiates from a center point. <code>cx</code> and <code>cy</code> define the point of origin; <code>segments</code> affects the number of full rotations that can be completed within the avaialable space. It is recommended that <code>segments</code> is kept to a low value of <code>1</code> to <code>3</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">clock</td>
 <td style="text-align: left;">Draw a clock hand that fills in the viewport while rotating around the center point.</td>
 </tr>

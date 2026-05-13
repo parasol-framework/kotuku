@@ -306,25 +306,25 @@ uint: Integer value in network byte order.
 <p>Supported function header fields are:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>Category</code></td>
 <td style="text-align: left;">Optional category name. A preceding <code>-CATEGORY-</code> section can also set the current category for following functions.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>Status</code></td>
 <td style="text-align: left;">Optional visibility state. Use <code>Internal</code> or <code>Private</code> for functions that should not appear in public documentation.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>ExtPrototype</code></td>
 <td style="text-align: left;">Optional external prototype override for functions whose generated prototype needs explicit control.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>Attribute</code></td>
 <td style="text-align: left;">Optional generated declaration attribute.</td>
 </tr>
@@ -354,17 +354,17 @@ Stores the source path used when reading or writing configuration data.
 <p>Supported field header fields are:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>Lookup</code></td>
 <td style="text-align: left;">Names a lookup, flag or constant type declared in the API&#39;s TDL. The generated documentation includes the value table.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>Status</code></td>
 <td style="text-align: left;">Use <code>private</code> for fields that should be hidden from public documentation. A summary beginning with <code>Private</code> is also treated as private.</td>
 </tr>
@@ -402,214 +402,214 @@ An optional long description can be written here.
 <p>The following base types are recognised in <code>-INPUT-</code> and <code>-RESULT-</code> declarations.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">EDF Type</th>
 <th style="text-align: left;">C/C++ Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>array(Type)</code></td>
 <td style="text-align: left;"><code>Type *</code></td>
 <td style="text-align: left;">Pointer to an unsized array of <code>Type</code>. Use <code>array(Type,Size)</code> for fixed-size arrays.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>arraysize</code></td>
 <td style="text-align: left;"><code>int</code></td>
 <td style="text-align: left;">Element count for the preceding array parameter.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>buf(Type)</code></td>
 <td style="text-align: left;"><code>Type *</code></td>
 <td style="text-align: left;">Pointer to a buffer of <code>Type</code>. Follow with <code>bufsize</code> or <code>structsize</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>bufsize</code></td>
 <td style="text-align: left;"><code>int</code></td>
 <td style="text-align: left;">Byte size of the preceding buffer.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>char</code></td>
 <td style="text-align: left;"><code>int8_t</code></td>
 <td style="text-align: left;">Signed 8-bit value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>cid</code></td>
 <td style="text-align: left;"><code>CLASSID</code></td>
 <td style="text-align: left;">Class identifier.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>cptr</code></td>
 <td style="text-align: left;"><code>const void *</code></td>
 <td style="text-align: left;">Pointer to untyped constant data.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>cstr</code></td>
 <td style="text-align: left;"><code>CSTRING</code></td>
 <td style="text-align: left;">Pointer to an immutable C-style string.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>double</code></td>
 <td style="text-align: left;"><code>double</code></td>
 <td style="text-align: left;">64-bit floating point value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>eid</code></td>
 <td style="text-align: left;"><code>EVENTID</code></td>
 <td style="text-align: left;">Event identifier.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>error</code></td>
 <td style="text-align: left;"><code>ERR</code></td>
 <td style="text-align: left;">Error value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>ext</code></td>
 <td style="text-align: left;"><code>OBJECTPTR</code></td>
 <td style="text-align: left;">Pointer to an object implementation.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>fid</code></td>
 <td style="text-align: left;"><code>FIELD</code></td>
 <td style="text-align: left;">Field identifier.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>flags</code></td>
 <td style="text-align: left;"><code>int</code></td>
 <td style="text-align: left;">32-bit integer representing bit flags.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>float</code></td>
 <td style="text-align: left;"><code>float</code></td>
 <td style="text-align: left;">32-bit floating point value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>func</code></td>
 <td style="text-align: left;"><code>FUNCTION</code></td>
 <td style="text-align: left;">Callback function descriptor.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>fptr(Synopsis)</code></td>
 <td style="text-align: left;"><code>APTR</code></td>
 <td style="text-align: left;">C function pointer. The synopsis starts with the result type, followed by parameters.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>hhandle</code></td>
 <td style="text-align: left;"><code>HOSTHANDLE</code></td>
 <td style="text-align: left;">Host-specific resource handle.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>int</code></td>
 <td style="text-align: left;"><code>int</code></td>
 <td style="text-align: left;">32-bit integer.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>int(Ref)</code></td>
 <td style="text-align: left;"><code>int</code></td>
 <td style="text-align: left;">32-bit integer associated with a named lookup or flag type.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>large</code></td>
 <td style="text-align: left;"><code>int64_t</code></td>
 <td style="text-align: left;">64-bit integer.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>maxint</code></td>
 <td style="text-align: left;"><code>MAXINT</code></td>
 <td style="text-align: left;">Maximum native integer size for the target.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>mem</code></td>
 <td style="text-align: left;"><code>MEMORYID</code></td>
 <td style="text-align: left;">Memory identifier.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>obj</code></td>
 <td style="text-align: left;"><code>OBJECTPTR</code></td>
 <td style="text-align: left;">Pointer to an object.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>oid</code></td>
 <td style="text-align: left;"><code>OBJECTID</code></td>
 <td style="text-align: left;">Object identifier.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>ptr</code></td>
 <td style="text-align: left;"><code>APTR</code></td>
 <td style="text-align: left;">Pointer to untyped data.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>ptr(Type)</code></td>
 <td style="text-align: left;"><code>Type *</code></td>
 <td style="text-align: left;">Pointer to typed data.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>resource</code></td>
 <td style="text-align: left;"><code>APTR</code></td>
 <td style="text-align: left;">Trackable resource reference.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>short</code></td>
 <td style="text-align: left;"><code>int16_t</code></td>
 <td style="text-align: left;">Signed 16-bit value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>STRING</code></td>
 <td style="text-align: left;">Mutable C-style string.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>strview</code></td>
 <td style="text-align: left;"><code>std::string_view &amp;</code></td>
 <td style="text-align: left;">String view parameter for C++ API calls.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>struct(Name)</code></td>
 <td style="text-align: left;"><code>APTR</code></td>
 <td style="text-align: left;">Reference to a named TDL struct.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>struct(*Name)</code></td>
 <td style="text-align: left;"><code>Name *</code></td>
 <td style="text-align: left;">Pointer to a named TDL struct.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>structsize</code></td>
 <td style="text-align: left;"><code>int</code></td>
 <td style="text-align: left;">Byte size of the preceding struct reference.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>tags</code></td>
 <td style="text-align: left;"><code>...</code></td>
 <td style="text-align: left;">Tag-list parameter.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>uchar</code></td>
 <td style="text-align: left;"><code>uint8_t</code></td>
 <td style="text-align: left;">Unsigned 8-bit value.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>uint</code></td>
 <td style="text-align: left;"><code>uint32_t</code></td>
 <td style="text-align: left;">Unsigned 32-bit value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>ushort</code></td>
 <td style="text-align: left;"><code>uint16_t</code></td>
 <td style="text-align: left;">Unsigned 16-bit value.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>va_list</code></td>
 <td style="text-align: left;"><code>va_list</code></td>
 <td style="text-align: left;">Variable argument list.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>void</code></td>
 <td style="text-align: left;"><code>void</code></td>
 <td style="text-align: left;">No value.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>vtags</code></td>
 <td style="text-align: left;"><code>...</code></td>
 <td style="text-align: left;">Variable tag-list parameter.</td>
@@ -623,74 +623,74 @@ Tiri manage the resource safely. Prefix the type with <code>^</code> when a buff
 <p>Long descriptions support a small XML-like markup set. Use these features inside EDF comments rather than Markdown.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Feature</th>
 <th style="text-align: left;">Syntax</th>
 <th style="text-align: left;">Purpose</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">Class reference</td>
 <td style="text-align: left;"><code>@ClassName</code></td>
 <td style="text-align: left;">Links to another class document.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">External class member</td>
 <td style="text-align: left;"><code>@ClassName.Field</code> or <code>@ClassName.Method()</code></td>
 <td style="text-align: left;">Links to a field, method or action on another class.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">Local field</td>
 <td style="text-align: left;"><code>#FieldName</code></td>
 <td style="text-align: left;">Links to a field on the current class.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">Local action or method</td>
 <td style="text-align: left;"><code>#Activate()</code></td>
 <td style="text-align: left;">Links to an action or method on the current class.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">Local function</td>
 <td style="text-align: left;"><code>~AllocMemory()</code></td>
 <td style="text-align: left;">Links to a function in the current module.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">External function</td>
 <td style="text-align: left;"><code>~Core.AllocMemory()</code></td>
 <td style="text-align: left;">Links to a function in another module.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">Lookup or struct reference</td>
 <td style="text-align: left;"><code>!LOOP</code></td>
 <td style="text-align: left;">Links to a named lookup, flag or struct type.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">Lookup or struct table</td>
 <td style="text-align: left;"><code>!LOOP</code> on its own line</td>
 <td style="text-align: left;">Inserts the full generated value table.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">Inline code</td>
 <td style="text-align: left;"><code>`ERR::Okay`</code></td>
 <td style="text-align: left;">Renders code, constants or numeric values in monospace.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">Preformatted block</td>
 <td style="text-align: left;"><code>&lt;pre&gt;...&lt;/pre&gt;</code></td>
 <td style="text-align: left;">Preserves line breaks and spacing.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">Heading</td>
 <td style="text-align: left;"><code>&lt;header&gt;Technical Notes&lt;/header&gt;</code></td>
 <td style="text-align: left;">Adds a heading inside generated documentation.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">Ordered list</td>
 <td style="text-align: left;"><code>&lt;list type=&quot;ordered&quot;&gt;</code> with <code>&lt;li&gt;</code> items</td>
 <td style="text-align: left;">Adds a numbered list.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">Bullet list</td>
 <td style="text-align: left;"><code>&lt;list type=&quot;bullet&quot;&gt;</code> with <code>&lt;li&gt;</code> items</td>
 <td style="text-align: left;">Adds a bullet list.</td>

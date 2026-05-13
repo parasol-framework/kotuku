@@ -302,79 +302,79 @@
 <p>Regular expressions match characters in the target text based on pattern specifications. The following table describes all character matching forms:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Pattern</th>
 <th style="text-align: left;">Description</th>
 <th style="text-align: left;">Example</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>.</code></td>
 <td style="text-align: left;">Matches any character except line terminators (U+000A, U+000D, U+2028, U+2029). With the <code>dotall</code> flag, matches every code point.</td>
 <td style="text-align: left;"><code>a.c</code> matches <code>&quot;abc&quot;</code>, <code>&quot;aXc&quot;</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\0</code></td>
 <td style="text-align: left;">Matches NULL character (U+0000)</td>
 <td style="text-align: left;"><code>\0</code> matches null byte</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\t</code></td>
 <td style="text-align: left;">Matches Horizontal Tab (U+0009)</td>
 <td style="text-align: left;"><code>a\tb</code> matches <code>&quot;a   b&quot;</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\n</code></td>
 <td style="text-align: left;">Matches Line Feed (U+000A)</td>
 <td style="text-align: left;"><code>a\nb</code> matches <code>&quot;a\nb&quot;</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\v</code></td>
 <td style="text-align: left;">Matches Vertical Tab (U+000B)</td>
 <td style="text-align: left;"><code>\v</code> matches vertical tab</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\f</code></td>
 <td style="text-align: left;">Matches Form Feed (U+000C)</td>
 <td style="text-align: left;"><code>\f</code> matches form feed</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\r</code></td>
 <td style="text-align: left;">Matches Carriage Return (U+000D)</td>
 <td style="text-align: left;"><code>\r\n</code> matches Windows line ending</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\cX</code></td>
 <td style="text-align: left;">Matches control character where X is A-Z or a-z. Value is <code>(code point of X) &amp; 0x1F</code></td>
 <td style="text-align: left;"><code>\cA</code> matches Ctrl-A (U+0001)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\\</code></td>
 <td style="text-align: left;">Matches backslash character (U+005C)</td>
 <td style="text-align: left;"><code>\\</code> matches <code>&quot;\&quot;</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\xHH</code></td>
 <td style="text-align: left;">Matches character with hexadecimal code <code>HH</code> (00-FF)</td>
 <td style="text-align: left;"><code>\x41</code> matches <code>&quot;A&quot;</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\uHHHH</code></td>
 <td style="text-align: left;">Matches character with Unicode code point <code>HHHH</code></td>
 <td style="text-align: left;"><code>\u0041</code> matches <code>&quot;A&quot;</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\u{H...}</code></td>
 <td style="text-align: left;">Matches character with Unicode code point represented by hex digits (up to 10FFFF)</td>
 <td style="text-align: left;"><code>\u{1F600}</code> matches 😀</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\X</code></td>
 <td style="text-align: left;">When X is one of <code>^ $ . * + ? ( ) [ ] { } | /</code>, matches X literally</td>
 <td style="text-align: left;"><code>\(</code> matches <code>&quot;(&quot;</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">Character</td>
 <td style="text-align: left;">Any character not listed above matches itself</td>
 <td style="text-align: left;"><code>abc</code> matches <code>&quot;abc&quot;</code></td>
@@ -406,59 +406,59 @@
 <p>A character class is enclosed in square brackets <code>[...]</code> and matches any single character from the set:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Pattern</th>
 <th style="text-align: left;">Description</th>
 <th style="text-align: left;">Example</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>[ABC]</code></td>
 <td style="text-align: left;">Matches any of A, B, or C</td>
 <td style="text-align: left;"><code>[ABC]</code> matches <code>&quot;A&quot;</code>, <code>&quot;B&quot;</code>, or <code>&quot;C&quot;</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>[^DEF]</code></td>
 <td style="text-align: left;">Matches any character except D, E, or F (negated class)</td>
 <td style="text-align: left;"><code>[^DEF]</code> matches any character but <code>&quot;D&quot;</code>, <code>&quot;E&quot;</code>, <code>&quot;F&quot;</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>[G^H]</code></td>
 <td style="text-align: left;">Matches G, ^, or H (^ not first, so literal)</td>
 <td style="text-align: left;"><code>[G^H]</code> matches <code>&quot;G&quot;</code>, <code>&quot;^&quot;</code>, or <code>&quot;H&quot;</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>[I-K]</code></td>
 <td style="text-align: left;">Matches any character from I to K inclusive (range)</td>
 <td style="text-align: left;"><code>[I-K]</code> matches <code>&quot;I&quot;</code>, <code>&quot;J&quot;</code>, <code>&quot;K&quot;</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>[-LM]</code></td>
 <td style="text-align: left;">Matches -, L, or M (leading hyphen is literal)</td>
 <td style="text-align: left;"><code>[-LM]</code> matches <code>&quot;-&quot;</code>, <code>&quot;L&quot;</code>, <code>&quot;M&quot;</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>[N-P-R]</code></td>
 <td style="text-align: left;">Matches N, O, P, -, or R (trailing hyphen after range is literal)</td>
 <td style="text-align: left;"><code>[N-P-R]</code> matches <code>&quot;N&quot;</code>, <code>&quot;O&quot;</code>, <code>&quot;P&quot;</code>, <code>&quot;-&quot;</code>, <code>&quot;R&quot;</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>[S\-U]</code></td>
 <td style="text-align: left;">Matches S, -, or U (escaped hyphen)</td>
 <td style="text-align: left;"><code>[S\-U]</code> matches <code>&quot;S&quot;</code>, <code>&quot;-&quot;</code>, <code>&quot;U&quot;</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>[.({|]</code></td>
 <td style="text-align: left;">Special regex characters lose their special meaning in character classes</td>
 <td style="text-align: left;"><code>[.({|]</code> matches <code>&quot;.&quot;</code>, <code>&quot;(&quot;</code>, <code>&quot;{&quot;</code>, <code>&quot;|&quot;</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>[]</code></td>
 <td style="text-align: left;">Empty class matches no code points (always fails)</td>
 <td style="text-align: left;"><code>[]</code> never matches</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>[^]</code></td>
 <td style="text-align: left;">Complement of empty class matches any code point</td>
 <td style="text-align: left;"><code>[^]</code> matches any character including line terminators</td>
@@ -487,49 +487,49 @@
 <p>Predefined character classes provide convenient shortcuts for common character sets:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Pattern</th>
 <th style="text-align: left;">Equivalent</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\d</code></td>
 <td style="text-align: left;"><code>[0-9]</code></td>
 <td style="text-align: left;">Matches any decimal digit</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\D</code></td>
 <td style="text-align: left;"><code>[^0-9]</code></td>
 <td style="text-align: left;">Matches any non-digit</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\s</code></td>
 <td style="text-align: left;"><code>[ \t\n\v\f\r\u00a0\u1680\u2000-\u200a\u2028-\u2029\u202f\u205f\u3000\ufeff]</code></td>
 <td style="text-align: left;">Matches any whitespace character (WhiteSpace + LineTerminator)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\S</code></td>
 <td style="text-align: left;"><code>[^ \t\n\v\f\r\u00a0\u1680\u2000-\u200a\u2028-\u2029\u202f\u205f\u3000\ufeff]</code></td>
 <td style="text-align: left;">Matches any non-whitespace</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\w</code></td>
 <td style="text-align: left;"><code>[0-9A-Za-z_]</code></td>
 <td style="text-align: left;">Matches any word character (alphanumeric + underscore)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\W</code></td>
 <td style="text-align: left;"><code>[^0-9A-Za-z_]</code></td>
 <td style="text-align: left;">Matches any non-word character</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\p{...}</code></td>
 <td style="text-align: left;">(See <a href="#unicode-support">Unicode Support</a>)</td>
 <td style="text-align: left;">Matches characters with specified Unicode property</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\P{...}</code></td>
 <td style="text-align: left;">(See <a href="#unicode-support">Unicode Support</a>)</td>
 <td style="text-align: left;">Matches characters without specified Unicode property</td>
@@ -625,7 +625,7 @@
 <p>Quantifiers specify how many times a pattern element must match. Each quantifier has a greedy and non-greedy form.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Quantifier</th>
 <th style="text-align: left;">Non-Greedy</th>
 <th style="text-align: left;">Matches</th>
@@ -633,37 +633,37 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>*</code></td>
 <td style="text-align: left;"><code>*?</code></td>
 <td style="text-align: left;">0 or more</td>
 <td style="text-align: left;">Repeats the preceding element zero or more times</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>+</code></td>
 <td style="text-align: left;"><code>+?</code></td>
 <td style="text-align: left;">1 or more</td>
 <td style="text-align: left;">Repeats the preceding element one or more times</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>?</code></td>
 <td style="text-align: left;"><code>??</code></td>
 <td style="text-align: left;">0 or 1</td>
 <td style="text-align: left;">Makes the preceding element optional</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>{n}</code></td>
 <td style="text-align: left;">N/A</td>
 <td style="text-align: left;">Exactly n</td>
 <td style="text-align: left;">Repeats the preceding element exactly n times</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>{n,}</code></td>
 <td style="text-align: left;"><code>{n,}?</code></td>
 <td style="text-align: left;">n or more</td>
 <td style="text-align: left;">Repeats the preceding element at least n times</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>{n,m}</code></td>
 <td style="text-align: left;"><code>{n,m}?</code></td>
 <td style="text-align: left;">n to m</td>
@@ -793,33 +793,33 @@
 <p><strong>Available Flags</strong>:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Flag</th>
 <th style="text-align: left;">Meaning</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>i</code></td>
 <td style="text-align: left;">Case-insensitive matching (icase)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>m</code></td>
 <td style="text-align: left;">Multiline mode (^ and $ match line boundaries)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>s</code></td>
 <td style="text-align: left;">Dotall mode (. matches line terminators)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>-i</code></td>
 <td style="text-align: left;">Disable case-insensitive matching</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>-m</code></td>
 <td style="text-align: left;">Disable multiline mode</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>-s</code></td>
 <td style="text-align: left;">Disable dotall mode</td>
 </tr>
@@ -853,17 +853,17 @@
 <h3 id="anchors">Anchors</h3>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Assertion</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>^</code></td>
 <td style="text-align: left;">Matches at the start of the string. With multiline flag, also matches immediately after line terminators.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>$</code></td>
 <td style="text-align: left;">Matches at the end of the string. With multiline flag, also matches immediately before line terminators.</td>
 </tr>
@@ -878,17 +878,17 @@
 <h3 id="word-boundaries">Word Boundaries</h3>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Assertion</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\b</code></td>
 <td style="text-align: left;">Matches at a word boundary (between <code>\w</code> and <code>\W</code>)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\B</code></td>
 <td style="text-align: left;">Matches at a non-word boundary (not between <code>\w</code> and <code>\W</code>)</td>
 </tr>
@@ -909,17 +909,17 @@
 <p>Lookahead assertions check if a pattern matches ahead without consuming characters:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Assertion</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>(?=...)</code></td>
 <td style="text-align: left;">Positive lookahead: succeeds if pattern matches ahead</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>(?!...)</code></td>
 <td style="text-align: left;">Negative lookahead: succeeds if pattern does NOT match ahead</td>
 </tr>
@@ -943,17 +943,17 @@
 <p>Lookbehind assertions check if a pattern matches behind without consuming characters:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Assertion</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>(?&lt;=...)</code></td>
 <td style="text-align: left;">Positive lookbehind: succeeds if pattern matches behind</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>(?&lt;!...)</code></td>
 <td style="text-align: left;">Negative lookbehind: succeeds if pattern does NOT match behind</td>
 </tr>
@@ -983,17 +983,17 @@
 <p>Unicode properties match characters based on their Unicode characteristics using <code>\p{...}</code> and <code>\P{...}</code>:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Pattern</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\p{Property}</code></td>
 <td style="text-align: left;">Matches characters with the specified Unicode property</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\P{Property}</code></td>
 <td style="text-align: left;">Matches characters without the specified Unicode property</td>
 </tr>
@@ -1015,59 +1015,59 @@
 <p>Match characters by their general category:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Property</th>
 <th style="text-align: left;">Description</th>
 <th style="text-align: left;">Examples</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\p{Lu}</code></td>
 <td style="text-align: left;">Uppercase letter</td>
 <td style="text-align: left;">A, B, Z, À, Ω</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\p{Ll}</code></td>
 <td style="text-align: left;">Lowercase letter</td>
 <td style="text-align: left;">a, b, z, à, ω</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\p{Lt}</code></td>
 <td style="text-align: left;">Titlecase letter</td>
 <td style="text-align: left;">ǅ, ǈ, ǋ</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\p{L}</code></td>
 <td style="text-align: left;">Any letter (Lu|Ll|Lt|Lm|Lo)</td>
 <td style="text-align: left;">All letters</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\p{Nd}</code></td>
 <td style="text-align: left;">Decimal number</td>
 <td style="text-align: left;">0-9, ০-৯</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\p{N}</code></td>
 <td style="text-align: left;">Any number (Nd|Nl|No)</td>
 <td style="text-align: left;">All numbers</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\p{P}</code></td>
 <td style="text-align: left;">Punctuation</td>
 <td style="text-align: left;">., !, ?, ;</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\p{S}</code></td>
 <td style="text-align: left;">Symbol</td>
 <td style="text-align: left;">$, +, =, ©</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>\p{Z}</code></td>
 <td style="text-align: left;">Separator</td>
 <td style="text-align: left;">Space, non-breaking space</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>\p{C}</code></td>
 <td style="text-align: left;">Other (control, format, etc.)</td>
 <td style="text-align: left;">Control characters</td>
@@ -1144,21 +1144,21 @@
 <p>Compilation flags affect how a regex pattern is compiled and interpreted. These flags are specified when creating a regex object.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Flag</th>
 <th style="text-align: left;">Effect</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>ICASE</code></td>
 <td style="text-align: left;">Case-insensitive matching. Matches characters regardless of case using Unicode case-folding rules.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>MULTILINE</code></td>
 <td style="text-align: left;">Multiline mode. The <code>^</code> and <code>$</code> anchors match at line boundaries (after/before line terminators) in addition to string boundaries.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>DOT_ALL</code></td>
 <td style="text-align: left;">Dotall (singleline) mode. The <code>.</code> metacharacter matches line terminators (U+000A, U+000D, U+2028, U+2029) in addition to all other characters.</td>
 </tr>
@@ -1207,45 +1207,45 @@
 <p>Match flags modify the behaviour of matching operations at runtime, after a pattern has been compiled. These flags are passed to matching functions (test, match, search, replace, split).</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Flag</th>
 <th style="text-align: left;">Effect</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>NOT_BEGIN_OF_LINE</code></td>
 <td style="text-align: left;">Do not treat the beginning of the text as the start of a line (affects <code>^</code> in multiline mode)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>NOT_END_OF_LINE</code></td>
 <td style="text-align: left;">Do not treat the end of the text as the end of a line (affects <code>$</code> in multiline mode)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>NOT_BEGIN_OF_WORD</code></td>
 <td style="text-align: left;">Do not treat the beginning of the text as the start of a word (affects <code>\b</code>)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>NOT_END_OF_WORD</code></td>
 <td style="text-align: left;">Do not treat the end of the text as the end of a word (affects <code>\b</code>)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>NOT_NULL</code></td>
 <td style="text-align: left;">Do not match empty sequences</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>CONTINUOUS</code></td>
 <td style="text-align: left;">Only match at the beginning of the text (anchored search)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>PREV_AVAILABLE</code></td>
 <td style="text-align: left;">Indicates that the previous character position is available for lookbehind assertions</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>REPLACE_NO_COPY</code></td>
 <td style="text-align: left;">In replace operations, do not copy non-matching parts of the text</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>REPLACE_FIRST_ONLY</code></td>
 <td style="text-align: left;">In replace operations, replace only the first occurrence</td>
 </tr>
@@ -1650,74 +1650,74 @@
 <p>These errors occur when compiling a regex pattern:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Error</th>
 <th style="text-align: left;">Description</th>
 <th style="text-align: left;">Example</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>error_escape</code></td>
 <td style="text-align: left;">Invalid escape sequence</td>
 <td style="text-align: left;"><code>\q</code> (undefined escape), <code>\c</code> (not followed by letter), <code>\x</code> (not followed by two hex digits), <code>\u{GGGG}</code> (invalid hex)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>error_brack</code></td>
 <td style="text-align: left;">Mismatched square brackets</td>
 <td style="text-align: left;"><code>[abc</code>, <code>abc]</code>, <code>[a[b]</code> (nested)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>error_paren</code></td>
 <td style="text-align: left;">Mismatched parentheses</td>
 <td style="text-align: left;"><code>(abc</code>, <code>abc)</code>, <code>((a)</code> (unclosed)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>error_brace</code></td>
 <td style="text-align: left;">Mismatched curly braces</td>
 <td style="text-align: left;"><code>a{3</code>, <code>a3}</code>, <code>a{2,}</code> (missing closing brace)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>error_badbrace</code></td>
 <td style="text-align: left;">Invalid quantifier range</td>
 <td style="text-align: left;"><code>{3,2}</code> (n &gt; m), <code>{-1}</code> (negative), <code>{,5}</code> (missing n)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>error_range</code></td>
 <td style="text-align: left;">Invalid character range in class</td>
 <td style="text-align: left;"><code>[z-a]</code> (reversed), <code>[\u0100-\u0010]</code> (start &gt; end)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>error_backref</code></td>
 <td style="text-align: left;">Invalid backreference</td>
 <td style="text-align: left;"><code>\9</code> (group doesn&#39;t exist), <code>\k&lt;name&gt;</code> (name doesn&#39;t exist)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>error_modifier</code></td>
 <td style="text-align: left;">Invalid flag modifier</td>
 <td style="text-align: left;"><code>(?ii:...)</code> (duplicate flag), <code>(?i-i:...)</code> (contradictory)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>error_operator</code></td>
 <td style="text-align: left;">Invalid set operator usage</td>
 <td style="text-align: left;"><code>[AB--CD]</code> (mixed operators at same level), <code>!!</code> (reserved double punctuator in class)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>error_noescape</code></td>
 <td style="text-align: left;">Character must be escaped</td>
 <td style="text-align: left;"><code>[(]</code> (should be <code>[\(]</code>), <code>[{]</code> (should be <code>[\{]</code>) in character classes</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>error_complement</code></td>
 <td style="text-align: left;">Invalid negation</td>
 <td style="text-align: left;"><code>[^\p{RGI_Emoji}]</code> (string property in negated class), <code>\P{RGI_Emoji}</code> (string property with \P)</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>error_badrepeat</code></td>
 <td style="text-align: left;">Quantifier without preceding expression</td>
 <td style="text-align: left;"><code>*abc</code> (starts with quantifier), <code>a**</code> (double quantifier)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>error_utf8</code></td>
 <td style="text-align: left;">Invalid UTF-8 sequence in pattern</td>
 <td style="text-align: left;">Pattern contains invalid UTF-8 bytes, overlong encoding, or code point &gt; U+10FFFF</td>

@@ -261,759 +261,807 @@
 <p>The following table lists all common error codes and their associated message.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Name</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>Okay / True</td>
 <td>Operation successful.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>False</td>
 <td>The result is false.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>LimitedSuccess</td>
 <td>Limited success.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Cancelled</td>
 <td>Operation cancelled.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>NothingDone</td>
 <td>There is nothing to process.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Continue</td>
 <td>Please continue processing.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Skip</td>
 <td>Skip this operation.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Retry</td>
 <td>Retry the operation (could not succeed at this time).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>DirEmpty</td>
 <td>The folder is empty.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Terminate</td>
-<td>Please terminate future calls.</td>
+<td>Termination requested.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>NoMemory</td>
 <td>Not enough memory available.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>NoPointer</td>
 <td>Required pointer not present.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>InUse</td>
 <td>Resource is in use.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Failed</td>
 <td>General failure.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>File</td>
 <td>File error, e.g. file not found.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>InvalidData</td>
 <td>There is an error in the provided data.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Search / NotFound</td>
 <td>A search routine in this function failed.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>InitModule</td>
 <td>Trouble initialising/using a module.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>FileNotFound / FileDoesNotExist</td>
 <td>File not found.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>WrongVersion</td>
 <td>Wrong version, or version not supported.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Args</td>
 <td>Invalid arguments passed to function.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>NoData</td>
 <td>No data is available for use.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Read</td>
-<td>Error reading data from file.</td>
+<td>Error reading data.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Write</td>
-<td>Error writing data to file.</td>
+<td>Error writing data.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>LockFailed / Lock</td>
 <td>Failed to lock a required resource.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ExamineFailed</td>
 <td>Could not examine folder or file.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>LostClass</td>
 <td>The object has lost its class reference.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>NoAction</td>
 <td>The object does not support this operation.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>NoSupport</td>
-<td>This request is not supported.</td>
+<td>Operation not supported.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Memory</td>
 <td>General memory error.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>TimeOut</td>
 <td>Function timed-out before successful completion.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>NoStats</td>
 <td>This object has lost its stats structure.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>LowCapacity</td>
 <td>Array is at low capacity.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Init</td>
 <td>Error in Init()ialising an object.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>NoPermission / Permissions / PermissionDenied</td>
 <td>General security violation.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>SystemCorrupt</td>
-<td>The operating system has been badly corrupted.</td>
+<td>System corruption detected.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>NeedOwner</td>
-<td>I need a container to operate correctly.</td>
+<td>A container is needed to operate correctly.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>OwnerNeedsBitmap</td>
-<td>My container needs to have a Bitmap field.</td>
+<td>Container needs a Bitmap field.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>CoreVersion</td>
-<td>I need a newer version of the kernel.</td>
+<td>A newer version of the Core is required.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>NeedWidthHeight</td>
 <td>The Width and/or Height field values need to be set.</td>
 </tr>
-<tr class="odd">
-<td>NegativeSubClassID</td>
-<td>The Object ID is negative.</td>
+<tr>
+<td>ModuleValidation</td>
+<td>Module validation has failed.</td>
 </tr>
-<tr class="even">
-<td>NegativeClassID</td>
-<td>The Class ID is negative</td>
+<tr>
+<td>ProcessCreation</td>
+<td>Process creation has failed.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>MissingClassName</td>
-<td>You have not given the Class a name.</td>
+<td>Class name not provided.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>OutOfRange</td>
-<td>A specified number is outside of the valid range.</td>
+<td>A value is outside of the valid range.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ObtainMethod</td>
 <td>A call to ObtainMethod() failed.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ArrayFull</td>
 <td>Array has reached capacity and cannot be expanded.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Query</td>
 <td>Attempt to Query() failed.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>LostOwner</td>
 <td>The object has lost its container.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>DoNotExpunge</td>
-<td>Please do not expunge me.</td>
+<td>Do not expunge yet.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>MemoryCorrupt</td>
 <td>The memory block is corrupt.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>FieldSearch</td>
-<td>I could not find the field that you requested.</td>
+<td>Requested field not found.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>InvalidPath</td>
 <td>Invalid file or folder path detected.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>SetField</td>
 <td>An unspecific error occurred during a SetField() operation.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>MarkedForDeletion</td>
 <td>A resource cannot be accessed as it is marked for deletion.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>IllegalMethodID</td>
-<td>Illegal method ID (number outside of valid range).</td>
+<td>Illegal method ID (outside of valid range).</td>
 </tr>
-<tr class="even">
+<tr>
 <td>IllegalActionID</td>
-<td>Illegal action ID (number outside of valid range).</td>
+<td>Illegal action ID (outside of valid range).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ModuleOpenFailed</td>
 <td>Module failed in its Open routine.</td>
 </tr>
-<tr class="even">
-<td>IllegalActionAttempt</td>
-<td>Illegal attempt to execute an action on an object that belongs to another Task.</td>
+<tr>
+<td>DuplicateValue</td>
+<td>Duplicate value not permitted.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>EntryMissingHeader</td>
 <td>The ModEntry-&gt;Header is missing.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ModuleMissingInit</td>
 <td>Module has not defined support for Init().</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ModuleInitFailed</td>
 <td>Module failed its Initialisation routine.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>MemoryDoesNotExist</td>
 <td>Memory block does not exist.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>DeadLock</td>
 <td>Dead-lock detected - procedure aborted.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>SystemLocked</td>
 <td>Part of the system is unreachable due to a persistent lock.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ModuleMissingName</td>
 <td>Module has not declared an official name.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>AddClass</td>
 <td>An error occurred while creating a new class.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Activate</td>
 <td>Error while Activate()ing an object.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>DoubleInit</td>
-<td>Warning - Attempt to initialise an object twice.</td>
+<td>Warning - attempt to initialise a resource twice.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>UndefinedField / FieldNotSet</td>
 <td>A required field value is undefined.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>MissingClass</td>
 <td>The class could not be found in the system.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>FileReadFlag</td>
-<td>The File flag FL_READ was not set on initialisation.</td>
+<td>The File flag FL::READ was not set on initialisation.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>FileWriteFlag</td>
-<td>The File flag FL_WRITE was not set on initialisation.</td>
+<td>The File flag FL::WRITE was not set on initialisation.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Draw</td>
 <td>An error occurred while drawing the object.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>NoMethods</td>
 <td>The class does not export any methods.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>NoMatchingObject</td>
 <td>No matching object was found for the given object ID.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>AccessMemory</td>
-<td>Access to a shared memory block was denied.</td>
+<td>Access to a memory block was denied.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>MissingPath</td>
-<td>The object is missing a setting in the Path or Location field.</td>
+<td>The object is missing a path reference.</td>
 </tr>
-<tr class="even">
-<td>NotLocked</td>
-<td>There is no exclusive lock on this object.</td>
+<tr>
+<td>ResourceNotLocked</td>
+<td>A lock was expected but not found.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>NoSearchResult</td>
 <td>The search yielded no results.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>StatementUnsatisfied</td>
 <td>The tested statement was not satisfied.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ObjectCorrupt</td>
 <td>The object structure is corrupt or has not been initialised.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>OwnerPassThrough</td>
 <td>Container pass through notification.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>UnsupportedOwner</td>
 <td>The owner is not supported by this object.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ExclusiveDenied / AccessObject</td>
-<td>An attempt to gain exclusive access to a shared object failed.</td>
+<td>Attempting to lock an object failed.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>AllocMemory</td>
-<td>A call to AllocMemory() failed to create a new memory block.</td>
+<td>AllocMemory() failed to create a new memory block.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>NewObject</td>
-<td>A call to NewObject() failed to produce a new object.</td>
+<td>NewObject() failed to produce a new object.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>GetField</td>
-<td>A call to GetField() failed to retrieve a field value.</td>
+<td>GetField() failed to retrieve a field value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>NoFieldAccess</td>
 <td>Access to a field was denied.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>VirtualVolume</td>
 <td>ResolvePath() failed to resolve the path because it is a virtual reference.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>InvalidDimension</td>
 <td>A dimension specification is invalid.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>FieldTypeMismatch</td>
 <td>Field type mismatch while getting or setting a field.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>UnrecognisedFieldType</td>
-<td>A field type ID (e.g. LONG, FLOAT) is not a recognised type of the system.</td>
+<td>A field type ID (e.g. INT, FLOAT) is not recognised.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>BufferOverflow</td>
 <td>A buffer overflow has occurred.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>UnsupportedField</td>
 <td>The specified field is not supported by the object&#39;s class.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Mismatch</td>
 <td>A mis-match has been detected that prevents further processing.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>OutOfBounds</td>
-<td>An out-of-bounds error has occurred.</td>
+<td>Out-of-bounds access denied.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Seek</td>
 <td>An error occurred during a seek operation.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ReallocMemory</td>
 <td>The reallocation of a memory block failed.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Loop</td>
 <td>An infinite loop was detected.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>FileExists</td>
 <td>The destination file or folder already exists.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ResolvePath</td>
 <td>A volume could not be resolved.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>CreateObject</td>
 <td>A call to CreateObject() failed.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>MemoryInfo</td>
 <td>Failed to obtain information on a memory block (MemoryInfo() failed).</td>
 </tr>
-<tr class="even">
+<tr>
 <td>NotInitialised</td>
-<td>The object has not been initialised.</td>
+<td>The resource has not been initialised.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ResourceExists</td>
 <td>A new resource could not be created because a matching resource exists.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Refresh</td>
 <td>An attempt to Refresh() an object failed.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ListChildren</td>
 <td>An error occurred in a call to ListChildren().</td>
 </tr>
-<tr class="even">
+<tr>
 <td>SystemCall</td>
 <td>A call to the host system has failed.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>SmallMask</td>
 <td>The size of the mask is smaller than the source Bitmap&#39;s dimensions.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>EmptyString</td>
 <td>A required string value contains no characters.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ObjectExists</td>
 <td>Object exists.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ExpectedFile</td>
 <td>The operation expected a path to a file.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Resize</td>
 <td>Failure during the resize of an object.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Redimension</td>
 <td>Failure during the redimensioning of an object.</td>
 </tr>
-<tr class="odd">
+<tr>
+<td>SemaphoreOperation</td>
+<td>A semaphore operation failed.</td>
+</tr>
+<tr>
+<td>FieldValidation</td>
+<td>Field validation failed.</td>
+</tr>
+<tr>
 <td>CreateFile</td>
 <td>A new file could not be created.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>DeleteFile</td>
 <td>Deletion of a folder or file failed (e.g. permissions, read-only media).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>OpenFile</td>
 <td>The file could not be opened.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ReadOnly</td>
 <td>A delete or write operation failed due to read-only status.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>DoesNotExist</td>
 <td>Resource does not exist.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>IdenticalPaths</td>
 <td>The destination path is the same as the source path.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Exists</td>
 <td>Resource exists.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>SanityFailure</td>
 <td>A sanity check failed.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>OutOfSpace</td>
 <td>Out of space. There is no available room to complete the request.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>GetSurfaceInfo</td>
 <td>GetSurfaceInfo() failed.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Finished / EndOfFile / OutOfData</td>
 <td>Operation finished.</td>
 </tr>
-<tr class="even">
-<td>Syntax StringFormat</td>
+<tr>
+<td>Syntax / StringFormat</td>
 <td>Invalid syntax detected.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>InvalidState</td>
 <td>Object was in an incorrect state for the operation.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>HostNotFound</td>
-<td>The internet host name could not be resolved.</td>
+<td>The Internet host name could not be resolved.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>InvalidURI</td>
 <td>Invalid Uniform Resource Identifier.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ConnectionRefused</td>
 <td>The remote host refused the connection.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>NetworkUnreachable</td>
 <td>The network was unreachable.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>HostUnreachable</td>
 <td>No route to host.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Disconnected</td>
 <td>The connection between client and server was terminated.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>TaskStillExists</td>
 <td>Task/Process still exists and is running.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>IntegrityViolation / ConstraintViolation</td>
 <td>Referential integrity / constraint violation.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>SchemaViolation</td>
 <td>Record changes would violate the DB schema.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>DataSize</td>
 <td>The size of a data chunk or buffer is incorrect.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Busy</td>
 <td>Operation cannot complete because system is busy with an earlier operation.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ConnectionAborted</td>
 <td>Attempt to connect to server aborted.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>NullArgs</td>
-<td>Function call missing argument value(s)</td>
+<td>Function call missing argument value(s).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>InvalidObject / WrongObjectType / WrongClass</td>
 <td>An object is not of the required type.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ExecViolation</td>
 <td>Execution violation - function must be called from the task that owns the object.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Recursion</td>
 <td>Detected a recursive function call.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>IllegalAddress</td>
 <td>Address pointer is outside of the task&#39;s memory map.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>UnbalancedXML</td>
 <td>The XML tags do not balance.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>WouldBlock</td>
-<td>The requested operation would block if it were performed at this time.</td>
+<td>Requested operation would block if performed at this time.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>InputOutput</td>
-<td>A non-specific I/O error has occurred.</td>
+<td>Unspecified I/O error.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>LoadModule</td>
 <td>Failed to load a module binary.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>InvalidHandle</td>
 <td>A required handle is invalid.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Security</td>
-<td>A non-specific security violation has occurred.</td>
+<td>Unspecified security violation.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>InvalidValue</td>
 <td>A required value was not within expected constraints.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ServiceUnavailable</td>
 <td>The required service is not available.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Deactivated</td>
 <td>The object must be activated with the Activate action.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>LockRequired</td>
 <td>A lock is required before accessing this functionality.</td>
 </tr>
-<tr class="odd">
-<td>AlreadyLocked Locked</td>
+<tr>
+<td>AlreadyLocked / Locked</td>
 <td>Object or resource has already been locked.</td>
 </tr>
-<tr class="even">
-<td>CardReaderUnknown</td>
-<td>The requested smart card reader was not found in the available list of card readers.</td>
-</tr>
-<tr class="odd">
+<tr>
 <td>NoMediaInserted</td>
 <td>No media is inserted in the device.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>CardReaderUnavailable</td>
 <td>The requested smart card reader is in use.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ProxySSLTunnel</td>
 <td>Failed to establish an SSL connection with the proxy server.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>InvalidHTTPResponse</td>
 <td>A valid HTTP response was not received from the server.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>InvalidReference</td>
 <td>The reference is invalid.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Exception</td>
 <td>An exception was caught.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>ThreadAlreadyActive</td>
 <td>Cannot execute a thread that is already running.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>OpenGL</td>
-<td>Failure has been reported from OpenGL.</td>
+<td>Failure reported from OpenGL.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>OutsideMainThread</td>
-<td>An operation has been attempted that is only possible from within the main thread.</td>
+<td>Operation permitted from the main thread only.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>UseSubClass</td>
 <td>Requested to use a registered sub-class (not an error).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>WrongType</td>
 <td>The expected type was not provided.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ThreadNotLocked</td>
 <td>Thread objects must be locked prior to activation.</td>
 </tr>
-<tr class="odd">
+<tr>
+<td>MessageOperation</td>
+<td>A message queue operation has failed.</td>
+</tr>
+<tr>
 <td>SetVolume</td>
 <td>A call to SetVolume() failed.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Decompression</td>
 <td>Unspecified failure during decompression of a data stream.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Compression</td>
 <td>Unspecified failure during compression of a data stream.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ExpectedFolder</td>
 <td>The operation expected a folder path.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Immutable</td>
 <td>This operation would violate the object&#39;s immutable status.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ReadFileToBuffer</td>
 <td>A call to ReadFileToBuffer() failed.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Obsolete</td>
 <td>This feature is no longer available (obsolete).</td>
 </tr>
-<tr class="even">
+<tr>
 <td>CreateResource</td>
 <td>Failed to create a new resource.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>NotPossible</td>
 <td>It is not possible to perform the requested operation.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ResolveSymbol</td>
 <td>Failed to resolve a linked library symbol.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Function</td>
 <td>A function call failed.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>AlreadyDefined</td>
-<td>Re-definition is not permitted.</td>
+<td>Attempted to change a value that cannot be redefined.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>SetValueNotNumeric</td>
 <td>Attempted to set a numeric field with an incompatible value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>SetValueNotString</td>
 <td>Attempted to set a string field with an incompatible value.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>SetValueNotObject</td>
 <td>Attempted to set an object field with an incompatible value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>SetValueNotFunction</td>
 <td>Attempted to set a function field with an incompatible value.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>SetValueNotPointer</td>
 <td>Attempted to set a pointer field with an incompatible value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td>SetValueNotArray</td>
 <td>Attempted to set an array field with an incompatible value.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>SetValueNotLookup</td>
 <td>Attempted to set a lookup field with an incompatible value.</td>
+</tr>
+<tr>
+<td>InvalidType</td>
+<td>The type of a value is invalid.</td>
+</tr>
+<tr>
+<td>CompressionStreamError</td>
+<td>A compression stream operation has failed.</td>
+</tr>
+<tr>
+<td>TaskExecutionFailed</td>
+<td>Task or process execution has failed.</td>
+</tr>
+<tr>
+<td>InvalidCompression</td>
+<td>The compression data is invalid or corrupted.</td>
+</tr>
+<tr>
+<td>SanityCheckFailed</td>
+<td>A sanity check has failed.</td>
+</tr>
+<tr>
+<td>NotAuthorised</td>
+<td>Client is not authorised to perform this operation.</td>
+</tr>
+<tr>
+<td>UnknownProperty</td>
+<td>The specified property is not recognised.</td>
+</tr>
+<tr>
+<td>NoSecureSockets</td>
+<td>A secure sockets layer is not available in this environment.</td>
+</tr>
+<tr>
+<td>ParameterRequired</td>
+<td>Missing required parameter.</td>
+</tr>
+<tr>
+<td>ParameterUnknown</td>
+<td>Unknown parameter name.</td>
 </tr>
 </tbody>
 </table>
