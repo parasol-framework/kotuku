@@ -4,7 +4,7 @@
 == Arrays
 indexterm:[arrays] indexterm:[typed arrays] Arrays are mutable, typed, contiguous sequences of elements.  Each array holds elements of a single declared type, providing efficient storage and direct memory access.  Arrays are a distinct type from tables, purpose-built for sequential data where all elements share a common type.
 
-Arrays are reference types.  Assigning an array to another variable creates a second reference to the same underlying data, not a copy.  Two distinct arrays are never equal, even if they contain identical entries; `is` compares identity, not content.
+Arrays are reference types.  Assigning an array to another variable creates a second reference to the same underlying data, not a copy.
 
 [source,tiri]
 ----
@@ -95,9 +95,9 @@ array<array<string>>:type()  -- 'array'
 Returns `true` if the array is read-only.  Read-only arrays are produced by Kōtuku API calls that expose internal buffers.  Mutation methods will raise an error when called on a read-only array.
 
 [discrete]
-==== Length and Identity
+==== Length and Equality
 
-The `#` operator returns the current element count.  The `is` operator compares identity, not content.
+The `#` operator returns the current element count.  The `is` operator performs deep equality comparison: two arrays are equal if they have the same element type, the same length, and identical contents.
 
 [source,tiri]
 ----
@@ -106,9 +106,69 @@ b = array<int> { 1, 2, 3 }
 c = a
 
 a is c   -- true  (same object)
-a is b   -- false (distinct objects)
+a is b   -- true  (same type, length, and contents)
 #a       -- 3
 ----
+
+Equality rules depend on the element type:
+
+[cols="1,3a",options="header"]
+|===
+|Element Category |Comparison Method
+
+|Primitive (`byte`, `int`, `int16`, `int64`, `float`, `double`)
+|Raw memory comparison of the underlying data.
+
+|`string`
+|Element-by-element string comparison (hash, length, then content).
+
+|`object`
+|Element-by-element comparison of object UIDs.
+|===
+
+Arrays with different element types are never equal, even if the raw values are numerically equivalent.  Equality for `table` and `any` element types is not yet supported and raises an error.
+
+[discrete]
+==== String Conversion
+
+The `tostring()` function, `string.format('%s', ...)`, and f-string interpolation all invoke the array's string conversion metamethod.
+
+For byte arrays (`byte`, `char`), conversion returns the raw bytes interpreted as a string, preserving embedded NUL bytes:
+
+[source,tiri]
+----
+buf = array<byte> { 72, 101, 108, 108, 111 }
+tostring(buf)        -- 'Hello'
+f'{buf}'             -- 'Hello'
+
+str_arr = array.new('Hello')
+tostring(str_arr)    -- 'Hello'
+----
+
+For all other element types, conversion returns a descriptive summary of the form `array<__type__, __length__>`:
+
+[source,tiri]
+----
+tostring(array<int> { 1, 2, 3 })           -- 'array<int, 3>'
+tostring(array<string> { 'a', 'b' })       -- 'array<string, 2>'
+tostring(array<double, 0>)                  -- 'array<double, 0>'
+----
+
+[discrete]
+==== String Concatenation
+
+Byte arrays (`byte`, `char`) can be used with the `..` concatenation operator.  The array is converted to a string and concatenated with the other operand.  The result is always a string.
+
+[source,tiri]
+----
+buf = array<char> { 72, 105 }
+'Say: ' .. buf           -- 'Say: Hi'
+buf .. ' there'          -- 'Hi there'
+buf .. 123               -- 'Hi123'
+buf .. array<byte> { 33 }   -- 'Hi!'
+----
+
+Non-byte arrays (e.g. `int`, `string`, `table`) cannot be concatenated and will raise an error.
 
 [[sec-creating-arrays]]
 === Creating Arrays
