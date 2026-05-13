@@ -242,7 +242,7 @@ netsocket = obj.new('netsocket', {
       <tiriPrototype>err, BytesRead:num = RecvFrom(Source:any, Buffer:any, BufferSize:num)</tiriPrototype>
       <input>
         <param type="struct IPAddress *" name="Source">Source IP address of the received packet.</param>
-        <param type="APTR" name="Buffer">Pointer to the buffer where received data will be stored.</param>
+        <param type="APTR" name="Buffer">Output buffer for received data.</param>
         <param type="INT" name="BufferSize">Size of the receive buffer in bytes.</param>
         <param type="INT *" name="BytesRead">Number of bytes actually received.</param>
       </input>
