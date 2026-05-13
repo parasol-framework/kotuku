@@ -25,7 +25,7 @@ UDP Performance and Stress Test
       address = '127.0.0.1',
       flags   = 'SERVER|UDP',
       incoming = function(Socket)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
          if (err is ERR_Okay) and (bytesRead > 0) then
             messagesReceived = messagesReceived + 1
@@ -87,7 +87,7 @@ end
       flags   = 'SERVER|UDP',
       maxPacketSize = 65507,  -- Maximum UDP payload size
       incoming = function(Socket)
-         buffer = string.alloc(65600)  -- Slightly larger buffer
+         buffer = array<byte, 65600>  -- Slightly larger buffer
          err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
          if (err is ERR_Okay) and (bytesRead > 0) then
             print('[Large Packet Server] Received packet of size: ' .. bytesRead)
@@ -152,11 +152,11 @@ end
       address = '127.0.0.1',
       flags   = 'SERVER|UDP',
       incoming = function(Socket)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
          if (err is ERR_Okay) and (bytesRead > 0) then
             totalReceived = totalReceived + 1
-            msg = buffer:sub(0, bytesRead)
+            msg = buffer:getString(0, bytesRead)
 
             if totalReceived % 10 is 0 then
                print('[Concurrent Server] Received ' .. totalReceived .. ' messages total')
@@ -260,7 +260,7 @@ end
       address = '127.0.0.1',
       flags = 'SERVER|UDP',
       incoming = function(Socket)
-         buffer = string.alloc(1024)
+         buffer = array<byte, 1024>
          err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
          if err is ERR_Okay and bytesRead > 0 then
              messagesReceived = messagesReceived + 1

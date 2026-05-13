@@ -433,8 +433,111 @@ end
 
 @Test function ToString()
    str_array = array.new('hello')
-   assert(string.startsWith(tostring(str_array), 'array:'), "String array tostring() failed, got '" .. tostring(str_array) .. "'")
+   assert(tostring(str_array) is 'hello', "String array tostring() failed, got '" .. tostring(str_array) .. "'")
    assert(#str_array is 5, "String array length failed, expected 5, got " .. tostring(#str_array))
+
+   char_array = array<char> { 72, 101, 108, 108, 111 }
+   assert(tostring(char_array) is 'Hello', "Char array tostring() failed, got '" .. tostring(char_array) .. "'")
+   assert(string.format('%s', char_array) is 'Hello', 'Char array string.format() conversion failed')
+   assert(f'{char_array}' is 'Hello', 'Char array f-string conversion failed')
+
+   byte_array = array<byte> { 65, 66, 67 }
+   assert(tostring(byte_array) is 'ABC', "Byte array tostring() failed, got '" .. tostring(byte_array) .. "'")
+
+   nul_array = array<byte> { 65, 0, 66 }
+   nul_text = tostring(nul_array)
+   assert(nul_text is nul_array:getString(), 'Byte array tostring() should match getString() with embedded NUL bytes')
+   assert(#nul_text is 3, "Byte array tostring() should preserve full length, got " .. tostring(#nul_text))
+
+   int_array = array<int> { 1, 2, 3 }
+   assert(tostring(int_array) is 'array<int, 3>', "Integer array tostring() failed, got '" .. tostring(int_array) .. "'")
+
+   string_array = array<string> { 'hello', 'world' }
+   assert(tostring(string_array) is 'array<string, 2>', "String array tostring() failed, got '" .. tostring(string_array) .. "'")
+
+   empty_double_array = array<double, 0>
+   assert(tostring(empty_double_array) is 'array<double, 0>',
+      "Empty double array tostring() failed, got '" .. tostring(empty_double_array) .. "'")
+end
+
+@Test function ArrayConcatMetamethod()
+   char_array = array<char> { 72, 105 }
+   byte_array = array<byte> { 33 }
+
+   assert('Say: ' .. char_array is 'Say: Hi', 'String plus char array concat failed')
+   assert(char_array .. ' there' is 'Hi there', 'Char array plus string concat failed')
+   assert(char_array .. byte_array is 'Hi!', 'Char array plus byte array concat failed')
+   assert(char_array .. 123 is 'Hi123', 'Char array plus number concat failed')
+
+   nul_array = array<byte> { 65, 0, 66 }
+   nul_result = nul_array .. 'C'
+   assert(nul_result is nul_array:getString() .. 'C', 'Byte array concat should preserve embedded NUL bytes')
+   assert(#nul_result is 4, "Byte array concat should preserve full length, got " .. tostring(#nul_result))
+
+   int_array = array<int> { 1, 2, 3 }
+   try
+      bad_result = int_array .. 'x'
+   success
+      error('Integer array left-hand concat should fail')
+   end
+
+   try
+      bad_result = 'x' .. int_array
+   success
+      error('Integer array right-hand concat should fail')
+   end
+end
+
+@Test function ArrayEqualityMetamethod()
+   int_a = array<int> { 1, 2, 3 }
+   int_b = array<int> { 1, 2, 3 }
+   int_c = array<int> { 1, 2, 4 }
+   int_short = array<int> { 1, 2 }
+   double_array = array<double> { 1.0, 2.0, 3.0 }
+
+   assert(int_a is int_b, 'Primitive arrays with identical contents should be equal')
+   assert(int_a != int_c, 'Primitive arrays with different contents should not be equal')
+   assert(int_a != int_short, 'Primitive arrays with different lengths should not be equal')
+   assert(int_a != double_array, 'Primitive arrays with different element types should not be equal')
+
+   byte_a = array<byte> { 65, 0, 66 }
+   byte_b = array<byte> { 65, 0, 66 }
+   byte_c = array<byte> { 65, 0, 67 }
+   assert(byte_a is byte_b, 'Byte arrays with embedded NUL bytes should compare equal by raw memory')
+   assert(byte_a != byte_c, 'Byte arrays with different raw bytes should not compare equal')
+
+   string_a = array<string> { 'hello', 'world' }
+   string_b = array<string> { 'hello', 'world' }
+   string_c = array<string> { 'hello', 'there' }
+   string_short = array<string> { 'hello' }
+
+   assert(string_a is string_b, 'String arrays with identical contents should be equal')
+   assert(string_a != string_c, 'String arrays with different contents should not be equal')
+   assert(string_a != string_short, 'String arrays with different lengths should not be equal')
+
+   obj_one = obj.new('time')
+   obj_two = obj.new('file')
+   obj_one_ref = obj.find(obj_one.id)
+
+   object_a = array<object> { obj_one, obj_two }
+   object_b = array<object> { obj_one_ref, obj_two }
+   object_c = array<object> { obj_two, obj_one }
+   object_short = array<object> { obj_one }
+
+   assert(object_a is object_b, 'Object arrays with matching UIDs should be equal')
+   assert(object_a != object_c, 'Object arrays with different UID order should not be equal')
+   assert(object_a != object_short, 'Object arrays with different lengths should not be equal')
+
+   table_a = array<table> { { value = 1 } }
+   table_b = array<table> { { value = 1 } }
+   try
+      unsupported_equal = table_a is table_b
+   success
+      error('Table array equality should fail until non-primitive equality is supported')
+   end
+
+   obj_one.free()
+   obj_two.free()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
