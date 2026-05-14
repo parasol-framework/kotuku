@@ -32,6 +32,7 @@ enum class TokenKind : uint16_t {
    NamespaceToken = TK_namespace,
    Else = TK_else,
    ElseIf = TK_elseif,
+   Enum = TK_enum,
    For = TK_for,
    WhileToken = TK_while,
    WithToken = TK_with,
@@ -137,6 +138,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::NamespaceToken: return "namespace";
       case TokenKind::Else: return "else";
       case TokenKind::ElseIf: return "elseif";
+      case TokenKind::Enum: return "enum";
       case TokenKind::For: return "for";
       case TokenKind::WhileToken: return "while";
       case TokenKind::WithToken: return "with";

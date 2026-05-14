@@ -21,6 +21,11 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local()
    if (not implicit_local) {
       this->ctx.tokens().advance();  // Consume the 'local' keyword
 
+      if (this->ctx.check(TokenKind::Enum)) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+            "local enum declarations are not supported");
+      }
+
       bool is_thunk = false;
       if (this->ctx.check(TokenKind::ThunkToken)) {
          is_thunk = true;
@@ -108,6 +113,10 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    Token global_token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
 
+   if (this->ctx.check(TokenKind::Enum)) {
+      return this->parse_enum(global_token);
+   }
+
    // Handle `global function name()` and `global thunk name()` syntax
 
    bool is_thunk = false;
@@ -192,6 +201,200 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    GlobalDeclStmtPayload payload(assign_op, std::move(name_list), std::move(values));
    stmt->data = std::move(payload);
    return ParserResult<StmtNodePtr>::success(std::move(stmt));
+}
+
+//********************************************************************************************************************
+// Parses top-level enum declarations and registers their generated constants for compile-time substitution.
+
+struct EnumConstantDecl {
+   std::string name;
+   int64_t value = 0;
+   SourceSpan span{};
+};
+
+static bool is_uppercase_enum_name(GCstr *Symbol)
+{
+   if (not Symbol or Symbol->len IS 0) return false;
+
+   CSTRING text = strdata(Symbol);
+   unsigned char first = (unsigned char)text[0];
+   if (not std::isupper(int(first))) return false;
+
+   for (size_t i = 1; i < Symbol->len; ++i) {
+      unsigned char c = (unsigned char)text[i];
+      if (std::isupper(int(c)) or std::isdigit(int(c)) or c IS '_') continue;
+      return false;
+   }
+   return true;
+}
+
+static bool is_prefixed_attribute_token(TokenStreamAdapter &Tokens)
+{
+   Token current = Tokens.current();
+   if (current.raw() IS '<') return true;
+
+   if (current.kind() != TokenKind::Identifier) return false;
+   GCstr *symbol = current.identifier();
+   if (not symbol) return false;
+
+   std::string_view name(strdata(symbol), symbol->len);
+   if (name != "const" and name != "close") return false;
+   return Tokens.peek(1).raw() IS '<';
+}
+
+ParserResult<int64_t> AstBuilder::parse_enum_integer_literal()
+{
+   int sign = 1;
+   Token token = this->ctx.tokens().current();
+   if (token.kind() IS TokenKind::Plus or token.kind() IS TokenKind::Minus) {
+      if (token.kind() IS TokenKind::Minus) sign = -1;
+      this->ctx.tokens().advance();
+      token = this->ctx.tokens().current();
+   }
+
+   if (not token.is(TokenKind::Number)) {
+      return this->fail<int64_t>(ParserErrorCode::UnexpectedToken, token,
+         "enum values must be integer literals");
+   }
+
+   double number_value = token.payload().as_number();
+   if (not std::isfinite(number_value) or std::trunc(number_value) != number_value) {
+      return this->fail<int64_t>(ParserErrorCode::UnexpectedToken, token,
+         "enum values must be integer literals");
+   }
+
+   double signed_value = number_value * double(sign);
+   constexpr double min_value = double(std::numeric_limits<int64_t>::min());
+   constexpr double max_value = double(std::numeric_limits<int64_t>::max());
+   if (signed_value < min_value or signed_value > max_value) {
+      return this->fail<int64_t>(ParserErrorCode::UnexpectedToken, token,
+         "enum integer literal is out of range");
+   }
+
+   this->ctx.tokens().advance();
+   return ParserResult<int64_t>::success(int64_t(signed_value));
+}
+
+ParserResult<StmtNodePtr> AstBuilder::parse_enum(const Token &StartToken)
+{
+   if (not this->at_top_level()) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+         "enum declarations are only allowed at top-level scope");
+   }
+
+   Token enum_token = this->ctx.tokens().current();
+   auto enum_result = this->ctx.consume(TokenKind::Enum, ParserErrorCode::ExpectedToken);
+   if (not enum_result.ok()) return ParserResult<StmtNodePtr>::failure(enum_result.error_ref());
+
+   auto prefix_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+   if (not prefix_token.ok()) return ParserResult<StmtNodePtr>::failure(prefix_token.error_ref());
+
+   GCstr *prefix_symbol = prefix_token.value_ref().identifier();
+   if (not is_uppercase_enum_name(prefix_symbol)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, prefix_token.value_ref(),
+         "declare enum prefixes in uppercase only");
+   }
+
+   if (this->ctx.check(TokenKind::Colon)) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+         "enum prefixes cannot use a type annotation");
+   }
+
+   if (is_prefixed_attribute_token(this->ctx.tokens())) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+         "enum prefixes cannot use <const> or <close> attributes");
+   }
+
+   auto open_brace = this->ctx.consume(TokenKind::LeftBrace, ParserErrorCode::ExpectedToken);
+   if (not open_brace.ok()) return ParserResult<StmtNodePtr>::failure(open_brace.error_ref());
+
+   std::vector<EnumConstantDecl> constants;
+   std::vector<std::string> members;
+   int64_t next_value = 0;
+   std::string prefix(strdata(prefix_symbol), prefix_symbol->len);
+
+   while (not this->ctx.check(TokenKind::RightBrace)) {
+      if (this->ctx.check(TokenKind::EndOfFile)) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedEndOfFile, enum_token,
+            "unterminated enum declaration");
+      }
+
+      auto member_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (not member_token.ok()) return ParserResult<StmtNodePtr>::failure(member_token.error_ref());
+
+      GCstr *member_symbol = member_token.value_ref().identifier();
+      if (not is_uppercase_enum_name(member_symbol)) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, member_token.value_ref(),
+            "declare enum members in uppercase only");
+      }
+
+      std::string member(strdata(member_symbol), member_symbol->len);
+      for (const std::string &existing : members) {
+         if (existing IS member) {
+            return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, member_token.value_ref(),
+               "duplicate enum member '" + member + "'");
+         }
+      }
+      members.push_back(member);
+
+      int64_t value = next_value;
+      if (this->ctx.match(TokenKind::Equals).ok()) {
+         auto explicit_value = this->parse_enum_integer_literal();
+         if (not explicit_value.ok()) return ParserResult<StmtNodePtr>::failure(explicit_value.error_ref());
+         value = explicit_value.value_ref();
+      }
+
+      constants.push_back(EnumConstantDecl{ prefix + "_" + member, value, member_token.value_ref().span() });
+      if (value IS std::numeric_limits<int64_t>::max()) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, member_token.value_ref(),
+            "enum value overflow");
+      }
+      next_value = value + 1;
+
+      if (this->ctx.match(TokenKind::Comma).ok()) {
+         continue;
+      }
+      if (not this->ctx.check(TokenKind::RightBrace)) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+            "expected ',' or '}' in enum declaration");
+      }
+   }
+
+   auto close_brace = this->ctx.consume(TokenKind::RightBrace, ParserErrorCode::ExpectedToken);
+   if (not close_brace.ok()) return ParserResult<StmtNodePtr>::failure(close_brace.error_ref());
+
+   if (constants.empty()) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, StartToken,
+         "enum declarations must contain at least one member");
+   }
+
+   std::string duplicate_name;
+   SourceSpan duplicate_span{};
+
+   {
+      std::unique_lock lock(glConstantMutex);
+      for (const EnumConstantDecl &constant : constants) {
+         if (glConstantRegistry.contains(kt::strhash(constant.name))) {
+            duplicate_name = constant.name;
+            duplicate_span = constant.span;
+            break;
+         }
+      }
+
+      if (duplicate_name.empty()) {
+         for (const EnumConstantDecl &constant : constants) {
+            glConstantRegistry.emplace(kt::strhash(constant.name), TiriConstant(constant.value));
+         }
+      }
+   }
+
+   if (not duplicate_name.empty()) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken,
+         Token::from_span(duplicate_span, TokenKind::Identifier),
+         "duplicate enum constant '" + duplicate_name + "'");
+   }
+
+   return ParserResult<StmtNodePtr>::success(nullptr);
 }
 
 //********************************************************************************************************************
@@ -333,6 +536,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_repeat()
    Token token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
    const TokenKind terms[] = { TokenKind::Until };
+   BlockDepthScope block_scope(*this);
    auto body = this->parse_block(terms);
    if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
    this->ctx.consume(TokenKind::Until, ParserErrorCode::ExpectedToken);
@@ -353,6 +557,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_do()
    Token token = this->ctx.tokens().current();
    this->ctx.tokens().advance();
    const TokenKind terms[] = { TokenKind::EndToken };
+   BlockDepthScope block_scope(*this);
    auto block = this->parse_block(terms);
    if (not block.ok()) return ParserResult<StmtNodePtr>::failure(block.error_ref());
 
@@ -379,6 +584,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_with()
    this->ctx.consume(TokenKind::DoToken, ParserErrorCode::ExpectedToken);
 
    const TokenKind terms[] = { TokenKind::EndToken };
+   BlockDepthScope block_scope(*this);
    auto body = this->parse_block(terms);
    if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
 
@@ -407,6 +613,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_defer()
    }
 
    const TokenKind body_terms[] = { TokenKind::EndToken };
+   BlockDepthScope block_scope(*this);
    auto body = this->parse_block(body_terms);
    if (not body.ok()) return ParserResult<StmtNodePtr>::failure(body.error_ref());
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
@@ -529,8 +736,13 @@ ParserResult<StmtNodePtr> AstBuilder::parse_try()
 
    // Parse try block body - terminates on 'except', 'success', or 'end'
    const TokenKind try_terms[] = { TokenKind::ExceptToken, TokenKind::SuccessToken, TokenKind::EndToken };
-   auto try_body = this->parse_block(try_terms);
-   if (not try_body.ok()) return ParserResult<StmtNodePtr>::failure(try_body.error_ref());
+   std::unique_ptr<BlockStmt> try_block;
+   {
+      BlockDepthScope block_scope(*this);
+      auto try_body = this->parse_block(try_terms);
+      if (not try_body.ok()) return ParserResult<StmtNodePtr>::failure(try_body.error_ref());
+      try_block = std::move(try_body.value_ref());
+   }
 
    std::vector<ExceptClause> clauses;
    bool has_catch_all = false;
@@ -611,9 +823,12 @@ ParserResult<StmtNodePtr> AstBuilder::parse_try()
 
       // Parse except block body - terminates on next 'except', 'success', or 'end'
       const TokenKind except_terms[] = { TokenKind::ExceptToken, TokenKind::SuccessToken, TokenKind::EndToken };
-      auto except_body = this->parse_block(except_terms);
-      if (not except_body.ok()) return ParserResult<StmtNodePtr>::failure(except_body.error_ref());
-      clause.block = std::move(except_body.value_ref());
+      {
+         BlockDepthScope block_scope(*this);
+         auto except_body = this->parse_block(except_terms);
+         if (not except_body.ok()) return ParserResult<StmtNodePtr>::failure(except_body.error_ref());
+         clause.block = std::move(except_body.value_ref());
+      }
 
       clauses.push_back(std::move(clause));
    }
@@ -625,9 +840,12 @@ ParserResult<StmtNodePtr> AstBuilder::parse_try()
 
       // Parse success block body - terminates on 'end'
       const TokenKind success_terms[] = { TokenKind::EndToken };
-      auto success_body = this->parse_block(success_terms);
-      if (not success_body.ok()) return ParserResult<StmtNodePtr>::failure(success_body.error_ref());
-      success_block = std::move(success_body.value_ref());
+      {
+         BlockDepthScope block_scope(*this);
+         auto success_body = this->parse_block(success_terms);
+         if (not success_body.ok()) return ParserResult<StmtNodePtr>::failure(success_body.error_ref());
+         success_block = std::move(success_body.value_ref());
+      }
    }
 
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
@@ -635,7 +853,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_try()
    // Build the statement
    auto stmt = std::make_unique<StmtNode>(AstNodeKind::TryExceptStmt, try_token.span());
    TryExceptPayload payload;
-   payload.try_block = std::move(try_body.value_ref());
+   payload.try_block = std::move(try_block);
    payload.except_clauses = std::move(clauses);
    payload.success_block = std::move(success_block);
    payload.enable_trace = enable_trace;

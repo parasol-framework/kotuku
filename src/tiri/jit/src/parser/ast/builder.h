@@ -23,13 +23,14 @@ public:
    ParserResult<ExprNodePtr> parse_expression(uint8_t precedence = 0);
    ParserResult<ExprNodeList> parse_expression_list();
 
-   [[nodiscard]] bool at_top_level() const { return function_depth_ IS 0; }
+   [[nodiscard]] bool at_top_level() const { return function_depth_ IS 0 and block_depth_ IS 0; }
 
 private:
    ParserContext& ctx;
    bool in_guard_expression = false;  // True when parsing 'when' clause guard expression
    bool in_choose_expression = false; // True when parsing choose expression cases (for tuple pattern detection)
    int function_depth_ = 0;           // Tracks nesting depth inside function bodies
+   int block_depth_ = 0;              // Tracks nested statement blocks below chunk scope
    std::vector<GCstr *> function_name_stack;
 
    class FunctionNameScope {
@@ -39,6 +40,18 @@ private:
 
       FunctionNameScope(const FunctionNameScope &) = delete;
       FunctionNameScope& operator=(const FunctionNameScope &) = delete;
+
+   private:
+      AstBuilder &builder;
+   };
+
+   class BlockDepthScope {
+   public:
+      explicit BlockDepthScope(AstBuilder &Builder);
+      ~BlockDepthScope();
+
+      BlockDepthScope(const BlockDepthScope &) = delete;
+      BlockDepthScope& operator=(const BlockDepthScope &) = delete;
 
    private:
       AstBuilder &builder;
@@ -54,6 +67,8 @@ private:
    ParserResult<StmtNodePtr> parse_statement();
    ParserResult<StmtNodePtr> parse_local();
    ParserResult<StmtNodePtr> parse_global();
+   ParserResult<StmtNodePtr> parse_enum(const Token &StartToken);
+   ParserResult<int64_t> parse_enum_integer_literal();
    ParserResult<StmtNodePtr> parse_function_stmt();
    ParserResult<StmtNodePtr> parse_annotated_statement();
    ParserResult<std::vector<AnnotationEntry>> parse_annotations();
