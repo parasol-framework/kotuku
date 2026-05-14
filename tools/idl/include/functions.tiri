@@ -491,7 +491,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- TDL function
 
-global function enum(Prefix:str, Options:table, ...)
+global function enums(Prefix:str, Options:table, ...)
    verbose(f'Processing {Prefix} enum.')
    if glCustomTypes[Prefix] then print(f'WARN: A "{Prefix}" constant already exists.') end
 
@@ -562,10 +562,13 @@ global function enum(Prefix:str, Options:table, ...)
    end
 
    glCustomTypes[Prefix] = {
-      prefix=Prefix, grouping='constants', list=list, comment=Options.comment,
-      restrict=(glRestrict ?? Options.restrict),
-      bits=Options.bits,
-      type=Options.type -- Promotes strong-typing to other C++ definitions
+      prefix   = Prefix,
+      grouping = 'constants',
+      list     = list,
+      comment  = Options.comment,
+      restrict = (glRestrict ?? Options.restrict),
+      bits     = Options.bits,
+      type     = Options.type -- Promotes strong-typing to other C++ definitions
    }
 end
 

@@ -13,7 +13,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2026", version=1.0, tim
     VERSION = "\"20240126\""
   })
 
-  enum("TT", { type="char", start=1 }, "VECTOR", "LINK", "EDIT")
+  enums("TT", { type="char", start=1 }, "VECTOR", "LINK", "EDIT")
 
   flags("DEF", { comment="Event flags for selectively receiving events from the Document object." },
     "PATH: The source file path has changed.  Useful for detecting when the user has left the page.",
@@ -26,7 +26,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2026", version=1.0, tim
     { ON_CROSSING = "ON_CROSSING_IN|ON_CROSSING_OUT" }
   )
 
-  enum("DRT", { type="int", start=0, comment="Internal trigger codes" },
+  enums("DRT", { type="int", start=0, comment="Internal trigger codes" },
     "BEFORE_LAYOUT",
     "AFTER_LAYOUT",
     "USER_CLICK",
