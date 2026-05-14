@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <span>
@@ -17,21 +18,31 @@
 
 class AstBuilder {
 public:
-   explicit AstBuilder(ParserContext& context);
+   explicit AstBuilder(ParserContext& context, AstBuilder *Parent = nullptr);
+   ~AstBuilder();
+
+   AstBuilder(const AstBuilder &) = delete;
+   AstBuilder& operator=(const AstBuilder &) = delete;
 
    ParserResult<std::unique_ptr<BlockStmt>> parse_chunk();
    ParserResult<ExprNodePtr> parse_expression(uint8_t precedence = 0);
    ParserResult<ExprNodeList> parse_expression_list();
+   void commit_registered_enum_constants();
+   void rollback_registered_enum_constants();
+   void rollback_registered_enum_hierarchy();
 
-   [[nodiscard]] bool at_top_level() const { return function_depth_ IS 0 and block_depth_ IS 0; }
+   [[nodiscard]] bool at_top_level() const { return function_depth IS 0 and block_depth IS 0; }
 
 private:
    ParserContext& ctx;
    bool in_guard_expression = false;  // True when parsing 'when' clause guard expression
    bool in_choose_expression = false; // True when parsing choose expression cases (for tuple pattern detection)
-   int function_depth_ = 0;           // Tracks nesting depth inside function bodies
-   int block_depth_ = 0;              // Tracks nested statement blocks below chunk scope
+   int function_depth = 0;           // Tracks nesting depth inside function bodies
+   int block_depth = 0;              // Tracks nested statement blocks below chunk scope
+   bool enum_constants_committed = false;
+   AstBuilder *parent_builder = nullptr;
    std::vector<GCstr *> function_name_stack;
+   std::vector<uint32_t> registered_enum_constants;
 
    class FunctionNameScope {
    public:
@@ -69,6 +80,8 @@ private:
    ParserResult<StmtNodePtr> parse_global();
    ParserResult<StmtNodePtr> parse_enum(const Token &StartToken);
    ParserResult<int64_t> parse_enum_integer_literal();
+   void track_registered_enum_constant(uint32_t Hash);
+   void adopt_registered_enum_constants(AstBuilder &Child);
    ParserResult<StmtNodePtr> parse_function_stmt();
    ParserResult<StmtNodePtr> parse_annotated_statement();
    ParserResult<std::vector<AnnotationEntry>> parse_annotations();
