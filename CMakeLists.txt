@@ -699,26 +699,67 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 include(ExternalProject)
 
 # Build zlib as an external project so the source archive is downloaded only when required.
-if (WIN32)
-   if (MSVC)
-      set (ZLIB_LIB_PATH_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/zs.lib")
-      set (ZLIB_LIB_PATH_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/zsd.lib")
+if (KOTUKU_STATIC)
+   set (ZLIB_TARGET_TYPE STATIC)
+   set (ZLIB_BUILD_SHARED OFF)
+   set (ZLIB_BUILD_STATIC ON)
+
+   if (WIN32)
+      if (MSVC)
+         set (ZLIB_LIB_PATH_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/zs.lib")
+         set (ZLIB_LIB_PATH_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/zsd.lib")
+      else ()
+         set (ZLIB_LIB_PATH_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libzs.a")
+         set (ZLIB_LIB_PATH_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libzsd.a")
+      endif ()
+      if (NOT KOTUKU_MULTI_CONFIG AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+         set (ZLIB_LIB_PATH "${ZLIB_LIB_PATH_DEBUG}")
+      else ()
+         set (ZLIB_LIB_PATH "${ZLIB_LIB_PATH_RELEASE}")
+      endif ()
    else ()
-      set (ZLIB_LIB_PATH_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libzs.a")
-      set (ZLIB_LIB_PATH_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libzsd.a")
+      set (ZLIB_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libz.a")
    endif ()
-   if (NOT KOTUKU_MULTI_CONFIG AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-      set (ZLIB_LIB_PATH "${ZLIB_LIB_PATH_DEBUG}")
-   else ()
-      set (ZLIB_LIB_PATH "${ZLIB_LIB_PATH_RELEASE}")
+
+   set (ZLIB_BUILD_BYPRODUCTS ${ZLIB_LIB_PATH})
+   if (WIN32)
+      list (APPEND ZLIB_BUILD_BYPRODUCTS ${ZLIB_LIB_PATH_DEBUG})
    endif ()
 else ()
-   set (ZLIB_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libz.a")
-endif ()
+   set (ZLIB_TARGET_TYPE SHARED)
+   set (ZLIB_BUILD_SHARED ON)
+   set (ZLIB_BUILD_STATIC OFF)
 
-set (ZLIB_BUILD_BYPRODUCTS ${ZLIB_LIB_PATH})
-if (WIN32)
-   list (APPEND ZLIB_BUILD_BYPRODUCTS ${ZLIB_LIB_PATH_DEBUG})
+   if (WIN32)
+      if (MSVC)
+         set (ZLIB_IMPLIB_PATH_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/z.lib")
+         set (ZLIB_IMPLIB_PATH_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/zd.lib")
+      else ()
+         set (ZLIB_IMPLIB_PATH_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libz.dll.a")
+         set (ZLIB_IMPLIB_PATH_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libzd.dll.a")
+      endif ()
+      set (ZLIB_RUNTIME_PATH_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/zlib/bin/z.dll")
+      set (ZLIB_RUNTIME_PATH_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/zlib/bin/zd.dll")
+      if (NOT KOTUKU_MULTI_CONFIG AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+         set (ZLIB_IMPLIB_PATH "${ZLIB_IMPLIB_PATH_DEBUG}")
+         set (ZLIB_RUNTIME_PATH "${ZLIB_RUNTIME_PATH_DEBUG}")
+      else ()
+         set (ZLIB_IMPLIB_PATH "${ZLIB_IMPLIB_PATH_RELEASE}")
+         set (ZLIB_RUNTIME_PATH "${ZLIB_RUNTIME_PATH_RELEASE}")
+      endif ()
+   elseif (APPLE)
+      set (ZLIB_RUNTIME_PATH "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libz.dylib")
+   else ()
+      set (ZLIB_RUNTIME_PATH "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libz.so")
+   endif ()
+
+   set (ZLIB_BUILD_BYPRODUCTS ${ZLIB_RUNTIME_PATH})
+   if (WIN32)
+      list (APPEND ZLIB_BUILD_BYPRODUCTS
+         ${ZLIB_IMPLIB_PATH}
+         ${ZLIB_RUNTIME_PATH_DEBUG}
+         ${ZLIB_IMPLIB_PATH_DEBUG})
+   endif ()
 endif ()
 
 set (ZLIB_CMAKE_ARGS
@@ -730,8 +771,8 @@ set (ZLIB_CMAKE_ARGS
    -DCMAKE_INSTALL_DOCDIR=share/doc
    -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
 list (APPEND ZLIB_CMAKE_ARGS
-   -DZLIB_BUILD_SHARED=OFF
-   -DZLIB_BUILD_STATIC=ON
+   -DZLIB_BUILD_SHARED=${ZLIB_BUILD_SHARED}
+   -DZLIB_BUILD_STATIC=${ZLIB_BUILD_STATIC}
    -DZLIB_BUILD_TESTING=OFF
    -DZLIB_INSTALL=ON)
 
@@ -761,9 +802,9 @@ set (ZLIB_HEADERS "${install_dir}/include")
 
 file (MAKE_DIRECTORY ${ZLIB_HEADERS})
 
-add_library(zlib STATIC IMPORTED)
+add_library(zlib ${ZLIB_TARGET_TYPE} IMPORTED)
 
-if (WIN32 AND KOTUKU_MULTI_CONFIG)
+if (KOTUKU_STATIC AND WIN32 AND KOTUKU_MULTI_CONFIG)
    set_target_properties(zlib PROPERTIES
       IMPORTED_CONFIGURATIONS "DEBUG;RELEASE;RELWITHDEBINFO;MINSIZEREL"
       IMPORTED_LOCATION_DEBUG ${ZLIB_LIB_PATH_DEBUG}
@@ -771,13 +812,66 @@ if (WIN32 AND KOTUKU_MULTI_CONFIG)
       IMPORTED_LOCATION_RELWITHDEBINFO ${ZLIB_LIB_PATH_RELEASE}
       IMPORTED_LOCATION_MINSIZEREL ${ZLIB_LIB_PATH_RELEASE}
       INTERFACE_INCLUDE_DIRECTORIES ${ZLIB_HEADERS})
-else ()
+elseif (KOTUKU_STATIC)
    set_target_properties(zlib PROPERTIES
       IMPORTED_LOCATION ${ZLIB_LIB_PATH}
+      INTERFACE_INCLUDE_DIRECTORIES ${ZLIB_HEADERS})
+elseif (WIN32 AND KOTUKU_MULTI_CONFIG)
+   set_target_properties(zlib PROPERTIES
+      IMPORTED_CONFIGURATIONS "DEBUG;RELEASE;RELWITHDEBINFO;MINSIZEREL"
+      IMPORTED_IMPLIB_DEBUG ${ZLIB_IMPLIB_PATH_DEBUG}
+      IMPORTED_IMPLIB_RELEASE ${ZLIB_IMPLIB_PATH_RELEASE}
+      IMPORTED_IMPLIB_RELWITHDEBINFO ${ZLIB_IMPLIB_PATH_RELEASE}
+      IMPORTED_IMPLIB_MINSIZEREL ${ZLIB_IMPLIB_PATH_RELEASE}
+      IMPORTED_LOCATION_DEBUG ${ZLIB_RUNTIME_PATH_DEBUG}
+      IMPORTED_LOCATION_RELEASE ${ZLIB_RUNTIME_PATH_RELEASE}
+      IMPORTED_LOCATION_RELWITHDEBINFO ${ZLIB_RUNTIME_PATH_RELEASE}
+      IMPORTED_LOCATION_MINSIZEREL ${ZLIB_RUNTIME_PATH_RELEASE}
+      INTERFACE_INCLUDE_DIRECTORIES ${ZLIB_HEADERS})
+elseif (WIN32)
+   set_target_properties(zlib PROPERTIES
+      IMPORTED_IMPLIB ${ZLIB_IMPLIB_PATH}
+      IMPORTED_LOCATION ${ZLIB_RUNTIME_PATH}
+      INTERFACE_INCLUDE_DIRECTORIES ${ZLIB_HEADERS})
+else ()
+   set_target_properties(zlib PROPERTIES
+      IMPORTED_LOCATION ${ZLIB_RUNTIME_PATH}
       INTERFACE_INCLUDE_DIRECTORIES ${ZLIB_HEADERS})
 endif ()
 
 add_dependencies(zlib zlib-project)
+
+if (KOTUKU_INSTALL AND NOT KOTUKU_STATIC)
+   if (WIN32)
+      install(CODE
+         "file(REMOVE
+            \"\${CMAKE_INSTALL_PREFIX}/${LIB_TARGET}/lib/zlib1.dll\"
+            \"\${CMAKE_INSTALL_PREFIX}/${LIB_TARGET}/lib/zlibd1.dll\"
+            \"\${CMAKE_INSTALL_PREFIX}/${LIB_TARGET}/lib/zlib.lib\"
+            \"\${CMAKE_INSTALL_PREFIX}/${LIB_TARGET}/lib/zlibd.lib\")")
+      install(FILES ${ZLIB_RUNTIME_PATH_DEBUG} CONFIGURATIONS Debug DESTINATION "${LIB_TARGET}/lib")
+      install(FILES ${ZLIB_IMPLIB_PATH_DEBUG} CONFIGURATIONS Debug DESTINATION "${LIB_TARGET}/lib")
+      install(FILES ${ZLIB_RUNTIME_PATH_RELEASE}
+         CONFIGURATIONS Release RelWithDebInfo MinSizeRel
+         DESTINATION "${LIB_TARGET}/lib")
+      install(FILES ${ZLIB_IMPLIB_PATH_RELEASE}
+         CONFIGURATIONS Release RelWithDebInfo MinSizeRel
+         DESTINATION "${LIB_TARGET}/lib")
+   else ()
+      install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/"
+         DESTINATION "${LIB_TARGET}/lib"
+         FILES_MATCHING
+            PATTERN "libz.so*"
+            PATTERN "libz*.dylib")
+   endif ()
+elseif (KOTUKU_INSTALL AND KOTUKU_STATIC AND WIN32)
+   install(CODE
+      "file(REMOVE
+         \"\${CMAKE_INSTALL_PREFIX}/${LIB_TARGET}/lib/z.dll\"
+         \"\${CMAKE_INSTALL_PREFIX}/${LIB_TARGET}/lib/zd.dll\"
+         \"\${CMAKE_INSTALL_PREFIX}/${LIB_TARGET}/lib/z.lib\"
+         \"\${CMAKE_INSTALL_PREFIX}/${LIB_TARGET}/lib/zd.lib\")")
+endif ()
 
 if (NOT DISABLE_FONT)
    add_subdirectory (3rdparty/freetype-2.13.2)
