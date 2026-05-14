@@ -52,26 +52,6 @@ extern MSGID glDelayedCallMsgID;
 
 //********************************************************************************************************************
 
-struct CaseInsensitiveMap {
-   bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
-   }
-};
-
-struct CaseInsensitiveHash {
-   std::size_t operator()(const std::string& s) const noexcept {
-      std::string lower = s;
-      std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-      return std::hash<std::string>{}(lower);
-   }
-};
-
-struct CaseInsensitiveEqual {
-   bool operator()(const std::string& lhs, const std::string& rhs) const noexcept {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) IS 0;
-   }
-};
-
 struct CaseInsensitiveHashView {
    std::size_t operator()(std::string_view s) const noexcept {
       std::size_t hash = 5381;
@@ -430,7 +410,6 @@ struct lua_ref {
 };
 
 OBJECTPTR access_object(GCobject *);
-std::vector<lua_ref> * alloc_references(void);
 void load_include_for_class(lua_State *, objMetaClass *);
 ERR build_args(lua_State *, const struct FunctionField *, int, int8_t *, int *);
 const char * code_reader(lua_State *, void *, size_t *);
@@ -461,7 +440,6 @@ struct fstruct * push_struct_def(lua_State *, APTR, struct struct_record &, bool
 extern void register_io_class(lua_State *);
 extern void register_input_class(lua_State *);
 extern void register_module_class(lua_State *);
-extern void register_number_class(lua_State *);
 extern void register_processing_class(lua_State *);
 extern void register_regex_class(lua_State *);
 extern void register_struct_class(lua_State *);

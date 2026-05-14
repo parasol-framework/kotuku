@@ -667,7 +667,7 @@ if (BUILD_DEFS)
 endif ()
 
 set (TIRI_SOURCES "${MOD}.cpp" "tiri_module.cpp" "tiri_async.cpp" "tiri_struct.cpp" "tiri_processing.cpp"
-   "tiri_number.cpp" "tiri_functions.cpp" "tiri_regex.cpp"
+   "tiri_functions.cpp" "tiri_regex.cpp"
    "tiri_io.cpp" "tiri_class.cpp"
    "${JIT_SRC}/lib/lib.cpp"
    "${JIT_SRC}/lib/load.cpp"
