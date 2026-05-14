@@ -33,6 +33,11 @@
 
 // Extracts the function payload from an expression node if it's a function expression, otherwise returns null.
 
+static void rollback_ast_builder_constants(void *UserData)
+{
+   ((AstBuilder *)UserData)->rollback_registered_enum_constants();
+}
+
 static FunctionExprPayload * function_payload_from(ExprNode &Node)
 {
    if (Node.kind != AstNodeKind::FunctionExpr) return nullptr;
@@ -156,6 +161,43 @@ static ParserResult<StmtNodePtr> make_control_stmt(ParserContext& Context, AstNo
 
 AstBuilder::AstBuilder(ParserContext &Context) : ctx(Context)
 {
+   this->ctx.set_error_rollback_callback(rollback_ast_builder_constants, this);
+}
+
+AstBuilder::~AstBuilder()
+{
+   this->rollback_registered_enum_constants();
+   this->ctx.clear_error_rollback_callback(this);
+}
+
+void AstBuilder::commit_registered_enum_constants()
+{
+   this->registered_enum_constants.clear();
+   this->enum_constants_committed = true;
+}
+
+void AstBuilder::track_registered_enum_constant(uint32_t Hash)
+{
+   this->registered_enum_constants.push_back(Hash);
+   this->enum_constants_committed = false;
+}
+
+void AstBuilder::adopt_registered_enum_constants(AstBuilder &Child)
+{
+   this->registered_enum_constants.insert(this->registered_enum_constants.end(),
+      Child.registered_enum_constants.begin(), Child.registered_enum_constants.end());
+   Child.registered_enum_constants.clear();
+}
+
+void AstBuilder::rollback_registered_enum_constants()
+{
+   if (this->enum_constants_committed or this->registered_enum_constants.empty()) return;
+
+   std::unique_lock lock(glConstantMutex);
+   for (uint32_t hash : this->registered_enum_constants) {
+      glConstantRegistry.erase(hash);
+   }
+   this->registered_enum_constants.clear();
 }
 
 AstBuilder::FunctionNameScope::FunctionNameScope(AstBuilder &Builder, GCstr *FunctionName) : builder(Builder)
@@ -170,12 +212,12 @@ AstBuilder::FunctionNameScope::~FunctionNameScope()
 
 AstBuilder::BlockDepthScope::BlockDepthScope(AstBuilder &Builder) : builder(Builder)
 {
-   this->builder.block_depth_++;
+   this->builder.block_depth++;
 }
 
 AstBuilder::BlockDepthScope::~BlockDepthScope()
 {
-   this->builder.block_depth_--;
+   this->builder.block_depth--;
 }
 
 GCstr *AstBuilder::anonymous_function_name()

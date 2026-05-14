@@ -374,7 +374,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_enum(const Token &StartToken)
    {
       std::unique_lock lock(glConstantMutex);
       for (const EnumConstantDecl &constant : constants) {
-         if (glConstantRegistry.contains(kt::strhash(constant.name))) {
+         uint32_t hash = kt::strhash(constant.name);
+         if (glConstantRegistry.contains(hash)) {
             duplicate_name = constant.name;
             duplicate_span = constant.span;
             break;
@@ -383,7 +384,9 @@ ParserResult<StmtNodePtr> AstBuilder::parse_enum(const Token &StartToken)
 
       if (duplicate_name.empty()) {
          for (const EnumConstantDecl &constant : constants) {
-            glConstantRegistry.emplace(kt::strhash(constant.name), TiriConstant(constant.value));
+            uint32_t hash = kt::strhash(constant.name);
+            glConstantRegistry.emplace(hash, TiriConstant(constant.value));
+            this->track_registered_enum_constant(hash);
          }
       }
    }
@@ -1225,6 +1228,8 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(std::st
       error.message = "in imported file '" + Path + "': " + error.message;
       return ParserResult<std::unique_ptr<BlockStmt>>::failure(error);
    }
+
+   this->adopt_registered_enum_constants(import_builder);
 
    return result;
 }

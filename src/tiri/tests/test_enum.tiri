@@ -86,6 +86,35 @@ assert(debug.locality('%s_FIRST') is 'nil')
 ]], prefix, prefix, prefix, prefix))
 end
 
+@Test function FailedChunkDoesNotLeakEnumConstants()
+   glDynamicEnumCounter++
+   local prefix = 'LEAK_ENUM_' .. tostring(glDynamicEnumCounter)
+   local failed = false
+
+   try
+      exec(string.format([[
+enum %s {
+   ONE,
+}
+if true then
+]], prefix))
+   except ex
+      failed = true
+      assert(ex.message:find('expected') or ex.message:find('unexpected') or ex.message:find('end'),
+         f'Broken enum chunk should fail with a parse error: {ex.message}')
+   end
+
+   assert(failed, 'Broken enum chunk should fail before constants are committed')
+
+   exec(string.format([[
+enum %s {
+   ONE,
+}
+assert(%s_ONE is 0)
+assert(debug.locality('%s_ONE') is 'nil')
+]], prefix, prefix, prefix))
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Error cases
 

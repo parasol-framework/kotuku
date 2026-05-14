@@ -92,6 +92,8 @@ private:
 
 class ParserContext {
 public:
+   using ErrorRollbackCallback = void (*)(void *);
+
    static ParserContext from(LexState &lex_state, FuncState &func_state, ParserAllocator allocator,
       ParserConfig config = ParserConfig{}) {
       return ParserContext(lex_state, func_state, *lex_state.L, allocator, config);
@@ -117,12 +119,16 @@ public:
       , lua_state(other.lua_state), allocator(other.allocator)
       , current_config(other.current_config), diag(std::move(other.diag))
       , token_stream(other.token_stream), previous_context(other.previous_context)
+      , error_rollback_callback(other.error_rollback_callback)
+      , error_rollback_user_data(other.error_rollback_user_data)
    {
       if (this->lex_state) this->lex_state->active_context = this;
       other.lex_state = nullptr;
       other.func_state = nullptr;
       other.lua_state = nullptr;
       other.previous_context = nullptr;
+      other.error_rollback_callback = nullptr;
+      other.error_rollback_user_data = nullptr;
    }
 
    inline LexState & lex() const { return *this->lex_state; }
@@ -169,6 +175,9 @@ public:
 
    void emit_error(ParserErrorCode code, const Token &, std::string_view);
    void emit_warning(ParserErrorCode code, const Token &, std::string_view);
+   void set_error_rollback_callback(ErrorRollbackCallback, void *);
+   void clear_error_rollback_callback(void *);
+   void rollback_before_error();
 
    // Import stack tracking for compile-time import statement
    [[nodiscard]] bool is_importing(const std::string &) const;
@@ -195,6 +204,8 @@ private:
    ParserDiagnostics diag;
    TokenStreamAdapter token_stream;
    ParserContext *previous_context = nullptr;
+   ErrorRollbackCallback error_rollback_callback = nullptr;
+   void *error_rollback_user_data = nullptr;
    std::vector<std::string> import_stack_;  // Stack of imported file paths for circular dependency detection
 };
 

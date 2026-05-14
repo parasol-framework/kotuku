@@ -164,6 +164,7 @@ static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
    auto chunk_result = builder.parse_chunk();
 
    if (not chunk_result.ok()) {
+      builder.rollback_registered_enum_constants();
       report_pipeline_error(Context, chunk_result.error_ref());
       flush_non_fatal_errors(Context);
       return;
@@ -171,6 +172,13 @@ static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
 
    std::unique_ptr<BlockStmt> chunk = std::move(chunk_result.value_ref());
    parse_timer.stop();
+
+   if (Context.diagnostics().has_errors() and Context.config().abort_on_error) {
+      builder.rollback_registered_enum_constants();
+      raise_accumulated_diagnostics(Context);
+      return;
+   }
+
    trace_ast_boundary(Context, *chunk, "parse");
    collect_parser_symbols(Context.lua(), *chunk);
 
@@ -182,6 +190,7 @@ static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
       // Raise errors now, required to check for type violations.
       // In diagnose mode (abort_on_error=false), continue to emit to collect more errors.
       if (Context.diagnostics().has_errors() and Context.config().abort_on_error) {
+         builder.rollback_registered_enum_constants();
          raise_accumulated_diagnostics(Context);
          return;
       }
@@ -193,10 +202,18 @@ static void run_ast_pipeline(ParserContext &Context, ParserProfiler &Profiler)
    IrEmitter emitter(Context);
    auto emit_result = emitter.emit_chunk(*chunk);
    if (not emit_result.ok()) {
+      builder.rollback_registered_enum_constants();
       report_pipeline_error(Context, emit_result.error_ref());
       flush_non_fatal_errors(Context);
       return;
    }
+
+   if (Context.diagnostics().has_errors()) {
+      builder.rollback_registered_enum_constants();
+      return;
+   }
+
+   builder.commit_registered_enum_constants();
 
    emit_timer.stop();
 }

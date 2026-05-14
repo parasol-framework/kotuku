@@ -28,11 +28,15 @@ ParserContext & ParserContext::operator=(ParserContext &&other) noexcept
       this->diag.set_limit(this->current_config.max_diagnostics);
       this->token_stream     = other.token_stream;
       this->previous_context = other.previous_context;
+      this->error_rollback_callback = other.error_rollback_callback;
+      this->error_rollback_user_data = other.error_rollback_user_data;
       if (this->lex_state) this->lex_state->active_context = this;
       other.lex_state        = nullptr;
       other.func_state       = nullptr;
       other.lua_state        = nullptr;
       other.previous_context = nullptr;
+      other.error_rollback_callback = nullptr;
+      other.error_rollback_user_data = nullptr;
    }
    return *this;
 }
@@ -245,9 +249,37 @@ void ParserContext::emit_error(ParserErrorCode code, const Token &token, std::st
       if (this->lua().parser_diagnostics) delete (ParserDiagnostics*)this->lua().parser_diagnostics;
       this->lua().parser_diagnostics = new ParserDiagnostics(this->diagnostics());
 
+      this->rollback_before_error();
       lj_lex_error(this->lex_state, this->lex_state->tok, ErrMsg::XTOKEN, this->lex_state->token2str(token.raw()));
    }
    // In DIAGNOSE mode (abort_on_error=false), skip logging - errors will be reported later
+}
+
+//********************************************************************************************************************
+
+void ParserContext::set_error_rollback_callback(ErrorRollbackCallback Callback, void *UserData)
+{
+   this->error_rollback_callback = Callback;
+   this->error_rollback_user_data = UserData;
+}
+
+void ParserContext::clear_error_rollback_callback(void *UserData)
+{
+   if (this->error_rollback_user_data IS UserData) {
+      this->error_rollback_callback = nullptr;
+      this->error_rollback_user_data = nullptr;
+   }
+}
+
+void ParserContext::rollback_before_error()
+{
+   if (this->error_rollback_callback) {
+      auto callback = this->error_rollback_callback;
+      auto user_data = this->error_rollback_user_data;
+      this->error_rollback_callback = nullptr;
+      this->error_rollback_user_data = nullptr;
+      callback(user_data);
+   }
 }
 
 //********************************************************************************************************************
