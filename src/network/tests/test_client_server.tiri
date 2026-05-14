@@ -1,5 +1,5 @@
 --[[
-Client-Server Network Communications test.  Creates a server socket and then starts client sockets to connect to itself.
+Client-Server Network Communications test.  Creates a NetServer and then starts NetSocket clients to connect to it.
 --]]
 
    include 'network'
@@ -60,7 +60,7 @@ end
    glPort++
    server_buffer = string.alloc(1024)
 
-   sockServer = obj.new('netsocket', {
+   sockServer = obj.new('netserver', {
       name    = 'Server',
       address = '127.0.0.1',
       feedback = function(Socket:obj, Client:obj, State)
@@ -88,7 +88,6 @@ end
          end
       end,
       port  = glPort,
-      flags = NSF_SERVER
    } )
 
    clientSocket = obj.new('netsocket', {
@@ -125,8 +124,8 @@ end
 @Test function BasicCommunication()
    glPort++
 
-   -- Create server socket with comprehensive message handling
-   sockServer = obj.new('netsocket', {
+   -- Create NetServer with comprehensive message handling
+   sockServer = obj.new('netserver', {
       name = 'BasicTestServer',
       feedback = function(Socket, Client, State)
          logOutput('[Server] Client state change: ' .. logOutputableState(State))
@@ -177,7 +176,7 @@ end
          end
       end,
       port = glPort,
-      flags = 'SERVER|MULTI_CONNECT'
+      flags = 'MULTI_CONNECT'
    })
 
    -- Create client socket with state-aware message handling
@@ -236,14 +235,13 @@ end
 
    glPort++
 
-   server = obj.new('netsocket', {
+   server = obj.new('netserver', {
       name = 'StateTestServer',
       feedback = function(Socket, Client, State)
          logOutput('Server received state change.')
          stateChanges:push('SERVER_CLIENT_' .. logOutputableState(State))
       end,
       port = glPort,
-      flags = NSF_SERVER
    })
 
    client = obj.new('netsocket', {
