@@ -1065,7 +1065,6 @@ static ERR register_interfaces(objScript *Self)
 #ifndef DISABLE_DISPLAY
    register_input_class(prv->Lua);
 #endif
-   register_number_class(prv->Lua);
    register_processing_class(prv->Lua);
 
    lua_register(prv->Lua, "arg", fcmd_arg);
