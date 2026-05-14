@@ -200,7 +200,7 @@ if (NOT MSVC)
       set (EH_FRAME_GREP_EXPR "grep -q ' r \\.eh_frame'")
    endif ()
 
-   set (RO_EH_FRAME_CMD
+   string(CONCAT RO_EH_FRAME_CMD
       "echo 'extern void foo (void); void bar (void) { foo (); foo (); }' | "
       "${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS} -xc -c -fpic -fexceptions -o conftest.o - 2>&1; "
       "${DUMPTOOL_CMD} conftest.o 2>&1 | ${EH_FRAME_GREP_EXPR}")
@@ -223,7 +223,7 @@ if (NOT MSVC)
       message(STATUS "Checking if .eh_frame section is read-only - no")
    endif ()
 
-   set (X86_PCREL_CMD
+   string(CONCAT X86_PCREL_CMD
       "echo '.text; foo: nop; .data; .long foo-.; .text' | "
       "${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS} -xassembler -c -o conftest.o - 2>&1")
 
@@ -243,7 +243,7 @@ if (NOT MSVC)
       message(STATUS "Checking HAVE_AS_X86_PCREL - no")
    endif ()
 
-   set (UNWIND_SECTION_CMD
+   string(CONCAT UNWIND_SECTION_CMD
       "echo '.text;.globl foo;foo:;jmp bar;.section .eh_frame,\"a\",@unwind;bar:' | "
       "${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS} -xassembler -Wa,--fatal-warnings "
       "-c -o conftest.o - 2>&1 && "
@@ -266,7 +266,7 @@ if (NOT MSVC)
       message(STATUS "Checking HAVE_AS_X86_64_UNWIND_SECTION_TYPE - no")
    endif ()
 
-   set (HIDDEN_VISIBILITY_CMD
+   string(CONCAT HIDDEN_VISIBILITY_CMD
       "echo 'int __attribute__ ((visibility (\"hidden\"))) foo(void){return 1;}' | "
       "${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS} -xc -Werror -S -o- - 2>&1 | "
       "grep -q '\\.hidden.*foo'")
