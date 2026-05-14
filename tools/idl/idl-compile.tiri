@@ -149,7 +149,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-global function enum(Prefix, Options:table, ...)
+global function enums(Prefix, Options:table, ...)
    Options ?= {}
 
    if Options.restrict?? or glRestrict then return end -- Restricted definitions are never exported

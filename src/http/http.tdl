@@ -7,11 +7,11 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2026", version=1.0, timesta
 
   c_include("<kotuku/modules/network.h>")
 
-  enum("HOM", { type="int", start=0, comment="Output mode." },
+  enums("HOM", { type="int", start=0, comment="Output mode." },
     "DATA_FEED: Use the DataFeed() action to send data to the targeted object.",
     "READ_WRITE|READ|WRITE: Use the Write() action to send data to the targeted object.")
 
-  enum("HGS", { type="int", start=0, comment="Options for defining an HTTP object's state." },
+  enums("HGS", { type="int", start=0, comment="Options for defining an HTTP object's state." },
    "READING_HEADER: The default state - this value will be indicated when no data is being written to the server and the client is waiting for a complete header from the server.",
    "AUTHENTICATING: If authentication is requested from the server, the HTTP object will enter this state.",
    "AUTHENTICATED: Following successful authentication, this state value will be set.",
@@ -23,7 +23,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2026", version=1.0, timesta
    "TERMINATED: If an HTTP command fails to complete normally - for instance if the connection is broken before completion - then the state is set to `TERMINATED`.",
    "END: Private")
 
-  enum("HTM", { type="int", start=0, comment="The HTTP Method to use when the object is activated." },
+  enums("HTM", { type="int", start=0, comment="The HTTP Method to use when the object is activated." },
     "GET: Retrieves files from the HTTP server.  The Path field will indicate which file to retrieve.",
     "POST: Sends information to the HTTP server.",
     "PUT: Uploads a file to the HTTP server.  The data will be read from the #InputFile or #InputObject references.",

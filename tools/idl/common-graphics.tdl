@@ -1,6 +1,6 @@
 -- These graphics constants are re-usable across all modules.
 
-enum("PTC", { type="int", start=0, comment="Predefined cursor styles" },
+enums("PTC", { type="int", start=0, comment="Predefined cursor styles" },
   "NO_CHANGE",
   "DEFAULT: The default cursor (usually an arrow pointing to the upper left).",
   "SIZE_BOTTOM_LEFT: Sizing cursor - for resizing the bottom left corner of any rectangular area.",
@@ -58,7 +58,7 @@ flags("DMF", { type="int", bits=32 },
   }
 )
 
-enum("DRL", { type="int", start=0, comment="Compass directions." },
+enums("DRL", { type="int", start=0, comment="Compass directions." },
   "NORTH|UP",
   "SOUTH|DOWN",
   "EAST|RIGHT",

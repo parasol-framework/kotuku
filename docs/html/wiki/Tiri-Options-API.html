@@ -317,7 +317,7 @@
 <h3 id="parser-configuration">Parser Configuration</h3>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Option</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Default</th>
@@ -325,91 +325,91 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>name</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>&#39;script&#39;</code></td>
 <td style="text-align: left;">Program name shown in usage and help.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>cmdName</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">lower-case <code>name</code></td>
 <td style="text-align: left;">Script name shown in generated usage lines. Derived from <code>name</code> if not specified.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>description</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Long description shown before options in help.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>epilog</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Text shown after options in help.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>copyright</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Copyright text appended to help.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>license</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Licence text appended to help.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>args</code></td>
 <td style="text-align: left;"><code>array&lt;table&gt;</code></td>
 <td style="text-align: left;"><code>{}</code></td>
 <td style="text-align: left;">Parameter definitions.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>commands</code></td>
 <td style="text-align: left;"><code>array&lt;table&gt;</code></td>
 <td style="text-align: left;"><code>{}</code></td>
 <td style="text-align: left;">Subcommand definitions.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>strict</code></td>
 <td style="text-align: left;"><code>bool</code></td>
 <td style="text-align: left;"><code>true</code></td>
 <td style="text-align: left;">Reject unknown parameters.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>defaults</code></td>
 <td style="text-align: left;"><code>table</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Programmatic defaults keyed by parameter name.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>userConfig</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">JSON config file path to load as user defaults when the file exists.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>envPrefix</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Prefix for environment variable lookup.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>autoHelp</code></td>
 <td style="text-align: left;"><code>bool</code></td>
 <td style="text-align: left;"><code>true</code></td>
 <td style="text-align: left;">Reserve automatic help and print help on empty input. When <code>false</code>, explicit help still works unless the parser declares its own <code>help</code> parameter.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>onError</code></td>
 <td style="text-align: left;"><code>function</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Error callback for rejected values.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>onHelp</code></td>
 <td style="text-align: left;"><code>function</code></td>
 <td style="text-align: left;"><code>nil</code></td>
@@ -428,7 +428,7 @@
 <h3 id="parameter-definition-fields">Parameter Definition Fields</h3>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Default</th>
@@ -436,115 +436,115 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>name</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">required*</td>
 <td style="text-align: left;">Canonical parameter name.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>names</code></td>
 <td style="text-align: left;"><code>array&lt;string&gt;</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Accepted names; the first is canonical, the rest are aliases.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>comment</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">One-line help description.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>description</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Detailed help shown via <code>help=paramname</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>kind</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>&#39;option&#39;</code></td>
 <td style="text-align: left;">Parameter role: <code>option</code>, <code>flag</code>, or <code>positional</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>type</code></td>
 <td style="text-align: left;"><code>str</code> or <code>function</code></td>
 <td style="text-align: left;"><code>&#39;str&#39;</code></td>
 <td style="text-align: left;">Built-in type name or custom converter function.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>default</code></td>
 <td style="text-align: left;">any</td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Value used when the parameter is absent.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>required</code></td>
 <td style="text-align: left;"><code>bool</code></td>
 <td style="text-align: left;"><code>false</code></td>
 <td style="text-align: left;">Parameter must be supplied.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>multiple</code></td>
 <td style="text-align: left;"><code>bool</code></td>
 <td style="text-align: left;"><code>false</code></td>
 <td style="text-align: left;">Accept repeated values and return an array.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>hidden</code></td>
 <td style="text-align: left;"><code>bool</code></td>
 <td style="text-align: left;"><code>false</code></td>
 <td style="text-align: left;">Exclude from generated help output.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>group</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">automatic</td>
 <td style="text-align: left;">Help grouping label.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>metavar</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">upper-case name</td>
 <td style="text-align: left;">Value label used in usage and help text.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>choices</code></td>
 <td style="text-align: left;"><code>array</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Allowed values after type conversion.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>pattern</code></td>
 <td style="text-align: left;"><code>regex</code> or <code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Regex validation applied to the converted value.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>exists</code></td>
 <td style="text-align: left;"><code>bool</code></td>
 <td style="text-align: left;"><code>false</code></td>
 <td style="text-align: left;">For <code>path</code>, <code>file</code>, and <code>folder</code> types, require the path to exist.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>requires</code></td>
 <td style="text-align: left;"><code>str</code> or <code>array</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Other parameters required when this one is present.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>requiresAny</code></td>
 <td style="text-align: left;"><code>array</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">At least one listed parameter must also be present.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>excludes</code></td>
 <td style="text-align: left;"><code>str</code> or <code>array</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Parameters that cannot be used with this one.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>exec</code></td>
 <td style="text-align: left;"><code>function</code></td>
 <td style="text-align: left;"><code>nil</code></td>
@@ -579,7 +579,7 @@ verbose=off      -- false</code></pre>
 <p>The <code>type</code> field selects a built-in converter or accepts a custom converter function.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Output</th>
 <th style="text-align: left;">Accepted Input</th>
@@ -587,115 +587,115 @@ verbose=off      -- false</code></pre>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>str</code> / <code>string</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">any string</td>
 <td style="text-align: left;">Default string value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>num</code> / <code>number</code></td>
 <td style="text-align: left;"><code>num</code></td>
 <td style="text-align: left;">numeric string</td>
 <td style="text-align: left;">Converts with <code>tonumber()</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>int</code></td>
 <td style="text-align: left;"><code>num</code></td>
 <td style="text-align: left;">integer string</td>
 <td style="text-align: left;">Converts and rejects fractional values.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>bool</code></td>
 <td style="text-align: left;"><code>bool</code></td>
 <td style="text-align: left;"><code>true/false</code>, <code>1/0</code>, <code>yes/no</code>, <code>on/off</code></td>
 <td style="text-align: left;">Converts explicit boolean values.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>enum</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">value listed in <code>choices</code></td>
 <td style="text-align: left;">String value restricted to a <code>choices</code> list.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>path</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">path string</td>
 <td style="text-align: left;">Optionally validates existence with <code>exists=true</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>file</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">path string</td>
 <td style="text-align: left;">Requires a file when <code>exists=true</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>folder</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">path string</td>
 <td style="text-align: left;">Requires a folder when <code>exists=true</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>csv</code></td>
 <td style="text-align: left;"><code>array&lt;string&gt;</code></td>
 <td style="text-align: left;">comma-separated string</td>
 <td style="text-align: left;">Splits and trims values.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>array</code></td>
 <td style="text-align: left;"><code>array&lt;string&gt;</code></td>
 <td style="text-align: left;"><code>{ ... }</code> parameter or repeated values</td>
 <td style="text-align: left;">Normalises multi-value input.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>duration</code></td>
 <td style="text-align: left;"><code>num</code></td>
 <td style="text-align: left;">number with <code>ms</code>, <code>s</code>, <code>m</code>, <code>h</code>, or <code>d</code> suffix</td>
 <td style="text-align: left;">Converts to seconds.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>size</code></td>
 <td style="text-align: left;"><code>num</code></td>
 <td style="text-align: left;">number with <code>b</code>, <code>kb</code>, <code>mb</code>, <code>gb</code>, or <code>tb</code> suffix</td>
 <td style="text-align: left;">Converts to bytes.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>percent</code></td>
 <td style="text-align: left;"><code>num</code></td>
 <td style="text-align: left;">number or number with <code>%</code> suffix</td>
 <td style="text-align: left;">Normalises to a fraction (<code>50%</code> becomes <code>0.5</code>).</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>regex</code></td>
 <td style="text-align: left;">regex object</td>
 <td style="text-align: left;">PCRE-compatible pattern</td>
 <td style="text-align: left;">Compiles via the Tiri <code>regex</code> API.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>json</code></td>
 <td style="text-align: left;">any</td>
 <td style="text-align: left;">JSON value</td>
 <td style="text-align: left;">Parses JSON into the corresponding Tiri value.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>date</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>YYYY-MM-DD</code></td>
 <td style="text-align: left;">Validates ISO calendar dates including leap years.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>time</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>HH:MM</code>, <code>HH:MM:SS</code>, optional fractional seconds</td>
 <td style="text-align: left;">Validates ISO time values.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>datetime</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">ISO 8601 date-time</td>
 <td style="text-align: left;">Validates date-time with optional timezone offset.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>colour</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">CSS functional colour syntax</td>
@@ -802,7 +802,7 @@ verbose=off      -- false</code></pre>
 <h2 id="command-definition-fields">Command Definition Fields</h2>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Default</th>
@@ -810,43 +810,43 @@ verbose=off      -- false</code></pre>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>name</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">required*</td>
 <td style="text-align: left;">Canonical command name.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>names</code></td>
 <td style="text-align: left;"><code>array&lt;string&gt;</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Accepted names; the first is canonical, the rest are aliases.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>comment</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">One-line help description.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>description</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>nil</code></td>
 <td style="text-align: left;">Detailed help shown via <code>help=commandname</code>.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>group</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;"><code>&#39;Commands&#39;</code></td>
 <td style="text-align: left;">Help grouping label.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>args</code></td>
 <td style="text-align: left;"><code>array&lt;table&gt;</code></td>
 <td style="text-align: left;"><code>{}</code></td>
 <td style="text-align: left;">Command-specific parameter definitions.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>hidden</code></td>
 <td style="text-align: left;"><code>bool</code></td>
 <td style="text-align: left;"><code>false</code></td>
@@ -859,24 +859,24 @@ verbose=off      -- false</code></pre>
 <p>Global options parse before the command token. The selected command&#39;s arguments parse from the remaining input. The result contains three fields:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Field</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>command</code></td>
 <td style="text-align: left;"><code>str</code></td>
 <td style="text-align: left;">Canonical command name.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>globals</code></td>
 <td style="text-align: left;"><code>table</code></td>
 <td style="text-align: left;">Parsed global parameters.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>args</code></td>
 <td style="text-align: left;"><code>table</code></td>
 <td style="text-align: left;">Parsed parameters for the selected command.</td>
@@ -968,39 +968,39 @@ mytool help=build    -- prints detailed help for &#39;build&#39; command</code><
 <p>When multiple sources provide a value for the same parameter, the highest-priority source wins. From lowest to highest:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Priority</th>
 <th style="text-align: left;">Source</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">1</td>
 <td style="text-align: left;">Parameter <code>default</code></td>
 <td style="text-align: left;">Fallback value declared on the parameter definition.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">2</td>
 <td style="text-align: left;">Parser <code>defaults</code></td>
 <td style="text-align: left;">Programmatic defaults from the parser configuration.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">3</td>
 <td style="text-align: left;"><code>userConfig</code> JSON defaults</td>
 <td style="text-align: left;">Defaults loaded from the selected JSON config file.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">4</td>
 <td style="text-align: left;"><code>setDefaults()</code></td>
 <td style="text-align: left;">Runtime defaults set after construction.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;">5</td>
 <td style="text-align: left;">Environment variable</td>
 <td style="text-align: left;">Values from <code>envPrefix</code> environment variables.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;">6</td>
 <td style="text-align: left;">Input value</td>
 <td style="text-align: left;">Values from explicit input or ordered task parameters.</td>
@@ -1039,17 +1039,17 @@ mytool help=build    -- prints detailed help for &#39;build&#39; command</code><
 <span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a><span class="op">})</span></span></code></pre></div>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Parameter</th>
 <th style="text-align: left;">Environment Variable</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>logLevel</code></td>
 <td style="text-align: left;"><code>APP_LOG_LEVEL</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>verbose</code></td>
 <td style="text-align: left;"><code>APP_VERBOSE</code></td>
 </tr>
@@ -1068,21 +1068,21 @@ mytool help=build    -- prints detailed help for &#39;build&#39; command</code><
 <p>The callback returns an instruction string:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th style="text-align: left;">Instruction</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>&#39;fail&#39;</code></td>
 <td style="text-align: left;">Use the default failure path. <code>process()</code> raises the error; <code>tryProcess()</code> returns <code>nil, err</code>.</td>
 </tr>
-<tr class="even">
+<tr>
 <td style="text-align: left;"><code>&#39;ignore&#39;</code></td>
 <td style="text-align: left;">Treat the value as absent. If the parameter has a default, use the converted default.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td style="text-align: left;"><code>&#39;skip&#39;</code></td>
 <td style="text-align: left;">Discard the value and leave the parameter unset, even when a default exists.</td>
 </tr>

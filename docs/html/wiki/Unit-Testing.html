@@ -289,25 +289,25 @@ scans for annotated functions and executes them according to their configuration
 <p>The <code>@Test</code> annotation marks a function as a test case. It supports several optional arguments:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Argument</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>name</code></td>
 <td>Custom display name for the test.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>priority</code></td>
 <td>Numeric value controlling test execution order (lower values run first).</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>timeout</code></td>
 <td>Maximum time in seconds before the test is marked as failed.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>labels</code></td>
 <td>Tags for filtering tests (reserved for future use).</td>
 </tr>
@@ -329,25 +329,25 @@ scans for annotated functions and executes them according to their configuration
 <p>Flute provides lifecycle hooks for setup and teardown operations:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Annotation</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>@BeforeAll</code></td>
 <td>Runs once before any tests execute. Receives a <code>State</code> table with <code>folder</code> (script directory).</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>@AfterAll</code></td>
 <td>Runs once after all tests complete.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>@BeforeEach</code></td>
 <td>Runs before each individual test.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>@AfterEach</code></td>
 <td>Runs after each individual test.</td>
 </tr>
@@ -356,7 +356,7 @@ scans for annotated functions and executes them according to their configuration
 <p>Example with lifecycle hooks:</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>@<span class="va">BeforeAll</span> <span class="kw">function</span> setup<span class="op">(</span><span class="va">State</span><span class="op">)</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- State.folder contains the directory of the test script</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">global</span> <span class="va">glTestResource</span> <span class="op">=</span> loadResource<span class="op">(</span><span class="va">State</span><span class="op">.</span><span class="va">folder</span> <span class="op">..</span> <span class="st">&quot;test_data.xml&quot;</span><span class="op">)</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>   <span class="kw">global</span> <span class="va">glTestResource</span> <span class="op">=</span> loadResource<span class="op">(</span><span class="va">State</span><span class="op">.</span><span class="va">folder</span> <span class="op">..</span> <span class="st">&quot;test_data.xml&quot;</span><span class="op">)</span></span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>@<span class="va">AfterAll</span> <span class="kw">function</span> cleanup<span class="op">()</span></span>
@@ -383,25 +383,25 @@ scans for annotated functions and executes them according to their configuration
 <p>Conditionally run tests based on system capabilities:</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>Requirement</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>network</code></td>
 <td>Network module availability.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>ssl</code></td>
 <td>SSL support in the network module.</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>audio</code></td>
 <td>Audio module availability.</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>display</code></td>
 <td>Display/graphics module availability.</td>
 </tr>
