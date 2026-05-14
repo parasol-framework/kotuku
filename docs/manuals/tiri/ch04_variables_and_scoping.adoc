@@ -311,6 +311,107 @@ end
 -- outer x is still 1, still const
 ----
 
+[[sec-enum-declarations]]
+=== Enum Declarations
+
+indexterm:[enum declarations] indexterm:[enumerations] indexterm:[constants, enum] The `enum` keyword declares a group of named integer constants from a shared prefix.  Each generated constant is registered in a global constant registry at parse time and substituted inline as numeric literals during compilation, eliminating the variable lookup overhead that `<const>` variables incur.  Enum constants do not create runtime variable bindings.
+
+==== Syntax
+
+[source,ebnf]
+----
+enum_declaration = [ "global" ] "enum" prefix "{" member_list "}" ;
+prefix           = UPPER_IDENTIFIER ;
+member_list      = member { "," member } [ "," ] ;
+member           = UPPER_IDENTIFIER [ "=" integer_literal ] ;
+integer_literal  = [ "+" | "-" ] ( decimal_number | hex_number ) ;
+----
+
+The prefix and all member names must use uppercase identifier style: uppercase letters, digits, and underscores only, with at least one uppercase letter.  Each member generates a constant named `PREFIX_MEMBER`.
+
+[source,tiri]
+----
+enum HTTP_METHOD {
+   GET = 0,
+   POST,
+   PUT,
+   DELETE,
+}
+
+-- Generates: HTTP_METHOD_GET = 0, HTTP_METHOD_POST = 1,
+--            HTTP_METHOD_PUT = 2, HTTP_METHOD_DELETE = 3
+----
+
+==== Value Assignment
+
+If the first member has no explicit value, it starts at `0`.  Members without explicit values increment from the previous member's value.  Explicit values must be integer literals; signed decimal and hexadecimal forms are accepted.
+
+[source,tiri]
+----
+enum PRIORITY {
+   LOW = -2,
+   NORMAL,
+   HIGH = 5,
+}
+-- PRIORITY_LOW = -2, PRIORITY_NORMAL = -1, PRIORITY_HIGH = 5
+----
+
+[source,tiri]
+----
+enum MASK {
+   NONE = 0x0,
+   READ = 0x1,
+   WRITE = 0x2,
+   ALL = 0x3,
+}
+----
+
+==== Scope
+
+Enum declarations are permitted at the top level of a script only.  Declaring an enum inside a function, loop, conditional, or any nested block is a compile-time error.
+
+[source,tiri]
+----
+enum STATE { IDLE, RUNNING }       -- valid: top-level
+
+function setup()
+   enum MODE { FAST, SLOW }       -- error: not at top-level scope
+end
+----
+
+The `global` modifier may precede the `enum` keyword.  The `local` modifier is not supported with `enum` and raises a compile-time error.
+
+[source,tiri]
+----
+global enum ERR { OKAY = 0, FAIL } -- valid: global enum
+local enum BAD { ONE }             -- error: local enum not supported
+----
+
+==== Compile-Time Constants
+
+Enum constants are resolved at parse time and recorded in a global constant registry.  References to enum constants are substituted as numeric literals during compilation, enabling constant folding.  No runtime variable is created for the prefix or any member.
+
+[source,tiri]
+----
+enum FLAGS {
+   LEFT = 4,
+   RIGHT = 8,
+}
+
+combined = FLAGS_LEFT | FLAGS_RIGHT  -- constant-folded to 12
+----
+
+==== Restrictions
+
+The following constraints apply to enum declarations:
+
+* The prefix cannot carry a type annotation (`:type`).
+* The prefix cannot use the `<const>` or `<close>` attributes.
+* The declaration must contain at least one member.
+* Member names within a single enum must be unique.
+* The fully qualified constant name (`PREFIX_MEMBER`) must not duplicate a constant already registered by a previous enum declaration.
+* Non-integer values (e.g. `1.5`) are rejected.
+
 [[sec-close-variables]]
 === To-Be-Closed Variables
 

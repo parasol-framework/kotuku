@@ -76,12 +76,12 @@ The following words are reserved and cannot be used as identifiers:
 |===
 |`and`     |`as`       |`break`    |`check`    |`choose`
 |`continue`|`defer`    |`do`       |`else`     |`elseif`
-|`end`     |`except`   |`false`    |`for`      |`from`
-|`function`|`global`   |`has`      |`if`       |`import`
-|`in`      |`is`       |`local`    |`namespace`|`nil`
-|`not`     |`or`       |`raise`    |`repeat`   |`return`
-|`success` |`then`     |`thunk`    |`true`     |`try`
-|`until`   |`when`     |`while`    |`with`     |
+|`end`     |`enum`     |`except`   |`false`    |`for`
+|`from`    |`function` |`global`   |`has`      |`if`
+|`import`  |`in`       |`is`       |`local`    |`namespace`
+|`nil`     |`not`      |`or`       |`raise`    |`repeat`
+|`return`  |`success`  |`then`     |`thunk`    |`true`
+|`try`     |`until`    |`when`     |`while`    |`with`
 |===
 
 Keywords are case-sensitive.  `and` is reserved; `And` and `AND` are valid identifiers.

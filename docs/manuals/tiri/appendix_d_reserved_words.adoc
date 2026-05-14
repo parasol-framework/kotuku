@@ -10,12 +10,12 @@ indexterm:[reserved words] indexterm:[keywords] This appendix provides a quick-r
 |===
 |`and`     |`as`       |`break`    |`check`    |`choose`
 |`continue`|`defer`    |`do`       |`else`     |`elseif`
-|`end`     |`except`   |`false`    |`for`      |`from`
-|`function`|`global`   |`has`      |`if`       |`import`
-|`in`      |`is`       |`local`    |`namespace`|`nil`
-|`not`     |`or`       |`raise`    |`repeat`   |`return`
-|`success` |`then`     |`thunk`    |`true`     |`try`
-|`until`   |`when`     |`while`    |`with`     |
+|`end`     |`enum`     |`except`   |`false`    |`for`
+|`from`    |`function` |`global`   |`has`      |`if`
+|`import`  |`in`       |`is`       |`local`    |`namespace`
+|`nil`     |`not`      |`or`       |`raise`    |`repeat`
+|`return`  |`success`  |`then`     |`thunk`    |`true`
+|`try`     |`until`    |`when`     |`while`    |`with`
 |===
 
 === Reference by Category
@@ -39,6 +39,7 @@ indexterm:[reserved words] indexterm:[keywords] This appendix provides a quick-r
 
 |`local`    |Declares a variable or function with local scope.  See <<ch-variables-and-scoping>>.
 |`global`   |Declares a variable or function with global scope.  See <<ch-variables-and-scoping>>.
+|`enum`     |Declares a group of named integer constants.  See <<sec-enum-declarations>>.
 |`function` |Declares a named or anonymous function.  See <<ch-functions>>.
 |`return`   |Returns values from a function.  See <<ch-functions>>.
 |`thunk`    |Declares a lazily evaluated expression.
