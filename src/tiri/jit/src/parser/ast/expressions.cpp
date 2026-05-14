@@ -31,22 +31,6 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
    if (assignment_result.has_value()) {
       AssignmentOperator assignment = assignment_result.value();
       this->ctx.tokens().advance();
-
-      if (assignment IS AssignmentOperator::Plain and this->is_enum_declaration_rhs(0)) {
-         if (not (targets.size() IS 1)) {
-            return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, op,
-               "enum declaration requires a single prefix name");
-         }
-
-         ExprNodePtr& target = targets.front();
-         if (target and target->kind IS AstNodeKind::IdentifierExpr) {
-            auto *name_ref = std::get_if<NameRef>(&target->data);
-            if (name_ref and this->is_enum_declaration_prefix(name_ref->identifier)) {
-               return this->make_enum_declaration_stmt(target->span, name_ref->identifier, false);
-            }
-         }
-      }
-
       auto values = this->parse_expression_list();
       if (not values.ok()) return ParserResult<StmtNodePtr>::failure(values.error_ref());
       auto stmt = std::make_unique<StmtNode>(AstNodeKind::AssignmentStmt, op.span());

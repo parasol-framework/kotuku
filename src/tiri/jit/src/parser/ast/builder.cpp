@@ -10,8 +10,12 @@
 
 #include "ast/builder.h"
 
+#include <cmath>
+#include <cctype>
 #include <cstring>
 #include <format>
+#include <limits>
+#include <mutex>
 #include <utility>
 
 #include "../token_types.h"
@@ -162,6 +166,16 @@ AstBuilder::FunctionNameScope::FunctionNameScope(AstBuilder &Builder, GCstr *Fun
 AstBuilder::FunctionNameScope::~FunctionNameScope()
 {
    this->builder.function_name_stack.pop_back();
+}
+
+AstBuilder::BlockDepthScope::BlockDepthScope(AstBuilder &Builder) : builder(Builder)
+{
+   this->builder.block_depth_++;
+}
+
+AstBuilder::BlockDepthScope::~BlockDepthScope()
+{
+   this->builder.block_depth_--;
 }
 
 GCstr *AstBuilder::anonymous_function_name()
@@ -343,6 +357,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
       case TokenKind::Annotate:      return this->parse_annotated_statement();
       case TokenKind::Local:         return this->parse_local();
       case TokenKind::Global:        return this->parse_global();
+      case TokenKind::Enum:          return this->parse_enum(current);
       case TokenKind::Function:      return this->parse_function_stmt();
       case TokenKind::ThunkToken:    return this->parse_function_stmt();
       case TokenKind::If:            return this->parse_if();
@@ -390,6 +405,7 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_scoped_block(std::ini
 {
    std::vector<TokenKind> merged(terminators);
    merged.push_back(TokenKind::EndOfFile);
+   BlockDepthScope block_scope(*this);
    return this->parse_block(merged);
 }
 
@@ -412,6 +428,7 @@ bool AstBuilder::is_statement_start(TokenKind kind) const
    switch (kind) {
       case TokenKind::Local:
       case TokenKind::Global:
+      case TokenKind::Enum:
       case TokenKind::Function:
       case TokenKind::ThunkToken:
       case TokenKind::Annotate:

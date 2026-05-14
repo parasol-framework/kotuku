@@ -14,15 +14,15 @@ module({
     c_include("<X11/Xlib.h>", "<X11/extensions/XShm.h>")
   end)
 
-  enum("DRAG", { type="int", start=0, flags="Flags for the DragStatus field." },
+  enums("DRAG", { type="int", start=0, flags="Flags for the DragStatus field." },
     "NONE: The surface is not being dragged.",
     "ANCHOR: The surface is being dragged and the mouse pointer is anchored to the surface.",
     "NORMAL: The surface is being dragged.")
 
-  enum("WH", { type="int", start=1, comment="Events for WindowHook()" },
+  enums("WH", { type="int", start=1, comment="Events for WindowHook()" },
     "CLOSE")
 
-  enum("CS", { type="int", start=1, comment="Colour space options." },
+  enums("CS", { type="int", start=1, comment="Colour space options." },
     "SRGB: The default colour-space is sRGB.",
     "LINEAR_RGB: Linear RGB is used to improve colour balance in blending operations.",
     "CIE_LAB: Cartesian L*a*b* colour space defined by CIE 15.",
@@ -57,7 +57,7 @@ module({
     "NO_DRAW: Drawing and exposures are disabled",
     "NO_EXPOSE: Drawing is enabled, exposures are disabled")
 
-  enum("SWIN", { type="int", start=0, comment="Options for the Surface WindowType field." },
+  enums("SWIN", { type="int", start=0, comment="Options for the Surface WindowType field." },
     "HOST: Default to the standard hosted window mode with full titlebar, borders and taskbar representation.",
     "TASKBAR: Create a borderless (custom) window with taskbar representation.",
     "ICON_TRAY: Create a borderless (custom) window with icon tray representation.",
@@ -93,7 +93,7 @@ module({
     { READ_ONLY = "HAS_FOCUS|CURSOR|AFTER_COPY" },
     { INIT_ONLY = "HOST|TRANSPARENT|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
 
-  enum("HOST", { type="int", start=1 },
+  enums("HOST", { type="int", start=1 },
     "TRAY_ICON: All new displays are represented in the system tray when this option is active.",
     "TASKBAR: The hosted display is given a taskbar button.",
     "STICK_TO_FRONT: The hosted display sticks to the front.",
@@ -135,11 +135,11 @@ module({
     "CLIP: Enable clipping of the source coordinates.",
     "OFFSET: Adjust X and Y coordinates by the offset values defined in the @Surface.XOffset and @Surface.YOffset fields.")
 
-  enum("BMP", { type="int", start=2, comment="Bitmap types" },
+  enums("BMP", { type="int", start=2, comment="Bitmap types" },
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
      "CHUNKY: Chunky pixel mode (default).")
 
-  enum("BLM", { type="int", start=0, comment="Defines the blending algorithm to use when transparent pixels are rendered to the bitmap." },
+  enums("BLM", { type="int", start=0, comment="Defines the blending algorithm to use when transparent pixels are rendered to the bitmap." },
     "AUTO: Use the most suitable of the available algorithms.",
     "NONE: Never blend transparent pixels, just copy as-is.",
     "SRGB: Use sRGB linear blending.  This algorithm is extremely efficient but produces poor quality results.",
@@ -194,19 +194,19 @@ module({
   flags("GMF", { comment="Flags for gamma operations." },
      "SAVE: Save the provided settings permanently.")
 
-  enum("DT", { type="int", start=1, comment="Flags for GetDisplayType()." },
+  enums("DT", { type="int", start=1, comment="Flags for GetDisplayType()." },
     "NATIVE: The display is native (supported by internal drivers).",
     "X11: The display is driven by the X Window System (X11, X.Org, XFree86)",
     "WINGDI: The display is driven by Microsoft Windows drivers.",
     "GLES: The display is driven by OpenGLES.")
 
-  enum("DPMS", { type="int", start=0, comment="Possible modes for the Display class' PowerMode field." },
+  enums("DPMS", { type="int", start=0, comment="Possible modes for the Display class' PowerMode field." },
     "DEFAULT: Use the default DPMS mode as defined by the display driver.",
     "OFF: Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).",
     "SUSPEND: Puts the display into suspend mode (blanks the display output while maintaining normal power levels).",
     "STANDBY: Puts the display into standby (reduced power) mode.")
 
-  enum('CT', { type="int", start=0 }, 'DATA', 'AUDIO', 'IMAGE', 'FILE', 'OBJECT', 'TEXT', 'END')
+  enums('CT', { type="int", start=0 }, 'DATA', 'AUDIO', 'IMAGE', 'FILE', 'OBJECT', 'TEXT', 'END')
 
   -- Note: It is intentional that the CLIP types are expressed as flags and not constants.
 

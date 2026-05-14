@@ -24,26 +24,26 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
      "JOIN_PATHS: When appending a new path, use a join operation to connect the tail end to the head.",
      "ISOLATED: Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.")
 
-  enum("VFA", { type="int", comment="Define the aspect ratio for VectorFilter unit scaling." },
+  enums("VFA", { type="int", comment="Define the aspect ratio for VectorFilter unit scaling." },
      "MEET: Scale X/Y values independently and in relation to the width/height of the parent viewport.",
      "NONE: Scale X/Y values on a `1:1` basis, in relation to the diagonal of the parent viewport.")
 
-  enum("LS", { type="int", comment="Light source identifiers." },
+  enums("LS", { type="int", comment="Light source identifiers." },
     "DISTANT: Distant light source.",
     "SPOT: Spot light source.",
     "POINT: Point light source.")
 
-  enum("LT", { type="int", start=0, comment="Lighting algorithm for the LightingFX class." },
+  enums("LT", { type="int", start=0, comment="Lighting algorithm for the LightingFX class." },
     "DIFFUSE: Select diffuse lighting.",
     "SPECULAR: Select specular lighting.")
 
-  enum("VUNIT", { type="int", start=0 },
+  enums("VUNIT", { type="int", start=0 },
     "UNDEFINED: Either the default setting will be applied or the setting will be inherited from a parent object.",
     "BOUNDING_BOX: Coordinates are scaled to the object's bounding box.",
     "USERSPACE: Coordinates are scaled to the current viewport.",
     "END: Private")
 
-  enum("VSPREAD", { type="int", start=0, comment="Spread method options define the method to use for tiling filled graphics." },
+  enums("VSPREAD", { type="int", start=0, comment="Spread method options define the method to use for tiling filled graphics." },
     "UNDEFINED: Either the default setting will be applied or the setting will be inherited from a parent object.",
     "PAD: Scale the graphic to the object bounds.",
     "REFLECT: Tile the graphic, reflecting the image alternately on the X and Y axis.",
@@ -53,28 +53,28 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
     "CLIP: Do not scale the graphic.  Clip it if it extends past imposed boundaries.",
     "END: Private")
 
-  enum("EM", { type="int", start=1, "Edge mode options for the convolve effect." },
+  enums("EM", { type="int", start=1, "Edge mode options for the convolve effect." },
     "DUPLICATE: The input image is extended along its borders by duplicating the color values at its edges.",
     "WRAP: The input image is extended by taking the color values from the opposite edge of the image.",
     "NONE: The input image is extended with colour values of zero.")
 
-  enum("PE", { type="int", start=1 }, "Move", "MoveRel", "Line", "LineRel", "HLine", "HLineRel", "VLine", "VLineRel",
+  enums("PE", { type="int", start=1 }, "Move", "MoveRel", "Line", "LineRel", "HLine", "HLineRel", "VLine", "VLineRel",
     "Curve", "CurveRel", "Smooth", "SmoothRel", "QuadCurve", "QuadCurveRel", "QuadSmooth", "QuadSmoothRel",
     "Arc", "ArcRel", "ClosePath")
 
-  enum("VFR", { type="int", start=1, comment="Vector fill rules for the FillRule field in the Vector class." },
+  enums("VFR", { type="int", start=1, comment="Vector fill rules for the FillRule field in the Vector class." },
     "NON_ZERO: This is the default.  This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray. Starting with a count of zero, add one each time a path segment crosses the ray from left to right and subtract one each time a path segment crosses the ray from right to left. After counting the crossings, if the result is zero then the point is outside the path. Otherwise, it is inside.",
     "EVEN_ODD: This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses. If this number is odd, the point is inside; if even, the point is outside.",
     "INHERIT: The rule is inherited from the parent vector(s).",
     "END: Private")
 
-  enum("VIS", { type="int", start=0, comment="Options for the Vector class' Visibility field." },
+  enums("VIS", { type="int", start=0, comment="Options for the Vector class' Visibility field." },
     "HIDDEN: Hide the vector and its children.",
     "VISIBLE: The default.  Ensures that the vector is visible.",
     "COLLAPSE: Hide the vector and its children.  Do not use - provided for SVG compatibility only.",
     "INHERIT: Inherit the visibility state from the parent.")
 
-  enum("VOF", { type="int", comment="Viewport overflow options." },
+  enums("VOF", { type="int", comment="Viewport overflow options." },
     "VISIBLE: The content is not clipped to the viewport's boundary.  This is the default.",
     "HIDDEN: All content is clipped to within the viewport's boundary.",
     "SCROLL: All content is clipped to within the viewport's boundary.  A mechanism to scroll the viewport's content may be provided to the user (SVG capability not currently implemented).",
@@ -82,14 +82,14 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
 
   -- NB: There is a code dependency on the CMP order for RGBA being maintained at 0, 1, 2, 3.
 
-  enum("CMP", { type="int", start=-1, comment="Component selection for RemapFX methods." },
+  enums("CMP", { type="int", start=-1, comment="Component selection for RemapFX methods." },
     "ALL: All colour channels.",
     "RED: The red colour channel.",
     "GREEN: The green colour channel.",
     "BLUE: The blue colour channel.",
     "ALPHA: The alpha channel.")
 
-  enum("VLJ", { type="int", start=0, comment="Options for the look of line joins." }, // Match to agg::line_join_e
+  enums("VLJ", { type="int", start=0, comment="Options for the look of line joins." }, // Match to agg::line_join_e
     "MITER: The default.  A sharp corner is used to join path segments.  The corner is formed by extending the outer edges of the stroke at the tangents of the path segments until they intersect. If the ‘stroke-miterlimit’ is exceeded, the line join falls back to BEVEL.",
     "MITER_SMART: An alternative form of MITER that extends beyond the intersection point, similarly to the miter-clip SVG rules.",
     "ROUND: The join is rounded.",
@@ -97,27 +97,27 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
     "MITER_ROUND: Default to `MITER`, but switch to `ROUND` if the miter limit is exceeded.",
     "INHERIT: Inherit the join option from the parent.")
 
-  enum("VLC", { type="int", start=1, comment="Line-cap options." }, // Match to agg::line_cap_e
+  enums("VLC", { type="int", start=1, comment="Line-cap options." }, // Match to agg::line_cap_e
     "BUTT: The default.  The line is sharply squared off at its exact end point.",
     "SQUARE: Similar to butt, the line is sharply squared off but will extend past the end point by `StrokeWidth / 2`.",
     "ROUND: The line cap is a half-circle and the line's end-point forms the center point.",
     "INHERIT: The cap type is inherited from the parent (defaults to butt if unspecified).")
 
-  enum("VIJ", { type="int", start=1, comment="Inner join options for angled lines." },  // Match to agg::inner_join_e
+  enums("VIJ", { type="int", start=1, comment="Inner join options for angled lines." },  // Match to agg::inner_join_e
     "BEVEL: Blunts the edge of the join.",
     "MITER: Forms a sharp point at the join.  Typically not the best looking option.",
     "JAG: A special non-SVG option.",
     "ROUND: Rounds the edge of the join to produce the best looking results.",
     "INHERIT: Inherit the parent's join value.")
 
-  enum("VGT", { type="int", start=0, comment="VectorGradient options." },
+  enums("VGT", { type="int", start=0, comment="VectorGradient options." },
     "LINEAR: A linear gradient is drawn from `(X1, Y1)` to `(X2, Y2)`.",
     "RADIAL: A radial gradient is drawn from `CenterX, CenterY` to `Radius`.  An optional focal point can be expressed with `FX` and `FY`.",
     "CONIC: The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.",
     "DIAMOND: A diamond gradient is drawn as a square emanating from the center point.",
     "CONTOUR: Contoured gradients follow the contours of the vector path in which they are rendered.")
 
-  enum("VTS", { type="int", start=0, comment="Options for stretching text in VectorText." },
+  enums("VTS", { type="int", start=0, comment="Options for stretching text in VectorText." },
     "INHERIT",
     "NORMAL",
     "WIDER",
@@ -131,11 +131,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
     "ULTRA_EXPANDED",
     "EXTRA_EXPANDED")
 
-  enum("MOP", { type="int", start=0, comment="MorphologyFX options." },
+  enums("MOP", { type="int", start=0, comment="MorphologyFX options." },
     "ERODE: Erode (thin) the input source.",
     "DILATE: Dilate (fatten) the input source.")
 
-   enum("OP", { type="int", start=0, comment="Operators for CompositionFX." },
+   enums("OP", { type="int", start=0, comment="Operators for CompositionFX." },
     "OVER: The Porter-Duff 'over' operator, this is the default operation for standard alpha blending.",
     "IN: The Porter-Duff 'in' operator; the input alpha channel has priority and the mix channel is secondary.",
     "OUT: The Porter-Duff 'out' operator; the mix alpha channel is inversed with the input channel.",
@@ -181,12 +181,12 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
     "Y_MID: Align the source so that it is morphed along the middle of the target path.",
     "Y_MAX: Align the source so that it is morphed along the bottom of the target path.")
 
-  enum("VCS", { type="int", start=0, comment="Colour space options." },
+  enums("VCS", { type="int", start=0, comment="Colour space options." },
     "INHERIT: Inherit the colour space option from the parent vector.",
     "SRGB: The default colour-space is sRGB, recommended for its speed.",
     "LINEAR_RGB: Linear RGB is the default colour space for SVG and produces the best results.")
 
-  enum("VSF", { type="int", start=0, comment="Filter source types - these are used internally", restrict="c" },
+  enums("VSF", { type="int", start=0, comment="Filter source types - these are used internally", restrict="c" },
     "IGNORE|NONE: The filter does not require an input source.",
     "GRAPHIC: Represents the graphics elements that were the original input into the filter element.",
     "ALPHA: As for `GRAPHIC` except that only the alpha channel is used.",
@@ -197,17 +197,17 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
     "REFERENCE: This value is an assigned name for the filter primitive in the form of a custom-ident. If supplied, then graphics that result from processing this filter primitive can be referenced by an in attribute on a subsequent filter primitive within the same filter element. If no value is provided, the output will only be available for re-use as the implicit input into the next filter primitive if that filter primitive provides no value for its in attribute.",
     "PREVIOUS: Use the previous effect as input, or source graphic if no previous effect.")
 
-  enum("WVC", { type="int", start=1, comment="Wave options." },
+  enums("WVC", { type="int", start=1, comment="Wave options." },
     "NONE: Do not close the path.",
     "TOP: Close the path across the top of its area.",
     "BOTTOM: Close the path across the bottom of its area.")
 
-  enum("WVS", { type="int", start=1, comment="Wave style options." },
+  enums("WVS", { type="int", start=1, comment="Wave style options." },
     "CURVED: Standard sine-wave curvature, this is the default.",
     "ANGLED: Chevron style angles at 45 degrees either side of the peak and bottom edge.",
     "SAWTOOTH: Sawtooth patterns rise at 45 degrees to the peak, then direct 90 degrees to the bottom.")
 
-  enum("CM", { type="int", start=0, comment="Colour modes for ColourFX." },
+  enums("CM", { type="int", start=0, comment="Colour modes for ColourFX." },
     "NONE: Do nothing.",
     "MATRIX: Process the supplied 5x4 matrix values.",
     "SATURATE: Adjust colour saturation with the first parameter defining the multiplier.",
@@ -248,11 +248,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
     "RESIZE: The vector will be stretched to fit the @VectorScene.PageWidth and @VectorScene.PageHeight values, if defined by the client.",
     "OUTLINE_VIEWPORTS: Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.")
 
-  enum("TB", { type="int", start=0, "Function identifier for TurbulenceFX." },
+  enums("TB", { type="int", start=0, "Function identifier for TurbulenceFX." },
     "TURBULENCE: Use the standard turbulence function.",
     "NOISE: Use the fractal noise function.")
 
-  enum("VSM", { type="int", start=0, comments="Options for the VectorScene SampleMethod." },
+  enums("VSM", { type="int", start=0, comments="Options for the VectorScene SampleMethod." },
     "AUTO: The default option is chosen by the system.  This will typically be `BILINEAR`, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.",
     "NEIGHBOUR: Nearest neighbour is the fastest sampler at the cost of poor quality.",
     "BILINEAR: Bilinear is a common algorithm that produces a reasonable quality image quickly.",
@@ -267,7 +267,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2026", version=1.0, times
     "LANCZOS: This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with `SINC` and `BLACKMAN`.",
     "BLACKMAN: Five times slower than `BILINEAR`, the final result will be less sharp than SINC.")
 
-  enum("RQ", { type="int", start=0, comments="Options for determining the quality of a rendered path." },
+  enums("RQ", { type="int", start=0, comments="Options for determining the quality of a rendered path." },
     "AUTO: The default option is chosen by the system.",
     "FAST: Use the fastest renderer available and allow accuracy to be compromised in favour of speed.  Recommended for normalised paths that are known to be rectangular.",
     "CRISP: Use a good quality renderer that produces crisp outlines (no anti-aliasing).",

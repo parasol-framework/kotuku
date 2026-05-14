@@ -20,7 +20,7 @@ typedef int SOCKET_HANDLE;
 #endif
   ]])
 
-  enum("IPADDR", { type="int", start=0, comment="Address types for the IPAddress structure." }, "V4", "V6")
+  enums("IPADDR", { type="int", start=0, comment="Address types for the IPAddress structure." }, "V4", "V6")
 
   struct("IPAddress", { }, [[
     uint(4) Data        # 128-bit array for supporting both V4 (32-bit host order) and V6 (8-bit byte order) IP addresses.
@@ -41,7 +41,7 @@ typedef int SOCKET_HANDLE;
   flags("NLF", { comment="Options for NetLookup" },
     "NO_CACHE: Contact the name service and do not use the local DNS cache.")
 
-  enum("NTC", { type="int", start=0, comment="NetSocket states" },
+  enums("NTC", { type="int", start=0, comment="NetSocket states" },
     "DISCONNECTED: There is no connection.",
     "RESOLVING: The host name is being resolved.",
     "CONNECTING: A connection is being established.",

@@ -29,6 +29,7 @@ struct TokenDefinition {
    TOKEN_DEF(else,         "else",     true) \
    TOKEN_DEF(elseif,       "elseif",   true) \
    TOKEN_DEF(end,          "end",      true) \
+   TOKEN_DEF(enum,         "enum",     true) \
    TOKEN_DEF(false,        "false",    true) \
    TOKEN_DEF(for,          "for",      true) \
    TOKEN_DEF(from,         "from",     true) \

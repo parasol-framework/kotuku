@@ -116,7 +116,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
   flags("THF", { comment="Thread flags" },
     "AUTO_FREE: Automatically destroy the Thread object when the user routine has completed.")
 
-  enum("FDT", { type="int", start=0, comment="Flags for the SetDate() file method." },
+  enums("FDT", { type="int", start=0, comment="Flags for the SetDate() file method." },
     "MODIFIED: The date on which the file was last modified.",
     "CREATED: The date on which the file was created.  On some host platforms this datestamp may be read-only.",
     "ACCESSED: The date on which the file was last accessed by a user or application.",
@@ -164,7 +164,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "SELF: Event applies to the monitored folder and not a contained item",
     "DEEP: Receive notifications from sub-folders (Windows only).")
 
-  enum("STT", { type="int", start=1, comment="Types for StrDatatype()." },
+  enums("STT", { type="int", start=1, comment="Types for StrDatatype()." },
     "NUMBER: The string represents a whole number.",
     "FLOAT: The string represents a floating point number.",
     "HEX: The string represents a hexadecimal number.",
@@ -184,7 +184,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "ROOT_PATH",
     "SCAN_MODULES")
 
-  enum("TOI", { type="int" },
+  enums("TOI", { type="int" },
     "LOCAL_CACHE",        -- For Android.  Defines the path of the local cache for assignment to localcache:
     "LOCAL_STORAGE",      -- For Android.  Defines the path of the local storage for assignment to localstorage:
     "ANDROID_ENV",        -- For Android.
@@ -225,7 +225,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "EXCLUDE_FILES: Exclude files when scanning this folder.",
     "EXCLUDE_FOLDERS: Exclude folders when scanning this folder.")
 
-  enum("LOC", { type="int", start=1, comment="AnalysePath() values" },
+  enums("LOC", { type="int", start=1, comment="AnalysePath() values" },
     "DIRECTORY|FOLDER: The path refers to a folder.",
     "VOLUME: The path refers to a volume name.",
     "FILE: The path refers to a file.")
@@ -233,17 +233,17 @@ constexpr bool defined(T flags, T test_flag) noexcept {
   flags("LDF", { comment="Flags for LoadFile()" },
     "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, `ERR::Search` is returned.")
 
-  enum("FBK", { type="int", start=1, comment="Flags for file feedback." },
+  enums("FBK", { type="int", start=1, comment="Flags for file feedback." },
     "MOVE_FILE: A file is to be, or has been moved.",
     "COPY_FILE: A file is to be, or has been copied.",
     "DELETE_FILE: A file is to be, or has been deleted.")
 
-  enum("FFR", { type="int", start=0, comment="Return codes available to the feedback routine" },
+  enums("FFR", { type="int", start=0, comment="Return codes available to the feedback routine" },
     "OKAY|CONTINUE: Continue processing uninterrupted.",
     "SKIP: Skip processing of this entity.",
     "ABORT: Abort the entire operation.")
 
-  enum("VAS", { type="int", start=1, comment="For use by VirtualVolume()" },
+  enums("VAS", { type="int", start=1, comment="For use by VirtualVolume()" },
     "DEREGISTER: Remove the virtual volume from the system.",
     "SCAN_DIR",
     "DELETE",
@@ -263,13 +263,13 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "CREATE_LINK",
     "DRIVER_SIZE")
 
-  enum("FDB", { type="int", start=1, comment="Feedback event indicators." },
+  enums("FDB", { type="int", start=1, comment="Feedback event indicators." },
     "DECOMPRESS_FILE",
     "COMPRESS_FILE",
     "REMOVE_FILE",
     "DECOMPRESS_OBJECT")
 
-  enum("CF", { type="int", start=1, comment="Compression stream formats" },
+  enums("CF", { type="int", start=1, comment="Compression stream formats" },
     "GZIP: The 'gzip' format",
     "ZLIB: The 'zlib' format",
     "DEFLATE: The 'deflate' format")
@@ -318,19 +318,19 @@ constexpr bool defined(T flags, T test_flag) noexcept {
      WAIT_FOR_OBJECTS = 91
   })
 
-  enum("IDTYPE", { type="int", start=1, comment="Types for AllocateID()" },
+  enums("IDTYPE", { type="int", start=1, comment="Types for AllocateID()" },
     "MESSAGE: Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.",
     "GLOBAL: Global ID's have no specific association with anything.",
     "FUNCTION: Function ID's are used to track `FUNCTION` types and are assigned to the function ID field."
   )
 
-  enum("TSTATE", { type="char", comment="Indicates the state of a process." },
+  enums("TSTATE", { type="char", comment="Indicates the state of a process." },
     "RUNNING: The process is currently executing code.",
     "PAUSED: The process is asleep.",
     "STOPPING: The process is in its termination phase.",
     "TERMINATED: The process has closed.")
 
-  enum("RES", { type="int", start=1 },
+  enums("RES", { type="int", start=1 },
     "FREE_SWAP: The total amount of free swap memory.",
     "CONSOLE_FD: Internal reference to the FD of the console.",
     "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys.",
@@ -352,7 +352,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "MAIN_THREAD: Read-only, returns `true` if called from the main thread."
   )
 
-  enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
+  enums("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
     "MODULE_PATH: An alternative path leading to the system modules (normally `system:modules/`).  Introduced for platforms such as Android, where modules are stored in asset folders.",
     "SYSTEM_PATH: The path of the `system:` volume, which otherwise defaults to `[root]:system/`.",
     "ROOT_PATH: Overrides the root path, which defaults to the location at which Kōtuku is installed.")

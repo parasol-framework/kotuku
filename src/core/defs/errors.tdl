@@ -5,7 +5,7 @@
 function declareErrors()
   cpp_include("<cstdint>")
 
-  enum("ERR", { start=0, comment="Universal error codes", type="int32" },
+  enums("ERR", { start=0, comment="Universal error codes", type="int32" },
     "Okay|True",
     "False",            -- Non-fatal
     "LimitedSuccess",   -- Limited success

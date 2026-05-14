@@ -5,7 +5,7 @@ flags("CLIPMODE", { comment="Clipboard modes", module="Core" },
     "COPY: Copy from the clipboard.",
     "PASTE: Paste from the clipboard.")
 
-enum("SEEK", { type="int", start=0, comment="Seek positions", module="Core" },
+enums("SEEK", { type="int", start=0, comment="Seek positions", module="Core" },
     "START: Use an index at position zero.",
     "CURRENT: Use an index at the end of the last read/write operation.",
     "END: Use an index at the end of the data buffer.",
@@ -46,7 +46,7 @@ flags("CCF", { comment="Class categories", module="Core" },
     "NETWORK: Network classes interface with system drivers to simplify network communications.",
     "MULTIMEDIA: Classes that represent more than one media type, e.g. video files.")
 
-enum("AC", { type="int", start=1, comment="Action identifiers.", module="Core" },
+enums("AC", { type="int", start=1, comment="Action identifiers.", module="Core" },
     "Signal",       "Activate",       "Redimension",  "Clear",    "FreeWarning",  "Enable",       "CopyData",
     "DataFeed",     "Deactivate",     "Draw",         "Flush",    "Focus",        "Free",         "SaveSettings",
     "GetKey",       "DragDrop",       "Hide",         "Init",     "Lock",         "LostFocus",    "Move",
@@ -149,7 +149,7 @@ flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits a
     { CALLER        = "0x00800000: This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself." },
     { READ_WRITE    = "READ|WRITE" })
 
-enum("EVG", { type="int", start=1, comment="Event categories.", module="Core" }, -- 5 bit limit (max 32 entries).  These constants are also managed in core.tiri and tiri_functions.c, line 493
+enums("EVG", { type="int", start=1, comment="Event categories.", module="Core" }, -- 5 bit limit (max 32 entries).  These constants are also managed in core.tiri and tiri_functions.c, line 493
     "FILESYSTEM: File system events.",
     "NETWORK: Network events.",
     "SYSTEM: System-wide events",
@@ -165,7 +165,7 @@ enum("EVG", { type="int", start=1, comment="Event categories.", module="Core" },
     "ANDROID: Android specific events that do not already fit existing categories.",
     "END: Private")
 
-enum("DATA", { type="int", start=1, comment="Data codes", module="Core" }, -- NB: Duplicated in display/win32/windows.c
+enums("DATA", { type="int", start=1, comment="Data codes", module="Core" }, -- NB: Duplicated in display/win32/windows.c
     "TEXT: Standard ASCII text",
     "RAW: Raw unprocessed data",
     "DEVICE_INPUT: Device activity",
@@ -212,7 +212,7 @@ flags("CON", { comment="Gamepad controller buttons.", module="core" },
     "RIGHT_THUMB: Right thumb stick depressed."
     )
 
-enum("JET", { type="int", start=1, comment="JET constants are documented in GetInputEvent()", module="Core" },
+enums("JET", { type="int", start=1, comment="JET constants are documented in GetInputEvent()", module="Core" },
     "BUTTON_1|LMB: Left mouse button; XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).",
     "BUTTON_2|RMB: Right mouse button; XBox X button, PS cross button.",
     "BUTTON_3|MMB: Middle mouse button; XBox Y button, PS triangle.",

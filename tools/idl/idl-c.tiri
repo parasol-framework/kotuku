@@ -521,7 +521,7 @@ global function idlFunction(Name:str, Category:str, Comment:str, Status:str, Des
    -- Find the registered function definition that must have been pre-declared in the TDL.
 
    local func
-   for k, f in ipairs(glFunctions) do
+   for f in values(glFunctions) do
       if f.name is Name then
          func = f
          break
@@ -530,7 +530,7 @@ global function idlFunction(Name:str, Category:str, Comment:str, Status:str, Des
 
    if not func then
       list = ''
-      for k, f in ipairs(glFunctions) do
+      for f in values(glFunctions) do
          list ..= f.name .. '\n'
       end
       error("Function '" .. Name .. "' is not declared in the TDL.  Known functions are:\n" .. list)
