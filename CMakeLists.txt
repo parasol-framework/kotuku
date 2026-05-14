@@ -862,7 +862,9 @@ if (KOTUKU_INSTALL AND NOT KOTUKU_STATIC)
          DESTINATION "${LIB_TARGET}/lib"
          FILES_MATCHING
             PATTERN "libz.so*"
-            PATTERN "libz*.dylib")
+            PATTERN "libz*.dylib"
+            PATTERN "cmake" EXCLUDE
+            PATTERN "pkgconfig" EXCLUDE)
    endif ()
 elseif (KOTUKU_INSTALL AND KOTUKU_STATIC AND WIN32)
    install(CODE
