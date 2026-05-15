@@ -392,19 +392,22 @@ static ERR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
 
       case DATA::FILE: { // File path
          auto file = objFile::create({ fl::Path(CSTRING(Args->Buffer)), fl::Flags(FL::READ) });
-         auto size = file->get<size_t>(FID_Size);
-         int8_t *buf;
-         if (AllocMemory(size, MEM::NO_CLEAR, (APTR *)&buf, nullptr) IS ERR::Okay) {
-            kt::LocalResource resource(buf)
-            if (file->read(buf, size) IS ERR::Okay) {
-               return acWrite(Self, buf, size, nullptr);
+         if (file.ok()) {
+            auto size = file->get<size_t>(FID_Size);
+            int8_t *buf;
+            if (AllocMemory(size, MEM::NO_CLEAR, (APTR *)&buf, nullptr) IS ERR::Okay) {
+               kt::LocalResource resource(buf);
+               if (file->read(buf, size) IS ERR::Okay) {
+                  return acWrite(Self, buf, size, nullptr);
+               }
+               else return log.warning(ERR::Read);
             }
-            else return log.warning(ERR::Read);
          }
+         else return log.warning(ERR::File);
       }
 
       default:
-         return ERR::NoSupport;
+         return log.warning(ERR::NoSupport);
    }
 }
 
