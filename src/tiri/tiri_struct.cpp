@@ -886,6 +886,7 @@ static int struct_destruct(lua_State *Lua)
 {
    if (auto fs = (fstruct *)luaL_checkudata(Lua, 1, "Tiri.struct")) {
       if (fs->Def and fs->Data and ((fs->Deallocate) or (fs->Data IS (APTR)(fs + 1)))) {
+         if (fs->Def->Name IS "FileInfo") ((FileInfo *)fs->Data)->clearTags();
          destroy_struct_cpp_strings(*fs->Def, fs->Data);
       }
 
