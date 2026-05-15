@@ -119,6 +119,46 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+
+@Test function DataFeedWritesToSocket()
+   glPort++
+
+   expected_msg = 'DATAFEED:Buffer write path'
+   received_msg = nil
+
+   server = obj.new('netserver', {
+      name    = 'DataFeedServer',
+      address = '127.0.0.1',
+      incoming = function(Socket:obj, Client:obj)
+         buffer = string.alloc(1024)
+         err, read_len = Client.acRead(buffer)
+         assert(err is ERR_Okay, '[Server] Failed to read data-feed content: ' .. mSys.GetErrorMsg(err))
+
+         received_msg = buffer:sub(0, read_len)
+         Socket.acSignal()
+      end,
+      port = glPort,
+   } )
+
+   client = obj.new('netsocket', {
+      name = 'DataFeedClient',
+      feedback = function(Socket:obj, State:num)
+         if State is NTC_CONNECTED then
+            err = Socket.acDataFeed(nil, DATA_TEXT, expected_msg, #expected_msg)
+            assert(err is ERR_Okay, '[Client] Failed to feed socket data: ' .. mSys.GetErrorMsg(err))
+         end
+      end,
+   } )
+
+   proc = processing.new({ timeout = 5.0, signals = array<object> { server } })
+   check client.mtConnect('127.0.0.1', glPort)
+   check proc.sleep()
+
+   assert(received_msg is expected_msg,
+      'DataFeed payload mismatch. Expected: ' .. expected_msg .. ', Received: ' .. tostring(received_msg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- One-on-one basic communication test between client and server.
 
 @Test function BasicCommunication()

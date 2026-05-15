@@ -364,16 +364,46 @@ static ERR connect_timeout_handler(OBJECTPTR Subscriber, int64_t TimeElapsed, in
    return ERR::Terminate; // Unsubscribe
 }
 
-//********************************************************************************************************************
-// TODO: Accept data-feed content for writing to the socket.
+/*********************************************************************************************************************
+-ACTION-
+DataFeed: Streams raw data to the socket for writing.
+
+Data sent to a NetSocket through this action is written using the same buffered behaviour as #Write().  If the feed
+size is zero, the buffer is treated as null-terminated text.
+
+*********************************************************************************************************************/
 
 static ERR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
 {
    kt::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Buffer)) return log.warning(ERR::NullArgs);
 
-   return ERR::Okay;
+   if (not Args->Size) return ERR::Okay;
+   if (Args->Size < 0) return log.warning(ERR::Args);
+
+   switch(Args->Datatype) {
+      case DATA::TEXT:
+      case DATA::RAW:
+      case DATA::XML:
+      case DATA::AUDIO:
+      case DATA::IMAGE:
+         return acWrite(Self, Args->Buffer, Args->Size, nullptr);
+
+      case DATA::FILE: { // File path
+         auto file = objFile::create({ fl::Path(CSTRING(Args->Buffer)), fl::Flags(FL::READ) });
+         auto size = file->get<size_t>(FID_Size);
+         int8_t *buf;
+         if (AllocMemory(size, MEM::NO_CLEAR, (APTR *)&buf, nullptr) IS ERR::Okay) {
+            if (file->read(buf, size) IS ERR::Okay) {
+               return acWrite(Self, buf, size, nullptr);
+            }
+         }
+      }
+
+      default:
+         return ERR::NoSupport;
+   }
 }
 
 /*********************************************************************************************************************

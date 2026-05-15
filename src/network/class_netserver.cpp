@@ -180,7 +180,7 @@ NetServer will either self-sign or use a localhost certificate, if available.
 
 *********************************************************************************************************************/
 
-static ERR SET_SSLCertificate(extNetServer *Self, CSTRING Value)
+static ERR NETSERVER_SET_SSLCertificate(extNetServer *Self, CSTRING Value)
 {
    if (Self->SSLCertificate) { FreeResource(Self->SSLCertificate); Self->SSLCertificate = nullptr; }
 
@@ -200,7 +200,7 @@ static ERR SET_SSLCertificate(extNetServer *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-static ERR GET_SSLCertificate(extNetServer *Self, CSTRING *Value)
+static ERR NETSERVER_GET_SSLCertificate(extNetServer *Self, CSTRING *Value)
 {
    *Value = Self->SSLCertificate;
    return ERR::Okay;
@@ -217,7 +217,7 @@ will either self-sign or use a localhost private key, if available.
 
 *********************************************************************************************************************/
 
-static ERR SET_SSLPrivateKey(extNetServer *Self, CSTRING Value)
+static ERR NETSERVER_SET_SSLPrivateKey(extNetServer *Self, CSTRING Value)
 {
    if (Self->SSLPrivateKey) { FreeResource(Self->SSLPrivateKey); Self->SSLPrivateKey = nullptr; }
 
@@ -236,7 +236,7 @@ static ERR SET_SSLPrivateKey(extNetServer *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-static ERR GET_SSLPrivateKey(extNetServer *Self, CSTRING *Value)
+static ERR NETSERVER_GET_SSLPrivateKey(extNetServer *Self, CSTRING *Value)
 {
    *Value = Self->SSLPrivateKey;
    return ERR::Okay;
@@ -252,14 +252,14 @@ not encrypted, this field can be left empty.
 
 *********************************************************************************************************************/
 
-static ERR SET_SSLKeyPassword(extNetServer *Self, CSTRING Value)
+static ERR NETSERVER_SET_SSLKeyPassword(extNetServer *Self, CSTRING Value)
 {
    if (Self->SSLKeyPassword) { FreeResource(Self->SSLKeyPassword); Self->SSLKeyPassword = nullptr; }
    if ((Value) and (*Value)) Self->SSLKeyPassword = kt::strclone(Value);
    return ERR::Okay;
 }
 
-static ERR GET_SSLKeyPassword(extNetServer *Self, CSTRING *Value)
+static ERR NETSERVER_GET_SSLKeyPassword(extNetServer *Self, CSTRING *Value)
 {
    *Value = Self->SSLKeyPassword;
    return ERR::Okay;
@@ -591,14 +591,14 @@ static void free_client(extNetServer *Server, objNetClient *Client)
 #include "netserver_def.c"
 
 static const FieldArray clNetServerFields[] = {
-   { "TotalClients",   FDF_VIRTUAL|FDF_INT|FDF_R, NETSERVER_GET_TotalClients },
-   { "Backlog",        FDF_VIRTUAL|FDF_INT|FDF_RI, NETSERVER_GET_Backlog, NETSERVER_SET_Backlog },
-   { "ClientLimit",    FDF_VIRTUAL|FDF_INT|FDF_RW, NETSERVER_GET_ClientLimit, NETSERVER_SET_ClientLimit },
-   { "SocketLimit",    FDF_VIRTUAL|FDF_INT|FDF_RW, NETSERVER_GET_SocketLimit, NETSERVER_SET_SocketLimit },
-   { "SSLCertificate", FDF_VIRTUAL|FDF_STRING|FDF_RI, GET_SSLCertificate, SET_SSLCertificate },
-   { "SSLPrivateKey",  FDF_VIRTUAL|FDF_STRING|FDF_RI, GET_SSLPrivateKey, SET_SSLPrivateKey },
-   { "SSLKeyPassword", FDF_VIRTUAL|FDF_STRING|FDF_RI, GET_SSLKeyPassword, SET_SSLKeyPassword },
-   { "Clients",        FDF_VIRTUAL|FDF_OBJECT|FDF_R, NETSERVER_GET_Clients, nullptr, CLASSID::NETCLIENT },
+   { "TotalClients",   FDF_VIRTUAL|FDF_INT|FDF_R,     NETSERVER_GET_TotalClients },
+   { "Backlog",        FDF_VIRTUAL|FDF_INT|FDF_RI,    NETSERVER_GET_Backlog, NETSERVER_SET_Backlog },
+   { "ClientLimit",    FDF_VIRTUAL|FDF_INT|FDF_RW,    NETSERVER_GET_ClientLimit, NETSERVER_SET_ClientLimit },
+   { "SocketLimit",    FDF_VIRTUAL|FDF_INT|FDF_RW,    NETSERVER_GET_SocketLimit, NETSERVER_SET_SocketLimit },
+   { "SSLCertificate", FDF_VIRTUAL|FDF_STRING|FDF_RI, NETSERVER_GET_SSLCertificate, NETSERVER_SET_SSLCertificate },
+   { "SSLPrivateKey",  FDF_VIRTUAL|FDF_STRING|FDF_RI, NETSERVER_GET_SSLPrivateKey, NETSERVER_SET_SSLPrivateKey },
+   { "SSLKeyPassword", FDF_VIRTUAL|FDF_STRING|FDF_RI, NETSERVER_GET_SSLKeyPassword, NETSERVER_SET_SSLKeyPassword },
+   { "Clients",        FDF_VIRTUAL|FDF_OBJECT|FDF_R,  NETSERVER_GET_Clients, nullptr, CLASSID::NETCLIENT },
    END_FIELD
 };
 
