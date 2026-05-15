@@ -566,12 +566,12 @@ static ERR MODExpunge(void)
 
    if (glPlatform) glPlatform->expunge();
 
+   if (clNetServer)    { FreeResource(clNetServer); clNetServer = nullptr; }
    if (clNetClient)    { FreeResource(clNetClient); clNetClient = nullptr; }
    if (clNetSocket)    { FreeResource(clNetSocket); clNetSocket = nullptr; }
    if (clClientSocket) { FreeResource(clClientSocket); clClientSocket = nullptr; }
    if (clProxy)        { FreeResource(clProxy); clProxy = nullptr; }
    if (clNetLookup)    { FreeResource(clNetLookup); clNetLookup = nullptr; }
-   if (clNetServer)    { FreeResource(clNetServer); clNetServer = nullptr; }
 
 #ifndef DISABLE_SSL
   #ifdef _WIN32
