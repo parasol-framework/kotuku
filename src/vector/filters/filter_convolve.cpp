@@ -128,7 +128,8 @@ class extConvolveFX : public extFilterEffect {
       const uint8_t B = InputBitmap->ColourFormat->BluePos>>3;
 
       const double factor = 1.0 / Divisor;
-      const double bias = Bias * 255.0;
+      const double alpha_bias = Bias * 255.0;
+      const bool linear_rgb = Filter->ColourSpace IS VCS::LINEAR_RGB;
 
       uint8_t *alpha_input = InputBitmap->Data + (pTop * InputBitmap->LineWidth);
       uint8_t *outline = output;
@@ -136,29 +137,30 @@ class extConvolveFX : public extFilterEffect {
          uint8_t *out = outline;
          for (int x=pLeft; x < pRight; x++) {
             double r = 0.0, g = 0.0, b = 0.0, a = 0.0;
-            uint8_t kv = 0;
+            auto source_alpha = (alpha_input + (x * InputBitmap->BytesPerPixel))[A];
             for (int fy = 0; fy < MatrixRows; fy++) {
-                int isrcY = std::lrint(y - (TargetY * UnitY) + (fy * UnitY));
-                for (int fx = 0; fx < MatrixColumns; fx++) {
-                    int isrcX = std::lrint(x - (TargetX * UnitX) + (fx * UnitX));
-                    if (auto pixel = getPixel(InputBitmap, isrcX, isrcY)) {
-                        r += pixel[R] * Matrix[kv];
-                        g += pixel[G] * Matrix[kv];
-                        b += pixel[B] * Matrix[kv];
-                        a += pixel[A] * Matrix[kv];
-                    }
-                    kv++;
-                }
+               int isrc_y = std::lrint(y - (TargetY * UnitY) + (fy * UnitY));
+               for (int fx = 0; fx < MatrixColumns; fx++) {
+                  int isrc_x = std::lrint(x - (TargetX * UnitX) + (fx * UnitX));
+                  int matrix_index = ((MatrixRows - fy - 1) * MatrixColumns) + (MatrixColumns - fx - 1);
+                  if (auto pixel = getPixel(InputBitmap, isrc_x, isrc_y)) {
+                     r += pixel[R] * Matrix[matrix_index];
+                     g += pixel[G] * Matrix[matrix_index];
+                     b += pixel[B] * Matrix[matrix_index];
+                     a += pixel[A] * Matrix[matrix_index];
+                  }
+               }
             }
 
-            int lr = std::lrint((factor * r) + bias);
-            int lg = std::lrint((factor * g) + bias);
-            int lb = std::lrint((factor * b) + bias);
-            out[R] = glLinearRGB.invert(std::clamp(lr, 0, 255));
-            out[G] = glLinearRGB.invert(std::clamp(lg, 0, 255));
-            out[B] = glLinearRGB.invert(std::clamp(lb, 0, 255));
-            if (!PreserveAlpha) out[A] = std::clamp(int(std::lrint(factor * a + bias)), 0, 255);
-            else out[A] = (alpha_input + (x * InputBitmap->BytesPerPixel))[A];
+            double rgb_bias = Bias * double(source_alpha);
+            int lr = std::clamp(int(std::lrint((factor * r) + rgb_bias)), 0, 255);
+            int lg = std::clamp(int(std::lrint((factor * g) + rgb_bias)), 0, 255);
+            int lb = std::clamp(int(std::lrint((factor * b) + rgb_bias)), 0, 255);
+            out[R] = linear_rgb ? glLinearRGB.invert(lr) : lr;
+            out[G] = linear_rgb ? glLinearRGB.invert(lg) : lg;
+            out[B] = linear_rgb ? glLinearRGB.invert(lb) : lb;
+            if (!PreserveAlpha) out[A] = std::clamp(int(std::lrint(factor * a + alpha_bias)), 0, 255);
+            else out[A] = source_alpha;
             out += 4;
          }
          alpha_input += InputBitmap->LineWidth;
