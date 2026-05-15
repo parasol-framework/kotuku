@@ -89,6 +89,9 @@ find_program(OPENSSL_EXECUTABLE openssl)
 set(SSL_DATA_DIR "${CMAKE_SOURCE_DIR}/data/ssl")
 set(LOCALHOST_PEM "${SSL_DATA_DIR}/localhost.pem")
 set(LOCALHOST_KEY_PEM "${SSL_DATA_DIR}/localhost-key.pem")
+set(LOCALHOST_RSA_KEY_PEM "${SSL_DATA_DIR}/localhost-rsa-key.pem")
+set(LOCALHOST_EC_PEM "${SSL_DATA_DIR}/localhost-ec.pem")
+set(LOCALHOST_EC_KEY_PEM "${SSL_DATA_DIR}/localhost-ec-key.pem")
 set(LOCALHOST_P12 "${SSL_DATA_DIR}/localhost.p12")
 set(LOCALHOST_PASSWORD_P12 "${SSL_DATA_DIR}/localhost-password.p12")
 set(MKCERT_PEM "${SSL_DATA_DIR}/localhost+2.pem")
@@ -97,13 +100,19 @@ set(MKCERT_KEY_PEM "${SSL_DATA_DIR}/localhost+2-key.pem")
 if(MKCERT_EXECUTABLE AND OPENSSL_EXECUTABLE)
    # Custom command to generate SSL certificates only when they don't exist
    add_custom_command(
-      OUTPUT "${LOCALHOST_PEM}" "${LOCALHOST_KEY_PEM}" "${LOCALHOST_P12}" "${LOCALHOST_PASSWORD_P12}"
+      OUTPUT "${LOCALHOST_PEM}" "${LOCALHOST_KEY_PEM}" "${LOCALHOST_RSA_KEY_PEM}" "${LOCALHOST_P12}"
+             "${LOCALHOST_PASSWORD_P12}" "${LOCALHOST_EC_PEM}" "${LOCALHOST_EC_KEY_PEM}"
       COMMAND ${CMAKE_COMMAND} -E make_directory "${SSL_DATA_DIR}"
       COMMAND ${CMAKE_COMMAND} -E remove -f "${LOCALHOST_PEM}" "${LOCALHOST_KEY_PEM}" "${LOCALHOST_P12}"
-              "${LOCALHOST_PASSWORD_P12}" "${MKCERT_PEM}" "${MKCERT_KEY_PEM}"
+              "${LOCALHOST_PASSWORD_P12}" "${LOCALHOST_RSA_KEY_PEM}" "${LOCALHOST_EC_PEM}"
+              "${LOCALHOST_EC_KEY_PEM}" "${MKCERT_PEM}" "${MKCERT_KEY_PEM}"
       COMMAND ${CMAKE_COMMAND} -E chdir "${SSL_DATA_DIR}" "${MKCERT_EXECUTABLE}" localhost 127.0.0.1 ::1
       COMMAND ${CMAKE_COMMAND} -E rename "${MKCERT_PEM}" "${LOCALHOST_PEM}"
       COMMAND ${CMAKE_COMMAND} -E rename "${MKCERT_KEY_PEM}" "${LOCALHOST_KEY_PEM}"
+      COMMAND "${OPENSSL_EXECUTABLE}" rsa -in "${LOCALHOST_KEY_PEM}" -traditional -out "${LOCALHOST_RSA_KEY_PEM}"
+      COMMAND "${OPENSSL_EXECUTABLE}" ecparam -name prime256v1 -genkey -noout -out "${LOCALHOST_EC_KEY_PEM}"
+      COMMAND "${OPENSSL_EXECUTABLE}" req -new -x509 -key "${LOCALHOST_EC_KEY_PEM}" -out "${LOCALHOST_EC_PEM}"
+              -days 3650 -subj "/CN=localhost"
       COMMAND "${OPENSSL_EXECUTABLE}" pkcs12 -export -out "${LOCALHOST_P12}"
               -inkey "${LOCALHOST_KEY_PEM}" -in "${LOCALHOST_PEM}" -passout pass:
       COMMAND "${OPENSSL_EXECUTABLE}" pkcs12 -export -out "${LOCALHOST_PASSWORD_P12}"
@@ -113,7 +122,8 @@ if(MKCERT_EXECUTABLE AND OPENSSL_EXECUTABLE)
    )
 
    # Custom target that depends on the certificate files
-   add_custom_target(generate_ssl_certificates DEPENDS "${LOCALHOST_PEM}" "${LOCALHOST_KEY_PEM}" "${LOCALHOST_P12}"
+   add_custom_target(generate_ssl_certificates DEPENDS "${LOCALHOST_PEM}" "${LOCALHOST_KEY_PEM}"
+      "${LOCALHOST_RSA_KEY_PEM}" "${LOCALHOST_EC_PEM}" "${LOCALHOST_EC_KEY_PEM}" "${LOCALHOST_P12}"
       "${LOCALHOST_PASSWORD_P12}")
 
    # Make the network module depend on certificate generation

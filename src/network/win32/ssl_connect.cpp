@@ -80,9 +80,10 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
 
    // Acquire server credentials if not already done
    if (!SSL->credentials_acquired) {
-      SCHANNEL_CRED cred_data;
+      KOTUKU_SCH_CREDENTIALS cred_data;
       memset(&cred_data, 0, sizeof(cred_data));
-      cred_data.dwVersion = SCHANNEL_CRED_VERSION;
+      cred_data.dwVersion = SCH_CREDENTIALS_VERSION;
+      cred_data.dwCredFormat = SCH_CRED_FORMAT_CERT_CONTEXT;
       cred_data.dwFlags = SCH_CRED_NO_SYSTEM_MAPPER | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION |
                         SCH_CRED_IGNORE_NO_REVOCATION_CHECK | SCH_CRED_IGNORE_REVOCATION_OFFLINE;
       cred_data.cCreds = 1;

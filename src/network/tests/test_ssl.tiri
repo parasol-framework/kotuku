@@ -650,3 +650,21 @@ function PEMCustomCertificate()
 
    runCustomCertificateHandshake('PEMCert', cert_path, key_path, nil)
 end
+
+@Test(priority=44); @Requires(ssl=true)
+function TraditionalRSAPEMCustomCertificate()
+   cert_path = 'config:ssl/localhost.pem'
+   key_path = 'config:ssl/localhost-rsa-key.pem'
+   if not customCertificateFilesAvailable(cert_path, key_path) then return end
+
+   runCustomCertificateHandshake('TraditionalRSACert', cert_path, key_path, nil)
+end
+
+@Test(priority=45); @Requires(ssl=true)
+function TraditionalECPEMCustomCertificate()
+   cert_path = 'config:ssl/localhost-ec.pem'
+   key_path = 'config:ssl/localhost-ec-key.pem'
+   if not customCertificateFilesAvailable(cert_path, key_path) then return end
+
+   runCustomCertificateHandshake('TraditionalECCert', cert_path, key_path, nil)
+end
