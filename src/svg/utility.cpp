@@ -627,3 +627,73 @@ static void update_dpi(void)
       }
    }
 }
+
+//********************************************************************************************************************
+
+static bool read_integer_value(std::string_view Value, int &Result) noexcept
+{
+   Value = next_value(Value);
+   if (Value.empty()) return false;
+
+   auto [ next, error ] = std::from_chars(Value.data(), Value.data() + Value.size(), Result);
+   if (error != std::errc()) return false;
+
+   Value = next_value(std::string_view(next, Value.data() + Value.size() - next));
+   return Value.empty();
+}
+
+//********************************************************************************************************************
+
+static bool read_positive_integer_pair(std::string_view Value, int &X, int &Y) noexcept
+{
+   int values[2] = { 0, 0 };
+   int count = 0;
+
+   while (true) {
+      Value = next_value(Value);
+      if (Value.empty()) break;
+      if (count >= 2) return false;
+
+      auto [ next, error ] = std::from_chars(Value.data(), Value.data() + Value.size(), values[count]);
+      if (error != std::errc()) return false;
+
+      Value = std::string_view(next, Value.data() + Value.size() - next);
+      count++;
+   }
+
+   if (!count) return false;
+   if (values[0] <= 0) return false;
+   if ((count > 1) and (values[1] <= 0)) return false;
+
+   X = values[0];
+   Y = (count > 1) ? values[1] : X;
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool read_positive_number_pair(std::string_view Value, double &X, double &Y) noexcept
+{
+   double values[2] = { 0.0, 0.0 };
+   int count = 0;
+
+   while (true) {
+      Value = next_value(Value);
+      if (Value.empty()) break;
+      if (count >= 2) return false;
+
+      auto [ next, error ] = std::from_chars(Value.data(), Value.data() + Value.size(), values[count]);
+      if (error != std::errc()) return false;
+
+      Value = std::string_view(next, Value.data() + Value.size() - next);
+      count++;
+   }
+
+   if (!count) return false;
+   if (values[0] <= 0.0) return false;
+   if ((count > 1) and (values[1] <= 0.0)) return false;
+
+   X = values[0];
+   Y = (count > 1) ? values[1] : X;
+   return true;
+}

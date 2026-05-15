@@ -75,12 +75,13 @@ class extConvolveFX : public extFilterEffect {
    int    MatrixColumns, MatrixRows;
    int    MatrixSize;
    EM     EdgeMode;
-   bool   PreserveAlpha;
-   double Matrix[MAX_DIM * MAX_DIM];
+   bool   PreserveAlpha, MatrixProvided, TargetXProvided, TargetYProvided;
+   double Matrix[MAX_DIM * MAX_DIM] = {};
 
    extConvolveFX() : UnitX(1), UnitY(1), Divisor(0), Bias(0),
       TargetX(-1), TargetY(-1), // If -ve, the target will be computed as the centre of the matrix.
-      MatrixColumns(3), MatrixRows(3), MatrixSize(9), EdgeMode(EM::DUPLICATE), PreserveAlpha(false) { }
+      MatrixColumns(3), MatrixRows(3), MatrixSize(0), EdgeMode(EM::DUPLICATE), PreserveAlpha(false),
+      MatrixProvided(false), TargetXProvided(false), TargetYProvided(false) { }
 
    inline uint8_t * getPixel(objBitmap *Bitmap, int X, int Y) const {
       if ((X >= Bitmap->Clip.Left) and (X < Bitmap->Clip.Right) and
@@ -234,7 +235,15 @@ static ERR CONVOLVEFX_Init(extConvolveFX *Self)
 {
    kt::Log log;
 
-   if (!Self->UnitY) Self->UnitY = Self->UnitX;
+   if ((Self->UnitX <= 0.0) or (Self->UnitY <= 0.0)) {
+      log.warning("UnitX and UnitY must be positive values.");
+      return ERR::InvalidValue;
+   }
+
+   if (!Self->MatrixProvided) {
+      log.warning("The Matrix field must be set before initialising ConvolveFX.");
+      return ERR::FieldNotSet;
+   }
 
    if (Self->MatrixColumns * Self->MatrixRows > MAX_DIM * MAX_DIM) {
       log.warning("Size of matrix exceeds internally imposed limits.");
@@ -250,11 +259,21 @@ static ERR CONVOLVEFX_Init(extConvolveFX *Self)
 
    // Use client-provided tx/ty values, otherwise default according to the SVG standard.
 
-   if ((Self->TargetX < 0) or (Self->TargetX >= Self->MatrixColumns)) {
+   if (Self->TargetXProvided and ((Self->TargetX < 0) or (Self->TargetX >= Self->MatrixColumns))) {
+      log.warning("TargetX value of %d is outside the matrix width of %d.", Self->TargetX, Self->MatrixColumns);
+      return ERR::OutOfRange;
+   }
+
+   if (!Self->TargetXProvided) {
       Self->TargetX = Self->MatrixColumns>>1;
    }
 
-   if ((Self->TargetY < 0) or (Self->TargetY >= Self->MatrixRows)) {
+   if (Self->TargetYProvided and ((Self->TargetY < 0) or (Self->TargetY >= Self->MatrixRows))) {
+      log.warning("TargetY value of %d is outside the matrix height of %d.", Self->TargetY, Self->MatrixRows);
+      return ERR::OutOfRange;
+   }
+
+   if (!Self->TargetYProvided) {
       Self->TargetY = Self->MatrixRows>>1;
    }
 
@@ -331,7 +350,7 @@ static ERR CONVOLVEFX_GET_Divisor(extConvolveFX *Self, double *Value)
 static ERR CONVOLVEFX_SET_Divisor(extConvolveFX *Self, double Value)
 {
    kt::Log log;
-   if (Value <= 0) return log.warning(ERR::InvalidValue);
+   if (!Value) return log.warning(ERR::InvalidValue);
    Self->Divisor = Value;
    return ERR::Okay;
 }
@@ -381,6 +400,7 @@ static ERR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, double *Value, int Element
 
    if ((Elements > 0) and (Elements <= std::ssize(Self->Matrix))) {
       Self->MatrixSize = Elements;
+      Self->MatrixProvided = true;
       copymem(Value, Self->Matrix, sizeof(double) * Elements);
       return ERR::Okay;
    }
@@ -484,6 +504,7 @@ static ERR CONVOLVEFX_SET_TargetX(extConvolveFX *Self, int Value)
    }
 
    Self->TargetX = Value;
+   Self->TargetXProvided = true;
    return ERR::Okay;
 }
 
@@ -513,6 +534,7 @@ static ERR CONVOLVEFX_SET_TargetY(extConvolveFX *Self, int Value)
    }
 
    Self->TargetY = Value;
+   Self->TargetYProvided = true;
    return ERR::Okay;
 }
 
@@ -541,7 +563,7 @@ static ERR CONVOLVEFX_GET_UnitX(extConvolveFX *Self, double *Value)
 
 static ERR CONVOLVEFX_SET_UnitX(extConvolveFX *Self, double Value)
 {
-   if (Value < 0) return ERR::InvalidValue;
+   if (Value <= 0.0) return ERR::InvalidValue;
 
    Self->UnitX = Value;
    return ERR::Okay;
@@ -572,7 +594,7 @@ static ERR CONVOLVEFX_GET_UnitY(extConvolveFX *Self, double *Value)
 
 static ERR CONVOLVEFX_SET_UnitY(extConvolveFX *Self, double Value)
 {
-   if (Value < 0) return ERR::InvalidValue;
+   if (Value <= 0.0) return ERR::InvalidValue;
 
    Self->UnitY = Value;
    return ERR::Okay;

@@ -763,6 +763,11 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XTag &Tag) noexc
    if (NewObject(CLASSID::CONVOLVEFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
+   auto fail = [fx](ERR Error) {
+      FreeResource(fx);
+      return Error;
+   };
+
    std::string result_name;
    for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
@@ -770,25 +775,22 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XTag &Tag) noexc
 
       switch(strhash(Tag.Attribs[a].Name)) {
          case SVF_order: {
-            double ox = 0, oy = 0;
-            read_numseq(val, { &ox, &oy });
-            if (ox < 1) ox = 3;
-            if (oy < 1) oy = ox;
-            fx->setFields(fl::MatrixColumns(int(ox)), fl::MatrixRows(int(oy)));
+            int ox = 0, oy = 0;
+            if (!read_positive_integer_pair(val, ox, oy)) return fail(ERR::InvalidValue);
+            if (fx->setFields(fl::MatrixColumns(ox), fl::MatrixRows(oy)) != ERR::Okay) return fail(ERR::InvalidValue);
             break;
          }
 
          case SVF_kernelMatrix: {
-            #define MAX_DIM 9
-            auto matrix = read_array<double>(val, MAX_DIM * MAX_DIM);
-            fx->set(FID_Matrix, matrix);
+            auto matrix = read_array<double>(val);
+            if (fx->set(FID_Matrix, matrix) != ERR::Okay) return fail(ERR::InvalidValue);
             break;
          }
 
          case SVF_divisor: {
             double divisor = 0;
             read_numseq(val, { &divisor });
-            fx->set(FID_Divisor, divisor);
+            if (fx->set(FID_Divisor, divisor) != ERR::Okay) return fail(ERR::InvalidValue);
             break;
          }
 
@@ -799,9 +801,19 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XTag &Tag) noexc
             break;
          }
 
-         case SVF_targetX: fx->set(FID_TargetX, (int64_t)strtol(val.c_str(), nullptr, 0)); break;
+         case SVF_targetX: {
+            int target_x = 0;
+            if (!read_integer_value(val, target_x)) return fail(ERR::InvalidValue);
+            if (fx->set(FID_TargetX, target_x) != ERR::Okay) return fail(ERR::InvalidValue);
+            break;
+         }
 
-         case SVF_targetY: fx->set(FID_TargetY, (int64_t)strtol(val.c_str(), nullptr, 0)); break;
+         case SVF_targetY: {
+            int target_y = 0;
+            if (!read_integer_value(val, target_y)) return fail(ERR::InvalidValue);
+            if (fx->set(FID_TargetY, target_y) != ERR::Okay) return fail(ERR::InvalidValue);
+            break;
+         }
 
          case SVF_edgeMode:
             if (iequals("duplicate", val)) fx->set(FID_EdgeMode, int(EM::DUPLICATE));
@@ -810,12 +822,10 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XTag &Tag) noexc
             break;
 
          case SVF_kernelUnitLength: {
-            double kx = 1, ky = 1;
-            read_numseq(val, { &kx, &ky });
-            if (kx < 1) kx = 1;
-            if (ky < 1) ky = kx;
-            fx->set(FID_UnitX, kx);
-            fx->set(FID_UnitY, ky);
+            double kx = 1.0, ky = 1.0;
+            if (!read_positive_number_pair(val, kx, ky)) return fail(ERR::InvalidValue);
+            if (fx->set(FID_UnitX, kx) != ERR::Okay) return fail(ERR::InvalidValue);
+            if (fx->set(FID_UnitY, ky) != ERR::Okay) return fail(ERR::InvalidValue);
             break;
          }
 
