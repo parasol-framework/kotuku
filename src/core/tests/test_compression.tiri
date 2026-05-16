@@ -126,9 +126,9 @@ end
 
 @Test(priority=5) function StreamedCompression()
    cmp = obj.new('compression' , { } )
-   file = obj.new('file', { src='scripts:gui.tiri', flags='!READ' } )
+   file = obj.new('file', { src='scripts:gui.tiri', flags=FL_READ } )
 
-   global glOutFile = obj.new('file', { src='temp:scripts.gz', flags='!WRITE|NEW' } )
+   global glOutFile = obj.new('file', { src='temp:scripts.gz', flags=FL_WRITE|FL_NEW } )
    if cmp.mtCompressStreamStart() is ERR_Okay then
       input = string.alloc(16384)
       err = ERR_Okay

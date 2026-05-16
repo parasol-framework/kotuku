@@ -289,7 +289,7 @@ ERR ScanDir(DirInfo *Dir)
    }
 
    if ((not file->Name.empty()) and ((Dir->prvFlags & RDF::DATE) != RDF::NIL)) {
-      file->TimeStamp = calc_timestamp(&file->Modified);
+      file->Timestamp = calc_timestamp(&file->Modified);
    }
 
    return error;

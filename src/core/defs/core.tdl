@@ -214,7 +214,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "NEW: Required when creating a new file.  If a file with the same name exists, its contents will be destroyed. If however the existing file is locked, the initalisation process will fail.",
     "READ: Required if the file needs to be opened for read access.",
     "FOLDER|DIRECTORY: The file object represents a folder.",
-    "APPROXIMATE: Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.",
+    "APPROXIMATE: Allows fuzzy matching of the file path by ignoring the file extension; for instance opening 'screenshot.png' when only 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.",
     "LINK: Read-Only.  Indicates that the file is a symbolic link or shortcut to another file.",
     "BUFFER: Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.",
     "LOOP: In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to create multimedia data streams with minimal effort.",
@@ -223,7 +223,8 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "DEVICE: The file is a system device (must set if opening a device for read/write operations)",
     "STREAM: File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.",
     "EXCLUDE_FILES: Exclude files when scanning this folder.",
-    "EXCLUDE_FOLDERS: Exclude folders when scanning this folder.")
+    "EXCLUDE_FOLDERS: Exclude folders when scanning this folder.",
+    "VIRTUAL: Path is to a virtual device.")
 
   enums("LOC", { type="int", start=1, comment="AnalysePath() values" },
     "DIRECTORY|FOLDER: The path refers to a folder.",
@@ -834,7 +835,7 @@ using ModTest    = void (*)(CSTRING, int *, int *);
   ]])
 
   struct("CacheFile", { restrict="c", comment="Internal structure for managing files cached by LoadFile()." }, [[
-    large TimeStamp   # The file's last-modified timestamp.
+    large Timestamp   # The file's last-modified timestamp.
     large Size        # Byte size of the cached data.
     large LastUse     # The last time that this file was requested.
     cstr Path         # Pointer to the resolved file path.
@@ -886,7 +887,7 @@ using ModTest    = void (*)(CSTRING, int *, int *);
 
   struct("FileInfo", { comment="Metadata for describing a file." }, [[
     large Size                 # The size of the file's content.
-    large TimeStamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
+    large Timestamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
     struct(*FileInfo) Next     # Next structure in the list, or `NULL`.
     cpp(str) Name              # The name of the file.
     int(RDF) Flags             # Additional flags to describe the file.

@@ -2214,7 +2214,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
          // the system.  No further initialisation is necessary in such a case.
 
          val = std::string_view(Value, strlen(Value));
-         if (val == ":") {
+         if (val IS ":") {
             Self->Path.assign(":");
             Self->isFolder = true;
          }
@@ -2597,15 +2597,15 @@ has elapsed during the operation.  The dialog box will also provide the user wit
 process early.
 
 -FIELD-
-TimeStamp: The last modification time set on a file, represented as a 64-bit integer.
+Timestamp: The last modification time set on a file, represented as a 64-bit integer.
 
-The TimeStamp field is a 64-bit representation of the last modification date/time set on a file.  It is not guaranteed
+The Timestamp field is a 64-bit representation of the last modification date/time set on a file.  It is not guaranteed
 that the value represents seconds from the epoch, so it should only be used for purposes such as sorting, or
 for comparison to the time stamps of other files.  For a parsed time structure, refer to the #Date field.
 
 *********************************************************************************************************************/
 
-static ERR GET_TimeStamp(extFile *Self, int64_t *Value)
+static ERR GET_Timestamp(extFile *Self, int64_t *Value)
 {
    kt::Log log;
 
@@ -2751,13 +2751,14 @@ static const FieldArray FileFields[] = {
    { "Permissions",  FDF_INTFLAGS|FDF_RW, GET_Permissions, SET_Permissions, &PermissionFlags },
    { "ResolvedPath", FDF_STRING|FDF_R,    GET_ResolvedPath },
    { "Size",         FDF_INT64|FDF_RW,    GET_Size, SET_Size },
-   { "TimeStamp",    FDF_INT64|FDF_R,     GET_TimeStamp },
+   { "Timestamp",    FDF_INT64|FDF_R,     GET_Timestamp },
    { "Link",         FDF_STRING|FDF_RW,   GET_Link, SET_Link },
    { "User",         FDF_INT|FDF_RW,      GET_User, SET_User },
    { "Group",        FDF_INT|FDF_RW,      GET_Group, SET_Group },
    // Synonyms
-   { "Src",      FDF_STRING|FDF_SYNONYM|FDF_RI, GET_Path, SET_Path },
-   { "Location", FDF_STRING|FDF_SYNONYM|FDF_RI, GET_Path, SET_Path },
+   { "Src",       FDF_VIRTUAL|FDF_STRING|FDF_SYNONYM|FDF_RI, GET_Path, SET_Path },
+   { "Location",  FDF_VIRTUAL|FDF_SYSTEM|FDF_SYNONYM|FDF_STRING|FDF_RI, GET_Path, SET_Path }, // Deprecated
+   { "TimeStamp", FDF_VIRTUAL|FDF_SYSTEM|FDF_SYNONYM|FDF_INT64|FDF_R,   GET_Timestamp }, // Deprecated
    END_FIELD
 };
 
