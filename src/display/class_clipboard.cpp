@@ -70,7 +70,7 @@ void clean_clipboard(void)
    if (!time.ok()) return;
 
    time->query();
-   int64_t now = time->get<int64_t>(FID_TimeStamp) / 1000000LL;
+   int64_t now = time->get<int64_t>(FID_Timestamp) / 1000000LL;
    int64_t yesterday = now - (24 * 60LL * 60LL);
 
    DirInfo *dir;
@@ -81,7 +81,7 @@ void clean_clipboard(void)
       if (rx::Compile("^\\d+(?:_text|_image|_file|_object)\\d*\\.\\d{3}$", REGEX::NIL, nullptr, &compiled) IS ERR::Okay) {
          while (ScanDir(dir) IS ERR::Okay) {
             if (rx::Match(compiled, dir->Info->Name, RMATCH::NIL, nullptr) IS ERR::Okay) {
-               if (dir->Info->TimeStamp < yesterday) {
+               if (dir->Info->Timestamp < yesterday) {
                   std::string path("clipboard:");
                   path.append(dir->Info->Name);
                   DeleteFile(path.c_str(), nullptr);

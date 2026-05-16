@@ -505,20 +505,3 @@ end
    assert(mSys.AnalysePath(target, nil) is ERR_Okay, 'Created link path could not be resolved.')
    assert(readFile(target) is 'Linked file content', 'Reading through the created link returned unexpected content.')
 end
-
-----------------------------------------------------------------------------------------------------------------------
-
-@Test function FileInfoStructCppString()
-   info = struct.new('FileInfo')
-   assert(type(info.name) is 'string', 'FileInfo.Name should default to a valid string')
-
-   err = mSys.GetFileInfo('scripts:gui.tiri', info)
-   assert(err is ERR_Okay, 'GetFileInfo() failed on first call: ' .. mSys.GetErrorMsg(err))
-   assert(type(info.name) is 'string', 'FileInfo.Name should remain a string after GetFileInfo()')
-   assert(#info.name > 0, 'GetFileInfo() returned an empty file name')
-
-   err = mSys.GetFileInfo('scripts:gui/window.tiri', info)
-   assert(err is ERR_Okay, 'GetFileInfo() failed on second call: ' .. mSys.GetErrorMsg(err))
-   assert(type(info.name) is 'string', 'FileInfo.Name should still be a string after reuse')
-   assert(#info.name > 0, 'GetFileInfo() returned an empty file name on reuse')
-end

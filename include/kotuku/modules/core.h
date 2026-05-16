@@ -930,6 +930,7 @@ enum class FL : uint32_t {
    STREAM = 0x00000800,
    EXCLUDE_FILES = 0x00001000,
    EXCLUDE_FOLDERS = 0x00002000,
+   VIRTUAL = 0x00004000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(FL)
@@ -1869,7 +1870,7 @@ struct MsgHandler {
 };
 
 struct CacheFile {
-   int64_t TimeStamp;    // The file's last-modified timestamp.
+   int64_t Timestamp;    // The file's last-modified timestamp.
    int64_t Size;         // Byte size of the cached data.
    int64_t LastUse;      // The last time that this file was requested.
    CSTRING Path;         // Pointer to the resolved file path.
@@ -1917,7 +1918,7 @@ struct CompressedItem {
 
 struct FileInfo {
    int64_t Size;              // The size of the file's content.
-   int64_t TimeStamp;         // 64-bit time stamp - usable only for comparison (e.g. sorting).
+   int64_t Timestamp;         // 64-bit time stamp - usable only for comparison (e.g. sorting).
    struct FileInfo * Next;    // Next structure in the list, or NULL.
    std::string Name;          // The name of the file.
    RDF     Flags;             // Additional flags to describe the file.
@@ -2843,7 +2844,7 @@ class objFile : public Object {
 
    inline ERR setPermissions(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 

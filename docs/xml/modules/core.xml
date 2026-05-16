@@ -2396,7 +2396,7 @@ static ResourceManager glNodeManager = {
     </constants>
 
     <constants lookup="FL" comment="File flags">
-      <const name="APPROXIMATE">Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</const>
+      <const name="APPROXIMATE">Allows fuzzy matching of the file path by ignoring the file extension; for instance opening 'screenshot.png' when only 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</const>
       <const name="BUFFER">Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.</const>
       <const name="DEVICE">The file is a system device (must set if opening a device for read/write operations)</const>
       <const name="DIRECTORY">The file object represents a folder.</const>
@@ -2410,6 +2410,7 @@ static ResourceManager glNodeManager = {
       <const name="READ">Required if the file needs to be opened for read access.</const>
       <const name="RESET_DATE">For internal use only</const>
       <const name="STREAM">File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.</const>
+      <const name="VIRTUAL">Path is to a virtual device.</const>
       <const name="WRITE">Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.</const>
     </constants>
 
@@ -3188,7 +3189,7 @@ static ResourceManager glNodeManager = {
 
     <struct name="FileInfo" comment="Metadata for describing a file.">
       <field name="Size" type="INT64">The size of the file's content.</field>
-      <field name="TimeStamp" type="INT64">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
+      <field name="Timestamp" type="INT64">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or <code>NULL</code>.</field>
       <field name="Name" type="std::string">The name of the file.</field>
       <field name="Flags" type="RDF" lookup="RDF">Additional flags to describe the file.</field>

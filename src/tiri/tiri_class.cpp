@@ -474,7 +474,7 @@ static ERR TIRI_Init(objScript *Self)
       int64_t src_ts = 0, src_size = 0;
 
       if ((src_file = objFile::create::local(fl::Path(Self->Path)))) {
-         error = src_file->get(FID_TimeStamp, src_ts);
+         error = src_file->get(FID_Timestamp, src_ts);
          if (error IS ERR::Okay) error = src_file->get(FID_Size, src_size);
       }
       else error = ERR::File;
@@ -489,7 +489,7 @@ static ERR TIRI_Init(objScript *Self)
          {
             objFile::create cache_file = { fl::Path(Self->CacheFile) };
             if (cache_file.ok()) {
-               cache_file->get(FID_TimeStamp, cache_ts);
+               cache_file->get(FID_Timestamp, cache_ts);
                cache_file->get(FID_Size, cache_size);
             }
          }

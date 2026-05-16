@@ -109,7 +109,7 @@ struct extCacheFile : public CacheFile {
    {
       Path      = FullPath.c_str();
       Size      = pSize;
-      TimeStamp = pTimestamp;
+      Timestamp = pTimestamp;
       LastUse   = PreciseTime();
 
       Buffer.back() = 0; // Null terminator is added to help with text file processing
@@ -812,7 +812,7 @@ ERR GetFileInfo(const std::string_view &Path, FileInfo *Info, int InfoSize)
       auto vfs = get_fs(Path);
 
       Info->Size        = 0;
-      Info->TimeStamp   = 0;
+      Info->Timestamp   = 0;
       Info->Next        = nullptr;
       Info->Permissions = PERMIT::NIL;
       Info->UserID      = 0;
@@ -850,7 +850,7 @@ ERR GetFileInfo(const std::string_view &Path, FileInfo *Info, int InfoSize)
          if (not vfs.GetInfo) return log.warning(ERR::NoSupport);
 
          Info->Size        = 0;
-         Info->TimeStamp   = 0;
+         Info->Timestamp   = 0;
          Info->Next        = nullptr;
          Info->Permissions = PERMIT::NIL;
          Info->UserID      = 0;
@@ -861,7 +861,7 @@ ERR GetFileInfo(const std::string_view &Path, FileInfo *Info, int InfoSize)
          Info->Modified.clear();
 
          if ((error = vfs.GetInfo(path, Info, InfoSize)) IS ERR::Okay) {
-            Info->TimeStamp = calc_timestamp(&Info->Modified);
+            Info->Timestamp = calc_timestamp(&Info->Modified);
          }
 
          return error;
@@ -923,7 +923,7 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
 
    if (file.ok()) {
       auto file_size = file->get<int64_t>(FID_Size);
-      auto timestamp = file->get<int64_t>(FID_TimeStamp);
+      auto timestamp = file->get<int64_t>(FID_Timestamp);
 
       CacheFileIndex index(path, timestamp, file_size);
 
@@ -2434,7 +2434,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, int InfoSize)
    if (not winFileInfo(Path.data(), &isize, &Info->Modified, &dir)) return ERR::File;
    Info->Size = isize;
 
-   // TimeStamp has to match that produced by GET_TimeStamp
+   // Timestamp has to match that produced by GET_Timestamp
 
    struct stat64 stats;
    if (not stat64(Path.data(), &stats)) {
