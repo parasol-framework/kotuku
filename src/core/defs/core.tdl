@@ -739,6 +739,30 @@ using ModTest    = void (*)(CSTRING, int *, int *);
    template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(int(pValue)) { }
   ]])
 
+  struct("TimeZoneTransition", { comment="Time zone transition information for GetTimeZoneInfo()" }, [[
+     large Instant          # Unix epoch microseconds at which the transition occurs.
+     cpp(str) Abbreviation  # Short name where available, e.g. GMT, BST, PST.
+     int OffsetBefore       # UTC offset in seconds before the transition.
+     int OffsetAfter        # UTC offset in seconds after the transition.
+     int DaylightSaving     # 1 if the resulting period observes daylight-saving time.
+  ]])
+
+  struct("TimeZoneInfo", { comment="Time zone information returned from GetTimeZoneInfo()" }, [[
+     cpp(str) ZoneID        # Preferred public ID, e.g. Europe/London or UTC.
+     cpp(str) NativeID      # Host-native ID, e.g. GMT Standard Time on Windows.
+     cpp(str) Source        # "tzif", "win32", or "utc".
+     cpp(str) DataPath      # TZif path on Linux, otherwise empty.
+     cpp(str) Version       # TZDB/source version if available, otherwise empty.
+     cpp(array(struct(TimeZoneTransition))) Transitions # Transitions available for the requested range.
+     int BaseOffset         # Standard UTC offset in seconds.
+     int TransitionCount    # Total transitions available for the requested range.
+     int TransitionsWritten # Number of records written to the supplied buffer.
+     int StartYear          # Inclusive requested start year.
+     int EndYear            # Inclusive requested end year.
+     int IsLocal            # 1 if ZoneID requested the local system zone.
+     int IsFallback         # 1 if UTC fallback was used.
+  ]])
+
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
     cstr Platform      # String-based field indicating the user's platform.  Currently returns `Native`, `Windows`, `OSX` or `Linux`.
     cstr IDL           # The Core module's compressed IDL string
@@ -1521,9 +1545,10 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
 
   methods("Time", "Pt", {
     { id=1, name="SetTime" },
+    { id=2, name="GetTimeZoneInfo" }
   })
 
-  class("Time", { src="../classes/class_time.cpp" }, [[
+  class("Time", { src="../classes/class_time.cpp", output="../classes/class_time_def.c" }, [[
     large SystemTime  # Total number of microseconds passed since the system base time
     int Year          # Year   (-ve for BC, +ve for AD)
     int Month         # Month  (1 - 12)

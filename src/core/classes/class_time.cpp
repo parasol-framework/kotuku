@@ -35,6 +35,14 @@ static ERR GET_Timestamp(objTime *, int64_t *);
 static ERR TIME_Query(objTime *);
 static ERR TIME_SetTime(objTime *);
 
+static ERR tzi_free(APTR Address)
+{
+   ((struct TimeZoneInfo *)Address)->~TimeZoneInfo();
+   return ERR::Okay;
+}
+
+static ResourceManager glTimeZoneHandler = { "TimeZoneInfo", &tzi_free };
+
 /*********************************************************************************************************************
 -ACTION-
 Query: Updates the values in a time object with the current system date and time.
@@ -76,6 +84,48 @@ static ERR TIME_Query(objTime *Self)
    int m = Self->Month + 12 * a - 2;
    Self->DayOfWeek = (Self->Day + y + (y / 4) - (y / 100) + (y / 400) + (31 * m) / 12) % 7;
 
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR TIME_Refresh(objTime *Self)
+{
+   return TIME_Query(Self);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+GetTimeZoneInfo: .
+
+...
+
+-INPUT-
+cstr ZoneID: Empty or NULL requests the local system zone.
+int StartYear: Inclusive first year.  Must be non-zero.
+int EndYear: Inclusive final year.  Must be >= StartYear.
+&struct(TimeZoneInfo) Info: Receives metadata and transitions.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR TIME_GetTimeZoneInfo(objTime *Self, struct ptGetTimeZoneInfo *Args)
+{
+   kt::Log log;
+
+   if (!Args) return log.warning(ERR::NullArgs);
+
+   struct TimeZoneInfo *tz;
+   if (AllocMemory(sizeof(struct TimeZoneInfo), MEM::DATA|MEM::MANAGED, (APTR *)&tz, nullptr) IS ERR::Okay) {
+      new (tz) struct TimeZoneInfo;
+      SetResourceMgr(tz, &glTimeZoneHandler);
+
+
+
+   }
+   else return ERR::AllocMemory;
    return ERR::Okay;
 }
 
@@ -245,16 +295,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-static const ActionArray clActions[] = {
-   { AC::Query,   TIME_Query },
-   { AC::Refresh, TIME_Query },
-   { AC::NIL, nullptr }
-};
-
-static const MethodEntry clMethods[] = {
-   { pt::SetTime::id, (APTR)TIME_SetTime, "SetTime", 0, 0 },
-   { AC::NIL, nullptr, nullptr, nullptr, 0 }
-};
+#include "class_time_def.c"
 
 //********************************************************************************************************************
 
@@ -265,8 +306,8 @@ extern ERR add_time_class(void)
       fl::ClassVersion(VER_TIME),
       fl::Name("Time"),
       fl::Category(CCF::SYSTEM),
-      fl::Actions(clActions),
-      fl::Methods(clMethods),
+      fl::Actions(clTimeActions),
+      fl::Methods(clTimeMethods),
       fl::Fields(clFields),
       fl::Size(sizeof(objTime)),
       fl::Path("modules:core"));
