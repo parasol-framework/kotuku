@@ -186,8 +186,6 @@ struct ssl_context {
    PCCERT_CONTEXT peer_certificate;            // Peer certificate for validation
    PCCERT_CHAIN_CONTEXT certificate_chain;     // Certificate chain context for validation
    NCRYPT_KEY_HANDLE imported_private_key;     // PEM private key attached to server_certificate
-   std::wstring imported_private_key_name;     // Persisted CNG container name when required
-   bool delete_imported_private_key;           // Delete temporary persisted CNG keys on cleanup
 
    // Connection information cache
    std::string protocol_version_str;
@@ -219,7 +217,6 @@ struct ssl_context {
       , peer_certificate(nullptr)
       , certificate_chain(nullptr)
       , imported_private_key(0)
-      , delete_imported_private_key(false)
       , key_size_bits(0)
       , certificate_chain_valid(false)
       , certificate_chain_length(0)
@@ -250,11 +247,8 @@ struct ssl_context {
          server_certificate_store = nullptr;
       }
       if (imported_private_key) {
-         if (delete_imported_private_key) NCryptDeleteKey(imported_private_key, 0);
-         else NCryptFreeObject(imported_private_key);
+         NCryptFreeObject(imported_private_key);
          imported_private_key = 0;
-         imported_private_key_name.clear();
-         delete_imported_private_key = false;
       }
       if (peer_certificate) {
          CertFreeCertificateContext(peer_certificate);
@@ -728,8 +722,7 @@ SSL_ERROR_CODE ssl_set_server_certificate(SSL_HANDLE Server, SSL_HANDLE Client)
       return SSL_ERROR_MEMORY;
    }
 
-   if (Server->imported_private_key and
-       (!attach_private_key(server_certificate, Server->imported_private_key, Server->imported_private_key_name))) {
+   if (Server->imported_private_key and (!attach_private_key(server_certificate, Server->imported_private_key))) {
       CertFreeCertificateContext(server_certificate);
       CertCloseStore(server_certificate_store, 0);
       return SSL_ERROR_FAILED;

@@ -14,17 +14,10 @@ static void clear_server_certificate(SSL_HANDLE SSL)
    }
 
    if (SSL->imported_private_key) {
-      if (SSL->delete_imported_private_key) NCryptDeleteKey(SSL->imported_private_key, 0);
-      else NCryptFreeObject(SSL->imported_private_key);
+      NCryptFreeObject(SSL->imported_private_key);
       SSL->imported_private_key = 0;
-      SSL->imported_private_key_name.clear();
-      SSL->delete_imported_private_key = false;
    }
 }
-
-//********************************************************************************************************************
-
-static LONG glImportedKeyCounter = 0;
 
 //********************************************************************************************************************
 
@@ -604,25 +597,10 @@ static bool append_fixed_ec_component(std::vector<BYTE> &Blob, const std::vector
 
 //********************************************************************************************************************
 
-static std::wstring make_imported_key_name()
-{
-   auto key_index = InterlockedIncrement(&glImportedKeyCounter);
-
-   std::wstring key_name = L"Kotuku-SSL-";
-   key_name.append(std::to_wstring(GetCurrentProcessId()));
-   key_name.push_back(L'-');
-   key_name.append(std::to_wstring(key_index));
-   return key_name;
-}
-
-//********************************************************************************************************************
-
-static void free_imported_private_key(NCRYPT_KEY_HANDLE KeyHandle, bool DeleteKey)
+static void free_imported_private_key(NCRYPT_KEY_HANDLE KeyHandle)
 {
    if (!KeyHandle) return;
-
-   if (DeleteKey) NCryptDeleteKey(KeyHandle, 0);
-   else NCryptFreeObject(KeyHandle);
+   NCryptFreeObject(KeyHandle);
 }
 
 //********************************************************************************************************************
@@ -630,12 +608,10 @@ static void free_imported_private_key(NCRYPT_KEY_HANDLE KeyHandle, bool DeleteKe
 static void allow_private_key_use(NCRYPT_KEY_HANDLE KeyHandle)
 {
    DWORD key_usage = NCRYPT_ALLOW_ALL_USAGES;
-   NCryptSetProperty(KeyHandle, NCRYPT_KEY_USAGE_PROPERTY, (PBYTE)&key_usage, sizeof(key_usage),
-      NCRYPT_PERSIST_FLAG);
+   NCryptSetProperty(KeyHandle, NCRYPT_KEY_USAGE_PROPERTY, (PBYTE)&key_usage, sizeof(key_usage), 0);
 
    DWORD export_policy = NCRYPT_ALLOW_EXPORT_FLAG | NCRYPT_ALLOW_PLAINTEXT_EXPORT_FLAG;
-   NCryptSetProperty(KeyHandle, NCRYPT_EXPORT_POLICY_PROPERTY, (PBYTE)&export_policy, sizeof(export_policy),
-      NCRYPT_PERSIST_FLAG);
+   NCryptSetProperty(KeyHandle, NCRYPT_EXPORT_POLICY_PROPERTY, (PBYTE)&export_policy, sizeof(export_policy), 0);
 }
 
 //********************************************************************************************************************
@@ -660,43 +636,7 @@ static bool certificate_has_private_key(PCCERT_CONTEXT);
 
 //********************************************************************************************************************
 
-static bool export_store_to_pfx_certificate(HCERTSTORE Store, PCCERT_CONTEXT &SelectedCert)
-{
-   CRYPT_DATA_BLOB pfx_blob {};
-   std::wstring empty_password;
-
-   if (!PFXExportCertStoreEx(Store, &pfx_blob, empty_password.c_str(), nullptr, EXPORT_PRIVATE_KEYS)) return false;
-   if (!pfx_blob.cbData) return false;
-
-   std::vector<BYTE> pfx_data(pfx_blob.cbData);
-   pfx_blob.pbData = pfx_data.data();
-
-   if (!PFXExportCertStoreEx(Store, &pfx_blob, empty_password.c_str(), nullptr, EXPORT_PRIVATE_KEYS)) return false;
-
-   DWORD import_flags = CRYPT_EXPORTABLE | CRYPT_USER_KEYSET;
-   #ifdef PKCS12_NO_PERSIST_KEY
-      import_flags |= PKCS12_NO_PERSIST_KEY;
-   #endif
-
-   HCERTSTORE pfx_store = PFXImportCertStore(&pfx_blob, empty_password.c_str(), import_flags);
-   if (!pfx_store) return false;
-
-   PCCERT_CONTEXT cert_context = nullptr;
-   while ((cert_context = CertEnumCertificatesInStore(pfx_store, cert_context))) {
-      if (certificate_has_private_key(cert_context)) {
-         SelectedCert = CertDuplicateCertificateContext(cert_context);
-         break;
-      }
-   }
-
-   CertCloseStore(pfx_store, 0);
-   return SelectedCert != nullptr;
-}
-
-//********************************************************************************************************************
-
-static bool import_sec1_ec_private_key(const std::vector<BYTE> &PrivateKey, NCRYPT_KEY_HANDLE &KeyHandle,
-   std::wstring &KeyName, bool &DeleteKey)
+static bool import_sec1_ec_private_key(const std::vector<BYTE> &PrivateKey, NCRYPT_KEY_HANDLE &KeyHandle)
 {
    std::vector<BYTE> curve_oid;
    std::vector<BYTE> private_scalar;
@@ -732,18 +672,7 @@ static bool import_sec1_ec_private_key(const std::vector<BYTE> &PrivateKey, NCRY
       return false;
    }
 
-   auto key_name = make_imported_key_name();
-   NCryptBuffer key_name_buffer {};
-   key_name_buffer.cbBuffer = DWORD((key_name.size() + 1) * sizeof(wchar_t));
-   key_name_buffer.BufferType = NCRYPTBUFFER_PKCS_KEY_NAME;
-   key_name_buffer.pvBuffer = (PVOID)key_name.c_str();
-
-   NCryptBufferDesc key_name_desc {};
-   key_name_desc.ulVersion = NCRYPTBUFFER_VERSION;
-   key_name_desc.cBuffers = 1;
-   key_name_desc.pBuffers = &key_name_buffer;
-
-   status = NCryptImportKey(provider, 0, BCRYPT_ECCPRIVATE_BLOB, &key_name_desc, &KeyHandle, blob.data(),
+   status = NCryptImportKey(provider, 0, BCRYPT_ECCPRIVATE_BLOB, nullptr, &KeyHandle, blob.data(),
       DWORD(blob.size()), NCRYPT_SILENT_FLAG);
    NCryptFreeObject(provider);
 
@@ -752,8 +681,6 @@ static bool import_sec1_ec_private_key(const std::vector<BYTE> &PrivateKey, NCRY
       return false;
    }
 
-   KeyName = std::move(key_name);
-   DeleteKey = true;
    allow_private_key_use(KeyHandle);
    return true;
 }
@@ -761,35 +688,33 @@ static bool import_sec1_ec_private_key(const std::vector<BYTE> &PrivateKey, NCRY
 //********************************************************************************************************************
 
 static bool import_pkcs8_private_key(const std::vector<BYTE> &, std::optional<const std::string> &,
-   NCRYPT_KEY_HANDLE &, std::wstring &, bool &);
+   NCRYPT_KEY_HANDLE &);
 
 //********************************************************************************************************************
 
 static bool import_private_key_pem(const std::string &PEMData, std::optional<const std::string> &Password,
-   NCRYPT_KEY_HANDLE &KeyHandle, std::wstring &KeyName, bool &DeleteKey)
+   NCRYPT_KEY_HANDLE &KeyHandle)
 {
    std::vector<BYTE> key_der;
-   KeyName.clear();
-   DeleteKey = false;
 
    if (decode_pem_section(PEMData, "PRIVATE KEY", key_der)) {
-      return import_pkcs8_private_key(key_der, Password, KeyHandle, KeyName, DeleteKey);
+      return import_pkcs8_private_key(key_der, Password, KeyHandle);
    }
 
    if (decode_pem_section(PEMData, "ENCRYPTED PRIVATE KEY", key_der)) {
-      return import_pkcs8_private_key(key_der, Password, KeyHandle, KeyName, DeleteKey);
+      return import_pkcs8_private_key(key_der, Password, KeyHandle);
    }
 
    PemBlock key_block;
    if (decode_pem_block(PEMData, "RSA PRIVATE KEY", key_block)) {
       if (!decrypt_traditional_pem_key(key_block, Password, key_der)) return false;
       key_der = wrap_rsa_private_key_as_pkcs8(key_der);
-      return import_pkcs8_private_key(key_der, Password, KeyHandle, KeyName, DeleteKey);
+      return import_pkcs8_private_key(key_der, Password, KeyHandle);
    }
 
    if (decode_pem_block(PEMData, "EC PRIVATE KEY", key_block)) {
       if (!decrypt_traditional_pem_key(key_block, Password, key_der)) return false;
-      return import_sec1_ec_private_key(key_der, KeyHandle, KeyName, DeleteKey);
+      return import_sec1_ec_private_key(key_der, KeyHandle);
    }
 
    return false;
@@ -798,9 +723,9 @@ static bool import_private_key_pem(const std::string &PEMData, std::optional<con
 //********************************************************************************************************************
 
 static bool try_import_pkcs8_private_key(NCRYPT_PROV_HANDLE Provider, const std::vector<BYTE> &KeyDer,
-   NCryptBufferDesc &Params, NCRYPT_KEY_HANDLE &KeyHandle)
+   NCryptBufferDesc *Params, NCRYPT_KEY_HANDLE &KeyHandle)
 {
-   auto status = NCryptImportKey(Provider, 0, NCRYPT_PKCS8_PRIVATE_KEY_BLOB, &Params, &KeyHandle,
+   auto status = NCryptImportKey(Provider, 0, NCRYPT_PKCS8_PRIVATE_KEY_BLOB, Params, &KeyHandle,
       (PBYTE)KeyDer.data(), DWORD(KeyDer.size()), NCRYPT_SILENT_FLAG);
    return status IS ERROR_SUCCESS;
 }
@@ -808,46 +733,33 @@ static bool try_import_pkcs8_private_key(NCRYPT_PROV_HANDLE Provider, const std:
 //********************************************************************************************************************
 
 static bool import_pkcs8_private_key(const std::vector<BYTE> &KeyDer, std::optional<const std::string> &Password,
-   NCRYPT_KEY_HANDLE &KeyHandle, std::wstring &KeyName, bool &DeleteKey)
+   NCRYPT_KEY_HANDLE &KeyHandle)
 {
    NCRYPT_PROV_HANDLE provider = 0;
    if (NCryptOpenStorageProvider(&provider, MS_KEY_STORAGE_PROVIDER, 0) != ERROR_SUCCESS) return false;
 
-   auto key_name = make_imported_key_name();
-   std::array<NCryptBuffer, 2> import_buffers {};
-   DWORD buffer_count = 0;
-
-   import_buffers[buffer_count].cbBuffer = DWORD((key_name.size() + 1) * sizeof(wchar_t));
-   import_buffers[buffer_count].BufferType = NCRYPTBUFFER_PKCS_KEY_NAME;
-   import_buffers[buffer_count].pvBuffer = (PVOID)key_name.c_str();
-   buffer_count++;
-
    std::wstring wide_password = password_to_wide(Password);
+   NCryptBuffer password_buffer {};
    NCryptBufferDesc password_desc {};
 
    if (Password.has_value()) {
-      import_buffers[buffer_count].cbBuffer = DWORD((wide_password.size() + 1) * sizeof(wchar_t));
-      import_buffers[buffer_count].BufferType = NCRYPTBUFFER_PKCS_SECRET;
-      import_buffers[buffer_count].pvBuffer = (PVOID)wide_password.c_str();
-      buffer_count++;
+      password_buffer.cbBuffer = DWORD((wide_password.size() + 1) * sizeof(wchar_t));
+      password_buffer.BufferType = NCRYPTBUFFER_PKCS_SECRET;
+      password_buffer.pvBuffer = (PVOID)wide_password.c_str();
+
+      password_desc.ulVersion = NCRYPTBUFFER_VERSION;
+      password_desc.cBuffers = 1;
+      password_desc.pBuffers = &password_buffer;
    }
 
-   password_desc.ulVersion = NCRYPTBUFFER_VERSION;
-   password_desc.cBuffers = buffer_count;
-   password_desc.pBuffers = import_buffers.data();
-
-   auto result = try_import_pkcs8_private_key(provider, KeyDer, password_desc, KeyHandle);
+   auto result = try_import_pkcs8_private_key(provider, KeyDer, Password.has_value() ? &password_desc : nullptr,
+      KeyHandle);
    if ((!result) and Password.has_value()) {
-      password_desc.cBuffers = 1;
-      result = try_import_pkcs8_private_key(provider, KeyDer, password_desc, KeyHandle);
+      result = try_import_pkcs8_private_key(provider, KeyDer, nullptr, KeyHandle);
    }
 
    NCryptFreeObject(provider);
-   if (result) {
-      KeyName = std::move(key_name);
-      DeleteKey = true;
-      allow_private_key_use(KeyHandle);
-   }
+   if (result) allow_private_key_use(KeyHandle);
 
    return result;
 }
@@ -871,22 +783,8 @@ static bool certificate_has_private_key(PCCERT_CONTEXT Cert)
 
 //********************************************************************************************************************
 
-static bool attach_private_key(PCCERT_CONTEXT Cert, NCRYPT_KEY_HANDLE KeyHandle, const std::wstring &KeyName)
+static bool attach_private_key(PCCERT_CONTEXT Cert, NCRYPT_KEY_HANDLE KeyHandle)
 {
-   if (!KeyName.empty()) {
-      CRYPT_KEY_PROV_INFO key_prov_info {};
-      key_prov_info.pwszContainerName = (LPWSTR)KeyName.c_str();
-      key_prov_info.pwszProvName = (LPWSTR)MS_KEY_STORAGE_PROVIDER;
-      key_prov_info.dwProvType = 0;
-      key_prov_info.dwFlags = 0;
-      key_prov_info.dwKeySpec = CERT_NCRYPT_KEY_SPEC;
-
-      if (!CertSetCertificateContextProperty(Cert, CERT_KEY_PROV_INFO_PROP_ID,
-          CERT_SET_PROPERTY_INHIBIT_PERSIST_FLAG, &key_prov_info)) {
-         return false;
-      }
-   }
-
    DWORD property_flags = CERT_SET_PROPERTY_INHIBIT_PERSIST_FLAG | CERT_STORE_NO_CRYPT_RELEASE_FLAG;
 
    CERT_KEY_CONTEXT key_context {};
@@ -964,15 +862,13 @@ bool load_pem_certificate(SSL_HANDLE SSL, const std::string &Path, std::optional
    else key_pem = cert_pem;
 
    NCRYPT_KEY_HANDLE key_handle = 0;
-   std::wstring key_name;
-   bool delete_key = false;
-   if (!import_private_key_pem(key_pem, Password, key_handle, key_name, delete_key)) {
+   if (!import_private_key_pem(key_pem, Password, key_handle)) {
       CertFreeCertificateContext(cert_context);
       return false;
    }
 
-   if (!attach_private_key(cert_context, key_handle, key_name)) {
-      free_imported_private_key(key_handle, delete_key);
+   if (!attach_private_key(cert_context, key_handle)) {
+      free_imported_private_key(key_handle);
       CertFreeCertificateContext(cert_context);
       return false;
    }
@@ -980,37 +876,24 @@ bool load_pem_certificate(SSL_HANDLE SSL, const std::string &Path, std::optional
    HCERTSTORE cert_store = nullptr;
    PCCERT_CONTEXT store_cert_context = nullptr;
    if (!add_certificate_to_memory_store(cert_context, cert_store, store_cert_context)) {
-      free_imported_private_key(key_handle, delete_key);
+      free_imported_private_key(key_handle);
       CertFreeCertificateContext(cert_context);
       return false;
    }
 
    CertFreeCertificateContext(cert_context);
 
-   if (!attach_private_key(store_cert_context, key_handle, key_name)) {
+   if (!attach_private_key(store_cert_context, key_handle)) {
       CertFreeCertificateContext(store_cert_context);
       CertCloseStore(cert_store, 0);
-      free_imported_private_key(key_handle, delete_key);
+      free_imported_private_key(key_handle);
       return false;
-   }
-
-   PCCERT_CONTEXT pfx_cert_context = nullptr;
-   if (export_store_to_pfx_certificate(cert_store, pfx_cert_context)) {
-      CertFreeCertificateContext(store_cert_context);
-      CertCloseStore(cert_store, 0);
-      free_imported_private_key(key_handle, delete_key);
-
-      clear_server_certificate(SSL);
-      SSL->server_certificate = pfx_cert_context;
-      return true;
    }
 
    clear_server_certificate(SSL);
    SSL->server_certificate_store = cert_store;
    SSL->server_certificate = store_cert_context;
    SSL->imported_private_key = key_handle;
-   SSL->imported_private_key_name = std::move(key_name);
-   SSL->delete_imported_private_key = delete_key;
    return true;
 }
 
