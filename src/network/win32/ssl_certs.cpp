@@ -14,8 +14,9 @@ static void clear_server_certificate(SSL_HANDLE SSL)
    }
 
    if (SSL->imported_private_key) {
-      NCryptFreeObject(SSL->imported_private_key);
+      if (SSL->imported_private_key_owned) NCryptFreeObject(SSL->imported_private_key);
       SSL->imported_private_key = 0;
+      SSL->imported_private_key_owned = false;
    }
 }
 
@@ -783,6 +784,29 @@ static bool certificate_has_private_key(PCCERT_CONTEXT Cert)
 
 //********************************************************************************************************************
 
+static bool acquire_certificate_private_key(PCCERT_CONTEXT Cert, NCRYPT_KEY_HANDLE &KeyHandle, bool &Owned)
+{
+   HCRYPTPROV_OR_NCRYPT_KEY_HANDLE key_handle = 0;
+   DWORD key_spec = 0;
+   BOOL free_key = false;
+   DWORD flags = CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG | CRYPT_ACQUIRE_SILENT_FLAG | CRYPT_ACQUIRE_CACHE_FLAG;
+
+   if (!CryptAcquireCertificatePrivateKey(Cert, flags, nullptr, &key_handle, &key_spec, &free_key)) {
+      return false;
+   }
+
+   if (!(key_spec IS CERT_NCRYPT_KEY_SPEC)) {
+      if (free_key) CryptReleaseContext(HCRYPTPROV(key_handle), 0);
+      return false;
+   }
+
+   KeyHandle = NCRYPT_KEY_HANDLE(key_handle);
+   Owned = free_key != false;
+   return true;
+}
+
+//********************************************************************************************************************
+
 static bool export_public_key_info(NCRYPT_KEY_HANDLE KeyHandle, std::vector<BYTE> &KeyInfoBuffer)
 {
    DWORD key_info_size = 0;
@@ -855,10 +879,12 @@ bool load_pkcs12_certificate(SSL_HANDLE SSL, const std::string &Path, std::optio
    if (!pfx_store) return false;
 
    PCCERT_CONTEXT selected_cert = nullptr;
+   NCRYPT_KEY_HANDLE selected_key = 0;
+   bool selected_key_owned = false;
    PCCERT_CONTEXT cert_context = nullptr;
 
    while ((cert_context = CertEnumCertificatesInStore(pfx_store, cert_context))) {
-      if (certificate_has_private_key(cert_context)) {
+      if (acquire_certificate_private_key(cert_context, selected_key, selected_key_owned)) {
          selected_cert = CertDuplicateCertificateContext(cert_context);
          break;
       }
@@ -869,6 +895,8 @@ bool load_pkcs12_certificate(SSL_HANDLE SSL, const std::string &Path, std::optio
 
    clear_server_certificate(SSL);
    SSL->server_certificate = selected_cert;
+   SSL->imported_private_key = selected_key;
+   SSL->imported_private_key_owned = selected_key_owned;
    return true;
 }
 
@@ -936,6 +964,7 @@ bool load_pem_certificate(SSL_HANDLE SSL, const std::string &Path, std::optional
    SSL->server_certificate_store = cert_store;
    SSL->server_certificate = store_cert_context;
    SSL->imported_private_key = key_handle;
+   SSL->imported_private_key_owned = true;
    return true;
 }
 
