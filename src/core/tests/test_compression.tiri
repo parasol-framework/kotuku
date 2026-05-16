@@ -52,7 +52,7 @@ end
 -- Compress a few files and then decompress them.
 
 @Test(priority=1) function CreateCompress()
-   cmp = obj.new('compression', { path='temp:cmp_test_json.zip', flags='!NEW' } )
+   cmp = obj.new('compression', { path='temp:cmp_test_json.zip', flags=FL_NEW } )
 
    err = cmp.mtCompressFile('scripts:gui.tiri', '')
    assert(err is ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
@@ -162,7 +162,7 @@ end
 
    -- Big buffer test
 
-   cmpfile = obj.new('file', { src='archive:test/scripts/button.tiri', flags='!READ' })
+   cmpfile = obj.new('file', { src='archive:test/scripts/button.tiri', flags=FL_READ })
    err, len = cmpfile.acRead(cmpbuffer)
    assert(err is ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
    assert(cmpbuffer:getString() is cmpstr, "The decompressed data does not match the original file.")
@@ -193,9 +193,9 @@ end
 
 @Test(priority=7) function StreamedDecompression()
    cmp = obj.new('compression' , { } )
-   file = obj.new('file', { src='temp:scripts.gz', flags='!READ' } )
+   file = obj.new('file', { src='temp:scripts.gz', flags=FL_READ } )
 
-   global glOutFile = obj.new('file', { src='temp:gui.tiri', flags='!WRITE|NEW' } )
+   global glOutFile = obj.new('file', { src='temp:gui.tiri', flags=FL_WRITE|FL_NEW } )
    assert(cmp.mtDecompressStreamStart() is ERR_Okay, 'Failed to initialise decompression.')
    input = string.alloc(16384)
    err = ERR_Okay

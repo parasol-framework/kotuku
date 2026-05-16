@@ -689,7 +689,10 @@ static int io_readAll(lua_State *Lua)
    auto path = luaL_checkstring(Lua, 1);
 
    auto file = objFile::create({ fl::Path(path), fl::Flags(FL::READ) });
-   if (not file.ok()) luaL_error(Lua, ERR::OpenFile, "Failed to open file: %s", path);
+   if (not file.ok()) {
+      file.~Create();
+      luaL_error(Lua, ERR::OpenFile, "Failed to open file: %s", path);
+   }
 
    file->seekEnd(0);
    auto file_size = file->Position;
@@ -702,6 +705,7 @@ static int io_readAll(lua_State *Lua)
          lua_pushlstring(Lua, buffer.data(), bytes_read);
          return 1;
       }
+      file.~Create();
       luaL_error(Lua, ERR::Read, "Failed to read %" PRId64 " bytes from \"%s\"", file_size, path);
    }
 
@@ -720,10 +724,14 @@ static int io_writeAll(lua_State *Lua)
    auto content = luaL_checklstring(Lua, 2, &len);
 
    auto file = objFile::create({ fl::Path(path), fl::Flags(FL::WRITE|FL::NEW) });
-   if (not file.ok()) luaL_error(Lua, ERR::CreateFile, "Failed to create file: %s", path);
+   if (not file.ok()) {
+      file.~Create();
+      luaL_error(Lua, ERR::CreateFile, "Failed to create file: %s", path);
+   }
 
    int result;
    if (file->write(content, len, &result) != ERR::Okay) {
+      file.~Create();
       luaL_error(Lua, ERR::Write, "Failed to write to file: %s", path);
    }
 
