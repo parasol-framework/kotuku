@@ -411,15 +411,36 @@ static ERR TIME_Refresh(objTime *Self)
 /*********************************************************************************************************************
 
 -METHOD-
-GetTimeZoneInfo: .
+GetTimeZoneInfo: Returns time-zone metadata and transition records.
 
-...
+Returns normalised time-zone information for a named zone or for the host system's local zone.  The returned
+!TimeZoneInfo resource includes the preferred public zone identifier, the host-native identifier, the data source,
+standard UTC offset and any transition records found within the requested inclusive year range.
+
+The `ZoneID` value may be `NULL` or empty to request the local system zone.  Explicit zone IDs support `UTC` aliases on
+all platforms.  Linux builds also accept IANA zone names that resolve under `/usr/share/zoneinfo`.  Windows builds
+accept Windows native time-zone IDs and the IANA IDs that are mapped by the Core Windows time-zone wrapper.
+
+For explicit zone requests, an unknown or unsupported ID returns `ERR::Search`.  For local-zone requests, host lookup
+failure is not fatal; the method returns a UTC result with `Source` set to `utc` and `IsFallback` set to `1`.
+
+Transition `Instant` values are UTC Unix epoch timestamps in microseconds.  `OffsetBefore`, `OffsetAfter` and
+`BaseOffset` are expressed in seconds east of UTC.  `DaylightSaving` is `1` when the transition enters a
+daylight-saving period.
 
 -INPUT-
 cstr ZoneID: Empty or NULL requests the local system zone.
 int StartYear: Inclusive first year.  Must be non-zero.
 int EndYear: Inclusive final year.  Must be >= StartYear.
-!struct(*TimeZoneInfo) Info: Receives metadata and transitions.
+!struct(*TimeZoneInfo) Info: Receives the allocated metadata and transition resource.  Release with ~Core.FreeResource() when no longer required.
+
+-ERRORS-
+Okay: Time-zone information was returned.  Local-zone failures may return a UTC fallback result.
+NullArgs: The method argument pointer was `NULL`.
+OutOfRange: `StartYear` was zero, or `EndYear` was earlier than `StartYear`.
+AllocMemory: The result resource could not be allocated.
+Search: An explicit zone ID could not be resolved.
+SystemCall: A required host time-zone API call failed.
 
 -END-
 
