@@ -783,6 +783,41 @@ static bool certificate_has_private_key(PCCERT_CONTEXT Cert)
 
 //********************************************************************************************************************
 
+static bool export_public_key_info(NCRYPT_KEY_HANDLE KeyHandle, std::vector<BYTE> &KeyInfoBuffer)
+{
+   DWORD key_info_size = 0;
+   if (!CryptExportPublicKeyInfo(HCRYPTPROV_OR_NCRYPT_KEY_HANDLE(KeyHandle), CERT_NCRYPT_KEY_SPEC,
+       X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, nullptr, &key_info_size)) {
+      return false;
+   }
+
+   KeyInfoBuffer.resize(key_info_size);
+   auto key_info = PCERT_PUBLIC_KEY_INFO(KeyInfoBuffer.data());
+   if (!CryptExportPublicKeyInfo(HCRYPTPROV_OR_NCRYPT_KEY_HANDLE(KeyHandle), CERT_NCRYPT_KEY_SPEC,
+       X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, key_info, &key_info_size)) {
+      return false;
+   }
+
+   KeyInfoBuffer.resize(key_info_size);
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool private_key_matches_certificate(PCCERT_CONTEXT Cert, NCRYPT_KEY_HANDLE KeyHandle)
+{
+   if ((!Cert) or (!Cert->pCertInfo)) return false;
+
+   std::vector<BYTE> private_key_info_buffer;
+   if (!export_public_key_info(KeyHandle, private_key_info_buffer)) return false;
+
+   auto private_key_info = PCERT_PUBLIC_KEY_INFO(private_key_info_buffer.data());
+   return CertComparePublicKeyInfo(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+      &Cert->pCertInfo->SubjectPublicKeyInfo, private_key_info);
+}
+
+//********************************************************************************************************************
+
 static bool attach_private_key(PCCERT_CONTEXT Cert, NCRYPT_KEY_HANDLE KeyHandle)
 {
    DWORD property_flags = CERT_SET_PROPERTY_INHIBIT_PERSIST_FLAG | CERT_STORE_NO_CRYPT_RELEASE_FLAG;
@@ -863,6 +898,13 @@ bool load_pem_certificate(SSL_HANDLE SSL, const std::string &Path, std::optional
 
    NCRYPT_KEY_HANDLE key_handle = 0;
    if (!import_private_key_pem(key_pem, Password, key_handle)) {
+      CertFreeCertificateContext(cert_context);
+      return false;
+   }
+
+   if (!private_key_matches_certificate(cert_context, key_handle)) {
+      ssl_debug_log(SSL_DEBUG_INFO, "PEM private key does not match the certificate public key.");
+      free_imported_private_key(key_handle);
       CertFreeCertificateContext(cert_context);
       return false;
    }
