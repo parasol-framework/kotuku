@@ -96,6 +96,127 @@ static bool decode_pem_section(const std::string &PemData, const char *Label, st
 
 //********************************************************************************************************************
 
+struct PemBlock {
+   std::vector<BYTE> DerData;
+   std::string CipherName;
+   std::vector<BYTE> InitialisationVector;
+};
+
+static std::string trim_pem_header(const std::string &Text)
+{
+   auto first = Text.find_first_not_of(" \t\r\n");
+   if (first IS std::string::npos) return {};
+
+   auto last = Text.find_last_not_of(" \t\r\n");
+   return Text.substr(first, last - first + 1);
+}
+
+//********************************************************************************************************************
+
+static bool hex_value(char Char, BYTE &Value)
+{
+   if ((Char >= '0') and (Char <= '9')) {
+      Value = BYTE(Char - '0');
+      return true;
+   }
+
+   if ((Char >= 'A') and (Char <= 'F')) {
+      Value = BYTE(Char - 'A' + 10);
+      return true;
+   }
+
+   if ((Char >= 'a') and (Char <= 'f')) {
+      Value = BYTE(Char - 'a' + 10);
+      return true;
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+
+static bool decode_hex_string(const std::string &Text, std::vector<BYTE> &Data)
+{
+   if (Text.size() & 1) return false;
+
+   Data.clear();
+   Data.reserve(Text.size() >> 1);
+
+   for (size_t i = 0; i < Text.size(); i += 2) {
+      BYTE high;
+      BYTE low;
+      if ((!hex_value(Text[i], high)) or (!hex_value(Text[i + 1], low))) return false;
+      Data.push_back(BYTE((high << 4) | low));
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool decode_pem_block(const std::string &PemData, const char *Label, PemBlock &Block)
+{
+   std::string begin = "-----BEGIN ";
+   begin.append(Label);
+   begin.append("-----");
+
+   std::string end = "-----END ";
+   end.append(Label);
+   end.append("-----");
+
+   auto begin_pos = PemData.find(begin);
+   if (begin_pos IS std::string::npos) return false;
+
+   auto end_pos = PemData.find(end, begin_pos);
+   if (end_pos IS std::string::npos) return false;
+
+   auto block_end = end_pos + end.size();
+   auto pem_block = PemData.substr(begin_pos, block_end - begin_pos);
+
+   Block = {};
+
+   std::istringstream stream(pem_block);
+   std::string line;
+   bool in_headers = false;
+   while (std::getline(stream, line)) {
+      if ((!line.empty()) and (line.back() IS '\r')) line.pop_back();
+
+      if (line.find(begin) IS 0) {
+         in_headers = true;
+         continue;
+      }
+
+      if (line.empty()) break;
+      if (!in_headers) continue;
+
+      auto colon = line.find(':');
+      if (colon IS std::string::npos) continue;
+
+      auto header_name = trim_pem_header(line.substr(0, colon));
+      auto header_value = trim_pem_header(line.substr(colon + 1));
+      if (_stricmp(header_name.c_str(), "DEK-Info") IS 0) {
+         auto comma = header_value.find(',');
+         if (comma IS std::string::npos) return false;
+
+         Block.CipherName = trim_pem_header(header_value.substr(0, comma));
+         auto iv_text = trim_pem_header(header_value.substr(comma + 1));
+         if (!decode_hex_string(iv_text, Block.InitialisationVector)) return false;
+      }
+   }
+
+   DWORD der_size = 0;
+   if (!CryptStringToBinaryA(pem_block.c_str(), 0, CRYPT_STRING_BASE64HEADER, nullptr, &der_size, nullptr,
+       nullptr)) {
+      return false;
+   }
+
+   Block.DerData.resize(der_size);
+   return CryptStringToBinaryA(pem_block.c_str(), 0, CRYPT_STRING_BASE64HEADER, Block.DerData.data(), &der_size,
+      nullptr, nullptr);
+}
+
+//********************************************************************************************************************
+
 static std::wstring utf8_to_wide(const std::string &Text)
 {
    if (Text.empty()) return {};
@@ -114,6 +235,156 @@ static std::wstring password_to_wide(std::optional<const std::string> &Password)
 {
    if (!Password.has_value()) return {};
    return utf8_to_wide(Password.value());
+}
+
+//********************************************************************************************************************
+
+static bool md5_digest(const std::vector<BYTE> &Previous, const std::string &Password,
+   const std::vector<BYTE> &Salt, std::vector<BYTE> &Digest)
+{
+   BCRYPT_ALG_HANDLE algorithm = 0;
+   BCRYPT_HASH_HANDLE hash = 0;
+
+   auto status = BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_MD5_ALGORITHM, nullptr, 0);
+   if (status < 0) return false;
+
+   DWORD result_size = 0;
+   DWORD object_size = 0;
+   status = BCryptGetProperty(algorithm, BCRYPT_OBJECT_LENGTH, (PUCHAR)&object_size, sizeof(object_size),
+      &result_size, 0);
+   if (status < 0) {
+      BCryptCloseAlgorithmProvider(algorithm, 0);
+      return false;
+   }
+
+   DWORD hash_size = 0;
+   status = BCryptGetProperty(algorithm, BCRYPT_HASH_LENGTH, (PUCHAR)&hash_size, sizeof(hash_size),
+      &result_size, 0);
+   if (status < 0) {
+      BCryptCloseAlgorithmProvider(algorithm, 0);
+      return false;
+   }
+
+   std::vector<BYTE> hash_object(object_size);
+   status = BCryptCreateHash(algorithm, &hash, hash_object.data(), object_size, nullptr, 0, 0);
+   if (status >= 0 and (!Previous.empty())) {
+      status = BCryptHashData(hash, (PUCHAR)Previous.data(), ULONG(Previous.size()), 0);
+   }
+   if (status >= 0 and (!Password.empty())) {
+      status = BCryptHashData(hash, (PUCHAR)Password.data(), ULONG(Password.size()), 0);
+   }
+   if (status >= 0) status = BCryptHashData(hash, (PUCHAR)Salt.data(), 8, 0);
+
+   Digest.resize(hash_size);
+   if (status >= 0) status = BCryptFinishHash(hash, Digest.data(), hash_size, 0);
+
+   if (hash) BCryptDestroyHash(hash);
+   BCryptCloseAlgorithmProvider(algorithm, 0);
+
+   return status >= 0;
+}
+
+//********************************************************************************************************************
+
+static bool derive_openssl_pem_key(const std::string &Password, const std::vector<BYTE> &Salt, size_t KeySize,
+   std::vector<BYTE> &Key)
+{
+   if (Salt.size() < 8) return false;
+
+   Key.clear();
+   Key.reserve(KeySize);
+
+   std::vector<BYTE> previous;
+   while (Key.size() < KeySize) {
+      std::vector<BYTE> digest;
+      if (!md5_digest(previous, Password, Salt, digest)) return false;
+
+      auto copy_size = std::min(digest.size(), KeySize - Key.size());
+      Key.insert(Key.end(), digest.begin(), digest.begin() + copy_size);
+      previous = std::move(digest);
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool decrypt_cbc_private_key(const std::vector<BYTE> &CipherText, const std::vector<BYTE> &KeyData,
+   const std::vector<BYTE> &InitialisationVector, const wchar_t *Algorithm, size_t InitialisationVectorSize,
+   std::vector<BYTE> &PlainText)
+{
+   if (InitialisationVector.size() != InitialisationVectorSize) return false;
+
+   BCRYPT_ALG_HANDLE algorithm = 0;
+   BCRYPT_KEY_HANDLE key = 0;
+
+   auto status = BCryptOpenAlgorithmProvider(&algorithm, Algorithm, nullptr, 0);
+   if (status < 0) return false;
+
+   status = BCryptSetProperty(algorithm, BCRYPT_CHAINING_MODE, (PUCHAR)BCRYPT_CHAIN_MODE_CBC,
+      sizeof(BCRYPT_CHAIN_MODE_CBC), 0);
+   if (status < 0) {
+      BCryptCloseAlgorithmProvider(algorithm, 0);
+      return false;
+   }
+
+   status = BCryptGenerateSymmetricKey(algorithm, &key, nullptr, 0, (PUCHAR)KeyData.data(),
+      ULONG(KeyData.size()), 0);
+   if (status < 0) {
+      BCryptCloseAlgorithmProvider(algorithm, 0);
+      return false;
+   }
+
+   ULONG plain_size = 0;
+   auto iv = InitialisationVector;
+   status = BCryptDecrypt(key, (PUCHAR)CipherText.data(), ULONG(CipherText.size()), nullptr, iv.data(),
+      ULONG(iv.size()), nullptr, 0, &plain_size, BCRYPT_BLOCK_PADDING);
+   if (status >= 0) {
+      PlainText.resize(plain_size);
+      iv = InitialisationVector;
+      status = BCryptDecrypt(key, (PUCHAR)CipherText.data(), ULONG(CipherText.size()), nullptr, iv.data(),
+         ULONG(iv.size()), PlainText.data(), plain_size, &plain_size, BCRYPT_BLOCK_PADDING);
+      if (status >= 0) PlainText.resize(plain_size);
+   }
+
+   BCryptDestroyKey(key);
+   BCryptCloseAlgorithmProvider(algorithm, 0);
+
+   return status >= 0;
+}
+
+//********************************************************************************************************************
+
+static bool decrypt_traditional_pem_key(const PemBlock &Block, std::optional<const std::string> &Password,
+   std::vector<BYTE> &PlainText)
+{
+   if (Block.CipherName.empty()) {
+      PlainText = Block.DerData;
+      return true;
+   }
+
+   if (!Password.has_value()) return false;
+
+   size_t key_size = 0;
+   size_t iv_size = 16;
+   const wchar_t *algorithm = BCRYPT_AES_ALGORITHM;
+
+   if (_stricmp(Block.CipherName.c_str(), "AES-128-CBC") IS 0) key_size = 16;
+   else if (_stricmp(Block.CipherName.c_str(), "AES-192-CBC") IS 0) key_size = 24;
+   else if (_stricmp(Block.CipherName.c_str(), "AES-256-CBC") IS 0) key_size = 32;
+   else if (_stricmp(Block.CipherName.c_str(), "DES-EDE3-CBC") IS 0) {
+      algorithm = BCRYPT_3DES_ALGORITHM;
+      key_size = 24;
+      iv_size = 8;
+   }
+   else {
+      ssl_debug_log(SSL_DEBUG_INFO, "Unsupported encrypted PEM cipher: %s", Block.CipherName.c_str());
+      return false;
+   }
+
+   std::vector<BYTE> key;
+   if (!derive_openssl_pem_key(Password.value(), Block.InitialisationVector, key_size, key)) return false;
+   return decrypt_cbc_private_key(Block.DerData, key, Block.InitialisationVector, algorithm, iv_size, PlainText);
 }
 
 //********************************************************************************************************************
@@ -509,12 +780,15 @@ static bool import_private_key_pem(const std::string &PEMData, std::optional<con
       return import_pkcs8_private_key(key_der, Password, KeyHandle, KeyName, DeleteKey);
    }
 
-   if (decode_pem_section(PEMData, "RSA PRIVATE KEY", key_der)) {
+   PemBlock key_block;
+   if (decode_pem_block(PEMData, "RSA PRIVATE KEY", key_block)) {
+      if (!decrypt_traditional_pem_key(key_block, Password, key_der)) return false;
       key_der = wrap_rsa_private_key_as_pkcs8(key_der);
       return import_pkcs8_private_key(key_der, Password, KeyHandle, KeyName, DeleteKey);
    }
 
-   if (decode_pem_section(PEMData, "EC PRIVATE KEY", key_der)) {
+   if (decode_pem_block(PEMData, "EC PRIVATE KEY", key_block)) {
+      if (!decrypt_traditional_pem_key(key_block, Password, key_der)) return false;
       return import_sec1_ec_private_key(key_der, KeyHandle, KeyName, DeleteKey);
    }
 
@@ -767,7 +1041,7 @@ bool ssl_get_verify_result(SSL_HANDLE SSL)
       return false;
    }
 
-   if (conn_info.aiCipher == 0 or conn_info.aiHash == 0) {
+   if (conn_info.aiCipher IS 0 or conn_info.aiHash IS 0) {
       CertFreeCertificateContext(cert_context);
       return false;
    }
