@@ -2360,14 +2360,16 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, int InfoSize)
 #ifdef __unix__
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
 
-   std::string path_ref(Path);
-   while ((path_ref.size() > 1) and ((path_ref.back() IS '/') or (path_ref.back() IS '\\'))) {
-      path_ref.pop_back();
+   auto path_end = Path.find_last_not_of("/\\");
+   if (path_end IS std::string_view::npos) {
+      if (Path.size() > 1) Path.remove_suffix(Path.size() - 1);
    }
+   else if (path_end + 1 < Path.size()) Path.remove_suffix(Path.size() - path_end - 1);
 
    // Get the file info.  Use lstat64() and if it turns out that the file is a symbolic link, set the RDF::LINK flag
    // and then switch to stat64().
 
+   std::string path_ref(Path);
    struct stat64 info;
    if (lstat64(path_ref.c_str(), &info) IS -1) return ERR::FileNotFound;
 
@@ -2413,7 +2415,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, int InfoSize)
    Info->UserID = info.st_uid;
    Info->GroupID = info.st_gid;
 
-   // Get time information.  NB: The timestamp is calculated by the filesystem's GetFileInfo() manager, using
+   // Get time information.  NB: The timestamp is calculated by the filesystem's fs_getinfo() manager, using
    // calc_timestamp().
 
    struct tm *local;

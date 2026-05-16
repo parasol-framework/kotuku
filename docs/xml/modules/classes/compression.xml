@@ -555,6 +555,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       <const name="GROUP_WRITE">Group members can write.</const>
       <const name="HIDDEN">Recommends that the file is hidden from view by default.</const>
       <const name="INHERIT">Inherit permissions from parent folder and logical OR them with preset permission flags.</const>
+      <const name="META">Synonym for <code>HIDDEN | PASSWORD | OFFLINE | NETWORK</code></const>
       <const name="NETWORK">File is hosted on another machine.</const>
       <const name="OFFLINE">File content for this networked file has not been cached on the local PC.</const>
       <const name="OTHERS">Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></const>

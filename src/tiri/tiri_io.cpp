@@ -688,8 +688,8 @@ static int io_readAll(lua_State *Lua)
 {
    auto path = luaL_checkstring(Lua, 1);
 
-   auto file = objFile::create::local({ fl::Path(path), fl::Flags(FL::READ) });
-   if (not file) luaL_error(Lua, ERR::OpenFile, "Failed to open file: %s", path);
+   auto file = objFile::create({ fl::Path(path), fl::Flags(FL::READ) });
+   if (not file.ok()) luaL_error(Lua, ERR::OpenFile, "Failed to open file: %s", path);
 
    file->seekEnd(0);
    auto file_size = file->Position;
@@ -698,7 +698,7 @@ static int io_readAll(lua_State *Lua)
    if (file_size > 0) {
       std::string buffer(file_size, '\0');
       int bytes_read;
-      if (acRead(file, buffer.data(), file_size, &bytes_read) IS ERR::Okay and bytes_read IS file_size) {
+      if (file->read(buffer.data(), file_size, &bytes_read) IS ERR::Okay and bytes_read IS file_size) {
          lua_pushlstring(Lua, buffer.data(), bytes_read);
          return 1;
       }
@@ -719,11 +719,11 @@ static int io_writeAll(lua_State *Lua)
    size_t len;
    auto content = luaL_checklstring(Lua, 2, &len);
 
-   auto file = objFile::create::local({ fl::Path(path), fl::Flags(FL::WRITE|FL::NEW) });
-   if (not file) luaL_error(Lua, ERR::CreateFile, "Failed to create file: %s", path);
+   auto file = objFile::create({ fl::Path(path), fl::Flags(FL::WRITE|FL::NEW) });
+   if (not file.ok()) luaL_error(Lua, ERR::CreateFile, "Failed to create file: %s", path);
 
    int result;
-   if (acWrite(file, content, len, &result) != ERR::Okay) {
+   if (file->write(content, len, &result) != ERR::Okay) {
       luaL_error(Lua, ERR::Write, "Failed to write to file: %s", path);
    }
 

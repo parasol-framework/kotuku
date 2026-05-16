@@ -229,9 +229,29 @@ extern std::unordered_map<int, std::shared_ptr<ThreadRecord>> glThreadRegistry;
 
 //********************************************************************************************************************
 
+inline std::string_view get_volume(std::string_view Path)
+{
+   if (auto pos = Path.find(':'); pos != std::string::npos) {
+      return std::string_view(Path.data(), pos);
+   }
+   else return std::string_view();
+}
+
+//********************************************************************************************************************
+
 struct CaseInsensitiveMap {
-   bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   using is_transparent = void;
+
+   bool operator() (std::string_view Lhs, std::string_view Rhs) const noexcept {
+      auto length = std::min(Lhs.size(), Rhs.size());
+      for (size_t i=0; i < length; i++) {
+         auto lhs = std::tolower((unsigned char)Lhs[i]);
+         auto rhs = std::tolower((unsigned char)Rhs[i]);
+         if (lhs < rhs) return true;
+         if (rhs < lhs) return false;
+      }
+
+      return Lhs.size() < Rhs.size();
    }
 };
 

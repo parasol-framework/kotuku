@@ -47,6 +47,7 @@ static const struct FieldDef clCompressionPermissions[] = {
    { "Inherit", 0x00020000 },
    { "Offline", 0x00040000 },
    { "Network", 0x00080000 },
+   { "Meta", 0x000c5000 },
    { nullptr, 0 }
 };
 
