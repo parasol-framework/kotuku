@@ -1,11 +1,5 @@
 /*********************************************************************************************************************
 
-This source code and its accompanying files are in the public domain and therefore may be distributed without
-restriction.  The source is based in part on libpng, authored by Glenn Randers-Pehrson, Andreas Eric Dilger and
-Guy Eric Schalnat.
-
-**********************************************************************************************************************
-
 -MODULE-
 Backstage: Provides a REST backend for interacting with the process over the network.
 
@@ -16,6 +10,8 @@ The module does not expose any API functionality, and is instead enabled by the 
 The REST API and documentation on how to use Backstage is documented in the Kotuku Wiki.
 
 -END-
+
+See interface.tiri for the REST interface.
 
 *********************************************************************************************************************/
 
@@ -33,7 +29,7 @@ static OBJECTPTR modNetwork = nullptr;
 JUMPTABLE_CORE
 JUMPTABLE_NETWORK
 
-static ERR init_backstage(int);
+static ERR init_backstage(int = 8765);
 
 class objNetSocket *glServer = nullptr;
 
@@ -52,20 +48,20 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (auto state = GetSystemState()) {
       for (int i=0; i < state->OpenInfo->ArgCount; i++) {
          if (kt::iequals(state->OpenInfo->Args[i], "--backstage")) {
-      	   if (i + 1 < state->OpenInfo->ArgCount) {
-      		   int port = atoi(state->OpenInfo->Args[i + 1]);
-      		   if (port > 0) {
-      		      init_backstage(port);
-      		      break;
-      	      }
+            if (i + 1 < state->OpenInfo->ArgCount) {
+               int port = atoi(state->OpenInfo->Args[i + 1]);
+               if (port > 0) {
+                  init_backstage(port);
+                  break;
+               }
                else {
-                  log.warning("Invalid port number %d specified for --backstage.", port);
-                  return ERR::InvalidValue;
+                  init_backstage();
+                  break;
                }
             }
             else {
-               log.warning("No port specified for --backstage.");
-               return ERR::Failed;
+               init_backstage();
+               break;
             }
          }
       }
@@ -84,21 +80,25 @@ static ERR MODExpunge(void)
 
 //********************************************************************************************************************
 
-void server_feedback(objNetSocket *Socket, class objClientSocket *Client, NTC State)
+void server_feedback(objNetServer *Server, class objClientSocket *Client, NTC State)
 {
    kt::Log log(__FUNCTION__);
+
    if (State IS NTC::CONNECTED) {
-      log.msg("Client connected: %d.%d.%d.%d", Client->Client->IP[0], Client->Client->IP[1], Client->Client->IP[2], Client->Client->IP[3]);
+      log.msg("Client socket #%d connected.", Client->UID);
    }
    else if (State IS NTC::DISCONNECTED) {
-      log.msg("Client disconnected: %d.%d.%d.%d", Client->Client->IP[0], Client->Client->IP[1], Client->Client->IP[2], Client->Client->IP[3]);
+      log.msg("Client socket #%d disconnected.", Client->UID);
    }
+   else log.msg("Unknown state: %d", int(State));
 }
 
 //********************************************************************************************************************
 
-ERR server_incoming(objNetSocket *Socket, OBJECTPTR Context)
+ERR server_incoming(objNetServer *Server, objClientSocket *Client, APTR Meta)
 {
+   kt::Log log(__FUNCTION__);
+   log.msg("Received incoming data from client socket #%d", Client->UID);
    return ERR::Okay;
 }
 
@@ -108,14 +108,14 @@ ERR init_backstage(int Port)
 {
    kt::Log log(__FUNCTION__);
 
-   glServer = objNetSocket::create::global({
+   glServer = objNetServer::create::global({
       fl::Port(Port),
-      fl::Flags(NSF::SERVER | NSF::MULTI_CONNECT),
+      fl::Flags(int(NSF::MULTI_CONNECT)),
       fl::Feedback((CPTR)server_feedback),
-      fl::Incoming((CPTR)server_incoming),
+      fl::Incoming((CPTR)server_incoming)
    });
 
-   if (!glServer) {
+   if (not glServer) {
       log.msg("Failed to initialise backstage server on port %d", Port);
       return ERR::CreateObject;
    }
@@ -129,4 +129,3 @@ ERR init_backstage(int Port)
 
 KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_backstage_module() { return &ModHeader; }
-

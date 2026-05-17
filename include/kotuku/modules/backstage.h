@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      backstage.h
-// Copyright: Paul Manias © 2025
+// Copyright: Paul Manias © 2025-2026
 // Generator: idl-c
 
 #include <kotuku/main.h>
