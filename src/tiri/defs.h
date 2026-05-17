@@ -407,6 +407,7 @@ int MAKESTRUCT(lua_State *);
 ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
 void construct_struct_cpp_strings(const struct struct_record &, APTR);
 void destroy_struct_cpp_strings(const struct struct_record &, APTR);
+void make_struct_array(lua_State *, std::string_view, int, CPTR, int = 0);
 void make_struct_ptr_array(lua_State *, std::string_view, int, CPTR *);
 void make_struct_serial_array(lua_State *, std::string_view, int, CPTR);
 void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);
