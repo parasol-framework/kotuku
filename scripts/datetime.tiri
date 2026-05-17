@@ -353,6 +353,120 @@ function new_zoned_date_time(Instant:any, Zone:any):table
    return datetime._makeValue('ZonedDateTime', { instant = Instant, zone = Zone })
 end
 
+function require_format_value(Values:table, Key:str, Token:str):any
+   local value = Values[Key]
+   if value is nil then
+      datetime._invalidValue(f"Format token '{Token}' is not available for datetime.{Values.type_name}.")
+   end
+   return value
+end
+
+function format_fraction_token(Nano:num, Width:num):str
+   local divisor = 1
+   if Width is 3 then divisor = 1000000
+   elseif Width is 6 then divisor = 1000
+   end
+
+   return pad_int(math.floor(Nano / divisor), Width)
+end
+
+function format_offset_token(Offset:table):str
+   require_offset(Offset)
+   return tostring(Offset)
+end
+
+function is_format_token_start(Text:str):bool
+   return (Text >= 'A' and Text <= 'Z') or (Text >= 'a' and Text <= 'z')
+end
+
+function format_temporal(Pattern:any, Values:table):str
+   if type(Pattern) != 'string' then datetime._invalidValue('Format pattern must be a string.') end
+
+   local result = ''
+   local index = 0
+   while index < #Pattern do
+      if Pattern:substr(index, index + 9) is 'SSSSSSSSS' then
+         result ..= format_fraction_token(require_format_value(Values, 'nano', 'SSSSSSSSS'), 9)
+         index += 9
+      elseif Pattern:substr(index, index + 6) is 'SSSSSS' then
+         result ..= format_fraction_token(require_format_value(Values, 'nano', 'SSSSSS'), 6)
+         index += 6
+      elseif Pattern:substr(index, index + 4) is 'yyyy' then
+         result ..= format_year(require_format_value(Values, 'year', 'yyyy'))
+         index += 4
+      elseif Pattern:substr(index, index + 3) is 'SSS' then
+         result ..= format_fraction_token(require_format_value(Values, 'nano', 'SSS'), 3)
+         index += 3
+      elseif Pattern:substr(index, index + 3) is 'XXX' then
+         result ..= format_offset_token(require_format_value(Values, 'offset', 'XXX'))
+         index += 3
+      elseif Pattern:substr(index, index + 2) is 'MM' then
+         result ..= pad_int(require_format_value(Values, 'month', 'MM'), 2)
+         index += 2
+      elseif Pattern:substr(index, index + 2) is 'dd' then
+         result ..= pad_int(require_format_value(Values, 'day', 'dd'), 2)
+         index += 2
+      elseif Pattern:substr(index, index + 2) is 'HH' then
+         result ..= pad_int(require_format_value(Values, 'hour', 'HH'), 2)
+         index += 2
+      elseif Pattern:substr(index, index + 2) is 'mm' then
+         result ..= pad_int(require_format_value(Values, 'minute', 'mm'), 2)
+         index += 2
+      elseif Pattern:substr(index, index + 2) is 'ss' then
+         result ..= pad_int(require_format_value(Values, 'second', 'ss'), 2)
+         index += 2
+      elseif Pattern:substr(index, index + 2) is 'VV' then
+         result ..= require_format_value(Values, 'zone_id', 'VV')
+         index += 2
+      elseif Pattern:substr(index, index + 1) is "'" then
+         index++
+         local closed = false
+         while index < #Pattern do
+            local literal = Pattern:substr(index, index + 1)
+            if literal is "'" then
+               closed = true
+               index++
+               break
+            end
+            result ..= literal
+            index++
+         end
+         if not closed then datetime._syntaxError('Unterminated datetime format literal.') end
+      else
+         local text = Pattern:substr(index, index + 1)
+         if is_format_token_start(text) then
+            datetime._syntaxError(f"Unsupported datetime format token '{text}'.")
+         end
+         result ..= text
+         index++
+      end
+   end
+
+   return result
+end
+
+function format_local_fields(TypeName:str, DateFields:any, TimeFields:any, Offset:any, ZoneID:any, Pattern:any):str
+   local values = { type_name = TypeName, offset = Offset, zone_id = ZoneID }
+   if DateFields != nil then
+      values.year = DateFields.year
+      values.month = DateFields.month
+      values.day = DateFields.day
+   end
+   if TimeFields != nil then
+      values.hour = TimeFields.hour
+      values.minute = TimeFields.minute
+      values.second = TimeFields.second
+      values.nano = TimeFields.nano
+   end
+
+   return format_temporal(Pattern, values)
+end
+
+function local_date_time_parts(LocalDateTime:table):<table, table>
+   local local_fields = require_local_date_time(LocalDateTime)
+   return datetime._fields(local_fields.date, 'LocalDate'), datetime._fields(local_fields.time, 'LocalTime')
+end
+
 function unsupported_operation(Left:any, Operator:str, Right:any)
    local left_type = datetime._typeOf(Left) ?? type(Left)
    local right_type = datetime._typeOf(Right) ?? type(Right)
@@ -1197,6 +1311,12 @@ function datetime.mtInstant:toZone(Zone:table):table
    return self:toZonedDateTime(Zone)
 end
 
+function datetime.mtInstant:format(Pattern:any):str
+   local fields = datetime._fields(self, 'Instant')
+   local date_fields, time_fields = epoch_second_to_local(fields.epoch_second, fields.nano)
+   return format_local_fields('Instant', date_fields, time_fields, datetime.offset.utc(), 'UTC', Pattern)
+end
+
 function datetime.mtDuration:totalSeconds():num
    local fields = datetime._fields(self, 'Duration')
    return fields.seconds + fields.nano / NANOS_PER_SECOND
@@ -1336,6 +1456,10 @@ end
 
 datetime.mtLocalDate['with'] = local_date_with
 datetime.mtLocalDate.with_ = local_date_with
+function datetime.mtLocalDate:format(Pattern:any):str
+   return format_local_fields('LocalDate', datetime._fields(self, 'LocalDate'), nil, nil, nil, Pattern)
+end
+
 function datetime.mtLocalDate:atTime(Time:table):table
    if not datetime.isLocalTime(Time) then datetime._invalidValue('Time must be a LocalTime value.') end
    return datetime._makeValue('LocalDateTime', { date = self, time = Time })
@@ -1397,6 +1521,10 @@ end
 
 datetime.mtLocalTime['with'] = local_time_with
 datetime.mtLocalTime.with_ = local_time_with
+function datetime.mtLocalTime:format(Pattern:any):str
+   return format_local_fields('LocalTime', nil, datetime._fields(self, 'LocalTime'), nil, nil, Pattern)
+end
+
 datetime.mtLocalTime.__tostring = function(Self:table):str
    local fields = datetime._fields(Self, 'LocalTime')
    return f"{pad_int(fields.hour, 2)}:{pad_int(fields.minute, 2)}:{pad_int(fields.second, 2)}" ..
@@ -1447,6 +1575,11 @@ end
 
 datetime.mtLocalDateTime['with'] = local_date_time_with
 datetime.mtLocalDateTime.with_ = local_date_time_with
+function datetime.mtLocalDateTime:format(Pattern:any):str
+   local date_fields, time_fields = local_date_time_parts(self)
+   return format_local_fields('LocalDateTime', date_fields, time_fields, nil, nil, Pattern)
+end
+
 function datetime.mtLocalDateTime:atOffset(Offset:table):table
    return self:toOffsetDateTime(Offset)
 end
@@ -1550,6 +1683,12 @@ function datetime.mtOffsetDateTime:localDateTime():table
    return require_offset_date_time(self).local_date_time
 end
 
+function datetime.mtOffsetDateTime:format(Pattern:any):str
+   local fields = require_offset_date_time(self)
+   local date_fields, time_fields = local_date_time_parts(fields.local_date_time)
+   return format_local_fields('OffsetDateTime', date_fields, time_fields, fields.offset, nil, Pattern)
+end
+
 function datetime.mtOffsetDateTime:toZonedDateTime(Zone:table):table
    return new_zoned_date_time(offset_date_time_instant(self), Zone)
 end
@@ -1648,6 +1787,12 @@ datetime.mtZonedDateTime.withLocal = zoned_date_time_with_local
 
 function datetime.mtZonedDateTime:toOffsetDateTime():table
    return new_offset_date_time(self:localDateTime(), self:offset())
+end
+
+function datetime.mtZonedDateTime:format(Pattern:any):str
+   local fields = require_zoned_date_time(self)
+   local date_fields, time_fields = local_date_time_parts(self:localDateTime())
+   return format_local_fields('ZonedDateTime', date_fields, time_fields, self:offset(), fields.zone:id(), Pattern)
 end
 
 function datetime.mtZonedDateTime:instantEquals(Other:table):bool

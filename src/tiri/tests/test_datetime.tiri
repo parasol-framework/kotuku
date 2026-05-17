@@ -337,6 +337,42 @@ end
    end)
 end
 
+@Test function DatetimePatternFormatting()
+   local date = datetime.localDate(2026, 5, 17)
+   local time = datetime.localTime(10, 30, 45, 123456789)
+   local local_date_time = datetime.localDateTime(2026, 5, 17, 10, 30, 45, 123456789)
+   local offset_date_time = datetime.offsetDateTime(local_date_time, datetime.offset.parse('+01:30'))
+   local zoned = datetime.zonedDateTime(datetime.instant.parse('2026-05-17T10:30:45.123456789Z'),
+      datetime.zone.utc())
+
+   assert(date:format('yyyy-MM-dd') is '2026-05-17', 'LocalDate format() should support date tokens')
+   assert(time:format('HH:mm:ss.SSSSSSSSS') is '10:30:45.123456789',
+      'LocalTime format() should support time and fractional second tokens')
+   assert(local_date_time:format("yyyy-MM-dd'T'HH:mm:ss.SSS") is '2026-05-17T10:30:45.123',
+      'LocalDateTime format() should support quoted literals and millisecond fractions')
+   assert(offset_date_time:format("yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX") is
+      '2026-05-17T10:30:45.123456+01:30',
+      'OffsetDateTime format() should support offset and microsecond fractions')
+   assert(zoned:format('yyyy-MM-dd HH:mm:ss XXX VV') is '2026-05-17 10:30:45 Z UTC',
+      'ZonedDateTime format() should support offset and zone ID tokens')
+   assert(zoned:format('yyyyMMdd-HHmmss') is '20260517-103045',
+      'ZonedDateTime format() should support stable UTC filename stamps')
+   assert(zoned:instant():format("yyyyMMdd-HHmmss'Z'") is '20260517-103045Z',
+      'Instant format() should support UTC filename stamps')
+
+   expect_error("Unsupported datetime format token 'Q'", function()
+      date:format('yyyy-Q')
+   end)
+
+   expect_error("Format token 'HH' is not available", function()
+      date:format('HH')
+   end)
+
+   expect_error("Format token 'VV' is not available", function()
+      offset_date_time:format('VV')
+   end)
+end
+
 @Test function OffsetConstructionParsingAndOrdering()
    local utc = datetime.offset.utc()
    local plus = datetime.offset.parse('+05:30')
