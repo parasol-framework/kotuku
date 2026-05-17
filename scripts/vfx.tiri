@@ -165,14 +165,13 @@ vfx.wipe = function(Viewport:obj, Options:table)
    Viewport.mask = state.clip
 
    state.free = function(State)
-      State.viewport.mask = nil
-      State.clip.free()
+      State.clip?.free()
       State.clip = nil
       processing.collect()
-      State.viewport.acDraw()
+      State.viewport?.acDraw()
    end
 
-   if wipe.init then wipe.init(state, Options) end
+   wipe?.init(state, Options)
 
    vfx.initTimer(state, Options)
    return state
@@ -694,7 +693,7 @@ vfx.initTimer = function(State, Options)
          value = (CurrentTime - State.time) / (State.seconds * 1000000)
          if value >= 1.0 then
             if (State.free != nil) then State:free() end
-            state?.callback(state)
+            State?.callback(State)
             raise ERR_Terminate
          else
             progress = vfx.apply_easing(value, State.easing)
