@@ -813,16 +813,17 @@ static ERR TIME_GetTimeZoneInfo(objTime *Self, struct pt::GetTimeZoneInfo *Args)
       }
 
    #ifdef _WIN32
-      return get_windows_timezone_info(zone_id, Args->StartYear, Args->EndYear, *tz);
+      auto error = get_windows_timezone_info(zone_id, Args->StartYear, Args->EndYear, *tz);
    #elif defined(__linux__)
-      return get_linux_timezone_info(zone_id, Args->StartYear, Args->EndYear, *tz);
+      auto error = get_linux_timezone_info(zone_id, Args->StartYear, Args->EndYear, *tz);
    #else
-      if (zone_id.empty()) {
-         fill_utc_info(*tz, Args->StartYear, Args->EndYear, 1, 1);
-         return ERR::Okay;
-      }
-      else return ERR::Search;
+      auto error = ERR::Okay;
+      if (zone_id.empty()) fill_utc_info(*tz, Args->StartYear, Args->EndYear, 1, 1);
+      else error = ERR::Search;
    #endif
+
+      if (error != ERR::Okay) FreeResource(tz);
+      return error;
    }
    else return log.warning(ERR::AllocMemory);
 }
