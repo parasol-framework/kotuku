@@ -21,11 +21,16 @@ end
    assert(type(datetime.instant) is 'table', 'datetime.instant constructor should be exported')
    assert(type(datetime.localDate) is 'table', 'datetime.localDate constructor should be exported')
    assert(type(datetime.duration) is 'table', 'datetime.duration constructor should be exported')
+   assert(type(datetime.period) is 'table', 'datetime.period constructor should be exported')
+   assert(type(datetime.interval) is 'table', 'datetime.interval constructor should be exported')
    assert(type(datetime.clock) is 'table', 'datetime.clock namespace should be exported')
    assert(type(datetime.resolve) is 'table', 'datetime.resolve namespace should be exported')
    assert(type(datetime.instant.parse) is 'function', 'datetime.instant.parse should be exported')
    assert(type(datetime.localDate.from) is 'function', 'datetime.localDate.from should be exported')
    assert(type(datetime.offset.utc) is 'function', 'datetime.offset.utc should be exported')
+   assert(type(datetime.period.parse) is 'function', 'datetime.period.parse should be exported')
+   assert(type(datetime.interval.fromStartAndDuration) is 'function',
+      'datetime.interval.fromStartAndDuration should be exported')
    assert(type(datetime.clock.system) is 'function', 'datetime.clock.system shell should be exported')
    assert(type(datetime.now) is 'function', 'datetime.now shell should be exported')
    assert(type(datetime.today) is 'function', 'datetime.today shell should be exported')
@@ -34,10 +39,14 @@ end
 @Test function TypePredicates()
    local instant = datetime.instant(0)
    local date = datetime.localDate(2026, 5, 17)
+   local period = datetime.period.days(1)
+   local interval = datetime.interval(instant, datetime.instant(1))
 
    assert(datetime.isInstant(instant), 'Instant predicate should match Instant values')
    assert(not datetime.isLocalDate(instant), 'LocalDate predicate should reject Instant values')
    assert(datetime.isLocalDate(date), 'LocalDate predicate should match LocalDate values')
+   assert(datetime.isPeriod(period), 'Period predicate should match Period values')
+   assert(datetime.isInterval(interval), 'Interval predicate should match Interval values')
    assert(not datetime.isInstant({}), 'Predicates should reject ordinary tables')
    assert(datetime.isResolver(datetime.resolve.reject), 'Resolver constants should be datetime values')
 end
@@ -217,6 +226,127 @@ end
 
    expect_error('Invalid Duration string', function()
       datetime.duration.parse('-PT')
+   end)
+end
+
+@Test function DurationAndInstantArithmetic()
+   local base = datetime.duration { seconds = 1, nanos = 900000000 }
+   local addition = base + datetime.duration { seconds = 2, nanos = 200000000 }
+
+   assert(addition is datetime.duration { seconds = 4, nanos = 100000000 },
+      'Duration addition should normalise nanosecond overflow')
+   assert(addition - base is datetime.duration { seconds = 2, nanos = 200000000 },
+      'Duration subtraction should preserve elapsed units')
+   assert(-datetime.duration { millis = 250 } is datetime.duration { seconds = -1, nanos = 750000000 },
+      'Unary duration negation should normalise')
+
+   local instant = datetime.instant.parse('2026-05-17T10:30:00Z')
+   assert(instant + datetime.duration { minutes = 30 } is datetime.instant.parse('2026-05-17T11:00:00Z'),
+      'Instant plus Duration should move forward on the timeline')
+   assert(instant - datetime.duration { seconds = 1 } is datetime.instant.parse('2026-05-17T10:29:59Z'),
+      'Instant minus Duration should move backward on the timeline')
+   assert((instant + datetime.duration { minutes = 30 }) - instant is datetime.duration { minutes = 30 },
+      'Instant subtraction should return elapsed Duration')
+   assert(instant['until'](instant, instant + datetime.duration { seconds = 5 }) is datetime.duration { seconds = 5 },
+      'Instant until() should return elapsed Duration')
+
+   expect_error('Unsupported datetime operation', function()
+      base + datetime.period.days(1)
+   end)
+end
+
+@Test function PeriodConstructionParsingNormalisationAndArithmetic()
+   local period = datetime.period { years = 1, months = 2, weeks = 1, days = 3 }
+
+   assert(tostring(period) is 'P1Y2M1W3D', 'Period string should include calendar fields')
+   assert(datetime.period.parse('P1Y2M1W3D') is period, 'Period parse should round trip')
+   assert(datetime.period.months(14):normalise() is datetime.period { years = 1, months = 2 },
+      'Period normalise() should carry months into years')
+   assert(datetime.period.weeks(2):normalise() is datetime.period.days(14),
+      'Period normalise() should carry weeks into days')
+   assert(period + datetime.period.days(2) is datetime.period { years = 1, months = 2, weeks = 1, days = 5 },
+      'Period addition should combine calendar fields')
+   assert(period - datetime.period.weeks(1) is datetime.period { years = 1, months = 2, days = 3 },
+      'Period subtraction should combine calendar fields')
+   assert(-datetime.period.days(3) is datetime.period { days = -3 }, 'Unary Period negation should work')
+
+   expect_error('Invalid Period string', function()
+      datetime.period.parse('P')
+   end)
+
+   expect_error('Unsupported datetime operation', function()
+      period + datetime.duration { hours = 24 }
+   end)
+end
+
+@Test function LocalDateTimeAndPeriodArithmetic()
+   assert(datetime.localDate(2024, 1, 31) + datetime.period.months(1) is datetime.localDate(2024, 2, 29),
+      'Period month arithmetic should clamp to leap-year month end')
+   assert(datetime.localDate(2023, 1, 31) + datetime.period.months(1) is datetime.localDate(2023, 2, 28),
+      'Period month arithmetic should clamp to non-leap month end')
+   assert(datetime.localDate(2024, 3, 31) - datetime.period.months(1) is datetime.localDate(2024, 2, 29),
+      'Period subtraction should clamp to target month end')
+   assert(datetime.localDate(2024, 3, 1) - datetime.localDate(2024, 2, 27) is datetime.period.days(3),
+      'LocalDate subtraction should return a day-based Period')
+
+   assert(datetime.localTime(23, 30) + datetime.duration { hours = 2 } is datetime.localTime(1, 30),
+      'LocalTime duration arithmetic should wrap forward inside one day')
+   assert(datetime.localTime(0, 30) - datetime.duration { hours = 1 } is datetime.localTime(23, 30),
+      'LocalTime duration arithmetic should wrap backward inside one day')
+   assert(datetime.localTime(23, 59, 59, 900000000) + datetime.duration { millis = 200 } is
+      datetime.localTime(0, 0, 0, 100000000), 'LocalTime arithmetic should carry fractional seconds')
+
+   local local_date_time = datetime.localDateTime(2024, 2, 28, 23, 30)
+   assert(local_date_time + datetime.duration { hours = 2 } is datetime.localDateTime(2024, 2, 29, 1, 30),
+      'LocalDateTime Duration addition should carry across dates')
+   assert(local_date_time - datetime.duration { hours = 24 } is datetime.localDateTime(2024, 2, 27, 23, 30),
+      'LocalDateTime Duration subtraction should carry across dates')
+   assert(datetime.localDateTime(2024, 1, 31, 8, 15) + datetime.period.months(1) is
+      datetime.localDateTime(2024, 2, 29, 8, 15), 'LocalDateTime Period addition should preserve time')
+
+   expect_error('Unsupported datetime operation', function()
+      datetime.localDate(2024, 1, 1) + datetime.duration { hours = 24 }
+   end)
+
+   expect_error('Unsupported datetime operation', function()
+      datetime.localTime(12, 0) + datetime.period.days(1)
+   end)
+end
+
+@Test function IntervalContainmentOverlapIntersectionAndUnion()
+   local start = datetime.instant.parse('2026-05-17T10:00:00Z')
+   local middle = datetime.instant.parse('2026-05-17T10:30:00Z')
+   local stop = datetime.instant.parse('2026-05-17T11:00:00Z')
+   local later = datetime.instant.parse('2026-05-17T11:30:00Z')
+   local slot = datetime.interval(start, stop)
+   local overlapping = datetime.interval(middle, later)
+   local extension = datetime.interval.fromStartAndDuration(stop, datetime.duration { minutes = 30 })
+   local separate = datetime.interval(datetime.instant.parse('2026-05-17T12:00:00Z'),
+      datetime.instant.parse('2026-05-17T13:00:00Z'))
+
+   assert(slot:start() is start and slot:stop() is stop, 'Interval accessors should expose the bounds')
+   assert(slot:duration() is datetime.duration { hours = 1 }, 'Interval duration should measure elapsed time')
+   assert(slot:contains(start), 'Interval should contain its inclusive start')
+   assert(slot:contains(middle), 'Interval should contain interior instants')
+   assert(not slot:contains(stop), 'Interval should exclude its stop')
+   assert(slot:overlaps(overlapping), 'Overlapping intervals should be detected')
+   assert(not slot:overlaps(extension), 'Contiguous half-open intervals should not overlap')
+   assert(slot:intersection(overlapping) is datetime.interval(middle, stop),
+      'Interval intersection should return the common half-open range')
+   assert(slot:intersection(extension):isEmpty(), 'Contiguous interval intersection should be empty')
+   assert(slot:union(extension) is datetime.interval(start, later),
+      'Interval union should combine contiguous intervals')
+   assert(slot:union(overlapping) is datetime.interval(start, later),
+      'Interval union should combine overlapping intervals')
+   assert(tostring(slot) is '2026-05-17T10:00:00Z/2026-05-17T11:00:00Z',
+      'Interval string should show start and stop')
+
+   expect_error('Cannot union separate intervals', function()
+      slot:union(separate)
+   end)
+
+   expect_error('Interval stop must be greater', function()
+      datetime.interval(stop, start)
    end)
 end
 

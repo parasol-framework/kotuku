@@ -38,6 +38,7 @@ rx_instant <const> =
 rx_offset <const> = regex.new([[^(Z|([+\-])(\d{2}):(\d{2}))$]])
 rx_duration <const> =
    regex.new([[^([+\-])?P(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d{1,9}))?S)?)$]])
+rx_period <const> = regex.new([[^([+\-])?P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?$]])
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -288,6 +289,26 @@ function has_any_duration_component(KV:table):bool
    return KV.hours != nil or KV.minutes != nil or KV.seconds != nil or KV.millis != nil or KV.nanos != nil
 end
 
+function has_any_period_component(KV:table):bool
+   return KV.years != nil or KV.months != nil or KV.weeks != nil or KV.days != nil
+end
+
+function require_duration(Value:any):table
+   if not datetime.isDuration(Value) then datetime._invalidValue('Expected datetime.Duration value.') end
+   return datetime._fields(Value, 'Duration')
+end
+
+function require_instant(Value:any):table
+   if not datetime.isInstant(Value) then datetime._invalidValue('Expected datetime.Instant value.') end
+   return datetime._fields(Value, 'Instant')
+end
+
+function unsupported_operation(Left:any, Operator:str, Right:any)
+   local left_type = datetime._typeOf(Left) ?? type(Left)
+   local right_type = datetime._typeOf(Right) ?? type(Right)
+   datetime._invalidValue(f"Unsupported datetime operation: {left_type} {Operator} {right_type}.")
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Gregorian calendar helpers.  These are civil-date algorithms based on the proleptic Gregorian calendar.
 
@@ -387,6 +408,45 @@ function epoch_second_to_local(EpochSecond:num, Nano:num):<table, table>
    }
 end
 
+function date_plus_days(DateFields:table, Days:num):table
+   local day_count = days_from_civil(DateFields.year, DateFields.month, DateFields.day) + Days
+   local year, month, day = civil_from_days(day_count)
+   return { year = year, month = month, day = day }
+end
+
+function date_plus_period_fields(DateFields:table, PeriodFields:table, Direction:num):table
+   local total_month = DateFields.year * 12 + DateFields.month - 1 +
+      Direction * (PeriodFields.years * 12 + PeriodFields.months)
+   local year = math.floor(total_month / 12)
+   local month = total_month - year * 12 + 1
+   local day = math.min(DateFields.day, days_in_month(year, month))
+   return date_plus_days({ year = year, month = month, day = day },
+      Direction * (PeriodFields.weeks * 7 + PeriodFields.days))
+end
+
+function time_plus_duration_fields(TimeFields:table, DurationFields:table, Direction:num):table
+   local day_second = TimeFields.hour * 3600 + TimeFields.minute * 60 + TimeFields.second +
+      Direction * DurationFields.seconds
+   local seconds, nano = normalise_second_nano(day_second, TimeFields.nano + Direction * DurationFields.nano)
+
+   seconds %= SECONDS_PER_DAY
+   if seconds < 0 then seconds += SECONDS_PER_DAY end
+
+   local hour = math.floor(seconds / 3600)
+   seconds -= hour * 3600
+   local minute = math.floor(seconds / 60)
+   local second = seconds - minute * 60
+
+   return { hour = hour, minute = minute, second = second, nano = nano }
+end
+
+function local_date_time_plus_duration_fields(DateFields:table, TimeFields:table, DurationFields:table,
+   Direction:num):<table, table>
+   local epoch_second = date_time_to_epoch_second(DateFields, TimeFields) + Direction * DurationFields.seconds
+   local seconds, nano = normalise_second_nano(epoch_second, TimeFields.nano + Direction * DurationFields.nano)
+   return epoch_second_to_local(seconds, nano)
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Constructors and parsers.
 
@@ -412,6 +472,21 @@ end
 function new_duration(Seconds:any, Nano:any):table
    local seconds, nano = normalise_second_nano(Seconds, Nano ?? 0)
    return datetime._makeValue('Duration', { seconds = seconds, nano = nano })
+end
+
+function new_period(Years:any, Months:any, Weeks:any, Days:any):table
+   local years = datetime._requireInteger('years', Years ?? 0)
+   local months = datetime._requireInteger('months', Months ?? 0)
+   local weeks = datetime._requireInteger('weeks', Weeks ?? 0)
+   local days = datetime._requireInteger('days', Days ?? 0)
+   return datetime._makeValue('Period', { years = years, months = months, weeks = weeks, days = days })
+end
+
+function new_interval(Start:any, Stop:any):table
+   require_instant(Start)
+   require_instant(Stop)
+   if Stop < Start then datetime._invalidValue('Interval stop must be greater than or equal to start.') end
+   return datetime._makeValue('Interval', { start = Start, stop = Stop })
 end
 
 function new_offset(Seconds:any):table
@@ -616,6 +691,53 @@ getmetatable(datetime.localDateTime).__call =
       return new_local_date_time(Year, Month, Day, Hour ?? 0, Minute ?? 0, Second ?? 0, Nano ?? 0)
    end
 
+datetime.period = make_constructor('period')
+datetime.period.years = function(Years:num):table
+   return new_period(Years, 0, 0, 0)
+end
+datetime.period.months = function(Months:num):table
+   return new_period(0, Months, 0, 0)
+end
+datetime.period.weeks = function(Weeks:num):table
+   return new_period(0, 0, Weeks, 0)
+end
+datetime.period.days = function(Days:num):table
+   return new_period(0, 0, 0, Days)
+end
+datetime.period.parse = function(Text:str):table
+   if type(Text) != 'string' then datetime._syntaxError('Period text must be a string.') end
+
+   local sign_text, years_text, months_text, weeks_text, days_text = rx_period.extract(Text)
+   if (years_text is nil or years_text is '') and (months_text is nil or months_text is '') and
+      (weeks_text is nil or weeks_text is '') and (days_text is nil or days_text is '') then
+      datetime._syntaxError(f"Invalid Period string '{Text}'.")
+   end
+
+   local sign = sign_text is '-' ? -1 :> 1
+   return new_period(sign * tonumber(years_text ?? '0'), sign * tonumber(months_text ?? '0'),
+      sign * tonumber(weeks_text ?? '0'), sign * tonumber(days_text ?? '0'))
+end
+getmetatable(datetime.period).__call = function(Self, KV:any):table
+   datetime._requireTable('period', KV)
+   if not has_any_period_component(KV) then return new_period(0, 0, 0, 0) end
+   return new_period(KV.years ?? 0, KV.months ?? 0, KV.weeks ?? 0, KV.days ?? 0)
+end
+
+datetime.interval = make_constructor('interval')
+datetime.interval.from = function(KV:table):table
+   datetime._requireTable('interval', KV)
+   return new_interval(KV.start, KV.stop)
+end
+datetime.interval.fromStartAndDuration = function(Start:table, Duration:table):table
+   local start_fields = require_instant(Start)
+   local duration_fields = require_duration(Duration)
+   return new_interval(Start, new_instant(start_fields.epoch_second + duration_fields.seconds,
+      start_fields.nano + duration_fields.nano))
+end
+getmetatable(datetime.interval).__call = function(Self, Start:any, Stop:any):table
+   return new_interval(Start, Stop)
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Metatable methods.
 
@@ -654,6 +776,30 @@ datetime.mtInstant.__le = function(A:table, B:table):bool
    local a = datetime._fields(A, 'Instant')
    local b = datetime._fields(B, 'Instant')
    return compare_pair(a.epoch_second, a.nano, b.epoch_second, b.nano) <= 0
+end
+datetime.mtInstant.__add = function(A:table, B:table):table
+   local a = datetime._fields(A, 'Instant')
+   if datetime.isDuration(B) then
+      local b = datetime._fields(B, 'Duration')
+      return new_instant(a.epoch_second + b.seconds, a.nano + b.nano)
+   end
+   unsupported_operation(A, '+', B)
+end
+datetime.mtInstant.__sub = function(A:table, B:table):table
+   local a = datetime._fields(A, 'Instant')
+   if datetime.isDuration(B) then
+      local b = datetime._fields(B, 'Duration')
+      return new_instant(a.epoch_second - b.seconds, a.nano - b.nano)
+   end
+   if datetime.isInstant(B) then
+      local b = datetime._fields(B, 'Instant')
+      return new_duration(a.epoch_second - b.epoch_second, a.nano - b.nano)
+   end
+   unsupported_operation(A, '-', B)
+end
+datetime.mtInstant['until'] = function(Self:table, Other:table):table
+   if not datetime.isInstant(Other) then datetime._invalidValue('Other must be an Instant value.') end
+   return Other - Self
 end
 
 function datetime.mtDuration:totalSeconds():num
@@ -703,6 +849,26 @@ datetime.mtDuration.__le = function(A:table, B:table):bool
    local a = datetime._fields(A, 'Duration')
    local b = datetime._fields(B, 'Duration')
    return compare_pair(a.seconds, a.nano, b.seconds, b.nano) <= 0
+end
+datetime.mtDuration.__add = function(A:table, B:table):table
+   local a = datetime._fields(A, 'Duration')
+   if datetime.isDuration(B) then
+      local b = datetime._fields(B, 'Duration')
+      return new_duration(a.seconds + b.seconds, a.nano + b.nano)
+   end
+   unsupported_operation(A, '+', B)
+end
+datetime.mtDuration.__sub = function(A:table, B:table):table
+   local a = datetime._fields(A, 'Duration')
+   if datetime.isDuration(B) then
+      local b = datetime._fields(B, 'Duration')
+      return new_duration(a.seconds - b.seconds, a.nano - b.nano)
+   end
+   unsupported_operation(A, '-', B)
+end
+datetime.mtDuration.__unm = function(Self:table):table
+   local fields = datetime._fields(Self, 'Duration')
+   return new_duration(-fields.seconds, -fields.nano)
 end
 
 function datetime.mtOffset:totalSeconds():num
@@ -760,6 +926,26 @@ function datetime.mtLocalDate:atTime(Time:table):table
    if not datetime.isLocalTime(Time) then datetime._invalidValue('Time must be a LocalTime value.') end
    return datetime._makeValue('LocalDateTime', { date = self, time = Time })
 end
+datetime.mtLocalDate.__add = function(A:table, B:table):table
+   local a = datetime._fields(A, 'LocalDate')
+   if datetime.isPeriod(B) then
+      local fields = date_plus_period_fields(a, datetime._fields(B, 'Period'), 1)
+      return new_local_date(fields.year, fields.month, fields.day)
+   end
+   unsupported_operation(A, '+', B)
+end
+datetime.mtLocalDate.__sub = function(A:table, B:table):table
+   local a = datetime._fields(A, 'LocalDate')
+   if datetime.isPeriod(B) then
+      local fields = date_plus_period_fields(a, datetime._fields(B, 'Period'), -1)
+      return new_local_date(fields.year, fields.month, fields.day)
+   end
+   if datetime.isLocalDate(B) then
+      local b = datetime._fields(B, 'LocalDate')
+      return new_period(0, 0, 0, days_from_civil(a.year, a.month, a.day) - days_from_civil(b.year, b.month, b.day))
+   end
+   unsupported_operation(A, '-', B)
+end
 datetime.mtLocalDate.__tostring = function(Self:table):str
    local fields = datetime._fields(Self, 'LocalDate')
    return f"{format_year(fields.year)}-{pad_int(fields.month, 2)}-{pad_int(fields.day, 2)}"
@@ -800,6 +986,20 @@ end
 datetime.mtLocalTime.__le = function(A:table, B:table):bool
    return compare_time_fields(datetime._fields(A, 'LocalTime'), datetime._fields(B, 'LocalTime')) <= 0
 end
+datetime.mtLocalTime.__add = function(A:table, B:table):table
+   if datetime.isDuration(B) then
+      local fields = time_plus_duration_fields(datetime._fields(A, 'LocalTime'), datetime._fields(B, 'Duration'), 1)
+      return new_local_time(fields.hour, fields.minute, fields.second, fields.nano)
+   end
+   unsupported_operation(A, '+', B)
+end
+datetime.mtLocalTime.__sub = function(A:table, B:table):table
+   if datetime.isDuration(B) then
+      local fields = time_plus_duration_fields(datetime._fields(A, 'LocalTime'), datetime._fields(B, 'Duration'), -1)
+      return new_local_time(fields.hour, fields.minute, fields.second, fields.nano)
+   end
+   unsupported_operation(A, '-', B)
+end
 
 function datetime.mtLocalDateTime:date():table return datetime._fields(self, 'LocalDateTime').date end
 function datetime.mtLocalDateTime:time():table return datetime._fields(self, 'LocalDateTime').time end
@@ -826,6 +1026,46 @@ end
 function datetime.mtLocalDateTime:toZonedDateTime(Zone:table, Resolver:table):table
    datetime._notReady('localDateTime.toZonedDateTime')
 end
+datetime.mtLocalDateTime.__add = function(A:table, B:table):table
+   local a = datetime._fields(A, 'LocalDateTime')
+   local date_fields = datetime._fields(a.date, 'LocalDate')
+   local time_fields = datetime._fields(a.time, 'LocalTime')
+
+   if datetime.isDuration(B) then
+      local new_date_fields, new_time_fields =
+         local_date_time_plus_duration_fields(date_fields, time_fields, datetime._fields(B, 'Duration'), 1)
+      return new_local_date_time(new_date_fields.year, new_date_fields.month, new_date_fields.day,
+         new_time_fields.hour, new_time_fields.minute, new_time_fields.second, new_time_fields.nano)
+   end
+
+   if datetime.isPeriod(B) then
+      local new_date_fields = date_plus_period_fields(date_fields, datetime._fields(B, 'Period'), 1)
+      return new_local_date_time(new_date_fields.year, new_date_fields.month, new_date_fields.day,
+         time_fields.hour, time_fields.minute, time_fields.second, time_fields.nano)
+   end
+
+   unsupported_operation(A, '+', B)
+end
+datetime.mtLocalDateTime.__sub = function(A:table, B:table):table
+   local a = datetime._fields(A, 'LocalDateTime')
+   local date_fields = datetime._fields(a.date, 'LocalDate')
+   local time_fields = datetime._fields(a.time, 'LocalTime')
+
+   if datetime.isDuration(B) then
+      local new_date_fields, new_time_fields =
+         local_date_time_plus_duration_fields(date_fields, time_fields, datetime._fields(B, 'Duration'), -1)
+      return new_local_date_time(new_date_fields.year, new_date_fields.month, new_date_fields.day,
+         new_time_fields.hour, new_time_fields.minute, new_time_fields.second, new_time_fields.nano)
+   end
+
+   if datetime.isPeriod(B) then
+      local new_date_fields = date_plus_period_fields(date_fields, datetime._fields(B, 'Period'), -1)
+      return new_local_date_time(new_date_fields.year, new_date_fields.month, new_date_fields.day,
+         time_fields.hour, time_fields.minute, time_fields.second, time_fields.nano)
+   end
+
+   unsupported_operation(A, '-', B)
+end
 datetime.mtLocalDateTime.__tostring = function(Self:table):str
    local fields = datetime._fields(Self, 'LocalDateTime')
    return tostring(fields.date) .. 'T' .. tostring(fields.time)
@@ -847,6 +1087,114 @@ datetime.mtLocalDateTime.__le = function(A:table, B:table):bool
    return A < B or A is B
 end
 
+function datetime.mtPeriod:normalise():table
+   local fields = datetime._fields(self, 'Period')
+   local total_months = fields.years * 12 + fields.months
+   local years = math.floor(total_months / 12)
+   local months = total_months - years * 12
+   return new_period(years, months, 0, fields.weeks * 7 + fields.days)
+end
+
+datetime.mtPeriod.__tostring = function(Self:table):str
+   local fields = datetime._fields(Self, 'Period')
+   local text = 'P'
+   if fields.years != 0 then text ..= tostring(fields.years) .. 'Y' end
+   if fields.months != 0 then text ..= tostring(fields.months) .. 'M' end
+   if fields.weeks != 0 then text ..= tostring(fields.weeks) .. 'W' end
+   if fields.days != 0 then text ..= tostring(fields.days) .. 'D' end
+   if text is 'P' then text ..= '0D' end
+   return text
+end
+datetime.mtPeriod.__eq = function(A:table, B:table):bool
+   local a = datetime._fields(A, 'Period')
+   local b = datetime._fields(B, 'Period')
+   return a.years is b.years and a.months is b.months and a.weeks is b.weeks and a.days is b.days
+end
+datetime.mtPeriod.__add = function(A:table, B:table):table
+   local a = datetime._fields(A, 'Period')
+   if datetime.isPeriod(B) then
+      local b = datetime._fields(B, 'Period')
+      return new_period(a.years + b.years, a.months + b.months, a.weeks + b.weeks, a.days + b.days)
+   end
+   unsupported_operation(A, '+', B)
+end
+datetime.mtPeriod.__sub = function(A:table, B:table):table
+   local a = datetime._fields(A, 'Period')
+   if datetime.isPeriod(B) then
+      local b = datetime._fields(B, 'Period')
+      return new_period(a.years - b.years, a.months - b.months, a.weeks - b.weeks, a.days - b.days)
+   end
+   unsupported_operation(A, '-', B)
+end
+datetime.mtPeriod.__unm = function(Self:table):table
+   local fields = datetime._fields(Self, 'Period')
+   return new_period(-fields.years, -fields.months, -fields.weeks, -fields.days)
+end
+
+function datetime.mtInterval:start():table
+   return datetime._fields(self, 'Interval').start
+end
+
+function datetime.mtInterval:stop():table
+   return datetime._fields(self, 'Interval').stop
+end
+
+function datetime.mtInterval:duration():table
+   local fields = datetime._fields(self, 'Interval')
+   return fields.stop - fields.start
+end
+
+function datetime.mtInterval:contains(Instant:table):bool
+   if not datetime.isInstant(Instant) then datetime._invalidValue('Instant must be an Instant value.') end
+   local fields = datetime._fields(self, 'Interval')
+   return fields.start <= Instant and Instant < fields.stop
+end
+
+function datetime.mtInterval:overlaps(Other:table):bool
+   if not datetime.isInterval(Other) then datetime._invalidValue('Other must be an Interval value.') end
+   local fields = datetime._fields(self, 'Interval')
+   local other = datetime._fields(Other, 'Interval')
+   return fields.start < other.stop and other.start < fields.stop
+end
+
+function datetime.mtInterval:intersection(Other:table):table
+   if not datetime.isInterval(Other) then datetime._invalidValue('Other must be an Interval value.') end
+   local fields = datetime._fields(self, 'Interval')
+   local other = datetime._fields(Other, 'Interval')
+   local start = fields.start < other.start ? other.start :> fields.start
+   local stop = fields.stop < other.stop ? fields.stop :> other.stop
+   if stop < start then stop = start end
+   return new_interval(start, stop)
+end
+
+function datetime.mtInterval:union(Other:table):table
+   if not datetime.isInterval(Other) then datetime._invalidValue('Other must be an Interval value.') end
+   local fields = datetime._fields(self, 'Interval')
+   local other = datetime._fields(Other, 'Interval')
+   if fields.stop < other.start or other.stop < fields.start then
+      datetime._invalidValue('Cannot union separate intervals.')
+   end
+
+   local start = fields.start < other.start ? fields.start :> other.start
+   local stop = fields.stop < other.stop ? other.stop :> fields.stop
+   return new_interval(start, stop)
+end
+
+function datetime.mtInterval:isEmpty():bool
+   local fields = datetime._fields(self, 'Interval')
+   return fields.start is fields.stop
+end
+
+datetime.mtInterval.__tostring = function(Self:table):str
+   local fields = datetime._fields(Self, 'Interval')
+   return tostring(fields.start) .. '/' .. tostring(fields.stop)
+end
+datetime.mtInterval.__eq = function(A:table, B:table):bool
+   local a = datetime._fields(A, 'Interval')
+   local b = datetime._fields(B, 'Interval')
+   return a.start is b.start and a.stop is b.stop
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Future-stage public shells.
 
@@ -861,17 +1209,6 @@ datetime.zone.utc = make_not_ready('zone.utc')
 datetime.zonedDateTime = make_constructor('zonedDateTime')
 datetime.zonedDateTime.from = make_not_ready('zonedDateTime.from')
 datetime.zonedDateTime.parse = make_not_ready('zonedDateTime.parse')
-
-datetime.period = make_constructor('period')
-datetime.period.years = make_not_ready('period.years')
-datetime.period.months = make_not_ready('period.months')
-datetime.period.weeks = make_not_ready('period.weeks')
-datetime.period.days = make_not_ready('period.days')
-datetime.period.parse = make_not_ready('period.parse')
-
-datetime.interval = make_constructor('interval')
-datetime.interval.from = make_not_ready('interval.from')
-datetime.interval.fromStartAndDuration = make_not_ready('interval.fromStartAndDuration')
 
 datetime.clock = {
    system = make_not_ready('clock.system'),
