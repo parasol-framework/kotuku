@@ -1783,6 +1783,34 @@ struct FieldDef {
    template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(int(pValue)) { }
 };
 
+struct TimeZoneTransition {
+   int64_t Instant;             // Unix epoch microseconds at which the transition occurs.
+   std::string Abbreviation;    // Short name where available, e.g. GMT, BST, PST.
+   int     OffsetBefore;        // UTC offset in seconds before the transition.
+   int     OffsetAfter;         // UTC offset in seconds after the transition.
+   int     DaylightSaving;      // 1 if the resulting period observes daylight-saving time.
+   TimeZoneTransition() : Instant(0), OffsetBefore(0), OffsetAfter(0), DaylightSaving(0) { }
+};
+
+struct TimeZoneInfo {
+   std::string ZoneID;                            // Preferred public ID, e.g. Europe/London or UTC.
+   std::string NativeID;                          // Host-native ID, e.g. GMT Standard Time on Windows.
+   std::string Source;                            // "tzif", "win32", or "utc".
+   std::string DataPath;                          // TZif path on Linux, otherwise empty.
+   std::string Version;                           // TZDB/source version if available, otherwise empty.
+   kt::vector<TimeZoneTransition> Transitions;    // Transitions available for the requested range.
+   int BaseOffset;                                // Standard UTC offset in seconds.
+   int TransitionCount;                           // Total transitions available for the requested range.
+   int TransitionsWritten;                        // Number of records written to the supplied buffer.
+   int StartYear;                                 // Inclusive requested start year.
+   int EndYear;                                   // Inclusive requested end year.
+   int IsLocal;                                   // 1 if ZoneID requested the local system zone.
+   int IsFallback;                                // 1 if UTC fallback was used.
+   TimeZoneInfo() : BaseOffset(0), TransitionCount(0), TransitionsWritten(0), StartYear(0), EndYear(0), IsLocal(0),
+      IsFallback(0) { }
+   TimeZoneInfo(int) : TimeZoneInfo() { }
+};
+
 struct SystemState {
    CSTRING Platform;                    // String-based field indicating the user's platform.  Currently returns Native, Windows, OSX or Linux.
    CSTRING IDL;                         // The Core module's compressed IDL string
@@ -3554,6 +3582,7 @@ class objModule : public Object {
 
 namespace pt {
 struct SetTime { static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetTimeZoneInfo { CSTRING ZoneID; int StartYear; int EndYear; struct TimeZoneInfo * Info; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3579,9 +3608,16 @@ class objTime : public Object {
    // Action stubs
 
    inline ERR query() noexcept { return Action(AC::Query, this, nullptr); }
+   inline ERR refresh() noexcept { return Action(AC::Refresh, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR setTime() noexcept {
       return(Action(AC(-1), this, nullptr));
+   }
+   inline ERR getTimeZoneInfo(CSTRING ZoneID, int StartYear, int EndYear, struct TimeZoneInfo ** Info) noexcept {
+      struct pt::GetTimeZoneInfo args = { ZoneID, StartYear, EndYear, (struct TimeZoneInfo *)0 };
+      ERR error = Action(AC(-2), this, &args);
+      if (Info) *Info = args.Info;
+      return(error);
    }
 
    // Customised field setting
