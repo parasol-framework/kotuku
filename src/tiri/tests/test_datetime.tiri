@@ -410,6 +410,7 @@ end
    assert(duration:totalSeconds() is 5405.25, 'Duration total seconds should include fractional nanos')
    assert(duration:totalMillis() is 5405250, 'Duration total millis should include nanos')
    assert(tostring(duration) is 'PT1H30M5.25S', 'Duration string should include time components')
+   assert(datetime.duration {} is datetime.duration.seconds(0), 'Empty Duration construction should produce zero')
    assert(datetime.duration.seconds(5) is datetime.duration { seconds = 5 }, 'Duration seconds helper should work')
    assert(datetime.duration.millis(-1) is datetime.duration { seconds = -1, millis = 999 },
       'Negative duration millis should normalise')
@@ -443,8 +444,8 @@ end
       'Instant minus Duration should move backward on the timeline')
    assert((instant + datetime.duration { minutes = 30 }) - instant is datetime.duration { minutes = 30 },
       'Instant subtraction should return elapsed Duration')
-   assert(instant['until'](instant, instant + datetime.duration { seconds = 5 }) is datetime.duration { seconds = 5 },
-      'Instant until() should return elapsed Duration')
+   assert(instant:durationUntil(instant + datetime.duration { seconds = 5 }) is datetime.duration { seconds = 5 },
+      'Instant durationUntil() should return elapsed Duration')
 
    expect_error('Unsupported datetime operation', function()
       base + datetime.period.days(1)
@@ -455,6 +456,7 @@ end
    local period = datetime.period { years = 1, months = 2, weeks = 1, days = 3 }
 
    assert(tostring(period) is 'P1Y2M1W3D', 'Period string should include calendar fields')
+   assert(datetime.period {} is datetime.period.days(0), 'Empty Period construction should produce zero')
    assert(datetime.period.parse('P1Y2M1W3D') is period, 'Period parse should round trip')
    assert(datetime.period.months(14):normalise() is datetime.period { years = 1, months = 2 },
       'Period normalise() should carry months into years')
