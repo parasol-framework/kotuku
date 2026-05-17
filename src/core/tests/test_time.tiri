@@ -208,6 +208,19 @@ end
    assert(info.transitionsWritten is info.transitionCount, 'Transition written count should match returned transitions.')
 end
 
+@Test function TimeZoneInfoLocalEmptyString()
+   time_obj = obj.new('time')
+   err, info = time_obj.mtGetTimeZoneInfo('', 2024, 2024)
+
+   assert(err is ERR_Okay, 'Empty ZoneID should request local time zone info: ' .. mSys.GetErrorMsg(err))
+   assert(info != nil, 'Empty ZoneID local query did not return an info table.')
+   assert(info.isLocal is 1, 'Empty ZoneID query should set IsLocal.')
+   assert(info.startYear is 2024, 'Empty ZoneID query did not preserve StartYear.')
+   assert(info.endYear is 2024, 'Empty ZoneID query did not preserve EndYear.')
+   assert((info.source is 'win32') or (info.source is 'tzif') or (info.source is 'utc'),
+      'Unexpected empty-ZoneID time zone source: ' .. tostring(info.source))
+end
+
 @Test function TimeZoneInfoUTC()
    time_obj = obj.new('time')
    err, info = time_obj.mtGetTimeZoneInfo('UTC', 2024, 2025)
@@ -220,6 +233,23 @@ end
    assert(info.transitionCount is 0, 'UTC should not report transitions.')
    assert(info.transitionsWritten is 0, 'UTC should not write transitions.')
    assert(info.isFallback is 0, 'Explicit UTC should not be marked as a fallback.')
+end
+
+@Test function TimeZoneInfoUTCAliases()
+   time_obj = obj.new('time')
+   aliases = { 'Etc/UTC', 'Etc/GMT', 'GMT', 'Zulu' }
+
+   for i=0,#aliases-1 do
+      err, info = time_obj.mtGetTimeZoneInfo(aliases[i], 2024, 2024)
+
+      assert(err is ERR_Okay, aliases[i] .. ' alias should resolve to UTC: ' .. mSys.GetErrorMsg(err))
+      assert(info.zoneID is 'UTC', aliases[i] .. ' alias should report canonical UTC zone ID.')
+      assert(info.nativeID is 'UTC', aliases[i] .. ' alias should report UTC native ID.')
+      assert(info.source is 'utc', aliases[i] .. ' alias should report utc source.')
+      assert(info.baseOffset is 0, aliases[i] .. ' alias should have zero base offset.')
+      assert(info.transitionCount is 0, aliases[i] .. ' alias should not report transitions.')
+      assert(info.isLocal is 0, aliases[i] .. ' alias should be treated as an explicit zone.')
+   end
 end
 
 @Test function TimeZoneInfoExplicitZone()
@@ -249,6 +279,20 @@ end
    assert(info.source is 'tzif', 'Europe/London should report tzif source on Linux.')
    assert(info.baseOffset is 0,
       'Europe/London 2024 standard base offset should be 0, got: ' .. tostring(info.baseOffset))
+   assert(info.transitionCount is 2,
+      'Europe/London 2024 should report two DST transitions, got: ' .. tostring(info.transitionCount))
+   assert(#info.transitions is 2,
+      'Europe/London 2024 should expose two transition records, got: ' .. tostring(#info.transitions))
+   assert(info.transitions[0].instant is 1711846800000000,
+      'Europe/London 2024 first transition instant should be 2024-03-31 01:00 UTC.')
+   assert(info.transitions[0].offsetBefore is 0, 'Europe/London 2024 first transition should leave GMT.')
+   assert(info.transitions[0].offsetAfter is 3600, 'Europe/London 2024 first transition should enter BST.')
+   assert(info.transitions[0].daylightSaving is 1, 'Europe/London 2024 first transition should enter daylight saving.')
+   assert(info.transitions[1].instant is 1729990800000000,
+      'Europe/London 2024 second transition instant should be 2024-10-27 01:00 UTC.')
+   assert(info.transitions[1].offsetBefore is 3600, 'Europe/London 2024 second transition should leave BST.')
+   assert(info.transitions[1].offsetAfter is 0, 'Europe/London 2024 second transition should return to GMT.')
+   assert(info.transitions[1].daylightSaving is 0, 'Europe/London 2024 second transition should leave daylight saving.')
 
    err, info = time_obj.mtGetTimeZoneInfo('America/New_York', 2024, 2024)
    assert(err is ERR_Okay, 'America/New_York should resolve from TZif data: ' .. mSys.GetErrorMsg(err))
@@ -269,6 +313,16 @@ end
    assert(info.baseOffset is 0, 'Europe/London future standard base offset should be 0.')
    assert(info.transitionCount is 4,
       'Europe/London 2040-2041 should report four DST transitions, got: ' .. tostring(info.transitionCount))
+   assert(#info.transitions is 4,
+      'Europe/London 2040-2041 should expose four transition records, got: ' .. tostring(#info.transitions))
+   assert(info.transitions[0].instant < info.transitions[1].instant,
+      'Generated future transitions should be ordered by instant.')
+   assert(info.transitions[0].offsetBefore is 0, 'First generated future transition should leave GMT.')
+   assert(info.transitions[0].offsetAfter is 3600, 'First generated future transition should enter BST.')
+   assert(info.transitions[0].daylightSaving is 1, 'First generated future transition should enter daylight saving.')
+   assert(info.transitions[1].offsetBefore is 3600, 'Second generated future transition should leave BST.')
+   assert(info.transitions[1].offsetAfter is 0, 'Second generated future transition should return to GMT.')
+   assert(info.transitions[1].daylightSaving is 0, 'Second generated future transition should leave daylight saving.')
 end
 
 @Test function TimeZoneInfoInvalidZone()
@@ -276,6 +330,17 @@ end
    err, info = time_obj.mtGetTimeZoneInfo('Invalid/Definitely_Not_A_Zone', 2024, 2025)
 
    assert(err is ERR_Search, 'Invalid explicit zone should return ERR_Search, got: ' .. mSys.GetErrorMsg(err))
+end
+
+@Test function TimeZoneInfoInvalidYearRange()
+   time_obj = obj.new('time')
+
+   err, info = time_obj.mtGetTimeZoneInfo('UTC', 0, 2025)
+   assert(err is ERR_OutOfRange, 'Zero StartYear should return ERR_OutOfRange, got: ' .. mSys.GetErrorMsg(err))
+
+   err, info = time_obj.mtGetTimeZoneInfo('UTC', 2025, 2024)
+   assert(err is ERR_OutOfRange,
+      'EndYear before StartYear should return ERR_OutOfRange, got: ' .. mSys.GetErrorMsg(err))
 end
 
 ------------------------------------------------------------------------------------------------------------------------

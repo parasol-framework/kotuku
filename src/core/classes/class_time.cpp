@@ -706,14 +706,14 @@ static ERR TIME_Query(objTime *Self)
 
    // Get current timezone and convert to local time
    auto current_zone = std::chrono::current_zone();
-   if (!current_zone) return ERR::SystemCall;
+   if (not current_zone) return ERR::SystemCall;
 
    auto local_time = current_zone->to_local(now);
    auto local_days = std::chrono::floor<std::chrono::days>(local_time);
    auto ymd = std::chrono::year_month_day{local_days};
    auto tod = std::chrono::hh_mm_ss{local_time - local_days};
 
-   if (!ymd.ok()) return ERR::SystemCall;
+   if (not ymd.ok()) return ERR::SystemCall;
 
    Self->Year  = int(ymd.year());
    Self->Month = unsigned(ymd.month());
@@ -771,9 +771,9 @@ int EndYear: Inclusive final year.  Must be >= StartYear.
 
 -ERRORS-
 Okay: Time-zone information was returned.  Local-zone failures may return a UTC fallback result.
-NullArgs: The method argument pointer was `NULL`.
-OutOfRange: `StartYear` was zero, or `EndYear` was earlier than `StartYear`.
-AllocMemory: The result resource could not be allocated.
+NullArgs:
+OutOfRange:
+AllocMemory:
 Search: An explicit zone ID could not be resolved.
 SystemCall: A required host time-zone API call failed.
 
@@ -785,7 +785,7 @@ static ERR TIME_GetTimeZoneInfo(objTime *Self, struct pt::GetTimeZoneInfo *Args)
 {
    kt::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
    if ((Args->StartYear IS 0) or (Args->EndYear < Args->StartYear)) return log.warning(ERR::OutOfRange);
 
    struct TimeZoneInfo *tz;
