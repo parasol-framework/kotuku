@@ -238,6 +238,39 @@ end
    end
 end
 
+@Test function TimeZoneInfoLinuxIanaBaseOffset()
+   state = mSys.GetSystemState()
+   if state.platform != 'Linux' then return end
+
+   time_obj = obj.new('time')
+
+   err, info = time_obj.mtGetTimeZoneInfo('Europe/London', 2024, 2024)
+   assert(err is ERR_Okay, 'Europe/London should resolve from TZif data: ' .. mSys.GetErrorMsg(err))
+   assert(info.source is 'tzif', 'Europe/London should report tzif source on Linux.')
+   assert(info.baseOffset is 0,
+      'Europe/London 2024 standard base offset should be 0, got: ' .. tostring(info.baseOffset))
+
+   err, info = time_obj.mtGetTimeZoneInfo('America/New_York', 2024, 2024)
+   assert(err is ERR_Okay, 'America/New_York should resolve from TZif data: ' .. mSys.GetErrorMsg(err))
+   assert(info.source is 'tzif', 'America/New_York should report tzif source on Linux.')
+   assert(info.baseOffset is -18000,
+      'America/New_York 2024 standard base offset should be -18000, got: ' .. tostring(info.baseOffset))
+end
+
+@Test function TimeZoneInfoLinuxIanaFooterTransitions()
+   state = mSys.GetSystemState()
+   if state.platform != 'Linux' then return end
+
+   time_obj = obj.new('time')
+   err, info = time_obj.mtGetTimeZoneInfo('Europe/London', 2040, 2041)
+
+   assert(err is ERR_Okay, 'Europe/London future TZif query failed: ' .. mSys.GetErrorMsg(err))
+   assert(info.source is 'tzif', 'Europe/London future query should report tzif source on Linux.')
+   assert(info.baseOffset is 0, 'Europe/London future standard base offset should be 0.')
+   assert(info.transitionCount is 4,
+      'Europe/London 2040-2041 should report four DST transitions, got: ' .. tostring(info.transitionCount))
+end
+
 @Test function TimeZoneInfoInvalidZone()
    time_obj = obj.new('time')
    err, info = time_obj.mtGetTimeZoneInfo('Invalid/Definitely_Not_A_Zone', 2024, 2025)

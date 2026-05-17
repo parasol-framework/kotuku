@@ -22,6 +22,7 @@ To get the current system time, use the #Query() action.
 #include <chrono>
 #include <time.h>
 #include <vector>
+#include <limits>
 
 #ifdef __unix__
 #include <filesystem>
@@ -128,6 +129,25 @@ struct TZifType {
    int Abbreviation;
 };
 
+struct TZifPosixRule {
+   int Kind = 0;
+   int Month = 0;
+   int Week = 0;
+   int Day = 0;
+   int DayOfYear = 0;
+   int Time = 7200;
+};
+
+struct TZifPosixSpec {
+   std::string StandardName;
+   std::string DaylightName;
+   int StandardOffset = 0;
+   int DaylightOffset = 0;
+   TZifPosixRule StartRule;
+   TZifPosixRule EndRule;
+   bool HasDaylight = false;
+};
+
 //********************************************************************************************************************
 
 static uint32_t tzif_u32(const unsigned char *Data)
@@ -206,9 +226,313 @@ static bool tzif_block_size(const std::vector<unsigned char> &Data, const size_t
 
 //********************************************************************************************************************
 
+static bool posix_digit(const char Char)
+{
+   return (Char >= '0') and (Char <= '9');
+}
+
+//********************************************************************************************************************
+
+static bool parse_posix_name(std::string_view Text, size_t &Pos, std::string &Name)
+{
+   Name.clear();
+   if (Pos >= Text.size()) return false;
+
+   if (Text[Pos] IS '<') {
+      Pos++;
+      const size_t start = Pos;
+      while ((Pos < Text.size()) and not (Text[Pos] IS '>')) Pos++;
+      if ((Pos >= Text.size()) or (Pos IS start)) return false;
+
+      Name = std::string(Text.substr(start, Pos - start));
+      Pos++;
+      return true;
+   }
+
+   const size_t start = Pos;
+   while (Pos < Text.size()) {
+      const char ch = Text[Pos];
+      if (posix_digit(ch) or (ch IS '+') or (ch IS '-') or (ch IS ',')) break;
+      Pos++;
+   }
+
+   if (Pos IS start) return false;
+   Name = std::string(Text.substr(start, Pos - start));
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool parse_posix_unsigned(std::string_view Text, size_t &Pos, int &Value)
+{
+   if ((Pos >= Text.size()) or not posix_digit(Text[Pos])) return false;
+
+   int value = 0;
+   while ((Pos < Text.size()) and posix_digit(Text[Pos])) {
+      value = (value * 10) + int(Text[Pos] - '0');
+      Pos++;
+   }
+
+   Value = value;
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool parse_posix_seconds(std::string_view Text, size_t &Pos, int &Seconds)
+{
+   int sign = 1;
+   if ((Pos < Text.size()) and ((Text[Pos] IS '-') or (Text[Pos] IS '+'))) {
+      if (Text[Pos] IS '-') sign = -1;
+      Pos++;
+   }
+
+   int hours = 0;
+   if (not parse_posix_unsigned(Text, Pos, hours)) return false;
+
+   int minutes = 0;
+   int seconds = 0;
+   if ((Pos < Text.size()) and (Text[Pos] IS ':')) {
+      Pos++;
+      if (not parse_posix_unsigned(Text, Pos, minutes)) return false;
+
+      if ((Pos < Text.size()) and (Text[Pos] IS ':')) {
+         Pos++;
+         if (not parse_posix_unsigned(Text, Pos, seconds)) return false;
+      }
+   }
+
+   Seconds = sign * ((hours * 3600) + (minutes * 60) + seconds);
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool parse_posix_offset(std::string_view Text, size_t &Pos, int &Offset)
+{
+   int seconds = 0;
+   if (not parse_posix_seconds(Text, Pos, seconds)) return false;
+   Offset = -seconds;
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool parse_posix_rule(std::string_view Text, size_t &Pos, TZifPosixRule &Rule)
+{
+   Rule = TZifPosixRule();
+
+   if ((Pos < Text.size()) and (Text[Pos] IS 'M')) {
+      Rule.Kind = 'M';
+      Pos++;
+      if (not parse_posix_unsigned(Text, Pos, Rule.Month)) return false;
+      if ((Pos >= Text.size()) or not (Text[Pos] IS '.')) return false;
+      Pos++;
+      if (not parse_posix_unsigned(Text, Pos, Rule.Week)) return false;
+      if ((Pos >= Text.size()) or not (Text[Pos] IS '.')) return false;
+      Pos++;
+      if (not parse_posix_unsigned(Text, Pos, Rule.Day)) return false;
+
+      if ((Rule.Month < 1) or (Rule.Month > 12) or (Rule.Week < 1) or (Rule.Week > 5) or
+            (Rule.Day < 0) or (Rule.Day > 6)) return false;
+   }
+   else if ((Pos < Text.size()) and (Text[Pos] IS 'J')) {
+      Rule.Kind = 'J';
+      Pos++;
+      if (not parse_posix_unsigned(Text, Pos, Rule.DayOfYear)) return false;
+      if ((Rule.DayOfYear < 1) or (Rule.DayOfYear > 365)) return false;
+   }
+   else {
+      Rule.Kind = 'N';
+      if (not parse_posix_unsigned(Text, Pos, Rule.DayOfYear)) return false;
+      if ((Rule.DayOfYear < 0) or (Rule.DayOfYear > 365)) return false;
+   }
+
+   if ((Pos < Text.size()) and (Text[Pos] IS '/')) {
+      Pos++;
+      if (not parse_posix_seconds(Text, Pos, Rule.Time)) return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool parse_posix_tz(std::string_view Text, TZifPosixSpec &Spec)
+{
+   Spec = TZifPosixSpec();
+   if (Text.empty()) return false;
+
+   size_t pos = 0;
+   if (not parse_posix_name(Text, pos, Spec.StandardName)) return false;
+   if (not parse_posix_offset(Text, pos, Spec.StandardOffset)) return false;
+
+   if (pos >= Text.size()) return true;
+
+   if (not parse_posix_name(Text, pos, Spec.DaylightName)) return false;
+   Spec.HasDaylight = true;
+
+   if ((pos < Text.size()) and not (Text[pos] IS ',')) {
+      if (not parse_posix_offset(Text, pos, Spec.DaylightOffset)) return false;
+   }
+   else Spec.DaylightOffset = Spec.StandardOffset + 3600;
+
+   if ((pos >= Text.size()) or not (Text[pos] IS ',')) return false;
+   pos++;
+   if (not parse_posix_rule(Text, pos, Spec.StartRule)) return false;
+   if ((pos >= Text.size()) or not (Text[pos] IS ',')) return false;
+   pos++;
+   if (not parse_posix_rule(Text, pos, Spec.EndRule)) return false;
+
+   return pos IS Text.size();
+}
+
+//********************************************************************************************************************
+
+static std::string tzif_footer(const std::vector<unsigned char> &Data, const size_t Offset)
+{
+   if (Offset >= Data.size()) return {};
+
+   size_t start = Offset;
+   if (Data[start] IS '\n') start++;
+
+   size_t end = start;
+   while ((end < Data.size()) and not (Data[end] IS '\n')) end++;
+
+   if (end <= start) return {};
+   return std::string((const char *)(Data.data() + start), end - start);
+}
+
+//********************************************************************************************************************
+
+static int posix_last_day_of_month(const int Year, const int Month)
+{
+   const auto last = std::chrono::year_month_day_last(std::chrono::year(Year),
+      std::chrono::month_day_last(std::chrono::month(unsigned(Month))));
+   return int(unsigned(last.day()));
+}
+
+//********************************************************************************************************************
+
+static int64_t posix_rule_local_seconds(const TZifPosixRule &Rule, const int Year)
+{
+   std::chrono::sys_days day;
+
+   if (Rule.Kind IS 'M') {
+      const auto first_day = std::chrono::sys_days(std::chrono::year(Year) /
+         std::chrono::month(unsigned(Rule.Month)) / 1);
+      const int first_weekday = int(std::chrono::weekday(first_day).c_encoding());
+      const int last_day = posix_last_day_of_month(Year, Rule.Month);
+      int month_day = 1 + ((Rule.Day - first_weekday + 7) % 7) + ((Rule.Week - 1) * 7);
+      if (month_day > last_day) month_day -= 7;
+
+      day = std::chrono::sys_days(std::chrono::year(Year) / std::chrono::month(unsigned(Rule.Month)) /
+         std::chrono::day(unsigned(month_day)));
+   }
+   else if (Rule.Kind IS 'J') {
+      int day_index = Rule.DayOfYear - 1;
+      if (std::chrono::year(Year).is_leap() and (Rule.DayOfYear >= 60)) day_index++;
+      day = std::chrono::sys_days(std::chrono::year(Year) / std::chrono::January / 1) +
+         std::chrono::days(day_index);
+   }
+   else {
+      day = std::chrono::sys_days(std::chrono::year(Year) / std::chrono::January / 1) +
+         std::chrono::days(Rule.DayOfYear);
+   }
+
+   const auto local_time = day + std::chrono::seconds(Rule.Time);
+   return int64_t(std::chrono::duration_cast<std::chrono::seconds>(local_time.time_since_epoch()).count());
+}
+
+//********************************************************************************************************************
+
+static void add_posix_transition(const int64_t Instant, const int OffsetBefore, const int OffsetAfter,
+   const int DaylightSaving, const std::string &Abbreviation, const int64_t StartUs, const int64_t EndUs,
+   const int64_t LastExplicitUs, TimeZoneInfo &Info)
+{
+   if ((Instant <= LastExplicitUs) or (Instant < StartUs) or (Instant >= EndUs)) return;
+
+   TimeZoneTransition transition;
+   transition.Instant        = Instant;
+   transition.Abbreviation   = Abbreviation;
+   transition.OffsetBefore   = OffsetBefore;
+   transition.OffsetAfter    = OffsetAfter;
+   transition.DaylightSaving = DaylightSaving;
+
+   Info.Transitions.push_back(std::move(transition));
+}
+
+//********************************************************************************************************************
+
+static void append_posix_transitions(const TZifPosixSpec &Spec, const int StartYear, const int EndYear,
+   const int64_t StartUs, const int64_t EndUs, const int64_t LastExplicitUs, TimeZoneInfo &Info)
+{
+   if (not Spec.HasDaylight) return;
+
+   for (int year = StartYear; year <= EndYear; year++) {
+      const int64_t start_instant = (posix_rule_local_seconds(Spec.StartRule, year) - Spec.StandardOffset) * 1000000LL;
+      const int64_t end_instant = (posix_rule_local_seconds(Spec.EndRule, year) - Spec.DaylightOffset) * 1000000LL;
+
+      if (start_instant < end_instant) {
+         add_posix_transition(start_instant, Spec.StandardOffset, Spec.DaylightOffset, 1, Spec.DaylightName,
+            StartUs, EndUs, LastExplicitUs, Info);
+         add_posix_transition(end_instant, Spec.DaylightOffset, Spec.StandardOffset, 0, Spec.StandardName,
+            StartUs, EndUs, LastExplicitUs, Info);
+      }
+      else {
+         add_posix_transition(end_instant, Spec.DaylightOffset, Spec.StandardOffset, 0, Spec.StandardName,
+            StartUs, EndUs, LastExplicitUs, Info);
+         add_posix_transition(start_instant, Spec.StandardOffset, Spec.DaylightOffset, 1, Spec.DaylightName,
+            StartUs, EndUs, LastExplicitUs, Info);
+      }
+   }
+}
+
+//********************************************************************************************************************
+
+static bool select_tzif_types(const std::vector<int64_t> &Times, const std::vector<unsigned char> &Indices,
+   const std::vector<TZifType> &Types, const int64_t StartUs, const int64_t EndUs, int &StartType, int &BaseType)
+{
+   int active_type = 0;
+
+   for (size_t i = 0; i < Times.size(); i++) {
+      const int after_type = int(Indices[i]);
+      if ((after_type < 0) or (after_type >= int(Types.size()))) return false;
+
+      const int64_t instant_us = Times[i] * 1000000LL;
+      if (instant_us >= StartUs) break;
+      active_type = after_type;
+   }
+
+   StartType = active_type;
+   if (Types[active_type].IsDst IS 0) {
+      BaseType = active_type;
+      return true;
+   }
+
+   for (size_t i = 0; i < Times.size(); i++) {
+      const int after_type = int(Indices[i]);
+      const int64_t instant_us = Times[i] * 1000000LL;
+
+      if (instant_us < StartUs) continue;
+      if (instant_us >= EndUs) break;
+      if ((after_type < 0) or (after_type >= int(Types.size()))) return false;
+
+      if (Types[after_type].IsDst IS 0) {
+         BaseType = after_type;
+         return true;
+      }
+   }
+
+   BaseType = active_type;
+   return true;
+}
+
+//********************************************************************************************************************
+
 static bool parse_tzif_block(const std::vector<unsigned char> &Data, const size_t Offset, const bool Wide,
    std::string_view ZoneID, const std::filesystem::path &Path, const int StartYear, const int EndYear,
-   const int IsLocal, TimeZoneInfo &Info)
+   const int IsLocal, std::string_view Footer, TimeZoneInfo &Info)
 {
    size_t block_size = 0;
    if (not tzif_block_size(Data, Offset, Wide, block_size)) return false;
@@ -238,13 +562,12 @@ static bool parse_tzif_block(const std::vector<unsigned char> &Data, const size_
 
    const char *abbreviations = (const char *)(Data.data() + pos);
 
+   const int64_t start_us = utc_year_start_us(StartYear);
+   const int64_t end_us = utc_year_start_us(EndYear + 1);
+
+   int start_type = 0;
    int base_type = 0;
-   for (uint32_t i = 0; i < typecnt; i++) {
-      if (types[i].IsDst IS 0) {
-         base_type = int(i);
-         break;
-      }
-   }
+   if (not select_tzif_types(times, indices, types, start_us, end_us, start_type, base_type)) return false;
 
    Info = TimeZoneInfo();
    Info.ZoneID      = std::string(ZoneID);
@@ -258,9 +581,7 @@ static bool parse_tzif_block(const std::vector<unsigned char> &Data, const size_
    Info.IsLocal     = IsLocal;
    Info.IsFallback  = 0;
 
-   int previous_type = base_type;
-   const int64_t start_us = utc_year_start_us(StartYear);
-   const int64_t end_us = utc_year_start_us(EndYear + 1);
+   int previous_type = start_type;
 
    for (uint32_t i = 0; i < timecnt; i++) {
       const int after_type = int(indices[i]);
@@ -283,6 +604,15 @@ static bool parse_tzif_block(const std::vector<unsigned char> &Data, const size_
       previous_type = after_type;
    }
 
+   TZifPosixSpec posix_spec;
+   int64_t last_explicit_us = std::numeric_limits<int64_t>::min();
+   if (not times.empty()) last_explicit_us = times.back() * 1000000LL;
+
+   if ((end_us > last_explicit_us) and parse_posix_tz(Footer, posix_spec)) {
+      Info.BaseOffset = posix_spec.StandardOffset;
+      append_posix_transitions(posix_spec, StartYear, EndYear, start_us, end_us, last_explicit_us, Info);
+   }
+
    Info.TransitionCount    = int(Info.Transitions.size());
    Info.TransitionsWritten = Info.TransitionCount;
    return true;
@@ -302,10 +632,15 @@ static bool parse_tzif_file(const std::filesystem::path &Path, std::string_view 
    if ((version IS '2') or (version IS '3') or (version IS '4')) {
       size_t first_block = 0;
       if (not tzif_block_size(data, 0, false, first_block)) return false;
-      return parse_tzif_block(data, first_block, true, ZoneID, Path, StartYear, EndYear, IsLocal, Info);
+
+      size_t second_block = 0;
+      if (not tzif_block_size(data, first_block, true, second_block)) return false;
+
+      const std::string footer = tzif_footer(data, first_block + second_block);
+      return parse_tzif_block(data, first_block, true, ZoneID, Path, StartYear, EndYear, IsLocal, footer, Info);
    }
 
-   return parse_tzif_block(data, 0, false, ZoneID, Path, StartYear, EndYear, IsLocal, Info);
+   return parse_tzif_block(data, 0, false, ZoneID, Path, StartYear, EndYear, IsLocal, {}, Info);
 }
 
 //********************************************************************************************************************
