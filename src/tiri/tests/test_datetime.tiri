@@ -58,6 +58,7 @@ end
    local zone = datetime.zone.utc()
    local clock = datetime.clock.fixed(instant)
    local offset_date_time = datetime.localDateTime(1970, 1, 1):atOffset(datetime.offset.utc())
+   local zoned_date_time = instant:toZonedDateTime(zone)
 
    assert(datetime.isInstant(instant), 'Instant predicate should match Instant values')
    assert(not datetime.isLocalDate(instant), 'LocalDate predicate should reject Instant values')
@@ -67,6 +68,7 @@ end
    assert(datetime.isZone(zone), 'Zone predicate should match Zone values')
    assert(datetime.isClock(clock), 'Clock predicate should match Clock values')
    assert(datetime.isOffsetDateTime(offset_date_time), 'OffsetDateTime predicate should match OffsetDateTime values')
+   assert(datetime.isZonedDateTime(zoned_date_time), 'ZonedDateTime predicate should match ZonedDateTime values')
    assert(not datetime.isInstant({}), 'Predicates should reject ordinary tables')
    assert(datetime.isResolver(datetime.resolve.reject), 'Resolver constants should be datetime values')
 end
@@ -267,12 +269,71 @@ end
    assert(elapsed - start is datetime.duration { hours = 2 },
       'OffsetDateTime subtraction should return elapsed Duration')
 
-   expect_error('datetime.offsetDateTime.toZonedDateTime is not implemented yet', function()
-      start:toZonedDateTime(datetime.zone.utc())
-   end)
+   assert(start:toZonedDateTime(datetime.zone.utc()) is
+      datetime.zonedDateTime(datetime.instant.parse('2026-01-31T22:30:00Z'), datetime.zone.utc()),
+      'OffsetDateTime toZonedDateTime() should preserve the instant in the target zone')
 
    expect_error('Expected datetime.Zone value', function()
       start:toZone({})
+   end)
+end
+
+@Test function ZonedDateTimeUtcConstructionAccessorsAndParsing()
+   local zone = datetime.zone.utc()
+   local instant = datetime.instant.parse('2026-05-17T10:30:45.123456789Z')
+   local zoned = datetime.zonedDateTime(instant, zone)
+   local local_date_time = datetime.localDateTime(2026, 5, 17, 10, 30, 45, 123456789)
+
+   assert(instant:toZonedDateTime(zone) is zoned, 'Instant toZonedDateTime() should create a ZonedDateTime')
+   assert(instant:toZone(zone) is zoned, 'Instant toZone() should alias toZonedDateTime()')
+   assert(local_date_time:toZonedDateTime(zone) is zoned, 'LocalDateTime UTC resolution should match the same instant')
+   assert(local_date_time:inZone(zone) is zoned, 'LocalDateTime inZone() should alias toZonedDateTime()')
+   assert(datetime.zonedDateTime.from { instant = instant, zone = zone } is zoned,
+      'ZonedDateTime property-table instant construction should work')
+   assert(datetime.zonedDateTime.from { local_date_time = local_date_time, zone = zone } is zoned,
+      'ZonedDateTime property-table local construction should work')
+   assert(datetime.zonedDateTime.parse('2026-05-17T10:30:45.123456789Z[UTC]') is zoned,
+      'ZonedDateTime parse should round trip UTC strings')
+
+   assert(zoned:instant() is instant, 'ZonedDateTime instant accessor should work')
+   assert(zoned:zone() is zone, 'ZonedDateTime zone accessor should work')
+   assert(zoned:offset() is datetime.offset.utc(), 'ZonedDateTime offset accessor should use the zone')
+   assert(zoned:localDateTime() is local_date_time, 'ZonedDateTime localDateTime accessor should work')
+   assert(zoned:date() is datetime.localDate(2026, 5, 17), 'ZonedDateTime date accessor should work')
+   assert(zoned:time() is datetime.localTime(10, 30, 45, 123456789), 'ZonedDateTime time accessor should work')
+   assert(zoned:toOffsetDateTime() is datetime.offsetDateTime(local_date_time, datetime.offset.utc()),
+      'ZonedDateTime toOffsetDateTime() should preserve local fields and offset')
+   assert(tostring(zoned) is '2026-05-17T10:30:45.123456789Z[UTC]',
+      'ZonedDateTime string should include local time, offset, and zone ID')
+
+   expect_error('Invalid ZonedDateTime string', function()
+      datetime.zonedDateTime.parse('2026-05-17T10:30:45Z')
+   end)
+end
+
+@Test function ZonedDateTimeUtcArithmeticAndWithMethods()
+   local zone = datetime.zone.utc()
+   local start = datetime.localDateTime(2026, 1, 31, 23, 30):toZonedDateTime(zone)
+   local elapsed = start + datetime.duration { hours = 2 }
+   local calendar = start + datetime.period.days(1)
+   local changed = start:withLocal { month = 2, day = 1, hour = 9 }
+
+   assert(elapsed is datetime.localDateTime(2026, 2, 1, 1, 30):toZonedDateTime(zone),
+      'ZonedDateTime Duration addition should advance the instant')
+   assert(elapsed - start is datetime.duration { hours = 2 },
+      'ZonedDateTime subtraction should return elapsed Duration')
+   assert(calendar is datetime.localDateTime(2026, 2, 1, 23, 30):toZonedDateTime(zone),
+      'ZonedDateTime Period addition should apply calendar arithmetic')
+   assert(changed is datetime.localDateTime(2026, 2, 1, 9, 30):toZonedDateTime(zone),
+      'ZonedDateTime withLocal() should alter local fields and re-resolve')
+   assert(start:withZoneSameInstant(zone) is start, 'withZoneSameInstant() should keep the instant')
+   assert(start:withZoneSameLocal(zone) is start, 'withZoneSameLocal() should keep the local fields')
+   assert(start:instantEquals(start:toOffsetDateTime()), 'instantEquals() should accept OffsetDateTime values')
+   assert(start:instantEquals(start:instant()), 'instantEquals() should accept Instant values')
+   assert(start <= elapsed and start < elapsed, 'ZonedDateTime ordering should compare instants')
+
+   expect_error('Other must be an Instant', function()
+      start:instantEquals({})
    end)
 end
 
@@ -528,6 +589,96 @@ end
    assert(type(zone:nameAt(after_spring)) is 'string' and #zone:nameAt(after_spring) > 0, 'nameAt() should expose a period name where Core supplies one')
 end
 
+@Test function EuropeLondonZonedDateTimeResolversWhenAvailable()
+   local zone
+   try
+      zone = datetime.zone('Europe/London')
+   except e when ERR_Search
+      return
+   end
+
+   local skipped = datetime.localDateTime(2024, 3, 31, 1, 30)
+   local compatible = skipped:toZonedDateTime(zone)
+   local skipped_explicit = skipped:toZonedDateTime(zone, datetime.resolve.skip)
+
+   assert(compatible:instant() is datetime.instant.parse('2024-03-31T01:30:00Z'),
+      'Compatible resolver should move skipped London time forward by the gap')
+   assert(tostring(compatible) is '2024-03-31T02:30:00+01:00[Europe/London]',
+      'Skipped London local time should stringify at the adjusted valid local time')
+   assert(skipped_explicit is compatible, 'Skip resolver should match compatible for skipped local times')
+
+   expect_error('is skipped', function()
+      skipped:toZonedDateTime(zone, datetime.resolve.reject)
+   end)
+
+   expect_error('is skipped', function()
+      skipped:toZonedDateTime(zone, datetime.resolve.earlier)
+   end)
+
+   expect_error('is skipped', function()
+      skipped:toZonedDateTime(zone, datetime.resolve.later)
+   end)
+
+   local ambiguous = datetime.localDateTime(2024, 10, 27, 1, 30)
+   local earlier = ambiguous:toZonedDateTime(zone, datetime.resolve.earlier)
+   local later = ambiguous:toZonedDateTime(zone, datetime.resolve.later)
+
+   assert(ambiguous:toZonedDateTime(zone, datetime.resolve.compatible) is earlier,
+      'Compatible resolver should choose the earlier instant for ambiguous local times')
+   assert(ambiguous:toZonedDateTime(zone, datetime.resolve.skip) is earlier,
+      'Skip resolver should choose the earlier instant for ambiguous local times')
+   assert(earlier:instant() is datetime.instant.parse('2024-10-27T00:30:00Z'),
+      'Earlier ambiguous London time should use the daylight-saving offset')
+   assert(later:instant() is datetime.instant.parse('2024-10-27T01:30:00Z'),
+      'Later ambiguous London time should use the standard offset')
+   assert(earlier:offset() is datetime.offset.hours(1), 'Earlier ambiguous London time should use +01:00')
+   assert(later:offset() is datetime.offset.utc(), 'Later ambiguous London time should use UTC')
+   assert(later - earlier is datetime.duration { hours = 1 },
+      'Ambiguous resolver choices should be one elapsed hour apart')
+
+   expect_error('is ambiguous', function()
+      ambiguous:toZonedDateTime(zone, datetime.resolve.reject)
+   end)
+end
+
+@Test function EuropeLondonZonedDateTimeZoneChangesAndArithmeticWhenAvailable()
+   local london
+   try
+      london = datetime.zone('Europe/London')
+   except e when ERR_Search
+      return
+   end
+
+   local utc = datetime.zone.utc()
+   local start = datetime.localDateTime(2024, 3, 30, 12, 0):toZonedDateTime(london)
+   local elapsed = start + datetime.duration { hours = 24 }
+   local calendar = start + datetime.period.days(1)
+   local later_overlap = start:withLocal {
+      month = 10,
+      day = 27,
+      hour = 1,
+      minute = 30,
+      resolver = datetime.resolve.later
+   }
+
+   assert(elapsed:localDateTime() is datetime.localDateTime(2024, 3, 31, 13, 0),
+      'Elapsed 24 hours should preserve timeline duration across the spring transition')
+   assert(calendar:localDateTime() is datetime.localDateTime(2024, 3, 31, 12, 0),
+      'Calendar 1 day should preserve local wall time across the spring transition')
+   assert(calendar - start is datetime.duration { hours = 23 },
+      'Calendar day across the London spring transition should be 23 elapsed hours')
+   assert(later_overlap:instant() is datetime.instant.parse('2024-10-27T01:30:00Z'),
+      'withLocal() should honour an explicit later resolver')
+
+   local same_instant_utc = start:withZoneSameInstant(utc)
+   local same_local_utc = start:withZoneSameLocal(utc)
+   assert(same_instant_utc:instant() is start:instant(), 'withZoneSameInstant() should preserve the instant')
+   assert(same_instant_utc:localDateTime() is datetime.localDateTime(2024, 3, 30, 12, 0),
+      'UTC same-instant conversion before DST should keep matching local time')
+   assert(same_local_utc:localDateTime() is start:localDateTime(),
+      'withZoneSameLocal() should preserve local fields')
+end
+
 @Test function FixedAndOffsetClocksAreDeterministic()
    local instant = datetime.instant.parse('2026-05-17T23:30:45.123456Z')
    local fixed = datetime.clock.fixed(instant)
@@ -554,6 +705,8 @@ end
 
    assert(fixed:localDateTime(zone) is datetime.localDateTime(2026, 5, 17, 23, 30, 45, 123456000),
       'Clock localDateTime(UTC) should convert the instant to UTC local fields')
+   assert(fixed:zonedDateTime(zone) is datetime.zonedDateTime(fixed:instant(), zone),
+      'Clock zonedDateTime(UTC) should combine its instant with the supplied zone')
    assert(fixed:today(zone) is datetime.localDate(2026, 5, 17), 'Clock today(UTC) should return the UTC date')
    assert(datetime.today(zone, fixed) is datetime.localDate(2026, 5, 17),
       'datetime.today(zone, clock) should delegate to the supplied clock')

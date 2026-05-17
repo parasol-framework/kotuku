@@ -42,6 +42,8 @@ rx_instant <const> =
    regex.new([[^([+\-]?\d{4,}-\d{2}-\d{2})T(\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?)Z$]])
 rx_offset_date_time <const> =
    regex.new([[^([+\-]?\d{4,}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?)(Z|[+\-]\d{2}:\d{2})$]])
+rx_zoned_date_time <const> =
+   regex.new([[^([+\-]?\d{4,}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+\-]\d{2}:\d{2}))\[(.+)\]$]])
 rx_offset <const> = regex.new([[^(Z|([+\-])(\d{2}):(\d{2}))$]])
 rx_duration <const> =
    regex.new([[^([+\-])?P(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d{1,9}))?S)?)$]])
@@ -333,6 +335,22 @@ end
 function require_clock(Value:any):table
    if not datetime.isClock(Value) then datetime._invalidValue('Expected datetime.Clock value.') end
    return datetime._fields(Value, 'Clock')
+end
+
+function require_resolver(Value:any):table
+   if not datetime.isResolver(Value) then datetime._invalidValue('Expected datetime.Resolver value.') end
+   return datetime._fields(Value, 'Resolver')
+end
+
+function require_zoned_date_time(Value:any):table
+   if not datetime.isZonedDateTime(Value) then datetime._invalidValue('Expected datetime.ZonedDateTime value.') end
+   return datetime._fields(Value, 'ZonedDateTime')
+end
+
+function new_zoned_date_time(Instant:any, Zone:any):table
+   require_instant(Instant)
+   require_zone(Zone)
+   return datetime._makeValue('ZonedDateTime', { instant = Instant, zone = Zone })
 end
 
 function unsupported_operation(Left:any, Operator:str, Right:any)
@@ -645,6 +663,18 @@ function zone_info_for_instant(ZoneFields:table, Instant:table, PreviousYears:nu
    return get_time_zone_info(ZoneFields.query_id, start_year, end_year)
 end
 
+function zone_info_for_local_date_time(ZoneFields:table, LocalDateTime:table):table
+   local local_fields = require_local_date_time(LocalDateTime)
+   local date_fields = datetime._fields(local_fields.date, 'LocalDate')
+   if date_fields.year < MIN_ZONE_YEAR or date_fields.year > MAX_ZONE_YEAR then
+      datetime._outOfRange(f"Local date-time year {date_fields.year} is outside the supported time-zone range.")
+   end
+
+   local start_year = math.max(MIN_ZONE_YEAR, date_fields.year - 1)
+   local end_year = math.min(MAX_ZONE_YEAR, date_fields.year + 1)
+   return get_time_zone_info(ZoneFields.query_id, start_year, end_year)
+end
+
 function transition_offset_at(Info:table, Instant:table):table
    local offset = Info.base_offset
    for transition in values(Info.transitions) do
@@ -665,6 +695,100 @@ function transition_name_at(Info:table, Instant:table):str
    end
 
    return name
+end
+
+function local_date_time_epoch_pair(LocalDateTime:table):<num, num>
+   local local_fields = require_local_date_time(LocalDateTime)
+   local date_fields = datetime._fields(local_fields.date, 'LocalDate')
+   local time_fields = datetime._fields(local_fields.time, 'LocalTime')
+   return date_time_to_epoch_second(date_fields, time_fields), time_fields.nano
+end
+
+function local_transition_pair(Transition:table, Offset:table):<num, num>
+   local instant_fields = require_instant(Transition.instant)
+   local offset_fields = require_offset(Offset)
+   return instant_fields.epoch_second + offset_fields.seconds, instant_fields.nano
+end
+
+function is_local_pair_in_range(Seconds:num, Nano:num, StartSeconds:num, StartNano:num, StopSeconds:num,
+   StopNano:num):bool
+   return compare_pair(Seconds, Nano, StartSeconds, StartNano) >= 0 and
+      compare_pair(Seconds, Nano, StopSeconds, StopNano) < 0
+end
+
+function resolver_name(Resolver:any):str
+   Resolver ??= datetime.resolve.compatible
+   return require_resolver(Resolver).name
+end
+
+function rejected_local_time(LocalDateTime:table, Zone:table, Reason:str)
+   datetime._error(ERR_LimitedSuccess, f"Local date-time {LocalDateTime} {Reason} in time zone {Zone:id()}.")
+end
+
+function resolve_transition_local_date_time(LocalDateTime:table, Zone:table, Info:table, TargetSeconds:num,
+   TargetNano:num, ResolverName:str):<bool, any>
+   for transition in values(Info.transitions) do
+      local before_seconds = require_offset(transition.offset_before).seconds
+      local after_seconds = require_offset(transition.offset_after).seconds
+
+      if after_seconds > before_seconds then
+         local start_seconds, start_nano = local_transition_pair(transition, transition.offset_before)
+         local stop_seconds, stop_nano = local_transition_pair(transition, transition.offset_after)
+         if is_local_pair_in_range(TargetSeconds, TargetNano, start_seconds, start_nano, stop_seconds, stop_nano) then
+            if ResolverName is 'reject' or ResolverName is 'earlier' or ResolverName is 'later' then
+               rejected_local_time(LocalDateTime, Zone, 'is skipped')
+            end
+            return true, new_zoned_date_time(new_instant(TargetSeconds - before_seconds, TargetNano), Zone)
+         end
+      elseif after_seconds < before_seconds then
+         local start_seconds, start_nano = local_transition_pair(transition, transition.offset_after)
+         local stop_seconds, stop_nano = local_transition_pair(transition, transition.offset_before)
+         if is_local_pair_in_range(TargetSeconds, TargetNano, start_seconds, start_nano, stop_seconds, stop_nano) then
+            if ResolverName is 'reject' then rejected_local_time(LocalDateTime, Zone, 'is ambiguous') end
+
+            local selected_offset = transition.offset_before
+            if ResolverName is 'later' then selected_offset = transition.offset_after end
+            return true, new_zoned_date_time(new_instant(TargetSeconds - require_offset(selected_offset).seconds,
+               TargetNano), Zone)
+         end
+      end
+   end
+
+   return false, nil
+end
+
+function resolve_local_date_time(LocalDateTime:table, Zone:table, Resolver:any):table
+   require_zone(Zone)
+   local resolver = resolver_name(Resolver)
+   local zone_fields = datetime._fields(Zone, 'Zone')
+   local info = zone_info_for_local_date_time(zone_fields, LocalDateTime)
+   local target_seconds, target_nano = local_date_time_epoch_pair(LocalDateTime)
+   local handled, result = resolve_transition_local_date_time(LocalDateTime, Zone, info, target_seconds, target_nano,
+      resolver)
+   if handled then return result end
+
+   local earlier = nil
+   local later = nil
+
+   local consider_offset = function(Offset:table)
+      local offset_seconds = require_offset(Offset).seconds
+      local candidate = new_instant(target_seconds - offset_seconds, target_nano)
+      if Zone:offsetAt(candidate) is Offset then
+         if earlier is nil or candidate < earlier then earlier = candidate end
+         if later is nil or later < candidate then later = candidate end
+      end
+   end
+
+   consider_offset(info.base_offset)
+   for transition in values(info.transitions) do
+      consider_offset(transition.offset_before)
+      consider_offset(transition.offset_after)
+   end
+
+   if earlier is nil then rejected_local_time(LocalDateTime, Zone, 'is skipped') end
+   if resolver is 'reject' and not (earlier is later) then rejected_local_time(LocalDateTime, Zone, 'is ambiguous') end
+   if resolver is 'later' then return new_zoned_date_time(later, Zone) end
+   return new_zoned_date_time(earlier, Zone)
 end
 
 function new_clock(Kind:str, Fields:table):table
@@ -701,6 +825,16 @@ function new_offset_date_time(LocalDateTime:any, Offset:any):table
    require_local_date_time(LocalDateTime)
    require_offset(Offset)
    return datetime._makeValue('OffsetDateTime', { local_date_time = LocalDateTime, offset = Offset })
+end
+
+function local_date_time_from_instant_in_zone(Instant:table, Zone:table):table
+   require_zone(Zone)
+   local instant_fields = require_instant(Instant)
+   local offset_fields = datetime._fields(Zone:offsetAt(Instant), 'Offset')
+   local date_fields, time_fields = epoch_second_to_local(instant_fields.epoch_second + offset_fields.seconds,
+      instant_fields.nano)
+   return new_local_date_time(date_fields.year, date_fields.month, date_fields.day, time_fields.hour,
+      time_fields.minute, time_fields.second, time_fields.nano)
 end
 
 function offset_date_time_instant(OffsetDateTime:table):table
@@ -1055,6 +1189,14 @@ datetime.mtInstant['until'] = function(Self:table, Other:table):table
    return Other - Self
 end
 
+function datetime.mtInstant:toZonedDateTime(Zone:table):table
+   return new_zoned_date_time(self, Zone)
+end
+
+function datetime.mtInstant:toZone(Zone:table):table
+   return self:toZonedDateTime(Zone)
+end
+
 function datetime.mtDuration:totalSeconds():num
    local fields = datetime._fields(self, 'Duration')
    return fields.seconds + fields.nano / NANOS_PER_SECOND
@@ -1318,7 +1460,8 @@ function datetime.mtLocalDateTime:inZone(Zone:table, Resolver:table):table
 end
 
 function datetime.mtLocalDateTime:toZonedDateTime(Zone:table, Resolver:table):table
-   datetime._notReady('localDateTime.toZonedDateTime')
+   Resolver ??= datetime.resolve.compatible
+   return resolve_local_date_time(self, Zone, Resolver)
 end
 
 datetime.mtLocalDateTime.__add = function(A:table, B:table):table
@@ -1408,8 +1551,7 @@ function datetime.mtOffsetDateTime:localDateTime():table
 end
 
 function datetime.mtOffsetDateTime:toZonedDateTime(Zone:table):table
-   require_zone(Zone)
-   datetime._notReady('offsetDateTime.toZonedDateTime')
+   return new_zoned_date_time(offset_date_time_instant(self), Zone)
 end
 
 function datetime.mtOffsetDateTime:toZone(Zone:table):table
@@ -1457,6 +1599,96 @@ datetime.mtOffsetDateTime.__sub = function(A:table, B:table):table
    end
    if datetime.isPeriod(B) then return new_offset_date_time(fields.local_date_time - B, fields.offset) end
    if datetime.isOffsetDateTime(B) then return offset_date_time_instant(A) - offset_date_time_instant(B) end
+   unsupported_operation(A, '-', B)
+end
+
+function datetime.mtZonedDateTime:instant():table
+   return require_zoned_date_time(self).instant
+end
+
+function datetime.mtZonedDateTime:zone():table
+   return require_zoned_date_time(self).zone
+end
+
+function datetime.mtZonedDateTime:offset():table
+   local fields = require_zoned_date_time(self)
+   return fields.zone:offsetAt(fields.instant)
+end
+
+function datetime.mtZonedDateTime:localDateTime():table
+   local fields = require_zoned_date_time(self)
+   return local_date_time_from_instant_in_zone(fields.instant, fields.zone)
+end
+
+function datetime.mtZonedDateTime:date():table
+   return self:localDateTime():date()
+end
+
+function datetime.mtZonedDateTime:time():table
+   return self:localDateTime():time()
+end
+
+function datetime.mtZonedDateTime:withZoneSameInstant(Zone:table):table
+   return new_zoned_date_time(require_zoned_date_time(self).instant, Zone)
+end
+
+function datetime.mtZonedDateTime:withZoneSameLocal(Zone:table, Resolver:table):table
+   Resolver ??= datetime.resolve.compatible
+   return self:localDateTime():toZonedDateTime(Zone, Resolver)
+end
+
+local zoned_date_time_with_local = function(Self:table, KV:table):table
+   datetime._requireTable('fields', KV)
+   local fields = require_zoned_date_time(Self)
+   local resolver = KV.resolver ?? datetime.resolve.compatible
+   return Self:localDateTime():with(KV):toZonedDateTime(fields.zone, resolver)
+end
+
+datetime.mtZonedDateTime.withLocal = zoned_date_time_with_local
+
+function datetime.mtZonedDateTime:toOffsetDateTime():table
+   return new_offset_date_time(self:localDateTime(), self:offset())
+end
+
+function datetime.mtZonedDateTime:instantEquals(Other:table):bool
+   local fields = require_zoned_date_time(self)
+   if datetime.isInstant(Other) then return fields.instant is Other end
+   if datetime.isOffsetDateTime(Other) then return fields.instant is Other:instant() end
+   if datetime.isZonedDateTime(Other) then return fields.instant is Other:instant() end
+   datetime._invalidValue('Other must be an Instant, OffsetDateTime, or ZonedDateTime value.')
+end
+
+datetime.mtZonedDateTime.__tostring = function(Self:table):str
+   local fields = datetime._fields(Self, 'ZonedDateTime')
+   return tostring(Self:localDateTime()) .. tostring(Self:offset()) .. '[' .. fields.zone:id() .. ']'
+end
+
+datetime.mtZonedDateTime.__eq = function(A:table, B:table):bool
+   local a = datetime._fields(A, 'ZonedDateTime')
+   local b = datetime._fields(B, 'ZonedDateTime')
+   return a.instant is b.instant and a.zone is b.zone
+end
+
+datetime.mtZonedDateTime.__lt = function(A:table, B:table):bool
+   return datetime._fields(A, 'ZonedDateTime').instant < datetime._fields(B, 'ZonedDateTime').instant
+end
+
+datetime.mtZonedDateTime.__le = function(A:table, B:table):bool
+   return datetime._fields(A, 'ZonedDateTime').instant <= datetime._fields(B, 'ZonedDateTime').instant
+end
+
+datetime.mtZonedDateTime.__add = function(A:table, B:table):table
+   local fields = datetime._fields(A, 'ZonedDateTime')
+   if datetime.isDuration(B) then return new_zoned_date_time(fields.instant + B, fields.zone) end
+   if datetime.isPeriod(B) then return (A:localDateTime() + B):toZonedDateTime(fields.zone) end
+   unsupported_operation(A, '+', B)
+end
+
+datetime.mtZonedDateTime.__sub = function(A:table, B:table):table
+   local fields = datetime._fields(A, 'ZonedDateTime')
+   if datetime.isDuration(B) then return new_zoned_date_time(fields.instant - B, fields.zone) end
+   if datetime.isPeriod(B) then return (A:localDateTime() - B):toZonedDateTime(fields.zone) end
+   if datetime.isZonedDateTime(B) then return fields.instant - B:instant() end
    unsupported_operation(A, '-', B)
 end
 
@@ -1665,7 +1897,8 @@ function datetime.mtClock:localDateTime(Zone:table):table
 end
 
 function datetime.mtClock:zonedDateTime(Zone:table):table
-   datetime._notReady('clock.zonedDateTime')
+   Zone ??= datetime.zone.local()
+   return new_zoned_date_time(self:instant(), Zone)
 end
 
 datetime.mtClock.__tostring = function(Self:table):str
@@ -1689,8 +1922,28 @@ getmetatable(datetime.zone).__call = function(Self, ZoneID:any):table
 end
 
 datetime.zonedDateTime = make_constructor('zonedDateTime')
-datetime.zonedDateTime.from = make_not_ready('zonedDateTime.from')
-datetime.zonedDateTime.parse = make_not_ready('zonedDateTime.parse')
+datetime.zonedDateTime.from = function(KV:table):table
+   datetime._requireTable('zonedDateTime', KV)
+   if KV.instant != nil then return new_zoned_date_time(KV.instant, KV.zone) end
+   if KV.local_date_time != nil then
+      return KV.local_date_time:toZonedDateTime(KV.zone, KV.resolver ?? datetime.resolve.compatible)
+   end
+   datetime._invalidValue('zonedDateTime.from requires instant or local_date_time.')
+end
+
+datetime.zonedDateTime.parse = function(Text:str):table
+   if type(Text) != 'string' then datetime._syntaxError('ZonedDateTime text must be a string.') end
+
+   local offset_text, zone_text = rx_zoned_date_time.extract(Text)
+   if offset_text is nil then datetime._syntaxError(f"Invalid ZonedDateTime string '{Text}'.") end
+
+   local offset_date_time = datetime.offsetDateTime.parse(offset_text)
+   return new_zoned_date_time(offset_date_time:instant(), datetime.zone(zone_text))
+end
+
+getmetatable(datetime.zonedDateTime).__call = function(Self, Instant:any, Zone:any):table
+   return new_zoned_date_time(Instant, Zone)
+end
 
 datetime.clock = {
    system = function():table
