@@ -43,9 +43,13 @@ end
 
 function widgetFocus(Widget)
    --if Widget.effect then return end
-   --Widget.effect = vfx.shake((Widget.inputViewport ? Widget.viewport), 0.2, 0, 0.2, function(Effect)
-   --   Widget.effect = nil
-   --end)
+   --Widget.effect = vfx.shake((Widget.inputViewport ? Widget.viewport), {
+   --   seconds = 0.2,
+   --   intensity = 0.2,
+   --   callback = function(Effect)
+   --      Widget.effect = nil
+   --   end
+   --})
 end
 
    menubar = gui.menubar({
@@ -344,13 +348,17 @@ end
       size   = 80,
       events = {
          show = function(Icon)
-            vfx.fadeIn(Icon.viewport, 1.0, 0.1)
+            vfx.fadeIn(Icon.viewport, { seconds=1.0, delay=0.1 })
          end,
          activate = function(Icon)
             if Icon.effect then return end
-            Icon.effect = vfx.shake(Icon.viewport, 1.0, 0, 1.0, function(Effect)
-               Icon.effect = nil
-            end)
+            Icon.effect = vfx.shake(Icon.viewport, {
+               seconds = 1.0,
+               intensity = 1.0,
+               callback = function(Effect)
+                  Icon.effect = nil
+               end
+            })
 
             sndAlarm?.acActivate()
          end
@@ -369,15 +377,15 @@ end
       text   = 'Wilhelm\'s House',
       events = {
          show = function(Icon)
-            vfx.rotate(Icon.viewport, 0.8, 0)
-            vfx.zoomIn(Icon.viewport, 0.4, 0.3)
+            vfx.rotate(Icon.viewport, { seconds=0.8 })
+            vfx.zoomIn(Icon.viewport, { seconds=0.4, delay=0.3 })
          end,
          activate = function(Icon)
             if Icon.effect then return end
 
             Icon.effect = vfx.chain({
-               vfx.rotate(Icon.viewport, 0.8),
-               vfx.zoomOut(Icon.viewport, 0.8)
+               vfx.rotate(Icon.viewport, { seconds=0.8 }),
+               vfx.zoomOut(Icon.viewport, { seconds=0.8 })
             }, function()
                Icon.viewport.free()
                Icon.viewport = nil
