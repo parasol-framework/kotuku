@@ -332,15 +332,28 @@ end
    assert(err is ERR_Search, 'Invalid explicit zone should return ERR_Search, got: ' .. mSys.GetErrorMsg(err))
 end
 
-@Test function TimeZoneInfoInvalidYearRange()
+@Test function TimeZoneInfoYearRangeValidation()
    time_obj = obj.new('time')
 
-   err, info = time_obj.mtGetTimeZoneInfo('UTC', 0, 2025)
-   assert(err is ERR_OutOfRange, 'Zero StartYear should return ERR_OutOfRange, got: ' .. mSys.GetErrorMsg(err))
+   err, info = time_obj.mtGetTimeZoneInfo('UTC', 1601, 2000)
+   assert(err is ERR_Okay, 'Supported boundary range should be accepted: ' .. mSys.GetErrorMsg(err))
+   assert(info.startYear is 1601, 'Boundary start year was not preserved.')
+   assert(info.endYear is 2000, 'Boundary end year was not preserved.')
+
+   err, info = time_obj.mtGetTimeZoneInfo('UTC', 1600, 1601)
+   assert(err is ERR_OutOfRange,
+      'Year before supported range should return ERR_OutOfRange, got: ' .. mSys.GetErrorMsg(err))
+
+   err, info = time_obj.mtGetTimeZoneInfo('UTC', 9999, 10000)
+   assert(err is ERR_OutOfRange,
+      'Year after supported range should return ERR_OutOfRange, got: ' .. mSys.GetErrorMsg(err))
 
    err, info = time_obj.mtGetTimeZoneInfo('UTC', 2025, 2024)
+   assert(err is ERR_OutOfRange, 'Reversed year range should return ERR_OutOfRange, got: ' .. mSys.GetErrorMsg(err))
+
+   err, info = time_obj.mtGetTimeZoneInfo('UTC', 2024, 2424)
    assert(err is ERR_OutOfRange,
-      'EndYear before StartYear should return ERR_OutOfRange, got: ' .. mSys.GetErrorMsg(err))
+      'Year range wider than 400 years should return ERR_OutOfRange, got: ' .. mSys.GetErrorMsg(err))
 end
 
 ------------------------------------------------------------------------------------------------------------------------

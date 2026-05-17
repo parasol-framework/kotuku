@@ -48,6 +48,10 @@ static ERR tzi_free(APTR Address)
 
 static ResourceManager glTimeZoneHandler = { "TimeZoneInfo", &tzi_free };
 
+static constexpr int TIMEZONE_MIN_YEAR = 1601;
+static constexpr int TIMEZONE_MAX_YEAR = 9999;
+static constexpr int TIMEZONE_MAX_YEAR_SPAN = 400;
+
 //********************************************************************************************************************
 
 static int64_t utc_year_start_us(const int Year)
@@ -62,6 +66,14 @@ static bool is_utc_zone(std::string_view ZoneID)
 {
    return iequals(ZoneID, "UTC") or iequals(ZoneID, "Etc/UTC") or iequals(ZoneID, "Etc/GMT") or
       iequals(ZoneID, "GMT") or iequals(ZoneID, "Zulu");
+}
+
+//********************************************************************************************************************
+
+static bool valid_timezone_year_range(const int StartYear, const int EndYear)
+{
+   if ((StartYear < TIMEZONE_MIN_YEAR) or (EndYear > TIMEZONE_MAX_YEAR) or (EndYear < StartYear)) return false;
+   return (EndYear - StartYear) < TIMEZONE_MAX_YEAR_SPAN;
 }
 
 //********************************************************************************************************************
@@ -765,8 +777,8 @@ daylight-saving period.
 
 -INPUT-
 cstr ZoneID: Empty or NULL requests the local system zone.
-int StartYear: Inclusive first year.  Must be non-zero.
-int EndYear: Inclusive final year.  Must be >= StartYear.
+int StartYear: Inclusive first year.  Must be in the supported 1601-9999 range.
+int EndYear: Inclusive final year.  Must be >= StartYear, no later than 9999 and within 400 years of `StartYear`.
 !struct(*TimeZoneInfo) Info: Receives the allocated metadata and transition resource.  Release with ~Core.FreeResource() when no longer required.
 
 -ERRORS-
@@ -786,7 +798,7 @@ static ERR TIME_GetTimeZoneInfo(objTime *Self, struct pt::GetTimeZoneInfo *Args)
    kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
-   if ((Args->StartYear IS 0) or (Args->EndYear < Args->StartYear)) return log.warning(ERR::OutOfRange);
+   if (not valid_timezone_year_range(Args->StartYear, Args->EndYear)) return log.warning(ERR::OutOfRange);
 
    struct TimeZoneInfo *tz;
    if (AllocMemory(sizeof(struct TimeZoneInfo), MEM::DATA|MEM::MANAGED, (APTR *)&tz, nullptr) IS ERR::Okay) {
