@@ -1,0 +1,247 @@
+-- Flute tests for the datetime standard library.
+
+-- Keep this import after annotated function declarations.  Importing the new library before @Test currently makes the
+-- parser treat subsequent test annotations as runtime calls.
+
+   import 'datetime'
+
+function expect_error(MessagePart:str, Callback:func)
+   try
+      Callback()
+   except e
+      assert(tostring(e.message):find(MessagePart),
+         f"Expected error message to include '{MessagePart}', got '{tostring(e.message)}'")
+      return
+   end
+
+   error('Expected callback to fail')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function ImportExportsNamespace()
+   assert(type(datetime) is 'table', 'datetime namespace should be exported')
+   assert(type(datetime.instant) is 'table', 'datetime.instant constructor should be exported')
+   assert(type(datetime.localDate) is 'table', 'datetime.localDate constructor should be exported')
+   assert(type(datetime.duration) is 'table', 'datetime.duration constructor should be exported')
+   assert(type(datetime.clock) is 'table', 'datetime.clock namespace should be exported')
+   assert(type(datetime.resolve) is 'table', 'datetime.resolve namespace should be exported')
+   assert(type(datetime.instant.parse) is 'function', 'datetime.instant.parse should be exported')
+   assert(type(datetime.localDate.from) is 'function', 'datetime.localDate.from should be exported')
+   assert(type(datetime.offset.utc) is 'function', 'datetime.offset.utc should be exported')
+   assert(type(datetime.clock.system) is 'function', 'datetime.clock.system shell should be exported')
+   assert(type(datetime.now) is 'function', 'datetime.now shell should be exported')
+   assert(type(datetime.today) is 'function', 'datetime.today shell should be exported')
+end
+
+@Test function TypePredicates()
+   local instant = datetime.instant(0)
+   local date = datetime.localDate(2026, 5, 17)
+
+   assert(datetime.isInstant(instant), 'Instant predicate should match Instant values')
+   assert(not datetime.isLocalDate(instant), 'LocalDate predicate should reject Instant values')
+   assert(datetime.isLocalDate(date), 'LocalDate predicate should match LocalDate values')
+   assert(not datetime.isInstant({}), 'Predicates should reject ordinary tables')
+   assert(datetime.isResolver(datetime.resolve.reject), 'Resolver constants should be datetime values')
+end
+
+@Test function ProtectedMetatables()
+   local a = datetime.instant(0)
+   local b = datetime.instant(1)
+
+   assert(getmetatable(a) is 'datetime.Instant', 'Instant metatable should be protected')
+   assert(getmetatable(a) is getmetatable(b), 'Instant values should report the same protected metatable name')
+
+   expect_error('protect', function()
+      setmetatable(a, {})
+   end)
+end
+
+@Test function ValuesAreImmutable()
+   local instant = datetime.instant(0)
+
+   assert(instant:toUnixSeconds() is 0, 'Instant accessor should expose the stored second')
+
+   expect_error('immutable', function()
+      instant.epoch_second = 1
+   end)
+
+   expect_error('immutable', function()
+      instant.extra = true
+   end)
+end
+
+@Test function InstantConstructionParsingAndOrdering()
+   local instant = datetime.instant(1, -1)
+   assert(instant:toUnixSeconds() is 0, 'Negative nanos should normalise into the second field')
+   assert(instant:toUnixNanos() is 999999999, 'Instant nanos should preserve nanosecond precision')
+   assert(tostring(instant) is '1970-01-01T00:00:00.999999999Z', 'Instant string should format UTC')
+
+   local parsed = datetime.instant.parse('2026-05-17T10:30:45.123456789Z')
+   assert(tostring(parsed) is '2026-05-17T10:30:45.123456789Z', 'Instant parse/string round trip should work')
+   assert(datetime.instant.fromUnixMillis(-1) is datetime.instant(-1, 999000000),
+      'Negative Unix milliseconds should normalise correctly')
+   assert(datetime.instant.fromUnixNanos(1000000001) is datetime.instant(1, 1),
+      'Unix nanosecond construction should split seconds and nanos')
+   assert(datetime.instant(0) < datetime.instant(0, 1), 'Instant ordering should compare nanos')
+   assert(datetime.instant(1) > datetime.instant(0, 999999999), 'Instant ordering should compare seconds')
+end
+
+@Test function LocalDateConstructionCalendarAndOrdering()
+   local date = datetime.localDate.from { year = 2026, month = 5, day = 17 }
+
+   assert(date:year() is 2026 and date:month() is 5 and date:day() is 17, 'Date accessors should work')
+   assert(tostring(date) is '2026-05-17', 'LocalDate should format as ISO date')
+   assert(date:dayOfWeek() is 7, '2026-05-17 should be ISO Sunday')
+   assert(date:dayOfYear() is 137, '2026-05-17 should be day 137 of the year')
+   assert(date:daysInMonth() is 31, 'May should have 31 days')
+   assert(date:daysInYear() is 365, '2026 should not be a leap year')
+   assert(datetime.localDate(2024, 2, 29):isLeapYear(), '2024 should be a leap year')
+   assert(datetime.localDate(2000, 2, 29):daysInYear() is 366, 'Years divisible by 400 should leap')
+   assert(datetime.localDate(1970, 1, 1):dayOfWeek() is 4, 'Unix epoch date should be Thursday')
+   assert(datetime.localDate(2026, 5, 16) < date, 'LocalDate ordering should compare dates')
+   assert(datetime.localDate.parse('2026-05-17') is date, 'LocalDate parse should produce equal values')
+end
+
+@Test function LocalDateValidation()
+   expect_error('Invalid day', function()
+      datetime.localDate(2023, 2, 29)
+   end)
+
+   expect_error('Invalid day', function()
+      datetime.localDate(1900, 2, 29)
+   end)
+
+   expect_error('Invalid month', function()
+      datetime.localDate(2026, 13, 1)
+   end)
+
+   expect_error('Invalid LocalDate string', function()
+      datetime.localDate.parse('2026-2-17')
+   end)
+end
+
+@Test function LocalTimeConstructionParsingAndOrdering()
+   local time = datetime.localTime.from { hour = 10, minute = 30, second = 45, nano = 123000000 }
+
+   assert(time:hour() is 10 and time:minute() is 30 and time:second() is 45, 'Time accessors should work')
+   assert(time:nano() is 123000000, 'Time nano accessor should work')
+   assert(tostring(time) is '10:30:45.123', 'LocalTime should trim trailing fractional zeroes')
+   assert(datetime.localTime.parse('10:30') is datetime.localTime(10, 30), 'HH:MM parse should default seconds')
+   assert(datetime.localTime.parse('10:30:45.123') is time, 'LocalTime parse/string round trip should work')
+   assert(datetime.localTime(10, 30, 44) < time, 'LocalTime ordering should compare seconds')
+   assert(datetime.localTime(10, 30, 45, 122999999) < time, 'LocalTime ordering should compare nanos')
+end
+
+@Test function LocalTimeValidation()
+   expect_error('Invalid hour', function()
+      datetime.localTime(24, 0)
+   end)
+
+   expect_error('Invalid minute', function()
+      datetime.localTime(23, 60)
+   end)
+
+   expect_error('Invalid LocalTime string', function()
+      datetime.localTime.parse('10:30:45.1234567890')
+   end)
+end
+
+@Test function LocalDateTimeConstructionParsingAndWith()
+   local local_date_time = datetime.localDateTime(2026, 5, 17, 10, 30, 45, 123000000)
+
+   assert(tostring(local_date_time) is '2026-05-17T10:30:45.123', 'LocalDateTime string should combine date and time')
+   assert(local_date_time:date() is datetime.localDate(2026, 5, 17), 'LocalDateTime date accessor should work')
+   assert(local_date_time:time() is datetime.localTime(10, 30, 45, 123000000),
+      'LocalDateTime time accessor should work')
+   assert(datetime.localDateTime.parse('2026-05-17T10:30:45.123') is local_date_time,
+      'LocalDateTime parse should round trip')
+   assert(datetime.localDateTime.from {
+      year = 2026,
+      month = 5,
+      day = 17,
+      hour = 10,
+      minute = 30,
+      second = 45,
+      nano = 123000000
+   } is local_date_time, 'LocalDateTime property-table construction should match positional construction')
+
+   local changed = local_date_time:with({ month = 6, day = 1, hour = 9 })
+   assert(tostring(changed) is '2026-06-01T09:30:45.123', 'LocalDateTime with() should copy modified fields')
+   assert(local_date_time < changed, 'LocalDateTime ordering should compare date then time')
+end
+
+@Test function OffsetConstructionParsingAndOrdering()
+   local utc = datetime.offset.utc()
+   local plus = datetime.offset.parse('+05:30')
+   local minus = datetime.offset(-3600)
+
+   assert(tostring(utc) is 'Z', 'UTC offset should format as Z')
+   assert(plus:totalSeconds() is 19800, 'Positive offset seconds should be east of UTC')
+   assert(tostring(plus) is '+05:30', 'Positive offset should format with sign')
+   assert(tostring(minus) is '-01:00', 'Negative offset should format with sign')
+   assert(-minus is datetime.offset.hours(1), 'Unary offset negation should work')
+   assert(datetime.offset.parse('Z') is utc, 'Z should parse as UTC')
+   assert(datetime.offset(-64800) < utc and utc < datetime.offset(64800), 'Offset ordering should work')
+end
+
+@Test function OffsetValidation()
+   datetime.offset(64800)
+   datetime.offset(-64800)
+
+   expect_error('Offset must be in the range', function()
+      datetime.offset(64801)
+   end)
+
+   expect_error('Offset must be in the range', function()
+      datetime.offset(-64801)
+   end)
+
+   expect_error('Offset must be in the range', function()
+      datetime.offset.parse('+18:01')
+   end)
+end
+
+@Test function DurationConstructionParsingAndOrdering()
+   local duration = datetime.duration { hours = 1, minutes = 30, seconds = 5, millis = 250 }
+
+   assert(duration:totalSeconds() is 5405.25, 'Duration total seconds should include fractional nanos')
+   assert(duration:totalMillis() is 5405250, 'Duration total millis should include nanos')
+   assert(tostring(duration) is 'PT1H30M5.25S', 'Duration string should include time components')
+   assert(datetime.duration.seconds(5) is datetime.duration { seconds = 5 }, 'Duration seconds helper should work')
+   assert(datetime.duration.millis(-1) is datetime.duration { seconds = -1, millis = 999 },
+      'Negative duration millis should normalise')
+   assert(datetime.duration.nanos(1000000001) is datetime.duration { seconds = 1, nanos = 1 },
+      'Duration nanos helper should split seconds and nanos')
+   assert(datetime.duration.parse('PT1H30M5.25S') is duration, 'Duration parse should round trip')
+   assert(datetime.duration.parse('-PT0.5S'):totalSeconds() is -0.5, 'Negative fractional durations should parse')
+   assert(datetime.duration { seconds = 1 } < datetime.duration { seconds = 1, nanos = 1 },
+      'Duration ordering should compare nanos')
+
+   expect_error('Invalid Duration string', function()
+      datetime.duration.parse('-PT')
+   end)
+end
+
+@Test function WithMethodsAndImmutability()
+   local date = datetime.localDate(2026, 5, 17)
+   local time = datetime.localTime(10, 30)
+
+   assert(tostring(date:with({ month = 6 })) is '2026-06-17', 'LocalDate with() should copy fields')
+   assert(tostring(time:with({ second = 15 })) is '10:30:15', 'LocalTime with() should copy fields')
+   assert(tostring(date:atTime(time)) is '2026-05-17T10:30:00', 'LocalDate atTime() should create LocalDateTime')
+
+   expect_error('immutable', function()
+      date.year = 2027
+   end)
+end
+
+@Test function FutureStageShellErrorsRemainClear()
+   expect_error('datetime.zone is not implemented yet', function()
+      datetime.zone('UTC')
+   end)
+
+   expect_error("Unknown datetime value type 'Missing'", function()
+      datetime._makeValue('Missing', {})
+   end)
+end
