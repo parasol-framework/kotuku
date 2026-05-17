@@ -291,12 +291,11 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
             ins = BCINS_ABC(BC_TGETS, 0, e->u.s.info, idx);
          }
          else {
-            // Overflow: load string constant into temp register, use TGETV
-            BCREG key_reg = fs->freereg;
-            bcreg_reserve(fs, 1);
-            bcemit_AD(fs, BC_KSTR, key_reg, BCREG(idx));
-            bcreg_free(fs, key_reg);
-            ins = BCINS_ABC(BC_TGETV, 0, e->u.s.info, key_reg);
+            BCREG table_reg = e->u.s.info;
+            e->u.s.info = bcemit_tgets(fs, 0, table_reg, BCREG(idx));
+            bcreg_free(fs, table_reg);
+            e->k = ExpKind::Relocable;
+            return;
          }
       }
       else if (rc > BCMAX_C) ins = BCINS_ABC(BC_TGETB, 0, e->u.s.info, rc - (BCMAX_C + 1));
@@ -333,7 +332,10 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
       BCREG rc = e->u.s.aux;
       fs_check_assert(fs, int32_t(rc) < 0, "object field index must be string constant");
       BCREG idx = (BCREG)~rc;
-      fs_check_assert(fs, idx <= BCMAX_C, "object field string constant index out of range");
+      if (idx > BCMAX_C) {
+         err_limit(fs, BCMAX_C + 1, "object field string constants");
+         return;
+      }
       ins = BCINS_ABCP(BC_OBGETF, 0, e->u.s.info, idx, 0xFFFFFFFFu);
       bcreg_free(fs, e->u.s.info);
    }
@@ -668,7 +670,12 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
       ra = expr_toanyreg(fs, RHS);
       rc = LHS->u.s.aux;
       fs_check_assert(fs, int32_t(rc) < 0, "object field index must be string constant");
-      ins = BCINS_ABCP(BC_OBSETF, ra, LHS->u.s.info, (~rc) & 0xFFu, 0xFFFFFFFFu);
+      BCREG idx = (BCREG)~rc;
+      if (idx > BCMAX_C) {
+         err_limit(fs, BCMAX_C + 1, "object field string constants");
+         return;
+      }
+      ins = BCINS_ABCP(BC_OBSETF, ra, LHS->u.s.info, idx, 0xFFFFFFFFu);
    }
    else {
       // Table index assignment - emit BC_TSETV, BC_TSETB, or BC_TSETS
@@ -679,24 +686,9 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS)
       if (int32_t(rc) < 0) {
          /* String constant key: rc encodes the index as ~index. */
          int32_t stridx = ~int32_t(rc);
-         if (stridx <= BCMAX_C) {
-            ins = BCINS_ABC(BC_TSETS, ra, LHS->u.s.info, BCREG(stridx));
-         } else {
-            /* Overflow-safe path: load string constant into a register and use TSETV. */
-            BCREG key_reg = fs->freereg;
-            bcreg_reserve(fs, 1);
-            bcemit_AD(fs, BC_KSTR, key_reg, BCREG(stridx));
-            ins = BCINS_ABC(BC_TSETV, ra, LHS->u.s.info, key_reg);
-#ifdef LUA_USE_ASSERT
-            /* Free late alloced key reg to avoid assert on free of value reg. */
-            /* This can only happen when called from expr_table(). */
-            if (RHS->k IS ExpKind::NonReloc and ra >= fs->varmap.size() and rc >= ra) bcreg_free(fs, rc);
-#endif
-            bcemit_INS(fs, ins);
-            bcreg_free(fs, key_reg);
-            expr_free(fs, RHS);
-            return;
-         }
+         bcemit_tsets(fs, ra, LHS->u.s.info, BCREG(stridx));
+         expr_free(fs, RHS);
+         return;
       } else if (rc > BCMAX_C) {
          ins = BCINS_ABC(BC_TSETB, ra, LHS->u.s.info, rc - (BCMAX_C + 1));
       } else {
@@ -723,6 +715,10 @@ static void bcemit_method(FuncState *fs, ExpDesc *e, ExpDesc *key)
    bcemit_AD(fs, BC_MOV, func + 1 + LJ_FR2, obj);  // Copy object to 1st argument.
    fs_check_assert(fs, key->is_str_constant(), "bad usage");
    idx = const_str(fs, key);
+   if (idx > BCMAX_D) {
+      err_limit(fs, BCMAX_D + 1, "constants");
+      return;
+   }
    if (idx <= BCMAX_C) {
       bcreg_reserve(fs, 2 + LJ_FR2);
       bcemit_ABC(fs, BC_TGETS, func, obj, idx);

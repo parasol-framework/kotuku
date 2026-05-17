@@ -731,10 +731,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, 
       }
    }
 
-   // Save base register and allocate space for the call
+   // Save base register and allocate space for the call.  The callee lookup can need temporary registers when string
+   // constants exceed the short TGETS range, so the full frame must be reserved before those lookups run.
    // With LJ_FR2=1, layout is: [base]=func, [base+1]=frame, [base+2]=arg1, [base+3]=arg2, ...
    // So args start at base + 1 + LJ_FR2 = base + 2
    BCREG base_raw = fs->freereg;
+   bcreg_reserve(fs, 5 + LJ_FR2);
 
    // Helper to get constant string index
    auto str_const = [fs](GCstr* s) -> BCREG {
@@ -770,6 +772,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, 
    // Emit call: debug.anno.set(func, annostr, source, name)
    // BC_CALL A=base, B=2 (expect 1 result for discard), C=5 (4 args + 1)
    bcemit_ABC(fs, BC_CALL, base_raw, 2, 5);
+   fs->freereg = base_raw;
 
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
