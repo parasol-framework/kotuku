@@ -277,7 +277,7 @@ void destroy_struct_cpp_strings(const struct_record &StructDef, APTR Address)
          else { // It's an embedded array of fixed size.
             if (type & FD_STRUCT) {
                if (glStructs.contains(std::string_view(field.StructRef))) {
-                  make_any_array(Lua, type, field.StructRef, field.ArraySize, address);
+                  make_struct_array(Lua, field.StructRef, field.ArraySize, address);
                }
                else lua_pushnil(Lua);
             }
@@ -777,7 +777,7 @@ static int struct_get(lua_State *Lua)
                   auto vector = (kt::vector<int> *)(address);
                   make_any_array(Lua, field.Type, field.StructRef, vector->size(), vector->data());
                }
-               else make_any_array(Lua, field.Type, field.StructRef, array_size, address);
+               else make_struct_array(Lua, field.StructRef, array_size, address);
             }
             else if (field.Type & FD_STRUCT) { // Embedded structure
                push_struct(Lua->script, address, field.StructRef, false, false);
