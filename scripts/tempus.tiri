@@ -51,32 +51,6 @@ rx_period <const> = regex.new([[^([+\-])?P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function tempus._error(Code:num, Message:str)
-   raise Code, Message
-end
-
-function tempus._invalidValue(Message:str)
-   tempus._error(ERR_InvalidValue, Message)
-end
-
-function tempus._syntaxError(Message:str)
-   tempus._error(ERR_Syntax, Message)
-end
-
-function tempus._unknownZone(Message:str)
-   tempus._error(ERR_Search, Message)
-end
-
-function tempus._outOfRange(Message:str)
-   tempus._error(ERR_OutOfRange, Message)
-end
-
-function tempus._notReady(Name:str)
-   tempus._error(ERR_NotInitialised, f"tempus.{Name} is not implemented yet.")
-end
-
-----------------------------------------------------------------------------------------------------------------------
-
 function type_symbol(TypeName:str):str
    return f'tempus.{TypeName}'
 end
@@ -96,7 +70,7 @@ function require_type_name(TypeName:str)
       if TypeName is name then return end
    end
 
-   tempus._invalidValue(f"Unknown tempus value type '{TypeName}'.")
+   raise ERR_InvalidValue, f"Unknown tempus value type '{TypeName}'."
 end
 
 function tempus._typeOf(Value:any):any
@@ -113,7 +87,7 @@ end
 
 function tempus._fields(Value:any, TypeName:str):table
    if not tempus._isValue(Value, TypeName) then
-      tempus._invalidValue(f"Expected tempus.{TypeName} value.")
+      raise ERR_InvalidValue, f"Expected tempus.{TypeName} value."
    end
 
    return value_storage[Value].fields
@@ -154,7 +128,7 @@ end
 
 function tempus._requireNumber(Name:str, Value:any):num
    if type(Value) != 'number' then
-      tempus._invalidValue(f"{Name} must be a number.")
+      raise ERR_InvalidValue, f"{Name} must be a number."
    end
    return Value
 end
@@ -162,14 +136,14 @@ end
 function tempus._requireInteger(Name:str, Value:any):num
    tempus._requireNumber(Name, Value)
    if Value % 1 != 0 then
-      tempus._invalidValue(f"{Name} must be an integer.")
+      raise ERR_InvalidValue, f"{Name} must be an integer."
    end
    return Value
 end
 
 function tempus._requireTable(Name:str, Value:any):table
    if type(Value) != 'table' then
-      tempus._invalidValue(f"{Name} must be a table.")
+      raise ERR_InvalidValue, f"{Name} must be a table."
    end
    return Value
 end
@@ -295,47 +269,47 @@ function normalise_second_nano(Seconds:any, Nano:any):<num, num>
 end
 
 function require_duration(Value:any):table
-   if not tempus.isDuration(Value) then tempus._invalidValue('Expected tempus.Duration value.') end
+   if not tempus.isDuration(Value) then raise ERR_InvalidValue, 'Expected tempus.Duration value.' end
    return tempus._fields(Value, 'Duration')
 end
 
 function require_offset(Value:any):table
-   if not tempus.isOffset(Value) then tempus._invalidValue('Expected tempus.Offset value.') end
+   if not tempus.isOffset(Value) then raise ERR_InvalidValue, 'Expected tempus.Offset value.' end
    return tempus._fields(Value, 'Offset')
 end
 
 function require_local_date_time(Value:any):table
-   if not tempus.isLocalDateTime(Value) then tempus._invalidValue('Expected tempus.LocalDateTime value.') end
+   if not tempus.isLocalDateTime(Value) then raise ERR_InvalidValue, 'Expected tempus.LocalDateTime value.' end
    return tempus._fields(Value, 'LocalDateTime')
 end
 
 function require_offset_date_time(Value:any):table
-   if not tempus.isOffsetDateTime(Value) then tempus._invalidValue('Expected tempus.OffsetDateTime value.') end
+   if not tempus.isOffsetDateTime(Value) then raise ERR_InvalidValue, 'Expected tempus.OffsetDateTime value.' end
    return tempus._fields(Value, 'OffsetDateTime')
 end
 
 function require_instant(Value:any):table
-   if not tempus.isInstant(Value) then tempus._invalidValue('Expected tempus.Instant value.') end
+   if not tempus.isInstant(Value) then raise ERR_InvalidValue, 'Expected tempus.Instant value.' end
    return tempus._fields(Value, 'Instant')
 end
 
 function require_zone(Value:any):table
-   if not tempus.isZone(Value) then tempus._invalidValue('Expected tempus.Zone value.') end
+   if not tempus.isZone(Value) then raise ERR_InvalidValue, 'Expected tempus.Zone value.' end
    return tempus._fields(Value, 'Zone')
 end
 
 function require_clock(Value:any):table
-   if not tempus.isClock(Value) then tempus._invalidValue('Expected tempus.Clock value.') end
+   if not tempus.isClock(Value) then raise ERR_InvalidValue, 'Expected tempus.Clock value.' end
    return tempus._fields(Value, 'Clock')
 end
 
 function require_resolver(Value:any):table
-   if not tempus.isResolver(Value) then tempus._invalidValue('Expected tempus.Resolver value.') end
+   if not tempus.isResolver(Value) then raise ERR_InvalidValue, 'Expected tempus.Resolver value.' end
    return tempus._fields(Value, 'Resolver')
 end
 
 function require_zoned_date_time(Value:any):table
-   if not tempus.isZonedDateTime(Value) then tempus._invalidValue('Expected tempus.ZonedDateTime value.') end
+   if not tempus.isZonedDateTime(Value) then raise ERR_InvalidValue, 'Expected tempus.ZonedDateTime value.' end
    return tempus._fields(Value, 'ZonedDateTime')
 end
 
@@ -348,7 +322,7 @@ end
 function require_format_value(Values:table, Key:str, Token:str):any
    local value = Values[Key]
    if value is nil then
-      tempus._invalidValue(f"Format token '{Token}' is not available for tempus.{Values.type_name}.")
+      raise ERR_InvalidValue, f"Format token '{Token}' is not available for tempus.{Values.type_name}."
    end
    return value
 end
@@ -372,7 +346,7 @@ function is_format_token_start(Text:str):bool
 end
 
 function format_temporal(Pattern:any, Values:table):str
-   if type(Pattern) != 'string' then tempus._invalidValue('Format pattern must be a string.') end
+   if type(Pattern) != 'string' then raise ERR_InvalidValue, 'Format pattern must be a string.' end
 
    local result = ''
    local index = 0
@@ -423,11 +397,11 @@ function format_temporal(Pattern:any, Values:table):str
             result ..= literal
             index++
          end
-         if not closed then tempus._syntaxError('Unterminated tempus format literal.') end
+         if not closed then raise ERR_Syntax, 'Unterminated tempus format literal.' end
       else
          local text = Pattern:substr(index, index + 1)
          if is_format_token_start(text) then
-            tempus._syntaxError(f"Unsupported tempus format token '{text}'.")
+            raise ERR_Syntax, f"Unsupported tempus format token '{text}'."
          end
          result ..= text
          index++
@@ -462,7 +436,7 @@ end
 function unsupported_operation(Left:any, Operator:str, Right:any)
    local left_type = tempus._typeOf(Left) ?? type(Left)
    local right_type = tempus._typeOf(Right) ?? type(Right)
-   tempus._invalidValue(f"Unsupported tempus operation: {left_type} {Operator} {right_type}.")
+   raise ERR_InvalidValue, f"Unsupported tempus operation: {left_type} {Operator} {right_type}."
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -484,12 +458,12 @@ function validate_date(Year:any, Month:any, Day:any)
    Day = tempus._requireInteger('day', Day)
 
    if Month < 1 or Month > 12 then
-      tempus._invalidValue(f"Invalid month {Month}.")
+      raise ERR_InvalidValue, f"Invalid month {Month}."
    end
 
    local max_day = days_in_month(Year, Month)
    if Day < 1 or Day > max_day then
-      tempus._invalidValue(f"Invalid day {Day} for {format_year(Year)}-{pad_int(Month, 2)}.")
+      raise ERR_InvalidValue, f"Invalid day {Day} for {format_year(Year)}-{pad_int(Month, 2)}."
    end
 end
 
@@ -499,10 +473,10 @@ function validate_time(Hour:any, Minute:any, Second:any, Nano:any)
    Second = tempus._requireInteger('second', Second)
    Nano = tempus._requireInteger('nano', Nano)
 
-   if Hour < 0 or Hour > 23 then tempus._invalidValue(f"Invalid hour {Hour}.") end
-   if Minute < 0 or Minute > 59 then tempus._invalidValue(f"Invalid minute {Minute}.") end
-   if Second < 0 or Second > 59 then tempus._invalidValue(f"Invalid second {Second}.") end
-   if Nano < 0 or Nano >= NANOS_PER_SECOND then tempus._invalidValue(f"Invalid nano {Nano}.") end
+   if Hour < 0 or Hour > 23 then raise ERR_InvalidValue, f"Invalid hour {Hour}." end
+   if Minute < 0 or Minute > 59 then raise ERR_InvalidValue, f"Invalid minute {Minute}." end
+   if Second < 0 or Second > 59 then raise ERR_InvalidValue, f"Invalid second {Second}." end
+   if Nano < 0 or Nano >= NANOS_PER_SECOND then raise ERR_InvalidValue, f"Invalid nano {Nano}." end
 end
 
 function days_from_civil(Year:num, Month:num, Day:num):num
@@ -609,7 +583,7 @@ end
 function make_constructor(Name:str):table
    return setmetatable({}, {
       __call = function(Self, ...)
-         tempus._notReady(Name)
+         raise ERR_NotInitialised, f"tempus.{Name} is not implemented yet."
       end
    })
 end
@@ -642,14 +616,14 @@ end
 function new_interval(Start:any, Stop:any):table
    require_instant(Start)
    require_instant(Stop)
-   if Stop < Start then tempus._invalidValue('Interval stop must be greater than or equal to start.') end
+   if Stop < Start then raise ERR_InvalidValue, 'Interval stop must be greater than or equal to start.' end
    return tempus._makeValue('Interval', { start = Start, stop = Stop })
 end
 
 function new_offset(Seconds:any):table
    local seconds = tempus._requireInteger('seconds', Seconds)
    if seconds < MIN_OFFSET_SECONDS or seconds > MAX_OFFSET_SECONDS then
-      tempus._invalidValue('Offset must be in the range -18:00 through +18:00.')
+      raise ERR_InvalidValue, 'Offset must be in the range -18:00 through +18:00.'
    end
    return tempus._makeValue('Offset', { seconds = seconds })
 end
@@ -672,7 +646,7 @@ end
 
 function check_zone_year_range(StartYear:num, EndYear:num)
    if StartYear < MIN_ZONE_YEAR or EndYear > MAX_ZONE_YEAR or EndYear < StartYear then
-      tempus._outOfRange(f"Time zone year range {StartYear}-{EndYear} is outside the supported range.")
+      raise ERR_OutOfRange, f"Time zone year range {StartYear}-{EndYear} is outside the supported range."
    end
 end
 
@@ -726,15 +700,15 @@ function get_time_zone_info(ZoneID:any, StartYear:any, EndYear:any):table
    end
 
    local display_id = ZoneID ?? 'local'
-   if err is ERR_Search then tempus._unknownZone(f"Unknown time zone '{display_id}'.") end
+   if err is ERR_Search then raise ERR_Search, f"Unknown time zone '{display_id}'." end
    if err is ERR_OutOfRange then
-      tempus._outOfRange(f"Time zone year range {start_year}-{end_year} is outside the supported range.")
+      raise ERR_OutOfRange, f"Time zone year range {start_year}-{end_year} is outside the supported range."
    end
-   tempus._error(err, f"Time zone query failed for '{display_id}'.")
+   raise err, f"Time zone query failed for '{display_id}'."
 end
 
 function new_zone(ZoneID:any):table
-   if ZoneID != nil and type(ZoneID) != 'string' then tempus._invalidValue('Zone ID must be a string.') end
+   if ZoneID != nil and type(ZoneID) != 'string' then raise ERR_InvalidValue, 'Zone ID must be a string.' end
 
    local info = get_time_zone_info(ZoneID, ZONE_PROBE_YEAR, ZONE_PROBE_YEAR)
    return tempus._makeValue('Zone', {
@@ -749,7 +723,7 @@ end
 function zone_info_for_instant(ZoneFields:table, Instant:table, PreviousYears:num, NextYears:num):table
    local year = instant_utc_year(Instant)
    if year < MIN_ZONE_YEAR or year > MAX_ZONE_YEAR then
-      tempus._outOfRange(f"Instant year {year} is outside the supported time-zone range.")
+      raise ERR_OutOfRange, f"Instant year {year} is outside the supported time-zone range."
    end
 
    local start_year = math.max(MIN_ZONE_YEAR, year - PreviousYears)
@@ -761,7 +735,7 @@ function zone_info_for_local_date_time(ZoneFields:table, LocalDateTime:table):ta
    local local_fields = require_local_date_time(LocalDateTime)
    local date_fields = tempus._fields(local_fields.date, 'LocalDate')
    if date_fields.year < MIN_ZONE_YEAR or date_fields.year > MAX_ZONE_YEAR then
-      tempus._outOfRange(f"Local date-time year {date_fields.year} is outside the supported time-zone range.")
+      raise ERR_OutOfRange, f"Local date-time year {date_fields.year} is outside the supported time-zone range."
    end
 
    local start_year = math.max(MIN_ZONE_YEAR, date_fields.year - 1)
@@ -816,7 +790,7 @@ function resolver_name(Resolver:any):str
 end
 
 function rejected_local_time(LocalDateTime:table, Zone:table, Reason:str)
-   tempus._error(ERR_LimitedSuccess, f"Local date-time {LocalDateTime} {Reason} in time zone {Zone:id()}.")
+   raise ERR_LimitedSuccess, f"Local date-time {LocalDateTime} {Reason} in time zone {Zone:id()}."
 end
 
 function resolve_transition_local_date_time(LocalDateTime:table, Zone:table, Info:table, TargetSeconds:num,
@@ -909,8 +883,8 @@ function new_local_time(Hour:any, Minute:any, Second:any, Nano:any):table
 end
 
 function new_local_date_time_from_parts(Date:any, Time:any):table
-   if not tempus.isLocalDate(Date) then tempus._invalidValue('date must be a LocalDate value.') end
-   if not tempus.isLocalTime(Time) then tempus._invalidValue('time must be a LocalTime value.') end
+   if not tempus.isLocalDate(Date) then raise ERR_InvalidValue, 'date must be a LocalDate value.' end
+   if not tempus.isLocalTime(Time) then raise ERR_InvalidValue, 'time must be a LocalTime value.' end
    return tempus._makeValue('LocalDateTime', { date = Date, time = Time })
 end
 
@@ -954,28 +928,28 @@ function offset_date_time_from_instant(Instant:table, Offset:table):table
 end
 
 function parse_date_text(Text:any):<num, num, num>
-   if type(Text) != 'string' then tempus._syntaxError('LocalDate text must be a string.') end
+   if type(Text) != 'string' then raise ERR_Syntax, 'LocalDate text must be a string.' end
 
    year_text, month_text, day_text = rx_date.extract(Text)
-   if year_text is nil then tempus._syntaxError(f"Invalid LocalDate string '{Text}'.") end
+   if year_text is nil then raise ERR_Syntax, f"Invalid LocalDate string '{Text}'." end
 
    return tonumber(year_text), tonumber(month_text), tonumber(day_text)
 end
 
 function parse_time_text(Text:any):<num, num, num, num>
-   if type(Text) != 'string' then tempus._syntaxError('LocalTime text must be a string.') end
+   if type(Text) != 'string' then raise ERR_Syntax, 'LocalTime text must be a string.' end
 
    hour_text, minute_text, second_text, fraction_text = rx_time.extract(Text)
-   if hour_text is nil then tempus._syntaxError(f"Invalid LocalTime string '{Text}'.") end
+   if hour_text is nil then raise ERR_Syntax, f"Invalid LocalTime string '{Text}'." end
 
    return tonumber(hour_text), tonumber(minute_text), tonumber(second_text ?? '0'), normalise_fraction(fraction_text)
 end
 
 function parse_local_date_time_text(Text:any):<table, table>
-   if type(Text) != 'string' then tempus._syntaxError('LocalDateTime text must be a string.') end
+   if type(Text) != 'string' then raise ERR_Syntax, 'LocalDateTime text must be a string.' end
 
    date_text, time_text = rx_local_date_time.extract(Text)
-   if date_text is nil then tempus._syntaxError(f"Invalid LocalDateTime string '{Text}'.") end
+   if date_text is nil then raise ERR_Syntax, f"Invalid LocalDateTime string '{Text}'." end
 
    return tempus.localDate.parse(date_text), tempus.localTime.parse(time_text)
 end
@@ -1023,7 +997,7 @@ end
 ]])
 tempus.instant.parse = function(Text:str):table
    date_text, time_text = rx_instant.extract(Text)
-   if date_text is nil then tempus._syntaxError(f"Invalid Instant string '{Text}'.") end
+   if date_text is nil then raise ERR_Syntax, f"Invalid Instant string '{Text}'." end
 
    local date = tempus.localDate.parse(date_text)
    local time = tempus.localTime.parse(time_text)
@@ -1082,12 +1056,12 @@ end
 @result Duration value
 ]])
 tempus.duration.parse = function(Text:str):table
-   if type(Text) != 'string' then tempus._syntaxError('Duration text must be a string.') end
+   if type(Text) != 'string' then raise ERR_Syntax, 'Duration text must be a string.' end
 
    sign_text, hours_text, minutes_text, seconds_text, fraction_text = rx_duration.extract(Text)
    if (hours_text is nil or hours_text is '') and (minutes_text is nil or minutes_text is '') and
       (seconds_text is nil or seconds_text is '') then
-      tempus._syntaxError(f"Invalid Duration string '{Text}'.")
+      raise ERR_Syntax, f"Invalid Duration string '{Text}'."
    end
 
    seconds = (tonumber(hours_text ?? '0') * 3600) + (tonumber(minutes_text ?? '0') * 60) +
@@ -1132,15 +1106,15 @@ end
 @result Offset value
 ]])
 tempus.offset.parse = function(Text:str):table
-   if type(Text) != 'string' then tempus._syntaxError('Offset text must be a string.') end
+   if type(Text) != 'string' then raise ERR_Syntax, 'Offset text must be a string.' end
 
    full_text, sign_text, hour_text, minute_text = rx_offset.extract(Text)
-   if full_text is nil then tempus._syntaxError(f"Invalid Offset string '{Text}'.") end
+   if full_text is nil then raise ERR_Syntax, f"Invalid Offset string '{Text}'." end
    if full_text is 'Z' then return new_offset(0) end
 
    hour = tonumber(hour_text)
    minute = tonumber(minute_text)
-   if minute > 59 then tempus._syntaxError(f"Invalid Offset string '{Text}'.") end
+   if minute > 59 then raise ERR_Syntax, f"Invalid Offset string '{Text}'." end
 
    seconds = hour * 3600 + minute * 60
    if sign_text is '-' then seconds = -seconds end
@@ -1286,10 +1260,10 @@ end
 @result OffsetDateTime value
 ]])
 tempus.offsetDateTime.parse = function(Text:str):table
-   if type(Text) != 'string' then tempus._syntaxError('OffsetDateTime text must be a string.') end
+   if type(Text) != 'string' then raise ERR_Syntax, 'OffsetDateTime text must be a string.' end
 
    local_text, offset_text = rx_offset_date_time.extract(Text)
-   if local_text is nil then tempus._syntaxError(f"Invalid OffsetDateTime string '{Text}'.") end
+   if local_text is nil then raise ERR_Syntax, f"Invalid OffsetDateTime string '{Text}'." end
 
    return new_offset_date_time(tempus.localDateTime.parse(local_text), tempus.offset.parse(offset_text))
 end
@@ -1347,12 +1321,12 @@ end
 @result Period value
 ]])
 tempus.period.parse = function(Text:str):table
-   if type(Text) != 'string' then tempus._syntaxError('Period text must be a string.') end
+   if type(Text) != 'string' then raise ERR_Syntax, 'Period text must be a string.' end
 
    sign_text, years_text, months_text, weeks_text, days_text = rx_period.extract(Text)
    if (years_text is nil or years_text is '') and (months_text is nil or months_text is '') and
       (weeks_text is nil or weeks_text is '') and (days_text is nil or days_text is '') then
-      tempus._syntaxError(f"Invalid Period string '{Text}'.")
+      raise ERR_Syntax, f"Invalid Period string '{Text}'."
    end
 
    sign = sign_text is '-' ? -1 :> 1
@@ -1521,7 +1495,7 @@ end
 @result Duration value
 ]])
 function tempus.mtInstant:durationUntil(Other:table):table
-   if not tempus.isInstant(Other) then tempus._invalidValue('Other must be an Instant value.') end
+   if not tempus.isInstant(Other) then raise ERR_InvalidValue, 'Other must be an Instant value.' end
    return Other - self
 end
 
@@ -1811,7 +1785,7 @@ end
 @result LocalDateTime value
 ]])
 function tempus.mtLocalDate:atTime(Time:table):table
-   if not tempus.isLocalTime(Time) then tempus._invalidValue('Time must be a LocalTime value.') end
+   if not tempus.isLocalTime(Time) then raise ERR_InvalidValue, 'Time must be a LocalTime value.' end
    return new_local_date_time_from_parts(self, Time)
 end
 
@@ -2248,7 +2222,7 @@ end
 function tempus.mtOffsetDateTime:instantEquals(Other:table):bool
    if tempus.isInstant(Other) then return self:instant() is Other end
    if tempus.isOffsetDateTime(Other) then return self:instant() is Other:instant() end
-   tempus._invalidValue('Other must be an Instant or OffsetDateTime value.')
+   raise ERR_InvalidValue, 'Other must be an Instant or OffsetDateTime value.'
 end
 
 @Doc(text=[[
@@ -2436,7 +2410,7 @@ function tempus.mtZonedDateTime:instantEquals(Other:table):bool
    if tempus.isInstant(Other) then return fields.instant is Other end
    if tempus.isOffsetDateTime(Other) then return fields.instant is Other:instant() end
    if tempus.isZonedDateTime(Other) then return fields.instant is Other:instant() end
-   tempus._invalidValue('Other must be an Instant, OffsetDateTime, or ZonedDateTime value.')
+   raise ERR_InvalidValue, 'Other must be an Instant, OffsetDateTime, or ZonedDateTime value.'
 end
 
 @Doc(text=[[
@@ -2616,7 +2590,7 @@ end
 @result True when contained
 ]])
 function tempus.mtInterval:contains(Instant:table):bool
-   if not tempus.isInstant(Instant) then tempus._invalidValue('Instant must be an Instant value.') end
+   if not tempus.isInstant(Instant) then raise ERR_InvalidValue, 'Instant must be an Instant value.' end
    fields = tempus._fields(self, 'Interval')
    return fields.start <= Instant and Instant < fields.stop
 end
@@ -2627,7 +2601,7 @@ end
 @result True when intervals overlap
 ]])
 function tempus.mtInterval:overlaps(Other:table):bool
-   if not tempus.isInterval(Other) then tempus._invalidValue('Other must be an Interval value.') end
+   if not tempus.isInterval(Other) then raise ERR_InvalidValue, 'Other must be an Interval value.' end
    fields = tempus._fields(self, 'Interval')
    other = tempus._fields(Other, 'Interval')
    return fields.start < other.stop and other.start < fields.stop
@@ -2639,7 +2613,7 @@ end
 @result Intersection interval
 ]])
 function tempus.mtInterval:intersection(Other:table):table
-   if not tempus.isInterval(Other) then tempus._invalidValue('Other must be an Interval value.') end
+   if not tempus.isInterval(Other) then raise ERR_InvalidValue, 'Other must be an Interval value.' end
    fields = tempus._fields(self, 'Interval')
    other = tempus._fields(Other, 'Interval')
    start = fields.start < other.start ? other.start :> fields.start
@@ -2654,11 +2628,11 @@ end
 @result Union interval
 ]])
 function tempus.mtInterval:union(Other:table):table
-   if not tempus.isInterval(Other) then tempus._invalidValue('Other must be an Interval value.') end
+   if not tempus.isInterval(Other) then raise ERR_InvalidValue, 'Other must be an Interval value.' end
    fields = tempus._fields(self, 'Interval')
    other = tempus._fields(Other, 'Interval')
    if fields.stop < other.start or other.stop < fields.start then
-      tempus._invalidValue('Cannot union separate intervals.')
+      raise ERR_InvalidValue, 'Cannot union separate intervals.'
    end
 
    start = fields.start < other.start ? fields.start :> other.start
@@ -2817,7 +2791,7 @@ function tempus.mtClock:instant():table
       return instant_from_system_micros(time_obj.systemTime)
    end
 
-   tempus._invalidValue(f"Unknown Clock kind '{fields.kind}'.")
+   raise ERR_InvalidValue, f"Unknown Clock kind '{fields.kind}'."
 end
 
 @Doc(text=[[
@@ -2908,7 +2882,7 @@ tempus.zonedDateTime.from = function(KV:table):table
    if KV.local_date_time != nil then
       return KV.local_date_time:toZonedDateTime(KV.zone, KV.resolver ?? tempus.resolve.compatible)
    end
-   tempus._invalidValue('zonedDateTime.from requires instant or local_date_time.')
+   raise ERR_InvalidValue, 'zonedDateTime.from requires instant or local_date_time.'
 end
 
 @Doc(text=[[
@@ -2917,10 +2891,10 @@ end
 @result ZonedDateTime value
 ]])
 tempus.zonedDateTime.parse = function(Text:str):table
-   if type(Text) != 'string' then tempus._syntaxError('ZonedDateTime text must be a string.') end
+   if type(Text) != 'string' then raise ERR_Syntax, 'ZonedDateTime text must be a string.' end
 
    offset_text, zone_text = rx_zoned_date_time.extract(Text)
-   if offset_text is nil then tempus._syntaxError(f"Invalid ZonedDateTime string '{Text}'.") end
+   if offset_text is nil then raise ERR_Syntax, f"Invalid ZonedDateTime string '{Text}'." end
 
    offset_date_time = tempus.offsetDateTime.parse(offset_text)
    return new_zoned_date_time(offset_date_time:instant(), tempus.zone(zone_text))
@@ -2969,10 +2943,10 @@ tempus.clock.offset = function(BaseClock:table, Duration:table):table
 end
 
 tempus.resolve = {
-   reject = tempus._makeValue('Resolver', { name = 'reject' }),
-   earlier = tempus._makeValue('Resolver', { name = 'earlier' }),
-   later = tempus._makeValue('Resolver', { name = 'later' }),
-   skip = tempus._makeValue('Resolver', { name = 'skip' }),
+   reject     = tempus._makeValue('Resolver', { name = 'reject' }),
+   earlier    = tempus._makeValue('Resolver', { name = 'earlier' }),
+   later      = tempus._makeValue('Resolver', { name = 'later' }),
+   skip       = tempus._makeValue('Resolver', { name = 'skip' }),
    compatible = tempus._makeValue('Resolver', { name = 'compatible' })
 }
 
