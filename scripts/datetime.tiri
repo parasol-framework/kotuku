@@ -5,15 +5,15 @@
    _LIB[_NS] = {}
    datetime = _LIB[_NS]
 
-local value_storage = setmetatable({}, { __mode = 'k' })
-local metatable_by_type = {}
+value_storage = setmetatable({}, { __mode = 'k' })
+metatable_by_type = {}
 
-local nanos_per_second <const> = 1000000000
-local seconds_per_day <const> = 86400
-local min_offset_seconds <const> = -18 * 3600
-local max_offset_seconds <const> = 18 * 3600
+NANOS_PER_SECOND <const> = 1000000000
+SECONDS_PER_DAY <const> = 86400
+MIN_OFFSET_SECONDS <const> = -18 * 3600
+MAX_OFFSET_SECONDS <const> = 18 * 3600
 
-local type_names = array<string> {
+TYPE_NAMES = array<string> {
    'Instant',
    'Duration',
    'Offset',
@@ -29,14 +29,14 @@ local type_names = array<string> {
    'Resolver'
 }
 
-local rx_date <const> = regex.new([[^([+\-]?\d{4,})-(\d{2})-(\d{2})$]])
-local rx_time <const> = regex.new([[^(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?$]])
-local rx_local_date_time <const> =
+rx_date <const> = regex.new([[^([+\-]?\d{4,})-(\d{2})-(\d{2})$]])
+rx_time <const> = regex.new([[^(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?$]])
+rx_local_date_time <const> =
    regex.new([[^([+\-]?\d{4,}-\d{2}-\d{2})T(\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?)$]])
-local rx_instant <const> =
+rx_instant <const> =
    regex.new([[^([+\-]?\d{4,}-\d{2}-\d{2})T(\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?)Z$]])
-local rx_offset <const> = regex.new([[^(Z|([+\-])(\d{2}):(\d{2}))$]])
-local rx_duration <const> =
+rx_offset <const> = regex.new([[^(Z|([+\-])(\d{2}):(\d{2}))$]])
+rx_duration <const> =
    regex.new([[^([+\-])?P(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d{1,9}))?S)?)$]])
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ function copy_fields(Fields:table):table
 end
 
 function require_type_name(TypeName:str)
-   for name in values(type_names) do
+   for name in values(TYPE_NAMES) do
       if TypeName is name then return end
    end
 
@@ -270,15 +270,15 @@ function normalise_second_nano(Seconds:any, Nano:any):<num, num>
    local seconds = datetime._requireInteger('seconds', Seconds)
    local nano = datetime._requireInteger('nano', Nano ?? 0)
 
-   if nano <= -nanos_per_second or nano >= nanos_per_second then
-      local extra = math.floor(nano / nanos_per_second)
+   if nano <= -NANOS_PER_SECOND or nano >= NANOS_PER_SECOND then
+      local extra = math.floor(nano / NANOS_PER_SECOND)
       seconds += extra
-      nano -= extra * nanos_per_second
+      nano -= extra * NANOS_PER_SECOND
    end
 
    if nano < 0 then
       seconds -= 1
-      nano += nanos_per_second
+      nano += NANOS_PER_SECOND
    end
 
    return seconds, nano
@@ -325,7 +325,7 @@ function validate_time(Hour:any, Minute:any, Second:any, Nano:any)
    if Hour < 0 or Hour > 23 then datetime._invalidValue(f"Invalid hour {Hour}.") end
    if Minute < 0 or Minute > 59 then datetime._invalidValue(f"Invalid minute {Minute}.") end
    if Second < 0 or Second > 59 then datetime._invalidValue(f"Invalid second {Second}.") end
-   if Nano < 0 or Nano >= nanos_per_second then datetime._invalidValue(f"Invalid nano {Nano}.") end
+   if Nano < 0 or Nano >= NANOS_PER_SECOND then datetime._invalidValue(f"Invalid nano {Nano}.") end
 end
 
 function days_from_civil(Year:num, Month:num, Day:num):num
@@ -362,15 +362,15 @@ end
 
 function date_time_to_epoch_second(DateFields:table, TimeFields:table):num
    local days = days_from_civil(DateFields.year, DateFields.month, DateFields.day)
-   return days * seconds_per_day + TimeFields.hour * 3600 + TimeFields.minute * 60 + TimeFields.second
+   return days * SECONDS_PER_DAY + TimeFields.hour * 3600 + TimeFields.minute * 60 + TimeFields.second
 end
 
 function epoch_second_to_local(EpochSecond:num, Nano:num):<table, table>
-   local days = math.floor(EpochSecond / seconds_per_day)
-   local day_second = EpochSecond - days * seconds_per_day
+   local days = math.floor(EpochSecond / SECONDS_PER_DAY)
+   local day_second = EpochSecond - days * SECONDS_PER_DAY
    if day_second < 0 then
       days -= 1
-      day_second += seconds_per_day
+      day_second += SECONDS_PER_DAY
    end
 
    local year, month, day = civil_from_days(days)
@@ -416,7 +416,7 @@ end
 
 function new_offset(Seconds:any):table
    local seconds = datetime._requireInteger('seconds', Seconds)
-   if seconds < min_offset_seconds or seconds > max_offset_seconds then
+   if seconds < MIN_OFFSET_SECONDS or seconds > MAX_OFFSET_SECONDS then
       datetime._invalidValue('Offset must be in the range -18:00 through +18:00.')
    end
    return datetime._makeValue('Offset', { seconds = seconds })
@@ -485,8 +485,8 @@ datetime.instant.fromUnixMillis = function(Millis:num):table
 end
 datetime.instant.fromUnixNanos = function(Nanos:num):table
    local nanos = datetime._requireInteger('nanos', Nanos)
-   local seconds = math.floor(nanos / nanos_per_second)
-   local nano = nanos - seconds * nanos_per_second
+   local seconds = math.floor(nanos / NANOS_PER_SECOND)
+   local nano = nanos - seconds * NANOS_PER_SECOND
    return new_instant(seconds, nano)
 end
 datetime.instant.parse = function(Text:str):table
@@ -515,8 +515,8 @@ datetime.duration.millis = function(Millis:num):table
 end
 datetime.duration.nanos = function(Nanos:num):table
    local nanos = datetime._requireInteger('nanos', Nanos)
-   local seconds = math.floor(nanos / nanos_per_second)
-   local nano = nanos - seconds * nanos_per_second
+   local seconds = math.floor(nanos / NANOS_PER_SECOND)
+   local nano = nanos - seconds * NANOS_PER_SECOND
    return new_duration(seconds, nano)
 end
 datetime.duration.parse = function(Text:str):table
@@ -630,7 +630,7 @@ end
 
 function datetime.mtInstant:toUnixNanos():num
    local fields = datetime._fields(self, 'Instant')
-   return fields.epoch_second * nanos_per_second + fields.nano
+   return fields.epoch_second * NANOS_PER_SECOND + fields.nano
 end
 
 datetime.mtInstant.__tostring = function(Self:table):str
@@ -658,7 +658,7 @@ end
 
 function datetime.mtDuration:totalSeconds():num
    local fields = datetime._fields(self, 'Duration')
-   return fields.seconds + fields.nano / nanos_per_second
+   return fields.seconds + fields.nano / NANOS_PER_SECOND
 end
 
 function datetime.mtDuration:totalMillis():num
@@ -673,7 +673,7 @@ datetime.mtDuration.__tostring = function(Self:table):str
    local negative = seconds < 0
    if negative then
       seconds = -seconds - (nano > 0 ? 1 :> 0)
-      nano = nano > 0 ? nanos_per_second - nano :> 0
+      nano = nano > 0 ? NANOS_PER_SECOND - nano :> 0
    end
 
    local hours = math.floor(seconds / 3600)
@@ -909,5 +909,3 @@ datetime.isPeriod         = function(Value:any):bool return datetime._isValue(Va
 datetime.isInterval       = function(Value:any):bool return datetime._isValue(Value, 'Interval') end
 datetime.isClock          = function(Value:any):bool return datetime._isValue(Value, 'Clock') end
 datetime.isResolver       = function(Value:any):bool return datetime._isValue(Value, 'Resolver') end
-
-local datetime_loaded <const> = true

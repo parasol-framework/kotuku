@@ -1,8 +1,5 @@
 -- Flute tests for the datetime standard library.
 
--- Keep this import after annotated function declarations.  Importing the new library before @Test currently makes the
--- parser treat subsequent test annotations as runtime calls.
-
    import 'datetime'
 
 function expect_error(MessagePart:str, Callback:func)
