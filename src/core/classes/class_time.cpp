@@ -798,6 +798,8 @@ static ERR TIME_GetTimeZoneInfo(objTime *Self, struct pt::GetTimeZoneInfo *Args)
    kt::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
+   Args->Info = nullptr;
+
    if (not valid_timezone_year_range(Args->StartYear, Args->EndYear)) return log.warning(ERR::OutOfRange);
 
    struct TimeZoneInfo *tz;
@@ -822,7 +824,10 @@ static ERR TIME_GetTimeZoneInfo(objTime *Self, struct pt::GetTimeZoneInfo *Args)
       else error = ERR::Search;
    #endif
 
-      if (error != ERR::Okay) FreeResource(tz);
+      if (error IS ERR::Okay) return ERR::Okay;
+
+      Args->Info = nullptr;
+      FreeResource(tz);
       return error;
    }
    else return log.warning(ERR::AllocMemory);
