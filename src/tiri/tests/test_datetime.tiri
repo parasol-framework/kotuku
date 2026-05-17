@@ -14,12 +14,22 @@ function expect_error(MessagePart:str, Callback:func)
    error('Expected callback to fail')
 end
 
+function core_current_instant():table
+   local time_obj = obj.new('time')
+   check(time_obj.acQuery())
+
+   local micros = time_obj.systemTime
+   local seconds = math.floor(micros / 1000000)
+   return datetime.instant(seconds, (micros - seconds * 1000000) * 1000)
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ImportExportsNamespace()
    assert(type(datetime) is 'table', 'datetime namespace should be exported')
    assert(type(datetime.instant) is 'table', 'datetime.instant constructor should be exported')
    assert(type(datetime.localDate) is 'table', 'datetime.localDate constructor should be exported')
+   assert(type(datetime.offsetDateTime) is 'table', 'datetime.offsetDateTime constructor should be exported')
    assert(type(datetime.duration) is 'table', 'datetime.duration constructor should be exported')
    assert(type(datetime.period) is 'table', 'datetime.period constructor should be exported')
    assert(type(datetime.interval) is 'table', 'datetime.interval constructor should be exported')
@@ -27,13 +37,17 @@ end
    assert(type(datetime.resolve) is 'table', 'datetime.resolve namespace should be exported')
    assert(type(datetime.instant.parse) is 'function', 'datetime.instant.parse should be exported')
    assert(type(datetime.localDate.from) is 'function', 'datetime.localDate.from should be exported')
+   assert(type(datetime.offsetDateTime.parse) is 'function', 'datetime.offsetDateTime.parse should be exported')
    assert(type(datetime.offset.utc) is 'function', 'datetime.offset.utc should be exported')
    assert(type(datetime.period.parse) is 'function', 'datetime.period.parse should be exported')
    assert(type(datetime.interval.fromStartAndDuration) is 'function',
       'datetime.interval.fromStartAndDuration should be exported')
-   assert(type(datetime.clock.system) is 'function', 'datetime.clock.system shell should be exported')
-   assert(type(datetime.now) is 'function', 'datetime.now shell should be exported')
-   assert(type(datetime.today) is 'function', 'datetime.today shell should be exported')
+   assert(type(datetime.zone.utc) is 'function', 'datetime.zone.utc should be exported')
+   assert(type(datetime.clock.system) is 'function', 'datetime.clock.system should be exported')
+   assert(type(datetime.clock.fixed) is 'function', 'datetime.clock.fixed should be exported')
+   assert(type(datetime.clock.offset) is 'function', 'datetime.clock.offset should be exported')
+   assert(type(datetime.now) is 'function', 'datetime.now should be exported')
+   assert(type(datetime.today) is 'function', 'datetime.today should be exported')
 end
 
 @Test function TypePredicates()
@@ -41,12 +55,18 @@ end
    local date = datetime.localDate(2026, 5, 17)
    local period = datetime.period.days(1)
    local interval = datetime.interval(instant, datetime.instant(1))
+   local zone = datetime.zone.utc()
+   local clock = datetime.clock.fixed(instant)
+   local offset_date_time = datetime.localDateTime(1970, 1, 1):atOffset(datetime.offset.utc())
 
    assert(datetime.isInstant(instant), 'Instant predicate should match Instant values')
    assert(not datetime.isLocalDate(instant), 'LocalDate predicate should reject Instant values')
    assert(datetime.isLocalDate(date), 'LocalDate predicate should match LocalDate values')
    assert(datetime.isPeriod(period), 'Period predicate should match Period values')
    assert(datetime.isInterval(interval), 'Interval predicate should match Interval values')
+   assert(datetime.isZone(zone), 'Zone predicate should match Zone values')
+   assert(datetime.isClock(clock), 'Clock predicate should match Clock values')
+   assert(datetime.isOffsetDateTime(offset_date_time), 'OffsetDateTime predicate should match OffsetDateTime values')
    assert(not datetime.isInstant({}), 'Predicates should reject ordinary tables')
    assert(datetime.isResolver(datetime.resolve.reject), 'Resolver constants should be datetime values')
 end
@@ -175,6 +195,85 @@ end
    local changed = local_date_time:with({ month = 6, day = 1, hour = 9 })
    assert(tostring(changed) is '2026-06-01T09:30:45.123', 'LocalDateTime with() should copy modified fields')
    assert(local_date_time < changed, 'LocalDateTime ordering should compare date then time')
+end
+
+@Test function OffsetDateTimeConstructionParsingAndAccessors()
+   local local_date_time = datetime.localDateTime(2026, 5, 17, 10, 30, 45, 123456789)
+   local offset = datetime.offset.parse('+01:30')
+   local offset_date_time = datetime.offsetDateTime(local_date_time, offset)
+
+   assert(offset_date_time:localDateTime() is local_date_time, 'OffsetDateTime localDateTime accessor should work')
+   assert(offset_date_time:date() is datetime.localDate(2026, 5, 17), 'OffsetDateTime date accessor should work')
+   assert(offset_date_time:time() is datetime.localTime(10, 30, 45, 123456789),
+      'OffsetDateTime time accessor should work')
+   assert(offset_date_time:offset() is offset, 'OffsetDateTime offset accessor should work')
+   assert(tostring(offset_date_time) is '2026-05-17T10:30:45.123456789+01:30',
+      'OffsetDateTime string should combine local date-time and offset')
+   assert(datetime.offsetDateTime.from { local_date_time = local_date_time, offset = offset } is offset_date_time,
+      'OffsetDateTime property-table construction should match positional construction')
+   assert(local_date_time:atOffset(offset) is offset_date_time, 'LocalDateTime atOffset() should create OffsetDateTime')
+   assert(local_date_time:toOffsetDateTime(offset) is offset_date_time,
+      'LocalDateTime toOffsetDateTime() should create OffsetDateTime')
+
+   assert(datetime.offsetDateTime.parse('2026-05-17T10:30:45.123456789+01:30') is offset_date_time,
+      'OffsetDateTime signed offset parse should round trip')
+   assert(tostring(datetime.offsetDateTime.parse('2026-05-17T09:00:00Z')) is '2026-05-17T09:00:00Z',
+      'OffsetDateTime Z parse should round trip')
+
+   expect_error('Invalid OffsetDateTime string', function()
+      datetime.offsetDateTime.parse('2026-05-17T09:00:00')
+   end)
+
+   expect_error('Invalid Offset string', function()
+      datetime.offsetDateTime.parse('2026-05-17T09:00:00+01:60')
+   end)
+end
+
+@Test function OffsetDateTimeInstantConversionEqualityAndOrdering()
+   local plus_one = datetime.offsetDateTime.parse('2026-05-17T10:00:00+01:00')
+   local utc = datetime.offsetDateTime.parse('2026-05-17T09:00:00Z')
+   local same_plus_one = datetime.offsetDateTime(datetime.localDateTime(2026, 5, 17, 10, 0), datetime.offset.hours(1))
+   local later = datetime.offsetDateTime.parse('2026-05-17T09:00:01Z')
+
+   assert(plus_one:instant() is datetime.instant.parse('2026-05-17T09:00:00Z'),
+      'OffsetDateTime instant() should subtract the offset')
+   assert(plus_one:instantEquals(utc), 'instantEquals() should compare timeline position only')
+   assert(plus_one:instantEquals(datetime.instant.parse('2026-05-17T09:00:00Z')),
+      'instantEquals() should accept Instant values')
+   assert(not (plus_one is utc), 'OffsetDateTime equality should include the offset representation')
+   assert(plus_one is same_plus_one, 'OffsetDateTime equality should match same instant and same offset')
+   assert(plus_one <= utc, 'OffsetDateTime ordering should compare timeline position')
+   assert(plus_one < later, 'OffsetDateTime ordering should compare instants')
+
+   expect_error('Other must be an Instant or OffsetDateTime value', function()
+      plus_one:instantEquals({})
+   end)
+end
+
+@Test function OffsetDateTimeArithmeticAndZoneBoundary()
+   local start = datetime.offsetDateTime.parse('2026-01-31T23:30:00+01:00')
+   local elapsed = start + datetime.duration { hours = 2 }
+   local previous = elapsed - datetime.duration { hours = 2 }
+   local calendar = datetime.offsetDateTime.parse('2024-01-31T08:15:00+01:00') + datetime.period.months(1)
+   local calendar_back = calendar - datetime.period.months(1)
+
+   assert(elapsed is datetime.offsetDateTime.parse('2026-02-01T01:30:00+01:00'),
+      'OffsetDateTime Duration addition should preserve the offset and advance the instant')
+   assert(previous is start, 'OffsetDateTime Duration subtraction should preserve the offset and instant')
+   assert(calendar is datetime.offsetDateTime.parse('2024-02-29T08:15:00+01:00'),
+      'OffsetDateTime Period addition should apply local calendar arithmetic')
+   assert(calendar_back is datetime.offsetDateTime.parse('2024-01-29T08:15:00+01:00'),
+      'OffsetDateTime Period subtraction should apply local calendar arithmetic from the current local value')
+   assert(elapsed - start is datetime.duration { hours = 2 },
+      'OffsetDateTime subtraction should return elapsed Duration')
+
+   expect_error('datetime.offsetDateTime.toZonedDateTime is not implemented yet', function()
+      start:toZonedDateTime(datetime.zone.utc())
+   end)
+
+   expect_error('Expected datetime.Zone value', function()
+      start:toZone({})
+   end)
 end
 
 @Test function OffsetConstructionParsingAndOrdering()
@@ -348,6 +447,72 @@ end
    expect_error('Interval stop must be greater', function()
       datetime.interval(stop, start)
    end)
+end
+
+@Test function UtcZoneProvidesFixedOffset()
+   local zone = datetime.zone.utc()
+   local instant = datetime.instant.parse('2026-05-17T10:30:00Z')
+
+   assert(tostring(zone) is 'UTC', 'UTC zone should stringify to its ID')
+   assert(zone:id() is 'UTC', 'UTC zone public ID should be UTC')
+   assert(zone:nativeId() is 'UTC', 'UTC native ID should be UTC')
+   assert(zone:source() is 'utc', 'UTC zone source should be utc')
+   assert(not zone:isFallback(), 'UTC zone should not be marked as fallback')
+   assert(zone:offsetAt(instant) is datetime.offset.utc(), 'UTC zone offset should always be zero')
+   assert(zone:nameAt(instant) is 'UTC', 'UTC zone name should be UTC')
+   assert(zone:nextTransition(instant) is nil, 'UTC zone should have no next transition')
+   assert(zone:previousTransition(instant) is nil, 'UTC zone should have no previous transition')
+   assert(datetime.zone.utc() is zone, 'UTC zone values should compare by ID')
+end
+
+@Test function FixedAndOffsetClocksAreDeterministic()
+   local instant = datetime.instant.parse('2026-05-17T23:30:45.123456Z')
+   local fixed = datetime.clock.fixed(instant)
+   local offset = datetime.clock.offset(fixed, datetime.duration { minutes = 45, millis = 500 })
+
+   assert(fixed:instant() is instant, 'Fixed clock should return its configured instant')
+   assert(datetime.now(fixed) is instant, 'datetime.now(clock) should use the supplied clock')
+   assert(offset:instant() is datetime.instant.parse('2026-05-18T00:15:45.623456Z'),
+      'Offset clock should add its duration to the base clock')
+   assert(tostring(fixed) is 'datetime.Clock(fixed)', 'Clock string should describe its kind')
+
+   expect_error('Expected datetime.Instant value', function()
+      datetime.clock.fixed({})
+   end)
+
+   expect_error('Expected datetime.Duration value', function()
+      datetime.clock.offset(fixed, datetime.period.days(1))
+   end)
+end
+
+@Test function ClockUtcTodayAndLocalDateTime()
+   local zone = datetime.zone.utc()
+   local fixed = datetime.clock.fixed(datetime.instant.parse('2026-05-17T23:30:45.123456Z'))
+
+   assert(fixed:localDateTime(zone) is datetime.localDateTime(2026, 5, 17, 23, 30, 45, 123456000),
+      'Clock localDateTime(UTC) should convert the instant to UTC local fields')
+   assert(fixed:today(zone) is datetime.localDate(2026, 5, 17), 'Clock today(UTC) should return the UTC date')
+   assert(datetime.today(zone, fixed) is datetime.localDate(2026, 5, 17),
+      'datetime.today(zone, clock) should delegate to the supplied clock')
+
+   local next_day = datetime.clock.fixed(datetime.instant.parse('2026-05-18T00:00:00Z'))
+   assert(datetime.today(zone, next_day) is datetime.localDate(2026, 5, 18),
+      'UTC today should cross at UTC midnight')
+
+   expect_error('Expected datetime.Zone value', function()
+      fixed:today({})
+   end)
+end
+
+@Test function SystemClockNowUsesCoreSystemTime()
+   local before = core_current_instant()
+   local current = datetime.now(datetime.clock.system())
+   local after = core_current_instant()
+   local tolerance = datetime.duration.seconds(1)
+
+   assert(datetime.isInstant(current), 'System now should return an Instant')
+   assert(before - tolerance <= current and current <= after + tolerance,
+      'System now should be close to Core Time.SystemTime')
 end
 
 @Test function WithMethodsAndImmutability()
