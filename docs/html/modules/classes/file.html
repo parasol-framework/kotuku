@@ -46,7 +46,7 @@
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Flags</th><td class="col-md-1"><span class="text-nowrap">FL</span></td><td>File flags and options.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Flags" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>Note: If setting flags post-initialisation, the following restrictions apply: 1. The file must not have been activated (opened) yet; 2. Only the <code>NEW</code>, <code>READ</code> and <code>WRITE</code> flags can be utilised.</p>
-<table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">FL::APPROXIMATE</th><td>Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</td></tr>
+<table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">FL::APPROXIMATE</th><td>Allows fuzzy matching of the file path by ignoring the file extension; for instance opening 'screenshot.png' when only 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</td></tr>
 <tr><th class="col-md-1">FL::BUFFER</th><td>Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.</td></tr>
 <tr><th class="col-md-1">FL::DEVICE</th><td>The file is a system device (must set if opening a device for read/write operations)</td></tr>
 <tr><th class="col-md-1">FL::DIRECTORY</th><td>The file object represents a folder.</td></tr>
@@ -60,6 +60,7 @@
 <tr><th class="col-md-1">FL::READ</th><td>Required if the file needs to be opened for read access.</td></tr>
 <tr><th class="col-md-1">FL::RESET_DATE</th><td>For internal use only</td></tr>
 <tr><th class="col-md-1">FL::STREAM</th><td>File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.</td></tr>
+<tr><th class="col-md-1">FL::VIRTUAL</th><td>Path is to a virtual device.</td></tr>
 <tr><th class="col-md-1">FL::WRITE</th><td>Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.</td></tr>
 </tbody></table>
       
@@ -125,6 +126,7 @@
 <tr><th class="col-md-1">PERMIT::GROUP_WRITE</th><td>Group members can write.</td></tr>
 <tr><th class="col-md-1">PERMIT::HIDDEN</th><td>Recommends that the file is hidden from view by default.</td></tr>
 <tr><th class="col-md-1">PERMIT::INHERIT</th><td>Inherit permissions from parent folder and logical OR them with preset permission flags.</td></tr>
+<tr><th class="col-md-1">PERMIT::META</th><td>Synonym for <code>HIDDEN | PASSWORD | OFFLINE | NETWORK</code></td></tr>
 <tr><th class="col-md-1">PERMIT::NETWORK</th><td>File is hosted on another machine.</td></tr>
 <tr><th class="col-md-1">PERMIT::OFFLINE</th><td>File content for this networked file has not been cached on the local PC.</td></tr>
 <tr><th class="col-md-1">PERMIT::OTHERS</th><td>Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></td></tr>
@@ -162,23 +164,10 @@
 <p>The current byte size of a file is indicated by this field.  If the file object represents a folder, the Size value will be zero.  You can also truncate a file by setting the Size; this will result in the current read/write position being set to the end of the file.</p>
       
 </div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-Static" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Static"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-Timestamp" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Timestamp"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
-                          <i class="bi bi-check-lg text-success" data-bs-toggle="tooltip" title="Immutable"></i></td><th class="col-md-1">Static</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Set to <code>true</code> if a file object should be static.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Static" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>This field applies when a file object has been created in an object script.  By default, a file object will auto-terminate when a closing tag is received.  If the object must remain live, set this field to <code>true</code>.</p>
-      
-</div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-Target" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Target"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
-                           
-                          <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">Target</th><td class="col-md-1"><span class="text-nowrap">OBJECTID</span></td><td>Specifies a surface ID to target for user feedback and dialog boxes.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Target" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>User feedback can be enabled for certain file operations by setting the Target field to a valid surface ID, or zero for the default target for new windows.  This field is set to <code>-1</code> by default, in order to disable this feature.</p>
-<p>If set correctly, operations such as file deletion or copying will pop-up a progress box after a certain amount of time has elapsed during the operation.  The dialog box will also provide the user with a cancel option to terminate the process early.</p>
-      
-</div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-TimeStamp" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-TimeStamp"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
-                           
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">TimeStamp</th><td class="col-md-1"><span class="text-nowrap">INT64</span></td><td>The last modification time set on a file, represented as a 64-bit integer.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-TimeStamp" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The TimeStamp field is a 64-bit representation of the last modification date/time set on a file.  It is not guaranteed that the value represents seconds from the epoch, so it should only be used for purposes such as sorting, or for comparison to the time stamps of other files.  For a parsed time structure, refer to the <a data-bs-toggle="tooltip" title="The 'last modified' date stamp on the file." href="#tf-Date">Date</a> field.</p>
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Timestamp</th><td class="col-md-1"><span class="text-nowrap">INT64</span></td><td>The last modification time set on a file, represented as a 64-bit integer.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Timestamp" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+<p>The Timestamp field is a 64-bit representation of the last modification date/time set on a file.  It is not guaranteed that the value represents seconds from the epoch, so it should only be used for purposes such as sorting, or for comparison to the time stamps of other files.  For a parsed time structure, refer to the <a data-bs-toggle="tooltip" title="The 'last modified' date stamp on the file." href="#tf-Date">Date</a> field.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-User" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-User"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
@@ -208,11 +197,11 @@
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Search</th><td>The file could not be found.</td></tr>
-<tr><th class="col-md-1">FileNotFound</th><td>File not found.</td></tr>
+<tr><th class="col-md-1">FileNotFound</th><td>File not found</td></tr>
 <tr><th class="col-md-1">NoPermission</th><td>Permission was denied when accessing or creating the file.</td></tr>
 <tr><th class="col-md-1">SetField</th><td>An error occurred while updating the <a data-bs-toggle="tooltip" title="Specifies the location of a file or folder." href="#tf-Path">Path</a> field.</td></tr>
-<tr><th class="col-md-1">MissingPath</th><td>The object is missing a path reference.</td></tr>
-<tr><th class="col-md-1">ResolvePath</th><td>A volume could not be resolved.</td></tr>
+<tr><th class="col-md-1">MissingPath</th><td>The object is missing a path reference</td></tr>
+<tr><th class="col-md-1">ResolvePath</th><td>A volume could not be resolved</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tac-Query" style="scroll-margin:3em;" id="ta-Query"><td style="width:1%; border-top-style: none; border-bottom-style: none;"></td><th class="col-md-1 text-primary">Query</th><td>Read a file's meta information from source.</td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tac-Read" style="scroll-margin:3em;" id="ta-Read" role="button"><td style="width:1%; border-top-style: none; border-bottom-style: none;"><i class="bi bi-chevron-double-right text-secondary"></i></td><th class="col-md-1 text-primary">Read</th><td>Reads data from a file.</td></tr><tr><td class="hiddenRow" style="width:1%; border-top-style: none; border-bottom-style: none;"></td><td colspan="2" class="hiddenRow"><div id="tac-Read" class="collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR acRead(*Object, APTR Buffer, INT Length, INT *Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Buffer</td><td>Points a buffer that will receive the data.</td></tr>
@@ -224,10 +213,10 @@
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The file information was read into the buffer.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>The file object refers to a folder, or the object is corrupt.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">OutOfRange</th><td>Invalid <code>Length</code> parameter.</td></tr>
 <tr><th class="col-md-1">FileReadFlag</th><td>The <code>FL::READ</code> flag was not specified on initialisation.</td></tr>
-<tr><th class="col-md-1">NotInitialised</th><td>The resource has not been initialised.</td></tr>
+<tr><th class="col-md-1">NotInitialised</th><td>The resource has not been initialised</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 <tr><th class="col-md-1">ExpectedFolder</th><td>The file object refers to a folder.</td></tr>
 </tbody></table></div></div></td></tr>
@@ -245,11 +234,11 @@
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>All of the data was written to the file.</td></tr>
 <tr><th class="col-md-1">LimitedSuccess</th><td>Only some of the data was written to the file.  Check the Result parameter to see how much data was written.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">FileWriteFlag</th><td>The <code>FL::WRITE</code> flag was not specified when initialising the file.</td></tr>
-<tr><th class="col-md-1">ObjectCorrupt</th><td>The object structure is corrupt or has not been initialised.</td></tr>
-<tr><th class="col-md-1">ReallocMemory</th><td>The reallocation of a memory block failed.</td></tr>
-<tr><th class="col-md-1">ExpectedFile</th><td>The operation expected a path to a file.</td></tr>
+<tr><th class="col-md-1">ObjectCorrupt</th><td>The object structure is corrupt or has not been initialised</td></tr>
+<tr><th class="col-md-1">ReallocMemory</th><td>The reallocation of a memory block failed</td></tr>
+<tr><th class="col-md-1">ExpectedFile</th><td>The operation expected a path to a file</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 </tbody></table><h3>Methods</h3><p>The following methods are currently supported:</p><table class="table"><tbody><tr data-bs-toggle="collapse" data-bs-target="#tmx-BufferContent" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">BufferContent</th><td id="tm-BufferContent">Reads all file content into a local memory buffer.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-BufferContent" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR fl::BufferContent(OBJECTPTR Object)</samp></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
@@ -258,7 +247,7 @@
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The file content was successfully buffered.</td></tr>
 <tr><th class="col-md-1">Read</th><td>Failed to read the file content.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Copy" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Copy</th><td id="tm-Copy">Copies the data of a file to another location.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Copy" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR fl::Copy(OBJECTPTR Object, CSTRING Dest, FUNCTION * Callback)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Dest</td><td>The destination file path for the copy operation.</td></tr>
 <tr><td>Callback</td><td>Optional callback for receiving feedback during the operation.</td></tr>
@@ -268,14 +257,14 @@
 <p>When copying directories with this method, the entire folder structure (i.e. all of the folder contents) will be copied to the new location.  If an error occurs when copying a sub-folder or file, the procedure will be aborted and an error code will be returned.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The file data was copied successfully.</td></tr>
-<tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Failed</th><td>General failure</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">Read</th><td>Data could not be read from the source path.</td></tr>
 <tr><th class="col-md-1">Write</th><td>Data could not be written to the destination path.</td></tr>
 <tr><th class="col-md-1">FieldNotSet</th><td>The <a data-bs-toggle="tooltip" title="Specifies the location of a file or folder." href="#tf-Path">Path</a> field has not been set in the file object.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block</td></tr>
 <tr><th class="col-md-1">Loop</th><td>Performing the copy would cause infinite recursion.</td></tr>
-<tr><th class="col-md-1">ResolvePath</th><td>A volume could not be resolved.</td></tr>
+<tr><th class="col-md-1">ResolvePath</th><td>A volume could not be resolved</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Delete" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Delete</th><td id="tm-Delete">Deletes a file from its source location.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Delete" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR fl::Delete(OBJECTPTR Object, FUNCTION * Callback)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Callback</td><td>Optional callback for receiving feedback during the operation.</td></tr>
@@ -285,9 +274,9 @@
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>File deleted successfully.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>The deletion attempt failed (specific condition not available).</td></tr>
 <tr><th class="col-md-1">NoPermission</th><td>The user does not have the necessary permissions to delete the file.</td></tr>
-<tr><th class="col-md-1">MissingPath</th><td>The object is missing a path reference.</td></tr>
+<tr><th class="col-md-1">MissingPath</th><td>The object is missing a path reference</td></tr>
 <tr><th class="col-md-1">BufferOverflow</th><td>The file path string is too long.</td></tr>
-<tr><th class="col-md-1">ResolvePath</th><td>A volume could not be resolved.</td></tr>
+<tr><th class="col-md-1">ResolvePath</th><td>A volume could not be resolved</td></tr>
 <tr><th class="col-md-1">ReadOnly</th><td>The file is on a read-only filesystem.</td></tr>
 <tr><th class="col-md-1">Locked</th><td>The file is in use.</td></tr>
 </tbody></table></div></div></td></tr>
@@ -298,7 +287,7 @@
 <p>The <a data-bs-toggle="tooltip" title="The current read/write byte position in a file." href="#tf-Position">Position</a> field will be reset as a result of calling this method.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The File was moved successfully.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">InvalidPath</th><td>Attempted to move a volume.</td></tr>
 <tr><th class="col-md-1">FieldNotSet</th><td>The <a data-bs-toggle="tooltip" title="Specifies the location of a file or folder." href="#tf-Path">Path</a> field has not been set in the file object.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
@@ -312,7 +301,7 @@
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">DirEmpty</th><td>The index has reached the end of the file list.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-ReadLine" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">ReadLine</th><td id="tm-ReadLine">Reads the next line from the file.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-ReadLine" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR fl::ReadLine(OBJECTPTR Object, STRING * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Result</td><td>The resulting string is returned in this parameter.</td></tr>
@@ -322,7 +311,7 @@
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The file information was read into the buffer.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>The file object refers to a folder.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NoData</th><td>There is no more data left to read.</td></tr>
 <tr><th class="col-md-1">FileReadFlag</th><td>The <code>FL::READ</code> flag was not specified on initialisation.</td></tr>
 <tr><th class="col-md-1">ObjectCorrupt</th><td>The internal file handle is missing.</td></tr>
@@ -347,8 +336,8 @@
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NoSupport</th><td>The platform does not support file date setting.</td></tr>
-<tr><th class="col-md-1">ResolvePath</th><td>A volume could not be resolved.</td></tr>
-<tr><th class="col-md-1">SystemCall</th><td>A call to the host system has failed.</td></tr>
+<tr><th class="col-md-1">ResolvePath</th><td>A volume could not be resolved</td></tr>
+<tr><th class="col-md-1">SystemCall</th><td>A call to the host system has failed</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-StartStream" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">StartStream</th><td id="tm-StartStream">Starts streaming data from a file source.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-StartStream" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR fl::StartStream(OBJECTPTR Object, OBJECTID Subscriber, FL Flags, INT Length)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Subscriber</td><td>Reference to an object that will receive streamed data notifications.</td></tr>
@@ -363,14 +352,14 @@
 <p>A stream can be cancelled at any time by calling <a data-bs-toggle="tooltip" title="Stops streaming data from a file source." href="#tm-StopStream">StopStream()</a>.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NoSupport</th><td>The file is not streamed.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-StopStream" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">StopStream</th><td id="tm-StopStream">Stops streaming data from a file source.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-StopStream" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR fl::StopStream(OBJECTPTR Object)</samp></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>This method terminates data streaming from a file (instantiated by the <a data-bs-toggle="tooltip" title="Starts streaming data from a file source." href="#tm-StartStream">StartStream()</a> method).  Any resources related to the streaming process will be deallocated.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NoSupport</th><td>The file is not streamed.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Watch" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Watch</th><td id="tm-Watch">Monitors files and folders for file system events.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Watch" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR fl::Watch(OBJECTPTR Object, FUNCTION * Callback, MFF Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Callback</td><td>The routine that will be called when a file change is triggered by the system.</td></tr>
@@ -384,7 +373,7 @@
 <p>If the callback routine returns <code>ERR::Terminate</code>, the watch will be disabled.  It is also possible to disable an existing watch by calling this method with no parameters, or by setting the <code>Flags</code> parameter to <code>0</code>.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 </tbody></table><div class="footer copyright text-right">File class documentation © Paul Manias 1996-2026</div></div><div class="docs-content" style="display:none;" id="FDT"><h1>FDT Type</h1><p class="lead">Flags for the SetDate() file method.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>FDT::ACCESSED</th><td>The date on which the file was last accessed by a user or application.</td></tr>
@@ -392,7 +381,7 @@
 <tr><th>FDT::CREATED</th><td>The date on which the file was created.  On some host platforms this datestamp may be read-only.</td></tr>
 <tr><th>FDT::MODIFIED</th><td>The date on which the file was last modified.</td></tr>
 </tbody></table><div class="footer copyright text-right">File module documentation © Paul Manias 1996-2026</div></div>
-<div class="docs-content" style="display:none;" id="FL"><h1>FL Type</h1><p class="lead">File flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>FL::APPROXIMATE</th><td>Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</td></tr>
+<div class="docs-content" style="display:none;" id="FL"><h1>FL Type</h1><p class="lead">File flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>FL::APPROXIMATE</th><td>Allows fuzzy matching of the file path by ignoring the file extension; for instance opening 'screenshot.png' when only 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</td></tr>
 <tr><th>FL::BUFFER</th><td>Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.</td></tr>
 <tr><th>FL::DEVICE</th><td>The file is a system device (must set if opening a device for read/write operations)</td></tr>
 <tr><th>FL::DIRECTORY</th><td>The file object represents a folder.</td></tr>
@@ -406,6 +395,7 @@
 <tr><th>FL::READ</th><td>Required if the file needs to be opened for read access.</td></tr>
 <tr><th>FL::RESET_DATE</th><td>For internal use only</td></tr>
 <tr><th>FL::STREAM</th><td>File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.</td></tr>
+<tr><th>FL::VIRTUAL</th><td>Path is to a virtual device.</td></tr>
 <tr><th>FL::WRITE</th><td>Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.</td></tr>
 </tbody></table><div class="footer copyright text-right">File module documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="MFF"><h1>MFF Type</h1><p class="lead">Flags for the File Watch() method.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>MFF::ATTRIB</th><td>File permissions or datestamp changed.</td></tr>
@@ -445,6 +435,7 @@
 <tr><th>PERMIT::GROUP_WRITE</th><td>Group members can write.</td></tr>
 <tr><th>PERMIT::HIDDEN</th><td>Recommends that the file is hidden from view by default.</td></tr>
 <tr><th>PERMIT::INHERIT</th><td>Inherit permissions from parent folder and logical OR them with preset permission flags.</td></tr>
+<tr><th>PERMIT::META</th><td>Synonym for <code>HIDDEN | PASSWORD | OFFLINE | NETWORK</code></td></tr>
 <tr><th>PERMIT::NETWORK</th><td>File is hosted on another machine.</td></tr>
 <tr><th>PERMIT::OFFLINE</th><td>File content for this networked file has not been cached on the local PC.</td></tr>
 <tr><th>PERMIT::OTHERS</th><td>Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></td></tr>

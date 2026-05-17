@@ -119,7 +119,7 @@
 <p>This function will copy data from a described surface to a destination bitmap object.  You are required to provide the function with a full description of the source in a <a data-toggle="tooltip" title="" href="?page=struct-BitmapSurface">BitmapSurface</a> structure.</p>
 <p>The <code>X</code>, <code>Y</code>, <code>Width</code> and <code>Height</code> parameters define the area from the source that you wish to copy.  The <code>XDest</code> and <code>YDest</code> parameters define the top left corner that you will blit the graphics to in the destination.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="CopySurface"><h2>CopySurface()</h2><p class="lead">Copies surface graphics data into any bitmap object</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR gfx::CopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Surface</td><td>The ID of the surface object to copy from.</td></tr>
@@ -135,7 +135,7 @@
 <p>This function will copy the graphics data from any surface object to a target <a href="classes/bitmap.html">Bitmap</a>.  This is the fastest and most convenient way to get graphics information out of any surface.  As surfaces are buffered, it is guaranteed that the result will not be obscured by any overlapping surfaces that are on the display.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Search</th><td>The supplied <code>Surface</code> ID did not refer to a recognised surface object</td></tr>
-<tr><th class="col-md-1">AccessObject</th><td>Attempting to lock an object failed.</td></tr>
+<tr><th class="col-md-1">AccessObject</th><td>Attempting to lock an object failed</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="DrawPixel"><h2>DrawPixel()</h2><p class="lead">Draws a single pixel to a bitmap.</p><div class="card card-info mb-3"><div class="card-header"><samp>void gfx::DrawPixel(objBitmap * Bitmap, INT X, INT Y, UINT Colour)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Bitmap</td><td>The target bitmap object.</td></tr>
@@ -215,7 +215,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>The GetDisplayInfo() function returns information about a display, which includes information such as its size and bit depth.  If the system is running on a hosted display (e.g. Windows or X11) then GetDisplayInfo() can also be used to retrieve information about the default monitor by using a Display of zero.</p>
 <p>The resulting <code>DISPLAYINFO</code> structure values remain good until the next call to this function, at which point they will be overwritten.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="GetDisplayType"><h2>GetDisplayType()</h2><p class="lead">Returns the type of display supported.</p><div class="card card-info mb-3"><div class="card-header"><samp>DT gfx::GetDisplayType()</samp></div></div>
@@ -260,7 +260,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>This function returns the current <code>Flags</code> field from a <a href="classes/surface.html">Surface</a>.  It provides the same result as reading the field directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a read operation is undesirable.</p>
 <p>For information on the available flags, please refer to the <a href="classes/surface.html#tf-Flags">Surface⇒Flags</a> field.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AccessMemory</th><td>Access to a memory block was denied.</td></tr>
+<tr><th class="col-md-1">AccessMemory</th><td>Access to a memory block was denied</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="GetSurfaceInfo"><h2>GetSurfaceInfo()</h2><p class="lead">Retrieves display information for any surface object without having to access it directly.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR gfx::GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Surface</td><td>The unique ID of a <a href="classes/surface.html">Surface</a> to query.  If zero, the root surface is returned.</td></tr>
@@ -284,7 +284,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 </tbody></table></div></div>
 <p>The GetVisibleArea() function returns the visible area of a <a href="classes/surface.html">Surface</a>, which is based on its position within its parent surfaces. The resulting coordinates are relative to point <code>0,0</code> of the queried surface. If the surface is not obscured, then the resulting coordinates will be <code>(0,0),(Width,Height)</code>.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
+<tr><th class="col-md-1">Failed</th><td>General failure</td></tr>
 <tr><th class="col-md-1">Search</th><td>The supplied <code>Surface</code> ID did not refer to a recognised surface object.</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="LockCursor"><h2>LockCursor()</h2><p class="lead">Anchors the cursor so that it cannot move without explicit movement signals.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR gfx::LockCursor(OBJECTID Surface)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Surface</td><td>Refers to the surface object that the pointer should send movement signals to.</td></tr>
@@ -324,7 +324,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>Use the RestoreCursor() function to undo an earlier call to <a href="?page=SetCursor">SetCursor()</a>.  It is necessary to provide the same OwnerID that was used in the original call to <a href="?page=SetCursor">SetCursor()</a>.</p>
 <p>To release ownership of the cursor without changing the current cursor image, use a Cursor setting of <code>PTC::NOCHANGE</code>.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="ScaleToDPI"><h2>ScaleToDPI()</h2><p class="lead">Scales a value to the active display's DPI.</p><div class="card card-info mb-3"><div class="card-header"><samp>DOUBLE gfx::ScaleToDPI(DOUBLE Value)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Value</td><td>The number to be scaled.</td></tr>
 </tbody></table></div></div>
@@ -361,9 +361,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 </tbody></table>
 <p>The <code>Owner</code> parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We recommend that it is set to an object ID such as the program's task ID.  As the owner, the cursor remains under your program's control until <a href="?page=RestoreCursor">RestoreCursor()</a> is called.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">NothingDone</th><td>There is nothing to process.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">LockFailed</th><td>Failed to lock a required resource.</td></tr>
+<tr><th class="col-md-1">NothingDone</th><td>There is nothing to process</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
+<tr><th class="col-md-1">LockFailed</th><td>Failed to lock a required resource</td></tr>
 <tr><th class="col-md-1">NoSupport</th><td>The pointer cannot be set due to system limitations.</td></tr>
 <tr><th class="col-md-1">OutOfRange</th><td>The cursor ID is outside of acceptable range.</td></tr>
 <tr><th class="col-md-1">AccessObject</th><td>Failed to access the mouse pointer.</td></tr>
@@ -402,8 +402,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 }
 </pre>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">NoSupport</th><td>Operation not supported.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
+<tr><th class="col-md-1">NoSupport</th><td>Operation not supported</td></tr>
 <tr><th class="col-md-1">AccessObject</th><td>Failed to access the internally maintained image object.</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="SetHostOption"><h2>SetHostOption()</h2><p class="lead">Alter options associated with the host display system.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR gfx::SetHostOption(HOST Option, INT64 Value)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('HOST');">Option</a></td><td>One of TRAY_ICON, TASKBAR or STICK_TO_FRONT.</td></tr>
@@ -431,7 +431,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">InUse</th><td>A drag and drop operation has already been started.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>The left mouse button is not held by the user.</td></tr>
-<tr><th class="col-md-1">AccessObject</th><td>Attempting to lock an object failed.</td></tr>
+<tr><th class="col-md-1">AccessObject</th><td>Attempting to lock an object failed</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="SubscribeInput"><h2>SubscribeInput()</h2><p class="lead">Subscribe to incoming input messages for any active surface object.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR gfx::SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, INT * Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Callback</td><td>Reference to a callback function that will receive input messages.</td></tr>
@@ -505,14 +505,14 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>Call this function to undo any earlier calls to LockCursor() and return the mouse pointer to its regular state.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">ResourceNotLocked</th><td>The pointer is not anchored to the given Surface.</td></tr>
-<tr><th class="col-md-1">AccessObject</th><td>Attempting to lock an object failed.</td></tr>
+<tr><th class="col-md-1">AccessObject</th><td>Attempting to lock an object failed</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="UnsubscribeInput"><h2>UnsubscribeInput()</h2><p class="lead">Removes an input subscription.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR gfx::UnsubscribeInput(INT Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Handle</td><td>Reference to a handle returned by <a href="?page=SubscribeInput">SubscribeInput()</a>.</td></tr>
 </tbody></table></div></div>
 <p>This function removes an input subscription that has been created with <a href="?page=SubscribeInput">SubscribeInput()</a>.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">NotFound</th><td>A search routine in this function failed.</td></tr>
+<tr><th class="col-md-1">NotFound</th><td>A search routine in this function failed</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias © 2003-2026</div></div>
 <div class="docs-content" style="display:none;" id="WindowHook"><h2>WindowHook()</h2><p class="lead">Adds a function hook for receiving window messages from a host desktop.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR gfx::WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>SurfaceID</td><td>A hosted surface to be monitored.</td></tr>

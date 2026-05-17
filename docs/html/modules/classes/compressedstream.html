@@ -209,6 +209,7 @@
 <tr><th>PERMIT::GROUP_WRITE</th><td>Group members can write.</td></tr>
 <tr><th>PERMIT::HIDDEN</th><td>Recommends that the file is hidden from view by default.</td></tr>
 <tr><th>PERMIT::INHERIT</th><td>Inherit permissions from parent folder and logical OR them with preset permission flags.</td></tr>
+<tr><th>PERMIT::META</th><td>Synonym for <code>HIDDEN | PASSWORD | OFFLINE | NETWORK</code></td></tr>
 <tr><th>PERMIT::NETWORK</th><td>File is hosted on another machine.</td></tr>
 <tr><th>PERMIT::OFFLINE</th><td>File content for this networked file has not been cached on the local PC.</td></tr>
 <tr><th>PERMIT::OTHERS</th><td>Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></td></tr>
@@ -227,19 +228,17 @@
 </tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="PMF"><h1>PMF Type</h1><p class="lead">Flags for ProcessMessages</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>PMF::EVENT_LOOP</th><td>Set if this is the program's main event loop.  Should be accompanied with an infinite timeout.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2026</div></div>
-<div class="docs-content" style="display:none;" id="RDF"><h1>RDF Type</h1><p class="lead">Flags for the OpenDir() function.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>RDF::ARCHIVE</th><td>Feedback only - archive bit is set.</td></tr>
-<tr><th>RDF::DATE</th><td>Retrieve the date stamp of each file.</td></tr>
+<div class="docs-content" style="display:none;" id="RDF"><h1>RDF Type</h1><p class="lead">Flags for the OpenDir() function.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>RDF::DATE</th><td>Retrieve the date stamp of each file.</td></tr>
 <tr><th>RDF::FILE</th><td>Read all files in the folder.</td></tr>
 <tr><th>RDF::FILES</th><td>Read all files in the folder.</td></tr>
 <tr><th>RDF::FOLDER</th><td>Read all folders/volumes in the folder.</td></tr>
 <tr><th>RDF::FOLDERS</th><td>Read all folders/volumes in the folder.</td></tr>
-<tr><th>RDF::HIDDEN</th><td>Feedback only - file/folder is hidden.</td></tr>
 <tr><th>RDF::LINK</th><td>Feedback only - file/folder is actually a link to another location.</td></tr>
 <tr><th>RDF::PERMISSIONS</th><td>Get permission/security information.</td></tr>
 <tr><th>RDF::QUALIFIED</th><td>Return fully qualified folder names (i.e. trailing slash or colon for each name).</td></tr>
 <tr><th>RDF::QUALIFY</th><td>Return fully qualified folder names (i.e. trailing slash or colon for each name).</td></tr>
 <tr><th>RDF::READ_ALL</th><td>Synonym for <code>SIZE | DATE | PERMISSIONS | FILES | FOLDERS</code></td></tr>
-<tr><th>RDF::READ_ONLY</th><td>Read-only (not permissions related and might indicate read-only media).</td></tr>
+<tr><th>RDF::READ_ONLY</th><td>Read-only (not permissions related, can indicate read-only media).</td></tr>
 <tr><th>RDF::SIZE</th><td>Retrieve the byte size of each file.</td></tr>
 <tr><th>RDF::STREAM</th><td>Path is connected via a stream, e.g. network connection.</td></tr>
 <tr><th>RDF::TAGS</th><td>Receive additional information for each file, such as comments, author and copyright.  The results are stored in the <code>Tags</code> field of each file.</td></tr>
@@ -311,7 +310,7 @@
 <tr><th>Category</th><td><span class="text-nowrap">CCF</span></td><td>Assigned category</td></tr>
 <tr><th>Name</th><td><span class="text-nowrap">std::string</span></td><td>Name of the class</td></tr>
 <tr><th>Path</th><td><span class="text-nowrap">std::string</span></td><td>Path to the class file</td></tr>
-<tr><th>Extension</th><td><span class="text-nowrap">std::string</span></td><td>Wildcards for matching by file extension, e.g. <code>*.png</code></td></tr>
+<tr><th>Extension</th><td><span class="text-nowrap">std::string</span></td><td>Wildcards for matching by file extension, e.g. <code>jpeg|jpg</code></td></tr>
 <tr><th>Header</th><td><span class="text-nowrap">std::string</span></td><td>File identification instruction, e.g. <code>[0:$89504e470d0a1a0a]</code></td></tr>
 <tr><th>Icon</th><td><span class="text-nowrap">std::string</span></td><td>Icon reference in <code>group/name</code> format</td></tr>
 <tr><th>Description</th><td><span class="text-nowrap">std::string</span></td><td>File description</td></tr>
@@ -329,7 +328,7 @@
 <tr><th>Flags</th><td><span class="text-nowrap">UINT</span></td><td>Special flags that describe the field</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="struct-FileInfo"><h1>FileInfo Structure</h1><p class="lead">Metadata for describing a file.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Size</th><td><span class="text-nowrap">INT64</span></td><td>The size of the file's content.</td></tr>
-<tr><th>TimeStamp</th><td><span class="text-nowrap">INT64</span></td><td>64-bit time stamp - usable only for comparison (e.g. sorting).</td></tr>
+<tr><th>Timestamp</th><td><span class="text-nowrap">INT64</span></td><td>64-bit time stamp - usable only for comparison (e.g. sorting).</td></tr>
 <tr><th>Next</th><td><span class="text-nowrap">struct FileInfo *</span></td><td>Next structure in the list, or <code>NULL</code>.</td></tr>
 <tr><th>Name</th><td><span class="text-nowrap">std::string</span></td><td>The name of the file.</td></tr>
 <tr><th>Flags</th><td><span class="text-nowrap">RDF</span></td><td>Additional flags to describe the file.</td></tr>
@@ -360,6 +359,7 @@
 <tr><th>Stage</th><td><span class="text-nowrap">INT</span></td><td>The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</td></tr>
 <tr><th>ReleaseBuild</th><td><span class="text-nowrap">INT</span></td><td><code>1</code> = Release build, <code>0</code> = Debug build</td></tr>
 <tr><th>StaticBuild</th><td><span class="text-nowrap">INT</span></td><td><code>1</code> = Static build, <code>0</code> = Dynamic build</td></tr>
+<tr><th>HasConsole</th><td><span class="text-nowrap">INT</span></td><td><code>1</code> = Console available, <code>0</code> = Console not available</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2026</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

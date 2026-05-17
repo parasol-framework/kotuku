@@ -3285,6 +3285,30 @@ static ResourceManager glNodeManager = {
       <field name="HasConsole" type="INT"><code>1</code> = Console available, <code>0</code> = Console not available</field>
     </struct>
 
+    <struct name="TimeZoneInfo" comment="Time zone information returned from GetTimeZoneInfo()">
+      <field name="ZoneID" type="std::string">Preferred public ID, e.g. Europe/London or UTC.</field>
+      <field name="NativeID" type="std::string">Host-native ID, e.g. GMT Standard Time on Windows.</field>
+      <field name="Source" type="std::string">"tzif", "win32", or "utc".</field>
+      <field name="DataPath" type="std::string">TZif path on Linux, otherwise empty.</field>
+      <field name="Version" type="std::string">TZDB/source version if available, otherwise empty.</field>
+      <field name="Transitions" type="kt::vector&lt;TimeZoneTransition&gt;">Transitions available for the requested range.</field>
+      <field name="BaseOffset" type="INT">Standard UTC offset in seconds.</field>
+      <field name="TransitionCount" type="INT">Total transitions available for the requested range.</field>
+      <field name="TransitionsWritten" type="INT">Number of records written to the supplied buffer.</field>
+      <field name="StartYear" type="INT">Inclusive requested start year.</field>
+      <field name="EndYear" type="INT">Inclusive requested end year.</field>
+      <field name="IsLocal" type="INT">1 if ZoneID requested the local system zone.</field>
+      <field name="IsFallback" type="INT">1 if UTC fallback was used.</field>
+    </struct>
+
+    <struct name="TimeZoneTransition" comment="Time zone transition information for GetTimeZoneInfo()">
+      <field name="Instant" type="INT64">Unix epoch microseconds at which the transition occurs.</field>
+      <field name="Abbreviation" type="std::string">Short name where available, e.g. GMT, BST, PST.</field>
+      <field name="OffsetBefore" type="INT">UTC offset in seconds before the transition.</field>
+      <field name="OffsetAfter" type="INT">UTC offset in seconds after the transition.</field>
+      <field name="DaylightSaving" type="INT">1 if the resulting period observes daylight-saving time.</field>
+    </struct>
+
     <struct name="Unit">
       <field name="Value" type="DOUBLE">The unit value.</field>
       <field name="Type" type="UINT">Additional type information</field>

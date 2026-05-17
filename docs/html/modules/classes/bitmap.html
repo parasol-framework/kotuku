@@ -362,8 +362,8 @@ unpackAlpha(Colour)
 <p>The image data is cleared with <a data-bs-toggle="tooltip" title="The bitmap's background colour is defined here in RGB format." href="#tf-Bkgd">Bkgd</a> if the <code>CLEAR</code> flag is defined in <a data-bs-toggle="tooltip" title="Optional flags." href="#tf-Flags">Flags</a>.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">FieldNotSet</th><td>A required field value is undefined.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">FieldNotSet</th><td>A required field value is undefined</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tac-SaveImage" style="scroll-margin:3em;" id="ta-SaveImage" role="button"><td style="width:1%; border-top-style: none; border-bottom-style: none;"><i class="bi bi-chevron-double-right text-secondary"></i></td><th class="col-md-1 text-primary">SaveImage</th><td>Saves a bitmap's image to a data object of your choosing in PCX format.</td></tr><tr><td class="hiddenRow" style="width:1%; border-top-style: none; border-bottom-style: none;"></td><td colspan="2" class="hiddenRow"><div id="tac-SaveImage" class="collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR acSaveImage(*Object, OBJECTID Dest, CLASSID ClassID)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Dest</td><td>Refers to an object that will receive the encoded image data.</td></tr>
@@ -384,8 +384,8 @@ unpackAlpha(Colour)
 <p>The <code>BMF::COMPRESSED</code> bit will be set in the <a data-bs-toggle="tooltip" title="Optional flags." href="#tf-Flags">Flags</a> field after a successful call to this function to indicate that the bitmap is compressed.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
-<tr><th class="col-md-1">ReallocMemory</th><td>The reallocation of a memory block failed.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block</td></tr>
+<tr><th class="col-md-1">ReallocMemory</th><td>The reallocation of a memory block failed</td></tr>
 <tr><th class="col-md-1">CreateObject</th><td>A Compression object could not be created.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
@@ -450,7 +450,7 @@ unpackAlpha(Colour)
 <p>This method draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position <code>(X, Y)</code> with dimensions determined by the specified <code>Width</code> and <code>Height</code>.  If the <code>Flags</code> parameter sets the <code>FILL</code> flag then the rectangle will be filled, otherwise the rectangle's outline will be drawn.  The colour of the rectangle is determined by the pixel value in the <code>Colour</code> parameter.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-GetColour" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">GetColour</th><td id="tm-GetColour">Converts Red, Green, Blue components into a single colour value.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-GetColour" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::GetColour(OBJECTPTR Object, INT Red, INT Green, INT Blue, INT Alpha, UINT * Colour)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Red</td><td>Red component from 0 - 255.</td></tr>
 <tr><td>Green</td><td>Green component from 0 - 255.</td></tr>

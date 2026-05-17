@@ -265,7 +265,7 @@
 <p>Use CloseChannels to destroy a group of channels that have previously been allocated through the <a data-bs-toggle="tooltip" title="Allocates audio channels that can be used for sample playback." href="#tm-OpenChannels">OpenChannels()</a> method.  Any audio commands buffered against the channels will be cleared instantly.  Any audio data that has already been mixed into the output buffer can continue to play for 1 - 2 seconds.  If this is an issue then the volume should be muted at the same time.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-OpenChannels" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">OpenChannels</th><td id="tm-OpenChannels">Allocates audio channels that can be used for sample playback.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-OpenChannels" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR snd::OpenChannels(OBJECTPTR Object, INT Total, INT * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Total</td><td>Total of channels to allocate.</td></tr>
@@ -297,7 +297,7 @@
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>Sample is not a stream.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-SetVolume" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">SetVolume</th><td id="tm-SetVolume">Sets the volume for input and output mixers.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-SetVolume" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR snd::SetVolume(OBJECTPTR Object, INT Index, CSTRING Name, SVF Flags, INT Channel, DOUBLE Volume)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Index</td><td>The index of the mixer that you want to set.</td></tr>
@@ -317,7 +317,7 @@
 </tbody></table>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The new volume was applied successfully.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">OutOfRange</th><td>The <code>Volume</code> or <code>Index</code> is out of the acceptable range.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>

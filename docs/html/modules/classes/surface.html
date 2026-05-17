@@ -479,7 +479,7 @@ the surface area first).</li>
 <p>The subscriber can draw to the bitmap surface as it would with any freshly allocated bitmap object (refer to the <a href="bitmap.html">Bitmap</a> class).  To get the width and height of the available drawing space, please read the Width and Height fields from the Surface object.  If writing to the bitmap directly, please observe the bitmap's clipping region and the XOffset and YOffset values.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 <tr><th class="col-md-1">ExecViolation</th><td>The call was not made from the process that owns the object.</td></tr>
 </tbody></table></div></div></td></tr>
@@ -516,7 +516,7 @@ the surface area first).</li>
 <p>This method is scope restricted, meaning that callbacks added by other objects will not be affected irrespective of the parameters that are passed to it.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Search</th><td>A search routine in this function failed.</td></tr>
+<tr><th class="col-md-1">Search</th><td>A search routine in this function failed</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-ResetDimensions" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">ResetDimensions</th><td id="tm-ResetDimensions">Changes the dimensions of a surface.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-ResetDimensions" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR drw::ResetDimensions(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, DMF Dimensions)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>X</td><td>New X coordinate.</td></tr>
 <tr><td>Y</td><td>New Y coordinate.</td></tr>
@@ -555,7 +555,7 @@ the surface area first).</li>
 <p>This method does not work on anything other than top-level surface objects.  The current top-level surface object is usually named "SystemSurface" by default and can be searched for by that name.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">InvalidState</th><td>The surface is not a top-level surface object.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-SetOpacity" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">SetOpacity</th><td id="tm-SetOpacity">Alters the opacity of a surface object.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-SetOpacity" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR drw::SetOpacity(OBJECTPTR Object, DOUBLE Value, DOUBLE Adjustment)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Value</td><td>The new opacity value between 0 and 100% (ignored if you have set the Adjustment parameter).</td></tr>

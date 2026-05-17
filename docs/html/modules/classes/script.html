@@ -51,6 +51,7 @@
                           <i class="bi bi-check-lg text-success" data-bs-toggle="tooltip" title="Immutable"></i></td><th class="col-md-1">Flags</th><td class="col-md-1"><span class="text-nowrap">SCF</span></td><td>Optional flags.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Flags" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">SCF::EXIT_ON_ERROR</th><td>The script will automatically terminate its execution process if an error is detected.</td></tr>
 <tr><th class="col-md-1">SCF::LOG_ALL</th><td>Enables execution debugging.  More information will be printed to the console in this mode.</td></tr>
+<tr><th class="col-md-1">SCF::PROCESS_DOC</th><td>Process any embedded documentation in the script.</td></tr>
 </tbody></table>
       
 </div></div></td></tr>
@@ -131,7 +132,7 @@
 <p>Not for client use.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-DebugLog" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">DebugLog</th><td id="tm-DebugLog">Acquire a debug log from a compiled Script.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-DebugLog" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR sc::DebugLog(OBJECTPTR Object, CSTRING Options, CSTRING * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Options</td><td>Options to pass to the underlying language.</td></tr>
 <tr><td>Result</td><td>Resulting log information.</td></tr>
@@ -197,6 +198,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 </tbody></table></div></div></td></tr>
 </tbody></table><div class="footer copyright text-right">Script class documentation © Paul Manias 1996-2026</div></div><div class="docs-content" style="display:none;" id="SCF"><h1>SCF Type</h1><p class="lead">Script flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>SCF::EXIT_ON_ERROR</th><td>The script will automatically terminate its execution process if an error is detected.</td></tr>
 <tr><th>SCF::LOG_ALL</th><td>Enables execution debugging.  More information will be printed to the console in this mode.</td></tr>
+<tr><th>SCF::PROCESS_DOC</th><td>Process any embedded documentation in the script.</td></tr>
 </tbody></table><div class="footer copyright text-right">Script module documentation © Paul Manias 1996-2026</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

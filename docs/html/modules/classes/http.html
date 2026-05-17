@@ -39,8 +39,8 @@
    src        = 'http://www.kotuku.dev/index.html',
    method     = 'get',
    outputFile = 'temp:index.html',
-   stateChanged = function(HTTP, State)
-      if (State == HGS::COMPLETED) then print(content) end
+   stateChanged = function(HTTP:obj, State:num)
+      if (State is HGS::COMPLETED) then print(content) end
    end
 })
 
@@ -52,7 +52,7 @@ http = obj.new('http', {
    src        = 'http://www.kotuku.dev/index.html',
    method     = 'get',
    datatype   = 'text',
-   objectMode = 'DATA_FEED',
+   objectMode = 'FEED',
    outputObject = doc
 })
 http.acActivate()
@@ -136,6 +136,7 @@ http.acActivate()
 <tr><th class="col-md-1">HTF::DISABLE_SERVER_VERIFY</th><td>Disable SSL server certificate verification (use with caution).</td></tr>
 <tr><th class="col-md-1">HTF::MESSAGE</th><td>When activating child objects, send delayed messages to postpone execution rather than making direct calls.</td></tr>
 <tr><th class="col-md-1">HTF::MOVED</th><td>Read-only.  Indicates that the HTTP source was moved (<code>HTS::MOVED_PERMANENTLY</code>).</td></tr>
+<tr><th class="col-md-1">HTF::NO_AUTO_REDIRECT</th><td>Do not automatically follow <code>301</code> responses.</td></tr>
 <tr><th class="col-md-1">HTF::NO_DIALOG</th><td>Turn off the username/password dialog.</td></tr>
 <tr><th class="col-md-1">HTF::NO_HEAD</th><td>Do not send a <code>HEAD</code> prior to executing a <code>PUT</code> or <code>POST</code> (removes the authentication check).</td></tr>
 <tr><th class="col-md-1">HTF::RAW</th><td>Forcibly turns off chunk detection and chunk handling on incoming data.  Also turns off automatic chunk encoding for outgoing data.</td></tr>
@@ -205,6 +206,7 @@ http.acActivate()
 <tr><th class="col-md-1">HTM::MOVE</th><td>WebDAV instruction.</td></tr>
 <tr><th class="col-md-1">HTM::NOTIFY</th><td>WebDAV instruction.</td></tr>
 <tr><th class="col-md-1">HTM::OPTIONS</th><td>Request permitted communication options for a given URL or server.</td></tr>
+<tr><th class="col-md-1">HTM::PATCH</th><td>Applies partial modifications to a resource.</td></tr>
 <tr><th class="col-md-1">HTM::POLL</th><td>WebDAV instruction.</td></tr>
 <tr><th class="col-md-1">HTM::POST</th><td>Sends information to the HTTP server.</td></tr>
 <tr><th class="col-md-1">HTM::PROPFIND</th><td>WebDAV instruction.</td></tr>
@@ -293,6 +295,12 @@ http.acActivate()
 <p>If the <code>RECV_BUFFER</code> flag is set, all content received from the HTTP server will be stored in a managed buffer that is referred to by this field.  This field can be read at any time.  The buffer content is reset whenever the HTTP object is activated.</p>
       
 </div></div></td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-ResponseKeys" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-ResponseKeys"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
+                           
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">ResponseKeys</th><td class="col-md-1"><span class="text-nowrap">STRING []</span></td><td>Returns a string list of received response keys.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-ResponseKeys" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+<p>This field returns a string list of all the keys found in the HTTP response header.  An empty list will be returned if no keys are found.</p>
+      
+</div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Size" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Size"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">Size</th><td class="col-md-1"><span class="text-nowrap">INT64</span></td><td>Set this field to define the length of a data transfer when issuing a <code>POST</code> command.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Size" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
@@ -354,7 +362,7 @@ http.acActivate()
 </tbody></table>
       
 </div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-UserAgent" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-UserAgent"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-UserAgent" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-UserAgent"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">UserAgent</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>Specifies the name of the user-agent string that is sent in HTTP requests.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-UserAgent" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>This field describes the <code>user-agent</code> value that will be sent in HTTP requests.  The default value is <code>Kotuku Client</code>.</p>
@@ -417,6 +425,7 @@ http.acActivate()
 <tr><th>HTF::DISABLE_SERVER_VERIFY</th><td>Disable SSL server certificate verification (use with caution).</td></tr>
 <tr><th>HTF::MESSAGE</th><td>When activating child objects, send delayed messages to postpone execution rather than making direct calls.</td></tr>
 <tr><th>HTF::MOVED</th><td>Read-only.  Indicates that the HTTP source was moved (<code>HTS::MOVED_PERMANENTLY</code>).</td></tr>
+<tr><th>HTF::NO_AUTO_REDIRECT</th><td>Do not automatically follow <code>301</code> responses.</td></tr>
 <tr><th>HTF::NO_DIALOG</th><td>Turn off the username/password dialog.</td></tr>
 <tr><th>HTF::NO_HEAD</th><td>Do not send a <code>HEAD</code> prior to executing a <code>PUT</code> or <code>POST</code> (removes the authentication check).</td></tr>
 <tr><th>HTF::RAW</th><td>Forcibly turns off chunk detection and chunk handling on incoming data.  Also turns off automatic chunk encoding for outgoing data.</td></tr>
@@ -439,6 +448,7 @@ http.acActivate()
 <tr><th>HTM::MOVE</th><td>WebDAV instruction.</td></tr>
 <tr><th>HTM::NOTIFY</th><td>WebDAV instruction.</td></tr>
 <tr><th>HTM::OPTIONS</th><td>Request permitted communication options for a given URL or server.</td></tr>
+<tr><th>HTM::PATCH</th><td>Applies partial modifications to a resource.</td></tr>
 <tr><th>HTM::POLL</th><td>WebDAV instruction.</td></tr>
 <tr><th>HTM::POST</th><td>Sends information to the HTTP server.</td></tr>
 <tr><th>HTM::PROPFIND</th><td>WebDAV instruction.</td></tr>
