@@ -73,6 +73,7 @@
             <li class="api-ref"><a class="rounded" href="Tiri-JSON-API.html">JSON API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-Options-API.html">Options API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-Proxy-Server-API.html">Proxy Server API</a></li>
+            <li class="api-ref"><a class="rounded" href="Tiri-Tempus-API.html">Tempus API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-URL-API.html">URL API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-VFX-API.html">VFX API</a></li>
             <li class="api-ref"><a class="rounded" href="Tiri-Widgets.html">Widgets</a></li>
@@ -786,15 +787,14 @@
 <span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
 <span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- Outer x is still 1 and still const</span></span></code></pre></div>
 <h3 id="enum-declarations">Enum Declarations</h3>
-<p>Enum declarations generate a group of numeric constants from a shared prefix. The enum prefix is used only to build the
-generated names; it does not create a runtime table or value.</p>
+<p>Enum declarations generate a group of compile-time numeric constants from a shared prefix. Their use is favoured over constant variable declarations, as the parser can replace enum references with their numeric value for efficiency. The enum prefix is used only to build the generated names; it does not create a runtime table, variable, or value.</p>
 <p><strong>Syntax:</strong></p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="kw">global</span><span class="op">|</span><span class="kw">local</span><span class="op">]</span> <span class="cn">PREFIX</span> <span class="op">=</span> enum <span class="op">{</span></span>
+<div class="sourceCode" id="cb22"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="kw">global</span><span class="op">]</span> <span class="va">enum</span> PREFIX <span class="op">{</span></span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>   <span class="cn">MEMBER</span> <span class="op">=</span> <span class="dv">0</span><span class="op">,</span></span>
 <span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>   <span class="cn">NEXT_MEMBER</span><span class="op">,</span></span>
 <span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>Each generated constant is named <code>PREFIX_MEMBER</code> and is immutable. For example:</p>
-<div class="sourceCode" id="cb23"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="cn">HTTP_METHOD</span> <span class="op">=</span> enum <span class="op">{</span></span>
+<p>Each generated constant is named <code>PREFIX_MEMBER</code> and is substituted by the parser as a numeric constant. For example:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="va">enum</span> HTTP_METHOD <span class="op">{</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>   <span class="cn">GET</span> <span class="op">=</span> <span class="dv">0</span><span class="op">,</span></span>
 <span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>   <span class="cn">POST</span><span class="op">,</span></span>
 <span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>   <span class="cn">PUT</span><span class="op">,</span></span>
@@ -803,30 +803,30 @@ generated names; it does not create a runtime table or value.</p>
 <span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="fu">assert</span><span class="op">(</span><span class="cn">HTTP_METHOD_GET</span> <span class="va">is</span> <span class="dv">0</span><span class="op">)</span></span>
 <span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a><span class="fu">assert</span><span class="op">(</span><span class="cn">HTTP_METHOD_PUT</span> <span class="va">is</span> <span class="dv">2</span><span class="op">)</span></span></code></pre></div>
-<p>The <code>local</code>, <code>global</code>, and bare assignment forms are supported:</p>
-<div class="sourceCode" id="cb24"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="cn">MODE</span> <span class="op">=</span> enum <span class="op">{</span> <span class="cn">FAST</span><span class="op">,</span> <span class="cn">SLOW</span> <span class="op">}</span>             <span class="co">-- Local constants</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="cn">STATE</span> <span class="op">=</span> enum <span class="op">{</span> <span class="cn">IDLE</span><span class="op">,</span> <span class="cn">RUNNING</span> <span class="op">}</span>   <span class="co">-- Local constants</span></span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="cn">ERR</span> <span class="op">=</span> enum <span class="op">{</span> <span class="cn">OKAY</span> <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> <span class="cn">FAIL</span> <span class="op">}</span>   <span class="co">-- Global constants</span></span></code></pre></div>
+<p>The bare and <code>global</code> forms are equivalent:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="va">enum</span> MODE <span class="op">{</span> <span class="cn">FAST</span><span class="op">,</span> <span class="cn">SLOW</span> <span class="op">}</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="kw">global</span> <span class="va">enum</span> ERR <span class="op">{</span> <span class="cn">OKAY</span> <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> <span class="cn">FAIL</span> <span class="op">}</span></span></code></pre></div>
 <p>If the first member has no explicit value, it starts at <code>0</code>. Later members without explicit values increment from the
 previous member value:</p>
-<div class="sourceCode" id="cb25"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="cn">SAMPLE</span> <span class="op">=</span> enum <span class="op">{</span></span>
+<div class="sourceCode" id="cb25"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="va">enum</span> SAMPLE <span class="op">{</span></span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>   <span class="cn">FIRST</span><span class="op">,</span>        <span class="co">-- SAMPLE_FIRST = 0</span></span>
 <span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>   <span class="cn">SECOND</span><span class="op">,</span>       <span class="co">-- SAMPLE_SECOND = 1</span></span>
 <span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>   <span class="cn">CUSTOM</span> <span class="op">=</span> <span class="dv">10</span><span class="op">,</span>  <span class="co">-- SAMPLE_CUSTOM = 10</span></span>
 <span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>   <span class="cn">AFTER</span><span class="op">,</span>        <span class="co">-- SAMPLE_AFTER = 11</span></span>
 <span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Explicit values must be integer literals. Signed decimal and hexadecimal forms are accepted:</p>
-<div class="sourceCode" id="cb26"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="cn">MASK</span> <span class="op">=</span> enum <span class="op">{</span></span>
+<div class="sourceCode" id="cb26"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="va">enum</span> MASK <span class="op">{</span></span>
 <span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>   <span class="cn">NONE</span> <span class="op">=</span> <span class="dv">0x0</span><span class="op">,</span></span>
 <span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>   <span class="cn">READ</span> <span class="op">=</span> <span class="dv">0x1</span><span class="op">,</span></span>
 <span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>   <span class="cn">WRITE</span> <span class="op">=</span> <span class="dv">0x2</span><span class="op">,</span></span>
 <span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>   <span class="cn">ALL</span> <span class="op">=</span> <span class="dv">0x3</span><span class="op">,</span></span>
 <span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>Enum prefixes and member names must use uppercase identifier style. The declaration must have a single prefix name,
-must contain at least one member, and cannot use a prefix type annotation or <code>&lt;close&gt;</code> attribute. A redundant
-<code>&lt;const&gt;</code> attribute on the prefix is accepted but unnecessary because generated enum constants are always immutable.</p>
-<p>The <code>enum</code> word is contextual. It is only treated as an enum declaration when it appears on the right-hand side of a
-matching declaration followed by <code>{</code>; otherwise it remains available as a normal identifier or field name.</p>
+<h4 id="restrictions">Restrictions</h4>
+<p>Enum declarations must appear at the top-level scope of a script or imported file. They are not permitted inside
+functions or statement blocks, and <code>local enum</code> is invalid.</p>
+<p>Enum prefixes and member names must use uppercase identifier style. The declaration must contain at least one member
+and cannot use a prefix type annotation, <code>&lt;const&gt;</code>, or <code>&lt;close&gt;</code> attribute. The <code>enum</code> word is reserved and cannot be
+used as an identifier.</p>
 <h2 id="safe-navigation-operator">Safe Navigation Operator</h2>
 <p>The safe navigation operator (<code>?.</code>) provides null-safe access to object fields, methods, and indexes.</p>
 <h3 id="syntax">Syntax</h3>

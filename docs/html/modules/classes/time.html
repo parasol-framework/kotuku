@@ -65,9 +65,9 @@
 </tbody></table><h3>Actions</h3><p>The following actions are currently supported:</p><table class="table"><tbody><tr data-bs-toggle="collapse" data-bs-target="#tac-Query" style="scroll-margin:3em;" id="ta-Query"><td style="width:1%; border-top-style: none; border-bottom-style: none;"></td><th class="col-md-1 text-primary">Query</th><td>Updates the values in a time object with the current system date and time.</td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tac-Refresh" style="scroll-margin:3em;" id="ta-Refresh"><td style="width:1%; border-top-style: none; border-bottom-style: none;"></td><th class="col-md-1 text-primary">Refresh</th><td>Refreshes the state of an object.</td></tr>
 </tbody></table><h3>Methods</h3><p>The following methods are currently supported:</p><table class="table"><tbody><tr data-bs-toggle="collapse" data-bs-target="#tmx-GetTimeZoneInfo" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">GetTimeZoneInfo</th><td id="tm-GetTimeZoneInfo">Returns time-zone metadata and transition records.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-GetTimeZoneInfo" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR pt::GetTimeZoneInfo(OBJECTPTR Object, CSTRING ZoneID, INT StartYear, INT EndYear, struct TimeZoneInfo ** Info)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>ZoneID</td><td>Empty or NULL requests the local system zone.</td></tr>
-<tr><td>StartYear</td><td>Inclusive first year.  Must be non-zero.</td></tr>
-<tr><td>EndYear</td><td>Inclusive final year.  Must be &gt;= StartYear.</td></tr>
-<tr><td>Info</td><td>Receives the allocated metadata and transition resource.  Release with <a href="?page=FreeResource">FreeResource()</a> when no longer required.</td></tr>
+<tr><td>StartYear</td><td>Inclusive first year.  Must be in the supported 1601-9999 range.</td></tr>
+<tr><td>EndYear</td><td>Inclusive final year.  Must be &gt;= StartYear, no later than 9999 and within 400 years of <code>StartYear</code>.</td></tr>
+<tr><td>Info</td><td>Receives the allocated metadata and transition resource.  Release with <a href="core.html?page=FreeResource">FreeResource()</a> when no longer required.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>Returns normalised time-zone information for a named zone or for the host system's local zone.  The returned <a data-bs-toggle="tooltip" title="" href="?page=struct-TimeZoneInfo">TimeZoneInfo</a> resource includes the preferred public zone identifier, the host-native identifier, the data source, standard UTC offset and any transition records found within the requested inclusive year range.</p>
 <p>The <code>ZoneID</code> value may be <code>NULL</code> or empty to request the local system zone.  Explicit zone IDs support <code>UTC</code> aliases on all platforms.  Linux builds also accept IANA zone names that resolve under <code>/usr/share/zoneinfo</code>.  Windows builds accept Windows native time-zone IDs and the IANA IDs that are mapped by the Core Windows time-zone wrapper.</p>
@@ -76,10 +76,10 @@
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Time-zone information was returned.  Local-zone failures may return a UTC fallback result.</td></tr>
 <tr><th class="col-md-1">Search</th><td>An explicit zone ID could not be resolved.</td></tr>
-<tr><th class="col-md-1">OutOfRange</th><td><code>StartYear</code> was zero, or <code>EndYear</code> was earlier than <code>StartYear</code>.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>The result resource could not be allocated.</td></tr>
+<tr><th class="col-md-1">OutOfRange</th><td>A value is outside of the valid range</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block</td></tr>
 <tr><th class="col-md-1">SystemCall</th><td>A required host time-zone API call failed.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>The method argument pointer was <code>NULL</code>.</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-SetTime" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">SetTime</th><td id="tm-SetTime">Apply the time to the system clock.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-SetTime" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR pt::SetTime(OBJECTPTR Object)</samp></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>This method will apply the time object's values to the BIOS.  Depending on the host platform, this method may only work if the user is logged in as the administrator.</p>
@@ -92,8 +92,6 @@
 <tr><th>Version</th><td><span class="text-nowrap">std::string</span></td><td>TZDB/source version if available, otherwise empty.</td></tr>
 <tr><th>Transitions</th><td><span class="text-nowrap">kt::vector&lt;TimeZoneTransition&gt;</span></td><td>Transitions available for the requested range.</td></tr>
 <tr><th>BaseOffset</th><td><span class="text-nowrap">INT</span></td><td>Standard UTC offset in seconds.</td></tr>
-<tr><th>TransitionCount</th><td><span class="text-nowrap">INT</span></td><td>Total transitions available for the requested range.</td></tr>
-<tr><th>TransitionsWritten</th><td><span class="text-nowrap">INT</span></td><td>Number of records written to the supplied buffer.</td></tr>
 <tr><th>StartYear</th><td><span class="text-nowrap">INT</span></td><td>Inclusive requested start year.</td></tr>
 <tr><th>EndYear</th><td><span class="text-nowrap">INT</span></td><td>Inclusive requested end year.</td></tr>
 <tr><th>IsLocal</th><td><span class="text-nowrap">INT</span></td><td>1 if ZoneID requested the local system zone.</td></tr>
