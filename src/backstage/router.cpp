@@ -101,7 +101,7 @@ static std::string_view media_type(std::string_view ContentType)
 {
    auto semicolon = ContentType.find(';');
    if (not (semicolon IS std::string_view::npos)) ContentType = ContentType.substr(0, semicolon);
-   return trim_header_value(ContentType);
+   return HttpHeaders::trim_value(ContentType);
 }
 
 //********************************************************************************************************************
@@ -131,15 +131,15 @@ static BackstageHttpResponse validate_route_body_policy(const BackstageRoute &Ro
    const BackstageHttpRequest &HttpRequest)
 {
    if (route_expects_body(Route)) {
-      if (not HttpRequest.has_content_length) return plain_http_response(411, "Length Required");
-      if (HttpRequest.body.empty()) return plain_http_response(400, "Request body is required");
+      if (not HttpRequest.has_content_length) return BackstageHttpResponse::plain(411, "Length Required");
+      if (HttpRequest.body.empty()) return BackstageHttpResponse::plain(400, "Request body is required");
 
       if ((route_body_is_json(Route)) and (not request_content_type_is_json(HttpRequest))) {
-         return plain_http_response(415, "Unsupported Media Type");
+         return BackstageHttpResponse::plain(415, "Unsupported Media Type");
       }
    }
    else if (not HttpRequest.body.empty()) {
-      return plain_http_response(415, "Unsupported Media Type");
+      return BackstageHttpResponse::plain(415, "Unsupported Media Type");
    }
 
    return {};
@@ -192,17 +192,17 @@ static BackstageHttpResponse dispatch_route_request(objClientSocket *Client, con
       BackstageResponse response;
       auto error = route.handler(request, response);
 
-      if (error IS ERR::Okay) return route_http_response(response);
-      return plain_http_response(500, "Internal Server Error");
+      if (error IS ERR::Okay) return BackstageHttpResponse::from_route(response);
+      return BackstageHttpResponse::plain(500, "Internal Server Error");
    }
 
    if (not allowed_methods.empty()) {
-      auto response = plain_http_response(405, "Method Not Allowed");
+      auto response = BackstageHttpResponse::plain(405, "Method Not Allowed");
       response.extra_headers = "Allow: ";
       response.extra_headers.append(allowed_methods);
       response.extra_headers.append("\r\n");
       return response;
    }
 
-   return plain_http_response(404, "Not Found");
+   return BackstageHttpResponse::plain(404, "Not Found");
 }

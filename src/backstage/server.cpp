@@ -2,10 +2,10 @@
 static BackstageHttpResponse process_http_request(objClientSocket *Client, std::string_view RawRequest)
 {
    BackstageHttpRequest request;
-   auto status = parse_http_request(RawRequest, request);
+   auto status = request.parse(RawRequest);
 
-   if (status IS HttpParseStatus::BAD_REQUEST) return plain_http_response(400, "Bad Request");
-   if (status IS HttpParseStatus::PAYLOAD_TOO_LARGE) return plain_http_response(413, "Payload Too Large");
+   if (status IS HttpParseStatus::BAD_REQUEST) return BackstageHttpResponse::plain(400, "Bad Request");
+   if (status IS HttpParseStatus::PAYLOAD_TOO_LARGE) return BackstageHttpResponse::plain(413, "Payload Too Large");
 
    return dispatch_route_request(Client, request);
 }
@@ -49,7 +49,7 @@ static ERR server_incoming(objNetServer *Server, objClientSocket *Client, APTR M
       std::lock_guard<std::mutex> lock(glRequestLock);
       auto &client_buffer = glRequestBuffers[Client->UID];
       client_buffer.append(buffer.data(), size_t(len));
-      buffer_state = analyse_http_buffer(client_buffer);
+      buffer_state = BackstageHttpRequest::analyse_buffer(client_buffer);
 
       if (not (buffer_state IS HttpBufferState::INCOMPLETE)) {
          request = client_buffer;
@@ -58,16 +58,16 @@ static ERR server_incoming(objNetServer *Server, objClientSocket *Client, APTR M
    }
 
    if ((buffer_state IS HttpBufferState::HEADER_TOO_LARGE) or (buffer_state IS HttpBufferState::BAD_REQUEST)) {
-      write_response(Client, plain_http_response(400, "Bad Request"));
+      BackstageHttpResponse::plain(400, "Bad Request").write(Client);
       return ERR::Okay;
    }
 
    if (buffer_state IS HttpBufferState::BODY_TOO_LARGE) {
-      write_response(Client, plain_http_response(413, "Payload Too Large"));
+      BackstageHttpResponse::plain(413, "Payload Too Large").write(Client);
       return ERR::Okay;
    }
 
-   if (buffer_state IS HttpBufferState::COMPLETE) write_response(Client, process_http_request(Client, request));
+   if (buffer_state IS HttpBufferState::COMPLETE) process_http_request(Client, request).write(Client);
 
    return ERR::Okay;
 }
