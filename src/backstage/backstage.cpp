@@ -1,5 +1,8 @@
 /*********************************************************************************************************************
 
+The source code of the Kotuku project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
+
 -MODULE-
 Backstage: Provides a REST service for interacting with running processes.
 
@@ -27,12 +30,16 @@ See interface.tiri for the REST interface.
 #include <array>
 #include <charconv>
 #include <cstdint>
+#include <cstring>
 #include <mutex>
 #include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
+
+#include "../link/base64.h"
 
 using namespace kt;
 
@@ -45,6 +52,7 @@ JUMPTABLE_REGEX
 
 static ERR init_backstage(int = 8765);
 static void release_backstage_routes();
+static void release_backstage_websockets();
 
 objNetServer *glServer = nullptr;
 static std::mutex glRequestLock;
@@ -78,14 +86,17 @@ struct BackstageRouteMetadata {
    std::string_view description;
    std::string_view body;
    std::string_view returns;
+   std::string_view transport;
    std::span<const BackstageParam> path_params;
    std::span<const BackstageParam> query_params;
 
    constexpr BackstageRouteMetadata() = default;
 
    constexpr BackstageRouteMetadata(std::string_view Description, std::string_view Body, std::string_view Returns,
-      std::span<const BackstageParam> PathParams = {}, std::span<const BackstageParam> QueryParams = {}) :
-      description(Description), body(Body), returns(Returns), path_params(PathParams), query_params(QueryParams) {}
+      std::string_view Transport = {}, std::span<const BackstageParam> PathParams = {},
+      std::span<const BackstageParam> QueryParams = {}) :
+      description(Description), body(Body), returns(Returns), transport(Transport), path_params(PathParams),
+      query_params(QueryParams) {}
 };
 
 struct BackstageRoute {
@@ -100,8 +111,6 @@ struct BackstageRoute {
    BackstageRoute() = default;
    BackstageRoute(const BackstageRoute &) = delete;
    BackstageRoute &operator=(const BackstageRoute &) = delete;
-   BackstageRoute(BackstageRoute &&) = delete;
-   BackstageRoute &operator=(BackstageRoute &&) = delete;
 
    BackstageRoute(std::string_view Method, std::string_view Path, std::string_view Regex, BackstageHandler Handler,
       std::span<const std::string_view> PathParamNames = {}, const BackstageRouteMetadata &Metadata = {}) :
@@ -169,6 +178,7 @@ static ERR MODExpunge(void)
       std::lock_guard<std::mutex> lock(glRequestLock);
       glRequestBuffers.clear();
    }
+   release_backstage_websockets();
    release_backstage_routes();
    if (glServer)   { FreeResource(glServer);   glServer = nullptr; }
    if (modRegex)   { FreeResource(modRegex);   modRegex = nullptr; }
@@ -180,6 +190,7 @@ static ERR MODExpunge(void)
 
 #include "routes.cpp"
 #include "http.cpp"
+#include "websocket.cpp"
 #include "router.cpp"
 #include "server.cpp"
 

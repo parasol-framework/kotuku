@@ -266,6 +266,12 @@ static constexpr std::array<BackstageParam, 1> delete_subscriptions_id_path_para
 
 static constexpr std::array<BackstageParam, 0> delete_subscriptions_id_query_params = {};
 
+static constexpr std::array<std::string_view, 0> get_streaming_path_param_names = {};
+
+static constexpr std::array<BackstageParam, 0> get_streaming_path_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_streaming_query_params = {};
+
 static constexpr std::array<std::string_view, 0> get_docs_path_param_names = {};
 
 static constexpr std::array<BackstageParam, 0> get_docs_path_params = {};
@@ -291,7 +297,7 @@ static constexpr std::array<BackstageParam, 3> post_scripts_query_params = {
    BackstageParam("function", "string", "Run this function after compilation.", "", false)
 };
 
-static std::array<BackstageRoute, 31> glRoutes = {
+static std::array<BackstageRoute, 32> glRoutes = {
    BackstageRoute(
       "GET",
       "/agents/context",
@@ -302,6 +308,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return a compact runtime context bundle for AI agents: process info, loaded modules, object counts, active windows/surfaces, recent errors, and notable diagnostics.",
          "",
          "object",
+         "",
          get_agents_context_path_params,
          get_agents_context_query_params)),
    BackstageRoute(
@@ -314,6 +321,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return a small JSON response to confirm that Backstage can receive HTTP requests and send responses.",
          "",
          "json",
+         "",
          get_ping_path_params,
          get_ping_query_params)),
    BackstageRoute(
@@ -326,6 +334,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return a JSON list of all objects and their basic meta data.",
          "",
          "json",
+         "",
          get_objects_path_params,
          get_objects_query_params)),
    BackstageRoute(
@@ -338,6 +347,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Create a new object, using the provided JSON fields as the object field values",
          "json",
          "json",
+         "",
          post_objects_path_params,
          post_objects_query_params)),
    BackstageRoute(
@@ -350,6 +360,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Get a list of all readable field values of the target object.",
          "",
          "schema:Object",
+         "",
          get_objects_uid_path_params,
          get_objects_uid_query_params)),
    BackstageRoute(
@@ -362,6 +373,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return the child objects owned by the target object.",
          "",
          "array",
+         "",
          get_objects_uid_children_path_params,
          get_objects_uid_children_query_params)),
    BackstageRoute(
@@ -374,6 +386,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return subscriptions and callbacks associated with the target object.",
          "",
          "array",
+         "",
          get_objects_uid_subscribers_path_params,
          get_objects_uid_subscribers_query_params)),
    BackstageRoute(
@@ -386,6 +399,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Process a series of commands (e.g. call an action, set a field) for the target object.  Returns an error code and any result values.",
          "json",
          "json",
+         "",
          post_objects_uid_path_params,
          post_objects_uid_query_params)),
    BackstageRoute(
@@ -398,6 +412,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return a JSON list of all classes and their meta data.",
          "",
          "array",
+         "",
          get_classes_path_params,
          get_classes_query_params)),
    BackstageRoute(
@@ -410,6 +425,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return meta data for a single class.",
          "",
          "object",
+         "",
          get_classes_class_path_params,
          get_classes_class_query_params)),
    BackstageRoute(
@@ -422,6 +438,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return field meta data for a class.",
          "",
          "array",
+         "",
          get_classes_class_fields_path_params,
          get_classes_class_fields_query_params)),
    BackstageRoute(
@@ -434,6 +451,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return action meta data for a class.",
          "",
          "array",
+         "",
          get_classes_class_actions_path_params,
          get_classes_class_actions_query_params)),
    BackstageRoute(
@@ -446,6 +464,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return method meta data for a class.",
          "",
          "array",
+         "",
          get_classes_class_methods_path_params,
          get_classes_class_methods_query_params)),
    BackstageRoute(
@@ -458,6 +477,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return a JSON list of all modules and their meta data.",
          "",
          "array",
+         "",
          get_modules_path_params,
          get_modules_query_params)),
    BackstageRoute(
@@ -470,6 +490,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return meta data and runtime state for a loaded module.",
          "",
          "object",
+         "",
          get_modules_name_path_params,
          get_modules_name_query_params)),
    BackstageRoute(
@@ -482,6 +503,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return a JSON list of known error codes and their symbolic names.",
          "",
          "array",
+         "",
          get_errors_path_params,
          get_errors_query_params)),
    BackstageRoute(
@@ -494,6 +516,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return meta data for a single error code.",
          "",
          "object",
+         "",
          get_errors_code_path_params,
          get_errors_code_query_params)),
    BackstageRoute(
@@ -506,6 +529,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Returns a summary of memory allocations.  Specifying additional parameters can result in more detail",
          "",
          "object",
+         "",
          get_diagnostics_memory_path_params,
          get_diagnostics_memory_query_params)),
    BackstageRoute(
@@ -518,6 +542,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return timer and scheduled callback diagnostics.",
          "",
          "array",
+         "",
          get_diagnostics_timers_path_params,
          get_diagnostics_timers_query_params)),
    BackstageRoute(
@@ -530,6 +555,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return the state and result meta data for an asynchronous Backstage job.",
          "",
          "object",
+         "",
          get_jobs_job_path_params,
          get_jobs_job_query_params)),
    BackstageRoute(
@@ -542,6 +568,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Cancel or clear an asynchronous Backstage job.",
          "",
          "object",
+         "",
          delete_jobs_job_path_params,
          delete_jobs_job_query_params)),
    BackstageRoute(
@@ -554,6 +581,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Change the logging level for the program (affects console output).",
          "json",
          "object",
+         "",
          post_logs_level_path_params,
          post_logs_level_query_params)),
    BackstageRoute(
@@ -566,6 +594,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Activates internal log recording.",
          "json",
          "object",
+         "",
          post_logs_start_path_params,
          post_logs_start_query_params)),
    BackstageRoute(
@@ -578,6 +607,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Stops internal log recording.",
          "json",
          "object",
+         "",
          post_logs_stop_path_params,
          post_logs_stop_query_params)),
    BackstageRoute(
@@ -590,6 +620,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Returns all logged messages, then clears the log message stack (the client is responsible for maintaining a permanent record).",
          "",
          "array",
+         "",
          get_logs_path_params,
          get_logs_query_params)),
    BackstageRoute(
@@ -602,6 +633,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Create a Backstage subscription for live object, log, or diagnostic updates.",
          "json",
          "object",
+         "",
          post_subscriptions_path_params,
          post_subscriptions_query_params)),
    BackstageRoute(
@@ -614,6 +646,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return meta data and current state for a Backstage subscription.",
          "",
          "object",
+         "",
          get_subscriptions_id_path_params,
          get_subscriptions_id_query_params)),
    BackstageRoute(
@@ -626,8 +659,22 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Delete a Backstage subscription.",
          "",
          "object",
+         "",
          delete_subscriptions_id_path_params,
          delete_subscriptions_id_query_params)),
+   BackstageRoute(
+      "GET",
+      "/streaming",
+      "^/streaming$",
+      nullptr,
+      get_streaming_path_param_names,
+      BackstageRouteMetadata(
+         "Upgrade to a WebSocket stream for live Backstage events.",
+         "",
+         "stream",
+         "websocket",
+         get_streaming_path_params,
+         get_streaming_query_params)),
    BackstageRoute(
       "GET",
       "/docs",
@@ -638,6 +685,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return Backstage API documentation meta data.",
          "",
          "object",
+         "",
          get_docs_path_params,
          get_docs_query_params)),
    BackstageRoute(
@@ -650,6 +698,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Return the declared Backstage routes and their meta data.",
          "",
          "array",
+         "",
          get_docs_routes_path_params,
          get_docs_routes_query_params)),
    BackstageRoute(
@@ -662,6 +711,7 @@ static std::array<BackstageRoute, 31> glRoutes = {
          "Accepts a Tiri script for compilation.  Returns an object identifier for the script and any results if executed.",
          "raw",
          "object",
+         "",
          post_scripts_path_params,
          post_scripts_query_params))
 };

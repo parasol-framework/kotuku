@@ -183,6 +183,10 @@ static BackstageHttpResponse dispatch_route_request(objClientSocket *Client, con
          continue;
       }
 
+      if (kt::iequals(route.metadata.transport, "websocket")) {
+         return BackstageHttpResponse::plain(400, "Expected WebSocket upgrade");
+      }
+
       if (auto policy_response = validate_route_body_policy(route, HttpRequest);
             not (policy_response.status IS 200)) {
          return policy_response;

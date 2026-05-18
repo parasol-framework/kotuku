@@ -31,6 +31,7 @@ struct RequestLine {
 
 struct BackstageHttpRequest {
    RequestLine line;
+   std::string_view headers;
    std::string_view body;
    std::string_view content_type;
    bool has_content_length = false;
@@ -264,7 +265,7 @@ HttpParseStatus BackstageHttpRequest::parse(std::string_view RawRequest)
    auto header_end = RawRequest.find("\r\n\r\n");
    if (header_end IS std::string_view::npos) return HttpParseStatus::BAD_REQUEST;
 
-   auto headers = RawRequest.substr(0, header_end);
+   headers = RawRequest.substr(0, header_end);
    auto body_info = HttpBodyInfo::parse(headers);
 
    if ((body_info.malformed_content_length) or (body_info.unsupported_transfer_encoding)) {
@@ -329,6 +330,8 @@ BackstageHttpResponse BackstageHttpResponse::from_route(const BackstageResponse 
 
 void BackstageHttpResponse::write(objClientSocket *Client) const
 {
+   if (status <= 0) return;
+
    std::string response;
    response.reserve(128 + body.size() + extra_headers.size());
    response.append("HTTP/1.1 ");

@@ -77,6 +77,10 @@ static void append_route_index_entry(std::string &Output, const BackstageRoute &
    append_json_field(Output, "method", Route.method);
    Output.push_back(',');
    append_json_field(Output, "path", Route.path);
+   if (not Route.metadata.transport.empty()) {
+      Output.push_back(',');
+      append_json_field(Output, "transport", Route.metadata.transport);
+   }
    Output.push_back('}');
 }
 
@@ -94,6 +98,8 @@ static void append_route_details(std::string &Output, const BackstageRoute &Rout
    append_json_field(Output, "body", Route.metadata.body);
    Output.push_back(',');
    append_json_field(Output, "returns", Route.metadata.returns);
+   Output.push_back(',');
+   append_json_field(Output, "transport", Route.metadata.transport);
    Output.push_back(',');
    append_route_params(Output, "pathParams", Route.metadata.path_params);
    Output.push_back(',');

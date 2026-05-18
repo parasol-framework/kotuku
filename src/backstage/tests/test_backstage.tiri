@@ -74,6 +74,143 @@ function request_backstage_full(Request:str):str
    return request_backstage(Request, '')
 end
 
+function websocket_handshake(ExtraHeaders:str):str
+   return 'GET /streaming HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Upgrade: websocket\r\n' ..
+      'Connection: Upgrade\r\n' ..
+      'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n' ..
+      'Sec-WebSocket-Version: 13\r\n' ..
+      ExtraHeaders ..
+      '\r\n'
+end
+
+function websocket_frame(Payload:str, Opcode:num):str
+   mask = string.char(0x11, 0x22, 0x33, 0x44)
+   len = #Payload
+   frame = string.char(0x80 | Opcode)
+
+   if len < 126 then
+      frame ..= string.char(0x80 | len)
+   elseif len < 65536 then
+      frame ..= string.char(0x80 | 126)
+      frame ..= string.char((len >> 8) & 0xff)
+      frame ..= string.char(len & 0xff)
+   else
+      error('Test WebSocket frame is too large.')
+   end
+
+   frame ..= mask
+
+   for i = 0, len - 1 do
+      frame ..= string.char(Payload:byte(i) ^ mask:byte(i % 4))
+   end
+
+   return frame
+end
+
+function websocket_exchange(Frames:array, ExpectedTokens:array):str
+   response = ''
+   frames_sent = false
+
+   client = obj.new('netsocket', {
+      name = 'BackstageStreamingClient',
+      feedback = function(Socket:obj, State:num)
+         if State is NTC_CONNECTED then
+            request = websocket_handshake('')
+            err, len = Socket.acWrite(request)
+            check err
+            assert(len is #request, 'WebSocket handshake write length mismatch.')
+         end
+      end,
+      incoming = function(Socket:obj)
+         buffer = string.alloc(4096)
+         err, read_len = Socket.acRead(buffer)
+         if err is ERR_Disconnected then
+            Socket.acSignal()
+            return
+         end
+
+         assert(err is ERR_Okay, 'Failed to read WebSocket response: ' .. mSys.GetErrorMsg(err))
+         if read_len <= 0 then return end
+
+         response ..= buffer:substr(0, read_len)
+
+         if (not frames_sent) and response:find('HTTP/1.1 101 Switching Protocols') then
+            for _, frame in Frames do
+               write_err, write_len = Socket.acWrite(frame)
+               check write_err
+               assert(write_len is #frame, 'WebSocket frame write length mismatch.')
+            end
+            frames_sent = true
+         end
+
+         matched = true
+         for _, token in ExpectedTokens do
+            if not response:find(token) then matched = false end
+         end
+
+         if matched then Socket.acSignal() end
+      end
+   })
+
+   proc = processing.new({ timeout = 5.0, signals = array<object> { client } })
+   check client.mtConnect('127.0.0.1', SERVER_PORT)
+   check proc.sleep()
+   client.free()
+
+   return response
+end
+
+function websocket_exchange_until_disconnect(Frame:str):<str, bool>
+   response = ''
+   frame_sent = false
+   disconnected = false
+
+   client = obj.new('netsocket', {
+      name = 'BackstageStreamingCloseClient',
+      feedback = function(Socket:obj, State:num)
+         if State is NTC_CONNECTED then
+            request = websocket_handshake('')
+            err, len = Socket.acWrite(request)
+            check err
+            assert(len is #request, 'WebSocket handshake write length mismatch.')
+         elseif State is NTC_DISCONNECTED then
+            disconnected = true
+            Socket.acSignal()
+         end
+      end,
+      incoming = function(Socket:obj)
+         buffer = string.alloc(4096)
+         err, read_len = Socket.acRead(buffer)
+         if err is ERR_Disconnected then
+            disconnected = true
+            Socket.acSignal()
+            return
+         end
+
+         assert(err is ERR_Okay, 'Failed to read WebSocket close response: ' .. mSys.GetErrorMsg(err))
+         if read_len <= 0 then return end
+
+         response ..= buffer:substr(0, read_len)
+
+         if (not frame_sent) and response:find('HTTP/1.1 101 Switching Protocols') then
+            write_err, write_len = Socket.acWrite(Frame)
+            check write_err
+            assert(write_len is #Frame, 'WebSocket frame write length mismatch.')
+            frame_sent = true
+         end
+      end
+   })
+
+   proc = processing.new({ timeout = 5.0, signals = array<object> { client } })
+   check client.mtConnect('127.0.0.1', SERVER_PORT)
+   check proc.sleep()
+   client.free()
+
+   return response, disconnected
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 @Test; @Requires(network=true)
@@ -111,8 +248,9 @@ function DocsReturnsRouteIndex()
    assert(response:find('HTTP/1.1 200 OK'), 'Expected docs to return 200 OK, got: ' .. response)
    assert(response:find('Content-Type: application/json'), 'Expected docs to return JSON, got: ' .. response)
    assert(response:find('"name":"Backstage"'), 'Expected docs service name, got: ' .. response)
-   assert(response:find('"routeCount":31'), 'Expected docs route count, got: ' .. response)
+   assert(response:find('"routeCount":32'), 'Expected docs route count, got: ' .. response)
    assert(response:find('{"method":"GET","path":"/ping"}'), 'Expected docs route index to include ping, got: ' .. response)
+   assert(response:find('"path":"/streaming","transport":"websocket"'), 'Expected docs to include streaming route, got: ' .. response)
 end
 
 @Test; @Requires(network=true)
@@ -127,6 +265,8 @@ function DocsRoutesReturnsDetailedMetadata()
    assert(response:find('"path":"/objects/{uid}"'), 'Expected object UID route metadata, got: ' .. response)
    assert(response:find('"pathParams":[{"name":"uid"'), 'Expected path parameter metadata, got: ' .. response)
    assert(response:find('"queryParams":[{"name":"filter"'), 'Expected query parameter metadata, got: ' .. response)
+   assert(response:find('"path":"/streaming"'), 'Expected streaming route metadata, got: ' .. response)
+   assert(response:find('"transport":"websocket"'), 'Expected streaming transport metadata, got: ' .. response)
 end
 
 @Test; @Requires(network=true)
@@ -207,4 +347,135 @@ function UnsupportedTransferEncodingReturnsBadRequest()
 
    response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
    assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected transfer encoding 400, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function StreamingHandshakeReturnsSwitchingProtocols()
+   response = websocket_exchange(array<string> { }, array<string> {
+      'HTTP/1.1 101 Switching Protocols',
+      'Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=',
+      '"type":"event"',
+      '"topic":"system"',
+      '"event":"connected"',
+      '"event":"heartbeat"'
+   })
+
+   assert(response:find('Upgrade: websocket'), 'Expected WebSocket upgrade response, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function StreamingAcceptsLoopbackOrigin()
+   response = request_backstage(websocket_handshake('Origin: http://localhost:18876\r\n'),
+      'HTTP/1.1 101 Switching Protocols')
+
+   assert(response:find('HTTP/1.1 101 Switching Protocols'), 'Expected loopback origin to upgrade, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function StreamingRejectsLookalikeOrigin()
+   request = websocket_handshake('Origin: http://localhost.attacker.example\r\n')
+   response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
+
+   assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected lookalike localhost origin 400, got: ' .. response)
+   assert(response:find('Origin not allowed'), 'Expected origin rejection, got: ' .. response)
+
+   request = websocket_handshake('Origin: http://127.0.0.1.evil.example\r\n')
+   response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
+
+   assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected lookalike 127.0.0.1 origin 400, got: ' .. response)
+   assert(response:find('Origin not allowed'), 'Expected origin rejection, got: ' .. response)
+
+   request = websocket_handshake('Origin: http://localhost:notaport\r\n')
+   response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
+
+   assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected invalid origin port 400, got: ' .. response)
+   assert(response:find('Origin not allowed'), 'Expected origin rejection, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function StreamingRejectsInvalidVersion()
+   request = 'GET /streaming HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Upgrade: websocket\r\n' ..
+      'Connection: Upgrade\r\n' ..
+      'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n' ..
+      'Sec-WebSocket-Version: 12\r\n\r\n'
+
+   response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
+
+   assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected invalid version to return 400, got: ' .. response)
+   assert(response:find('Unsupported WebSocket version'), 'Expected version error, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function StreamingRejectsInvalidKey()
+   request = 'GET /streaming HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Upgrade: websocket\r\n' ..
+      'Connection: Upgrade\r\n' ..
+      'Sec-WebSocket-Key: bad-key\r\n' ..
+      'Sec-WebSocket-Version: 13\r\n\r\n'
+
+   response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
+
+   assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected invalid key to return 400, got: ' .. response)
+   assert(response:find('Invalid WebSocket key'), 'Expected key error, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function StreamingSubscribesToSystemTopic()
+   frame = websocket_frame('{"id":"1","type":"subscribe","topics":["system"]}', 0x01)
+   response = websocket_exchange(array<string> { frame }, array<string> {
+      '"type":"ack"',
+      '"id":"1"',
+      '"command":"subscribe"',
+      '"topic":"system"',
+      '"event":"subscribed"'
+   })
+
+   assert(response:find('"topics":["system"]'), 'Expected system topic acknowledgement, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function StreamingSubscribesToLogStub()
+   frame = websocket_frame('{"id":"2","type":"subscribe","topics":["log"]}', 0x01)
+   response = websocket_exchange(array<string> { frame }, array<string> {
+      '"type":"ack"',
+      '"id":"2"',
+      '"topic":"log"',
+      '"event":"stub"'
+   })
+
+   assert(response:find('Log streaming is not connected'), 'Expected log stub event, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function StreamingUnknownTopicReturnsError()
+   frame = websocket_frame('{"id":"3","type":"subscribe","topics":["unknown"]}', 0x01)
+   response = websocket_exchange(array<string> { frame }, array<string> {
+      '"type":"error"',
+      '"id":"3"',
+      '"code":"unknown_topic"'
+   })
+
+   assert(response:find('Unknown streaming topic'), 'Expected unknown topic error, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function StreamingPingReceivesPong()
+   frame = websocket_frame('hello', 0x09)
+   response = websocket_exchange(array<string> { frame }, array<string> {
+      'HTTP/1.1 101 Switching Protocols',
+      'hello'
+   })
+
+   assert(response:find('hello'), 'Expected pong payload, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function StreamingCloseDisconnectsSession()
+   response, disconnected = websocket_exchange_until_disconnect(websocket_frame('', 0x08))
+
+   assert(response:find('HTTP/1.1 101 Switching Protocols'), 'Expected WebSocket handshake, got: ' .. response)
+   assert(disconnected, 'Expected WebSocket close frame to disconnect the session.')
 end

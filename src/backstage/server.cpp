@@ -7,6 +7,8 @@ static BackstageHttpResponse process_http_request(objClientSocket *Client, std::
    if (status IS HttpParseStatus::BAD_REQUEST) return BackstageHttpResponse::plain(400, "Bad Request");
    if (status IS HttpParseStatus::PAYLOAD_TOO_LARGE) return BackstageHttpResponse::plain(413, "Payload Too Large");
 
+   if (websocket_request_targets_streaming(request)) return backstage_websocket_upgrade(Client, request);
+
    return dispatch_route_request(Client, request);
 }
 
@@ -23,6 +25,7 @@ static void server_feedback(objNetServer *Server, class objClientSocket *Client,
       log.msg("Client socket #%d disconnected.", Client->UID);
       std::lock_guard<std::mutex> lock(glRequestLock);
       glRequestBuffers.erase(Client->UID);
+      release_backstage_websocket(Client->UID);
    }
    else log.msg("Unknown state: %d", int(State));
 }
@@ -41,6 +44,10 @@ static ERR server_incoming(objNetServer *Server, objClientSocket *Client, APTR M
    if (not len) return ERR::Okay;
 
    log.trace("Received %d bytes from client socket #%d", len, Client->UID);
+
+   if (backstage_websocket_has_session(Client->UID)) {
+      return backstage_websocket_process(Client, std::string_view(buffer.data(), size_t(len)));
+   }
 
    std::string request;
    HttpBufferState buffer_state = HttpBufferState::INCOMPLETE;
