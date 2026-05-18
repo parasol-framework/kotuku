@@ -257,10 +257,13 @@ indexterm:[to-be-closed variables] indexterm:[close variables] The `<close>` att
 
 [source,tiri]
 ----
-local Name <close> = Expression
+local Name <close> = Expression   -- explicit local
+Name <close> = Expression         -- implicit local (local-by-default)
 ----
 
 The `<close>` attribute appears between the variable name and the optional type annotation.  The variable must be initialised at declaration.
+
+Because `<close>` is only meaningful on local variables, the parser treats `Name <close> = Expression` as a local declaration even without the `local` keyword — the same local-by-default rule that applies to ordinary assignments (<<sec-local-by-default>>).  The two forms are semantically identical; `local` is optional but may be used for clarity.
 
 ==== The pass:[__]close Metamethod
 

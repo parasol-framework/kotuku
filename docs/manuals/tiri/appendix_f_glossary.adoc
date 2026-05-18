@@ -33,7 +33,7 @@ Choose expression::
 A pattern-matching construct that evaluates a scrutinee against a series of `from` clauses.  Each clause specifies a pattern with optional guard conditions.  Produces a value when used in expression context.  See <<ch-pattern-matching>>.
 
 Close variable::
-A variable declared with the `<close>` attribute.  Its `pass:[__]close` metamethod executes automatically when the variable goes out of scope, enabling deterministic resource cleanup.  See <<sec-close-variables>>.
+A local variable declared with the `<close>` attribute.  The `local` keyword is optional; the attribute implicitly creates a local.  Its `pass:[__]close` metamethod executes automatically when the variable goes out of scope, enabling deterministic resource cleanup.  See <<sec-close-variables>>.
 
 Closure::
 A function value combined with its captured upvalues from enclosing scopes.  The upvalues remain accessible for the lifetime of the closure, even after the enclosing scope exits.  See <<sec-closures>>.

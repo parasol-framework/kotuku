@@ -248,7 +248,7 @@ Type annotations interact with the type inference system.  See <<ch-type-system>
 [[sec-constant-variables]]
 === Constant Variables
 
-indexterm:[constant variables] The `<const>` attribute prevents reassignment after initialisation.  It applies to both `local` and `global` declarations.  The compiler enforces this constraint at parse time.
+indexterm:[constant variables] The `<const>` attribute prevents reassignment after initialisation.  It applies to both `local` and `global` declarations.  For local variables, the `local` keyword is optional — the presence of `<const>` implicitly creates a local variable under the local-by-default rule.  The compiler enforces the constant constraint at parse time.
 
 [source,tiri]
 ----
@@ -415,11 +415,12 @@ The following constraints apply to enum declarations:
 [[sec-close-variables]]
 === To-Be-Closed Variables
 
-indexterm:[to-be-closed variables] indexterm:[close variables] The `<close>` attribute marks a local variable for automatic cleanup when its scope exits.  The runtime invokes the value's `__close` metamethod on scope exit, whether normal or due to an error.
+indexterm:[to-be-closed variables] indexterm:[close variables] The `<close>` attribute marks a local variable for automatic cleanup when its scope exits.  The runtime invokes the value's `__close` metamethod on scope exit, whether normal or due to an error.  As with `<const>`, the `local` keyword is optional — the presence of `<close>` implicitly creates a local variable.
 
 [source,tiri]
 ----
-resource <close> = acquire_resource()
+resource <close> = acquire_resource()       -- implicit local
+local resource <close> = acquire_resource() -- equivalent explicit form
 -- resource.__close(resource, nil) called when scope ends
 ----
 
