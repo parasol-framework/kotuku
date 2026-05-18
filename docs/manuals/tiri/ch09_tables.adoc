@@ -1,4 +1,5 @@
 // VERIFIED: 2026-02-11
+// UPDATED: 2026-05-18 - Updated negative index slicing to reflect corrected inclusive/exclusive stop semantics (commit 15d3bed4)
 
 [[ch-tables]]
 == Tables
@@ -428,14 +429,16 @@ t[{0..5}]     -- {10, 20, 30, 40, 50}  (full table)
 
 ==== Negative Indices
 
-When either the start or stop index is negative, the range is treated as inclusive regardless of which range operator is used.  Negative indices count backwards from the end of the table: `-1` is the last element, `-2` the second-to-last.
+Negative indices count backwards from the end of the table: `-1` is the last element, `-2` the second-to-last.  The exclusive/inclusive semantics of the range operator are preserved with negative indices.  `..` remains exclusive and `pass:[...]` remains inclusive.
 
 [source,tiri]
 ----
 t = { 10, 20, 30, 40, 50 }
 
-t[{-3..-1}]    -- {30, 40, 50}
-t[{-2..-1}]    -- {40, 50}
+t[{-3...-1}]   -- {30, 40, 50}  (inclusive)
+t[{-3..-1}]    -- {30, 40}      (exclusive)
+t[{-2...-1}]   -- {40, 50}      (inclusive)
+t[{-2..-1}]    -- {40}          (exclusive)
 t[{1...-1}]    -- {20, 30, 40, 50}
 ----
 

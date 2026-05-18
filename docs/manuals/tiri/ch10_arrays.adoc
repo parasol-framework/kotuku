@@ -1,4 +1,5 @@
 // VERIFIED: 2026-02-12
+// UPDATED: 2026-05-18 - Updated negative index slicing to reflect corrected inclusive/exclusive stop semantics (commit 15d3bed4)
 
 [[ch-arrays]]
 == Arrays
@@ -495,7 +496,8 @@ Returns a new array containing the elements selected by `Range`.  The result has
 ----
 arr = array<int> { 0, 10, 20, 30, 40, 50 }
 arr:slice({1..4})       -- array<int> {10, 20, 30}
-arr:slice({-2..-1})     -- array<int> {40, 50}
+arr:slice({-2...-1})    -- array<int> {40, 50}  (inclusive)
+arr:slice({-2..-1})     -- array<int> {40}      (exclusive)
 arr:slice({4...2})      -- array<int> {40, 30, 20} (reverse)
 
 arr:slice(range.new(0, 6, false, 2))   -- array<int> {0, 20, 40}

@@ -1,4 +1,5 @@
 // VERIFIED: 2026-02-11
+// UPDATED: 2026-05-18 - Updated negative index slicing to reflect corrected inclusive/exclusive stop semantics (commit 15d3bed4)
 
 [[ch-strings]]
 == Strings
@@ -448,24 +449,6 @@ Returns a 32-bit integer hash value for `String`.  If `CaseSensitive` is `false`
 
 TIP: The hash algorithm is compatible with Kōtuku's string hashing, ensuring hashes generated between Tiri and C++ code are interchangeable.
 
-[[sec-string-translate]]
-==== string.translate()
-
-[.api]`str = string.translate(Text)`
-
-Translates `Text` using the system's language translation tables.  If no translation is available, returns `Text` unchanged.
-
-The translation lookup is case-insensitive.  The case of the result is determined by the case of the input: if the first character of `Text` is lowercase, the result is lowercase; if the first two characters are uppercase, the result is fully uppercase; otherwise the result is returned as stored.
-
-Translation tables are loaded from `config:translations/` on first use.  Call `string.translateRefresh()` to reload the tables after a language change.
-
-[[sec-string-translateRefresh]]
-==== string.translateRefresh()
-
-[.api]`string.translateRefresh()`
-
-Reloads the language translation tables from `config:translations/`.  Call this after changing the system language to ensure `string.translate()` uses the updated tables.
-
 [[sec-string-unescapeXML]]
 ==== string.unescapeXML()
 
@@ -502,7 +485,8 @@ s = 'Hello, World!'
 s[{0..5}]     -- 'Hello'   (exclusive: indices 0-4)
 s[{7..12}]    -- 'World'   (exclusive: indices 7-11)
 s[{0...4}]    -- 'Hello'   (inclusive: indices 0-4)
-s[{-6..-1}]   -- 'World!'  (negative: always inclusive)
+s[{-6...-1}]  -- 'World!'  (negative inclusive)
+s[{-6..-1}]   -- 'World'   (negative exclusive)
 ----
 
 The range operator `..` creates an exclusive range where the stop index is not included.  The `pass:[...]` operator creates an inclusive range where the stop index is included.
@@ -510,13 +494,15 @@ The range operator `..` creates an exclusive range where the stop index is not i
 [discrete]
 ==== Negative Indices
 
-When either index is negative, the range is treated as inclusive regardless of which operator was used.  Negative indices count backwards from the end of the string: `-1` is the last character, `-2` the second-to-last.
+Negative indices count backwards from the end of the string: `-1` is the last character, `-2` the second-to-last.  The exclusive/inclusive semantics of the range operator are preserved with negative indices.  `..` remains exclusive and `pass:[...]` remains inclusive.
 
 [source,tiri]
 ----
 s = 'Hello, World!'
-s[{-6..-1}]    -- 'World!'
-s[{0..-1}]     -- 'Hello, World!'
+s[{-6...-1}]   -- 'World!'  (inclusive: last 6 characters)
+s[{-6..-1}]    -- 'World'   (exclusive: stop not included)
+s[{0...-1}]    -- 'Hello, World!'  (inclusive)
+s[{0..-1}]     -- 'Hello, World'   (exclusive)
 ----
 
 [discrete]

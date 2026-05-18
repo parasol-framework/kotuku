@@ -1,4 +1,5 @@
 // VERIFIED: 2026-02-12
+// UPDATED: 2026-05-18 - Updated negative index slicing to reflect corrected inclusive/exclusive stop semantics (commit 15d3bed4)
 
 [[ch-ranges]]
 == Ranges
@@ -275,16 +276,17 @@ t[{1..4}]       -- {20, 30, 40}
 
 ==== Negative Indices
 
-When either index is negative, the range is treated as inclusive regardless of the operator used.  Negative indices count backwards from the end: `-1` is the last element, `-2` the second-to-last.
+Negative indices count backwards from the end: `-1` is the last element, `-2` the second-to-last.  The exclusive/inclusive semantics of the range operator are preserved with negative indices.  `..` remains exclusive and `pass:[...]` remains inclusive.
 
 [source,tiri]
 ----
 s = 'Hello, World!'
-s[{-6..-1}]     -- 'World!'
-s[{0..-1}]      -- 'Hello, World!'
+s[{-6...-1}]    -- 'World!'  (inclusive)
+s[{-6..-1}]     -- 'World'   (exclusive)
 
 t = {10, 20, 30, 40, 50}
-t[{-2..-1}]     -- {40, 50}
+t[{-2...-1}]    -- {40, 50}  (inclusive)
+t[{-2..-1}]     -- {40}      (exclusive)
 t[{-3...4}]     -- {30, 40, 50}
 ----
 
