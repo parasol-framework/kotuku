@@ -3,6 +3,10 @@ Backstage REST Interface Configuration
 
 Methods will generally either interrogate an existing resource or query it.
 
+POST  Creates resources
+PUT   Requests are idempotent and either update or create if the target doesn't exist
+PATCH Should be used for updating existing resources
+
 Types:
    json     - JSON object or array
    object   - JSON object
@@ -15,10 +19,18 @@ Types:
 glRoutes = array<table> { }
 glSelf = obj.find('self')
 glWorkingPath = glSelf.workingPath
+rx_func_name_chars <const> = <{ regex.new('[^A-Za-z0-9_]+') }>
 
 function route(Method:str, Path:str, Interface:table)
    glRoutes:push({ method=Method, path=Path, interface=Interface })
 end
+
+-- Proof-of-concept Interface
+
+route('GET', '/ping', {
+   desc = 'Return a small JSON response to confirm that Backstage can receive HTTP requests and send responses.',
+   returns = 'json'
+})
 
 -- Object Interfaces
 
@@ -256,11 +268,140 @@ route('POST', '/scripts', {
 })
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Convert a route path to a regex string
 
--- TODO: Produce a C++ file containing all the registered routes
+function regex_literal_char(Char:str):str
+   if Char is '\\' then return '\\\\' end
+   if Char is '"' then return '\\"' end
 
-   file = obj.new('file', { path=glWorkingPath .. 'interfaces.cpp', flags=FL_NEW|FL_WRITE })
-
-   for _, route in glRoutes Do
-
+   if (Char is '.') or (Char is '^') or (Char is '$') or (Char is '|') or
+      (Char is '(') or (Char is ')') or (Char is '[') or (Char is ']') or
+      (Char is '*') or (Char is '+') or (Char is '?') or (Char is '{') or (Char is '}') then
+      return '\\\\' .. Char
    end
+
+   return Char
+end
+
+function path_param_regex(Route:table, ParamName:str):str
+   path_fields = Route.interface.path
+   if not path_fields or not path_fields[ParamName] then
+      error('Path parameter {' .. ParamName .. '} is not declared in route path table: ' .. Route.path)
+   end
+
+   param_type = path_fields[ParamName].type ?? 'string'
+
+   return choose param_type from
+      'int'    -> '(-?[0-9]+)'
+      'uint'   -> '([0-9]+)'
+      'num'    -> '(-?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)'
+      'float'  -> '(-?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)'
+      'double' -> '(-?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)'
+      'bool'   -> '(true|false|0|1)'
+      'csv'    -> '([^/]+(?:,[^/]+)*)'
+      'str'    -> '([^/]+)'
+      'string' -> '([^/]+)'
+      else     -> '([^/]+)'
+   end
+end
+
+function path_to_regex(Route:table):str
+   rx = '^'
+   param_name = ''
+   in_param = false
+
+   Route.params = array<string> { }
+
+   for i = 0, #Route.path - 1 do
+      ch = Route.path:substr(i, i + 1)
+
+      if in_param then
+         if ch is '}' then
+            if not param_name?? then
+               error('Empty path parameter in route: ' .. Route.path)
+            end
+
+            Route.params:push(param_name)
+            rx ..= path_param_regex(Route, param_name)
+            param_name = ''
+            in_param = false
+         else
+            param_name ..= ch
+         end
+      elseif ch is '{' then
+         in_param = true
+      else
+         rx ..= regex_literal_char(ch)
+      end
+   end
+
+   if in_param then
+      error('Unterminated path parameter in route: ' .. Route.path)
+   end
+
+   rx ..= '$'
+   Route.regex = rx
+   return rx
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+   for _, route in glRoutes do
+      routes = route.path:split('/')
+      route_path = ''
+      for i=0, #routes-1 do
+         if routes[i]:startsWith('{') and routes[i]:endsWith('}') then
+            -- Ignore embedded parameters
+         else
+            route_path ..= routes[i] .. '/'
+         end
+      end
+
+      if route_path:endsWith('/') then route_path = route_path[{0..-1}] end
+      source_file = 'routes' .. route_path .. '.cpp'
+
+      file = obj.new('file', { path=glWorkingPath .. source_file, flags=FL_NEW|FL_WRITE })
+
+      func_name = rx_func_name_chars.replace(route.method .. route.path, '_'):lower()
+      if func_name:endsWith('_') then func_name = func_name[{0..-1}] end
+      route.funcName = func_name
+      route.source   = source_file
+
+      path_to_regex(route)
+
+      proto = choose route.method from
+         'GET'    -> 'const BackstageRequest &Request, BackstageResponse &Response'
+         'POST'   -> 'const BackstageRequest &Request, std::string_view Body, BackstageResponse &Response'
+         'PUT'    -> 'const BackstageRequest &Request, std::string_view Body, BackstageResponse &Response'
+         'PATCH'  -> 'const BackstageRequest &Request, std::string_view Body, BackstageResponse &Response'
+         'DELETE' -> 'const BackstageRequest &Request, BackstageResponse &Response'
+         else     -> 'void'
+      end
+
+      out = f"\nstatic ERR {func_name}({proto})\n{{\n"
+      out ..= "   return ERR::Okay;\n"
+      out ..= "}\n\n"
+
+      file.acWrite(out)
+   end
+
+   -- Write out the route table and include paths
+
+   target_path = glWorkingPath .. 'routes.cpp'
+   file = obj.new('file', { path=target_path, flags=FL_NEW|FL_WRITE })
+
+   glIncludes = {}
+   out ..= "// Auto-generated source code\n\n"
+   out ..= "static std::array<BackstageRoute> glRoutes = {\n"
+   for i, route in glRoutes do
+      if i > 0 then out ..= ',\n' end
+      out ..= f'   {{ BackstageRoute("{route.method}", "{route.path}", "{route.regex}", {route.funcName}) }}'
+      glIncludes[route.source] = true
+   end
+   out ..= '\n};\n\n'
+
+   for k,v in pairs(glIncludes) do
+      out ..= f'#include "{k}"\n'
+   end
+
+   file.acWrite(out)
