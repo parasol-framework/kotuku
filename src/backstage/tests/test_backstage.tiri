@@ -87,6 +87,16 @@ function PingReturnsJsonPong()
 end
 
 @Test; @Requires(network=true)
+function UnimplementedRouteReturnsNotImplemented()
+   request = 'GET /classes HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage(request, 'HTTP/1.1 501 Not Implemented')
+   assert(response:find('HTTP/1.1 501 Not Implemented'), 'Expected unsupported route to return 501, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
 function MalformedContentLengthReturnsBadRequest()
    request = 'GET /ping HTTP/1.1\r\n' ..
       'Host: 127.0.0.1\r\n' ..

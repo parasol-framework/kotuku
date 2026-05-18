@@ -3,5 +3,5 @@
 
 static ERR post_scripts(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }

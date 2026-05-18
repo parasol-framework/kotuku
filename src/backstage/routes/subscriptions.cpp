@@ -3,7 +3,7 @@
 
 static ERR post_subscriptions(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /subscriptions/{id}
@@ -11,7 +11,7 @@ static ERR post_subscriptions(const BackstageRequest &Request, BackstageResponse
 
 static ERR get_subscriptions_id(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // DELETE /subscriptions/{id}
@@ -19,5 +19,5 @@ static ERR get_subscriptions_id(const BackstageRequest &Request, BackstageRespon
 
 static ERR delete_subscriptions_id(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }

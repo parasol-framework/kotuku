@@ -3,7 +3,7 @@
 
 static ERR get_modules(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /modules/{name}
@@ -11,6 +11,6 @@ static ERR get_modules(const BackstageRequest &Request, BackstageResponse &Respo
 
 static ERR get_modules_name(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 

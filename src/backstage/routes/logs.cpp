@@ -3,7 +3,7 @@
 
 static ERR post_logs_level(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // POST /logs/start
@@ -11,7 +11,7 @@ static ERR post_logs_level(const BackstageRequest &Request, BackstageResponse &R
 
 static ERR post_logs_start(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // POST /logs/stop
@@ -19,7 +19,7 @@ static ERR post_logs_start(const BackstageRequest &Request, BackstageResponse &R
 
 static ERR post_logs_stop(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /logs
@@ -27,5 +27,5 @@ static ERR post_logs_stop(const BackstageRequest &Request, BackstageResponse &Re
 
 static ERR get_logs(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }

@@ -3,7 +3,7 @@
 
 static ERR get_objects(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // POST /objects
@@ -11,7 +11,7 @@ static ERR get_objects(const BackstageRequest &Request, BackstageResponse &Respo
 
 static ERR post_objects(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /objects/{uid}
@@ -19,7 +19,7 @@ static ERR post_objects(const BackstageRequest &Request, BackstageResponse &Resp
 
 static ERR get_objects_uid(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /objects/{uid}/children
@@ -27,7 +27,7 @@ static ERR get_objects_uid(const BackstageRequest &Request, BackstageResponse &R
 
 static ERR get_objects_uid_children(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /objects/{uid}/subscribers
@@ -35,7 +35,7 @@ static ERR get_objects_uid_children(const BackstageRequest &Request, BackstageRe
 
 static ERR get_objects_uid_subscribers(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // POST /objects/{uid}
@@ -43,5 +43,5 @@ static ERR get_objects_uid_subscribers(const BackstageRequest &Request, Backstag
 
 static ERR post_objects_uid(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }

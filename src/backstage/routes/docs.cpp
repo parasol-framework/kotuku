@@ -3,7 +3,7 @@
 
 static ERR get_docs(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /docs/routes
@@ -11,6 +11,6 @@ static ERR get_docs(const BackstageRequest &Request, BackstageResponse &Response
 
 static ERR get_docs_routes(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 

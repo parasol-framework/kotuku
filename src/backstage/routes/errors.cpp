@@ -3,7 +3,7 @@
 
 static ERR get_errors(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /errors/{code}
@@ -11,6 +11,6 @@ static ERR get_errors(const BackstageRequest &Request, BackstageResponse &Respon
 
 static ERR get_errors_code(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 

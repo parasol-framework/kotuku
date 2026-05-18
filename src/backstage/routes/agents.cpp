@@ -3,6 +3,6 @@
 
 static ERR get_agents_context(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 

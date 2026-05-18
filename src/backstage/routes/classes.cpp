@@ -3,7 +3,7 @@
 
 static ERR get_classes(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /classes/{class}
@@ -11,7 +11,7 @@ static ERR get_classes(const BackstageRequest &Request, BackstageResponse &Respo
 
 static ERR get_classes_class(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /classes/{class}/fields
@@ -19,7 +19,7 @@ static ERR get_classes_class(const BackstageRequest &Request, BackstageResponse 
 
 static ERR get_classes_class_fields(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /classes/{class}/actions
@@ -27,7 +27,7 @@ static ERR get_classes_class_fields(const BackstageRequest &Request, BackstageRe
 
 static ERR get_classes_class_actions(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /classes/{class}/methods
@@ -35,6 +35,6 @@ static ERR get_classes_class_actions(const BackstageRequest &Request, BackstageR
 
 static ERR get_classes_class_methods(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 

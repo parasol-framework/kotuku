@@ -3,7 +3,7 @@
 
 static ERR get_diagnostics_memory(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 // GET /diagnostics/timers
@@ -11,6 +11,6 @@ static ERR get_diagnostics_memory(const BackstageRequest &Request, BackstageResp
 
 static ERR get_diagnostics_timers(const BackstageRequest &Request, BackstageResponse &Response)
 {
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
