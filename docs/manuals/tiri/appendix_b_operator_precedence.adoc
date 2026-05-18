@@ -16,7 +16,7 @@ indexterm:[operators, precedence] This appendix provides a quick-reference for a
 |5|`&`|Left
 |4|`^`, `is`, `is not`, `!=`, `<`, `>`, `\<=`, `>=`, `in` |Left
 |3|`has`, `\|`, `and`, `\|>`|Left
-|2|`or`, `??`, `? :>`|Left (`? :>` right)
+|2|`or`, `??`, `?!`, `? :>`|Left (`? :>` right)
 |===
 
 === Postfix and Suffix Operators

@@ -372,7 +372,7 @@ The `Callback` function receives three arguments:
 |The current `PreciseTime()` value at the moment the callback fires.
 |===
 
-To cancel the subscription from within the callback, call `check(ERR_Terminate)`.
+To cancel the subscription from within the callback, call `check ERR_Terminate`.
 
 [source,tiri]
 ----

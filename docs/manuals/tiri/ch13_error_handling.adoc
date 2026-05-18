@@ -475,16 +475,17 @@ TIP: Give preference to using `assert()` over the alternative pattern `if <condi
 
 ==== raise
 
-[.api]`raise Code, [Message]`
+[.api]`raise [Code], [Message]`
 
 Raises an exception with the specified `ERR` code.  Unlike `check`, all error codes trigger an exception, including safe codes.  The error code is also propagated to the Script object's `Error` field for reporting back to C/C++ client code.
 
-`Code` is an integer expression.  `Message` is an optional string; if omitted, the default description for the error code is used.  The exception table's `source` and `line` fields are resolved from the call site.
+`Code` is an optional integer expression.  If not specified, it defaults to `ERR_Exception`.  `Message` is an optional string; if omitted, the default description for the error code is used.  The exception table's `source` and `line` fields are resolved from the call site.
 
 [source,tiri]
 ----
 raise ERR_Failed
 raise ERR_Args, 'Expected a positive number'
+raise 'The provided value is invalid'
 
 err_code = ERR_Failed
 raise err_code   -- variables are accepted
@@ -560,11 +561,11 @@ end
 [discrete]
 ==== Conditional Raising
 
-The `??` operator can be used as a guard to conditionally raise exceptions.  The right-hand side executes only when the left-hand side is falsey (`nil`, `false`, `0`, or `""`):
+The `?!` operator can be used as a guard to conditionally raise exceptions.  The right-hand side executes only when the left-hand side is falsey (`nil`, `false`, `0`, `""` or empty array):
 
 [source,tiri]
 ----
-result ?? raise ERR_Failed
+result ?! raise ERR_Failed
 ----
 
 [discrete]

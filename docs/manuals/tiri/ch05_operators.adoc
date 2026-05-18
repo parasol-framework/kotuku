@@ -319,15 +319,19 @@ c = '' ?? 'fallback'   -- 'fallback'
 d = '' ?? 0 ?? 'final' -- 'final' (both '' and 0 are falsey)
 ----
 
-The `??` operator also serves as a guard for control flow.  The RHS can be a `return`, `break`, `continue`, `raise`, or `check` statement:
+==== If-Empty Guard Operator (?!)
+
+`variable ?! return`
+
+The `?!` operator serves as a guard for control flow.  The RHS can be a `return`, `break`, `continue` or `raise` statement:
 
 [source,tiri]
 ----
-value ?? raise('Value is empty')
-user_input ?? return ERR_InvalidInput
+value ?! raise 'Value is empty'
+user_input ?! return ERR_InvalidInput
 ----
 
-Line breaks immediately following `??` are forbidden.  The RHS must appear on the same line as the operator.
+Line breaks immediately following `?!` or `??` are forbidden.  The RHS must appear on the same line as the operator.
 
 ==== If-Empty Postfix Operator (??)
 

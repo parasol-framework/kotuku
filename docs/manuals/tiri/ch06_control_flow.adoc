@@ -260,22 +260,21 @@ In a `while` loop, `continue` jumps to the condition check.  In a `repeat pass:[
 
 ==== Conditional Shorthand
 
-The `??` operator can be used as a falsey guard when combined with `break`, `continue`, `return`, `raise`, or `check` on a single line:
+The `?!` operator can be used as a falsey guard when combined with `break`, `continue`, `return` or `raise` on a single line:
 
 [source,tiri]
 ----
-value ?? return
-value ?? break
-value ?? continue
-value ?? raise ERR_Failed
-value ?? check some_error_code
+value ?! return
+value ?! break
+value ?! continue
+value ?! raise ERR_Failed
 ----
 
-The shorthand executes the statement when `value` is falsey under the extended `??` definition: `nil`, `false`, `0`, `""`, or an empty array.  The `return` form accepts optional return values on the same line:
+The shorthand executes the statement when `value` is falsey under the extended definition: `nil`, `false`, `0`, `""`, or an empty array.  The `return` form accepts optional return values on the same line:
 
 [source,tiri]
 ----
-result ?? return -1
+result ?! return -1
 ----
 
 This is equivalent to `if not result?? then return -1 end`.
