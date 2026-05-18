@@ -13,36 +13,591 @@
 #include "routes/docs.cpp"
 #include "routes/scripts.cpp"
 
+static constexpr std::array<BackstageParam, 0> get_agents_context_path_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_agents_context_query_params = {
+   BackstageParam("detail", "string", "One of summary, normal, verbose.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_ping_path_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_ping_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_objects_path_params = {};
+
+static constexpr std::array<BackstageParam, 5> get_objects_query_params = {
+   BackstageParam("classFilter", "csv", "Only return objects belonging to these classes", "", false),
+   BackstageParam("depth", "int", "In nested mode, limits the depth of the tree", "", false),
+   BackstageParam("limit", "int", "Limit count for lists of objects", "", false),
+   BackstageParam("nested", "bool", "Return a nested JSON tree that matches the object graph; otherwise return a flat list in order of object creation", "", false),
+   BackstageParam("root", "int", "Root object UID.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> post_objects_path_params = {};
+
+static constexpr std::array<BackstageParam, 0> post_objects_query_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_objects_uid_path_params = {
+   BackstageParam("uid", "int", "Object UID.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 2> get_objects_uid_query_params = {
+   BackstageParam("filter", "csv", "Limit the field results to this list.", "", false),
+   BackstageParam("includeMeta", "bool", "Include meta data for the object.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 1> get_objects_uid_children_path_params = {
+   BackstageParam("uid", "int", "Object UID.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 3> get_objects_uid_children_query_params = {
+   BackstageParam("depth", "int", "In nested mode, limits the depth of the child tree", "", false),
+   BackstageParam("limit", "int", "Limit count for lists of child objects", "", false),
+   BackstageParam("nested", "bool", "Return a nested JSON tree that matches the child hierarchy", "", false)
+};
+
+static constexpr std::array<BackstageParam, 1> get_objects_uid_subscribers_path_params = {
+   BackstageParam("uid", "int", "Object UID.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_objects_uid_subscribers_query_params = {};
+
+static constexpr std::array<BackstageParam, 1> post_objects_uid_path_params = {
+   BackstageParam("uid", "int", "Object UID.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 1> post_objects_uid_query_params = {
+   BackstageParam("async", "bool", "Return immediately.  A job ID is returned for follow-up", "false", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_classes_path_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_classes_query_params = {
+   BackstageParam("filter", "csv", "CSV list of class names to filter for", "", false)
+};
+
+static constexpr std::array<BackstageParam, 1> get_classes_class_path_params = {
+   BackstageParam("class", "string", "Class name.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_classes_class_query_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_classes_class_fields_path_params = {
+   BackstageParam("class", "string", "Class name.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_classes_class_fields_query_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_classes_class_actions_path_params = {
+   BackstageParam("class", "string", "Class name.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_classes_class_actions_query_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_classes_class_methods_path_params = {
+   BackstageParam("class", "string", "Class name.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_classes_class_methods_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_modules_path_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_modules_query_params = {
+   BackstageParam("filter", "csv", "Limit the list to the named modules", "", false)
+};
+
+static constexpr std::array<BackstageParam, 1> get_modules_name_path_params = {
+   BackstageParam("name", "string", "Module name.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_modules_name_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_errors_path_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_errors_query_params = {
+   BackstageParam("filter", "csv", "Limit the list to matching error names or numeric codes", "", false)
+};
+
+static constexpr std::array<BackstageParam, 1> get_errors_code_path_params = {
+   BackstageParam("code", "string", "Error name or numeric code.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_errors_code_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_diagnostics_memory_path_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_diagnostics_memory_query_params = {
+   BackstageParam("list", "bool", "Returns a list of all memory allocations (ID and size) if true.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_diagnostics_timers_path_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_diagnostics_timers_query_params = {
+   BackstageParam("active", "bool", "Limit results to active timers if true.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 1> get_jobs_job_path_params = {
+   BackstageParam("job", "string", "Job identifier.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_jobs_job_query_params = {};
+
+static constexpr std::array<BackstageParam, 1> delete_jobs_job_path_params = {
+   BackstageParam("job", "string", "Job identifier.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> delete_jobs_job_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> post_logs_level_path_params = {};
+
+static constexpr std::array<BackstageParam, 0> post_logs_level_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> post_logs_start_path_params = {};
+
+static constexpr std::array<BackstageParam, 0> post_logs_start_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> post_logs_stop_path_params = {};
+
+static constexpr std::array<BackstageParam, 0> post_logs_stop_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_logs_path_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_logs_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> post_subscriptions_path_params = {};
+
+static constexpr std::array<BackstageParam, 0> post_subscriptions_query_params = {};
+
+static constexpr std::array<BackstageParam, 1> get_subscriptions_id_path_params = {
+   BackstageParam("id", "string", "Subscription identifier.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> get_subscriptions_id_query_params = {};
+
+static constexpr std::array<BackstageParam, 1> delete_subscriptions_id_path_params = {
+   BackstageParam("id", "string", "Subscription identifier.", "", false)
+};
+
+static constexpr std::array<BackstageParam, 0> delete_subscriptions_id_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_docs_path_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_docs_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_docs_routes_path_params = {};
+
+static constexpr std::array<BackstageParam, 0> get_docs_routes_query_params = {};
+
+static constexpr std::array<BackstageParam, 0> post_scripts_path_params = {};
+
+static constexpr std::array<BackstageParam, 3> post_scripts_query_params = {
+   BackstageParam("async", "bool", "Return immediately.  A job ID is returned for follow-up", "false", false),
+   BackstageParam("exec", "bool", "Run the script after compilation.", "", false),
+   BackstageParam("function", "string", "Run this function after compilation.", "", false)
+};
+
 static std::array<BackstageRoute, 31> glRoutes = {
-   BackstageRoute("GET", "/agents/context", "^/agents/context$", get_agents_context),
-   BackstageRoute("GET", "/ping", "^/ping$", get_ping),
-   BackstageRoute("GET", "/objects", "^/objects$", get_objects),
-   BackstageRoute("POST", "/objects", "^/objects$", post_objects),
-   BackstageRoute("GET", "/objects/{uid}", "^/objects/(-?[0-9]+)$", get_objects_uid),
-   BackstageRoute("GET", "/objects/{uid}/children", "^/objects/(-?[0-9]+)/children$", get_objects_uid_children),
-   BackstageRoute("GET", "/objects/{uid}/subscribers", "^/objects/(-?[0-9]+)/subscribers$", get_objects_uid_subscribers),
-   BackstageRoute("POST", "/objects/{uid}", "^/objects/(-?[0-9]+)$", post_objects_uid),
-   BackstageRoute("GET", "/classes", "^/classes$", get_classes),
-   BackstageRoute("GET", "/classes/{class}", "^/classes/([^\\/]+)$", get_classes_class),
-   BackstageRoute("GET", "/classes/{class}/fields", "^/classes/([^\\/]+)/fields$", get_classes_class_fields),
-   BackstageRoute("GET", "/classes/{class}/actions", "^/classes/([^\\/]+)/actions$", get_classes_class_actions),
-   BackstageRoute("GET", "/classes/{class}/methods", "^/classes/([^\\/]+)/methods$", get_classes_class_methods),
-   BackstageRoute("GET", "/modules", "^/modules$", get_modules),
-   BackstageRoute("GET", "/modules/{name}", "^/modules/([^\\/]+)$", get_modules_name),
-   BackstageRoute("GET", "/errors", "^/errors$", get_errors),
-   BackstageRoute("GET", "/errors/{code}", "^/errors/([^\\/]+)$", get_errors_code),
-   BackstageRoute("GET", "/diagnostics/memory", "^/diagnostics/memory$", get_diagnostics_memory),
-   BackstageRoute("GET", "/diagnostics/timers", "^/diagnostics/timers$", get_diagnostics_timers),
-   BackstageRoute("GET", "/jobs/{job}", "^/jobs/([^\\/]+)$", get_jobs_job),
-   BackstageRoute("DELETE", "/jobs/{job}", "^/jobs/([^\\/]+)$", delete_jobs_job),
-   BackstageRoute("POST", "/logs/level", "^/logs/level$", post_logs_level),
-   BackstageRoute("POST", "/logs/start", "^/logs/start$", post_logs_start),
-   BackstageRoute("POST", "/logs/stop", "^/logs/stop$", post_logs_stop),
-   BackstageRoute("GET", "/logs", "^/logs$", get_logs),
-   BackstageRoute("POST", "/subscriptions", "^/subscriptions$", post_subscriptions),
-   BackstageRoute("GET", "/subscriptions/{id}", "^/subscriptions/([^\\/]+)$", get_subscriptions_id),
-   BackstageRoute("DELETE", "/subscriptions/{id}", "^/subscriptions/([^\\/]+)$", delete_subscriptions_id),
-   BackstageRoute("GET", "/docs", "^/docs$", get_docs),
-   BackstageRoute("GET", "/docs/routes", "^/docs/routes$", get_docs_routes),
-   BackstageRoute("POST", "/scripts", "^/scripts$", post_scripts)
+   BackstageRoute(
+      "GET",
+      "/agents/context",
+      "^/agents/context$",
+      get_agents_context,
+      BackstageRouteMetadata(
+         "Return a compact runtime context bundle for AI agents: process info, loaded modules, object counts, active windows/surfaces, recent errors, and notable diagnostics.",
+         "",
+         "object",
+         get_agents_context_path_params.data(),
+         get_agents_context_path_params.size(),
+         get_agents_context_query_params.data(),
+         get_agents_context_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/ping",
+      "^/ping$",
+      get_ping,
+      BackstageRouteMetadata(
+         "Return a small JSON response to confirm that Backstage can receive HTTP requests and send responses.",
+         "",
+         "json",
+         get_ping_path_params.data(),
+         get_ping_path_params.size(),
+         get_ping_query_params.data(),
+         get_ping_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/objects",
+      "^/objects$",
+      get_objects,
+      BackstageRouteMetadata(
+         "Return a JSON list of all objects and their basic meta data.",
+         "",
+         "json",
+         get_objects_path_params.data(),
+         get_objects_path_params.size(),
+         get_objects_query_params.data(),
+         get_objects_query_params.size())),
+   BackstageRoute(
+      "POST",
+      "/objects",
+      "^/objects$",
+      post_objects,
+      BackstageRouteMetadata(
+         "Create a new object, using the provided JSON fields as the object field values",
+         "json",
+         "json",
+         post_objects_path_params.data(),
+         post_objects_path_params.size(),
+         post_objects_query_params.data(),
+         post_objects_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/objects/{uid}",
+      "^/objects/(-?[0-9]+)$",
+      get_objects_uid,
+      BackstageRouteMetadata(
+         "Get a list of all readable field values of the target object.",
+         "",
+         "schema:Object",
+         get_objects_uid_path_params.data(),
+         get_objects_uid_path_params.size(),
+         get_objects_uid_query_params.data(),
+         get_objects_uid_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/objects/{uid}/children",
+      "^/objects/(-?[0-9]+)/children$",
+      get_objects_uid_children,
+      BackstageRouteMetadata(
+         "Return the child objects owned by the target object.",
+         "",
+         "array",
+         get_objects_uid_children_path_params.data(),
+         get_objects_uid_children_path_params.size(),
+         get_objects_uid_children_query_params.data(),
+         get_objects_uid_children_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/objects/{uid}/subscribers",
+      "^/objects/(-?[0-9]+)/subscribers$",
+      get_objects_uid_subscribers,
+      BackstageRouteMetadata(
+         "Return subscriptions and callbacks associated with the target object.",
+         "",
+         "array",
+         get_objects_uid_subscribers_path_params.data(),
+         get_objects_uid_subscribers_path_params.size(),
+         get_objects_uid_subscribers_query_params.data(),
+         get_objects_uid_subscribers_query_params.size())),
+   BackstageRoute(
+      "POST",
+      "/objects/{uid}",
+      "^/objects/(-?[0-9]+)$",
+      post_objects_uid,
+      BackstageRouteMetadata(
+         "Process a series of commands (e.g. call an action, set a field) for the target object.  Returns an error code and any result values.",
+         "json",
+         "json",
+         post_objects_uid_path_params.data(),
+         post_objects_uid_path_params.size(),
+         post_objects_uid_query_params.data(),
+         post_objects_uid_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/classes",
+      "^/classes$",
+      get_classes,
+      BackstageRouteMetadata(
+         "Return a JSON list of all classes and their meta data.",
+         "",
+         "array",
+         get_classes_path_params.data(),
+         get_classes_path_params.size(),
+         get_classes_query_params.data(),
+         get_classes_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/classes/{class}",
+      "^/classes/([^\\/]+)$",
+      get_classes_class,
+      BackstageRouteMetadata(
+         "Return meta data for a single class.",
+         "",
+         "object",
+         get_classes_class_path_params.data(),
+         get_classes_class_path_params.size(),
+         get_classes_class_query_params.data(),
+         get_classes_class_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/classes/{class}/fields",
+      "^/classes/([^\\/]+)/fields$",
+      get_classes_class_fields,
+      BackstageRouteMetadata(
+         "Return field meta data for a class.",
+         "",
+         "array",
+         get_classes_class_fields_path_params.data(),
+         get_classes_class_fields_path_params.size(),
+         get_classes_class_fields_query_params.data(),
+         get_classes_class_fields_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/classes/{class}/actions",
+      "^/classes/([^\\/]+)/actions$",
+      get_classes_class_actions,
+      BackstageRouteMetadata(
+         "Return action meta data for a class.",
+         "",
+         "array",
+         get_classes_class_actions_path_params.data(),
+         get_classes_class_actions_path_params.size(),
+         get_classes_class_actions_query_params.data(),
+         get_classes_class_actions_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/classes/{class}/methods",
+      "^/classes/([^\\/]+)/methods$",
+      get_classes_class_methods,
+      BackstageRouteMetadata(
+         "Return method meta data for a class.",
+         "",
+         "array",
+         get_classes_class_methods_path_params.data(),
+         get_classes_class_methods_path_params.size(),
+         get_classes_class_methods_query_params.data(),
+         get_classes_class_methods_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/modules",
+      "^/modules$",
+      get_modules,
+      BackstageRouteMetadata(
+         "Return a JSON list of all modules and their meta data.",
+         "",
+         "array",
+         get_modules_path_params.data(),
+         get_modules_path_params.size(),
+         get_modules_query_params.data(),
+         get_modules_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/modules/{name}",
+      "^/modules/([^\\/]+)$",
+      get_modules_name,
+      BackstageRouteMetadata(
+         "Return meta data and runtime state for a loaded module.",
+         "",
+         "object",
+         get_modules_name_path_params.data(),
+         get_modules_name_path_params.size(),
+         get_modules_name_query_params.data(),
+         get_modules_name_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/errors",
+      "^/errors$",
+      get_errors,
+      BackstageRouteMetadata(
+         "Return a JSON list of known error codes and their symbolic names.",
+         "",
+         "array",
+         get_errors_path_params.data(),
+         get_errors_path_params.size(),
+         get_errors_query_params.data(),
+         get_errors_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/errors/{code}",
+      "^/errors/([^\\/]+)$",
+      get_errors_code,
+      BackstageRouteMetadata(
+         "Return meta data for a single error code.",
+         "",
+         "object",
+         get_errors_code_path_params.data(),
+         get_errors_code_path_params.size(),
+         get_errors_code_query_params.data(),
+         get_errors_code_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/diagnostics/memory",
+      "^/diagnostics/memory$",
+      get_diagnostics_memory,
+      BackstageRouteMetadata(
+         "Returns a summary of memory allocations.  Specifying additional parameters can result in more detail",
+         "",
+         "object",
+         get_diagnostics_memory_path_params.data(),
+         get_diagnostics_memory_path_params.size(),
+         get_diagnostics_memory_query_params.data(),
+         get_diagnostics_memory_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/diagnostics/timers",
+      "^/diagnostics/timers$",
+      get_diagnostics_timers,
+      BackstageRouteMetadata(
+         "Return timer and scheduled callback diagnostics.",
+         "",
+         "array",
+         get_diagnostics_timers_path_params.data(),
+         get_diagnostics_timers_path_params.size(),
+         get_diagnostics_timers_query_params.data(),
+         get_diagnostics_timers_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/jobs/{job}",
+      "^/jobs/([^\\/]+)$",
+      get_jobs_job,
+      BackstageRouteMetadata(
+         "Return the state and result meta data for an asynchronous Backstage job.",
+         "",
+         "object",
+         get_jobs_job_path_params.data(),
+         get_jobs_job_path_params.size(),
+         get_jobs_job_query_params.data(),
+         get_jobs_job_query_params.size())),
+   BackstageRoute(
+      "DELETE",
+      "/jobs/{job}",
+      "^/jobs/([^\\/]+)$",
+      delete_jobs_job,
+      BackstageRouteMetadata(
+         "Cancel or clear an asynchronous Backstage job.",
+         "",
+         "object",
+         delete_jobs_job_path_params.data(),
+         delete_jobs_job_path_params.size(),
+         delete_jobs_job_query_params.data(),
+         delete_jobs_job_query_params.size())),
+   BackstageRoute(
+      "POST",
+      "/logs/level",
+      "^/logs/level$",
+      post_logs_level,
+      BackstageRouteMetadata(
+         "Change runtime logging levels for Backstage or another module.",
+         "json",
+         "object",
+         post_logs_level_path_params.data(),
+         post_logs_level_path_params.size(),
+         post_logs_level_query_params.data(),
+         post_logs_level_query_params.size())),
+   BackstageRoute(
+      "POST",
+      "/logs/start",
+      "^/logs/start$",
+      post_logs_start,
+      BackstageRouteMetadata(
+         "Activates internal log recording.",
+         "json",
+         "object",
+         post_logs_start_path_params.data(),
+         post_logs_start_path_params.size(),
+         post_logs_start_query_params.data(),
+         post_logs_start_query_params.size())),
+   BackstageRoute(
+      "POST",
+      "/logs/stop",
+      "^/logs/stop$",
+      post_logs_stop,
+      BackstageRouteMetadata(
+         "Stops internal log recording.",
+         "json",
+         "object",
+         post_logs_stop_path_params.data(),
+         post_logs_stop_path_params.size(),
+         post_logs_stop_query_params.data(),
+         post_logs_stop_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/logs",
+      "^/logs$",
+      get_logs,
+      BackstageRouteMetadata(
+         "Returns all logged messages, then clears the log message stack (the client is responsible for maintaining a permanent record).",
+         "",
+         "array",
+         get_logs_path_params.data(),
+         get_logs_path_params.size(),
+         get_logs_query_params.data(),
+         get_logs_query_params.size())),
+   BackstageRoute(
+      "POST",
+      "/subscriptions",
+      "^/subscriptions$",
+      post_subscriptions,
+      BackstageRouteMetadata(
+         "Create a Backstage subscription for live object, log, or diagnostic updates.",
+         "json",
+         "object",
+         post_subscriptions_path_params.data(),
+         post_subscriptions_path_params.size(),
+         post_subscriptions_query_params.data(),
+         post_subscriptions_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/subscriptions/{id}",
+      "^/subscriptions/([^\\/]+)$",
+      get_subscriptions_id,
+      BackstageRouteMetadata(
+         "Return meta data and current state for a Backstage subscription.",
+         "",
+         "object",
+         get_subscriptions_id_path_params.data(),
+         get_subscriptions_id_path_params.size(),
+         get_subscriptions_id_query_params.data(),
+         get_subscriptions_id_query_params.size())),
+   BackstageRoute(
+      "DELETE",
+      "/subscriptions/{id}",
+      "^/subscriptions/([^\\/]+)$",
+      delete_subscriptions_id,
+      BackstageRouteMetadata(
+         "Delete a Backstage subscription.",
+         "",
+         "object",
+         delete_subscriptions_id_path_params.data(),
+         delete_subscriptions_id_path_params.size(),
+         delete_subscriptions_id_query_params.data(),
+         delete_subscriptions_id_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/docs",
+      "^/docs$",
+      get_docs,
+      BackstageRouteMetadata(
+         "Return Backstage API documentation meta data.",
+         "",
+         "object",
+         get_docs_path_params.data(),
+         get_docs_path_params.size(),
+         get_docs_query_params.data(),
+         get_docs_query_params.size())),
+   BackstageRoute(
+      "GET",
+      "/docs/routes",
+      "^/docs/routes$",
+      get_docs_routes,
+      BackstageRouteMetadata(
+         "Return the declared Backstage routes and their meta data.",
+         "",
+         "array",
+         get_docs_routes_path_params.data(),
+         get_docs_routes_path_params.size(),
+         get_docs_routes_query_params.data(),
+         get_docs_routes_query_params.size())),
+   BackstageRoute(
+      "POST",
+      "/scripts",
+      "^/scripts$",
+      post_scripts,
+      BackstageRouteMetadata(
+         "Accepts a Tiri script for compilation.  Returns an object identifier for the script and any results if executed.",
+         "raw",
+         "object",
+         post_scripts_path_params.data(),
+         post_scripts_path_params.size(),
+         post_scripts_query_params.data(),
+         post_scripts_query_params.size()))
 };

@@ -1,0 +1,319 @@
+
+struct RequestLine {
+   std::string_view method;
+   std::string_view path;
+   std::string_view rawPath;
+   std::string_view queryString;
+   std::string_view version;
+};
+
+//********************************************************************************************************************
+
+struct BackstageHttpRequest {
+   RequestLine line;
+   std::string_view body;
+   std::string_view content_type;
+   bool has_content_length = false;
+};
+
+//********************************************************************************************************************
+
+struct BackstageHttpResponse {
+   int status = 200;
+   std::string_view status_text = "OK";
+   std::string content_type = "application/json";
+   std::string body;
+   std::string extra_headers;
+};
+
+//********************************************************************************************************************
+
+enum class HttpBufferState {
+   INCOMPLETE,
+   COMPLETE,
+   BAD_REQUEST,
+   HEADER_TOO_LARGE,
+   BODY_TOO_LARGE
+};
+
+//********************************************************************************************************************
+
+enum class HttpParseStatus {
+   OKAY,
+   BAD_REQUEST,
+   PAYLOAD_TOO_LARGE
+};
+
+//********************************************************************************************************************
+
+struct HttpBodyInfo {
+   size_t content_length = 0;
+   bool has_content_length = false;
+   bool malformed_content_length = false;
+   bool unsupported_transfer_encoding = false;
+};
+
+//********************************************************************************************************************
+
+static bool parse_request_line(std::string_view Request, RequestLine &Line)
+{
+   auto line_end = Request.find("\r\n");
+   if (line_end IS std::string_view::npos) return false;
+
+   auto request_line = Request.substr(0, line_end);
+   auto method_end = request_line.find(' ');
+   if ((method_end IS std::string_view::npos) or (method_end <= 0)) return false;
+
+   auto path_start = request_line.find_first_not_of(' ', method_end);
+   if (path_start IS std::string_view::npos) return false;
+
+   auto path_end = request_line.find(' ', path_start);
+   if ((path_end IS std::string_view::npos) or (path_end <= path_start)) return false;
+
+   auto version_start = request_line.find_first_not_of(' ', path_end);
+   if (version_start IS std::string_view::npos) return false;
+
+   auto version_end = request_line.find(' ', version_start);
+   if (not (version_end IS std::string_view::npos)) return false;
+
+   Line.method = request_line.substr(0, method_end);
+   Line.rawPath = request_line.substr(path_start, path_end - path_start);
+   Line.path = Line.rawPath;
+   Line.version = request_line.substr(version_start);
+
+   if (not Line.version.starts_with("HTTP/")) return false;
+
+   auto query = Line.path.find('?');
+   if (not (query IS std::string_view::npos)) {
+      Line.queryString = Line.path.substr(query + 1);
+      Line.path = Line.path.substr(0, query);
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+
+static std::string_view trim_header_value(std::string_view Value)
+{
+   while ((not Value.empty()) and ((Value.front() IS ' ') or (Value.front() IS '\t'))) Value.remove_prefix(1);
+   while ((not Value.empty()) and ((Value.back() IS ' ') or (Value.back() IS '\t'))) Value.remove_suffix(1);
+   return Value;
+}
+
+//********************************************************************************************************************
+
+static bool parse_size_header(std::string_view Value, size_t &Result)
+{
+   auto value = trim_header_value(Value);
+   if (value.empty()) return false;
+
+   size_t length = 0;
+
+   for (auto ch : value) {
+      if ((ch < '0') or (ch > '9')) return false;
+
+      auto next_length = (length * 10) + size_t(ch - '0');
+      if (next_length < length) return false;
+      length = next_length;
+   }
+
+   Result = length;
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool header_name_is(std::string_view Name, const char *Expected)
+{
+   return kt::iequals(Name, Expected);
+}
+
+//********************************************************************************************************************
+
+static HttpBodyInfo parse_body_headers(std::string_view Headers)
+{
+   HttpBodyInfo info;
+   size_t pos = 0;
+
+   while (pos < Headers.size()) {
+      auto line_end = Headers.find("\r\n", pos);
+      if (line_end IS std::string_view::npos) line_end = Headers.size();
+
+      auto line = Headers.substr(pos, line_end - pos);
+      auto colon = line.find(':');
+      if (not (colon IS std::string_view::npos)) {
+         auto name = line.substr(0, colon);
+         auto value = line.substr(colon + 1);
+
+         if (header_name_is(name, "Content-Length")) {
+            size_t length = 0;
+            if (not parse_size_header(value, length)) info.malformed_content_length = true;
+            else if ((not info.has_content_length) or (info.content_length IS length)) {
+               info.has_content_length = true;
+               info.content_length = length;
+            }
+            else info.malformed_content_length = true;
+         }
+         else if (header_name_is(name, "Transfer-Encoding")) {
+            auto encoding = trim_header_value(value);
+            if ((not encoding.empty()) and (not kt::iequals(encoding, "identity"))) {
+               info.unsupported_transfer_encoding = true;
+            }
+         }
+      }
+
+      if (line_end IS Headers.size()) break;
+      pos = line_end + 2;
+   }
+
+   return info;
+}
+
+//********************************************************************************************************************
+
+static std::string_view get_header_value(std::string_view Headers, const char *HeaderName)
+{
+   size_t pos = 0;
+
+   while (pos < Headers.size()) {
+      auto line_end = Headers.find("\r\n", pos);
+      if (line_end IS std::string_view::npos) line_end = Headers.size();
+
+      auto line = Headers.substr(pos, line_end - pos);
+      auto colon = line.find(':');
+      if (not (colon IS std::string_view::npos)) {
+         auto name = line.substr(0, colon);
+         if (header_name_is(name, HeaderName)) return trim_header_value(line.substr(colon + 1));
+      }
+
+      if (line_end IS Headers.size()) break;
+      pos = line_end + 2;
+   }
+
+   return {};
+}
+
+//********************************************************************************************************************
+
+static HttpBufferState analyse_http_buffer(std::string_view Request)
+{
+   auto header_end = Request.find("\r\n\r\n");
+   if (header_end IS std::string_view::npos) {
+      if (Request.size() > MAX_REQUEST_HEADER) return HttpBufferState::HEADER_TOO_LARGE;
+      return HttpBufferState::INCOMPLETE;
+   }
+
+   auto body_info = parse_body_headers(Request.substr(0, header_end));
+   if (body_info.malformed_content_length or body_info.unsupported_transfer_encoding) {
+      return HttpBufferState::BAD_REQUEST;
+   }
+
+   if (body_info.content_length > MAX_REQUEST_BODY) return HttpBufferState::BODY_TOO_LARGE;
+   if (Request.size() >= header_end + 4 + body_info.content_length) return HttpBufferState::COMPLETE;
+   return HttpBufferState::INCOMPLETE;
+}
+
+//********************************************************************************************************************
+
+static std::string_view get_request_body(std::string_view Request, size_t ContentLength)
+{
+   auto header_end = Request.find("\r\n\r\n");
+   if (header_end IS std::string_view::npos) return {};
+
+   auto body = Request.substr(header_end + 4);
+   if (body.size() > ContentLength) return body.substr(0, ContentLength);
+   return body;
+}
+
+//********************************************************************************************************************
+
+static HttpParseStatus parse_http_request(std::string_view RawRequest, BackstageHttpRequest &Request)
+{
+   auto header_end = RawRequest.find("\r\n\r\n");
+   if (header_end IS std::string_view::npos) return HttpParseStatus::BAD_REQUEST;
+
+   auto headers = RawRequest.substr(0, header_end);
+   auto body_info = parse_body_headers(headers);
+
+   if ((body_info.malformed_content_length) or (body_info.unsupported_transfer_encoding)) {
+      return HttpParseStatus::BAD_REQUEST;
+   }
+
+   if (body_info.content_length > MAX_REQUEST_BODY) return HttpParseStatus::PAYLOAD_TOO_LARGE;
+   if (not parse_request_line(RawRequest, Request.line)) return HttpParseStatus::BAD_REQUEST;
+
+   Request.has_content_length = body_info.has_content_length;
+   Request.content_type = get_header_value(headers, "Content-Type");
+   Request.body = get_request_body(RawRequest, body_info.content_length);
+   return HttpParseStatus::OKAY;
+}
+
+//********************************************************************************************************************
+
+static std::string_view get_status_text(int Status)
+{
+   switch (Status) {
+      case 200: return "OK";
+      case 201: return "Created";
+      case 202: return "Accepted";
+      case 204: return "No Content";
+      case 400: return "Bad Request";
+      case 411: return "Length Required";
+      case 413: return "Payload Too Large";
+      case 415: return "Unsupported Media Type";
+      case 404: return "Not Found";
+      case 405: return "Method Not Allowed";
+      case 500: return "Internal Server Error";
+      case 501: return "Not Implemented";
+      default:  return "OK";
+   }
+}
+
+//********************************************************************************************************************
+
+static BackstageHttpResponse plain_http_response(int Status, std::string_view Body)
+{
+   BackstageHttpResponse response;
+   response.status = Status;
+   response.status_text = get_status_text(Status);
+   response.content_type = "text/plain";
+   response.body = Body;
+   return response;
+}
+
+//********************************************************************************************************************
+
+static BackstageHttpResponse route_http_response(const BackstageResponse &Response)
+{
+   BackstageHttpResponse http_response;
+   http_response.status = Response.status;
+   http_response.status_text = get_status_text(Response.status);
+   http_response.content_type = Response.contentType;
+   http_response.body = Response.body;
+   return http_response;
+}
+
+//********************************************************************************************************************
+
+static void write_response(objClientSocket *Client, const BackstageHttpResponse &Response)
+{
+   std::string response;
+   response.reserve(128 + Response.body.size() + Response.extra_headers.size());
+   response.append("HTTP/1.1 ");
+   response.append(std::to_string(Response.status));
+   response.append(" ");
+   response.append(Response.status_text);
+   response.append("\r\nContent-Type: ");
+   response.append(Response.content_type);
+   response.append("\r\nContent-Length: ");
+   response.append(std::to_string(Response.body.size()));
+   response.append("\r\nConnection: close\r\n");
+   response.append(Response.extra_headers);
+   response.append("\r\n");
+   response.append(Response.body);
+
+   int result;
+   Client->write(response.c_str(), int(response.size()), &result);
+   Client->deactivate();
+}

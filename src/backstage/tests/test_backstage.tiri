@@ -34,20 +34,15 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(network=true)
-function PingReturnsJsonPong()
+function request_backstage(Request:str, ExpectedToken:str):str
    response = ''
    client = obj.new('netsocket', {
       name = 'BackstagePingClient',
       feedback = function(Socket:obj, State:num)
          if State is NTC_CONNECTED then
-            request = 'GET /ping HTTP/1.1\r\n' ..
-               'Host: 127.0.0.1\r\n' ..
-               'Connection: close\r\n\r\n'
-
-            err, len = Socket.acWrite(request)
+            err, len = Socket.acWrite(Request)
             check err
-            assert(len is #request, 'Ping request write length mismatch.')
+            assert(len is #Request, 'Request write length mismatch.')
          end
       end,
       incoming = function(Socket:obj)
@@ -61,7 +56,7 @@ function PingReturnsJsonPong()
          if read_len <= 0 then return end
 
          response ..= buffer:substr(0, read_len)
-         if response:find('{"status":"pong"}') then
+         if response:find(ExpectedToken) then
             Socket.acSignal()
          end
       end
@@ -70,9 +65,79 @@ function PingReturnsJsonPong()
    proc = processing.new({ timeout = 5.0, signals = array<object> { client } })
    check client.mtConnect('127.0.0.1', SERVER_PORT)
    check proc.sleep()
+   client.free()
+
+   return response
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test; @Requires(network=true)
+function PingReturnsJsonPong()
+   request = 'GET /ping HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage(request, '{"status":"pong"}')
 
    assert(response:find('HTTP/1.1 200 OK'), 'Expected 200 OK response, got: ' .. response)
    assert(response:find('Content-Type: application/json'), 'Expected JSON content type, got: ' .. response)
    assert(response:find('Content-Length: 17'), 'Expected Content-Length 17, got: ' .. response)
    assert(response:find('{"status":"pong"}'), 'Expected pong JSON body, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function MalformedContentLengthReturnsBadRequest()
+   request = 'GET /ping HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Content-Length: no\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
+   assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected malformed length to return 400, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function MissingContentLengthOnBodyRouteReturnsLengthRequired()
+   request = 'POST /objects HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Content-Type: application/json\r\n' ..
+      'Connection: close\r\n\r\n{}'
+
+   response = request_backstage(request, 'HTTP/1.1 411 Length Required')
+   assert(response:find('HTTP/1.1 411 Length Required'), 'Expected missing length to return 411, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function OversizedBodyReturnsPayloadTooLarge()
+   request = 'POST /scripts HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Content-Length: 1048577\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage(request, 'HTTP/1.1 413 Payload Too Large')
+   assert(response:find('HTTP/1.1 413 Payload Too Large'), 'Expected oversized body to return 413, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function JsonRouteRequiresJsonContentType()
+   request = 'POST /objects HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Content-Type: text/plain\r\n' ..
+      'Content-Length: 2\r\n' ..
+      'Connection: close\r\n\r\n{}'
+
+   response = request_backstage(request, 'HTTP/1.1 415 Unsupported Media Type')
+   assert(response:find('HTTP/1.1 415 Unsupported Media Type'), 'Expected text body to return 415, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function UnsupportedTransferEncodingReturnsBadRequest()
+   request = 'POST /scripts HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Transfer-Encoding: chunked\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
+   assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected transfer encoding 400, got: ' .. response)
 end

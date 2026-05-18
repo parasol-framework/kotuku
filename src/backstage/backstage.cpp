@@ -48,6 +48,7 @@ static std::mutex glRequestLock;
 static std::unordered_map<OBJECTID, std::string> glRequestBuffers;
 
 static constexpr size_t MAX_REQUEST_HEADER = 16 * 1024;
+static constexpr size_t MAX_REQUEST_BODY = 1024 * 1024;
 
 //********************************************************************************************************************
 // For declaring HTTP routes in the glRoutes array.
@@ -56,20 +57,55 @@ struct BackstageRequest;
 struct BackstageResponse;
 using BackstageHandler = ERR (*)(const BackstageRequest &, BackstageResponse &);
 
+struct BackstageParam {
+   std::string_view name;
+   std::string_view type;
+   std::string_view description;
+   std::string_view default_value;
+   bool required = false;
+
+   constexpr BackstageParam() {}
+
+   constexpr BackstageParam(std::string_view Name, std::string_view Type, std::string_view Description,
+      std::string_view DefaultValue = {}, bool Required = false) :
+      name(Name), type(Type), description(Description), default_value(DefaultValue), required(Required) {}
+};
+
+struct BackstageRouteMetadata {
+   std::string_view description;
+   std::string_view body;
+   std::string_view returns;
+   const BackstageParam *path_params = nullptr;
+   size_t path_param_count = 0;
+   const BackstageParam *query_params = nullptr;
+   size_t query_param_count = 0;
+
+   constexpr BackstageRouteMetadata() {}
+
+   constexpr BackstageRouteMetadata(std::string_view Description, std::string_view Body, std::string_view Returns,
+      const BackstageParam *PathParams = nullptr, size_t PathParamCount = 0,
+      const BackstageParam *QueryParams = nullptr, size_t QueryParamCount = 0) :
+      description(Description), body(Body), returns(Returns), path_params(PathParams),
+      path_param_count(PathParamCount), query_params(QueryParams), query_param_count(QueryParamCount) {}
+};
+
 struct BackstageRoute {
    std::string_view method;  // HTTP method
    std::string_view path;    // Human readable path (decorative)
    std::string_view pattern; // Regex pattern for matching requests
    BackstageHandler handler = nullptr; // Function handling this route
+   BackstageRouteMetadata metadata;
    Regex *regex = nullptr;
 
    BackstageRoute() {}
 
-   BackstageRoute(std::string_view pMethod, std::string_view pPath, Regex *pRegex, BackstageHandler pHandler) :
-      method(pMethod), path(pPath), handler(pHandler), regex(pRegex) {}
+   BackstageRoute(std::string_view Method, std::string_view Path, Regex *CompiledRegex, BackstageHandler Handler,
+      const BackstageRouteMetadata &Metadata = {}) :
+      method(Method), path(Path), handler(Handler), metadata(Metadata), regex(CompiledRegex) {}
 
-   BackstageRoute(std::string_view pMethod, std::string_view pPath, std::string_view pRegex, BackstageHandler pHandler) :
-      method(pMethod), path(pPath), pattern(pRegex), handler(pHandler) {}
+   BackstageRoute(std::string_view Method, std::string_view Path, std::string_view Regex, BackstageHandler Handler,
+      const BackstageRouteMetadata &Metadata = {}) :
+      method(Method), path(Path), pattern(Regex), handler(Handler), metadata(Metadata) {}
 
    ~BackstageRoute() {
       if (regex) FreeResource(regex);
@@ -154,6 +190,8 @@ static ERR MODExpunge(void)
 //********************************************************************************************************************
 
 #include "routes.cpp"
+#include "http.cpp"
+#include "router.cpp"
 #include "server.cpp"
 
 //********************************************************************************************************************
