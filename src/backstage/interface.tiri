@@ -293,6 +293,10 @@ route('GET', '/docs', {
 
 route('GET', '/docs/routes', {
    desc = 'Return the declared Backstage routes and their meta data.',
+   query = {
+      methodFilter = { type='regex', desc='Regex that must match the full HTTP method.' },
+      pathFilter = { type='regex', desc='Regex that must match the full route path.' }
+   },
    returns = 'array'
 })
 
@@ -583,5 +587,11 @@ end
       inc ..= f'#include "{source}"\n'
    end
 
-   out = "// Auto-generated source code.  Regenerate with the backstage_routes CMake target.\n\n" .. inc .. '\n' .. rtab
+   route_accessor = "static std::span<BackstageRoute> backstage_routes();\n\n"
+   route_accessor_impl = "static std::span<BackstageRoute> backstage_routes()\n{\n"
+   route_accessor_impl ..= "   return glRoutes;\n"
+   route_accessor_impl ..= "}\n"
+
+   out = "// Auto-generated source code.  Regenerate with the backstage_routes CMake target.\n\n" ..
+      route_accessor .. inc .. '\n' .. rtab .. '\n' .. route_accessor_impl
    file.acWrite(out)

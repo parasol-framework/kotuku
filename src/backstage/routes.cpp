@@ -1,5 +1,7 @@
 // Auto-generated source code.  Regenerate with the backstage_routes CMake target.
 
+static std::span<BackstageRoute> backstage_routes();
+
 #include "routes/agents.cpp"
 #include "routes/ping.cpp"
 #include "routes/objects.cpp"
@@ -274,7 +276,10 @@ static constexpr std::array<std::string_view, 0> get_docs_routes_path_param_name
 
 static constexpr std::array<BackstageParam, 0> get_docs_routes_path_params = {};
 
-static constexpr std::array<BackstageParam, 0> get_docs_routes_query_params = {};
+static constexpr std::array<BackstageParam, 2> get_docs_routes_query_params = {
+   BackstageParam("methodFilter", "regex", "Regex that must match the full HTTP method.", "", false),
+   BackstageParam("pathFilter", "regex", "Regex that must match the full route path.", "", false)
+};
 
 static constexpr std::array<std::string_view, 0> post_scripts_path_param_names = {};
 
@@ -660,3 +665,8 @@ static std::array<BackstageRoute, 31> glRoutes = {
          post_scripts_path_params,
          post_scripts_query_params))
 };
+
+static std::span<BackstageRoute> backstage_routes()
+{
+   return glRoutes;
+}

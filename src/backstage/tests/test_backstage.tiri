@@ -56,7 +56,7 @@ function request_backstage(Request:str, ExpectedToken:str):str
          if read_len <= 0 then return end
 
          response ..= buffer:substr(0, read_len)
-         if response:find(ExpectedToken) then
+         if ExpectedToken?? and response:find(ExpectedToken) then
             Socket.acSignal()
          end
       end
@@ -68,6 +68,10 @@ function request_backstage(Request:str, ExpectedToken:str):str
    client.free()
 
    return response
+end
+
+function request_backstage_full(Request:str):str
+   return request_backstage(Request, '')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -94,6 +98,59 @@ function UnimplementedRouteReturnsNotImplemented()
 
    response = request_backstage(request, 'HTTP/1.1 501 Not Implemented')
    assert(response:find('HTTP/1.1 501 Not Implemented'), 'Expected unsupported route to return 501, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function DocsReturnsRouteIndex()
+   request = 'GET /docs HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage_full(request)
+
+   assert(response:find('HTTP/1.1 200 OK'), 'Expected docs to return 200 OK, got: ' .. response)
+   assert(response:find('Content-Type: application/json'), 'Expected docs to return JSON, got: ' .. response)
+   assert(response:find('"name":"Backstage"'), 'Expected docs service name, got: ' .. response)
+   assert(response:find('"routeCount":31'), 'Expected docs route count, got: ' .. response)
+   assert(response:find('{"method":"GET","path":"/ping"}'), 'Expected docs route index to include ping, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function DocsRoutesReturnsDetailedMetadata()
+   request = 'GET /docs/routes HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage_full(request)
+
+   assert(response:find('HTTP/1.1 200 OK'), 'Expected docs/routes to return 200 OK, got: ' .. response)
+   assert(response:find('"path":"/objects/{uid}"'), 'Expected object UID route metadata, got: ' .. response)
+   assert(response:find('"pathParams":[{"name":"uid"'), 'Expected path parameter metadata, got: ' .. response)
+   assert(response:find('"queryParams":[{"name":"filter"'), 'Expected query parameter metadata, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function DocsRoutesSupportsRegexFilters()
+   request = 'GET /docs/routes?methodFilter=GET&pathFilter=/objects/\\{uid\\} HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage_full(request)
+
+   assert(response:find('HTTP/1.1 200 OK'), 'Expected filtered docs/routes to return 200 OK, got: ' .. response)
+   assert(response:find('"method":"GET","path":"/objects/{uid}"'), 'Expected filtered GET object route, got: ' .. response)
+   assert(not response:find('"method":"POST","path":"/objects/{uid}"'), 'Did not expect POST object route, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function DocsRoutesRejectsInvalidRegexFilter()
+   request = 'GET /docs/routes?pathFilter=( HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
+   assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected invalid regex to return 400, got: ' .. response)
+   assert(response:find('Invalid pathFilter regex'), 'Expected invalid regex message, got: ' .. response)
 end
 
 @Test; @Requires(network=true)
