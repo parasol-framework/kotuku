@@ -123,17 +123,76 @@ static inline BCPOS bcemit_AJ(FuncState *fs, Op o, BCREG a, BCPOS j) {
 // Emit BC_TGETS with overflow protection. When the string constant index exceeds 255 (the 8-bit C field limit),
 // falls back to BC_KSTR + BC_TGETV to avoid bytecode corruption.
 
-static inline void bcemit_tgets(FuncState *fs, BCREG Dest, BCREG Table, BCREG StrConstIdx)
+static inline BCPOS bcemit_tgets(FuncState *fs, BCREG Dest, BCREG Table, BCREG StrConstIdx)
 {
    if (StrConstIdx <= BCMAX_C) {
-      bcemit_ABC(fs, BC_TGETS, Dest, Table, StrConstIdx);
+      return bcemit_ABC(fs, BC_TGETS, Dest, Table, StrConstIdx);
    }
    else {
-      BCREG key_reg = fs->freereg;
-      bcreg_reserve(fs, 1);
+      if (StrConstIdx > BCMAX_D) {
+         err_limit(fs, BCMAX_D + 1, "constants");
+         return NO_JMP;
+      }
+
+      BCREG saved_freereg = fs->freereg;
+      BCREG key_reg = saved_freereg;
+
+      if (key_reg <= Dest) key_reg = Dest + 1;
+      if (key_reg <= Table) key_reg = Table + 1;
+
+      if (not(key_reg IS saved_freereg)) {
+         kt::Log("Parser").warning("BC_TGETS constant overflow temp register adjusted from R%u to R%u "
+            "to avoid aliasing R%u/R%u at line %d",
+            unsigned(saved_freereg), unsigned(key_reg), unsigned(Dest), unsigned(Table),
+            fs->ls->effective_line().lineNumber());
+      }
+
+      fs_check_assert(fs, not(key_reg IS Dest) and not(key_reg IS Table),
+         "BC_TGETS overflow temp aliases destination/table register");
+
+      bcreg_reserve(fs, key_reg - saved_freereg + 1);
       bcemit_AD(fs, BC_KSTR, key_reg, StrConstIdx);
-      bcemit_ABC(fs, BC_TGETV, Dest, Table, key_reg);
-      fs->freereg--;
+      BCPOS pc = bcemit_ABC(fs, BC_TGETV, Dest, Table, key_reg);
+      fs->freereg = saved_freereg;
+      return pc;
+   }
+}
+
+// Emit BC_TSETS with overflow protection. When the string constant index exceeds 255 (the 8-bit C field limit),
+// falls back to BC_KSTR + BC_TSETV to avoid bytecode corruption.
+
+static inline BCPOS bcemit_tsets(FuncState *fs, BCREG Value, BCREG Table, BCREG StrConstIdx)
+{
+   if (StrConstIdx <= BCMAX_C) {
+      return bcemit_ABC(fs, BC_TSETS, Value, Table, StrConstIdx);
+   }
+   else {
+      if (StrConstIdx > BCMAX_D) {
+         err_limit(fs, BCMAX_D + 1, "constants");
+         return NO_JMP;
+      }
+
+      BCREG saved_freereg = fs->freereg;
+      BCREG key_reg = saved_freereg;
+
+      if (key_reg <= Value) key_reg = Value + 1;
+      if (key_reg <= Table) key_reg = Table + 1;
+
+      if (not(key_reg IS saved_freereg)) {
+         kt::Log("Parser").warning("BC_TSETS constant overflow temp register adjusted from R%u to R%u "
+            "to avoid aliasing R%u/R%u at line %d",
+            unsigned(saved_freereg), unsigned(key_reg), unsigned(Value), unsigned(Table),
+            fs->ls->effective_line().lineNumber());
+      }
+
+      fs_check_assert(fs, not(key_reg IS Value) and not(key_reg IS Table),
+         "BC_TSETS overflow temp aliases value/table register");
+
+      bcreg_reserve(fs, key_reg - saved_freereg + 1);
+      bcemit_AD(fs, BC_KSTR, key_reg, StrConstIdx);
+      BCPOS pc = bcemit_ABC(fs, BC_TSETV, Value, Table, key_reg);
+      fs->freereg = saved_freereg;
+      return pc;
    }
 }
 

@@ -26,7 +26,13 @@ Sort = 1
 
 glMerge = 'Ignore this\r\n[MergedGroup]\r\nHello=World\r\n'
 
-function newConfig()
+----------------------------------------------------------------------------------------------------------------------
+
+@AfterAll function cleanup()
+   mSys.DeleteFile('temp:test-write.cfg')
+end
+
+function new_config()
    cfg = obj.new('config', { })
    err = cfg.acDataFeed(nil, DATA_TEXT, glLegalData, 0)
    assert(err is ERR_Okay, 'DataFeed() returned ' .. mSys.GetErrorMsg(err))
@@ -36,7 +42,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function KeyFilter()
-   cfg = newConfig()
+   cfg = new_config()
 
    cfg.keyFilter = 'Name=Clean' -- Keep the clean font and filter out Courier Sans
 
@@ -55,7 +61,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function GroupFilter()
-   cfg = newConfig()
+   cfg = new_config()
 
    cfg.groupFilter = 'Courier Sans' -- Keep Courier Sans
 
@@ -74,7 +80,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function DeleteKeyAndGroup()
-   cfg = newConfig()
+   cfg = new_config()
 
    err, value = cfg.mtReadValue('Clean', 'Styles')
    assert(err is ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
@@ -95,7 +101,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function Merge()
-   cfg = newConfig()
+   cfg = new_config()
 
    cfgMerge = obj.new('config', { })
    err = cfg.acDataFeed(nil, DATA_TEXT, glMerge, 0)
@@ -114,7 +120,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function WriteValues()
-   cfg = newConfig()
+   cfg = new_config()
 
    err = cfg.mtWriteValue('Clean', 'New', 'Value')
    assert(err is ERR_Okay, 'WriteValue() returned ' .. mSys.GetErrorMsg(err))
@@ -135,7 +141,7 @@ end
 -- Test case sensitivity
 
 @Test function ReadValues()
-   cfg = newConfig()
+   cfg = new_config()
 
    err, value = cfg.mtReadValue('CLEAN', 'Styles')
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
@@ -147,7 +153,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function Sorting()
-   cfg = newConfig()
+   cfg = new_config()
 
    err = cfg.mtSortByKey('Sort', true)
    assert(err is ERR_Okay, 'SortByKey() returned ' .. mSys.GetErrorMsg(err))
@@ -163,7 +169,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function Save()
-   cfg = newConfig()
+   cfg = new_config()
    err, value = cfg.mtDeleteGroup('Courier Sans')
    err, value = cfg.mtDeleteGroup('Alpha')
    file = obj.new('file', { path='temp:test-write.cfg', flags=FL_NEW|FL_WRITE })

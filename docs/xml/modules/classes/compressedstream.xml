@@ -251,6 +251,7 @@
       <const name="GROUP_WRITE">Group members can write.</const>
       <const name="HIDDEN">Recommends that the file is hidden from view by default.</const>
       <const name="INHERIT">Inherit permissions from parent folder and logical OR them with preset permission flags.</const>
+      <const name="META">Synonym for <code>HIDDEN | PASSWORD | OFFLINE | NETWORK</code></const>
       <const name="NETWORK">File is hosted on another machine.</const>
       <const name="OFFLINE">File content for this networked file has not been cached on the local PC.</const>
       <const name="OTHERS">Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></const>
@@ -273,19 +274,17 @@
     </constants>
 
     <constants lookup="RDF" comment="Flags for the OpenDir() function.">
-      <const name="ARCHIVE">Feedback only - archive bit is set.</const>
       <const name="DATE">Retrieve the date stamp of each file.</const>
       <const name="FILE">Read all files in the folder.</const>
       <const name="FILES">Read all files in the folder.</const>
       <const name="FOLDER">Read all folders/volumes in the folder.</const>
       <const name="FOLDERS">Read all folders/volumes in the folder.</const>
-      <const name="HIDDEN">Feedback only - file/folder is hidden.</const>
       <const name="LINK">Feedback only - file/folder is actually a link to another location.</const>
       <const name="PERMISSIONS">Get permission/security information.</const>
       <const name="QUALIFIED">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
       <const name="QUALIFY">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
       <const name="READ_ALL">Synonym for <code>SIZE | DATE | PERMISSIONS | FILES | FOLDERS</code></const>
-      <const name="READ_ONLY">Read-only (not permissions related and might indicate read-only media).</const>
+      <const name="READ_ONLY">Read-only (not permissions related, can indicate read-only media).</const>
       <const name="SIZE">Retrieve the byte size of each file.</const>
       <const name="STREAM">Path is connected via a stream, e.g. network connection.</const>
       <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the <code>Tags</code> field of each file.</const>
@@ -401,7 +400,7 @@
 
     <struct name="FileInfo" comment="Metadata for describing a file.">
       <field name="Size" type="INT64">The size of the file's content.</field>
-      <field name="TimeStamp" type="INT64">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
+      <field name="Timestamp" type="INT64">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or <code>NULL</code>.</field>
       <field name="Name" type="std::string">The name of the file.</field>
       <field name="Flags" type="RDF" lookup="RDF">Additional flags to describe the file.</field>

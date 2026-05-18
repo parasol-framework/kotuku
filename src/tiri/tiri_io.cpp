@@ -126,8 +126,26 @@ static int io_open(lua_State *Lua)
 static int io_close(lua_State *Lua)
 {
    if (lua_gettop(Lua) IS 0) {
-      // TODO: Close default output file with FreeResource() and remove it from the registry
-      return 0;
+      lua_pushstring(Lua, "io.defaultOutput");
+      lua_gettable(Lua, LUA_REGISTRYINDEX);
+
+      if (lua_isnil(Lua, -1)) {
+         lua_pop(Lua, 1);
+         lua_pushcfunction(Lua, io_output);
+         lua_call(Lua, 0, 1);
+      }
+
+      if (lua_isnil(Lua, -1)) luaL_error(Lua, ERR::ExpectedFile);
+
+      auto handle = check_file_handle(Lua, -1);
+      handle->close();
+
+      lua_pushstring(Lua, "io.defaultOutput");
+      lua_pushnil(Lua);
+      lua_settable(Lua, LUA_REGISTRYINDEX);
+
+      lua_pushboolean(Lua, 1);
+      return 1;
    }
 
    if (auto handle = check_file_handle(Lua, 1)) {
@@ -438,16 +456,6 @@ static int io_lines(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// TODO: Open pipe to running process - requires Task integration and using callbacks to receive data from stdout.
-// This is equivalent to Lua's io.popen()
-
-static int io_openPipe(lua_State *Lua)
-{
-   luaL_error(Lua, ERR::NoSupport, "io.openPipe not yet implemented");
-   return 0;
-}
-
-//********************************************************************************************************************
 // Create a temporary buffer file in memory.  In theory this is the best and most performant option if you
 // also consider that the OS can use swap space for large memory files.
 
@@ -680,8 +688,11 @@ static int io_readAll(lua_State *Lua)
 {
    auto path = luaL_checkstring(Lua, 1);
 
-   auto file = objFile::create::local({ fl::Path(path), fl::Flags(FL::READ) });
-   if (not file) luaL_error(Lua, ERR::OpenFile, "Failed to open file: %s", path);
+   auto file = objFile::create({ fl::Path(path), fl::Flags(FL::READ) });
+   if (not file.ok()) {
+      file.~Create();
+      luaL_error(Lua, ERR::OpenFile, "Failed to open file: %s", path);
+   }
 
    file->seekEnd(0);
    auto file_size = file->Position;
@@ -690,10 +701,11 @@ static int io_readAll(lua_State *Lua)
    if (file_size > 0) {
       std::string buffer(file_size, '\0');
       int bytes_read;
-      if (acRead(file, buffer.data(), file_size, &bytes_read) IS ERR::Okay and bytes_read IS file_size) {
+      if (file->read(buffer.data(), file_size, &bytes_read) IS ERR::Okay and bytes_read IS file_size) {
          lua_pushlstring(Lua, buffer.data(), bytes_read);
          return 1;
       }
+      file.~Create();
       luaL_error(Lua, ERR::Read, "Failed to read %" PRId64 " bytes from \"%s\"", file_size, path);
    }
 
@@ -711,11 +723,15 @@ static int io_writeAll(lua_State *Lua)
    size_t len;
    auto content = luaL_checklstring(Lua, 2, &len);
 
-   auto file = objFile::create::local({ fl::Path(path), fl::Flags(FL::WRITE|FL::NEW) });
-   if (not file) luaL_error(Lua, ERR::CreateFile, "Failed to create file: %s", path);
+   auto file = objFile::create({ fl::Path(path), fl::Flags(FL::WRITE|FL::NEW) });
+   if (not file.ok()) {
+      file.~Create();
+      luaL_error(Lua, ERR::CreateFile, "Failed to create file: %s", path);
+   }
 
    int result;
-   if (acWrite(file, content, len, &result) != ERR::Okay) {
+   if (file->write(content, len, &result) != ERR::Okay) {
+      file.~Create();
       luaL_error(Lua, ERR::Write, "Failed to write to file: %s", path);
    }
 
@@ -813,7 +829,6 @@ void register_io_class(lua_State *Lua)
       { "lines",        io_lines },
       { "open",         io_open },
       { "output",       io_output },
-      { "openPipe",     io_openPipe }, //
       { "read",         io_read },
       { "readAll",      io_readAll },
       { "sanitisePath", io_sanitisePath },
@@ -875,7 +890,6 @@ void register_io_class(lua_State *Lua)
    reg_iface_prototype("io", "input", { TiriType::Any }, { TiriType::Any });
    reg_iface_prototype("io", "output", { TiriType::Any }, { TiriType::Any });
    reg_iface_prototype("io", "lines", { TiriType::Func }, { TiriType::Any });
-   reg_iface_prototype("io", "openPipe", {}, { TiriType::Str });
    reg_iface_prototype("io", "tempFile", { TiriType::Any }, {});
    reg_iface_prototype("io", "type", { TiriType::Str }, { TiriType::Any });
    reg_iface_prototype("io", "readAll", { TiriType::Str }, { TiriType::Str });

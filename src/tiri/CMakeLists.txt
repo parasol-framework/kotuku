@@ -57,20 +57,39 @@ idl_gen ("${MOD}.tdl" NAME ${MOD}_defs
 
 # We build libFFI as a release build in all situations because ASAN doesn't like Debug builds of libFFI.
 
+set (FFI_PROJECT "libffi-3.5.2")
+set (FFI_URL "https://github.com/libffi/libffi/archive/refs/tags/v3.5.2.tar.gz")
+string(CONCAT FFI_HASH
+   "4579932BECBE33B2CB3C7A6327A9B47FEE67F225EBB4677870ED4402BB7C186966A5B"
+   "8645DC8A09128AF51DCBA27C23537E6A34567DBEA4E3DC3728CFB51E038")
+set (FFI_INSTALL_DIR "${CMAKE_BINARY_DIR}/${FFI_PROJECT}")
+set (FFI_CMAKE_WRAPPER "${CMAKE_CURRENT_SOURCE_DIR}/libffi-cmake")
+set (FFI_WRAPPER_CMAKELISTS "${FFI_CMAKE_WRAPPER}/CMakeLists.txt")
+set (FFI_WRAPPER_OPTIONS "${FFI_CMAKE_WRAPPER}/configure_options.cmake")
+set (FFI_WRAPPER_CONFIG "${FFI_CMAKE_WRAPPER}/fficonfig.cmake.in")
+
 if (MSVC)
-   set (FFI_LINK "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.lib")
+   set (FFI_LINK "${FFI_INSTALL_DIR}/lib/libffi.lib")
 else ()
-   set (FFI_LINK "${CMAKE_BINARY_DIR}/libffi-3.3/lib/liblibffi.a")
+   set (FFI_LINK "${FFI_INSTALL_DIR}/lib/liblibffi.a")
 endif ()
 
-ExternalProject_Add(libffi-3.3
-   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3
+ExternalProject_Add(${FFI_PROJECT}
+   URL ${FFI_URL}
+   URL_HASH SHA512=${FFI_HASH}
+   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+   PREFIX "${FFI_INSTALL_DIR}"
+   PATCH_COMMAND
+      ${CMAKE_COMMAND} -E copy_if_different "${FFI_WRAPPER_CMAKELISTS}" <SOURCE_DIR>/CMakeLists.txt
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FFI_WRAPPER_OPTIONS}" <SOURCE_DIR>/configure_options.cmake
+      COMMAND ${CMAKE_COMMAND} -E make_directory <SOURCE_DIR>/include
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FFI_WRAPPER_CONFIG}" <SOURCE_DIR>/include/fficonfig.cmake.in
    CMAKE_ARGS
       ${GLOBAL_DEFAULT_ARGS}
       ${GLOBAL_THIRDPARTY_LIB_ARGS}
       -DCMAKE_BUILD_TYPE=Release
-      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libffi-3.3
-   INSTALL_DIR ${CMAKE_BINARY_DIR}/libffi-3.3
+      -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+   INSTALL_DIR "${FFI_INSTALL_DIR}"
    BUILD_BYPRODUCTS ${FFI_LINK}
    COMMENT "Compiling FFI library")
 
@@ -641,14 +660,14 @@ add_library (${MOD})
 
 set_module_defaults (${MOD} "Fl")
 
-add_dependencies (${MOD} libffi-3.3 jitlib jit_codegen)
+add_dependencies (${MOD} ${FFI_PROJECT} jitlib jit_codegen)
 
 if (BUILD_DEFS)
    add_dependencies (${MOD} ${MOD}_hashes)
 endif ()
 
 set (TIRI_SOURCES "${MOD}.cpp" "tiri_module.cpp" "tiri_async.cpp" "tiri_struct.cpp" "tiri_processing.cpp"
-   "tiri_number.cpp" "tiri_functions.cpp" "tiri_regex.cpp"
+   "tiri_functions.cpp" "tiri_regex.cpp"
    "tiri_io.cpp" "tiri_class.cpp"
    "${JIT_SRC}/lib/lib.cpp"
    "${JIT_SRC}/lib/load.cpp"
@@ -707,7 +726,7 @@ target_include_directories (${MOD} PRIVATE
    "${JIT_SRC}/parser"
    "${JIT_SRC}/runtime"
    "${JIT_BUILD_DIR}"
-   "${CMAKE_BINARY_DIR}/libffi-3.3/include")
+   "${FFI_INSTALL_DIR}/include")
 
 target_link_libraries (${MOD} PRIVATE
    jit_interface
@@ -721,6 +740,7 @@ endif ()
 
 target_compile_definitions(${MOD} PRIVATE
    PRV_METACLASS
+   FFI_STATIC_BUILD
    JIT_DISABLE_BUFFER
    $<$<CONFIG:Debug>:LUA_USE_ASSERT>)
 
@@ -748,7 +768,8 @@ set (TIRI_TESTS
    jitoptions fstring const import_scope unicode ellipsis safe_nav close type_annotations type_fixing
    type_inference jit pipe pipe_iteration arrow_functions result_filter thunks deferred_expr shadow_assert ranges
    annotations locality anonymous_for key_values debug_filesources compound choose_from enum flow table_slice options
-   try_except import processing metatables with thunk_table_index debug numeric_limits return_types url tips
+   try_except import processing metatables with thunk_table_index debug numeric_limits return_types url tips tempus
+   compile_if_import overflow
 )
 
 foreach (TEST_NAME ${TIRI_TESTS})

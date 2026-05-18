@@ -217,15 +217,15 @@ enum class PERMIT : uint32_t {
    EVERYONE_READ = 0x00000111,
    ALL_READ = 0x00000111,
    OTHERS_WRITE = 0x00000200,
-   ALL_WRITE = 0x00000222,
    EVERYONE_WRITE = 0x00000222,
+   ALL_WRITE = 0x00000222,
    EVERYONE_READWRITE = 0x00000333,
    OTHERS_EXEC = 0x00000400,
    ALL_EXEC = 0x00000444,
    EVERYONE_EXEC = 0x00000444,
    OTHERS_DELETE = 0x00000800,
-   EVERYONE_DELETE = 0x00000888,
    ALL_DELETE = 0x00000888,
+   EVERYONE_DELETE = 0x00000888,
    OTHERS = 0x00000f00,
    EVERYONE_ACCESS = 0x00000fff,
    HIDDEN = 0x00001000,
@@ -236,6 +236,7 @@ enum class PERMIT : uint32_t {
    INHERIT = 0x00020000,
    OFFLINE = 0x00040000,
    NETWORK = 0x00080000,
+   META = 0x000c5000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(PERMIT)
@@ -899,14 +900,12 @@ enum class RDF : uint32_t {
    VOLUME = 0x00000020,
    LINK = 0x00000040,
    TAGS = 0x00000080,
-   HIDDEN = 0x00000100,
-   QUALIFY = 0x00000200,
-   QUALIFIED = 0x00000200,
-   VIRTUAL = 0x00000400,
-   STREAM = 0x00000800,
-   READ_ONLY = 0x00001000,
-   ARCHIVE = 0x00002000,
-   OPENDIR = 0x00004000,
+   QUALIFIED = 0x00000100,
+   QUALIFY = 0x00000100,
+   VIRTUAL = 0x00000200,
+   STREAM = 0x00000400,
+   READ_ONLY = 0x00000800,
+   OPENDIR = 0x00001000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(RDF)
@@ -930,6 +929,7 @@ enum class FL : uint32_t {
    STREAM = 0x00000800,
    EXCLUDE_FILES = 0x00001000,
    EXCLUDE_FOLDERS = 0x00002000,
+   VIRTUAL = 0x00004000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(FL)
@@ -1783,6 +1783,31 @@ struct FieldDef {
    template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(int(pValue)) { }
 };
 
+struct TimeZoneTransition {
+   int64_t Instant;             // Unix epoch microseconds at which the transition occurs.
+   std::string Abbreviation;    // Short name where available, e.g. GMT, BST, PST.
+   int     OffsetBefore;        // UTC offset in seconds before the transition.
+   int     OffsetAfter;         // UTC offset in seconds after the transition.
+   int     DaylightSaving;      // 1 if the resulting period observes daylight-saving time.
+   TimeZoneTransition() : Instant(0), OffsetBefore(0), OffsetAfter(0), DaylightSaving(0) { }
+};
+
+struct TimeZoneInfo {
+   std::string ZoneID;                            // Preferred public ID, e.g. Europe/London or UTC.
+   std::string NativeID;                          // Host-native ID, e.g. GMT Standard Time on Windows.
+   std::string Source;                            // "tzif", "win32", or "utc".
+   std::string DataPath;                          // TZif path on Linux, otherwise empty.
+   std::string Version;                           // TZDB/source version if available, otherwise empty.
+   kt::vector<TimeZoneTransition> Transitions;    // Transitions available for the requested range.
+   int     BaseOffset;                            // Standard UTC offset in seconds.
+   int16_t StartYear;                             // Inclusive requested start year.
+   int16_t EndYear;                               // Inclusive requested end year.
+   int8_t  IsLocal;                               // 1 if ZoneID requested the local system zone.
+   int8_t  IsFallback;                            // 1 if UTC fallback was used.
+   TimeZoneInfo() : BaseOffset(0), StartYear(0), EndYear(0), IsLocal(0), IsFallback(0) { }
+   TimeZoneInfo(int) : TimeZoneInfo() { }
+};
+
 struct SystemState {
    CSTRING Platform;                    // String-based field indicating the user's platform.  Currently returns Native, Windows, OSX or Linux.
    CSTRING IDL;                         // The Core module's compressed IDL string
@@ -1869,7 +1894,7 @@ struct MsgHandler {
 };
 
 struct CacheFile {
-   int64_t TimeStamp;    // The file's last-modified timestamp.
+   int64_t Timestamp;    // The file's last-modified timestamp.
    int64_t Size;         // Byte size of the cached data.
    int64_t LastUse;      // The last time that this file was requested.
    CSTRING Path;         // Pointer to the resolved file path.
@@ -1917,7 +1942,7 @@ struct CompressedItem {
 
 struct FileInfo {
    int64_t Size;              // The size of the file's content.
-   int64_t TimeStamp;         // 64-bit time stamp - usable only for comparison (e.g. sorting).
+   int64_t Timestamp;         // 64-bit time stamp - usable only for comparison (e.g. sorting).
    struct FileInfo * Next;    // Next structure in the list, or NULL.
    std::string Name;          // The name of the file.
    RDF     Flags;             // Additional flags to describe the file.
@@ -2127,7 +2152,6 @@ struct CoreBase {
    ERR (*_AsyncCancel)(OBJECTID *Objects, int Size);
    int (*_AsyncPending)(OBJECTID Object);
    ERR (*_AsyncWait)(OBJECTID *Objects, int Size, int TimeOut);
-   ERR (*_GetFileInfo)(const std::string_view & Path, struct FileInfo *Info, int InfoSize);
    ERR (*_ClassDatabase)(struct ClassRecord * **Classes);
 #endif // KOTUKU_STATIC
 };
@@ -2227,7 +2251,6 @@ inline ERR WakeThread(int Thread, int Stop) { return CoreBase->_WakeThread(Threa
 inline ERR AsyncCancel(OBJECTID *Objects, int Size) { return CoreBase->_AsyncCancel(Objects,Size); }
 inline int AsyncPending(OBJECTID Object) { return CoreBase->_AsyncPending(Object); }
 inline ERR AsyncWait(OBJECTID *Objects, int Size, int TimeOut) { return CoreBase->_AsyncWait(Objects,Size,TimeOut); }
-inline ERR GetFileInfo(const std::string_view & Path, struct FileInfo *Info, int InfoSize) { return CoreBase->_GetFileInfo(Path,Info,InfoSize); }
 inline ERR ClassDatabase(struct ClassRecord * **Classes) { return CoreBase->_ClassDatabase(Classes); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
@@ -2322,7 +2345,6 @@ extern "C" ERR WakeThread(int Thread, int Stop);
 extern "C" ERR AsyncCancel(OBJECTID *Objects, int Size);
 extern "C" int AsyncPending(OBJECTID Object);
 extern "C" ERR AsyncWait(OBJECTID *Objects, int Size, int TimeOut);
-extern "C" ERR GetFileInfo(const std::string_view & Path, struct FileInfo *Info, int InfoSize);
 extern "C" ERR ClassDatabase(struct ClassRecord * **Classes);
 #endif // KOTUKU_STATIC
 
@@ -2680,8 +2702,6 @@ class objFile : public Object {
 
    int64_t  Position;   // The current read/write byte position in a file.
    FL       Flags;      // File flags and options.
-   int      Static;     // Set to true if a file object should be static.
-   OBJECTID TargetID;   // Specifies a surface ID to target for user feedback and dialog boxes.
    int8_t * Buffer;     // Points to the internal data buffer if the file content is held in memory.
    public:
    inline CSTRING readLine() {
@@ -2812,17 +2832,6 @@ class objFile : public Object {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   inline ERR setStatic(const int Value) noexcept {
-      if (this->initialised()) return ERR::NoFieldAccess;
-      this->Static = Value;
-      return ERR::Okay;
-   }
-
-   inline ERR setTarget(OBJECTID Value) noexcept {
-      this->TargetID = Value;
-      return ERR::Okay;
-   }
-
    inline ERR setDate(APTR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
@@ -2843,7 +2852,7 @@ class objFile : public Object {
 
    inline ERR setPermissions(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -2855,13 +2864,13 @@ class objFile : public Object {
 
    template <class T> inline ERR setLink(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setUser(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -3570,6 +3579,7 @@ class objModule : public Object {
 
 namespace pt {
 struct SetTime { static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetTimeZoneInfo { CSTRING ZoneID; int StartYear; int EndYear; struct TimeZoneInfo * Info; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3595,9 +3605,16 @@ class objTime : public Object {
    // Action stubs
 
    inline ERR query() noexcept { return Action(AC::Query, this, nullptr); }
+   inline ERR refresh() noexcept { return Action(AC::Refresh, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR setTime() noexcept {
       return(Action(AC(-1), this, nullptr));
+   }
+   inline ERR getTimeZoneInfo(CSTRING ZoneID, int StartYear, int EndYear, struct TimeZoneInfo ** Info) noexcept {
+      struct pt::GetTimeZoneInfo args = { ZoneID, StartYear, EndYear, (struct TimeZoneInfo *)0 };
+      ERR error = Action(AC(-2), this, &args);
+      if (Info) *Info = args.Info;
+      return(error);
    }
 
    // Customised field setting
@@ -3866,17 +3883,6 @@ class objCompressedStream : public Object {
    }
 
 };
-
-#ifndef PRV_CORE
-
-// Note that the length of the data is only needed when messaging between processes, so we can skip it for these
-// direct-access data channel macros.
-
-#define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
-#define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
-#define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
-
-#endif // PRV_CORE
 
 #ifdef __unix__
 #include <pthread.h>

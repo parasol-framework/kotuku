@@ -167,7 +167,7 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <p>The Evaluate method allows the execution of XPath 2.0+ and XQuery 1.0+ expressions against the data contained within the XML object.  This is a lazy execution method that compiles and evaluates the provided expression in a single step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the Compile and Evaluate functions in the XPath module.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Filter" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Filter</th><td id="tm-Filter">Filters the XML data structure to retain only a specific tag and its descendants.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Filter" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::Filter(OBJECTPTR Object, CSTRING XPath)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>XPath</td><td>A valid XPath expression string that identifies the target tag to retain.  The expression must resolve to exactly one element for successful filtering.</td></tr>
@@ -411,7 +411,7 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Search</th><td>The attribute, identified by <code>Name</code>, could not be found.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">OutOfRange</th><td>The <code>Index</code> or <code>Attrib</code> value is out of range.</td></tr>
 <tr><th class="col-md-1">ReadOnly</th><td>The XML object is read-only.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>

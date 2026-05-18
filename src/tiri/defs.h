@@ -52,26 +52,6 @@ extern MSGID glDelayedCallMsgID;
 
 //********************************************************************************************************************
 
-struct CaseInsensitiveMap {
-   bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
-   }
-};
-
-struct CaseInsensitiveHash {
-   std::size_t operator()(const std::string& s) const noexcept {
-      std::string lower = s;
-      std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-      return std::hash<std::string>{}(lower);
-   }
-};
-
-struct CaseInsensitiveEqual {
-   bool operator()(const std::string& lhs, const std::string& rhs) const noexcept {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) IS 0;
-   }
-};
-
 struct CaseInsensitiveHashView {
    std::size_t operator()(std::string_view s) const noexcept {
       std::size_t hash = 5381;
@@ -366,20 +346,6 @@ struct finput {
    int8_t Mode;
 };
 
-enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_INT64, NUM_INT, NUM_INT16, NUM_BYTE };
-
-struct fnumber { // TODO: Use std::variant
-   int Type;     // Expressed as an FD_ flag.
-   union {
-      double  f64;
-      float   f32;
-      int64_t i64;
-      int     i32;
-      int16_t i16;
-      int8_t  i8;
-   };
-};
-
 struct module {
    struct Function *Functions = nullptr;
    OBJECTPTR Module = nullptr;
@@ -393,12 +359,6 @@ struct module {
 constexpr uint32_t simple_hash(CSTRING String, uint32_t Hash = 0) {
    auto crc = kt::detail::crc32c_finalise(Hash);
    while (auto c = *String++) crc = kt::detail::crc32c_byte(crc, uint8_t(c));
-   return kt::detail::crc32c_finalise(crc);
-}
-
-constexpr uint32_t char_hash(char Char, uint32_t Hash = 0) {
-   auto crc = kt::detail::crc32c_finalise(Hash);
-   crc = kt::detail::crc32c_byte(crc, uint8_t(Char));
    return kt::detail::crc32c_finalise(crc);
 }
 
@@ -430,7 +390,6 @@ struct lua_ref {
 };
 
 OBJECTPTR access_object(GCobject *);
-std::vector<lua_ref> * alloc_references(void);
 void load_include_for_class(lua_State *, objMetaClass *);
 ERR build_args(lua_State *, const struct FunctionField *, int, int8_t *, int *);
 const char * code_reader(lua_State *, void *, size_t *);
@@ -448,6 +407,7 @@ int MAKESTRUCT(lua_State *);
 ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
 void construct_struct_cpp_strings(const struct struct_record &, APTR);
 void destroy_struct_cpp_strings(const struct struct_record &, APTR);
+void make_struct_array(lua_State *, std::string_view, int, CPTR, int = 0);
 void make_struct_ptr_array(lua_State *, std::string_view, int, CPTR *);
 void make_struct_serial_array(lua_State *, std::string_view, int, CPTR);
 void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);
@@ -461,7 +421,6 @@ struct fstruct * push_struct_def(lua_State *, APTR, struct struct_record &, bool
 extern void register_io_class(lua_State *);
 extern void register_input_class(lua_State *);
 extern void register_module_class(lua_State *);
-extern void register_number_class(lua_State *);
 extern void register_processing_class(lua_State *);
 extern void register_regex_class(lua_State *);
 extern void register_struct_class(lua_State *);

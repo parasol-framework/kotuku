@@ -35,3 +35,17 @@ function FontList()
       font = font.next
    end
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+@Test function EmbeddedStructArrayStride()
+   MAKESTRUCT('TinyStrideColour', 'bRed,bGreen,bBlue,bAlpha')
+   MAKESTRUCT('TinyStridePalette', 'eCol:TinyStrideColour[2],lMarker')
+
+   palette = struct.new('TinyStridePalette', { marker=77 })
+   colours = palette.Col
+
+   assert(#colours is 2, 'Expected the embedded struct array to expose two elements, got ' .. #colours)
+   assert(colours[1].red is 0,
+      'Embedded struct array access used the padded serial stride instead of the in-memory stride.')
+end

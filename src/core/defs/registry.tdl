@@ -33,7 +33,7 @@ header({ path="system/registry", copyright="Paul Manias 1996-2026" }, function()
     "XML",
     "COMPRESSION",
     "FTP",
-    "SERVICE",
+    "NETSERVER",
     "WINDOW",
     "BLUETOOTH",
     "NETSOCKET",

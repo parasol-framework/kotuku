@@ -1,0 +1,266 @@
+--[[
+Backstage REST Interface Configuration
+
+Methods will generally either interrogate an existing resource or query it.
+
+Types:
+   json     - JSON object or array
+   object   - JSON object
+   array    - JSON array
+   schema:* - JSON schema
+   raw      - Raw data, text or binary
+
+--]]
+
+glRoutes = array<table> { }
+glSelf = obj.find('self')
+glWorkingPath = glSelf.workingPath
+
+function route(Method:str, Path:str, Interface:table)
+   glRoutes:push({ method=Method, path=Path, interface=Interface })
+end
+
+-- Object Interfaces
+
+route('GET', '/objects', {
+   desc = 'Return a JSON list of all objects and their basic meta data.',
+   query = {
+      classFilter = { type='csv', required=false, desc='Only return objects belonging to these classes' },
+      nested = { type='bool', required=false, desc='Return a nested JSON tree that matches the object hierarchy; otherwise return a flat list in order of object creation' },
+      depth = { type='int', required=false, desc='In nested mode, limits the depth of the tree' },
+      limit = { type='int', required=false, desc='Limit count for lists of objects' }
+   },
+   returns = 'json'
+})
+
+route('POST', '/objects', {
+   desc = 'Create a new object, using the provided JSON fields as the object field values',
+   body = 'json',
+   returns = 'json'
+})
+
+route('GET', '/objects/{uid}', {
+   desc = 'Get a list of all readable field values of the target object.',
+   path = {
+      uid = { type = 'int', desc = 'Object UID.' }
+   },
+   query = {
+      filter = { type='csv', desc='Limit the field results to this list.' },
+      includeMeta = { type='bool', desc='Include meta data for the object.' }
+   },
+   returns = 'schema:Object'
+})
+
+route('GET', '/objects/{uid}/children', {
+   desc = 'Return the child objects owned by the target object.',
+   path = {
+      uid = { type = 'int', desc = 'Object UID.' }
+   },
+   query = {
+      nested = { type='bool', required=false, desc='Return a nested JSON tree that matches the child hierarchy' },
+      depth = { type='int', required=false, desc='In nested mode, limits the depth of the child tree' },
+      limit = { type='int', required=false, desc='Limit count for lists of child objects' }
+   },
+   returns = 'array'
+})
+
+route('GET', '/objects/{uid}/subscribers', {
+   desc = 'Return subscriptions and callbacks associated with the target object.',
+   path = {
+      uid = { type = 'int', desc = 'Object UID.' }
+   },
+   returns = 'array'
+})
+
+route('POST', '/objects/{uid}', {
+   desc = 'Process a series of commands (e.g. call an action, set a field) for the target object.  Returns an error code and any result values.',
+   path = {
+      uid = { type = 'int', desc = 'Object UID.' }
+   },
+   query = {
+      async = { type = 'bool', default = false, desc='Return immediately.  A job ID is returned for follow-up' },
+   },
+   body = 'json',
+   returns = 'json'
+})
+
+-- Class Interfaces
+
+route('GET', '/classes', {
+   desc = 'Return a JSON list of all classes and their meta data.',
+   query = {
+      filter = { type='csv', required=false, desc='CSV list of class names to filter for' }
+   },
+   returns = 'array'
+})
+
+route('GET', '/classes/{class}', {
+   desc = 'Return meta data for a single class.',
+   path = {
+      class = { type = 'string', desc = 'Class name.' }
+   },
+   returns = 'object'
+})
+
+route('GET', '/classes/{class}/fields', {
+   desc = 'Return field meta data for a class.',
+   path = {
+      class = { type = 'string', desc = 'Class name.' }
+   },
+   returns = 'array'
+})
+
+route('GET', '/classes/{class}/actions', {
+   desc = 'Return action meta data for a class.',
+   path = {
+      class = { type = 'string', desc = 'Class name.' }
+   },
+   returns = 'array'
+})
+
+route('GET', '/classes/{class}/methods', {
+   desc = 'Return method meta data for a class.',
+   path = {
+      class = { type = 'string', desc = 'Class name.' }
+   },
+   returns = 'array'
+})
+
+-- Module Interfaces
+
+route('GET', '/modules', {
+   desc = 'Return a JSON list of all modules and their meta data.',
+   query = {
+      filter = { type='csv', required=false, desc='Limit the list to the named modules' }
+   },
+   returns = 'array'
+})
+
+route('GET', '/modules/{name}', {
+   desc = 'Return meta data and runtime state for a loaded module.',
+   path = {
+      name = { type = 'string', desc = 'Module name.' }
+   },
+   returns = 'object'
+})
+
+-- Error Interfaces
+
+route('GET', '/errors', {
+   desc = 'Return a JSON list of known error codes and their symbolic names.',
+   query = {
+      filter = { type='csv', required=false, desc='Limit the list to matching error names or numeric codes' }
+   },
+   returns = 'array'
+})
+
+route('GET', '/errors/{code}', {
+   desc = 'Return meta data for a single error code.',
+   path = {
+      code = { type = 'string', desc = 'Error name or numeric code.' }
+   },
+   returns = 'object'
+})
+
+-- Diagnostic Interfaces
+
+route('GET', '/diagnostics/memory', {
+   desc = 'Returns a summary of memory allocations.  Specifying additional parameters can result in more detail',
+   query = {
+      list = { required=false, type='bool', desc='Returns a list of all memory allocations (ID and size) if true.' }
+   },
+   returns = 'object'
+})
+
+route('GET', '/diagnostics/timers', {
+   desc = 'Return timer and scheduled callback diagnostics.',
+   query = {
+      active = { required=false, type='bool', desc='Limit results to active timers if true.' }
+   },
+   returns = 'array'
+})
+
+-- Job Interfaces
+
+route('GET', '/jobs/{job}', {
+   desc = 'Return the state and result meta data for an asynchronous Backstage job.',
+   path = {
+      job = { type = 'string', desc = 'Job identifier.' }
+   },
+   returns = 'object'
+})
+
+route('DELETE', '/jobs/{job}', {
+   desc = 'Cancel or clear an asynchronous Backstage job.',
+   path = {
+      job = { type = 'string', desc = 'Job identifier.' }
+   },
+   returns = 'object'
+})
+
+-- Log Interfaces
+
+route('POST', '/logs/level', {
+   desc = 'Change runtime logging levels for Backstage or another module.',
+   body = 'json',
+   returns = 'object'
+})
+
+-- Subscription Interfaces
+
+route('POST', '/subscriptions', {
+   desc = 'Create a Backstage subscription for live object, log, or diagnostic updates.',
+   body = 'json',
+   returns = 'object'
+})
+
+route('GET', '/subscriptions/{id}', {
+   desc = 'Return meta data and current state for a Backstage subscription.',
+   path = {
+      id = { type = 'string', desc = 'Subscription identifier.' }
+   },
+   returns = 'object'
+})
+
+route('DELETE', '/subscriptions/{id}', {
+   desc = 'Delete a Backstage subscription.',
+   path = {
+      id = { type = 'string', desc = 'Subscription identifier.' }
+   },
+   returns = 'object'
+})
+
+-- Documentation Interfaces
+
+route('GET', '/docs', {
+   desc = 'Return Backstage API documentation meta data.',
+   returns = 'object'
+})
+
+route('GET', '/docs/routes', {
+   desc = 'Return the declared Backstage routes and their meta data.',
+   returns = 'array'
+})
+
+-- Script Execution
+
+route('POST', '/scripts', {
+   desc = 'Accepts a Tiri script for compilation.  Returns an object identifier for the script and any results if executed.',
+   query = {
+      ['function'] = { required=false, type='string', desc='Run this function after compilation.' },
+      exec = { required=false, type='bool', desc='Run the script after compilation.' },
+      async = { type = 'bool', default = false, desc='Return immediately.  A job ID is returned for follow-up' },
+   },
+   body = 'raw',
+   returns = 'object'
+})
+
+----------------------------------------------------------------------------------------------------------------------
+
+-- TODO: Produce a C++ file containing all the registered routes
+
+   file = obj.new('file', { path=glWorkingPath .. 'interfaces.cpp', flags=FL_NEW|FL_WRITE })
+
+   for _, route in glRoutes Do
+
+   end

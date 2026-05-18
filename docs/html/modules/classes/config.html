@@ -118,7 +118,7 @@ Name = Kōtuku
 <p>This method deletes a single key from the Config object.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Search</th><td>A search routine in this function failed.</td></tr>
+<tr><th class="col-md-1">Search</th><td>A search routine in this function failed</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-GetGroupFromIndex" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">GetGroupFromIndex</th><td id="tm-GetGroupFromIndex">Converts an index number into its matching group string.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-GetGroupFromIndex" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cfg::GetGroupFromIndex(OBJECTPTR Object, INT Index, CSTRING * Group)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Index</td><td>The group index that you want to identify.</td></tr>
@@ -127,7 +127,7 @@ Name = Kōtuku
 <p>Use GetGroupFromIndex() to convert a group index number to its matching name.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NoData</th><td>There is no data loaded into the config object.</td></tr>
 <tr><th class="col-md-1">OutOfRange</th><td>The index number is out of range of the available groups.</td></tr>
 </tbody></table></div></div></td></tr>
@@ -174,7 +174,7 @@ Name = Kōtuku
 <p>The SortByKey() method sorts the groups of a config object by key values (the named key value should be present in every group).</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">NoData</th><td>No data is available for use.</td></tr>
+<tr><th class="col-md-1">NoData</th><td>No data is available for use</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-WriteValue" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">WriteValue</th><td id="tm-WriteValue">Adds new entries to config objects.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-WriteValue" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cfg::WriteValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Group</td><td>The name of the group.</td></tr>
 <tr><td>Key</td><td>The name of the key.</td></tr>
@@ -184,7 +184,7 @@ Name = Kōtuku
 <p>The <code>Group</code> string may refer to an index if the hash <code>#</code> character is used to precede a target index number.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">AllocMemory</th><td>The additional memory required for the new entry could not be allocated.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>

@@ -261,7 +261,7 @@ ERR ScanDir(DirInfo *Dir)
                auto &volume = pair.first;
                file->Name = volume;
                if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) file->Name += ':';
-               if (glVolumes[volume]["Hidden"] IS "Yes") file->Flags |= RDF::HIDDEN;
+               if (glVolumes[volume]["Hidden"] IS "Yes") file->Permissions |= PERMIT::HIDDEN;
 
                if (glVolumes[volume].contains("Label")) {
                   AddInfoTag(file, "Label", glVolumes[volume]["Label"].c_str());
@@ -289,7 +289,7 @@ ERR ScanDir(DirInfo *Dir)
    }
 
    if ((not file->Name.empty()) and ((Dir->prvFlags & RDF::DATE) != RDF::NIL)) {
-      file->TimeStamp = calc_timestamp(&file->Modified);
+      file->Timestamp = calc_timestamp(&file->Modified);
    }
 
    return error;

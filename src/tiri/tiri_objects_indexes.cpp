@@ -372,152 +372,33 @@ static int object_setkey(lua_State *Lua)
 //********************************************************************************************************************
 // Used by obj.new() exclusively.
 
-static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, uint32_t FieldHash, int ValueIndex)
+static ERR set_object_field(lua_State *Lua, OBJECTPTR Object, uint32_t FieldHash, int ValueIndex)
 {
-   kt::Log log("obj.setfield");
-
-   int type = lua_type(Lua, ValueIndex);
-
    OBJECTPTR target;
-   if (auto field = FindField(obj, FieldHash, &target)) {
+   if (auto field = FindField(Object, FieldHash, &target)) {
       if (field->Flags & FD_ARRAY) {
-         if (type IS LUA_TSTRING) { // Treat the source as a CSV field
-            return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
-         }
-         else if (type IS LUA_TTABLE) {
-            lua_settop(Lua, ValueIndex);
-            int t = lua_gettop(Lua);
-            int total = lua_objlen(Lua, t);
-
-            if (total < 1024) return set_array(Lua, target, field, t, total);
-            else return ERR::BufferOverflow;
-         }
-         else if (type IS LUA_TARRAY) {
-            GCarray *arr = arrayV(Lua, ValueIndex);
-            return target->set(field->FieldID, arr->arraydata(), arr->len, arr->type_flags());
-         }
-         else return ERR::SetValueNotArray;
+         return object_set_array(Lua, target, field, ValueIndex);
       }
       else if (field->Flags & FD_FUNCTION) {
-         if (type IS LUA_TSTRING) {
-            lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-            auto func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-            return target->set(field->FieldID, &func);
-         }
-         else if (type IS LUA_TFUNCTION) {
-            lua_pushvalue(Lua, ValueIndex);
-            auto func = FUNCTION(Lua->script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-            return target->set(field->FieldID, &func);
-         }
-         else return ERR::SetValueNotFunction;
+         return object_set_function(Lua, target, field, ValueIndex);
       }
       else if (field->Flags & FD_POINTER) {
          if (field->Flags & (FD_OBJECT|FD_LOCAL)) { // Writing to an integral is permitted if marked as writeable.
-            if (auto obj_ref = lua_toobject(Lua, ValueIndex)) {
-               OBJECTPTR ptr_obj;
-               if (obj_ref->ptr) return target->set(field->FieldID, obj_ref->ptr);
-               else if ((ptr_obj = (OBJECTPTR)access_object(obj_ref))) {
-                  ERR error = target->set(field->FieldID, ptr_obj);
-                  release_object(obj_ref);
-                  return error;
-               }
-               else return ERR::Failed;
-            }
-            else return target->set(field->FieldID, (APTR)nullptr);
+            return object_set_object(Lua, target, field, ValueIndex);
          }
-         else if (type IS LUA_TSTRING) {
-            return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
-         }
-         else if (type IS LUA_TNUMBER) {
-            if (field->Flags & FD_STRING) return obj->set(field->FieldID, lua_tostring(Lua, ValueIndex));
-            else if (lua_tointeger(Lua, ValueIndex) IS 0) {
-               // Setting pointer fields with numbers is only allowed if that number evaluates to zero (NULL)
-               return obj->set(field->FieldID, (APTR)nullptr);
-            }
-            else return ERR::SetValueNotPointer;
-         }
-         else if (type IS LUA_TARRAY) {
-            GCarray *arr = arrayV(Lua, ValueIndex);
-            return obj->set(field->FieldID, arr->arraydata());
-         }
-         else if (auto fs = (fstruct *)get_meta(Lua, ValueIndex, "Tiri.struct")) {
-            return obj->set(field->FieldID, fs->Data);
-         }
-         else if (type IS LUA_TNIL) return obj->set(field->FieldID, (APTR)nullptr);
-         else return ERR::SetValueNotPointer;
+         else return object_set_ptr(Lua, target, field, ValueIndex);
       }
       else if (field->Flags & (FD_DOUBLE|FD_FLOAT)) {
-         switch(type) {
-            case LUA_TNUMBER:
-               return target->set(field->FieldID, lua_tonumber(Lua, ValueIndex));
-
-            case LUA_TSTRING: // Allow internal string parsing to do its thing - important if the field is variable
-               return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
-
-            case LUA_TNIL: // Setting a numeric with nil does nothing.  Use zero to be explicit.
-               return ERR::Okay;
-
-            default:
-               return ERR::SetValueNotNumeric;
-         }
+         return object_set_double(Lua, target, field, ValueIndex);
       }
       else if (field->Flags & (FD_FLAGS|FD_LOOKUP)) {
-         switch(type) {
-            case LUA_TNUMBER:
-               return target->set(field->FieldID, (int)lua_tointeger(Lua, ValueIndex));
-
-            case LUA_TSTRING:
-               return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
-
-            default:
-               return ERR::SetValueNotLookup;
-         }
+         return object_set_lookup(Lua, target, field, ValueIndex);
       }
       else if (field->Flags & FD_OBJECT) { // Object ID
-         switch(type) {
-            case LUA_TNUMBER:
-               return target->set(field->FieldID, (OBJECTID)lua_tointeger(Lua, ValueIndex));
-
-            case LUA_TOBJECT: {
-               auto obj_ref = lua_toobject(Lua, ValueIndex);
-               return target->set(field->FieldID, obj_ref->uid);
-            }
-
-            case LUA_TSTRING: {
-               OBJECTID id;
-               if (FindObject(lua_tostring(Lua, ValueIndex), CLASSID::NIL, FOF::NIL, &id) IS ERR::Okay) {
-                  return target->set(field->FieldID, id);
-               }
-               else {
-                  log.warning("Object \"%s\" could not be found.", lua_tostring(Lua, ValueIndex));
-                  return ERR::Search;
-               }
-            }
-
-            case LUA_TNIL:
-               return obj->set(field->FieldID, 0);
-
-            default:
-               return ERR::SetValueNotObject;
-         }
+         return object_set_oid(Lua, target, field, ValueIndex);
       }
       else if (field->Flags & (FD_INT|FD_INT64)) {
-         switch(type) {
-            case LUA_TBOOLEAN:
-               return target->set(field->FieldID, lua_toboolean(Lua, ValueIndex));
-
-            case LUA_TNUMBER:
-               return target->set(field->FieldID, (int64_t)lua_tointeger(Lua, ValueIndex));
-
-            case LUA_TSTRING: // Allow internal string parsing to do its thing - important if the field is variable
-               return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
-
-            case LUA_TNIL: // Setting a numeric with nil does nothing.  Use zero to be explicit.
-               return ERR::Okay;
-
-            default:
-               return ERR::SetValueNotNumeric;
-         }
+         return object_set_number(Lua, target, field, ValueIndex);
       }
       else return ERR::UnsupportedField;
    }

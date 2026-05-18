@@ -84,14 +84,14 @@
 <p>Optional flags that may be passed to this method are the same as those specified in the <a data-bs-toggle="tooltip" title="Add files to the clipboard." href="#tm-AddFile">AddFile()</a> method.  The <code>CEF::DELETE</code> flag has no effect on objects.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The objects were added to the clipboard.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-AddText" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">AddText</th><td id="tm-AddText">Adds a block of text to the clipboard.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-AddText" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR clip::AddText(OBJECTPTR Object, CSTRING String)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>String</td><td>The text to add to the clipboard.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>Plain UTF-8 text can be added to the clipboard using the AddText() method.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">CreateFile</th><td>A new file could not be created.</td></tr>
+<tr><th class="col-md-1">CreateFile</th><td>A new file could not be created</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-GetFiles" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">GetFiles</th><td id="tm-GetFiles">Retrieve the most recently clipped data as a list of files.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-GetFiles" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR clip::GetFiles(OBJECTPTR Object, CLIPTYPE Filter, INT Index, CLIPTYPE * Datatype, CSTRING ** Files, CEF * Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a href="?page=CLIPTYPE">Filter</a></td><td>Filter down to the specified data type.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</td></tr>
@@ -106,7 +106,7 @@
 <p>If this method returns the <code>CEF::DELETE</code> flag in the <code>Flags</code> parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <a href="core.html?page=MoveFile">MoveFile()</a> is recommended as the most efficient method.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>A matching clip was found and returned.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NoData</th><td>No clip was available that matched the requested data type.</td></tr>
 <tr><th class="col-md-1">OutOfRange</th><td>The specified <code>Index</code> is out of the range of the available clip items.</td></tr>
 </tbody></table></div></div></td></tr>

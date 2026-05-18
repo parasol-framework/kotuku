@@ -874,28 +874,6 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
   </function>
 
   <function>
-    <name>GetFileInfo</name>
-    <category>Files</category>
-    <comment>Gets information about a file or folder.</comment>
-    <prototype>ERR GetFileInfo(const std::string_view &amp; Path, struct FileInfo * Info, INT InfoSize)</prototype>
-    <tiriPrototype>err = GetFileInfo(Path:str, Info:any, InfoSize:num)</tiriPrototype>
-    <input>
-      <param type="const std::string_view &amp;" name="Path">String referring to the file or folder to be queried.</param>
-      <param type="struct FileInfo *" name="Info">Pointer to a <st>FileInfo</st> structure to be populated.</param>
-      <param type="INT" name="InfoSize">Size of the <st>FileInfo</st> structure in bytes.</param>
-    </input>
-    <description>
-<p>This function will return information about a file or folder when given a valid file location.  The current user must have read access to the given file.  This function does not allow for the approximation of file names.  To approximate a file location, open it as a <class name="File">File</class> object or use <function>ResolvePath</function> first.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function</error>
-      <error code="LockFailed">Failed to lock a required resource</error>
-      <error code="NoSupport">The target filesystem does not support the operation.</error>
-    </result>
-  </function>
-
-  <function>
     <name>GetObjectPtr</name>
     <category>Objects</category>
     <comment>Returns a direct pointer for any object ID.</comment>
@@ -2396,7 +2374,7 @@ static ResourceManager glNodeManager = {
     </constants>
 
     <constants lookup="FL" comment="File flags">
-      <const name="APPROXIMATE">Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</const>
+      <const name="APPROXIMATE">Allows fuzzy matching of the file path by ignoring the file extension; for instance opening 'screenshot.png' when only 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</const>
       <const name="BUFFER">Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.</const>
       <const name="DEVICE">The file is a system device (must set if opening a device for read/write operations)</const>
       <const name="DIRECTORY">The file object represents a folder.</const>
@@ -2410,6 +2388,7 @@ static ResourceManager glNodeManager = {
       <const name="READ">Required if the file needs to be opened for read access.</const>
       <const name="RESET_DATE">For internal use only</const>
       <const name="STREAM">File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.</const>
+      <const name="VIRTUAL">Path is to a virtual device.</const>
       <const name="WRITE">Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.</const>
     </constants>
 
@@ -2820,6 +2799,7 @@ static ResourceManager glNodeManager = {
       <const name="GROUP_WRITE">Group members can write.</const>
       <const name="HIDDEN">Recommends that the file is hidden from view by default.</const>
       <const name="INHERIT">Inherit permissions from parent folder and logical OR them with preset permission flags.</const>
+      <const name="META">Synonym for <code>HIDDEN | PASSWORD | OFFLINE | NETWORK</code></const>
       <const name="NETWORK">File is hosted on another machine.</const>
       <const name="OFFLINE">File content for this networked file has not been cached on the local PC.</const>
       <const name="OTHERS">Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></const>
@@ -2871,19 +2851,17 @@ static ResourceManager glNodeManager = {
     </constants>
 
     <constants lookup="RDF" comment="Flags for the OpenDir() function.">
-      <const name="ARCHIVE">Feedback only - archive bit is set.</const>
       <const name="DATE">Retrieve the date stamp of each file.</const>
       <const name="FILE">Read all files in the folder.</const>
       <const name="FILES">Read all files in the folder.</const>
       <const name="FOLDER">Read all folders/volumes in the folder.</const>
       <const name="FOLDERS">Read all folders/volumes in the folder.</const>
-      <const name="HIDDEN">Feedback only - file/folder is hidden.</const>
       <const name="LINK">Feedback only - file/folder is actually a link to another location.</const>
       <const name="PERMISSIONS">Get permission/security information.</const>
       <const name="QUALIFIED">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
       <const name="QUALIFY">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
       <const name="READ_ALL">Synonym for <code>SIZE | DATE | PERMISSIONS | FILES | FOLDERS</code></const>
-      <const name="READ_ONLY">Read-only (not permissions related and might indicate read-only media).</const>
+      <const name="READ_ONLY">Read-only (not permissions related, can indicate read-only media).</const>
       <const name="SIZE">Retrieve the byte size of each file.</const>
       <const name="STREAM">Path is connected via a stream, e.g. network connection.</const>
       <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the <code>Tags</code> field of each file.</const>
@@ -3188,7 +3166,7 @@ static ResourceManager glNodeManager = {
 
     <struct name="FileInfo" comment="Metadata for describing a file.">
       <field name="Size" type="INT64">The size of the file's content.</field>
-      <field name="TimeStamp" type="INT64">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
+      <field name="Timestamp" type="INT64">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or <code>NULL</code>.</field>
       <field name="Name" type="std::string">The name of the file.</field>
       <field name="Flags" type="RDF" lookup="RDF">Additional flags to describe the file.</field>
@@ -3305,6 +3283,28 @@ static ResourceManager glNodeManager = {
       <field name="ReleaseBuild" type="INT"><code>1</code> = Release build, <code>0</code> = Debug build</field>
       <field name="StaticBuild" type="INT"><code>1</code> = Static build, <code>0</code> = Dynamic build</field>
       <field name="HasConsole" type="INT"><code>1</code> = Console available, <code>0</code> = Console not available</field>
+    </struct>
+
+    <struct name="TimeZoneInfo" comment="Time zone information returned from GetTimeZoneInfo()">
+      <field name="ZoneID" type="std::string">Preferred public ID, e.g. Europe/London or UTC.</field>
+      <field name="NativeID" type="std::string">Host-native ID, e.g. GMT Standard Time on Windows.</field>
+      <field name="Source" type="std::string">"tzif", "win32", or "utc".</field>
+      <field name="DataPath" type="std::string">TZif path on Linux, otherwise empty.</field>
+      <field name="Version" type="std::string">TZDB/source version if available, otherwise empty.</field>
+      <field name="Transitions" type="kt::vector&lt;TimeZoneTransition&gt;">Transitions available for the requested range.</field>
+      <field name="BaseOffset" type="INT">Standard UTC offset in seconds.</field>
+      <field name="StartYear" type="INT16">Inclusive requested start year.</field>
+      <field name="EndYear" type="INT16">Inclusive requested end year.</field>
+      <field name="IsLocal" type="INT8">1 if ZoneID requested the local system zone.</field>
+      <field name="IsFallback" type="INT8">1 if UTC fallback was used.</field>
+    </struct>
+
+    <struct name="TimeZoneTransition" comment="Time zone transition information for GetTimeZoneInfo()">
+      <field name="Instant" type="INT64">Unix epoch microseconds at which the transition occurs.</field>
+      <field name="Abbreviation" type="std::string">Short name where available, e.g. GMT, BST, PST.</field>
+      <field name="OffsetBefore" type="INT">UTC offset in seconds before the transition.</field>
+      <field name="OffsetAfter" type="INT">UTC offset in seconds after the transition.</field>
+      <field name="DaylightSaving" type="INT">1 if the resulting period observes daylight-saving time.</field>
     </struct>
 
     <struct name="Unit">

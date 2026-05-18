@@ -133,7 +133,11 @@
    "documents:readme.txt"
 };
 </pre>
-<p>NOTE: Scripts should use the <a data-bs-toggle="tooltip" title="Command line arguments (string format)." href="#tf-Args">Args</a> field instead.</p>
+<p>The list is compatible with Tiri, and can be iterated as follows:</p>
+<pre>for index, value in processing.task().parameters do
+   print(index, ' = ', value)
+end
+</pre>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Path" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Path"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
@@ -185,7 +189,7 @@
 <p>When running a DOS program in Microsoft Windows, the <code>SHELL</code> flag can be set in the <a data-bs-toggle="tooltip" title="Optional flags." href="#tf-Flags">Flags</a> field to prevent the DOS window from appearing.  The DOS window will also be hidden if the stdout or stderr pipes are redirected.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
+<tr><th class="col-md-1">Failed</th><td>General failure</td></tr>
 <tr><th class="col-md-1">TimeOut</th><td>Can be returned if the <code>WAIT</code> flag is used.  Indicates that the process was launched, but the timeout expired before the process returned.</td></tr>
 <tr><th class="col-md-1">MissingPath</th><td>The Location field has not been set.</td></tr>
 </tbody></table></div></div></td></tr>
@@ -229,7 +233,7 @@
 <p>NOTE: If your programming language uses backslash as an escape character, remember to use double-backslashes in the <code>Name</code> string.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NoSupport</th><td>The platform does not support environment variables.</td></tr>
 <tr><th class="col-md-1">DoesNotExist</th><td>The environment variable is undefined.</td></tr>
 </tbody></table></div></div></td></tr>
@@ -253,7 +257,7 @@
 <p>When setting a registry key, the function will always set the Value as a string type unless the key already exists.  If the existing key value is a number such as <code>DWORD</code> or <code>QWORD</code>, then the Value will be converted to an integer before the key is set.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NoSupport</th><td>The platform does not support environment variables.</td></tr>
 </tbody></table></div></div></td></tr>
 </tbody></table><div class="footer copyright text-right">Task class documentation © Paul Manias 1996-2026</div></div><div class="docs-content" style="display:none;" id="TSF"><h1>TSF Type</h1><p class="lead">Task flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>TSF::ATTACHED</th><td>Forces the new process to be attached to the parent (child will close when parent closes).</td></tr>

@@ -92,7 +92,8 @@ flags("PERMIT", { comment="Permission flags", module="Core" },
     { EVERYONE_READWRITE = "EVERYONE_READ|EVERYONE_WRITE" },
     { USER               = "READ|WRITE|EXEC|DELETE" },
     { GROUP              = "GROUP_READ|GROUP_WRITE|GROUP_EXEC|GROUP_DELETE" },
-    { OTHERS             = "OTHERS_READ|OTHERS_WRITE|OTHERS_EXEC|OTHERS_DELETE" }
+    { OTHERS             = "OTHERS_READ|OTHERS_WRITE|OTHERS_EXEC|OTHERS_DELETE" },
+    { META               = "HIDDEN|PASSWORD|OFFLINE|NETWORK" }
 )
 
 flags("KQ", { comment="Special qualifier flags", module="Core" },

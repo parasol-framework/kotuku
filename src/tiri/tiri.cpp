@@ -554,9 +554,9 @@ void make_struct_ptr_array(lua_State *Lua, std::string_view StructName, int Elem
 }
 
 //********************************************************************************************************************
-// Create an array from a serialised list of structures aligned to a 64-bit boundary.
+// Create an array from a contiguous list of structures using the provided in-memory stride.
 
-void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int Elements, CPTR Input)
+void make_struct_array(lua_State *Lua, std::string_view StructName, int Elements, CPTR Input, int Stride)
 {
    kt::Log log(__FUNCTION__);
 
@@ -572,16 +572,7 @@ void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int E
    if (Input) {
       std::vector<lua_ref> ref;
       auto &sdef = glStructs[s_name];
-
-      // 64-bit compilers don't always align structures to 64-bit, and it's difficult to compute alignment with
-      // certainty.  It is essential that structures that are intended to be serialised into arrays are manually
-      // padded to 64-bit so that the potential for mishap is eliminated.
-
-      int def_size = ALIGN64(sdef.Size);
-      char aligned = ((sdef.Size & 0x7) != 0) ? 'N': 'Y';
-      if (aligned IS 'N') {
-         log.msg("%.*s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", int(StructName.size()), StructName.data(), Elements, Input, def_size, aligned);
-      }
+      int struct_stride = (Stride > 0) ? Stride : sdef.Size;
 
       for (int i=0; i < Elements; i++) {
          if (struct_to_table(Lua, ref, sdef, Input) IS ERR::Okay) {
@@ -598,9 +589,37 @@ void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int E
             setgcrefnull(arr->get<GCRef>()[i]);
          }
 
-         Input = (int8_t *)Input + def_size;
+         Input = (int8_t *)Input + struct_stride;
       }
    }
+}
+
+//********************************************************************************************************************
+// Create an array from a serialised list of structures aligned to a 64-bit boundary.
+
+void make_struct_serial_array(lua_State *Lua, std::string_view StructName, int Elements, CPTR Input)
+{
+   kt::Log log(__FUNCTION__);
+
+   auto s_name = struct_name(StructName);
+   if (not glStructs.contains(s_name)) {
+      luaL_error(Lua, ERR::Search, "Failed to find struct '%.*s'", int(StructName.size()), StructName.data());
+   }
+
+   auto &sdef = glStructs[s_name];
+
+   // 64-bit compilers don't always align structures to 64-bit, and it's difficult to compute alignment with
+   // certainty.  It is essential that structures that are intended to be serialised into arrays are manually
+   // padded to 64-bit so that the potential for mishap is eliminated.
+
+   int def_size = ALIGN64(sdef.Size);
+   char aligned = ((sdef.Size & 0x7) != 0) ? 'N': 'Y';
+   if (aligned IS 'N') {
+      log.msg("%.*s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c",
+         int(StructName.size()), StructName.data(), Elements, Input, def_size, aligned);
+   }
+
+   make_struct_array(Lua, StructName, Elements, Input, def_size);
 }
 
 //********************************************************************************************************************

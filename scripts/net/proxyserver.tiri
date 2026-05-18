@@ -6,6 +6,7 @@
 -- proxy.stop()
 
    include 'network'
+   import 'tempus'
    import 'json'
 
    namespace 'proxylib'
@@ -49,10 +50,7 @@ glMimeTypes = {
 -- Utility Functions
 
 function timestamp()
-   tm = obj.new('time')
-   tm.acQuery()
-   return string.format('%04d-%02d-%02d %02d:%02d:%02d.%03d',
-      tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second, tm.milliSecond)
+   return tempus.now():toZonedDateTime(tempus.zone.local()):format('yyyy-MM-dd HH:mm:ss.SSS')
 end
 
 function logMessage(self, level, message)
@@ -1197,6 +1195,7 @@ function connectUpstream(self, State:table):bool
    logMessage(self, 'DEBUG', 'Connecting upstream to ' .. connect_host .. ':' .. connect_port)
 
    upstream_socket = obj.new('netsocket', {
+      flags = NSF_KEEP_ALIVE,
       incoming = function(Socket)
          if State.phase is 'tunnelling' then
             upstreamTunnelIncoming(self, State, Socket)
@@ -1460,7 +1459,7 @@ proxylib.start = function(Options:table)
    -- Create server socket
    cfg = {
       port = self.port,
-      flags = NSF_SERVER|NSF_MULTI_CONNECT,
+      flags = NSF_MULTI_CONNECT|NSF_KEEP_ALIVE,
       feedback = function(Server, ClientSocket, State)
          if State is NTC_CONNECTED then
             logMessage(self, 'DEBUG', 'Client connected')
@@ -1481,7 +1480,7 @@ proxylib.start = function(Options:table)
       cfg.address = self.bind
    end
 
-   self._socket = obj.new('netsocket', cfg)
+   self._socket = obj.new('netserver', cfg)
 
    if not self._socket then
       reportProxyError(self, 'server_socket_create_failed', 'Failed to create proxy server socket', nil, nil)

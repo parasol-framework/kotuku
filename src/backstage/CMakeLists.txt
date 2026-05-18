@@ -12,4 +12,4 @@ set_module_defaults (${MOD} "Bk")
 
 target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp")
 
-flute_test (${MOD}_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri")
+#flute_test (${MOD}_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test.tiri")

@@ -126,7 +126,6 @@ static bool glWinsockInitialised = false;
 static constexpr ULONG_PTR IOCP_SHUTDOWN_KEY = ULONG_PTR(~uintptr_t(0));
 static constexpr size_t IOCP_READ_BUFFER_SIZE = 65536;
 static constexpr size_t IOCP_TCP_READ_HIGH_WATER = 1024 * 1024;
-static constexpr size_t IOCP_TCP_READ_DEPTH = 4;
 static constexpr size_t IOCP_TCP_SEND_HIGH_WATER = 1024 * 1024;
 static constexpr size_t IOCP_TCP_SEND_DEPTH = 8;
 static constexpr size_t IOCP_UDP_BUFFER_SIZE = 65536;
@@ -135,6 +134,13 @@ static constexpr size_t IOCP_ACCEPT_BUFFER_SIZE = IOCP_ACCEPT_ADDRESS_SIZE * 2;
 static constexpr int IOCP_DEFAULT_ACCEPT_DEPTH = 16;
 static constexpr int IOCP_MIN_ACCEPT_DEPTH = 4;
 static constexpr int IOCP_MAX_ACCEPT_DEPTH = 128;
+
+// Keep TCP receives sequential (1) so later completions cannot block behind an earlier pending WSARecv().  Raising
+// this value causes a rare race condition and has a slight performance deficit, so investigation has been shelved
+// for now.  The IOCP read path could otherwise be redesigned to guarantee callbacks when out-of-order completions
+// are buffered.
+
+static constexpr size_t IOCP_TCP_READ_DEPTH = 1;
 
 //********************************************************************************************************************
 
@@ -1822,6 +1828,18 @@ ERR iocp_get_local_ip(WSW_SOCKET Socket, void *Address, int *AddressSize)
 {
    if ((!Address) or (!AddressSize)) return ERR::NullArgs;
    return getsockname(socket_from_handle(Socket), (sockaddr *)Address, AddressSize) ? convert_error() : ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+ERR iocp_enable_keep_alive(WSW_SOCKET Socket)
+{
+   BOOL keep_alive = TRUE;
+   if (setsockopt(socket_from_handle(Socket), SOL_SOCKET, SO_KEEPALIVE, (char *)&keep_alive,
+       sizeof(keep_alive)) IS SOCKET_ERROR) {
+      return convert_error();
+   }
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

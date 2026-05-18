@@ -136,6 +136,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <tr><th class="col-md-1">PERMIT::GROUP_WRITE</th><td>Group members can write.</td></tr>
 <tr><th class="col-md-1">PERMIT::HIDDEN</th><td>Recommends that the file is hidden from view by default.</td></tr>
 <tr><th class="col-md-1">PERMIT::INHERIT</th><td>Inherit permissions from parent folder and logical OR them with preset permission flags.</td></tr>
+<tr><th class="col-md-1">PERMIT::META</th><td>Synonym for <code>HIDDEN | PASSWORD | OFFLINE | NETWORK</code></td></tr>
 <tr><th class="col-md-1">PERMIT::NETWORK</th><td>File is hosted on another machine.</td></tr>
 <tr><th class="col-md-1">PERMIT::OFFLINE</th><td>File content for this networked file has not been cached on the local PC.</td></tr>
 <tr><th class="col-md-1">PERMIT::OTHERS</th><td>Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></td></tr>
@@ -186,8 +187,8 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>The compression method used to compress the data will be identified in the first 32 bits of output, for example, <code>ZLIB</code>.  The following 32 bits will indicate the length of the compressed data section, followed by the data itself.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The data was compressed successfully.  The Result parameter indicates the size of the compressed data.</td></tr>
-<tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Failed</th><td>General failure</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">BufferOverflow</th><td>The output buffer is not large enough.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
@@ -200,7 +201,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The file was added to the compression object.</td></tr>
 <tr><th class="col-md-1">File</th><td>An error was encountered when trying to open the source file.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">NoSupport</th><td>The sub-class does not support this method.</td></tr>
 <tr><th class="col-md-1">NoPermission</th><td>The <code>READ_ONLY</code> flag has been set on the compression object.</td></tr>
 </tbody></table></div></div></td></tr>
@@ -243,7 +244,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Retry</th><td>Please recall the method using a larger output buffer.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">BufferOverflow</th><td>The output buffer is not large enough to contain the compressed data.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
@@ -272,7 +273,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>This method is used to decompress data that has been packed using the <a data-bs-toggle="tooltip" title="Compresses a plain memory area into an empty buffer." href="#tm-CompressBuffer">CompressBuffer()</a> method.  A pointer to the compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer is not large enough to contain the data, the method will write out as much information as it can and then return with an error code of <code>ERR::BufferOverflow</code>.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
 <tr><th class="col-md-1">BufferOverflow</th><td>The output buffer is not large enough to hold the decompressed information.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-DecompressFile" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">DecompressFile</th><td id="tm-DecompressFile">Extracts one or more files from a compression object.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-DecompressFile" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cmp::DecompressFile(OBJECTPTR Object, CSTRING Path, CSTRING Dest, INT Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Path</td><td>The full path name of the file to extract from the archive.</td></tr>
@@ -285,13 +286,13 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The file was successfully extracted.</td></tr>
 <tr><th class="col-md-1">Cancelled</th><td>The decompression process was cancelled by the feedback mechanism.</td></tr>
-<tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
+<tr><th class="col-md-1">Failed</th><td>General failure</td></tr>
 <tr><th class="col-md-1">File</th><td>A destination file could not be created.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">NoData</th><td>No data is available for use.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function</td></tr>
+<tr><th class="col-md-1">NoData</th><td>No data is available for use</td></tr>
 <tr><th class="col-md-1">Write</th><td>Failed to write uncompressed information to a destination file.</td></tr>
-<tr><th class="col-md-1">MissingPath</th><td>The object is missing a path reference.</td></tr>
-<tr><th class="col-md-1">Seek</th><td>An error occurred during a seek operation.</td></tr>
+<tr><th class="col-md-1">MissingPath</th><td>The object is missing a path reference</td></tr>
+<tr><th class="col-md-1">Seek</th><td>An error occurred during a seek operation</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-DecompressObject" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">DecompressObject</th><td id="tm-DecompressObject">Decompresses one file to a target object.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-DecompressObject" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cmp::DecompressObject(OBJECTPTR Object, CSTRING Path, OBJECTPTR Object)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Path</td><td>The location of the source file within the archive.  If a wildcard is used, the first matching file is extracted.</td></tr>
@@ -302,10 +303,10 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>Note that if decompressing to a <a href="file.html">File</a> object, the seek position will point to the end of the file after this method returns.  Reset the seek position to zero if the decompressed data needs to be read back.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
-<tr><th class="col-md-1">Write</th><td>Error writing data.</td></tr>
-<tr><th class="col-md-1">MissingPath</th><td>The object is missing a path reference.</td></tr>
-<tr><th class="col-md-1">Seek</th><td>An error occurred during a seek operation.</td></tr>
+<tr><th class="col-md-1">Failed</th><td>General failure</td></tr>
+<tr><th class="col-md-1">Write</th><td>Error writing data</td></tr>
+<tr><th class="col-md-1">MissingPath</th><td>The object is missing a path reference</td></tr>
+<tr><th class="col-md-1">Seek</th><td>An error occurred during a seek operation</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-DecompressStream" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">DecompressStream</th><td id="tm-DecompressStream">Decompresses streamed data to an output buffer.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-DecompressStream" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cmp::DecompressStream(OBJECTPTR Object, APTR Input, INT Length, FUNCTION * Callback, APTR Output, INT OutputSize)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Input</td><td>Pointer to data to decompress.</td></tr>
@@ -321,7 +322,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>When there is no more data in the decompression stream or if an error has occurred, the client must call <a data-bs-toggle="tooltip" title="Must be called at the end of the decompression process." href="#tm-DecompressStreamEnd">DecompressStreamEnd()</a>.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block</td></tr>
 <tr><th class="col-md-1">BufferOverflow</th><td>The output buffer is not large enough.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
@@ -349,8 +350,8 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>If successful, the discovered item is returned as a !CompressedItem.  The result is temporary and values will be discarded on the next call to this method.  If persistent values are required, copy the resulting structure immediately after the call.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Search</th><td>A search routine in this function failed.</td></tr>
-<tr><th class="col-md-1">NoSupport</th><td>Operation not supported.</td></tr>
+<tr><th class="col-md-1">Search</th><td>A search routine in this function failed</td></tr>
+<tr><th class="col-md-1">NoSupport</th><td>Operation not supported</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-RemoveFile" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">RemoveFile</th><td id="tm-RemoveFile">Deletes one or more files from a compression object.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-RemoveFile" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cmp::RemoveFile(OBJECTPTR Object, CSTRING Path)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Path</td><td>The full path name of the file to delete from the archive.</td></tr>
@@ -359,7 +360,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>Depending on internal optimisation techniques, the compressed file may not shrink from deletions until the compression object is closed or the <a data-bs-toggle="tooltip" title="Flushes all pending actions." href="#ta-Flush">Flush()</a> action is called.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The file was successfully deleted.</td></tr>
-<tr><th class="col-md-1">NoSupport</th><td>Operation not supported.</td></tr>
+<tr><th class="col-md-1">NoSupport</th><td>Operation not supported</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Scan" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Scan</th><td id="tm-Scan">Scan the archive's index of compressed data.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Scan" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cmp::Scan(OBJECTPTR Object, CSTRING Folder, CSTRING Filter, FUNCTION * Callback)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Folder</td><td>If defined, only items within the specified folder are returned.  Use an empty string for files in the root folder.</td></tr>
@@ -383,7 +384,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>To search for a single item with a path and name already known, use the <a data-bs-toggle="tooltip" title="Find the first item that matches a given filter." href="#tm-Find">Find()</a> method instead.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">NoSupport</th><td>Operation not supported.</td></tr>
+<tr><th class="col-md-1">NoSupport</th><td>Operation not supported</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 </tbody></table><div class="footer copyright text-right">Compression class documentation © Paul Manias 1996-2026</div></div><div class="docs-content" style="display:none;" id="CMF"><h1>CMF Type</h1><p class="lead">Compression flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>CMF::APPLY_SECURITY</th><td>When decompressing, apply individual file permissions if they are available in the compression file.</td></tr>
@@ -414,6 +415,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <tr><th>PERMIT::GROUP_WRITE</th><td>Group members can write.</td></tr>
 <tr><th>PERMIT::HIDDEN</th><td>Recommends that the file is hidden from view by default.</td></tr>
 <tr><th>PERMIT::INHERIT</th><td>Inherit permissions from parent folder and logical OR them with preset permission flags.</td></tr>
+<tr><th>PERMIT::META</th><td>Synonym for <code>HIDDEN | PASSWORD | OFFLINE | NETWORK</code></td></tr>
 <tr><th>PERMIT::NETWORK</th><td>File is hosted on another machine.</td></tr>
 <tr><th>PERMIT::OFFLINE</th><td>File content for this networked file has not been cached on the local PC.</td></tr>
 <tr><th>PERMIT::OTHERS</th><td>Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></td></tr>

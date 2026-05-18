@@ -121,7 +121,7 @@
 #define FID_Command 0x6579ded1LL
 #define FID_Object 0x4c29ddd0LL
 #define FID_FileSize 0x2ecf4d8fLL
-#define FID_TimeStamp 0x8939a32fLL
+#define FID_Timestamp 0x92911678LL
 #define FID_Modified 0x3583b9c1LL
 #define FID_CurrentTag 0xb8f1fa82LL
 #define FID_Tags 0xbdfb226cLL

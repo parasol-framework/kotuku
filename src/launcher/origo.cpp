@@ -122,7 +122,9 @@ static ERR process_args(void)
          }
          else if (kt::iequals(args[i], "--backstage")) {
             glBackstage = true;
-            if (i + 1 < args.size()) i++;
+            if (i + 1 < args.size()) {
+               if (atoi(args[i+1].c_str()) > 0) i++; // Port is optional
+            }
          }
          else if (kt::iequals(args[i], "--procedure")) {
             if (i + 1 < args.size()) {

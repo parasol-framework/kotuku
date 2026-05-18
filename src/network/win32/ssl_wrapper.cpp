@@ -21,6 +21,8 @@ Pure Windows implementation that avoids all Kotuku headers to prevent conflicts.
 #include <sspi.h>
 #include <security.h>
 #include <wincrypt.h>
+#include <bcrypt.h>
+#include <ncrypt.h>
 #include <prsht.h>
 #include <cryptuiapi.h>
 #include <cstring>
@@ -35,6 +37,27 @@ Pure Windows implementation that avoids all Kotuku headers to prevent conflicts.
 #include "ssl_wrapper.h"
 #include "../ssl_certificate_policy.h"
 
+#ifndef SCH_CREDENTIALS_VERSION
+#define SCH_CREDENTIALS_VERSION 0x00000005
+#endif
+#ifndef SCH_CRED_FORMAT_CERT_CONTEXT
+#define SCH_CRED_FORMAT_CERT_CONTEXT 0x00000000
+#endif
+
+struct KOTUKU_SCH_CREDENTIALS {
+   DWORD dwVersion;
+   DWORD dwCredFormat;
+   DWORD cCreds;
+   PCCERT_CONTEXT *paCred;
+   HCERTSTORE hRootStore;
+   DWORD cMappers;
+   void **aphMappers;
+   DWORD dwSessionLifespan;
+   DWORD dwFlags;
+   DWORD cTlsParameters;
+   void *pTlsParameters;
+};
+
 static void ssl_debug_log(int level, const char* format, ...);
 extern "C" void ssl_debug_to_kotuku_log(const char* message, int level);
 
@@ -44,6 +67,9 @@ static void cache_connection_info(ssl_context* SSL);
 // Define provider names if not available
 #ifndef MS_ENH_RSA_AES_PROV
 #define MS_ENH_RSA_AES_PROV "Microsoft Enhanced RSA and AES Cryptographic Provider"
+#endif
+#ifndef PKCS12_PREFER_CNG_KSP
+#define PKCS12_PREFER_CNG_KSP 0x00000100
 #endif
 
 // Buffer size for SSL operations - optimized for SSL record sizes
@@ -158,9 +184,12 @@ struct ssl_context {
    bool credentials_acquired;
    bool context_initialised;
    bool is_server_mode;                        // True for server-side SSL, false for client-side
+   HCERTSTORE server_certificate_store;        // Temporary store for server_certificate
    PCCERT_CONTEXT server_certificate;          // Server certificate for server-side SSL
    PCCERT_CONTEXT peer_certificate;            // Peer certificate for validation
    PCCERT_CHAIN_CONTEXT certificate_chain;     // Certificate chain context for validation
+   NCRYPT_KEY_HANDLE imported_private_key;     // Private key handle attached to server_certificate
+   bool imported_private_key_owned;            // True when imported_private_key must be freed directly
 
    // Connection information cache
    std::string protocol_version_str;
@@ -187,9 +216,12 @@ struct ssl_context {
       , credentials_acquired(false)
       , context_initialised(false)
       , is_server_mode(false)
+      , server_certificate_store(nullptr)
       , server_certificate(nullptr)
       , peer_certificate(nullptr)
       , certificate_chain(nullptr)
+      , imported_private_key(0)
+      , imported_private_key_owned(false)
       , key_size_bits(0)
       , certificate_chain_valid(false)
       , certificate_chain_length(0)
@@ -214,6 +246,15 @@ struct ssl_context {
       if (server_certificate) {
          CertFreeCertificateContext(server_certificate);
          server_certificate = nullptr;
+      }
+      if (server_certificate_store) {
+         CertCloseStore(server_certificate_store, 0);
+         server_certificate_store = nullptr;
+      }
+      if (imported_private_key) {
+         if (imported_private_key_owned) NCryptFreeObject(imported_private_key);
+         imported_private_key = 0;
+         imported_private_key_owned = false;
       }
       if (peer_certificate) {
          CertFreeCertificateContext(peer_certificate);
@@ -653,20 +694,19 @@ int ssl_get_key_size_bits(SSL_HANDLE SSL)
 //********************************************************************************************************************
 // Load server certificate from file
 
-// TODO: Key path and password handling for PKCS#12 files
-
-SSL_ERROR_CODE ssl_load_server_certificate(SSL_HANDLE SSL, const std::string &CertPath, std::optional<const std::string> &KeyPath, std::optional<const std::string> &Password)
+SSL_ERROR_CODE ssl_load_server_certificate(SSL_HANDLE SSL, const std::string &CertPath,
+   std::optional<const std::string> &KeyPath, std::optional<const std::string> &Password)
 {
    if (!SSL->is_server_mode) return SSL_ERROR_FAILED;
 
    bool success = false;
    switch (ssl_certificate_format(CertPath)) {
       case SSLCERTFORMAT::PKCS12:
-         success = load_pkcs12_certificate(SSL, CertPath);
+         success = load_pkcs12_certificate(SSL, CertPath, Password);
          break;
 
       case SSLCERTFORMAT::PEM:
-         success = load_pem_certificate(SSL, CertPath);
+         success = load_pem_certificate(SSL, CertPath, KeyPath, Password);
          break;
 
       default:
@@ -682,10 +722,20 @@ SSL_ERROR_CODE ssl_set_server_certificate(SSL_HANDLE Server, SSL_HANDLE Client)
 {
    if ((!Server) or (!Client) or (!Server->server_certificate)) return SSL_ERROR_ARGS;
 
-   auto server_certificate = CertDuplicateCertificateContext(Server->server_certificate);
-   if (!server_certificate) return SSL_ERROR_MEMORY;
+   HCERTSTORE server_certificate_store = nullptr;
+   PCCERT_CONTEXT server_certificate = nullptr;
+   if (!add_certificate_to_memory_store(Server->server_certificate, server_certificate_store, server_certificate)) {
+      return SSL_ERROR_MEMORY;
+   }
 
-   if (Client->server_certificate) CertFreeCertificateContext(Client->server_certificate);
+   if (Server->imported_private_key and (!attach_private_key(server_certificate, Server->imported_private_key))) {
+      CertFreeCertificateContext(server_certificate);
+      CertCloseStore(server_certificate_store, 0);
+      return SSL_ERROR_FAILED;
+   }
+
+   clear_server_certificate(Client);
+   Client->server_certificate_store = server_certificate_store;
    Client->server_certificate = server_certificate;
    return SSL_OK;
 }

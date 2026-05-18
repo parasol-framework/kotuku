@@ -529,33 +529,12 @@
     </field>
 
     <field>
-      <name>Static</name>
-      <comment>Set to <code>true</code> if a file object should be static.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>INT</type>
-      <description>
-<p>This field applies when a file object has been created in an object script.  By default, a file object will auto-terminate when a closing tag is received.  If the object must remain live, set this field to <code>true</code>.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Target</name>
-      <comment>Specifies a surface ID to target for user feedback and dialog boxes.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>OBJECTID</type>
-      <description>
-<p>User feedback can be enabled for certain file operations by setting the Target field to a valid surface ID, or zero for the default target for new windows.  This field is set to <code>-1</code> by default, in order to disable this feature.</p>
-<p>If set correctly, operations such as file deletion or copying will pop-up a progress box after a certain amount of time has elapsed during the operation.  The dialog box will also provide the user with a cancel option to terminate the process early.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>TimeStamp</name>
+      <name>Timestamp</name>
       <comment>The last modification time set on a file, represented as a 64-bit integer.</comment>
       <access read="G">Get</access>
       <type>INT64</type>
       <description>
-<p>The TimeStamp field is a 64-bit representation of the last modification date/time set on a file.  It is not guaranteed that the value represents seconds from the epoch, so it should only be used for purposes such as sorting, or for comparison to the time stamps of other files.  For a parsed time structure, refer to the <fl>Date</fl> field.</p>
+<p>The Timestamp field is a 64-bit representation of the last modification date/time set on a file.  It is not guaranteed that the value represents seconds from the epoch, so it should only be used for purposes such as sorting, or for comparison to the time stamps of other files.  For a parsed time structure, refer to the <fl>Date</fl> field.</p>
       </description>
     </field>
 
@@ -581,7 +560,7 @@
     </constants>
 
     <constants lookup="FL" comment="File flags">
-      <const name="APPROXIMATE">Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</const>
+      <const name="APPROXIMATE">Allows fuzzy matching of the file path by ignoring the file extension; for instance opening 'screenshot.png' when only 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</const>
       <const name="BUFFER">Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.</const>
       <const name="DEVICE">The file is a system device (must set if opening a device for read/write operations)</const>
       <const name="DIRECTORY">The file object represents a folder.</const>
@@ -595,6 +574,7 @@
       <const name="READ">Required if the file needs to be opened for read access.</const>
       <const name="RESET_DATE">For internal use only</const>
       <const name="STREAM">File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.</const>
+      <const name="VIRTUAL">Path is to a virtual device.</const>
       <const name="WRITE">Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.</const>
     </constants>
 
@@ -638,6 +618,7 @@
       <const name="GROUP_WRITE">Group members can write.</const>
       <const name="HIDDEN">Recommends that the file is hidden from view by default.</const>
       <const name="INHERIT">Inherit permissions from parent folder and logical OR them with preset permission flags.</const>
+      <const name="META">Synonym for <code>HIDDEN | PASSWORD | OFFLINE | NETWORK</code></const>
       <const name="NETWORK">File is hosted on another machine.</const>
       <const name="OFFLINE">File content for this networked file has not been cached on the local PC.</const>
       <const name="OTHERS">Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></const>

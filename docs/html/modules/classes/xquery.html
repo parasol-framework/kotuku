@@ -150,7 +150,7 @@ if (query.ok()) {
 <p>Use <a data-bs-toggle="tooltip" title="Run an XQuery expression against an XML document." href="#tm-Evaluate">Evaluate()</a> or <a data-bs-toggle="tooltip" title="For node-based queries, calls a function for each matching node." href="#tm-Search">Search()</a> for expressions expecting an XML document context.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Syntax</th><td>Invalid syntax detected.</td></tr>
+<tr><th class="col-md-1">Syntax</th><td>Invalid syntax detected</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tac-Clear" style="scroll-margin:3em;" id="ta-Clear" role="button"><td style="width:1%; border-top-style: none; border-bottom-style: none;"><i class="bi bi-chevron-double-right text-secondary"></i></td><th class="col-md-1 text-primary">Clear</th><td>Clears all XQuery results and returns the object to its pre-compiled state.</td></tr><tr><td class="hiddenRow" style="width:1%; border-top-style: none; border-bottom-style: none;"></td><td colspan="2" class="hiddenRow"><div id="tac-Clear" class="collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR acClear(*Object)</samp></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>Use Clear() to remove the resources consumed by the XQuery and reset its state.  The <a data-bs-toggle="tooltip" title="XQuery data is processed through this field." href="#tf-Statement">Statement</a> and <a data-bs-toggle="tooltip" title="Base path for resolving relative references." href="#tf-Path">Path</a> field values are retained, allowing the object to be seamlessly re-activated at any time.</p>
@@ -182,8 +182,8 @@ if (query.ok()) {
 <p>Use Evaluate to run a compiled XQuery expression against an XML document.  The result of the evaluation is returned in the <a data-bs-toggle="tooltip" title="Returns the results of the most recently executed query." href="#tf-Result">Result</a> field as XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">NotFound</th><td>A search routine in this function failed.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">NotFound</th><td>A search routine in this function failed</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-InspectFunctions" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">InspectFunctions</th><td id="tm-InspectFunctions">Returns information about compiled XQuery functions.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-InspectFunctions" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xq::InspectFunctions(OBJECTPTR Object, CSTRING Name, XIF ResultFlags, CSTRING * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Name</td><td>The name of the function or functions to inspect (supports wildcards).</td></tr>

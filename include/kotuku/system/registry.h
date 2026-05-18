@@ -36,7 +36,7 @@ enum class CLASSID : uint32_t {
    XML = 0x6293d85fUL,
    COMPRESSION = 0x2aebea46UL,
    FTP = 0x17bfcff6UL,
-   SERVICE = 0xd79f249aUL,
+   NETSERVER = 0x61231fb4UL,
    WINDOW = 0x7fdabc89UL,
    BLUETOOTH = 0x79f3cdd0UL,
    NETSOCKET = 0xb58a423bUL,

@@ -200,12 +200,10 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "VOLUME: Feedback only - indicates a volume.",
     "LINK: Feedback only - file/folder is actually a link to another location.",
     "TAGS: Receive additional information for each file, such as comments, author and copyright.  The results are stored in the `Tags` field of each file.",
-    "HIDDEN: Feedback only - file/folder is hidden.",
     "QUALIFY|QUALIFIED: Return fully qualified folder names (i.e. trailing slash or colon for each name).",
     "VIRTUAL: Path is to a virtual device.",
     "STREAM: Path is connected via a stream, e.g. network connection.",
-    "READ_ONLY: Read-only (not permissions related and might indicate read-only media).",
-    "ARCHIVE: Feedback only - archive bit is set.",
+    "READ_ONLY: Read-only (not permissions related, can indicate read-only media).",
     "OPENDIR: Internal option.",
     { READ_ALL = "SIZE|DATE|PERMISSIONS|FILES|FOLDERS" })
 
@@ -214,7 +212,7 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "NEW: Required when creating a new file.  If a file with the same name exists, its contents will be destroyed. If however the existing file is locked, the initalisation process will fail.",
     "READ: Required if the file needs to be opened for read access.",
     "FOLDER|DIRECTORY: The file object represents a folder.",
-    "APPROXIMATE: Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.",
+    "APPROXIMATE: Allows fuzzy matching of the file path by ignoring the file extension; for instance opening 'screenshot.png' when only 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.",
     "LINK: Read-Only.  Indicates that the file is a symbolic link or shortcut to another file.",
     "BUFFER: Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.",
     "LOOP: In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to create multimedia data streams with minimal effort.",
@@ -223,7 +221,8 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "DEVICE: The file is a system device (must set if opening a device for read/write operations)",
     "STREAM: File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.",
     "EXCLUDE_FILES: Exclude files when scanning this folder.",
-    "EXCLUDE_FOLDERS: Exclude folders when scanning this folder.")
+    "EXCLUDE_FOLDERS: Exclude folders when scanning this folder.",
+    "VIRTUAL: Path is to a virtual device.")
 
   enums("LOC", { type="int", start=1, comment="AnalysePath() values" },
     "DIRECTORY|FOLDER: The path refers to a folder.",
@@ -740,6 +739,35 @@ using ModTest    = void (*)(CSTRING, int *, int *);
    template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(int(pValue)) { }
   ]])
 
+  struct("TimeZoneTransition", { comment="Time zone transition information for GetTimeZoneInfo()" }, [[
+     large Instant          # Unix epoch microseconds at which the transition occurs.
+     cpp(str) Abbreviation  # Short name where available, e.g. GMT, BST, PST.
+     int OffsetBefore       # UTC offset in seconds before the transition.
+     int OffsetAfter        # UTC offset in seconds after the transition.
+     int DaylightSaving     # 1 if the resulting period observes daylight-saving time.
+  ]],
+  [[
+   TimeZoneTransition() : Instant(0), OffsetBefore(0), OffsetAfter(0), DaylightSaving(0) { }
+  ]])
+
+  struct("TimeZoneInfo", { comment="Time zone information returned from GetTimeZoneInfo()" }, [[
+     cpp(str) ZoneID        # Preferred public ID, e.g. Europe/London or UTC.
+     cpp(str) NativeID      # Host-native ID, e.g. GMT Standard Time on Windows.
+     cpp(str) Source        # "tzif", "win32", or "utc".
+     cpp(str) DataPath      # TZif path on Linux, otherwise empty.
+     cpp(str) Version       # TZDB/source version if available, otherwise empty.
+     cpp(array(struct(TimeZoneTransition))) Transitions # Transitions available for the requested range.
+     int BaseOffset         # Standard UTC offset in seconds.
+     short StartYear        # Inclusive requested start year.
+     short EndYear          # Inclusive requested end year.
+     char IsLocal           # 1 if ZoneID requested the local system zone.
+     char IsFallback        # 1 if UTC fallback was used.
+  ]],
+  [[
+   TimeZoneInfo() : BaseOffset(0), StartYear(0), EndYear(0), IsLocal(0), IsFallback(0) { }
+   TimeZoneInfo(int) : TimeZoneInfo() { }
+  ]])
+
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
     cstr Platform      # String-based field indicating the user's platform.  Currently returns `Native`, `Windows`, `OSX` or `Linux`.
     cstr IDL           # The Core module's compressed IDL string
@@ -834,7 +862,7 @@ using ModTest    = void (*)(CSTRING, int *, int *);
   ]])
 
   struct("CacheFile", { restrict="c", comment="Internal structure for managing files cached by LoadFile()." }, [[
-    large TimeStamp   # The file's last-modified timestamp.
+    large Timestamp   # The file's last-modified timestamp.
     large Size        # Byte size of the cached data.
     large LastUse     # The last time that this file was requested.
     cstr Path         # Pointer to the resolved file path.
@@ -886,7 +914,7 @@ using ModTest    = void (*)(CSTRING, int *, int *);
 
   struct("FileInfo", { comment="Metadata for describing a file." }, [[
     large Size                 # The size of the file's content.
-    large TimeStamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
+    large Timestamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
     struct(*FileInfo) Next     # Next structure in the list, or `NULL`.
     cpp(str) Name              # The name of the file.
     int(RDF) Flags             # Additional flags to describe the file.
@@ -1100,7 +1128,6 @@ struct ScriptArg { // For use with sc::Exec
     "AsyncCancel",
     "AsyncPending",
     "AsyncWait",
-    "GetFileInfo",
     "ClassDatabase")
 
   c_insert([==[
@@ -1306,8 +1333,6 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
   class("File", { version=1.2, src="../classes/class_file.cpp", output="../classes/class_file_def.c" }, [[
     large     Position  # The current read/write byte position in a file.
     int(FL)   Flags     # File flags and options.
-    int       Static    # Set to `true` if a file object should be static.
-    oid       Target    # Specifies a surface ID to target for user feedback and dialog boxes.
     ptr(char) Buffer    # Points to the internal data buffer if the file content is held in memory.
   ]],
   nil,
@@ -1525,9 +1550,10 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
 
   methods("Time", "Pt", {
     { id=1, name="SetTime" },
+    { id=2, name="GetTimeZoneInfo" }
   })
 
-  class("Time", { src="../classes/class_time.cpp" }, [[
+  class("Time", { src="../classes/class_time.cpp", output="../classes/class_time_def.c" }, [[
     large SystemTime  # Total number of microseconds passed since the system base time
     int Year          # Year   (-ve for BC, +ve for AD)
     int Month         # Month  (1 - 12)
@@ -1577,17 +1603,6 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
   ]])
 
   c_insert([==[
-#ifndef PRV_CORE
-
-// Note that the length of the data is only needed when messaging between processes, so we can skip it for these
-// direct-access data channel macros.
-
-#define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
-#define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
-#define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
-
-#endif // PRV_CORE
-
 #ifdef __unix__
 #include <pthread.h>
 #endif

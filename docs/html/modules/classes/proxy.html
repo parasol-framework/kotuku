@@ -33,6 +33,7 @@
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">GatewayFilter</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>The IP address of the gateway that the proxy is limited to.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-GatewayFilter" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The GatewayFilter defines the IP address of the gateway that this proxy is limited to. It is intended to limit the results of searches performed by the <a data-bs-toggle="tooltip" title="Search for a proxy that matches a set of filters." href="#tm-Find">Find()</a> method.</p>
+<p>Gateway matching is not currently implemented.  Records that define this field are skipped by <a data-bs-toggle="tooltip" title="Search for a proxy that matches a set of filters." href="#tm-Find">Find()</a>.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Host" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Host"><i class="bi bi-dash-circle text-secondary" data-bs-toggle="tooltip" title="Not readable"></i>
@@ -46,6 +47,7 @@
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">NetworkFilter</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>The name of the network that the proxy is limited to.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-NetworkFilter" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The NetworkFilter defines the name of the network that this proxy is limited to. It is intended to limit the results of searches performed by the <a data-bs-toggle="tooltip" title="Search for a proxy that matches a set of filters." href="#tm-Find">Find()</a> method.</p>
 <p>This filter must not be set if the proxy needs to work on an unnamed network.</p>
+<p>Network matching is not currently implemented.  Records that define this field are skipped by <a data-bs-toggle="tooltip" title="Search for a proxy that matches a set of filters." href="#tm-Find">Find()</a>.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Password" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Password"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>

@@ -413,7 +413,7 @@
 <p>This method waits for the strobe to reach the vertical blank area at the bottom of the display.  Not all graphics hardware will support this method.  If this is the case, WaitVBL() will return immediately with <code>ERR::NoSupport</code>.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">NoSupport</th><td>Operation not supported.</td></tr>
+<tr><th class="col-md-1">NoSupport</th><td>Operation not supported</td></tr>
 </tbody></table></div></div></td></tr>
 </tbody></table><div class="footer copyright text-right">Display class documentation © Paul Manias © 2003-2026</div></div><div class="docs-content" style="display:none;" id="DPMS"><h1>DPMS Type</h1><p class="lead">Possible modes for the Display class' PowerMode field.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>DPMS::DEFAULT</th><td>Use the default DPMS mode as defined by the display driver.</td></tr>
 <tr><th>DPMS::OFF</th><td>Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).</td></tr>
