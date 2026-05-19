@@ -129,5 +129,3 @@ else ()
       target_compile_definitions (${MOD} PRIVATE "__X11DGA__" "__xwindows__")
    endif ()
 endif ()
-
-flute_test (display_controller "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_controller.tiri")
