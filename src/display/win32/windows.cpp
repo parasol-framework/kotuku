@@ -18,6 +18,7 @@
 #include <objidl.h>
 #include <xinput.h>
 #include <map>
+#include <atomic>
 
 #include <kotuku/system/errors.h>
 
@@ -68,7 +69,7 @@ typedef long long int64_t;
 #define MSG(...)
 
 extern HINSTANCE glInstance;
-extern int glLastPort;
+extern std::atomic<int> glLastPort;
 void KillMessageHook(void);
 
 static HWND glMainScreen = 0;
@@ -797,7 +798,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
             glLastPort = 0;
             for (DWORD i = 0; i < XUSER_MAX_COUNT; i++) {
                XINPUT_CAPABILITIES cap;
-               if (XInputGetCapabilities(i, XINPUT_FLAG_GAMEPAD, &cap) == ERROR_SUCCESS) {
+               if (!XInputGetCapabilities(i, XINPUT_FLAG_GAMEPAD, &cap)) {
                   glLastPort = i;
                }
                else break;
@@ -1603,11 +1604,14 @@ int winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphamas
    // WARNING: Calling DescribePixelFormat() causes layered windows to flicker for some bizarre reason.  Therefore this routine has been modified so that DescribePixelFormat() is only called once.
 
    if (!mred) {
-      if (DescribePixelFormat(GetDC(nullptr), 1, sizeof(PIXELFORMATDESCRIPTOR), &pfd)) {
-         if (pfd.cRedBits <= 8) mred = formats[pfd.cRedBits] << pfd.cRedShift;
-         if (pfd.cGreenBits <= 8) mgreen = formats[pfd.cGreenBits] << pfd.cGreenShift;
-         if (pfd.cBlueBits <= 8) mblue = formats[pfd.cBlueBits] << pfd.cBlueShift;
-         if (pfd.cAlphaBits <= 8) malpha = formats[pfd.cAlphaBits] << pfd.cAlphaShift;
+      if (auto dc = GetDC(nullptr)) {
+         if (DescribePixelFormat(dc, 1, sizeof(PIXELFORMATDESCRIPTOR), &pfd)) {
+            if (pfd.cRedBits <= 8) mred = formats[pfd.cRedBits] << pfd.cRedShift;
+            if (pfd.cGreenBits <= 8) mgreen = formats[pfd.cGreenBits] << pfd.cGreenShift;
+            if (pfd.cBlueBits <= 8) mblue = formats[pfd.cBlueBits] << pfd.cBlueShift;
+            if (pfd.cAlphaBits <= 8) malpha = formats[pfd.cAlphaBits] << pfd.cAlphaShift;
+         }
+         ReleaseDC(nullptr, dc);
       }
    }
 

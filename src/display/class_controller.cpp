@@ -81,7 +81,7 @@ TotalPorts: Reports the total number of controllers connected to the system.
 static ERR CONTROLLER_GET_TotalPorts(extSurface *Self, int &Value)
 {
 #ifdef _WIN32
-   if (glLastPort >= 0) Value = glLastPort;
+   if (glLastPort.load() >= 0) Value = glLastPort.load();
    else Value = 0;
    return ERR::Okay;
 #endif
