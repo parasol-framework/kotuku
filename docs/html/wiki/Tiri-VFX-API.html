@@ -220,6 +220,7 @@
         <li><a class="rounded" href="../modules/classes/http.html">HTTP</a></li>
         <li><a class="rounded" href="../modules/classes/netclient.html">NetClient</a></li>
         <li><a class="rounded" href="../modules/classes/netlookup.html">NetLookup</a></li>
+        <li><a class="rounded" href="../modules/classes/netserver.html">NetServer</a></li>
         <li><a class="rounded" href="../modules/classes/netsocket.html">NetSocket</a></li>
         <li><a class="rounded" href="../modules/classes/proxy.html">Proxy</a></li>
         </ul></div>
@@ -263,13 +264,57 @@
 <p>To load the VFX API:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>import <span class="st">&#39;vfx&#39;</span></span></code></pre></div>
 <h2 id="utility-functions">Utility Functions</h2>
+<h3 id="vfxease">vfx.ease</h3>
+<p>Effects that animate a linear progress value can apply easing by passing an easing name, an easing function, or the
+<code>easing</code> option for <code>vfx.wipe()</code>. The built-in easing names are:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Name</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">linear</td>
+<td style="text-align: left;">Default linear progress.</td>
+</tr>
+<tr>
+<td style="text-align: left;">inQuad</td>
+<td style="text-align: left;">Quadratic acceleration.</td>
+</tr>
+<tr>
+<td style="text-align: left;">outQuad</td>
+<td style="text-align: left;">Quadratic deceleration.</td>
+</tr>
+<tr>
+<td style="text-align: left;">inOutQuad</td>
+<td style="text-align: left;">Quadratic acceleration and deceleration.</td>
+</tr>
+<tr>
+<td style="text-align: left;">inCubic</td>
+<td style="text-align: left;">Cubic acceleration.</td>
+</tr>
+<tr>
+<td style="text-align: left;">outCubic</td>
+<td style="text-align: left;">Cubic deceleration.</td>
+</tr>
+<tr>
+<td style="text-align: left;">inOutCubic</td>
+<td style="text-align: left;">Cubic acceleration and deceleration.</td>
+</tr>
+</tbody>
+</table>
+<p>An easing function accepts a progress value from <code>0.0</code> to <code>1.0</code> and returns the adjusted progress value. For example:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="va">vfx</span><span class="op">.</span>zoomIn<span class="op">(</span><span class="va">Icon</span><span class="op">.</span><span class="va">viewport</span><span class="op">,</span> <span class="op">{</span> <span class="va">seconds</span><span class="op">=</span><span class="dv">0.4</span><span class="op">,</span> <span class="va">easing</span><span class="op">=</span><span class="st">&#39;outCubic&#39;</span> <span class="op">})</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="va">vfx</span><span class="op">.</span>rotate<span class="op">(</span><span class="va">Icon</span><span class="op">.</span><span class="va">viewport</span><span class="op">,</span> <span class="op">{</span> <span class="va">seconds</span><span class="op">=</span><span class="dv">0.8</span><span class="op">,</span> <span class="va">easing</span><span class="op">=</span><span class="va">vfx</span><span class="op">.</span><span class="va">ease</span><span class="op">.</span><span class="va">inOutQuad</span> <span class="op">})</span></span></code></pre></div>
 <h3 id="vfxchain">vfx.chain()</h3>
 <p><code>vfx.chain({ Effects, ... }, Callback)</code></p>
 <p>Use <code>chain()</code> to activate a list of multiple <code>Effects</code> at the same time. Once all effects in the chain have finished processing, the <code>Callback</code> is executed.</p>
 <p>In the example below, the <code>rotate</code> and <code>zoomOut</code> effects are applied together to shrink an icon. When the animation has completed, the icon will no longer be visible and can be terminated via the <code>Callback</code> function.</p>
 <pre><code>effect = vfx.chain({
-    vfx.rotate(Icon.viewport, 0.8),
-    vfx.zoomOut(Icon.viewport, 0.8)
+    vfx.rotate(Icon.viewport, { seconds=0.8 }),
+    vfx.zoomOut(Icon.viewport, { seconds=0.8 })
 }, function()
     Icon.viewport.free()
     Icon.viewport = nil
@@ -297,22 +342,57 @@ end)</code></pre>
 <td style="text-align: left;">The original Delay specified by the client.</td>
 </tr>
 <tr>
+<td style="text-align: left;">easing</td>
+<td style="text-align: left;">The easing curve applied to the effect, if any.</td>
+</tr>
+<tr>
 <td style="text-align: left;">time</td>
 <td style="text-align: left;">A timestamp indicating when the effect started.</td>
 </tr>
 </tbody>
 </table>
+<p>Common options are:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Option</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">seconds</td>
+<td style="text-align: left;">Maximum number of seconds for the effect to complete. Defaults to <code>1.0</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">delay</td>
+<td style="text-align: left;">Delay before the effect starts, measured in seconds. Defaults to <code>0</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">callback</td>
+<td style="text-align: left;">Function called on completion with the effect <code>State</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">easing</td>
+<td style="text-align: left;">Built-in easing name or custom easing function.</td>
+</tr>
+</tbody>
+</table>
+<p>Effect-specific options include <code>intensity</code> for <code>vfx.shake()</code> and <code>style</code>, <code>segments</code>, <code>rotate</code>, <code>cx</code>, <code>cy</code>, and
+<code>invert</code> for <code>vfx.wipe()</code>.</p>
 <h3 id="vfxfadein">vfx.fadeIn()</h3>
-<p><code>vfx.fadeIn(Viewport, Seconds, Delay, Callback)</code></p>
+<p><code>vfx.fadeIn(Viewport, { Options })</code></p>
 <p>Fades a <code>Viewport</code> into the display by adjusting the opacity level. <code>Seconds</code> specifies the maximum number of seconds for the effect to complete. <code>Delay</code> delays the initial start of the effect, measured in seconds.</p>
 <h3 id="vfxrotate">vfx.rotate()</h3>
-<p><code>vfx.rotate(Viewport, Seconds, Delay, Callback)</code></p>
+<p><code>vfx.rotate(Viewport, { Options })</code></p>
 <p>Rotate the <code>Viewport</code> 360 degrees within the allotted time. This feature is typically chained for use with other effects. <code>Seconds</code> specifies the maximum number of seconds for the effect to complete. <code>Delay</code> delays the initial start of the effect, measured in seconds.</p>
 <h3 id="vfxshake">vfx.shake()</h3>
-<p><code>vfx.shake(Viewport, Seconds, Delay, Intensity, Callback)</code></p>
+<p><code>vfx.shake(Viewport, { Options })</code></p>
 <p>&#39;Shake&#39; a <code>Viewport</code> by applying an alternating rotation around its center.<code>Seconds</code> specifies the maximum number of seconds for the effect to complete. <code>Delay</code> delays the initial start of the effect, measured in seconds. <code>Intensity</code> is between <code>0.1</code> and <code>2.0</code> and affects the number of shakes and maximum angle of rotation.</p>
+<p>If <code>Easing</code> is supplied, it is applied as an amplitude envelope so that the shake naturally settles towards the end
+of the effect.</p>
 <h3 id="vfxwipe">vfx.wipe()</h3>
-<p><code>vfx.wipe(Viewport, Seconds, Delay, Style, { Options })</code></p>
+<p><code>vfx.wipe(Viewport, { Options })</code></p>
 <p>Use this &#39;screen wipe&#39; effect to display or hide a viewport using animated masks. <code>Seconds</code> specifies the maximum number of seconds for the effect to complete. <code>Delay</code> delays the initial start of the effect, measured in seconds. <code>Style</code> declares the type of wipe that will be performed and this will effect the <code>Options</code> that are available.</p>
 <p>The following table lists the available styles and their option values. Note that angles are always measured in degrees.</p>
 <table>
@@ -345,14 +425,14 @@ end)</code></pre>
 </tr>
 </tbody>
 </table>
-<p>By default, all wipes are &#39;wipe-in&#39; unless the option <code>invert=true</code> is used to run the animation backwards, causing a &#39;wipe-out&#39;.</p>
+<p>By default, all wipes are &#39;wipe-in&#39; unless the option <code>invert=true</code> is used to run the animation backwards, causing a &#39;wipe-out&#39;. An easing curve can be supplied as <code>Options.easing</code>.</p>
 <p>Example usage:</p>
-<p><code>vfx.wipe(Icon.viewport, 1.2, 0.2, &#39;radial&#39;, { cx=0.5, cy=0.5, segments=4 })</code></p>
+<p><code>vfx.wipe(Icon.viewport, { seconds=1.2, delay=0.2, style=&#39;radial&#39;, cx=0.5, cy=0.5, segments=4, easing=&#39;outCubic&#39; })</code></p>
 <h3 id="vfxzoomin">vfx.zoomIn()</h3>
-<p><code>vfx.zoomIn(Viewport, Seconds, Delay, Callback)</code></p>
+<p><code>vfx.zoomIn(Viewport, { Options })</code></p>
 <p>Scale the <code>Viewport</code> from nothing to full-size within the allotted time. <code>Seconds</code> specifies the maximum number of seconds for the effect to complete. <code>Delay</code> delays the initial start of the effect, measured in seconds.</p>
 <h3 id="vfxzoomout">vfx.zoomOut()</h3>
-<p><code>vfx.zoomOut(Viewport, Seconds, Delay, Callback)</code></p>
+<p><code>vfx.zoomOut(Viewport, { Options })</code></p>
 <p>Scale the <code>Viewport</code> from full-size to nothing within the allotted time. <code>Seconds</code> specifies the maximum number of seconds for the effect to complete. <code>Delay</code> delays the initial start of the effect, measured in seconds.</p>
 </div></div></div></div>
 

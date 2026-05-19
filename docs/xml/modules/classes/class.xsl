@@ -349,6 +349,7 @@
                         <li class="api-ref"><a class="rounded" href="http.html">HTTP</a></li>
                         <li class="api-ref"><a class="rounded" href="netclient.html">NetClient</a></li>
                         <li class="api-ref"><a class="rounded" href="netlookup.html">NetLookup</a></li>
+                        <li class="api-ref"><a class="rounded" href="netserver.html">NetServer</a></li>
                         <li class="api-ref"><a class="rounded" href="netsocket.html">NetSocket</a></li>
                         <li class="api-ref"><a class="rounded" href="proxy.html">Proxy</a></li>
                       </ul>
