@@ -17,6 +17,10 @@ The Display is a primitive, hardware oriented interface.  It is recommended that
 using namespace display;
 #endif
 
+#ifdef __xwindows__
+static ankerl::unordered_dense::map<Window, Colormap> glX11Colormaps;
+#endif
+
 // Class definition at end of this source file.
 
 static ERR DISPLAY_Resize(extDisplay *, struct acResize *);
@@ -225,6 +229,7 @@ static ERR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
    if (Args->Datatype IS DATA::REQUEST) {
       // Supported for handling the windows clipboard
 
+      if ((!Args->Buffer) or (!Args->Object)) return log.warning(ERR::NullArgs);
       auto request = (struct dcRequest *)Args->Buffer;
 
       log.traceBranch("Received data request from object %d, item %d", Args->Object ? Args->Object->UID : 0, request->Item);
@@ -252,7 +257,9 @@ static ERR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
          dc.Datatype = DATA::RECEIPT;
          dc.Buffer   = kt::strclone(result);
          dc.Size     = result.size() + 1;
-         Action(AC::DataFeed, Args->Object, &dc);
+         auto error = Action(AC::DataFeed, Args->Object, &dc);
+         FreeResource(dc.Buffer);
+         return error;
       }
       else return log.warning(ERR::NoSupport);
       #endif
@@ -362,6 +369,13 @@ static ERR DISPLAY_Free(extDisplay *Self)
       XFreePixmap(XDisplay, Self->XPixmap);
       Self->XPixmap = 0;
       ((extBitmap *)Self->Bitmap)->x11.drawable = 0;
+   }
+
+   if (Self->XWindowHandle) {
+      if (auto colormap = glX11Colormaps.find(Self->XWindowHandle); colormap != glX11Colormaps.end()) {
+         XFreeColormap(XDisplay, colormap->second);
+         glX11Colormaps.erase(colormap);
+      }
    }
 
    // Kill all expose events associated with the X Window owned by the display
@@ -667,8 +681,10 @@ static ERR DISPLAY_Init(extDisplay *Self)
          int cwflags   = CWEventMask|CWOverrideRedirect;
          int depth     = CopyFromParent;
          Visual *visual = CopyFromParent;
+         Colormap colormap = 0;
          if ((swa.override_redirect) and (glXCompositeSupported)) {
-            swa.colormap         = XCreateColormap(XDisplay, DefaultRootWindow(XDisplay), glXInfoAlpha.visual, AllocNone);
+            colormap             = XCreateColormap(XDisplay, DefaultRootWindow(XDisplay), glXInfoAlpha.visual, AllocNone);
+            swa.colormap         = colormap;
             swa.background_pixel = 0;
             swa.border_pixel     = 0;
             cwflags |= CWColormap|CWBackPixel|CWBorderPixel;
@@ -684,15 +700,19 @@ static ERR DISPLAY_Init(extDisplay *Self)
             if (!(Self->XWindowHandle = XCreateWindow(XDisplay, DefaultRootWindow(XDisplay),
                   Self->X, Self->Y, Self->Width, Self->Height, 0 /* Border */, depth, InputOutput,
                   visual, cwflags, &swa))) {
+               if (colormap) XFreeColormap(XDisplay, colormap);
                return log.warning(ERR::SystemCall);
             }
          }
          else { // If the WindowHandle field is already set, use it as the parent for the new window.
             if (!(Self->XWindowHandle = XCreateWindow(XDisplay, Self->XWindowHandle,
                   0, 0, Self->Width, Self->Height, 0, depth, InputOutput, visual, cwflags, &swa))) {
+               if (colormap) XFreeColormap(XDisplay, colormap);
                return log.warning(ERR::SystemCall);
             }
          }
+
+         if (colormap) glX11Colormaps[Self->XWindowHandle] = colormap;
 
          bmp->x11.window = Self->XWindowHandle;
 

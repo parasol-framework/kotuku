@@ -2225,8 +2225,12 @@ static ERR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 
                   extBitmap *picbmp;
                   picture->get(FID_Bitmap, picbmp);
-                  gfx::CopySurface(list[j].SurfaceID, picbmp, BDF::NIL, 0, 0, list[j].Width, list[j].Height,
-                     list[j].Left - list[i].Left, list[j].Top - list[i].Top);
+                  if (auto error = gfx::CopySurface(list[j].SurfaceID, picbmp, BDF::NIL, 0, 0, list[j].Width,
+                        list[j].Height, list[j].Left - list[i].Left, list[j].Top - list[i].Top);
+                        error != ERR::Okay) {
+                     FreeResource(picture);
+                     return log.warning(error);
+                  }
                }
             }
          }

@@ -625,7 +625,7 @@ static ERR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 #ifdef __xwindows__
    OBJECTPTR surface;
 
-   if (AccessObject(Self->SurfaceID, 3000, &surface) IS ERR::Okay) {
+   if (auto error = AccessObject(Self->SurfaceID, 3000, &surface); error IS ERR::Okay) {
       APTR xwin;
 
       if (surface->get(FID_WindowHandle, xwin) IS ERR::Okay) {
@@ -640,10 +640,11 @@ static ERR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
       }
       ReleaseObject(surface);
    }
+   else return log.warning(error)|ERR::Notified;
 #elif _WIN32
    OBJECTPTR surface;
 
-   if (AccessObject(Self->SurfaceID, 3000, &surface) IS ERR::Okay) {
+   if (auto error = AccessObject(Self->SurfaceID, 3000, &surface); error IS ERR::Okay) {
       if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = Args->X;
       if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = Args->Y;
       if (Self->X < 0) Self->X = 0;
@@ -654,6 +655,7 @@ static ERR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
       Self->HostY = Self->Y;
       ReleaseObject(surface);
    }
+   else return log.warning(error)|ERR::Notified;
 #endif
 
    // Determine the surface object that we are currently positioned over.  If it has set a cursor image, switch to it if the pointer is not locked.
@@ -729,10 +731,10 @@ static ERR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
       config->write("POINTER", "MaxSpeed", std::to_string(Self->MaxSpeed));
       config->write("POINTER", "WheelSpeed", std::to_string(Self->WheelSpeed));
       config->write("POINTER", "ButtonOrder", Self->ButtonOrder);
-      config->saveToObject(Args->Dest);
+      return config->saveToObject(Args->Dest);
    }
 
-   return ERR::Okay;
+   return log.warning(ERR::CreateObject);
 }
 
 /*********************************************************************************************************************

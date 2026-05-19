@@ -438,6 +438,7 @@ extern char glpDPMS[20];
 extern uint8_t *glDemultiply;
 extern std::array<uint8_t, 256 * 256> glAlphaLookup;
 extern std::list<ClipRecord> glClips;
+extern std::recursive_mutex glClipboardLock;
 extern int glLastPort;
 
 extern ankerl::unordered_dense::map<WinHook, FUNCTION> glWindowHooks;
@@ -542,6 +543,7 @@ template <typename T>
 void UpdateSurfaceField(objSurface *Self, T SurfaceRecord::*LValue, T Value)
 {
    if (Self->initialised()) {
+      const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
       for (auto &record : glSurfaces) {
          if (record.SurfaceID IS Self->UID) {
             record.*LValue = Value;

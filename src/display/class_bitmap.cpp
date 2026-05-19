@@ -393,6 +393,7 @@ static ERR alloc_shm(int Size, uint8_t **Data, int *ID)
    }
    else {
       log.warning("shmat() returned: %s", strerror(errno));
+      shmctl(id, IPC_RMID, nullptr);
       return ERR::LockFailed;
    }
 }
@@ -565,11 +566,12 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
       if (glCompress->compressBuffer(Self->Data, Self->Size, buffer, Self->Size, &result) IS ERR::Okay) {
          if (AllocMemory(result, MEM::NO_CLEAR, &Self->prvCompress) IS ERR::Okay) {
             copymem(buffer, Self->prvCompress, result);
-            FreeResource(buffer);
          }
          else error = ERR::ReallocMemory;
       }
       else error = ERR::Compression;
+
+      FreeResource(buffer);
    }
    else error = ERR::AllocMemory;
 
@@ -1817,8 +1819,7 @@ static ERR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
       case 16: bytesperpixel = 2; amtcolours = 65536; break;
       case 24: bytesperpixel = 3; amtcolours = 16777216; break;
       case 32: bytesperpixel = 4; amtcolours = 16777216; break;
-      default: bytesperpixel = bpp / 8;
-               amtcolours = 1<<bpp;
+      default: return log.warning(ERR::Args);
    }
 
    if (Self->Type IS BMP::PLANAR) bytewidth = (width + (width % 16))/8;
