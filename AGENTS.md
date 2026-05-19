@@ -79,7 +79,7 @@ Kōtuku uses Interface Definition Language (IDL) files with `.tdl` extension to 
 
 ### Scripting Integration
 
-**Tiri** (formerly known as Fluid) is the integrated Lua-based scripting language:
+**Tiri** is the integrated Lua-based scripting language:
 
 - Tiri is a LuaJIT-based language that provides high-level access to Kōtuku APIs, but it is not standard Lua.
 - GUI toolkit available through `scripts/gui/` modules (modular widget system)
