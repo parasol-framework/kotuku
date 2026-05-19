@@ -259,13 +259,6 @@ For single-target assignments, a failed safe-nav hop also short-circuits RHS eva
 config?.theme = load_theme()    -- load_theme() is not called if config is nil
 ----
 
-For multi-target plain assignment, the RHS list is still evaluated once using the normal assignment rules so that later targets keep their mapped values:
-
-[source,tiri]
-----
-config?.theme, retries = load_theme(), 3
-----
-
 Bitwise compound assignment (`&=`, `|=`, `^=`) does not exist.  Use `x = x & y` instead.
 
 [source,tiri]

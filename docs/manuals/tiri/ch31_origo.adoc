@@ -94,7 +94,8 @@ indexterm:[Origo, script detection] When no script path is provided on the comma
 
 . If `package.zip` exists in the executable's directory, a `package:` volume is created from the archive and `package:main.tiri` is executed.
 . If `main.tiri` exists in the current working directory, it is executed.
-. If neither is found, the help message is displayed.
+. If neither is found, the default Origo window is displayed.
+. If no display is available, the help message is printed.
 
 This feature makes it simple to distribute packaged Tiri applications by copying the Origo executable with a new name (e.g. `myapp.exe`) and including a `package.zip` or `main.tiri` file alongside it.  The user will now be able to execute the program by running `myapp.exe` without needing to specify commandline parameters.
 
