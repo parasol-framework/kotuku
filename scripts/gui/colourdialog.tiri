@@ -573,8 +573,6 @@ gui.dialog.colour = function(Options)
    self._window = gui.window({
       insideWidth  = 600,
       insideHeight = 400,
-      minWidth     = 200,
-      minHeight    = 50,
       quit         = false,
       center       = true,
       stickToFront = true,
@@ -604,19 +602,14 @@ gui.dialog.colour = function(Options)
    check self.scene.mtAddDef('Rainbow', self.scene.new('VectorImage', { bitmap = getRainbowBitmap() }))
 
    self.viewport.viewWidth, self.viewport.viewHeight = buildLayout(self, Options)
-
-   check self.viewport.mtSubscribeInput(JTYPE_MOVEMENT|JTYPE_BUTTON, inputFeedback)
-
-   -- Manage the aspect ratio.  The current width will determine the height
-
-   client = self._window:getClientSize()
    scale = self.viewport.viewHeight / self.viewport.viewWidth
-
+   client = { width = 600, height = 600 * scale }
    self._window:resizeClientArea(client.width, math.floor(client.width * scale))
-   self._window.surface.minWidth  = math.floor(client.width * 0.25)
-   self._window.surface.minHeight = math.floor(client.width * scale * 0.25)
+   self._window:sizeHints(client.width/4, client.height/4, client.width * 3, client.height * 3, true)
 
    updateRGBInput(self, gui.strToRGB(Options.colour ?? 'rgb(200,200,200)'))
+
+   check self.viewport.mtSubscribeInput(JTYPE_MOVEMENT|JTYPE_BUTTON, inputFeedback)
 
    self._window:moveToFront()
    self._window:show()
