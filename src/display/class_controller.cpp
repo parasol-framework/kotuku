@@ -9,6 +9,9 @@ Unlike analog devices that stream input commands (e.g. mice), gamepad controller
 at any time.  The controller state is normally read at least once per frame, which can be achieved in a program's
 inner loop, or in a separate timer.
 
+On Linux, controllers are read through the `/dev/input/js*` joystick API.  The user running the application must have
+read access to these device nodes.
+
 Controller input management is governed by the @Display class.  The `GRAB_CONTROLLERS` flag must be defined in the
 active Display's Flags field in order to ensure that controller input can be received.  Failure to do so may mean
 that the Controller object appears to work but does not receive input.
@@ -23,6 +26,11 @@ that the Controller object appears to work but does not receive input.
 using namespace display;
 #endif
 
+#ifdef __linux__
+extern ERR linuxReadController(int Port, double *Values, CON &Buttons);
+extern ERR linuxGetControllerPorts(int &Value);
+#endif
+
 /*********************************************************************************************************************
 -ACTION-
 Query: Get the current controller state.
@@ -33,6 +41,11 @@ static ERR CONTROLLER_Query(objController *Self)
 {
 #ifdef _WIN32
    if (auto error = winReadController(Self->Port, (double *)&Self->LeftTrigger, Self->Buttons); error IS ERR::Okay) {
+      return ERR::Okay;
+   }
+   else return error;
+#elif defined(__linux__)
+   if (auto error = linuxReadController(Self->Port, (double *)&Self->LeftTrigger, Self->Buttons); error IS ERR::Okay) {
       return ERR::Okay;
    }
    else return error;
@@ -84,6 +97,8 @@ static ERR CONTROLLER_GET_TotalPorts(extSurface *Self, int &Value)
    if (glLastPort >= 0) Value = glLastPort;
    else Value = 0;
    return ERR::Okay;
+#elif defined(__linux__)
+   return linuxGetControllerPorts(Value);
 #endif
 
    return ERR::NoSupport;
