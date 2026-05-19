@@ -149,13 +149,13 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
             else codepoint = UTF8ReadValue(src, nullptr);
 
             if (codepoint < 0x10000) {
-               dest.push_back(static_cast<char16_t>(codepoint));
+               dest.push_back((char16_t)codepoint);
             }
             else {
                // Surrogate pair for codepoints >= 0x10000
                codepoint -= 0x10000;
-               dest.push_back(static_cast<char16_t>(0xD800 + (codepoint >> 10)));
-               dest.push_back(static_cast<char16_t>(0xDC00 + (codepoint & 0x3FF)));
+               dest.push_back((char16_t)(0xD800 + (codepoint >> 10)));
+               dest.push_back((char16_t)(0xDC00 + (codepoint & 0x3FF)));
             }
             src += len;
          }
@@ -165,8 +165,9 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
    list << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
 
    auto str = list.str();
-   winAddFileClip(str.c_str(), str.size() * sizeof(char16_t), Cut);
-   return ERR::Okay;
+   auto error = (ERR)winAddFileClip(str.c_str(), str.size() * sizeof(char16_t), Cut);
+   if (error != ERR::Okay) log.warning(error);
+   return error;
 #else
    return ERR::NoSupport;
 #endif
@@ -185,18 +186,20 @@ static ERR add_text_to_host(objClipboard *Self, CSTRING String, int Length = 0x7
 
    auto str = String;
    int chars, bytes = 0;
-   for (chars=0; (str[bytes]) and (bytes < Length); chars++) {
+   for (chars=0; (bytes < Length) and (str[bytes]); chars++) {
       for (++bytes; (bytes < Length) and ((str[bytes] & 0xc0) IS 0x80); bytes++);
    }
 
-   std::vector<uint16_t> utf16(size_t(chars + 1) * sizeof(uint16_t));
+   std::vector<uint16_t> utf16(size_t(chars + 1));
 
    int i = 0;
-   while (i < bytes) {
+   int pos = 0;
+   while (pos < bytes) {
       int len = UTF8CharLength(str);
-      if (i + len >= bytes) break; // Avoid corrupt UTF-8 sequences resulting in minor buffer overflow
-      utf16[i++] = UTF8ReadValue(str, nullptr);
+      if (pos + len > bytes) break; // Avoid corrupt UTF-8 sequences resulting in minor buffer overflow
+      utf16[i++] = (uint16_t)UTF8ReadValue(str, nullptr);
       str += len;
+      pos += len;
    }
    utf16[i] = 0;
 
@@ -784,22 +787,22 @@ extern "C" void report_windows_hdrop(const char *Data, int CutOperation, char Wi
 
             // Convert to UTF-8
             if (codepoint < 0x80) {
-               utf8_path.push_back(static_cast<char>(codepoint));
+               utf8_path.push_back((char)codepoint);
             }
             else if (codepoint < 0x800) {
-               utf8_path.push_back(static_cast<char>(0xC0 | (codepoint >> 6)));
-               utf8_path.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+               utf8_path.push_back((char)(0xC0 | (codepoint >> 6)));
+               utf8_path.push_back((char)(0x80 | (codepoint & 0x3F)));
             }
             else if (codepoint < 0x10000) {
-               utf8_path.push_back(static_cast<char>(0xE0 | (codepoint >> 12)));
-               utf8_path.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
-               utf8_path.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+               utf8_path.push_back((char)(0xE0 | (codepoint >> 12)));
+               utf8_path.push_back((char)(0x80 | ((codepoint >> 6) & 0x3F)));
+               utf8_path.push_back((char)(0x80 | (codepoint & 0x3F)));
             }
             else {
-               utf8_path.push_back(static_cast<char>(0xF0 | (codepoint >> 18)));
-               utf8_path.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
-               utf8_path.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
-               utf8_path.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+               utf8_path.push_back((char)(0xF0 | (codepoint >> 18)));
+               utf8_path.push_back((char)(0x80 | ((codepoint >> 12) & 0x3F)));
+               utf8_path.push_back((char)(0x80 | ((codepoint >> 6) & 0x3F)));
+               utf8_path.push_back((char)(0x80 | (codepoint & 0x3F)));
             }
          }
          items.emplace_back(utf8_path);

@@ -218,7 +218,11 @@ ERR lock_surface(extBitmap *Bitmap, int16_t Access)
             }
             return ERR::Okay;
          }
-         else XDestroyImage(Bitmap->x11.readable);
+         else {
+            XDestroyImage(Bitmap->x11.readable);
+            Bitmap->x11.readable = nullptr;
+            Bitmap->Data = nullptr;
+         }
       }
 
       // Generate a fresh XImage from the current drawable
@@ -245,7 +249,11 @@ ERR lock_surface(extBitmap *Bitmap, int16_t Access)
          }
          return ERR::Okay;
       }
-      else return ERR::CreateResource;
+      else {
+         free(Bitmap->Data);
+         Bitmap->Data = nullptr;
+         return ERR::CreateResource;
+      }
    }
    return ERR::Okay;
 }
@@ -1368,7 +1376,11 @@ static ERR BITMAP_Lock(extBitmap *Self)
                Self->Clip.Left, Self->Clip.Top);
             return ERR::Okay;
          }
-         else XDestroyImage(Self->x11.readable);
+         else {
+            XDestroyImage(Self->x11.readable);
+            Self->x11.readable = nullptr;
+            Self->Data = nullptr;
+         }
       }
 
       // Generate a fresh XImage from the current drawable
@@ -1383,6 +1395,7 @@ static ERR BITMAP_Lock(extBitmap *Self)
       else size = Self->ByteWidth * Self->Height;
 
       Self->Data = (uint8_t *)malloc(size);
+      if (!Self->Data) return ERR::AllocMemory;
 
       if ((bpp = Self->BitsPerPixel) IS 32) bpp = 24;
 
@@ -1393,7 +1406,11 @@ static ERR BITMAP_Lock(extBitmap *Self)
             Self->Clip.Bottom - Self->Clip.Top, 0xffffffff, ZPixmap, Self->x11.readable,
             Self->Clip.Left, Self->Clip.Top);
       }
-      else return ERR::CreateResource;
+      else {
+         free(Self->Data);
+         Self->Data = nullptr;
+         return ERR::CreateResource;
+      }
    }
 
    return ERR::Okay;
@@ -1731,6 +1748,7 @@ static ERR BITMAP_Read(extBitmap *Self, struct acRead *Args)
 {
    if (!Self->Data) return ERR::NoData;
    if ((!Args) or (!Args->Buffer)) return ERR::NullArgs;
+   if (Args->Length < 0) return ERR::OutOfRange;
 
    int len = Args->Length;
    if (Self->Position + len > Self->Size) len = Self->Size - Self->Position;
@@ -1872,7 +1890,9 @@ setfields:
       free_shm(Self->Data, Self->x11.ShmInfo.shmid);
       Self->Data = nullptr;
 
-      alloc_shm(size, &Self->Data, &Self->x11.ShmInfo.shmid);
+      if (alloc_shm(size, &Self->Data, &Self->x11.ShmInfo.shmid) != ERR::Okay) {
+         return log.warning(ERR::AllocMemory);
+      }
 
       Self->x11.ShmInfo.readOnly = False;
       Self->x11.ShmInfo.shmaddr  = (char *)Self->Data;
@@ -1999,17 +2019,21 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 
    size = width * height * pcx.NumPlanes;
    if (AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-      acWrite(Args->Dest, &pcx, sizeof(pcx), nullptr);
+      auto write_error = acWrite(Args->Dest, &pcx, sizeof(pcx), nullptr);
+      if (write_error != ERR::Okay) {
+         FreeResource(buffer);
+         return log.warning(write_error);
+      }
 
       int dp = 0;
       for (i=Self->Clip.Top; i < (Self->Clip.Bottom); i++) {
          if (pcx.NumPlanes IS 1) { // Save as a 256 colour image
             lastpixel = Self->ReadUCPixel(Self, Self->Clip.Left, i);
             uint8_t counter = 1;
-            for (j=Self->Clip.Left+1; j <= width; j++) {
+            for (j=Self->Clip.Left+1; j < Self->Clip.Right; j++) {
                newpixel = Self->ReadUCPixel(Self, j, i);
 
-               if ((newpixel IS lastpixel) and (j != width - 1) and (counter <= 62)) {
+               if ((newpixel IS lastpixel) and (counter < 63)) {
                   counter++;
                }
                else {
@@ -2026,6 +2050,19 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
                   return log.warning(ERR::BufferOverflow);
                }
             }
+
+            if (!((counter IS 1) and (lastpixel < 192))) {
+               if (dp >= (size - 2)) {
+                  FreeResource(buffer);
+                  return log.warning(ERR::BufferOverflow);
+               }
+               buffer[dp++] = 192 + counter;
+            }
+            else if (dp >= (size - 1)) {
+               FreeResource(buffer);
+               return log.warning(ERR::BufferOverflow);
+            }
+            buffer[dp++] = lastpixel;
          }
          else { // Save as a true colour image with run-length encoding
             for (p=0; p < 3; p++) {
@@ -2086,8 +2123,9 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
          }
       }
 
-      acWrite(Args->Dest, buffer, dp, nullptr);
+      write_error = acWrite(Args->Dest, buffer, dp, nullptr);
       FreeResource(buffer);
+      if (write_error != ERR::Okay) return log.warning(write_error);
 
       // Setup palette
 
@@ -2101,7 +2139,8 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
             palette[j++] = Self->Palette->Col[i].Blue;
          }
 
-         acWrite(Args->Dest, palette, sizeof(palette), nullptr);
+         write_error = acWrite(Args->Dest, palette, sizeof(palette), nullptr);
+         if (write_error != ERR::Okay) return log.warning(write_error);
       }
 
       return ERR::Okay;
@@ -2118,6 +2157,8 @@ Seek: Changes the current byte position for read/write operations.
 
 static ERR BITMAP_Seek(extBitmap *Self, struct acSeek *Args)
 {
+   if (!Args) return ERR::NullArgs;
+
    if (Args->Position IS SEEK::START) Self->Position = (int)Args->Offset;
    else if (Args->Position IS SEEK::END) Self->Position = (int)(Self->Size - Args->Offset);
    else if (Args->Position IS SEEK::CURRENT) Self->Position = (int)(Self->Position + Args->Offset);
@@ -2557,7 +2598,7 @@ ERR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
    if (SrcPalette->AmtColours <= 256) {
       if (!Self->Palette) {
          if (AllocMemory(sizeof(RGBPalette), MEM::NO_CLEAR, &Self->Palette) != ERR::Okay) {
-            log.warning(ERR::AllocMemory);
+            return log.warning(ERR::AllocMemory);
          }
       }
 
