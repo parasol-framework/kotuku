@@ -9,6 +9,9 @@ Unlike analog devices that stream input commands (e.g. mice), gamepad controller
 at any time.  The controller state is normally read at least once per frame, which can be achieved in a program's
 inner loop, or in a separate timer.
 
+On Linux, controllers are read through the `/dev/input/js*` joystick API.  The user running the application must have
+read access to these device nodes.
+
 Controller input management is governed by the @Display class.  The `GRAB_CONTROLLERS` flag must be defined in the
 active Display's Flags field in order to ensure that controller input can be received.  Failure to do so may mean
 that the Controller object appears to work but does not receive input.
@@ -23,6 +26,11 @@ that the Controller object appears to work but does not receive input.
 using namespace display;
 #endif
 
+#ifdef __linux__
+extern ERR linuxReadController(int Port, double *Values, CON &Buttons);
+extern ERR linuxGetControllerPorts(int &Value);
+#endif
+
 /*********************************************************************************************************************
 -ACTION-
 Query: Get the current controller state.
@@ -33,6 +41,11 @@ static ERR CONTROLLER_Query(objController *Self)
 {
 #ifdef _WIN32
    if (auto error = winReadController(Self->Port, (double *)&Self->LeftTrigger, Self->Buttons); error IS ERR::Okay) {
+      return ERR::Okay;
+   }
+   else return error;
+#elif defined(__linux__)
+   if (auto error = linuxReadController(Self->Port, (double *)&Self->LeftTrigger, Self->Buttons); error IS ERR::Okay) {
       return ERR::Okay;
    }
    else return error;
@@ -74,7 +87,10 @@ The port number can be changed at any time, so multiple controllers can be queri
 of overwriting the previous state.  Check #TotalPorts if your program supports more than one controller.
 
 -FIELD-
-TotalPorts: Reports the total number of controllers connected to the system.
+TotalPorts: Reports the number of controller ports that should be scanned.
+
+Port values range from zero to `TotalPorts - 1`.  Some platforms, including Linux, may expose sparse controller
+indices, so an individual port in that range can fail to query if its device is not currently connected.
 
 *********************************************************************************************************************/
 
@@ -84,6 +100,8 @@ static ERR CONTROLLER_GET_TotalPorts(extSurface *Self, int &Value)
    if (glLastPort.load() >= 0) Value = glLastPort.load();
    else Value = 0;
    return ERR::Okay;
+#elif defined(__linux__)
+   return linuxGetControllerPorts(Value);
 #endif
 
    return ERR::NoSupport;

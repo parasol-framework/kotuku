@@ -15,6 +15,7 @@
     <description>
 <p>Use the Controller class to read the state of game controllers that are recognised by the operating system.</p>
 <p>Unlike analog devices that stream input commands (e.g. mice), gamepad controllers maintain a state that can be read at any time.  The controller state is normally read at least once per frame, which can be achieved in a program's inner loop, or in a separate timer.</p>
+<p>On Linux, controllers are read through the <code>/dev/input/js*</code> joystick API.  The user running the application must have read access to these device nodes.</p>
 <p>Controller input management is governed by the <class name="Display">Display</class> class.  The <code>GRAB_CONTROLLERS</code> flag must be defined in the active Display's Flags field in order to ensure that controller input can be received.  Failure to do so may mean that the Controller object appears to work but does not receive input.</p></description>
     <source>
       <file>class_controller.cpp</file>
