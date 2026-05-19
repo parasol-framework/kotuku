@@ -1082,6 +1082,10 @@ static bool get_over_object(extPointer *Self)
       index = 0;
    }
    else for (index=0; (index < glSurfaces.size()) and (glSurfaces[index].SurfaceID != Self->SurfaceID); index++);
+   if (index >= glSurfaces.size()) {
+      Self->SurfaceID = glSurfaces[0].SurfaceID;
+      index = 0;
+   }
 
    auto i = examine_chain(Self, index, glSurfaces, glSurfaces.size());
 
@@ -1144,6 +1148,9 @@ static int examine_chain(extPointer *Self, int Index, SURFACELIST &List, int End
 {
    // NB: Traversal is in reverse to catch the front-most objects first.
 
+   if ((Index < 0) or (Index >= int(List.size()))) return 0;
+   if (End > int(List.size())) End = int(List.size());
+
    auto objectid = List[Index].SurfaceID;
    auto x = Self->X;
    auto y = Self->Y;
@@ -1151,7 +1158,7 @@ static int examine_chain(extPointer *Self, int Index, SURFACELIST &List, int End
       if ((List[i].ParentID IS objectid) and (List[i].visible())) {
          if ((x >= List[i].Left) and (x < List[i].Right) and (y >= List[i].Top) and (y < List[i].Bottom)) {
             int new_end;
-            for (new_end=i+1; List[new_end].Level > List[i].Level; new_end++); // Recalculate the end (optimisation)
+            for (new_end=i+1; (new_end < End) and (List[new_end].Level > List[i].Level); new_end++);
             return examine_chain(Self, i, List, new_end);
          }
       }

@@ -660,7 +660,7 @@ int winInitDragDrop(HWND Window)
          RKDT_Drop
       };
 
-      if (!(glDropTarget = HeapAlloc(glHeap, 0, sizeof(RK_IDROPTARGET)))) return ERR_Failed;
+      if (!(glDropTarget = HeapAlloc(glHeap, HEAP_ZERO_MEMORY, sizeof(RK_IDROPTARGET)))) return ERR_Failed;
       glDropTarget->idt.lpVtbl   = (void *)&idt_vtbl;
       glDropTarget->lRefCount    = 1;
       glDropTarget->tb_pDragFile = NULL;

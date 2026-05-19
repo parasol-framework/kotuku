@@ -1165,11 +1165,10 @@ static ERR DISPLAY_Redimension(extDisplay *Self, struct acRedimension *Args)
    if (!Args) return ERR::NullArgs;
 
    struct acMoveToPoint moveto = { Args->X, Args->Y, 0, MTF::X|MTF::Y };
-   DISPLAY_MoveToPoint(Self, &moveto);
+   if (auto error = DISPLAY_MoveToPoint(Self, &moveto); error != ERR::Okay) return error;
 
    struct acResize resize = { Args->Width, Args->Height, Args->Depth };
-   DISPLAY_Resize(Self, &resize);
-   return ERR::Okay;
+   return DISPLAY_Resize(Self, &resize);
 }
 
 /*********************************************************************************************************************
@@ -1196,7 +1195,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
       return ERR::Resize;
    }
 
-   Action(AC::Resize, Self->Bitmap, Args);
+   if (auto error = Action(AC::Resize, Self->Bitmap, Args); error != ERR::Okay) return error;
    Self->Width = Self->Bitmap->Width;
    Self->Height = Self->Bitmap->Height;
 
@@ -1209,7 +1208,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
       XResizeWindow(XDisplay, Self->XWindowHandle, Args->Width, Args->Height);
    }
 
-   Action(AC::Resize, Self->Bitmap, Args);
+   if (auto error = Action(AC::Resize, Self->Bitmap, Args); error != ERR::Okay) return error;
    Self->Width = Self->Bitmap->Width;
    Self->Height = Self->Bitmap->Height;
 
@@ -1377,6 +1376,8 @@ NoSupport: The host platform does not support this feature.
 
 static ERR DISPLAY_SizeHints(extDisplay *Self, gfx::SizeHints *Args)
 {
+   if (!Args) return ERR::NullArgs;
+
 #ifdef __xwindows__
    XSizeHints hints = { .flags = 0 };
 

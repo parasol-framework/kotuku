@@ -441,6 +441,7 @@ extern std::list<ClipRecord> glClips;
 extern int glLastPort;
 
 extern ankerl::unordered_dense::map<WinHook, FUNCTION> glWindowHooks;
+extern std::recursive_mutex glWindowHookLock;
 extern std::vector<OBJECTID> glFocusList;
 extern std::recursive_mutex glFocusLock;
 extern std::recursive_mutex glSurfaceLock;

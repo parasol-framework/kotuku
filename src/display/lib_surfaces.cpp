@@ -382,7 +382,9 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, int Index, Cl
    // our Index field will not match with the surface that is referenced in Self.  We need to ensure
    // correctness before going any further.
 
+   if ((Index < 0) or (Index >= int(list.size()))) return;
    if (list[Index].SurfaceID != Self->UID) Index = find_surface_list(Self, list.size());
+   if ((Index < 0) or (Index >= int(list.size()))) return;
 
    // Prepare the buffer so that it matches the exposed area
 
@@ -390,6 +392,7 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, int Index, Cl
    int xo = 0, yo = 0;
    if (Self->BitmapOwnerID != Self->UID) {
       for (i=Index; (i > 0) and (list[i].SurfaceID != Self->BitmapOwnerID); i--);
+      if (list[i].SurfaceID != Self->BitmapOwnerID) return;
       xo = list[Index].Left - list[i].Left;
       yo = list[Index].Top - list[i].Top;
       data = DestBitmap->offset(xo, yo);
@@ -808,6 +811,7 @@ ERR resize_layer(extSurface *Self, int X, int Y, int Width, int Height, int Insi
          for (parent_index=index-1; parent_index >= 0; parent_index--) {
             if (list[parent_index].SurfaceID IS Self->ParentID) break;
          }
+         if (parent_index < 0) return log.warning(ERR::Search);
 
          ClipRectangle region_b(list[parent_index].Left + oldx, list[parent_index].Top + oldy,
             (list[parent_index].Left + oldx) + oldw, (list[parent_index].Top + oldy) + oldh);
@@ -1502,6 +1506,7 @@ ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback)
    if ((!SurfaceID) or (Event IS WH::NIL) or (!Callback)) return ERR::NullArgs;
 
    const WinHook hook(SurfaceID, Event);
+   const std::lock_guard<std::recursive_mutex> lock(glWindowHookLock);
    glWindowHooks[hook] = *Callback;
    return ERR::Okay;
 }

@@ -126,15 +126,17 @@ static void release_video(objDisplay *Display)
 
 static bool check_volatile(const SURFACELIST &List, int Index)
 {
+   if ((Index < 0) or (Index >= int(List.size()))) return false;
+
    if (List[Index].isVolatile()) return true;
 
    // If there are children with custom root layers or are volatile, that will force volatility
 
    int j;
-   for (int i=Index+1; List[i].Level > List[Index].Level; i++) {
+   for (int i=Index+1; (i < int(List.size())) and (List[i].Level > List[Index].Level); i++) {
       if (List[i].invisible()) {
          j = List[i].Level;
-         while (List[i+1].Level > j) i++;
+         while ((i + 1 < int(List.size())) and (List[i+1].Level > j)) i++;
          continue;
       }
 
@@ -376,7 +378,7 @@ static void invalidate_overlap(extSurface *Self, const SURFACELIST &list, int Ol
 skipcontent:
       // Skip past any children of the overlapping object
 
-      for (j=i+1; list[j].Level > list[i].Level; j++);
+      for (j=i+1; (j < int(list.size())) and (list[j].Level > list[i].Level); j++);
       i = j - 1;
    }
 }
@@ -605,7 +607,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
 {
    kt::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
    OBJECTPTR context = ParentContext();
    OBJECTPTR call_context = nullptr;
@@ -963,11 +965,14 @@ static ERR SURFACE_Free(extSurface *Self)
 
    if (Self->InputHandle) gfx::UnsubscribeInput(Self->InputHandle);
 
-   for (auto it = glWindowHooks.begin(); it != glWindowHooks.end();) {
-      if (it->first.SurfaceID IS Self->UID) {
-         it = glWindowHooks.erase(it);
+   {
+      const std::lock_guard<std::recursive_mutex> lock(glWindowHookLock);
+      for (auto it = glWindowHooks.begin(); it != glWindowHooks.end();) {
+         if (it->first.SurfaceID IS Self->UID) {
+            it = glWindowHooks.erase(it);
+         }
+         else it++;
       }
-      else it++;
    }
 
    return ERR::Okay;
@@ -1778,7 +1783,8 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
 
    auto index = currentindex;
    auto level = glSurfaces[currentindex].Level;
-   for (auto i=currentindex+1; (glSurfaces[i].Level >= glSurfaces[currentindex].Level); i++) {
+   for (auto i=currentindex+1; (i < int(glSurfaces.size())) and
+         (glSurfaces[i].Level >= glSurfaces[currentindex].Level); i++) {
       if (glSurfaces[i].Level IS level) {
          if ((glSurfaces[i].Flags & RNF::POINTER) != RNF::NIL) break; // Do not move in front of the mouse cursor
          if (glSurfaces[i].PopOverID IS Self->UID) break; // A surface has been discovered that has to be in front of us.
@@ -1819,12 +1825,13 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
 
    auto i = index;
    level = glSurfaces[i].Level;
-   while (glSurfaces[i+1].Level > level) i++;
+   while ((i + 1 < int(glSurfaces.size())) and (glSurfaces[i+1].Level > level)) i++;
 
    // Count the number of children that have been assigned to this surface object.
 
    int total;
-   for (total=1; glSurfaces[currentindex+total].Level > glSurfaces[currentindex].Level; total++) { };
+   for (total=1; (currentindex + total < int(glSurfaces.size())) and
+         (glSurfaces[currentindex+total].Level > glSurfaces[currentindex].Level); total++) { };
 
    // Reorder the list so that this surface object is inserted at the new index.
 
@@ -1880,6 +1887,8 @@ static ERR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
 {
    struct acMove move;
 
+   if (!Args) return ERR::NullArgs;
+
    if ((Args->Flags & MTF::X) != MTF::NIL) move.DeltaX = Args->X - Self->X;
    else move.DeltaX = 0;
 
@@ -1895,6 +1904,8 @@ static ERR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
 
 static ERR SURFACE_NewOwner(extSurface *Self, struct acNewOwner *Args)
 {
+   if ((!Args) or (!Args->NewOwner)) return ERR::NullArgs;
+
    if ((!Self->ParentDefined) and (!Self->initialised())) {
       OBJECTID owner_id = Args->NewOwner->UID;
       while ((owner_id) and (GetClassID(owner_id) != CLASSID::SURFACE)) {
@@ -2203,7 +2214,7 @@ static ERR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
                if (list[j].invisible() or list[j].isCursor()) {
                   // Skip this surface area and all invisible children
                   level = list[j].Level;
-                  while (list[j+1].Level > level) j++;
+                  while ((j + 1 < int(list.size())) and (list[j+1].Level > level)) j++;
                   continue;
                }
 
