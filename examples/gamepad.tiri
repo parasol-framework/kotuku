@@ -43,6 +43,8 @@ Gamepad demonstration
    MIN_BALL_SIZE = 32
    MAX_BALL_SIZE = 120
    ROTATION_SPEED_SCALE = 0.75
+   EDGE_FRICTION = 1.6
+   MIN_HORIZONTAL_SPEED = 1
 
    ball_vx = 220
    ball_vy = -260
@@ -103,31 +105,36 @@ Gamepad demonstration
       if max_x < min_x then max_x = min_x end
       if max_y < min_y then max_y = min_y end
 
-      bounced = false
+      edge_contact = false
       if ballVP.x < min_x then
          ballVP.x = min_x
          ball_vx = -ball_vx * BOUNCE
-         bounced = true
       elseif ballVP.x > max_x then
          ballVP.x = max_x
          ball_vx = -ball_vx * BOUNCE
-         bounced = true
       end
 
       if ballVP.y < min_y then
          ballVP.y = min_y
          ball_vy = -ball_vy * BOUNCE
-         bounced = true
+         edge_contact = true
       elseif ballVP.y > max_y then
          ballVP.y = max_y
          ball_vy = -ball_vy * BOUNCE
-         bounced = true
+         edge_contact = true
       end
 
-      if bounced then
-         ball_spin = ball_vx * ROTATION_SPEED_SCALE
+      if edge_contact then
+         friction = 1 - (EDGE_FRICTION * dt)
+         if friction < 0 then friction = 0 end
+
+         ball_vx *= friction
+         if math.abs(ball_vx) < MIN_HORIZONTAL_SPEED then
+            ball_vx = 0
+         end
       end
 
+      ball_spin = ball_vx * ROTATION_SPEED_SCALE
       ball_angle = math.fmod(ball_angle + (ball_spin * dt), 360)
       mVec.ResetMatrix(ball_matrix)
       mVec.Rotate(ball_matrix, ball_angle, ballVP.width * 0.5, ballVP.height * 0.5)
