@@ -1823,10 +1823,10 @@ struct SystemState {
    CSTRING IDL;                         // The Core module's compressed IDL string
    const struct OpenInfo * OpenInfo;    // The OpenInfo structure originally used to initialise the system
    HOSTHANDLE ConsoleFD;                // Internal
+   CONTYPE ConsoleType;                 // The console type for stdout and stderr, if any
    int     Stage;                       // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
    int     ReleaseBuild;                // 1 = Release build, 0 = Debug build
    int     StaticBuild;                 // 1 = Static build, 0 = Dynamic build
-   int     HasConsole;                  // 1 = Console available, 0 = Console not available
 };
 
 struct Unit {
