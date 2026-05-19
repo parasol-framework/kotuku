@@ -729,7 +729,10 @@ int winAddClip(int Datatype, const void *Data, int Size, int Cut)
             }
             else error = ERR_Okay;
          }
-         else error = ERR_Lock;
+         else {
+            GlobalFree(hdata);
+            error = ERR_Lock;
+         }
       }
       else error = ERR_AllocMemory;
 
@@ -770,7 +773,10 @@ int winAddFileClip(const unsigned short *Path, int Size, int Cut)
             }
             else error = ERR_Okay;
          }
-         else error = ERR_Lock;
+         else {
+            GlobalFree(hdata);
+            error = ERR_Lock;
+         }
       }
       else error = ERR_AllocMemory;
 

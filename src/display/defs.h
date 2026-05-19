@@ -23,6 +23,7 @@
 
 #include <unordered_set>
 #include <mutex>
+#include <atomic>
 #include <queue>
 #include <sstream>
 #include <array>
@@ -439,7 +440,7 @@ extern uint8_t *glDemultiply;
 extern std::array<uint8_t, 256 * 256> glAlphaLookup;
 extern std::list<ClipRecord> glClips;
 extern std::recursive_mutex glClipboardLock;
-extern int glLastPort;
+extern std::atomic<int> glLastPort;
 
 extern ankerl::unordered_dense::map<WinHook, FUNCTION> glWindowHooks;
 extern std::recursive_mutex glWindowHookLock;

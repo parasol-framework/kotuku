@@ -10,6 +10,7 @@ Name: Surfaces
 
 SURFACELIST glSurfaces;
 static OBJECTID glModalID = 0;
+static std::recursive_mutex glModalLock;
 
 //********************************************************************************************************************
 // Called when windows has an item to be dropped on our display area.
@@ -1167,6 +1168,8 @@ oid: The UID of the modal surface, or zero.
 
 OBJECTID GetModalSurface(void)
 {
+   const std::lock_guard<std::recursive_mutex> lock(glModalLock);
+
    // Safety check: Confirm that the object still exists
    if ((glModalID) and (CheckObjectExists(glModalID) != ERR::True)) {
       kt::Log log(__FUNCTION__);
@@ -1441,6 +1444,7 @@ oid: The object ID of the previous modal surface is returned (zero if there was 
 OBJECTID SetModalSurface(OBJECTID SurfaceID)
 {
    kt::Log log(__FUNCTION__);
+   const std::lock_guard<std::recursive_mutex> lock(glModalLock);
 
    log.branch("#%d, CurrentFocus: %d", SurfaceID, gfx::GetUserFocus());
 
