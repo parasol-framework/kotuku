@@ -72,7 +72,7 @@
   <g transform="translate(250, 700)">
     <rect class="box" width="350" height="120" stroke-dasharray="4" />
     <text x="20" y="30" class="text text-bold">Exit when:</text>
-    <text x="20" y="55" class="text">- Quit message: ERR_Terminate</text>
+    <text x="20" y="55" class="text">- QUIT message received: ERR_Terminate</text>
     <text x="20" y="80" class="text">- All signals fired: ERR_Okay</text>
     <text x="20" y="105" class="text">- Timeout: ERR_TimeOut</text>
   </g>

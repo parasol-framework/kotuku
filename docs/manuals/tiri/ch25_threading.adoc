@@ -112,6 +112,7 @@ processing.collect() <1>
 <1> The script object remains pinned despite leaving scope and an explicit collection.
 
 [[sec-threaded-actions-and-methods]]
+[%breakable]
 === Async Actions & Methods
 ==== async.action(), async.method()
 
@@ -187,6 +188,7 @@ After each callback returns, the next queued action for the same object is dispa
 Any async actions submitted during callback execution — including actions targeting the same object — are appended to the tail of the object's queue and do not preempt previously queued actions.  This guarantees strict FIFO ordering and prevents starvation.
 
 [[sec-async-queue-management]]
+[%breakable]
 === Queue Management
 ==== async.wait()
 
@@ -354,6 +356,7 @@ The pipe iteration operator (see <<sec-pipe-iteration>>) can be combined with `a
 <4> The processing object is configured to wait for all scripts to send a signal.
 
 [[sec-shared-pool]]
+[%breakable]
 === Shared Data Pool
 ==== async.pool
 
@@ -435,6 +438,7 @@ Keys are strings and are binary-safe (embedded NUL bytes are preserved).
 * Object values store only the object ID and the object will not be pinned.  If the object is freed before the ID is read back, the retrieval will fail.
 
 [[sec-thread-safety]]
+[%breakable]
 === Thread Safety
 [discrete]
 ==== Guarantees

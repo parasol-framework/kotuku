@@ -48,7 +48,7 @@ image::processing_loop.svg[]
 |All monitored signals fired, or messages were processed successfully.
 
 |`ERR_Terminate`
-|A quit message was received.  The script is expected to exit.
+|A MSGID_QUIT message was received.  The script is expected to exit.
 
 |`ERR_Timeout`
 |The specified timeout elapsed before all signals fired.
@@ -98,6 +98,7 @@ processing.halt(0)
 ----
 
 [[sec-processing-callbacks]]
+[%breakable]
 === Processing Callbacks
 ==== processing.delayedCall()
 
