@@ -1588,8 +1588,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_assignment_stmt(const AssignmentStmtPay
 
    bool AllocNewLocal = (Payload.op IS AssignmentOperator::Plain or Payload.op IS AssignmentOperator::IfEmpty or Payload.op IS AssignmentOperator::IfNil);
 
-   if (Payload.op IS AssignmentOperator::Plain and has_safe_nav_target and Payload.targets.size() > 1) {
-      return this->emit_plain_assignment_safe_multi(Payload.targets, Payload.values);
+   if (has_safe_nav_target and Payload.targets.size() > 1) {
+      SourceSpan span = SourceSpan{};
+      for (const ExprNodePtr& node : Payload.targets) {
+         if (node and contains_safe_nav_target(*node)) {
+            span = node->span;
+            break;
+         }
+      }
+
+      return ParserResult<IrEmitUnit>::failure(this->make_error(ParserErrorCode::InvalidAssignment,
+         "safe-navigation assignment targets cannot be used in multi-assignment", span));
    }
 
    auto targets_result = this->prepare_assignment_targets(Payload.targets, AllocNewLocal, has_safe_nav_target);
