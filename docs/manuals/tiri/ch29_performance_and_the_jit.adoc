@@ -121,7 +121,7 @@ indexterm:[arrays, performance] indexterm:[tables, performance] Arrays and table
 
 ==== Arrays
 
-Arrays are strongly typed, contiguous data structures with a fixed element type determined at creation time.  Supported element types include byte, int16, int32, int64, float, double, pointer, string, table, array, and object types.
+Arrays are strongly typed, contiguous data structures with a fixed element type determined at creation time.  Supported element types include byte, int16, int32, int64, float, double, pointer, string, table, array, any, struct, and object types.
 
 * **Indexing** — O(1) direct memory access by offset.  No hashing or lookup required.
 * **Iteration** — sequential memory access benefits from CPU cache locality.
@@ -229,7 +229,7 @@ This function is intended for profilers and diagnostic tools.  Attached callback
 |Event |Description
 
 |`"trace"`
-|Fires during trace lifecycle events.  The callback receives `(TraceNo, Reason, pass:[...])` where `Reason` is one of `"start"`, `"stop"`, `"flush"`, or `"abort"`.  For `"start"`, additional arguments include the function being traced and the bytecode position.  For `"abort"`, additional arguments include the function, bytecode position, and the abort reason.
+|Fires during trace lifecycle events.  The callback receives `(Reason, pass:[...])` where `Reason` is one of `"start"`, `"stop"`, `"flush"`, or `"abort"`.  For `"start"`, additional arguments are `(TraceNo, Func, PC)` and, if a side trace, `(Parent, ExitNo)`.  For `"stop"`, additional arguments are `(TraceNo, Func)`.  For `"abort"`, additional arguments are `(TraceNo, Func, PC, ErrorObject, ErrorInfo)`.  `"flush"` has no additional arguments.
 
 |`"record"`
 |Fires when a bytecode instruction is recorded into a trace.  The callback receives `(TraceNo, Func, PC, FrameDepth)` — the trace number, function being recorded, bytecode position, and the current frame stack depth.
@@ -245,7 +245,7 @@ This function is intended for profilers and diagnostic tools.  Attached callback
 ----
 -- Count trace events
 trace_events = 0
-function trace_handler(TraceNo, Reason)
+function trace_handler(Reason, TraceNo)
    trace_events++
 end
 
@@ -398,6 +398,22 @@ Returns a table of high-level information about the compiled trace numbered `Tra
 |`linktype`
 |string
 |Link type: `'none'`, `'root'`, `'loop'`, `'tail-recursion'`, `'up-recursion'`, `'down-recursion'`, `'interpreter'`, `'return'`, or `'stitch'`.
+
+|`tryStores`
+|number
+|Try materialisation stores emitted while recording this trace.
+
+|`trySkippedStores`
+|number
+|Try materialisation stores skipped by tracking.
+
+|`tryEnterStores`
+|number
+|Forced stores emitted at try-block entry.
+
+|`tryEnterSnapRemoved`
+|number
+|Snapshot entries removed near try-block entry.
 |===
 
 [discrete]
