@@ -173,6 +173,46 @@ static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 102
 static XRRScreenSize *glSizes = glCustomSizes;
 static int glSizeCount = std::ssize(glCustomSizes);
 static int glActualCount = 0;
+
+static bool get_default_xrandr_monitor_size(int *Width, int *Height)
+{
+   if ((!XDisplay) or (!Width) or (!Height)) return false;
+
+   int event_base = 0;
+   int error_base = 0;
+   if (!XRRQueryExtension(XDisplay, &event_base, &error_base)) return false;
+
+   int major_version = 0;
+   int minor_version = 0;
+   if (!XRRQueryVersion(XDisplay, &major_version, &minor_version)) return false;
+   if ((major_version < 1) or ((major_version IS 1) and (minor_version < 5))) return false;
+
+   int monitor_count = 0;
+   auto monitors = XRRGetMonitors(XDisplay, DefaultRootWindow(XDisplay), True, &monitor_count);
+   if (!monitors) return false;
+   if (!monitor_count) {
+      XRRFreeMonitors(monitors);
+      return false;
+   }
+
+   int monitor_index = 0;
+   for (int i=0; i < monitor_count; i++) {
+      if (monitors[i].primary) {
+         monitor_index = i;
+         break;
+      }
+   }
+
+   auto result = false;
+   if ((monitors[monitor_index].width > 0) and (monitors[monitor_index].height > 0)) {
+      *Width  = monitors[monitor_index].width;
+      *Height = monitors[monitor_index].height;
+      result = true;
+   }
+
+   XRRFreeMonitors(monitors);
+   return result;
+}
 #endif
 
 std::recursive_mutex glInputLock;
@@ -673,6 +713,14 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, int InfoSize)
 
          Info->Width  = glRootWindow.width;
          Info->Height = glRootWindow.height;
+         #ifdef XRANDR_ENABLED
+            int monitor_width = 0;
+            int monitor_height = 0;
+            if (get_default_xrandr_monitor_size(&monitor_width, &monitor_height)) {
+               Info->Width  = int16_t(monitor_width);
+               Info->Height = int16_t(monitor_height);
+            }
+         #endif
          Info->AccelFlags = ACF(-1);
          #warning TODO: Get display density
          Info->VDensity = 96;
