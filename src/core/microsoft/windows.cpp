@@ -302,7 +302,7 @@ static int8_t is_console(HANDLE h)
 // If the program is launched from a console, attach to it.  Otherwise create a new console window and redirect output
 // to it (e.g. if launched from a desktop icon).
 
-enum class CONTYPE : uint8_t;
+enum class CONTYPE : int;
 
 constexpr CONTYPE CONTYPE_NIL      = CONTYPE(0); // No console available
 constexpr CONTYPE CONTYPE_TERMINAL = CONTYPE(1); // Launched from a terminal
