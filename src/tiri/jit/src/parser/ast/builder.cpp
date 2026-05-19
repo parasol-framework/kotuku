@@ -113,13 +113,6 @@ static bool is_compound_assignment(TokenKind Kind)
    }
 }
 
-// Checks if an expression node is a presence check expression (the ?? operator).
-
-static bool is_presence_expr(const ExprNodePtr &Expr)
-{
-   return Expr and Expr->kind IS AstNodeKind::PresenceExpr;
-}
-
 // Validates that an expression can be used as an arrow function parameter (identifier only).
 
 static bool extract_arrow_parameter(const ExprNodePtr &Expr, FunctionParameter &Parameter)
