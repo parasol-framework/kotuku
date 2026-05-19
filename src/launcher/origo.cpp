@@ -262,7 +262,9 @@ extern "C" int main(int argc, char **argv)
 
                if (error IS ERR::NoSupport) {
                   printf("%s", glHelp.c_str());
+                  error = ERR::Okay;
                }
+
                result = int(error);
             }
          }
