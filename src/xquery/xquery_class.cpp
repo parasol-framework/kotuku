@@ -94,7 +94,6 @@ an escape character in attribute strings.
 -END-
 
 TODO:
-* Add support for custom functions via a new method, e.g., RegisterFunction().
 * Allow modules to be preloaded.  There are many ways this could be achieved, e.g.
   - Load the module as a separate XQuery and link it via a new method.
   - Provide a callback that is invoked when an import is encountered, this allows the the host application to supply

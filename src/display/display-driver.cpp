@@ -45,7 +45,7 @@ uint8_t KeyHeld[int(KEY::LIST_END)];
 uint8_t glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
 KQ glKeyFlags = KQ::NIL;
 int glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
-Atom atomSurfaceID = 0, XWADeleteWindow = 0;
+Atom atomSurfaceID = 0, XWADeleteWindow = 0, XWATakeFocus = 0;
 GC glXGC = 0, glClipXGC = 0;
 XWindowAttributes glRootWindow;
 Window glDisplayWindow = 0;
@@ -173,6 +173,46 @@ static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 102
 static XRRScreenSize *glSizes = glCustomSizes;
 static int glSizeCount = std::ssize(glCustomSizes);
 static int glActualCount = 0;
+
+static bool get_default_xrandr_monitor_size(int *Width, int *Height)
+{
+   if ((!XDisplay) or (!Width) or (!Height)) return false;
+
+   int event_base = 0;
+   int error_base = 0;
+   if (!XRRQueryExtension(XDisplay, &event_base, &error_base)) return false;
+
+   int major_version = 0;
+   int minor_version = 0;
+   if (!XRRQueryVersion(XDisplay, &major_version, &minor_version)) return false;
+   if ((major_version < 1) or ((major_version IS 1) and (minor_version < 5))) return false;
+
+   int monitor_count = 0;
+   auto monitors = XRRGetMonitors(XDisplay, DefaultRootWindow(XDisplay), True, &monitor_count);
+   if (!monitors) return false;
+   if (!monitor_count) {
+      XRRFreeMonitors(monitors);
+      return false;
+   }
+
+   int monitor_index = 0;
+   for (int i=0; i < monitor_count; i++) {
+      if (monitors[i].primary) {
+         monitor_index = i;
+         break;
+      }
+   }
+
+   auto result = false;
+   if ((monitors[monitor_index].width > 0) and (monitors[monitor_index].height > 0)) {
+      *Width  = monitors[monitor_index].width;
+      *Height = monitors[monitor_index].height;
+      result = true;
+   }
+
+   XRRFreeMonitors(monitors);
+   return result;
+}
 #endif
 
 std::recursive_mutex glInputLock;
@@ -277,6 +317,8 @@ ERR xr_set_display_mode(int *Width, int *Height)
    int count, i;
    int width = *Width;
    int height = *Height;
+
+   if (glX11.WSLg) return ERR::NoSupport;
 
    XRRScreenSize *sizes;
    if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
@@ -422,6 +464,15 @@ void unlock_graphics(void)
 
 int16_t glDGAAvailable = -1; // -1 indicates that we have not tried the setup process yet
 
+static bool detect_wslg(void)
+{
+   if (auto gui_enabled = getenv("WSL2_GUI_APPS_ENABLED")) {
+      if (gui_enabled[0] IS '1') return true;
+   }
+
+   return access("/mnt/wslg", F_OK) IS 0;
+}
+
 #ifdef XDGA_AVAILABLE
 APTR glDGAMemory = nullptr;
 
@@ -432,6 +483,18 @@ int x11DGAAvailable(APTR *VideoAddress, int *PixelsPerLine, int *BankSize)
 
    static int checked = true;
    *VideoAddress = NULL;
+
+   if (glX11.WSLg) {
+      glDGAAvailable = FALSE;
+      glDGAMemory = nullptr;
+      glDGAVideo = nullptr;
+      glX11.PixelsPerLine = 0;
+      glX11.BankSize = 0;
+
+      if (PixelsPerLine) *PixelsPerLine = 0;
+      if (BankSize) *BankSize = 0;
+      return glDGAAvailable;
+   }
 
    if (glDGAAvailable IS -1) {
       // Check for the DGA driver.  This will only work if the extension is version 2.0+ and we have permissions
@@ -650,6 +713,14 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, int InfoSize)
 
          Info->Width  = glRootWindow.width;
          Info->Height = glRootWindow.height;
+         #ifdef XRANDR_ENABLED
+            int monitor_width = 0;
+            int monitor_height = 0;
+            if (get_default_xrandr_monitor_size(&monitor_width, &monitor_height)) {
+               Info->Width  = int16_t(monitor_width);
+               Info->Height = int16_t(monitor_height);
+            }
+         #endif
          Info->AccelFlags = ACF(-1);
          #warning TODO: Get display density
          Info->VDensity = 96;
@@ -875,8 +946,6 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (!glHeadless) {
       // Attempt to open X11.  Use KOTUKU_XDISPLAY if set, otherwise use the DISPLAY variable.
 
-      log.msg("Attempting to open X11...");
-
       CSTRING strdisplay = getenv("KOTUKU_XDISPLAY");
       if (!strdisplay) strdisplay = getenv("DISPLAY");
 
@@ -884,16 +953,23 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          // Select the X messages that we want to receive from the root window.  This will also tell us if an X11 manager
          // is currently running or not (refer to the CatchRedirectError() exception routine).
 
-         XSetErrorHandler((XErrorHandler)CatchRedirectError);
+         glX11.WSLg = detect_wslg();
 
-         XSelectInput(XDisplay, RootWindow(XDisplay, DefaultScreen(XDisplay)),
-            LeaveWindowMask|EnterWindowMask|PointerMotionMask|
-            PropertyChangeMask|SubstructureRedirectMask| // SubstructureNotifyMask |
-            KeyPressMask|ButtonPressMask|ButtonReleaseMask);
+         if (glX11.WSLg) {
+            glX11.Manager = false;
+         }
+         else {
+            XSetErrorHandler((XErrorHandler)CatchRedirectError);
+
+            XSelectInput(XDisplay, RootWindow(XDisplay, DefaultScreen(XDisplay)),
+               LeaveWindowMask|EnterWindowMask|PointerMotionMask|
+               PropertyChangeMask|SubstructureRedirectMask| // SubstructureNotifyMask |
+               KeyPressMask|ButtonPressMask|ButtonReleaseMask);
+
+            XSync(XDisplay, 0);
+         }
 
          if (!getenv("KOTUKU_XDISPLAY")) setenv("KOTUKU_XDISPLAY", strdisplay, FALSE);
-
-         XSync(XDisplay, 0);
 
          XSetErrorHandler((XErrorHandler)CatchXError);
          XSetIOErrorHandler(CatchXIOError);
@@ -940,6 +1016,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       C_Default = XCreateFontCursor(XDisplay, XC_left_ptr);
 
       XWADeleteWindow = XInternAtom(XDisplay, "WM_DELETE_WINDOW", False);
+      XWATakeFocus    = XInternAtom(XDisplay, "WM_TAKE_FOCUS", False);
       atomSurfaceID   = XInternAtom(XDisplay, "KOTUKU_SCREENID", False);
 
       XGetWindowAttributes(XDisplay, DefaultRootWindow(XDisplay), &glRootWindow);
@@ -969,7 +1046,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       char buffer[512];
 
       int events;
-      if ((glX11.Manager) and (XRRQueryExtension(XDisplay, &events, &errors))) {
+      if ((not glX11.WSLg) and (glX11.Manager) and (XRRQueryExtension(XDisplay, &events, &errors))) {
          glXRRAvailable = true;
          if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
             glSizes = sizes;

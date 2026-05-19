@@ -256,7 +256,7 @@
         <li class="api-ref"><a href="tiri.html" class="rounded">Tiri</a></li>
         <li class="api-ref"><a href="vector.html" class="rounded">Vector</a></li>
         <li class="api-ref"><a href="xml.html" class="rounded">XML</a></li>
-        <li class="api-ref"><a href="xpath.html" class="rounded">XPath</a></li>
+        <li class="api-ref"><a href="xquery.html" class="rounded">XQuery</a></li>
       </ul>
     </div>
   </li>
@@ -368,6 +368,7 @@
               <li><a class="rounded" href="classes/http.html">HTTP</a></li>
               <li><a class="rounded" href="classes/netclient.html">NetClient</a></li>
               <li><a class="rounded" href="classes/netlookup.html">NetLookup</a></li>
+              <li><a class="rounded" href="classes/netserver.html">NetServer</a></li>
               <li><a class="rounded" href="classes/netsocket.html">NetSocket</a></li>
               <li><a class="rounded" href="classes/proxy.html">Proxy</a></li>
             </ul>
