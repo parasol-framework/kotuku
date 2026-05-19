@@ -364,8 +364,14 @@ ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
 
    log.traceBranch("%dx%d,%dx%d", x, y, width, height);
-   RedrawSurface(Self->UID, x, y, width, height, IRF::RELATIVE|IRF::IGNORE_CHILDREN);
-   gfx::ExposeSurface(Self->UID, x, y, width, height, EXF::REDRAW_VOLATILE);
+   if (auto error = RedrawSurface(Self->UID, x, y, width, height, IRF::RELATIVE|IRF::IGNORE_CHILDREN);
+         error != ERR::Okay) {
+      return error|ERR::Notified;
+   }
+   if (auto error = gfx::ExposeSurface(Self->UID, x, y, width, height, EXF::REDRAW_VOLATILE);
+         error != ERR::Okay) {
+      return error|ERR::Notified;
+   }
    return ERR::Okay|ERR::Notified;
 }
 
@@ -525,12 +531,24 @@ static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drw::InvalidateRegi
 
 
    if (Args) {
-      RedrawSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, IRF::RELATIVE);
-      gfx::ExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
+      if (auto error = RedrawSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, IRF::RELATIVE);
+            error != ERR::Okay) {
+         return error|ERR::Notified;
+      }
+      if (auto error = gfx::ExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height,
+            EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP); error != ERR::Okay) {
+         return error|ERR::Notified;
+      }
    }
    else {
-      RedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF::RELATIVE);
-      gfx::ExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
+      if (auto error = RedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF::RELATIVE);
+            error != ERR::Okay) {
+         return error|ERR::Notified;
+      }
+      if (auto error = gfx::ExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height,
+            EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP); error != ERR::Okay) {
+         return error|ERR::Notified;
+      }
    }
 
    return ERR::Okay|ERR::Notified;

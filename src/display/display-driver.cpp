@@ -1250,7 +1250,10 @@ static ERR MODExpunge(void)
 
    if (clDisplay) {
       clean_clipboard();
-      glClips.clear();
+      {
+         const std::lock_guard<std::recursive_mutex> lock(glClipboardLock);
+         glClips.clear();
+      }
    }
 
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
@@ -1517,10 +1520,9 @@ void free_egl(void)
 
    log.branch("Current Display: $%x", (int)glEGLDisplay);
 
-   glEGLState = EGL_TERMINATED; // The sooner we set this, the better.  It stops other threads from thinking that it's OK to keep using OpenGL.
-
    if (!pthread_mutex_lock(&glGraphicsMutex)) {
       log.msg("Lock granted - terminating EGL resources.");
+      glEGLState = EGL_TERMINATED;
 
       if (glEGLDisplay != EGL_NO_DISPLAY) {
          eglMakeCurrent(glEGLDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);

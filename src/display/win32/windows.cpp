@@ -231,7 +231,7 @@ char GetMonitorSizeFromEDID(const HKEY hDevRegKey, short *WidthMm, short *Height
 
     for (int i = 0, retValue = ERROR_SUCCESS; retValue != ERROR_NO_MORE_ITEMS; ++i) {
         retValue = RegEnumValue ( hDevRegKey, i, &valueName[0], &AcutalValueNameLength, nullptr, &dwType, EDIDdata, &edidsize);
-        if (retValue != ERROR_SUCCESS || 0 != _tcscmp(valueName,_T("EDID"))) continue;
+        if ((retValue != ERROR_SUCCESS) or (0 != _tcscmp(valueName,_T("EDID"))) or (edidsize <= 68)) continue;
         *WidthMm  = ((EDIDdata[68] & 0xF0) << 4) + EDIDdata[66];
         *HeightMm = ((EDIDdata[68] & 0x0F) << 8) + EDIDdata[67];
         return TRUE; // valid EDID found
@@ -277,14 +277,14 @@ void get_dpi(void)
    dd.cb = sizeof(dd);
    DWORD dev = 0; // device index
    char bFoundDevice = FALSE;
-   while (EnumDisplayDevices(0, dev, &dd, 0) && !bFoundDevice) {
+   while (EnumDisplayDevices(0, dev, &dd, 0) and !bFoundDevice) {
       DISPLAY_DEVICE ddMon;
       ZeroMemory(&ddMon, sizeof(ddMon));
       ddMon.cb = sizeof(ddMon);
       DWORD devMon = 0;
 
-      while (EnumDisplayDevices(dd.DeviceName, devMon, &ddMon, 0) && !bFoundDevice) {
-         if (ddMon.StateFlags & DISPLAY_DEVICE_ACTIVE && !(ddMon.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER)) {
+      while (EnumDisplayDevices(dd.DeviceName, devMon, &ddMon, 0) and !bFoundDevice) {
+         if ((ddMon.StateFlags & DISPLAY_DEVICE_ACTIVE) and !(ddMon.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER)) {
             // THIS IS UNTESTED
             char device_id[9], buffer[80];
             vsprintf(buffer, sizeof(buffer), "%s", ddMon.DeviceID);
@@ -649,7 +649,7 @@ static void HandleKeyPress(WPARAM value)
       result = ToUnicode(value, MapVirtualKey(value, 0), keystate, printable, sizeof(printable)/sizeof(printable[0]), 0);
 
       int flags = 0;
-      if ((value >= 0x60) && (value < 0x70)) flags |= KQ_NUM_PAD;
+      if ((value >= 0x60) and (value < 0x70)) flags |= KQ_NUM_PAD;
       if (LOWORD(GetKeyState(VK_CAPITAL)) == 1) flags |= KQ_CAPS_LOCK;
       if (keyconv[value]) MsgKeyPress(flags|glQualifiers, keyconv[value], printable[0]);
       else MSG("No equivalent key value for MS key %d.\n", (int)value);
@@ -1275,12 +1275,14 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
       SetLastError(0);
       if (!SetWindowLong(Window, GWL_EXSTYLE, GetWindowLong(Window, GWL_EXSTYLE) | WS_EX_LAYERED)) {
          if (!GetLastError()) {
+            DestroyWindow(Window);
             return nullptr;
          }
       }
 
       if (!Composite) {
          if (!SetLayeredWindowAttributes(Window, 0, Opacity, LWA_ALPHA)) {
+            DestroyWindow(Window);
             return nullptr;
          }
       }
@@ -1392,6 +1394,7 @@ int winDestroyWindow(HWND window)
    NOTIFYICONDATA notify;
 
    if (window == glMainScreen) glMainScreen = nullptr;
+   RevokeDragDrop(window);
 
    ZeroMemory(&notify, sizeof(notify));
    notify.cbSize = sizeof(notify);

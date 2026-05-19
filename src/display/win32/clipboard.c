@@ -884,6 +884,7 @@ void winCopyClipboard(void)
                      report_windows_hdrop((LPIDA)(((const char *)df) + (ptrdiff_t)df->pFiles), cut_operation, df->fWide);
                      GlobalUnlock(stgm.hGlobal);
                   }
+                  ReleaseStgMedium(&stgm);
                }
                break;
             }

@@ -47,6 +47,7 @@ static const FieldDef glDatatypes[] = {
 };
 
 std::list<ClipRecord> glClips;
+std::recursive_mutex glClipboardLock;
 static int glCounter = 1;
 static int glHistoryLimit = 1;
 static std::string glProcessID;
@@ -322,7 +323,9 @@ static ERR CLIPBOARD_AddObjects(objClipboard *Self, struct clip::AddObjects *Arg
             auto path = std::string("clipboard:") + glProcessID + "_" + get_datatype(datatype) + std::to_string(counter) + idx;
 
             auto file = objFile::create { fl::Path(path), fl::Flags(FL::WRITE|FL::NEW) };
-            if (file.ok()) acSaveToObject(*object, *file);
+            if (file.ok()) {
+               if (auto error = acSaveToObject(*object, *file); error != ERR::Okay) return log.warning(error);
+            }
             else return ERR::CreateFile;
          }
       }
@@ -382,7 +385,10 @@ static ERR CLIPBOARD_Clear(objClipboard *Self)
       CreateFolder(path.c_str(), PERMIT::READ|PERMIT::WRITE);
    }
 
-   glClips.clear();
+   {
+      const std::lock_guard<std::recursive_mutex> lock(glClipboardLock);
+      glClips.clear();
+   }
    return ERR::Okay;
 }
 
@@ -405,7 +411,11 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
    if (Args->Datatype IS DATA::TEXT) {
       log.msg("Copying text to the clipboard.");
 
-      add_text_to_host(Self, (CSTRING)Args->Buffer, Args->Size);
+      if (!Args->Buffer) return log.warning(ERR::NullArgs);
+      if (auto error = add_text_to_host(Self, (CSTRING)Args->Buffer, Args->Size);
+            (error != ERR::Okay) and (error != ERR::NoSupport)) {
+         return log.warning(error);
+      }
 
       std::vector<ClipItem> items = { std::string("clipboard:") + glProcessID + "_text" + std::to_string(glCounter++) + std::string(".000") };
       if (auto error = add_clip(CLIPTYPE::TEXT, items); error IS ERR::Okay) {
@@ -419,6 +429,8 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       else return log.warning(error);
    }
    else if ((Args->Datatype IS DATA::REQUEST) and ((Self->Flags & CPF::DRAG_DROP) != CPF::NIL))  {
+      if ((!Args->Buffer) or (!Args->Object)) return log.warning(ERR::NullArgs);
+
       auto request = (struct dcRequest *)Args->Buffer;
       log.branch("Data request from #%d received for item %d, datatype %d", Args->Object->UID, request->Item, request->Preference[0]);
 
@@ -441,11 +453,11 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
       if (error IS ERR::Terminate) Self->RequestHandler.Type = CALL::NIL;
 
-      return ERR::Okay;
+      return error;
    }
    else log.warning("Unrecognised data type %d.", int(Args->Datatype));
 
-   return ERR::Okay;
+   return ERR::NoSupport;
 }
 
 //********************************************************************************************************************
@@ -513,6 +525,8 @@ static ERR CLIPBOARD_GetFiles(objClipboard *Self, struct clip::GetFiles *Args)
       if (winCurrentClipboardID() != glLastClipID) winCopyClipboard();
 #endif
    }
+
+   const std::lock_guard<std::recursive_mutex> lock(glClipboardLock);
 
    if (glClips.empty()) return ERR::NoData;
 
@@ -613,6 +627,8 @@ static ERR CLIPBOARD_Remove(objClipboard *Self, struct clip::Remove *Args)
 
    log.branch("Datatype: $%x", int(Args->Datatype));
 
+   const std::lock_guard<std::recursive_mutex> lock(glClipboardLock);
+
    for (auto it=glClips.begin(); it != glClips.end();) {
       if ((it->Datatype & Args->Datatype) != CLIPTYPE::NIL) {
          if (it IS glClips.begin()) {
@@ -681,6 +697,8 @@ static ERR add_clip(CLIPTYPE Datatype, const std::vector<ClipItem> &Items, CEF F
 
    if (Items.empty()) return ERR::Args;
 
+   const std::lock_guard<std::recursive_mutex> lock(glClipboardLock);
+
    if ((Flags & CEF::EXTEND) != CEF::NIL) {
       // Search for an existing clip that matches the requested datatype
       for (auto it = glClips.begin(); it != glClips.end(); it++) {
@@ -723,7 +741,7 @@ static ERR add_clip(CSTRING String)
    if (auto error = add_clip(CLIPTYPE::TEXT, items); error IS ERR::Okay) {
       kt::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT::READ|PERMIT::WRITE) };
       if (file.ok()) {
-         file->write(String, strlen(String), 0);
+         if (auto error = file->write(String, strlen(String), 0); error != ERR::Okay) return log.warning(error);
          return ERR::Okay;
       }
       else return log.warning(ERR::CreateFile);

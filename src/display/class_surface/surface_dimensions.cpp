@@ -201,9 +201,7 @@ static ERR SET_Dimensions(extSurface *Self, DMF Value)
 
       resize.Z = 0;
       resize.Depth  = 0;
-      Action(acRedimension::id, Self, &resize);
-
-      return ERR::Okay;
+      return Action(acRedimension::id, Self, &resize);
    }
    else return ERR::Search;
 }
@@ -944,4 +942,3 @@ static ERR SET_YOffset(extSurface *Self, Unit *Value)
    }
    return ERR::Okay;
 }
-
