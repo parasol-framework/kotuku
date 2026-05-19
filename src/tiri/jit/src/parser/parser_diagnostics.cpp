@@ -64,6 +64,8 @@ static CSTRING error_code_name(ParserErrorCode Code)
       case ParserErrorCode::ThunkDirectCall:        return "Thunk direct call";
       case ParserErrorCode::RecoverySkippedTokens:  return "Recovery skipped tokens";
       case ParserErrorCode::AssignToConstant:       return "Assign to constant";
+      case ParserErrorCode::ConstRequiresInitialiser: return "Const requires initialiser";
+      case ParserErrorCode::InvalidAssignment:       return "Invalid assignment";
       default: return "Unknown";
    }
 }

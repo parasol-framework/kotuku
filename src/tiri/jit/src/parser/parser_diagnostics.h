@@ -36,7 +36,8 @@ enum class ParserErrorCode : uint16_t {
    TooManyReturnTypes,      // More than 8 return types declared
    RecoverySkippedTokens,   // Info: tokens skipped during error recovery
    AssignToConstant,        // Cannot assign to a registered constant
-   ConstRequiresInitialiser // Const variable requires an initialiser
+   ConstRequiresInitialiser, // Const variable requires an initialiser
+   InvalidAssignment        // Assignment form is syntactically valid but semantically forbidden
 };
 
 struct ParserDiagnostic {
