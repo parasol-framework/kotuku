@@ -79,7 +79,7 @@ THREADID get_thread_id(void)
 
 ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   kt::Log log;
+   kt::Log log(__FUNCTION__);
 
    auto msg = (ThreadMessage *)Message;
    auto uid = msg->ThreadID;
@@ -117,8 +117,7 @@ ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int Ms
 static void thread_entry_cleanup(void *Arg)
 {
    if (tlThreadCrashed) {
-      kt::Log log("thread_cleanup");
-      log.error("A thread in this program has crashed.");
+      kt::Log("thread_cleanup").error("A thread in this program has crashed.");
       if (tlThreadRef) {
          tlThreadRef->InterruptThreadID.store(0, std::memory_order_release);
          tlThreadRef->Active = false;
