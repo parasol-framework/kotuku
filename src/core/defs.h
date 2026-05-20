@@ -140,6 +140,26 @@ enum class EVG    : int;
 enum class AC     : int;
 enum class MSGID  : int;
 
+constexpr int LC_LIMIT = 3;
+
+struct LogCallback {
+   void (*Callback)(CSTRING, CSTRING, int, int, int);
+   int DepthLimit;
+   int LogLimit;
+   LogCallback() : Callback(nullptr), DepthLimit(-1), LogLimit(-1) {}
+};
+
+enum {
+   LCS_EMPTY,
+   LCS_WRITING,
+   LCS_ACTIVE
+};
+
+struct LogCallbackSlot {
+   LogCallback Callback;
+   std::atomic_uint8_t State = LCS_EMPTY;
+};
+
 struct THREADID : strong_typedef<THREADID, int> { // Internal thread ID, unrelated to the host platform.
    // Make constructors available
    using strong_typedef::strong_typedef;
@@ -668,6 +688,8 @@ extern std::string glDisplayDriver;
 extern bool glShowIO, glShowPrivate, glEnableCrashHandler;
 extern bool glJanitorActive;
 extern CONTYPE glConsoleType;
+extern std::array<LogCallbackSlot, LC_LIMIT> glLogCallbacks;
+extern std::atomic_uint8_t glLogCallbackCount;
 extern bool glLogThreads;
 extern int16_t glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;

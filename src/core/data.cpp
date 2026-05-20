@@ -160,6 +160,8 @@ int16_t glCrashStatus   = 0;
 int16_t glCodeIndex     = CP_FINISHED;
 int16_t glLastCodeIndex = 0;
 int16_t glSystemState   = -1; // Initialisation state is -1
+std::array<LogCallbackSlot, LC_LIMIT> glLogCallbacks;
+std::atomic_uint8_t glLogCallbackCount = 0;
 #ifndef NDEBUG
    int16_t glLogLevel = 2; // Thread global.  Default to warning level for debug builds.
 #else
@@ -172,7 +174,7 @@ bool glPrivileged   = false;
 bool glSync         = false;
 bool glLogThreads   = false;
 int8_t glProgramStage = STAGE_STARTUP;
-TSTATE glTaskState  = TSTATE::RUNNING;
+TSTATE glTaskState    = TSTATE::RUNNING;
 #ifdef __linux__
 int glInotify = -1;
 #endif
