@@ -237,6 +237,32 @@ end
    end
 end
 
+@Test function ArrayCopyArraySourceBounds()
+   dest = array<int> { 0, 0, 0 }
+   source = array<int> { 10, 20, 30 }
+
+   dest:copy(source, 0, 0, 2)
+   assert(dest[0] is 10 and dest[1] is 20 and dest[2] is 0, 'Valid array-to-array copy failed')
+
+   try
+      dest:copy(source, -1, 0, 1)
+   success
+      error('Should reject negative destination index before array copy')
+   end
+
+   try
+      dest:copy(source, 0, -1, 1)
+   success
+      error('Should reject negative source index before array copy')
+   end
+
+   try
+      dest:copy(source, 0, 0, -1)
+   success
+      error('Should reject negative count before array copy')
+   end
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Verify native array iteration uses the specialised iterator semantics.
 

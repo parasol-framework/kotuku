@@ -1117,7 +1117,17 @@ LJLIB_CF(array_copy)
       GCarray *src  = lj_lib_checkarray(L, 2);
       auto dest_idx = lj_lib_optint(L, 3, 0);
       auto src_idx  = lj_lib_optint(L, 4, 0);
-      auto count    = lj_lib_optint(L, 5, int32_t(src->len - src_idx));
+      if (dest_idx < 0 or src_idx < 0 or MSize(dest_idx) > dest->len or MSize(src_idx) > src->len) {
+         lj_err_caller(L, ErrMsg::IDXRNG);
+      }
+
+      auto count = lj_lib_optint(L, 5, int32_t(src->len - MSize(src_idx)));
+      if (count < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+      if (not (dest->elemtype IS src->elemtype)) lj_err_caller(L, ErrMsg::ARRTYPE);
+      if (count IS 0) return 0;
+      if (MSize(count) > src->len - MSize(src_idx) or MSize(count) > dest->len - MSize(dest_idx)) {
+         lj_err_caller(L, ErrMsg::IDXRNG);
+      }
 
       lj_array_copy(L, dest, dest_idx, src, src_idx, count);
       return 0;
