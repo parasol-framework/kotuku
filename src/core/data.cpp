@@ -155,7 +155,7 @@ size_t glPageSize = 4096; // Overwritten on opening the Core
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()
 FILE *glLogFile = nullptr;
 
-int64_t glTimeLog    = 0;
+int64_t glTimeLog       = 0;
 int16_t glCrashStatus   = 0;
 int16_t glCodeIndex     = CP_FINISHED;
 int16_t glLastCodeIndex = 0;
@@ -167,7 +167,7 @@ std::atomic_uint8_t glLogCallbackCount = 0;
 #else
    int16_t glLogLevel = 0;
 #endif
-int16_t glMaxDepth     = 20; // Thread global
+int16_t glMaxDepth  = 20; // Thread global
 bool glShowIO       = false;
 bool glShowPrivate  = false;
 bool glPrivileged   = false;

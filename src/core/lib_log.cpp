@@ -83,7 +83,7 @@ static bool log_output_is_file(void)
 /*********************************************************************************************************************
 
 -FUNCTION-
-AddLogCallback: Register a callback for log messages.
+SetLogCallback: Register a callback for log messages.
 
 This function registers `Callback` to observe log messages while logging is active.  The callback must use the
 `LOG_CALLBACK` signature:
@@ -91,40 +91,63 @@ This function registers `Callback` to observe log messages while logging is acti
 <pre>void Callback(CSTRING Header, CSTRING Message, INT Depth, INT MsgLevel, INT LogLevel)</pre>
 
 The `Header` argument identifies the origin of the message.  When the caller did not supply a header, Core derives one
-from the current action, method or application context.  The `Message` argument contains the formatted log text without
-the column padding, object context or trailing line feed that may be added to the normal log output.  The header and
-message pointers are valid only for the duration of the callback call, so a callback must copy either string if it
-needs to retain it.
+from the current action, method or application context.  The `Message` argument contains the formatted log text.  The
+header and message pointers are valid only for the duration of the callback call, so a callback must copy either string
+if it needs to retain it.  `Depth` is the current branch depth, `MsgLevel` is the severity or detail level assigned to
+the message, and `LogLevel` is the effective active log level after baseline adjustment.
 
-`Depth` is the current branch depth, `MsgLevel` is the severity or detail level assigned to the message, and `LogLevel`
-is the effective active log level after baseline adjustment.  `DepthLimit` suppresses callbacks when the current branch
-depth is greater than the limit, and `LogLimit` suppresses callbacks when the message level is greater than the limit.
-A negative `DepthLimit` or `LogLimit` disables the respective limit.  Messages emitted from inside a log callback are
-not forwarded recursively to log callbacks on the same thread.
+The `DepthLimit` and `LogLimit` parameters are used to reduce log noise.  `DepthLimit` suppresses callbacks when the
+current branch depth is greater than the limit, and `LogLimit` suppresses callbacks when the message level is
+greater than the limit.  Use a suitably large limit to receive all messages for that filter.  Messages emitted from
+inside a log callback are not forwarded recursively to log callbacks on the same thread.
 
-Passing `NULL` for `Callback` has no effect.  The number of callbacks that can be registered is limited by `LC_LIMIT`;
-when all callback slots are in use, additional registrations are ignored.
+Passing `NULL` for `Callback` has no effect.  Registering the same callback address again updates its `DepthLimit` and
+`LogLimit` values.  The number of unique callbacks that can be registered is limited; when all callback
+slots are in use, additional registrations are ignored.
 
 -INPUT-
 ptr Callback: Pointer to the log callback function to register.
-int DepthLimit: Maximum branch depth to forward to the callback, or a negative value for no limit.
-int LogLimit: Maximum message log level to forward to the callback, or a negative value for no limit.
+int DepthLimit: Maximum branch depth to forward to the callback.
+int LogLimit: Maximum message log level to forward to the callback.
 
 -END-
 
 *********************************************************************************************************************/
 
-void AddLogCallback(APTR Callback, int DepthLimit, int LogLimit)
+void SetLogCallback(APTR Callback, int DepthLimit, int LogLimit)
 {
    if (not Callback) return;
+
+   auto routine = (LOG_CALLBACK)Callback;
+
+   // Check if the callback is already registered.
+
+   for (auto &slot : glLogCallbacks) {
+      if (slot.State.load(std::memory_order_acquire) != LCS_ACTIVE) continue;
+
+      auto &callback = slot.Callback;
+      if (callback.Callback IS routine) {
+         if (LogLimit or DepthLimit) {
+            callback.LogLimit = LogLimit;
+            callback.DepthLimit = DepthLimit;
+         }
+         else {
+            slot.State.store(uint8_t(LCS_EMPTY), std::memory_order_release);
+            glLogCallbackCount.fetch_sub(1, std::memory_order_relaxed);
+         }
+         return;
+      }
+   }
+
+   // Store the callback in the first available slot.
 
    for (auto &slot : glLogCallbacks) {
       auto state = uint8_t(LCS_EMPTY);
 
       if (slot.State.compare_exchange_strong(state, uint8_t(LCS_WRITING), std::memory_order_acq_rel,
             std::memory_order_acquire)) {
-         slot.Callback.Callback   = (LOG_CALLBACK)Callback;
-         slot.Callback.LogLimit   = LogLimit;
+         slot.Callback.Callback = routine;
+         slot.Callback.LogLimit = LogLimit;
          slot.Callback.DepthLimit = DepthLimit;
          slot.State.store(uint8_t(LCS_ACTIVE), std::memory_order_release);
          glLogCallbackCount.fetch_add(1, std::memory_order_relaxed);
@@ -582,8 +605,8 @@ static int collect_log_callbacks(uint8_t MsgLevel, LogCallback **Callbacks)
 
       auto &callback = slot.Callback;
       if (not callback.Callback) continue;
-      if ((callback.DepthLimit >= 0) and (tlDepth > callback.DepthLimit)) continue;
-      if ((callback.LogLimit >= 0) and (MsgLevel > callback.LogLimit)) continue;
+      if (tlDepth > callback.DepthLimit) continue;
+      if (MsgLevel > callback.LogLimit) continue;
 
       Callbacks[total++] = &callback;
    }

@@ -9,7 +9,6 @@ FDEF argsAccessObject[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTI
 FDEF argsAction[] = { { "Error", FD_INT|FD_ERROR }, { "Action", FD_INT }, { "Object", FD_OBJECTPTR }, { "Parameters", FD_PTR }, { 0, 0 } };
 FDEF argsActionList[] = { { "Void", FD_VOID }, { "ActionTable:Actions", FD_ARRAY|FD_STRUCT|FD_RESULT }, { "Size", FD_INT|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
 FDEF argsAddInfoTag[] = { { "Error", FD_INT|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_CPP|FD_STR }, { "Value", FD_CPP|FD_STR }, { 0, 0 } };
-FDEF argsAddLogCallback[] = { { "Void", FD_VOID }, { "Callback", FD_PTR }, { "DepthLimit", FD_INT }, { "LogLimit", FD_INT }, { 0, 0 } };
 FDEF argsAddMsgHandler[] = { { "Error", FD_INT|FD_ERROR }, { "MsgType", FD_INT }, { "Routine", FD_FUNCTIONPTR }, { "MsgHandler:Handle", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsAdjustLogLevel[] = { { "Result", FD_INT }, { "Delta", FD_INT }, { 0, 0 } };
 FDEF argsAllocMemory[] = { { "Error", FD_INT|FD_ERROR }, { "Size", FD_INT }, { "Flags", FD_INT }, { "Address", FD_PTR|FD_RESULT }, { "ID", FD_INT|FD_RESULT }, { 0, 0 } };
@@ -79,6 +78,7 @@ FDEF argsScanDir[] = { { "Error", FD_INT|FD_ERROR }, { "DirInfo:Info", FD_PTR|FD
 FDEF argsScanMessages[] = { { "Error", FD_INT|FD_ERROR }, { "Handle", FD_INT|FD_RESULT }, { "Type", FD_INT }, { "Buffer", FD_BUFFER|FD_PTR|FD_MUTABLE }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsSendMessage[] = { { "Error", FD_INT|FD_ERROR }, { "Type", FD_INT }, { "Flags", FD_INT }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsSetDefaultPermissions[] = { { "Void", FD_VOID }, { "User", FD_INT }, { "Group", FD_INT }, { "Permissions", FD_INT }, { 0, 0 } };
+FDEF argsSetLogCallback[] = { { "Void", FD_VOID }, { "Callback", FD_PTR }, { "DepthLimit", FD_INT }, { "LogLimit", FD_INT }, { 0, 0 } };
 FDEF argsSetName[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsSetObjectContext[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }, { "Field", FD_PTR }, { "ActionID", FD_INT }, { 0, 0 } };
 FDEF argsSetOwner[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Owner", FD_OBJECTPTR }, { 0, 0 } };
@@ -115,7 +115,7 @@ const struct Function glFunctions[] = {
    { (APTR)InitObject, "InitObject", argsInitObject },
    { (APTR)VirtualVolume, "VirtualVolume", argsVirtualVolume },
    { (APTR)CurrentContext, "CurrentContext", argsCurrentContext },
-   { (APTR)AddLogCallback, "AddLogCallback", argsAddLogCallback },
+   { (APTR)SetLogCallback, "SetLogCallback", argsSetLogCallback },
    { (APTR)AdjustLogLevel, "AdjustLogLevel", argsAdjustLogLevel },
    { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { (APTR)FindObject, "FindObject", argsFindObject },

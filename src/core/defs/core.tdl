@@ -1057,7 +1057,7 @@ struct ScriptArg { // For use with sc::Exec
     "InitObject",
     "VirtualVolume",
     "CurrentContext",
-    "AddLogCallback",
+    "SetLogCallback",
     "AdjustLogLevel",
     "ReadFileToBuffer",
     "FindObject",

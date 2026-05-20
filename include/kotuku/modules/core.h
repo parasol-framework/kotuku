@@ -2061,7 +2061,7 @@ struct CoreBase {
    ERR (*_InitObject)(OBJECTPTR Object);
    ERR (*_VirtualVolume)(CSTRING Name, ...);
    OBJECTPTR (*_CurrentContext)(void);
-   void (*_AddLogCallback)(APTR Callback, int DepthLimit, int LogLimit);
+   void (*_SetLogCallback)(APTR Callback, int DepthLimit, int LogLimit);
    int (*_AdjustLogLevel)(int Delta);
    ERR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, int BufferSize, int *Result);
    ERR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
@@ -2161,7 +2161,7 @@ inline ERR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExi
 inline ERR InitObject(OBJECTPTR Object) { return CoreBase->_InitObject(Object); }
 template<class... Args> ERR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
-inline void AddLogCallback(APTR Callback, int DepthLimit, int LogLimit) { return CoreBase->_AddLogCallback(Callback,DepthLimit,LogLimit); }
+inline void SetLogCallback(APTR Callback, int DepthLimit, int LogLimit) { return CoreBase->_SetLogCallback(Callback,DepthLimit,LogLimit); }
 inline int AdjustLogLevel(int Delta) { return CoreBase->_AdjustLogLevel(Delta); }
 inline ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 inline ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
@@ -2256,7 +2256,7 @@ extern "C" ERR CheckMemoryExists(MEMORYID ID);
 extern "C" ERR CheckObjectExists(OBJECTID Object);
 extern "C" ERR InitObject(OBJECTPTR Object);
 extern "C" OBJECTPTR CurrentContext(void);
-extern "C" void AddLogCallback(APTR Callback, int DepthLimit, int LogLimit);
+extern "C" void SetLogCallback(APTR Callback, int DepthLimit, int LogLimit);
 extern "C" int AdjustLogLevel(int Delta);
 extern "C" ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *Result);
 extern "C" ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);

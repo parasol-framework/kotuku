@@ -192,22 +192,6 @@ struct FunctionField argsResize[] = {
   </function>
 
   <function>
-    <name>AddLogCallback</name>
-    <category>System</category>
-    <comment>Register a callback for log messages.</comment>
-    <prototype>void AddLogCallback(APTR Callback, INT DepthLimit, INT LogLimit)</prototype>
-    <tiriPrototype>AddLogCallback(Callback:any, DepthLimit:num, LogLimit:num)</tiriPrototype>
-    <input>
-      <param type="APTR" name="Callback">Pointer to the log callback function to register.</param>
-      <param type="INT" name="DepthLimit">Maximum branch depth to forward to the callback, or a negative value for no limit.</param>
-      <param type="INT" name="LogLimit">Maximum message log level to forward to the callback, or a negative value for no limit.</param>
-    </input>
-    <description>
-<p>This function registers a callback for log messages.  A negative <code>DepthLimit</code> or <code>LogLimit</code> disables the respective limit.</p>
-    </description>
-  </function>
-
-  <function>
     <name>AddMsgHandler</name>
     <category>Messages</category>
     <comment>Adds a new message handler for processing incoming messages.</comment>
@@ -1659,6 +1643,26 @@ if (not OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <description>
 <p>By default, user, group and permission information for new files is inherited either from the system defaults or from the file source in copy operations.  Use this function to override this behaviour with new default values.  All threads of the process will be affected.</p>
 <p>To revert behaviour to the default settings, set the <code>User</code> and/or <code>Group</code> values to <code>-1</code> and the <code>Permissions</code> value to zero.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>SetLogCallback</name>
+    <category>System</category>
+    <comment>Register a callback for log messages.</comment>
+    <prototype>void SetLogCallback(APTR Callback, INT DepthLimit, INT LogLimit)</prototype>
+    <tiriPrototype>SetLogCallback(Callback:any, DepthLimit:num, LogLimit:num)</tiriPrototype>
+    <input>
+      <param type="APTR" name="Callback">Pointer to the log callback function to register.</param>
+      <param type="INT" name="DepthLimit">Maximum branch depth to forward to the callback.</param>
+      <param type="INT" name="LogLimit">Maximum message log level to forward to the callback.</param>
+    </input>
+    <description>
+<p>This function registers <code>Callback</code> to observe log messages while logging is active.  The callback must use the <code>LOG_CALLBACK</code> signature:</p>
+<pre>void Callback(CSTRING Header, CSTRING Message, INT Depth, INT MsgLevel, INT LogLevel)</pre>
+<p>The <code>Header</code> argument identifies the origin of the message.  When the caller did not supply a header, Core derives one from the current action, method or application context.  The <code>Message</code> argument contains the formatted log text.  The header and message pointers are valid only for the duration of the callback call, so a callback must copy either string if it needs to retain it.  <code>Depth</code> is the current branch depth, <code>MsgLevel</code> is the severity or detail level assigned to the message, and <code>LogLevel</code> is the effective active log level after baseline adjustment.</p>
+<p>The <code>DepthLimit</code> and <code>LogLimit</code> parameters are used to reduce log noise.  <code>DepthLimit</code> suppresses callbacks when the current branch depth is greater than the limit, and <code>LogLimit</code> suppresses callbacks when the message level is greater than the limit.  Use a suitably large limit to receive all messages for that filter.  Messages emitted from inside a log callback are not forwarded recursively to log callbacks on the same thread.</p>
+<p>Passing <code>NULL</code> for <code>Callback</code> has no effect.  Registering the same callback address again updates its <code>DepthLimit</code> and <code>LogLimit</code> values.  The number of unique callbacks that can be registered is limited; when all callback slots are in use, additional registrations are ignored.</p>
     </description>
   </function>
 
