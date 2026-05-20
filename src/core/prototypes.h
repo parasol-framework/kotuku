@@ -14,6 +14,7 @@ extern "C" ERR CheckObjectExists(OBJECTID Object);
 extern "C" ERR InitObject(OBJECTPTR Object);
 extern "C" ERR VirtualVolume(CSTRING Name, ...);
 extern "C" OBJECTPTR CurrentContext();
+extern "C" void SetLogCallback(APTR Callback, int DepthLimit, int LogLimit);
 extern "C" int AdjustLogLevel(int Delta);
 extern "C" ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int * Result);
 extern "C" ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);

@@ -78,6 +78,7 @@ FDEF argsScanDir[] = { { "Error", FD_INT|FD_ERROR }, { "DirInfo:Info", FD_PTR|FD
 FDEF argsScanMessages[] = { { "Error", FD_INT|FD_ERROR }, { "Handle", FD_INT|FD_RESULT }, { "Type", FD_INT }, { "Buffer", FD_BUFFER|FD_PTR|FD_MUTABLE }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsSendMessage[] = { { "Error", FD_INT|FD_ERROR }, { "Type", FD_INT }, { "Flags", FD_INT }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsSetDefaultPermissions[] = { { "Void", FD_VOID }, { "User", FD_INT }, { "Group", FD_INT }, { "Permissions", FD_INT }, { 0, 0 } };
+FDEF argsSetLogCallback[] = { { "Void", FD_VOID }, { "Callback", FD_PTR }, { "DepthLimit", FD_INT }, { "LogLimit", FD_INT }, { 0, 0 } };
 FDEF argsSetName[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsSetObjectContext[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }, { "Field", FD_PTR }, { "ActionID", FD_INT }, { 0, 0 } };
 FDEF argsSetOwner[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Owner", FD_OBJECTPTR }, { 0, 0 } };
@@ -114,6 +115,7 @@ const struct Function glFunctions[] = {
    { (APTR)InitObject, "InitObject", argsInitObject },
    { (APTR)VirtualVolume, "VirtualVolume", argsVirtualVolume },
    { (APTR)CurrentContext, "CurrentContext", argsCurrentContext },
+   { (APTR)SetLogCallback, "SetLogCallback", argsSetLogCallback },
    { (APTR)AdjustLogLevel, "AdjustLogLevel", argsAdjustLogLevel },
    { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { (APTR)FindObject, "FindObject", argsFindObject },

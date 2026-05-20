@@ -545,6 +545,8 @@ typedef AC ACTIONID;
 typedef const std::vector<std::pair<std::string, uint32_t>> STRUCTS;
 typedef std::map<std::string, std::string, std::less<>> KEYVALUE;
 
+using LOG_CALLBACK = void(*)(CSTRING Header, CSTRING Message, int Depth, int MsgLevel, int LogLevel);
+
 #ifndef STRINGIFY
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
@@ -1055,6 +1057,7 @@ struct ScriptArg { // For use with sc::Exec
     "InitObject",
     "VirtualVolume",
     "CurrentContext",
+    "SetLogCallback",
     "AdjustLogLevel",
     "ReadFileToBuffer",
     "FindObject",

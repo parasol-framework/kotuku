@@ -735,6 +735,7 @@ are supported:
 <type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on ~AllocMemory().  The `Value` specifies the memory limit in bytes.</>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The `Value` must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</>
 <type name="PRIVILEGED_USER">If the `Value` is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</>
+<type name="LOG_DEPTH">Changes the branch depth of the log output (affects indenting).</>
 </>
 
 -INPUT-
