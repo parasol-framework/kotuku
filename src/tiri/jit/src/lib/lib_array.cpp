@@ -366,6 +366,137 @@ LJLIB_CF(array_table)
 }
 
 //********************************************************************************************************************
+
+struct array_range_span {
+   int32_t start;
+   int32_t stop;
+   int32_t step;
+   bool empty;
+};
+
+struct array_count_span {
+   MSize start;
+   MSize count;
+};
+
+static int32_t array_default_remaining(MSize Length, int32_t Start)
+{
+   if (Start < 0 or MSize(Start) > Length) return 0;
+   return int32_t(Length - MSize(Start));
+}
+
+static array_range_span array_strict_inclusive_span(lua_State *L, MSize Length, int32_t Start, int32_t Stop,
+   bool Explicit)
+{
+   if (Length IS 0) {
+      if (Explicit) lj_err_caller(L, ErrMsg::IDXRNG);
+      return { 0, -1, 1, true };
+   }
+
+   if (Start < 0 or Stop < 0 or MSize(Start) >= Length or MSize(Stop) >= Length) {
+      lj_err_caller(L, ErrMsg::IDXRNG);
+   }
+
+   if (Stop < Start) return { Start, Stop, 1, true };
+   return { Start, Stop, 1, false };
+}
+
+static array_count_span array_strict_count_span(lua_State *L, int32_t Start, int32_t Count, MSize Length)
+{
+   if (Start < 0 or Count < 0 or MSize(Start) > Length) lj_err_caller(L, ErrMsg::IDXRNG);
+
+   auto start = MSize(Start);
+   auto count = MSize(Count);
+   if (count > Length - start) lj_err_caller(L, ErrMsg::IDXRNG);
+   return { start, count };
+}
+
+static array_count_span array_clamped_count_span(lua_State *L, int32_t Start, int32_t Count, MSize Length)
+{
+   if (Start < 0 or Count < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+
+   auto start = MSize(Start);
+   if (start >= Length) return { Length, 0 };
+
+   auto count = MSize(Count);
+   if (count > Length - start) count = Length - start;
+   return { start, count };
+}
+
+static array_range_span array_range_to_span(const tiri_range *Range, MSize Length)
+{
+   int32_t len = int32_t(Length);
+   int32_t start = Range->start;
+   int32_t stop = Range->stop;
+   int32_t step = Range->step;
+
+   bool use_inclusive = Range->inclusive;
+   if (start < 0 or stop < 0) {
+      use_inclusive = true;
+      if (start < 0) start += len;
+      if (stop < 0) stop += len;
+   }
+
+   bool forward = start <= stop;
+   if (step IS 0) step = forward ? 1 : -1;
+   if (forward and step < 0) step = 1;
+   if (not forward and step > 0) step = -1;
+
+   int32_t effective_stop = stop;
+   if (not use_inclusive) {
+      if (forward) effective_stop = stop - 1;
+      else effective_stop = stop + 1;
+   }
+
+   if (forward) {
+      if (start < 0) start = 0;
+      if (effective_stop >= len) effective_stop = len - 1;
+   }
+   else {
+      if (start >= len) start = len - 1;
+      if (effective_stop < 0) effective_stop = 0;
+   }
+
+   bool empty = len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop);
+   return { start, effective_stop, step, empty };
+}
+
+static array_count_span array_copy_span(lua_State *L, int32_t DestIdx, MSize DestLen, int32_t SrcIdx, MSize SrcLen,
+   int32_t Count, bool ClampSource)
+{
+   if (DestIdx < 0 or SrcIdx < 0 or Count < 0 or MSize(DestIdx) > DestLen or MSize(SrcIdx) > SrcLen) {
+      lj_err_caller(L, ErrMsg::IDXRNG);
+   }
+
+   auto dest_idx = MSize(DestIdx);
+   auto src_idx = MSize(SrcIdx);
+   auto count = MSize(Count);
+
+   if (count > SrcLen - src_idx) {
+      if (ClampSource) count = SrcLen - src_idx;
+      else lj_err_caller(L, ErrMsg::IDXRNG);
+   }
+
+   if (count > DestLen - dest_idx) lj_err_caller(L, ErrMsg::IDXRNG);
+   return { dest_idx, count };
+}
+
+static bool array_find_start(int32_t Start, MSize Length, int32_t *Result)
+{
+   if (Start < 0) Start = 0;
+   if (MSize(Start) >= Length) return false;
+   *Result = Start;
+   return true;
+}
+
+static int array_push_find_result(lua_State *L, int32_t Result)
+{
+   if (Result >= 0) setintV(L->top++, Result);
+   else lua_pushnil(L);
+   return 1;
+}
+
+//********************************************************************************************************************
 // Usage: array.concat([Separator], [StringFormat], [Start], [End])
 //
 // Concatenates array elements into a string using the specified separator and optional format.
@@ -377,26 +508,17 @@ LJLIB_CF(array_table)
 LJLIB_CF(array_concat)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
-   const bool start_provided = !lua_isnoneornil(L, 4);
-   const bool end_provided = !lua_isnoneornil(L, 5);
-
-   if (arr->len < 1) {
-      if (start_provided or end_provided) lj_err_caller(L, ErrMsg::IDXRNG);
-      lua_pushstring(L, "");
-      return 1;
-   }
+   const bool start_provided = not lua_isnoneornil(L, 4);
+   const bool end_provided = not lua_isnoneornil(L, 5);
 
    size_t separator_len = 0;
    auto separator = luaL_optlstring(L, 2, "", &separator_len);
    auto format = lua_isnoneornil(L, 3) ? nullptr : luaL_checkstring(L, 3);
    auto start = start_provided ? lj_lib_checkint(L, 4) : 0;
-   auto end = end_provided ? lj_lib_checkint(L, 5) : int32_t(arr->len - 1);
+   auto end = end_provided ? lj_lib_checkint(L, 5) : array_default_remaining(arr->len, 0) - 1;
 
-   if (start < 0 or end < 0 or MSize(start) >= arr->len or MSize(end) >= arr->len) {
-      lj_err_caller(L, ErrMsg::IDXRNG);
-   }
-
-   if (end < start) {
+   auto span = array_strict_inclusive_span(L, arr->len, start, end, start_provided or end_provided);
+   if (span.empty) {
       lua_pushstring(L, "");
       return 1;
    }
@@ -449,10 +571,10 @@ LJLIB_CF(array_concat)
    }
 
    std::string result;
-   result.reserve(MSize(end - start + 1) * 16);
+   result.reserve(MSize(span.stop - span.start + 1) * 16);
 
-   for (MSize i = MSize(start); i <= MSize(end); i++) {
-      if (i > MSize(start)) result.append(separator, separator_len);
+   for (MSize i = MSize(span.start); i <= MSize(span.stop); i++) {
+      if (i > MSize(span.start)) result.append(separator, separator_len);
 
       if (format) {
          switch(arr->elemtype) {
@@ -475,9 +597,6 @@ LJLIB_CF(array_concat)
                else append_formatted(result, format, str.c_str());
                break;
             }
-            case AET::PTR:
-               append_formatted(result, format, arr->get<void **>()[i]);
-               break;
             case AET::FLOAT:
                append_formatted(result, format, arr->get<float>()[i]);
                break;
@@ -496,9 +615,6 @@ LJLIB_CF(array_concat)
             case AET::BYTE:
                append_formatted(result, format, arr->get<int8_t>()[i]);
                break;
-            case AET::TABLE:
-            case AET::STRUCT:
-            case AET::ARRAY:
             default:
                luaL_error(L, ERR::InvalidType, "concat() does not support %s types.", elemtype_name(arr->elemtype));
                return 0;
@@ -542,23 +658,9 @@ LJLIB_CF(array_concat)
             case AET::BYTE:
                append_integer(result, arr->get<uint8_t>()[i]);
                break;
-            case AET::PTR:
-               append_formatted(result, "%p", arr->get<void *>()[i]);
-               break;
-            case AET::TABLE:
-               // Tables cannot be meaningfully converted to strings
-               result += "table";
-               break;
-            case AET::ARRAY:
-               // Arrays cannot be meaningfully converted to strings
-               result += "array";
-               break;
-            case AET::STRUCT:
-               result += "struct";
-               break;
             default:
-               result += "?";
-               break;
+               luaL_error(L, ERR::InvalidType, "concat() does not support %s types.", elemtype_name(arr->elemtype));
+               return 0;
          }
       }
    }
@@ -783,16 +885,7 @@ LJLIB_CF(array_clear)
    GCarray *arr = lj_lib_checkarray(L, 1);
    if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
-   // For GC-tracked types, clear references to allow garbage collection
-   if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE or arr->elemtype IS AET::ARRAY or
-       arr->elemtype IS AET::OBJECT) {
-      auto refs = arr->get<GCRef>();
-      for (MSize i = 0; i < arr->len; i++) setgcrefnull(refs[i]);
-   }
-   else if (arr->elemtype IS AET::ANY) {
-      lj_bulk_nil_tvalue(arr->get<TValue>(), arr->len);
-   }
-
+   lj_array_clear_range(arr, 0, arr->len);
    arr->len = 0;
    return 0;
 }
@@ -826,52 +919,19 @@ LJLIB_CF(array_resize)
          if (not lj_array_grow(L, arr, target_len)) lj_err_caller(L, ErrMsg::ARREXT);
       }
 
-      // Zero-initialize new elements based on type
-
-      switch (arr->elemtype) {
-         case AET::STR_GC:
-         case AET::TABLE:
-         case AET::ARRAY:
-         case AET::OBJECT: {
-            auto refs = arr->get<GCRef>();
-            for (MSize i = old_len; i < target_len; i++) setgcrefnull(refs[i]);
-            break;
-         }
-
-         case AET::ANY: {
-            lj_bulk_nil_tvalue(&arr->get<TValue>()[old_len], target_len - old_len);
-            break;
-         }
-
-         default: {
-            // Numeric types: zero-fill the new region
-            void *start = (char*)arr->arraydata() + (old_len * arr->elemsize);
-            size_t bytes = (target_len - old_len) * arr->elemsize;
-            memset(start, 0, bytes);
-            break;
-         }
+      if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE or arr->elemtype IS AET::ARRAY or
+          arr->elemtype IS AET::OBJECT or arr->elemtype IS AET::ANY) {
+         lj_array_clear_range(arr, old_len, target_len - old_len);
+      }
+      else {
+         // Numeric types: zero-fill the new region
+         void *start = (char*)arr->arraydata() + (old_len * arr->elemsize);
+         size_t bytes = (target_len - old_len) * arr->elemsize;
+         memset(start, 0, bytes);
       }
    }
    else if (target_len < old_len) {
-      // Shrinking: clear references for GC-tracked types
-      switch (arr->elemtype) {
-         case AET::STR_GC:
-         case AET::TABLE:
-         case AET::ARRAY:
-         case AET::OBJECT: {
-            auto refs = arr->get<GCRef>();
-            for (MSize i = target_len; i < old_len; i++) setgcrefnull(refs[i]);
-            break;
-         }
-
-         case AET::ANY: {
-            lj_bulk_nil_tvalue(&arr->get<TValue>()[target_len], old_len - target_len);
-            break;
-         }
-
-         default:
-            break; // Numeric types don't need clearing
-      }
+      lj_array_clear_range(arr, target_len, old_len - target_len);
    }
 
    arr->len = target_len;
@@ -1111,59 +1171,35 @@ LJLIB_CF(array_copy)
 
    if (dest->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
-   size_t strlen;
+   size_t str_len;
    auto src_type = lua_type(L, 2);
    if (src_type IS LUA_TARRAY) {
       GCarray *src  = lj_lib_checkarray(L, 2);
       auto dest_idx = lj_lib_optint(L, 3, 0);
       auto src_idx  = lj_lib_optint(L, 4, 0);
-      if (dest_idx < 0 or src_idx < 0 or MSize(dest_idx) > dest->len or MSize(src_idx) > src->len) {
-         lj_err_caller(L, ErrMsg::IDXRNG);
-      }
+      auto count = lj_lib_optint(L, 5, array_default_remaining(src->len, src_idx));
 
-      auto count = lj_lib_optint(L, 5, int32_t(src->len - MSize(src_idx)));
-      if (count < 0) lj_err_caller(L, ErrMsg::IDXRNG);
       if (not (dest->elemtype IS src->elemtype)) lj_err_caller(L, ErrMsg::ARRTYPE);
-      if (count IS 0) return 0;
-      if (MSize(count) > src->len - MSize(src_idx) or MSize(count) > dest->len - MSize(dest_idx)) {
-         lj_err_caller(L, ErrMsg::IDXRNG);
-      }
+      auto span = array_copy_span(L, dest_idx, dest->len, src_idx, src->len, count, false);
+      if (span.count IS 0) return 0;
 
-      lj_array_copy(L, dest, dest_idx, src, src_idx, count);
+      lj_array_copy(L, dest, span.start, src, MSize(src_idx), span.count);
       return 0;
    }
    else if (src_type IS LUA_TSTRING) {
       // Treat string sequences as a byte array
-      auto str = lua_tolstring(L, 2, &strlen);
-      if (!str or strlen < 1) return 0; // Do nothing - no error necessary
+      auto str = lua_tolstring(L, 2, &str_len);
+      if (not str or str_len < 1) return 0; // Do nothing - no error necessary
 
       auto dest_idx   = lj_lib_optint(L, 3, 0);
       auto src_idx    = lj_lib_optint(L, 4, 0);
-      auto copy_total = lj_lib_optint(L, 5, int32_t(strlen - src_idx));
-
-      // Bounds check source
-
-      if ((src_idx < 0) or (size_t(src_idx) >= strlen)) {
-         luaL_error(L, ERR::OutOfRange, "Source index %d out of bounds (string length: %d).", src_idx, int(strlen));
-         return 0;
-      }
-      if (size_t(src_idx + copy_total) > strlen) copy_total = int32_t(strlen) - src_idx;
-
-      // Bounds check destination
-
-      if ((dest_idx < 0) or (MSize(dest_idx) >= dest->len)) {
-         luaL_error(L, ERR::OutOfRange, "Destination index %d out of bounds (array size: %d).", dest_idx, int(dest->len));
-         return 0;
-      }
-
-      if (MSize(dest_idx + copy_total) > dest->len) {
-         luaL_error(L, ERR::OutOfRange, "String copy would exceed array bounds (%d+%d > %d).", dest_idx, copy_total, int(dest->len));
-         return 0;
-      }
+      auto copy_total = lj_lib_optint(L, 5, array_default_remaining(MSize(str_len), src_idx));
+      auto span = array_copy_span(L, dest_idx, dest->len, src_idx, MSize(str_len), copy_total, true);
+      if (span.count IS 0) return 0;
 
       // Copy string bytes to array
-      auto data = dest->get<uint8_t>() + dest_idx;
-      memcpy(data, str + src_idx, copy_total);
+      auto data = dest->get<uint8_t>() + span.start;
+      memcpy(data, str + src_idx, span.count);
       return 0;
    }
    else if (src_type IS LUA_TTABLE) {
@@ -1176,33 +1212,17 @@ LJLIB_CF(array_copy)
 
       auto dest_idx   = lj_lib_optint(L, 3, 0);
       auto src_idx    = lj_lib_optint(L, 4, 0);
-      auto copy_total = lj_lib_optint(L, 5, int32_t(table_len - src_idx));
-
-      // Bounds check source index
-      if ((src_idx < 0) or (MSize(src_idx) >= table_len)) {
-         luaL_error(L, ERR::OutOfRange, "Source index %d out of bounds (table length: %d).", src_idx, int(table_len));
-         return 0;
-      }
-
-      if (MSize(copy_total) > table_len - MSize(src_idx)) copy_total = int32_t(table_len - MSize(src_idx));
-
-      // Check bounds for destination array
-      if ((dest_idx < 0) or (MSize(dest_idx) >= dest->len)) {
-         luaL_error(L, ERR::OutOfRange, "Destination index out of bounds: %d (array size: %d).", dest_idx, dest->len);
-         return 0;
-      }
-
-      if (MSize(dest_idx + copy_total) > dest->len) {
-         luaL_error(L, ERR::OutOfRange, "Table copy would exceed array bounds (%d+%d > %d).", dest_idx, copy_total, dest->len);
-         return 0;
-      }
+      auto copy_total = lj_lib_optint(L, 5, array_default_remaining(table_len, src_idx));
+      auto span = array_copy_span(L, dest_idx, dest->len, src_idx, table_len, copy_total, true);
+      if (span.count IS 0) return 0;
 
       // Copy table elements using ipairs-style iteration
 
-      auto c_index = dest_idx;
+      auto c_index = span.start;
 
-      for (int i = 0; i < copy_total; i++) {
-         lua_pushinteger(L, src_idx + i);
+      for (MSize i = 0; i < span.count; i++) {
+         int32_t source_index = src_idx + int32_t(i);
+         lua_pushinteger(L, source_index);
          lua_gettable(L, 2);        // Get table[src_idx + i]
 
          MSize dest_index = c_index + i;
@@ -1263,7 +1283,7 @@ LJLIB_CF(array_copy)
                   setgcrefnull(dest->get<GCRef>()[dest_index]);
                }
                else {
-                  luaL_error(L, ERR::InvalidType, "Expected object value at index %d.", src_idx + i);
+                  luaL_error(L, ERR::InvalidType, "Expected object value at index %d.", source_index);
                   lua_pop(L, 1);
                   return 0;
                }
@@ -1280,7 +1300,7 @@ LJLIB_CF(array_copy)
                   setgcrefnull(dest->get<GCRef>()[dest_index]);
                }
                else {
-                  luaL_error(L, ERR::InvalidType, "Expected table value at index %d.", src_idx + i);
+                  luaL_error(L, ERR::InvalidType, "Expected table value at index %d.", source_index);
                   lua_pop(L, 1);
                   return 0;
                }
@@ -1297,7 +1317,7 @@ LJLIB_CF(array_copy)
                   setgcrefnull(dest->get<GCRef>()[dest_index]);
                }
                else {
-                  luaL_error(L, ERR::InvalidType, "Expected array value at index %d.", src_idx + i);
+                  luaL_error(L, ERR::InvalidType, "Expected array value at index %d.", source_index);
                   lua_pop(L, 1);
                   return 0;
                }
@@ -1332,17 +1352,14 @@ LJLIB_CF(array_getString)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
 
-   if (arr->elemtype != AET::BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
+   if (not (arr->elemtype IS AET::BYTE)) lj_err_caller(L, ErrMsg::ARRSTR);
 
    auto start = lj_lib_optint(L, 2, 0);
-   if (start < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+   auto len = lj_lib_optint(L, 3, array_default_remaining(arr->len, start));
+   auto span = array_strict_count_span(L, start, len, arr->len);
 
-   auto len = lj_lib_optint(L, 3, arr->len - start);
-   if (len < 0) lj_err_caller(L, ErrMsg::IDXRNG);
-   if (start + len > int(arr->len)) lj_err_caller(L, ErrMsg::IDXRNG);
-
-   auto data = arr->get<const char>() + start;
-   GCstr *s = lj_str_new(L, data, len);
+   auto data = (span.count > 0) ? arr->get<const char>() + span.start : "";
+   GCstr *s = lj_str_new(L, data, span.count);
    setstrV(L, L->top++, s);
    return 1;
 }
@@ -1362,27 +1379,18 @@ LJLIB_CF(array_setString)
    GCarray *arr = lj_lib_checkarray(L, 1);
    GCstr *str = lj_lib_checkstr(L, 2);
 
-   if (arr->elemtype != AET::BYTE) lj_err_caller(L, ErrMsg::ARRSTR);
+   if (not (arr->elemtype IS AET::BYTE)) lj_err_caller(L, ErrMsg::ARRSTR);
    if (arr->flags & ARRAY_READONLY) lj_err_caller(L, ErrMsg::ARRRO);
 
    auto start = lj_lib_optint(L, 3, 0);
-   if (start < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+   auto span = array_clamped_count_span(L, start, int32_t(str->len), arr->len);
 
-   auto len = int(str->len);
-
-   // Clamp length to fit in array
-
-   if (start >= int(arr->len)) {
-      setintV(L->top++, 0);
-      return 1;
+   if (span.count > 0) {
+      auto data = arr->get<char>() + span.start;
+      memcpy(data, strdata(str), span.count);
    }
 
-   if (start + len > int(arr->len)) len = arr->len - start;
-
-   auto data = arr->get<char>() + start;
-   memcpy(data, strdata(str), len);
-
-   setintV(L->top++, int32_t(len));
+   setintV(L->top++, int32_t(span.count));
    return 1;
 }
 
@@ -1501,62 +1509,21 @@ LJLIB_CF(array_fill)
    // Check if third argument is a range
    tiri_range *r = check_range(L, 3);
    if (r) {
-      int32_t len = int32_t(arr->len);
-      int32_t start = r->start;
-      int32_t stop = r->stop;
-      int32_t step = r->step;
+      auto span = array_range_to_span(r, arr->len);
+      if (span.empty) return 0;
 
-      // Handle negative indices
-      bool use_inclusive = r->inclusive;
-      if (start < 0 or stop < 0) {
-         use_inclusive = true;
-         if (start < 0) start += len;
-         if (stop < 0) stop += len;
-      }
-
-      // Determine iteration direction
-      bool forward = (start <= stop);
-      if (step IS 0) step = forward ? 1 : -1;
-      if (forward and step < 0) step = 1;
-      if (not forward and step > 0) step = -1;
-
-      // Calculate effective stop for exclusive ranges
-      int32_t effective_stop = stop;
-      if (not use_inclusive) {
-         if (forward) effective_stop = stop - 1;
-         else effective_stop = stop + 1;
-      }
-
-      // Bounds clipping
-      if (forward) {
-         if (start < 0) start = 0;
-         if (effective_stop >= len) effective_stop = len - 1;
-      }
-      else {
-         if (start >= len) start = len - 1;
-         if (effective_stop < 0) effective_stop = 0;
-      }
-
-      // Check for empty/invalid ranges
-      if (len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop)) {
-         return 0;
-      }
-
-      fill_array_elements(arr, value, start, effective_stop, step);
+      fill_array_elements(arr, value, span.start, span.stop, span.step);
       return 0;
    }
 
    // Original integer-based fill
    auto start = lj_lib_optint(L, 3, 0);
-   if (start < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+   auto count = lj_lib_optint(L, 4, array_default_remaining(arr->len, start));
+   auto span = array_clamped_count_span(L, start, count, arr->len);
 
-   auto count = lj_lib_optint(L, 4, int32_t(arr->len - start));
-   if (count < 0) lj_err_caller(L, ErrMsg::IDXRNG);
+   if (span.count IS 0) return 0;
 
-   if (MSize(start) >= arr->len) return 0;
-   if (MSize(start + count) > arr->len) count = int32_t(arr->len) - start;
-
-   fill_array_elements(arr, value, start, start + count - 1, 1);
+   fill_array_elements(arr, value, int32_t(span.start), int32_t(span.start + span.count - 1), 1);
    return 0;
 }
 
@@ -1712,229 +1679,44 @@ LJLIB_CF(array_find)
 
    if (arr->elemtype IS AET::OBJECT) {
       auto search_uid = object_uid_from_value(L, 2);
-
-      // Check if third argument is a range
-      tiri_range *r = check_range(L, 3);
-      if (r) {
-         auto len = int32_t(arr->len);
-         int32_t start = r->start;
-         int32_t stop = r->stop;
-         int32_t step = r->step;
-
-         // Handle negative indices
-         bool use_inclusive = r->inclusive;
-         if (start < 0 or stop < 0) {
-            use_inclusive = true;
-            if (start < 0) start += len;
-            if (stop < 0) stop += len;
-         }
-
-         // Determine iteration direction
-         bool forward = (start <= stop);
-         if (step IS 0) step = forward ? 1 : -1;
-         if (forward and step < 0) step = 1;
-         if (not forward and step > 0) step = -1;
-
-         // Calculate effective stop for exclusive ranges
-         int32_t effective_stop = stop;
-         if (not use_inclusive) {
-            if (forward) effective_stop = stop - 1;
-            else effective_stop = stop + 1;
-         }
-
-         // Bounds clipping
-         if (forward) {
-            if (start < 0) start = 0;
-            if (effective_stop >= len) effective_stop = len - 1;
-         }
-         else {
-            if (start >= len) start = len - 1;
-            if (effective_stop < 0) effective_stop = 0;
-         }
-
-         // Check for empty/invalid ranges
-         if (len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop)) {
-            lua_pushnil(L);
-            return 1;
-         }
-
-         int32_t result = find_object_in_array(arr, search_uid, start, effective_stop, step);
-         if (result >= 0) {
-            setintV(L->top++, result);
-            return 1;
-         }
-         lua_pushnil(L);
-         return 1;
+      if (tiri_range *r = check_range(L, 3)) {
+         auto span = array_range_to_span(r, arr->len);
+         if (span.empty) return array_push_find_result(L, -1);
+         return array_push_find_result(L, find_object_in_array(arr, search_uid, span.start, span.stop, span.step));
       }
 
       auto start = lj_lib_optint(L, 3, 0);
-
-      if (start < 0) start = 0;
-      if (MSize(start) >= arr->len) {
-         lua_pushnil(L);
-         return 1;
-      }
-
-      int32_t result = find_object_in_array(arr, search_uid, start, int32_t(arr->len - 1), 1);
-      if (result >= 0) {
-         setintV(L->top++, result);
-         return 1;
-      }
-
-      lua_pushnil(L);
-      return 1;
+      if (not array_find_start(start, arr->len, &start)) return array_push_find_result(L, -1);
+      return array_push_find_result(L, find_object_in_array(arr, search_uid, start, int32_t(arr->len - 1), 1));
    }
    else if (arr->elemtype IS AET::STR_GC) { // Handle string arrays (STR_GC)
       GCstr *search_str = lj_lib_checkstr(L, 2);
 
-      // Check if third argument is a range
-      tiri_range *r = check_range(L, 3);
-      if (r) {
-         auto len = int32_t(arr->len);
-         int32_t start = r->start;
-         int32_t stop = r->stop;
-         int32_t step = r->step;
-
-         // Handle negative indices
-         bool use_inclusive = r->inclusive;
-         if (start < 0 or stop < 0) {
-            use_inclusive = true;
-            if (start < 0) start += len;
-            if (stop < 0) stop += len;
-         }
-
-         // Determine iteration direction
-         bool forward = (start <= stop);
-         if (step IS 0) step = forward ? 1 : -1;
-         if (forward and step < 0) step = 1;
-         if (not forward and step > 0) step = -1;
-
-         // Calculate effective stop for exclusive ranges
-         int32_t effective_stop = stop;
-         if (not use_inclusive) {
-            if (forward) effective_stop = stop - 1;
-            else effective_stop = stop + 1;
-         }
-
-         // Bounds clipping
-         if (forward) {
-            if (start < 0) start = 0;
-            if (effective_stop >= len) effective_stop = len - 1;
-         }
-         else {
-            if (start >= len) start = len - 1;
-            if (effective_stop < 0) effective_stop = 0;
-         }
-
-         // Check for empty/invalid ranges
-         if (len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop)) {
-            lua_pushnil(L);
-            return 1;
-         }
-
-         int32_t result = find_string_in_array(arr, search_str, start, effective_stop, step);
-         if (result >= 0) {
-            setintV(L->top++, result);
-            return 1;
-         }
-         lua_pushnil(L);
-         return 1;
+      if (tiri_range *r = check_range(L, 3)) {
+         auto span = array_range_to_span(r, arr->len);
+         if (span.empty) return array_push_find_result(L, -1);
+         return array_push_find_result(L, find_string_in_array(arr, search_str, span.start, span.stop, span.step));
       }
 
       auto start = lj_lib_optint(L, 3, 0);
-
-      if (start < 0) start = 0;
-      if (MSize(start) >= arr->len) {
-         lua_pushnil(L);
-         return 1;
-      }
-
-      int32_t result = find_string_in_array(arr, search_str, start, int32_t(arr->len - 1), 1);
-      if (result >= 0) {
-         setintV(L->top++, result);
-         return 1;
-      }
-
-      lua_pushnil(L);
-      return 1;
+      if (not array_find_start(start, arr->len, &start)) return array_push_find_result(L, -1);
+      return array_push_find_result(L, find_string_in_array(arr, search_str, start, int32_t(arr->len - 1), 1));
    }
 
    int ok;
    lua_Number value = lua_tonumberx(L, 2, &ok);
    if (not ok) luaL_error(L, "Unsupported value type '%s'", lua_typename(L, lua_type(L, 2)));
 
-   // Check if third argument is a range
-   tiri_range *r = check_range(L, 3);
-   if (r) {
-      int32_t len = int32_t(arr->len);
-      int32_t start = r->start;
-      int32_t stop = r->stop;
-      int32_t step = r->step;
-
-      // Handle negative indices
-      bool use_inclusive = r->inclusive;
-      if (start < 0 or stop < 0) {
-         use_inclusive = true;
-         if (start < 0) start += len;
-         if (stop < 0) stop += len;
-      }
-
-      // Determine iteration direction
-      bool forward = (start <= stop);
-      if (step IS 0) step = forward ? 1 : -1;
-      if (forward and step < 0) step = 1;
-      if (not forward and step > 0) step = -1;
-
-      // Calculate effective stop for exclusive ranges
-      int32_t effective_stop = stop;
-      if (not use_inclusive) {
-         if (forward) effective_stop = stop - 1;
-         else effective_stop = stop + 1;
-      }
-
-      // Bounds clipping
-      if (forward) {
-         if (start < 0) start = 0;
-         if (effective_stop >= len) effective_stop = len - 1;
-      }
-      else {
-         if (start >= len) start = len - 1;
-         if (effective_stop < 0) effective_stop = 0;
-      }
-
-      // Check for empty/invalid ranges
-      if (len IS 0 or (forward and start > effective_stop) or (not forward and start < effective_stop)) {
-         lua_pushnil(L);
-         return 1;
-      }
-
-      // Search within the range using optimised template dispatch
-      int32_t result = find_in_array(arr, value, start, effective_stop, step);
-      if (result >= 0) {
-         setintV(L->top++, result);
-         return 1;
-      }
-      lua_pushnil(L);
-      return 1;
+   if (tiri_range *r = check_range(L, 3)) {
+      auto span = array_range_to_span(r, arr->len);
+      if (span.empty) return array_push_find_result(L, -1);
+      return array_push_find_result(L, find_in_array(arr, value, span.start, span.stop, span.step));
    }
 
    // Original integer-based find
    auto start = lj_lib_optint(L, 3, 0);
-
-   if (start < 0) start = 0;
-   if (MSize(start) >= arr->len) {
-      lua_pushnil(L);
-      return 1;
-   }
-
-   int32_t result = find_in_array(arr, value, start, int32_t(arr->len - 1), 1);
-   if (result >= 0) {
-      setintV(L->top++, result);
-      return 1;
-   }
-
-   lua_pushnil(L);
-   return 1;
+   if (not array_find_start(start, arr->len, &start)) return array_push_find_result(L, -1);
+   return array_push_find_result(L, find_in_array(arr, value, start, int32_t(arr->len - 1), 1));
 }
 
 //********************************************************************************************************************
@@ -2523,38 +2305,8 @@ LJLIB_CF(array_filter)
             lj_err_caller(L, ErrMsg::ARREXT);
          }
 
-         // Copy element to result array
-         void *src = lj_array_index(arr, i);
-         void *dst = lj_array_index(result, result->len);
-
-         switch (result->elemtype) {
-            case AET::STR_GC:
-            case AET::TABLE:
-            case AET::ARRAY:
-            case AET::OBJECT: {
-               GCRef ref = *(GCRef *)src;
-               *(GCRef *)dst = ref;
-               if (gcref(ref)) lj_gc_objbarrier(L, result, gcref(ref));
-               break;
-            }
-            case AET::ANY: {
-               TValue *tv_src = (TValue *)src;
-               TValue *tv_dst = (TValue *)dst;
-               copyTV(L, tv_dst, tv_src);
-               if (tvisgcv(tv_src)) lj_gc_objbarrier(L, result, gcV(tv_src));
-               break;
-            }
-            case AET::FLOAT:  *(float *)dst = *(float *)src; break;
-            case AET::DOUBLE: *(double *)dst = *(double *)src; break;
-            case AET::INT64:  *(int64_t *)dst = *(int64_t *)src; break;
-            case AET::INT32:  *(int32_t *)dst = *(int32_t *)src; break;
-            case AET::INT16:  *(int16_t *)dst = *(int16_t *)src; break;
-            case AET::BYTE:   *(uint8_t *)dst = *(uint8_t *)src; break;
-            default:
-               memcpy(dst, src, arr->elemsize);
-               break;
-         }
          result->len = new_len;
+         lj_array_copy(L, result, new_len - 1, arr, i, 1);
       }
 
       lua_pop(L, 1);
@@ -2834,16 +2586,7 @@ LJLIB_CF(array_remove)
       else memmove(dst, src, shift_count * arr->elemsize);
    }
 
-   // Clear trailing elements for GC-tracked types
-   if (arr->elemtype IS AET::STR_GC or arr->elemtype IS AET::TABLE or arr->elemtype IS AET::OBJECT) {
-      auto refs = arr->get<GCRef>();
-      for (MSize i = arr->len - MSize(count); i < arr->len; i++) {
-         setgcrefnull(refs[i]);
-      }
-   }
-   else if (arr->elemtype IS AET::ANY) {
-      lj_bulk_nil_tvalue(&arr->get<TValue>()[arr->len - MSize(count)], MSize(count));
-   }
+   lj_array_clear_range(arr, arr->len - MSize(count), MSize(count));
 
    arr->len -= MSize(count);
    setintV(L->top++, int32_t(arr->len));
@@ -2867,51 +2610,18 @@ LJLIB_CF(array_clone)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
 
+   if (arr->elemtype IS AET::STRUCT) {
+      luaL_error(L, ERR::NoSupport, "array.clone() does not support struct types.");
+      return 0;
+   }
+
    // Create new array with same type and length
    GCarray *result = lj_array_new(L, arr->len, arr->elemtype);
    setarrayV(L, L->top++, result);
 
    if (arr->len IS 0) return 1;
 
-   // Copy elements
-   switch (arr->elemtype) {
-      case AET::STR_GC:
-      case AET::TABLE:
-      case AET::ARRAY:
-      case AET::OBJECT: {
-         // For GC-tracked types, copy references and set up barriers
-         auto src_refs = arr->get<GCRef>();
-         auto dst_refs = result->get<GCRef>();
-         for (MSize i = 0; i < arr->len; i++) {
-            GCRef ref = src_refs[i];
-            dst_refs[i] = ref;
-            if (gcref(ref)) lj_gc_objbarrier(L, result, gcref(ref));
-         }
-         break;
-      }
-      case AET::ANY: {
-         // For any-type arrays, copy TValues and set up barriers for GC values
-         auto src_slots = arr->get<TValue>();
-         auto dst_slots = result->get<TValue>();
-         lj_bulk_copy_tvalue(dst_slots, src_slots, arr->len);
-         for (MSize i = 0; i < arr->len; i++) {
-            if (tvisgcv(&src_slots[i])) lj_gc_objbarrier(L, result, gcV(&src_slots[i]));
-         }
-         break;
-      }
-      case AET::STRUCT: {
-         luaL_error(L, ERR::NoSupport, "array.clone() does not support struct types.");
-         break;
-      }
-      default: {
-         // For all other types, direct memory copy
-         void *src = arr->arraydata();
-         void *dst = result->arraydata();
-         memcpy(dst, src, size_t(arr->len) * arr->elemsize);
-         break;
-      }
-   }
-
+   lj_array_copy(L, result, 0, arr, 0, arr->len);
    return 1;
 }
 

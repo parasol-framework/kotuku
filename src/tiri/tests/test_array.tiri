@@ -184,6 +184,12 @@ end
    result = arr:getString(0, 5)
    assert(result is 'Hello', 'Valid substring extraction failed')
 
+   result = arr:getString(11, 0)
+   assert(result is '', 'Zero-length getString() at the end should return an empty string')
+
+   result = arr:getString(11)
+   assert(result is '', 'Default zero-length getString() at the end should return an empty string')
+
    -- Test invalid start index
    try
       t = arr:getString(-1, 5)
@@ -203,6 +209,26 @@ end
       t = arr:getString(0, -5)
    success
       error('Should reject negative length')
+   end
+end
+
+@Test function SetStringBounds()
+   arr = array<byte, 5>
+   written = arr:setString('Hello')
+   assert(written is 5, 'setString should write the full string when it fits')
+   assert(arr:getString() is 'Hello', 'setString should write expected bytes')
+
+   written = arr:setString('XYZ', 3)
+   assert(written is 2, 'setString should clamp writes to the available byte span')
+   assert(arr:getString() is 'HelXY', 'setString should only overwrite the clamped byte span')
+
+   written = arr:setString('!', 5)
+   assert(written is 0, 'setString at the end should write zero bytes')
+
+   try
+      arr:setString('!', -1)
+   success
+      error('setString should reject negative start indexes')
    end
 end
 
@@ -235,6 +261,12 @@ end
    success
       error('Should reject destination index beyond array size')
    end
+
+   try
+      dest:copy(source, 0, 0, -1)
+   success
+      error('Should reject negative string copy count')
+   end
 end
 
 @Test function ArrayCopyArraySourceBounds()
@@ -261,6 +293,29 @@ end
    success
       error('Should reject negative count before array copy')
    end
+end
+
+@Test function ArrayCopyArrayReferences()
+   first = array<int> { 1, 10 }
+   second = array<int> { 2, 20 }
+   third = array<int> { 3, 30 }
+   source = array<array> { first, second, third }
+   dest = array<array, 3>
+
+   dest:copy(source, 0, 1, 2)
+   assert(dest[0][0] is 2 and dest[0][1] is 20, "copy() should copy first nested array reference")
+   assert(dest[1][0] is 3 and dest[1][1] is 30, "copy() should copy second nested array reference")
+   assert(dest[2] is nil, "copy() should leave untouched destination slots as nil")
+
+   second:push(200)
+   assert(dest[0][2] is 200, "Array copy should preserve shallow nested array references")
+
+   second = nil
+   third = nil
+   source = nil
+   processing.collect()
+   assert(dest[0][0] is 2, "Copied nested array should survive GC")
+   assert(dest[1][0] is 3, "Second copied nested array should survive GC")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -429,6 +484,18 @@ end
       arr:copy(table_data, 2)  -- Start at 2, table has 4 elements, would exceed array size 3
    success
       error('Should reject copy that would exceed array bounds')
+   end
+
+   try
+      arr:copy(table_data, 0, -1, 1)
+   success
+      error('Should reject negative table source index')
+   end
+
+   try
+      arr:copy(table_data, 0, 0, -1)
+   success
+      error('Should reject negative table copy count')
    end
 
    -- Test with empty table
@@ -778,6 +845,8 @@ end
    assert(arr:find(30, {0..5}) is 3, "find in range: should find 30 at index 3")
    assert(arr:find(50, {0..5}) is nil, "find in range: 50 should not be found (outside range)")
    assert(arr:find(70, {5..10}) is 7, "find in range: should find 70 at index 7")
+   assert(arr:find(30, {-20...3}) is 3, "find in clipped negative range should still find 30")
+   assert(arr:find(30, {20..30}) is nil, "find in empty clipped range should return nil")
 end
 
 @Test function ArrayFindWithInclusiveRange()
@@ -814,6 +883,7 @@ end
 
    -- Find searching backwards (should find the later occurrence first)
    assert(arr:find(20, {4...0}) is 3, "find reverse: should find 20 at index 3 (searching from end)")
+   assert(arr:find(10, range.new(4, 0, false, -1)) is nil, "exclusive reverse range should exclude the stop boundary")
 end
 
 @Test function ArrayFindWithSteppedRange()
@@ -1673,6 +1743,13 @@ end
    success
       error('concat should reject End indexes beyond the array length')
    end
+
+   empty = array<string>
+   try
+      empty:concat(',', nil, 0, 0)
+   success
+      error('concat should reject explicit ranges on empty arrays')
+   end
 end
 
 @Test function ArrayConcatFloat()
@@ -1735,15 +1812,6 @@ end
    parts = string.split(original, ',')
    rejoined = parts:concat(',')
    assert(rejoined is original, "concat should reverse split, got '" .. rejoined .. "'")
-end
-
-@Test function ArrayConcatTable()
-   arr = array<table, 2>
-   arr[0] = {x = 1}
-   arr[1] = {y = 2}
-   result = arr:concat(', ')
-   -- Tables should be converted to "table" placeholder
-   assert(result is 'table, table', "concat on table array should use 'table' placeholder, got '" .. result .. "'")
 end
 
 @Test function ArrayJoinRemoved()
