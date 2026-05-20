@@ -1391,9 +1391,9 @@ class objSurface : public Object {
 
    using create = kt::Create<objSurface>;
 
-   OBJECTID DragID;     // This object-based field is used to control the dragging of objects around the display.
-   OBJECTID BufferID;   // The ID of the bitmap that manages the surface's graphics.
-   OBJECTID ParentID;   // The parent for a surface is defined here.
+   OBJECTID DragID;     // Defines the Surface that moves when this surface is dragged.
+   OBJECTID BufferID;   // Refers to the Bitmap that stores the surface's graphics.
+   OBJECTID ParentID;   // Identifies the parent Surface.
    OBJECTID PopOverID;  // Keeps a surface in front of another surface in the Z order.
    int      MinWidth;   // Prevents the width of a surface object from shrinking beyond a certain value.
    int      MinHeight;  // Prevents the height of a surface object from shrinking beyond a certain value.
@@ -1403,8 +1403,8 @@ class objSurface : public Object {
    int      RightLimit; // Prevents a surface object from moving beyond a given point on the right-hand side.
    int      TopLimit;   // Prevents a surface object from moving beyond a given point at the top of its container.
    int      BottomLimit; // Prevents a surface object from moving beyond a given point at the bottom of its container.
-   OBJECTID DisplayID;  // Refers to the Display object that is managing the surface's graphics.
-   RNF      Flags;      // Optional flags.
+   OBJECTID DisplayID;  // Refers to the Display object that manages the surface's graphics.
+   RNF      Flags;      // Controls optional surface behaviour.
    int      X;          // Determines the horizontal position of a surface object.
    int      Y;          // Determines the vertical position of a surface object.
    int      Width;      // Defines the width of a surface object.
@@ -1412,9 +1412,9 @@ class objSurface : public Object {
    OBJECTID RootID;     // Surface that is acting as a root for many surface children (useful when applying translucency)
    ALIGN    Align;      // This field allows you to align a surface area within its owner.
    DMF      Dimensions; // Indicates currently active dimension settings.
-   DRAG     DragStatus; // Indicates the draggable state when dragging is enabled.
-   PTC      Cursor;     // A default cursor image can be set here for changing the mouse pointer.
-   struct RGB8 Colour;  // String-based field for setting the background colour.
+   DRAG     DragStatus; // Reports the current drag state when dragging is enabled.
+   PTC      Cursor;     // Sets the pointer image used while the mouse is over the surface.
+   struct RGB8 Colour;  // Defines the background colour used when clearing the surface.
    RT       Type;       // Internal surface type flags
    int      Modal;      // Sets the surface as modal (prevents user interaction with other surfaces).
 
