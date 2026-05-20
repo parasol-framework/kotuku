@@ -62,6 +62,43 @@ static ERR add_clip(CLIPTYPE, const std::vector<ClipItem> &, CEF = CEF::NIL);
 static ERR add_clip(CSTRING);
 static ERR CLIPBOARD_AddObjects(objClipboard *, struct clip::AddObjects *);
 
+#ifdef _WIN32
+static std::u16string utf8_to_utf16(CSTRING String, int Length, bool SurrogatePairs)
+{
+   std::u16string result;
+   if (!String) return result;
+
+   auto str = String;
+   int chars, bytes = 0;
+   for (chars=0; (bytes < Length) and (str[bytes]); chars++) {
+      for (++bytes; (bytes < Length) and ((str[bytes] & 0xc0) IS 0x80); bytes++);
+   }
+
+   result.reserve(size_t(chars));
+
+   int pos = 0;
+   while (pos < bytes) {
+      int len = UTF8CharLength(str);
+      if ((len IS 0) or (pos + len > bytes)) break;
+
+      uint32_t codepoint;
+      if (SurrogatePairs and (len IS 1)) codepoint = *str;
+      else codepoint = UTF8ReadValue(str, nullptr);
+      if (SurrogatePairs and (codepoint >= 0x10000)) {
+         codepoint -= 0x10000;
+         result.push_back((char16_t)(0xD800 + (codepoint >> 10)));
+         result.push_back((char16_t)(0xDC00 + (codepoint & 0x3FF)));
+      }
+      else result.push_back((char16_t)codepoint);
+
+      str += len;
+      pos += len;
+   }
+
+   return result;
+}
+#endif
+
 //********************************************************************************************************************
 // Remove stale clipboard files that are over 24hrs old
 
@@ -140,30 +177,10 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
    for (auto &item : Items) {
       std::string path;
       if (ResolvePath(item.Path, RSF::NIL, &path) IS ERR::Okay) {
-         // Convert UTF-8 to UTF-16 manually
-         std::u16string dest;
-         const char *src = path.c_str();
-         while (*src) {
-            uint32_t codepoint = 0;
-            int len = UTF8CharLength(src);
-            if (len IS 1) codepoint = *src;
-            else codepoint = UTF8ReadValue(src, nullptr);
-
-            if (codepoint < 0x10000) {
-               dest.push_back((char16_t)codepoint);
-            }
-            else {
-               // Surrogate pair for codepoints >= 0x10000
-               codepoint -= 0x10000;
-               dest.push_back((char16_t)(0xD800 + (codepoint >> 10)));
-               dest.push_back((char16_t)(0xDC00 + (codepoint & 0x3FF)));
-            }
-            src += len;
-         }
-         list << dest << '\0';
+         list << utf8_to_utf16(path.c_str(), 0x7fffffff, true) << char16_t(0);
       }
    }
-   list << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
+   list << char16_t(0); // An extra null byte is required to terminate the list for Windows HDROP
 
    auto str = list.str();
    auto error = (ERR)winAddFileClip(str.c_str(), str.size() * sizeof(char16_t), Cut);
@@ -183,28 +200,12 @@ static ERR add_text_to_host(objClipboard *Self, CSTRING String, int Length = 0x7
    if ((Self->Flags & CPF::DRAG_DROP) != CPF::NIL) return ERR::NoSupport;
 
 #ifdef _WIN32
-   // Copy text to the windows clipboard.  This requires a conversion from UTF-8 to UTF-16.
+   // Copy text to the Windows clipboard.  This requires a conversion from UTF-8 to UTF-16.
 
-   auto str = String;
-   int chars, bytes = 0;
-   for (chars=0; (bytes < Length) and (str[bytes]); chars++) {
-      for (++bytes; (bytes < Length) and ((str[bytes] & 0xc0) IS 0x80); bytes++);
-   }
+   auto utf16 = utf8_to_utf16(String, Length, false);
+   utf16.push_back(0);
 
-   std::vector<uint16_t> utf16(size_t(chars + 1));
-
-   int i = 0;
-   int pos = 0;
-   while (pos < bytes) {
-      int len = UTF8CharLength(str);
-      if (pos + len > bytes) break; // Avoid corrupt UTF-8 sequences resulting in minor buffer overflow
-      utf16[i++] = (uint16_t)UTF8ReadValue(str, nullptr);
-      str += len;
-      pos += len;
-   }
-   utf16[i] = 0;
-
-   auto error = (ERR)winAddClip(int(CLIPTYPE::TEXT), utf16.data(), utf16.size() * sizeof(uint16_t), false);
+   auto error = (ERR)winAddClip(int(CLIPTYPE::TEXT), utf16.data(), utf16.size() * sizeof(char16_t), false);
    if (error != ERR::Okay) log.warning(error);
    return error;
 #else

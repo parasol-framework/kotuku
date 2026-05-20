@@ -1559,16 +1559,12 @@ void precalc_rgb(unsigned char *Data, unsigned char *Dest, int Width, int Height
    }
 }
 
-void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
-   int Height, int XDest, int YDest, int ScanWidth, int ScanHeight,
-   int BPP, unsigned char *Data, int RedMask, int GreenMask, int BlueMask, int AlphaMask, unsigned char Opacity)
+//********************************************************************************************************************
+
+static BITMAPV4HEADER make_bitmap_v4_header(int ScanWidth, int ScanHeight, int BPP, int RedMask, int GreenMask,
+   int BlueMask, int AlphaMask)
 {
-   POINT ptSrc = { 0, 0 };
-   SIZE size;
-   char direct_blit;
-   BITMAPV4HEADER info;
-   RECT rect;
-   unsigned char *alpha_data;
+   BITMAPV4HEADER info = { };
 
    info.bV4Size          = sizeof(info);
    info.bV4Width         = ScanWidth;     // Width in pixels
@@ -1591,10 +1587,29 @@ void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
 
    // NB: wingdi.h sometimes defines bV4Compression as bV4V4Compression
 
-   if (BPP == 24) info.bV4V4Compression = BI_RGB; // Must use BI_RGB in 24bit mode, or GDI does nothing
-   else info.bV4V4Compression = BI_BITFIELDS; // Must use BI_BITFIELDS and set the RGB masks in other packed modes
+   switch (BPP) {
+      case 24: info.bV4V4Compression = BI_RGB; break; // Must use BI_RGB in 24bit mode, or GDI does nothing
+      default: info.bV4V4Compression = BI_BITFIELDS; break; // Must set the RGB masks in other packed modes
+   }
 
-   if (info.bV4BitCount == 15) info.bV4BitCount = 16;
+   switch (info.bV4BitCount) {
+      case 15: info.bV4BitCount = 16; break;
+      default: break;
+   }
+
+   return info;
+}
+
+void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
+   int Height, int XDest, int YDest, int ScanWidth, int ScanHeight,
+   int BPP, unsigned char *Data, int RedMask, int GreenMask, int BlueMask, int AlphaMask, unsigned char Opacity)
+{
+   POINT ptSrc = { 0, 0 };
+   SIZE size;
+   char direct_blit;
+   auto info = make_bitmap_v4_header(ScanWidth, ScanHeight, BPP, RedMask, GreenMask, BlueMask, AlphaMask);
+   RECT rect;
+   unsigned char *alpha_data;
 
    direct_blit = TRUE;
    if (GetWindowLong(Window, GWL_EXSTYLE) & WS_EX_LAYERED) {
@@ -1719,33 +1734,7 @@ void winSetDIBitsToDevice(HDC hdc, int xdest, int ydest, int width, int height,
         int xstart, int ystart, int scanwidth, int scanheight, int bpp, void *data,
         int redmask, int greenmask, int bluemask)
 {
-   BITMAPV4HEADER info;
-
-   info.bV4Size          = sizeof(info);
-   info.bV4Width         = scanwidth;     // Width in pixels
-   info.bV4Height        = -scanheight;   // Height in pixels
-   info.bV4Planes        = 1;             // Always 1
-   info.bV4BitCount      = bpp;           // Bits per pixel
-   info.bV4SizeImage     = 0;
-   info.bV4XPelsPerMeter = 0;
-   info.bV4YPelsPerMeter = 0;
-   info.bV4ClrUsed       = 0;
-   info.bV4ClrImportant  = 0;
-   info.bV4RedMask       = redmask;
-   info.bV4GreenMask     = greenmask;
-   info.bV4BlueMask      = bluemask;
-   info.bV4AlphaMask     = 0;
-   info.bV4CSType        = 0;
-   info.bV4GammaRed      = 0;
-   info.bV4GammaGreen    = 0;
-   info.bV4GammaBlue     = 0;
-
-   // NB: wingdi.h sometimes defines bV4Compression as bV4V4Compression
-
-   if (bpp == 24) info.bV4V4Compression = BI_RGB; // Must use BI_RGB in 24bit mode, or GDI does nothing
-   else info.bV4V4Compression = BI_BITFIELDS; // Must use BI_BITFIELDS and set the RGB masks in other packed modes
-
-   if (info.bV4BitCount == 15) info.bV4BitCount = 16;
+   auto info = make_bitmap_v4_header(scanwidth, scanheight, bpp, redmask, greenmask, bluemask, 0);
 
    ystart = scanheight - (ystart + height);
    SetDIBitsToDevice(hdc, xdest, ydest, width, height, xstart, ystart, 0, scanheight, data, (BITMAPINFO *)&info, DIB_RGB_COLORS);
