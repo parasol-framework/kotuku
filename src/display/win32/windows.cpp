@@ -72,6 +72,7 @@ extern HINSTANCE glInstance;
 extern std::atomic<int> glLastPort;
 void KillMessageHook(void);
 
+static std::atomic<int> glPrimaryPort = -1;
 static HWND glMainScreen = 0;
 static char glCursorEntry = FALSE;
 static HCURSOR glDefaultCursor = 0;
@@ -795,13 +796,12 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
                //XInputEnable(FALSE);
             #endif
 
-            glLastPort = 0;
+            glLastPort = -1;
             for (DWORD i = 0; i < XUSER_MAX_COUNT; i++) {
                XINPUT_CAPABILITIES cap;
                if (!XInputGetCapabilities(i, XINPUT_FLAG_GAMEPAD, &cap)) {
                   glLastPort = i;
                }
-               else break;
             }
          }
          else {
@@ -1068,11 +1068,56 @@ void winDisableBatching(void)
 
 //********************************************************************************************************************
 
+static int winFindPrimaryController(void)
+{
+   for (DWORD port=0; port < XUSER_MAX_COUNT; port++) {
+      XINPUT_CAPABILITIES cap = { };
+      if (!XInputGetCapabilities(port, XINPUT_FLAG_GAMEPAD, &cap)) {
+         const auto primary_port = int(port);
+         glPrimaryPort.store(primary_port);
+         return primary_port;
+      }
+   }
+
+   return -1;
+}
+
+//********************************************************************************************************************
+
+static ERR winControllerError(DWORD Result)
+{
+   switch (Result) {
+      case ERROR_DEVICE_NOT_CONNECTED:
+         return ERR::Disconnected;
+
+      case ERROR_INVALID_PARAMETER:
+         return ERR::Args;
+
+      default:
+         return ERR::SystemCall;
+   }
+}
+
+//********************************************************************************************************************
+
 ERR winReadController(int Port, double *Values, CON &Buttons)
 {
    constexpr double tolerance = 0.08; // At-rest dead zone tolerance for thumb sticks
+
+   if (Port < 0) {
+      if (Port < -1) return ERR::OutOfRange;
+      const auto primary_port = glPrimaryPort.load();
+      if (primary_port >= 0) Port = primary_port;
+      else {
+         Port = winFindPrimaryController();
+         if (Port < 0) return ERR::Disconnected;
+      }
+   }
+   else if (Port >= int(XUSER_MAX_COUNT)) return ERR::OutOfRange;
+
    XINPUT_STATE state;
-   if (XInputGetState(Port, &state) == ERROR_SUCCESS) {
+   const auto result = XInputGetState(DWORD(Port), &state);
+   if (!result) {
       Values[0] = double(state.Gamepad.bLeftTrigger) * (1.0 / 255.0);
       Values[1] = double(state.Gamepad.bRightTrigger) * (1.0 / 255.0);
       Values[2] = std::clamp(double(state.Gamepad.sThumbLX) * (1.0 / 32767.0), -1.0, 1.0);
@@ -1092,6 +1137,7 @@ ERR winReadController(int Port, double *Values, CON &Buttons)
          Values[5] = 0;
       }
 
+      Buttons = CON::NIL;
       if (state.Gamepad.wButtons) {
          if (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) Buttons |= CON::DPAD_UP;
          if (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) Buttons |= CON::DPAD_DOWN;
@@ -1108,10 +1154,13 @@ ERR winReadController(int Port, double *Values, CON &Buttons)
          if (state.Gamepad.wButtons & XINPUT_GAMEPAD_X) Buttons |= CON::GAMEPAD_W;
          if (state.Gamepad.wButtons & XINPUT_GAMEPAD_Y) Buttons |= CON::GAMEPAD_N;
       }
-      else Buttons = CON::NIL; //state.Gamepad.wButtons;
       return ERR::Okay;
    }
-   else return ERR::SystemCall;
+   else {
+      auto primary_port = Port;
+      glPrimaryPort.compare_exchange_strong(primary_port, -1);
+      return winControllerError(result);
+   }
 }
 
 //********************************************************************************************************************
