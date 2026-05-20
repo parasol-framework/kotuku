@@ -520,7 +520,7 @@ ERR track_layer(extSurface *Self)
    record.Flags         = Self->Flags;
    record.X             = Self->X;
    record.Y             = Self->Y;
-   record.Opacity       = Self->Opacity;
+   record.Opacity       = surface_opacity_to_byte(Self->Opacity);
    record.BitsPerPixel  = Self->BitsPerPixel;
    record.BytesPerPixel = Self->BytesPerPixel;
    record.LineWidth     = Self->LineWidth;
@@ -643,7 +643,7 @@ ERR update_surface_copy(extSurface *Self)
       list[i].Right         = absx + Self->Width;
       list[i].Bottom        = absy + Self->Height;
       list[i].Flags         = Self->Flags;
-      list[i].Opacity       = Self->Opacity;
+      list[i].Opacity       = surface_opacity_to_byte(Self->Opacity);
       list[i].BitsPerPixel  = Self->BitsPerPixel;
       list[i].BytesPerPixel = Self->BytesPerPixel;
       list[i].LineWidth     = Self->LineWidth;

@@ -1329,7 +1329,7 @@ static ERR SURFACE_Init(extSurface *Self)
             fl::BitsPerPixel(glpDisplayDepth),
             fl::RefreshRate(glpRefreshRate),
             fl::Flags(scrflags),
-            fl::Opacity(Self->Opacity * (100.0 / 255.0)),
+            fl::Opacity(Self->Opacity * 100.0),
             fl::PopOver(pop_display),
             fl::WindowHandle((APTR)Self->DisplayWindow))) { // Sometimes a window may be preset, e.g. for a web plugin
 
@@ -1926,7 +1926,7 @@ static ERR SURFACE_NewObject(extSurface *Self)
    Self->RightLimit  = -1000000000;
    Self->TopLimit    = -1000000000;
    Self->BottomLimit = -1000000000;
-   Self->Opacity     = 255;
+   Self->Opacity     = 1.0;
    Self->RootID      = Self->UID;
    Self->WindowType  = glpWindowType;
    return ERR::Okay;
@@ -2255,8 +2255,8 @@ SetOpacity: Alters the opacity of a surface object.
 This method will change the opacity of the surface and execute a redraw to make the changes to the display.
 
 -INPUT-
-double Value: The new opacity value between 0 and 100% (ignored if you have set the Adjustment parameter).
-double Adjustment: Adjustment value to add or subtract from the existing opacity (set to zero if you want to set a fixed Value instead).
+double Value: The new opacity multiplier between `0.0` and `1.0` (ignored if you have set the Adjustment parameter).
+double Adjustment: Adjustment to add to the current opacity multiplier.  Set this to zero to assign `Value` directly.
 
 -ERRORS-
 Okay: The opacity of the surface object was changed.
@@ -2277,7 +2277,7 @@ static ERR SURFACE_SetOpacity(extSurface *Self, struct drw::SetOpacity *Args)
 
    double value;
    if (Args->Adjustment) {
-      value = (Self->Opacity * (100.0 / 255.0)) + Args->Adjustment;
+      value = Self->Opacity + Args->Adjustment;
       SET_Opacity(Self, value);
    }
    else {

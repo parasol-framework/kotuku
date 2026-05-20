@@ -196,9 +196,8 @@ static ERR SET_Movement(extSurface *Self, int Flags)
 -FIELD-
 Opacity: Defines the translucency applied when drawing a surface.
 
-`Opacity` is expressed as a percentage.  The default value is `100`, which draws the surface as fully opaque.  Lower
-values make the surface more transparent; values below zero are treated as fully transparent and values of `100` or
-greater are treated as fully opaque.
+`Opacity` is expressed as a normalised multiplier.  The default value of `1.0` draws the surface as fully opaque.  Lower
+values make the surface more transparent.  Values outside the allowable range are clipped.
 
 Non-opaque surfaces are drawn by rendering the surface content to its internal buffer and blending it with the
 background graphics.  This can be costly, and the pre-copy feature may give better results for some compositions.
@@ -209,25 +208,25 @@ Translucency can significantly increase CPU usage.
 
 static ERR GET_Opacity(extSurface *Self, double *Value)
 {
-   *Value = Self->Opacity * 100 / 255;
+   *Value = Self->Opacity;
    return ERR::Okay;
 }
 
 static ERR SET_Opacity(extSurface *Self, double Value)
 {
-   int opacity;
+   double opacity;
 
    // NB: It is OK to set the opacity on a surface object when it does not own its own bitmap, as the aftercopy
    // routines will refer the copy so that it starts from the bitmap owner.
 
-   if (Value >= 100) {
-      opacity = 255;
+   if (Value >= 1.0) {
+      opacity = 1.0;
       if (opacity IS Self->Opacity) return ERR::Okay;
       Self->Flags &= ~RNF::AFTER_COPY;
    }
    else {
-      if (Value < 0) opacity = 0;
-      else opacity = (Value * 255) / 100;
+      if (Value < 0.0) opacity = 0.0;
+      else opacity = Value;
       if (opacity IS Self->Opacity) return ERR::Okay;
       Self->Flags |= RNF::AFTER_COPY; // See PrepareBackground() to see what these flags are for
 
