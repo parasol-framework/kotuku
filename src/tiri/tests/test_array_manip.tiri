@@ -1406,6 +1406,25 @@ end
    assert(arr[9] is 0, "fill stepped: arr[9] should be 0")
 end
 
+@Test function ArrayFillWithClippedAndEmptyRange()
+   arr = array<int, 5>
+   arr:fill(0)
+
+   arr:fill(11, {-20...1})
+   assert(arr[0] is 11 and arr[1] is 11, "fill should clip negative ranges to the array start")
+   assert(arr[2] is 0, "fill should not extend past the clipped stop")
+
+   arr:fill(22, {20..30})
+   assert(arr[0] is 11 and arr[1] is 11 and arr[2] is 0 and arr[3] is 0 and arr[4] is 0,
+      "empty clipped fill ranges should leave the array unchanged")
+
+   arr:fill(33, 4, 10)
+   assert(arr[4] is 33, "integer fill should clamp count to the remaining span")
+
+   arr:fill(44, 5, 10)
+   assert(arr[4] is 33, "integer fill starting at the end should be a no-op")
+end
+
 @Test function ArrayFillOriginalSyntax()
    -- Verify original syntax still works
    arr = array<int, 10>
