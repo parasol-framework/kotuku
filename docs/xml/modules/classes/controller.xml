@@ -70,8 +70,8 @@
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>Set the port number to choose the controller that will be queried for state changes.  The default of zero is assigned to the primary controller.</p>
-<p>The port number can be changed at any time, so multiple controllers can be queried through one interface at the cost of overwriting the previous state.  Check <fl>TotalPorts</fl> if your program supports more than one controller.</p>
+<p>Set the port number to choose the controller that will be queried for state changes.  The default of -1 is used to indicate the primary controller.  Fixed port numbers start from zero.  There is no guarantee that the existence of a port means that a controller is connected to it.</p>
+<p>It is acceptable to set the port number post-initialisation, so multiple controllers can be queried through one interface at the cost of overwriting the previous state.  Check <fl>TotalPorts</fl> if your program supports more than one controller.</p>
       </description>
     </field>
 
@@ -98,9 +98,12 @@
 
     <field>
       <name>TotalPorts</name>
-      <comment>Reports the total number of controllers connected to the system.</comment>
+      <comment>Reports the number of controller ports that should be scanned.</comment>
       <access read="G">Get</access>
       <type>INT</type>
+      <description>
+<p>Port values range from zero to <code>TotalPorts - 1</code>.  Some platforms, including Linux, may expose sparse controller indices, so an individual port in that range can fail to query if its device is not currently connected.</p>
+      </description>
     </field>
 
   </fields>

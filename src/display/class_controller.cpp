@@ -31,6 +31,14 @@ extern ERR linuxReadController(int Port, double *Values, CON &Buttons);
 extern ERR linuxGetControllerPorts(int &Value);
 #endif
 
+//********************************************************************************************************************
+
+static ERR CONTROLLER_NewObject(objController *Self)
+{
+   Self->Port = -1;
+   return ERR::Okay;
+}
+
 /*********************************************************************************************************************
 -ACTION-
 Query: Get the current controller state.
@@ -75,16 +83,18 @@ RightStickX: Right analog stick value for X axis, between -1.0 and 1.0.
 RightStickY: Right analog stick value for Y axis, between -1.0 and 1.0.
 
 -FIELD-
-Buttons: JET button values expressed as bit-fields.
+Buttons: Button values expressed as bit-fields.
 
 -FIELD-
 Port: The port number assigned to the controller.
 
-Set the port number to choose the controller that will be queried for state changes.  The default of zero is assigned
-to the primary controller.
+Set the port number to choose the controller that will be queried for state changes.  The default of -1 is used
+to indicate the primary controller.  Fixed port numbers start from zero.  There is no guarantee that the existence
+of a port means that a controller is connected to it.
 
-The port number can be changed at any time, so multiple controllers can be queried through one interface at the cost
-of overwriting the previous state.  Check #TotalPorts if your program supports more than one controller.
+It is acceptable to set the port number post-initialisation, so multiple controllers can be queried through one
+interface at the cost of overwriting the previous state.  Check #TotalPorts if your program supports more than one
+controller.
 
 -FIELD-
 TotalPorts: Reports the number of controller ports that should be scanned.
@@ -97,7 +107,7 @@ indices, so an individual port in that range can fail to query if its device is 
 static ERR CONTROLLER_GET_TotalPorts(extSurface *Self, int &Value)
 {
 #ifdef _WIN32
-   if (glLastPort.load() >= 0) Value = glLastPort.load();
+   if (glLastPort.load() >= 0) Value = glLastPort.load() + 1;
    else Value = 0;
    return ERR::Okay;
 #elif defined(__linux__)
@@ -118,8 +128,8 @@ static const FieldArray clFields[] = {
    { "LeftStickY",   FDF_DOUBLE|FDF_R },
    { "RightStickX",  FDF_DOUBLE|FDF_R },
    { "RightStickY",  FDF_DOUBLE|FDF_R },
-   { "Buttons",      FDF_INT|FDF_R },
-   { "Port",         FDF_INT|FDF_RI },
+   { "Buttons",      FDF_INT|FDF_R, nullptr, nullptr, &clControllerButtons },
+   { "Port",         FDF_INT|FDF_RW },
    { "TotalPorts",   FDF_VIRTUAL|FDF_INT|FDF_R, CONTROLLER_GET_TotalPorts },
    END_FIELD
 };

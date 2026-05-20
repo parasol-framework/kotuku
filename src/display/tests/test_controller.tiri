@@ -1,9 +1,10 @@
-   mDisplay ?= mod.load('display')
+
+   mGfx ?= mod.load('display')
 
 ----------------------------------------------------------------------------------------------------------------------
 
 @Test function ControllerAvailability()
-   local controller = obj.new('controller', { port = 0 })
+   local controller = obj.new('controller', { })
    local total_ports = controller.totalPorts
 
    assert(total_ports >= 0, 'Controller totalPorts should not be negative.')

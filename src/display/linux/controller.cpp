@@ -29,6 +29,7 @@ struct LinuxController {
    std::array<double, 6> values = { };
    CON button_state = CON::NIL;
 
+   // Releases the joystick device handle owned by this controller slot.
    ~LinuxController()
    {
       if (fd >= 0) close(fd);
@@ -41,24 +42,26 @@ struct LinuxController {
 
 std::array<LinuxController, MAX_CONTROLLER_PORTS> glLinuxControllers;
 std::mutex glControllerLock;
+int glPrimaryPort = -1;
 
-/*********************************************************************************************************************/
+//********************************************************************************************************************
+// Converts a signed Linux joystick axis value to Kōtuku's normalised [-1, 1] axis range.
 
-double normalise_axis(int16_t Value)
+inline double normalise_axis(int16_t Value)
 {
    return std::clamp(double(Value) * (1.0 / 32767.0), -1.0, 1.0);
 }
 
-/*********************************************************************************************************************/
+// Converts a signed Linux trigger axis value to Kōtuku's normalised [0, 1] trigger range.
 
-double normalise_trigger(int16_t Value)
+inline double normalise_trigger(int16_t Value)
 {
    return std::clamp((normalise_axis(Value) + 1.0) * 0.5, 0.0, 1.0);
 }
 
-/*********************************************************************************************************************/
+// Applies the shared dead zone to a two-axis thumb stick.
 
-void apply_stick_tolerance(double &X, double &Y)
+inline void apply_stick_tolerance(double &X, double &Y)
 {
    if ((X < STICK_TOLERANCE) and (X > -STICK_TOLERANCE) and
        (Y < STICK_TOLERANCE) and (Y > -STICK_TOLERANCE)) {
@@ -67,17 +70,18 @@ void apply_stick_tolerance(double &X, double &Y)
    }
 }
 
-/*********************************************************************************************************************/
+// Adds or removes a controller button flag from the current button state.
 
-void set_button(CON &Buttons, CON Flag, bool Pressed)
+inline void set_button(CON &Buttons, CON Flag, bool Pressed)
 {
    if (Pressed) Buttons |= Flag;
    else Buttons = CON(uint32_t(Buttons) & ~uint32_t(Flag));
 }
 
-/*********************************************************************************************************************/
+//********************************************************************************************************************
+// Maps legacy sequential button numbers to the common Kōtuku gamepad layout.
 
-CON fallback_button(uint8_t Number)
+static CON fallback_button(uint8_t Number)
 {
    switch (Number) {
       case 0:  return CON::GAMEPAD_S;
@@ -94,9 +98,10 @@ CON fallback_button(uint8_t Number)
    }
 }
 
-/*********************************************************************************************************************/
+//********************************************************************************************************************
+// Maps a Linux button event to a Kōtuku controller flag, falling back to sequential button ordering if required.
 
-CON map_button(const LinuxController &Controller, uint8_t Number)
+static CON map_button(const LinuxController &Controller, uint8_t Number)
 {
    if ((Controller.button_map_valid) and (Number < Controller.buttons)) {
       switch (Controller.button_map[Number]) {
@@ -123,9 +128,10 @@ CON map_button(const LinuxController &Controller, uint8_t Number)
    return fallback_button(Number);
 }
 
-/*********************************************************************************************************************/
+//********************************************************************************************************************
+// Applies legacy sequential axis numbers to the standard Kōtuku axis and directional button state.
 
-void fallback_axis(LinuxController &Controller, uint8_t Number, int16_t Value)
+static void fallback_axis(LinuxController &Controller, uint8_t Number, int16_t Value)
 {
    switch (Number) {
       case 0: Controller.values[2] = normalise_axis(Value); break;
@@ -145,9 +151,10 @@ void fallback_axis(LinuxController &Controller, uint8_t Number, int16_t Value)
    }
 }
 
-/*********************************************************************************************************************/
+//********************************************************************************************************************
+// Updates the controller state from a Linux axis event, using the kernel axis map when available.
 
-void handle_axis(LinuxController &Controller, uint8_t Number, int16_t Value)
+static void handle_axis(LinuxController &Controller, uint8_t Number, int16_t Value)
 {
    if ((not Controller.axis_map_valid) or (Number >= Controller.axes)) {
       fallback_axis(Controller, Number, Value);
@@ -174,9 +181,10 @@ void handle_axis(LinuxController &Controller, uint8_t Number, int16_t Value)
    }
 }
 
-/*********************************************************************************************************************/
+//********************************************************************************************************************
+// Closes a controller slot and clears all cached device capabilities and input state.
 
-void close_controller(LinuxController &Controller)
+static void close_controller(LinuxController &Controller)
 {
    if (Controller.fd >= 0) {
       close(Controller.fd);
@@ -191,9 +199,10 @@ void close_controller(LinuxController &Controller)
    Controller.button_state = CON::NIL;
 }
 
-/*********************************************************************************************************************/
+//********************************************************************************************************************
+// Opens the joystick device for a controller port and caches its axis and button mapping tables.
 
-ERR open_controller(int Port)
+static ERR open_controller(int Port)
 {
    if ((Port < 0) or (Port >= MAX_CONTROLLER_PORTS)) return ERR::Search;
 
@@ -227,9 +236,10 @@ ERR open_controller(int Port)
    return ERR::Okay;
 }
 
-/*********************************************************************************************************************/
+//********************************************************************************************************************
+// Drains pending joystick events into the cached controller state.
 
-ERR read_controller(LinuxController &Controller)
+static ERR read_controller(LinuxController &Controller, int Port)
 {
    for (;;) {
       js_event event;
@@ -247,6 +257,7 @@ ERR read_controller(LinuxController &Controller)
          if (errno IS EINTR) continue;
          if (errno IS ENODEV) {
             close_controller(Controller);
+            if (Port IS glPrimaryPort) glPrimaryPort = -1;
             return ERR::Search;
          }
          return ERR::SystemCall;
@@ -262,25 +273,81 @@ ERR read_controller(LinuxController &Controller)
    return ERR::Okay;
 }
 
+//********************************************************************************************************************
+// Finds the first controller port that can currently be opened or read.
+
+static ERR find_primary_controller(int &Port)
+{
+   ERR first_error = ERR::Search;
+
+   for (int port=0; port < MAX_CONTROLLER_PORTS; port++) {
+      auto &controller = glLinuxControllers[port];
+
+      if (controller.fd >= 0) {
+         const auto error = read_controller(controller, port);
+         if (error IS ERR::Okay) {
+            Port = port;
+            glPrimaryPort = port;
+            return ERR::Okay;
+         }
+         if ((error != ERR::Search) and (first_error IS ERR::Search)) first_error = error;
+      }
+      else {
+         const auto error = open_controller(port);
+         if (error IS ERR::Okay) {
+            Port = port;
+            glPrimaryPort = port;
+            return ERR::Okay;
+         }
+         if ((error != ERR::Search) and (first_error IS ERR::Search)) first_error = error;
+      }
+   }
+
+   return first_error;
+}
+
+//********************************************************************************************************************
+// Resolves the public port value to a fixed Linux controller port.
+
+static ERR resolve_controller_port(int &Port)
+{
+   if (Port IS -1) {
+      if (glPrimaryPort >= 0) {
+         Port = glPrimaryPort;
+         return ERR::Okay;
+      }
+      return find_primary_controller(Port);
+   }
+   if ((Port < 0) or (Port >= MAX_CONTROLLER_PORTS)) return ERR::Search;
+   return ERR::Okay;
+}
+
 } // namespace
 
-/*********************************************************************************************************************/
+//********************************************************************************************************************
+// Reads the current input state for a Linux controller port.
 
 ERR linuxReadController(int Port, double *Values, CON &Buttons)
 {
    std::lock_guard lock(glControllerLock);
 
-   if (auto error = open_controller(Port); error != ERR::Okay) return error;
+   int port = Port;
+   if (auto error = resolve_controller_port(port); error != ERR::Okay) return error;
+   if (auto error = open_controller(port); error != ERR::Okay) {
+      if ((port IS glPrimaryPort) and (error IS ERR::Search)) glPrimaryPort = -1;
+      return error;
+   }
 
-   auto &controller = glLinuxControllers[Port];
-   if (auto error = read_controller(controller); error != ERR::Okay) return error;
+   auto &controller = glLinuxControllers[port];
+   if (auto error = read_controller(controller, port); error != ERR::Okay) return error;
 
    std::memcpy(Values, controller.values.data(), sizeof(double) * controller.values.size());
    Buttons = controller.button_state;
    return ERR::Okay;
 }
 
-/*********************************************************************************************************************/
+//********************************************************************************************************************
+// Reports the highest Linux controller port range that currently contains an openable or readable controller.
 
 ERR linuxGetControllerPorts(int &Value)
 {
@@ -291,7 +358,7 @@ ERR linuxGetControllerPorts(int &Value)
       auto &controller = glLinuxControllers[port];
 
       if (controller.fd >= 0) {
-         if (read_controller(controller) IS ERR::Okay) last_port = port;
+         if (read_controller(controller, port) IS ERR::Okay) last_port = port;
       }
       else if (open_controller(port) IS ERR::Okay) last_port = port;
    }
