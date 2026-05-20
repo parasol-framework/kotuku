@@ -12,13 +12,13 @@ This file contains all logging functions.
 Log levels are:
 
 0  CRITICAL Display the message irrespective of the log level.
-1  ERROR Major errors that should be displayed to the user.
-2  WARN Any error suitable for display to a developer or technically minded user.
-3  Application log message, level 1
-4  INFO Application log message, level 2
-5  API Top-level API messages, e.g. function entry points (default)
-6  DETAIL Detailed API messages.  For messages within functions, and entry-points for minor functions.
-8  TRACE Extremely detailed API messages suitable for intensive debugging only.
+1  ERROR    Major errors that should be displayed to the user.
+2  WARN     Any error suitable for display to a developer or technically minded user.
+3  APP      Application log message, level 1
+4  INFO     Application log message, level 2
+5  API      Top-level API messages, e.g. function entry points (default)
+6  DETAIL   Detailed API messages.  For messages within functions, and entry-points for minor functions.
+8  TRACE    Extremely detailed API messages suitable for intensive debugging only.
 9  Noisy debug messages that will appear frequently, e.g. being used in inner loops.
 
 *********************************************************************************************************************/
@@ -89,6 +89,9 @@ level, call AdjustLogLevel() with a `Delta` of -3 to raise the base-line to 5.
 
 Adjustments to the base-line are accumulative, so small increments of 1 or 2 are encouraged.  To revert logging to the
 previous base-line, call this function again with a negation of the previously passed value.
+
+Note: This function is complemented by the ~SetResource() function with the `RES::LOG_LEVEL` option, which
+permanently changes the log level for the duration of the program.
 
 -INPUT-
 int Delta: The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 9.

@@ -321,6 +321,8 @@ function DocsReturnsRouteIndex()
    assert(response:find('"name":"Backstage"'), 'Expected docs service name, got: ' .. response)
    assert(response:find('"routeCount":32'), 'Expected docs route count, got: ' .. response)
    assert(response:find('{"method":"GET","path":"/ping"}'), 'Expected docs route index to include ping, got: ' .. response)
+   assert(response:find('{"method":"PUT","path":"/logs/level"}'),
+      'Expected docs route index to include PUT logs level route, got: ' .. response)
    assert(response:find('"path":"/streaming","transport":"websocket"'), 'Expected docs to include streaming route, got: ' .. response)
 end
 
@@ -362,6 +364,28 @@ function DocsRoutesRejectsInvalidRegexFilter()
    response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
    assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected invalid regex to return 400, got: ' .. response)
    assert(response:find('Invalid pathFilter regex'), 'Expected invalid regex message, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function LogsLevelCanBeChanged()
+   request = 'PUT /logs/level?level=1 HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage(request, '"level":1')
+   assert(response:find('HTTP/1.1 200 OK'), 'Expected log level update to return 200 OK, got: ' .. response)
+   assert(response:find('"level":1'), 'Expected log level update JSON body, got: ' .. response)
+end
+
+@Test; @Requires(network=true)
+function LogsLevelRejectsInvalidValue()
+   request = 'PUT /logs/level?level=10 HTTP/1.1\r\n' ..
+      'Host: 127.0.0.1\r\n' ..
+      'Connection: close\r\n\r\n'
+
+   response = request_backstage(request, 'HTTP/1.1 400 Bad Request')
+   assert(response:find('HTTP/1.1 400 Bad Request'), 'Expected invalid log level to return 400, got: ' .. response)
+   assert(response:find('"error":"invalid_level"'), 'Expected invalid_level JSON body, got: ' .. response)
 end
 
 @Test; @Requires(network=true)

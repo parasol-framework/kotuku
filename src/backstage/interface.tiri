@@ -238,9 +238,11 @@ route('DELETE', '/jobs/{job}', {
 
 -- Log Interfaces
 
-route('POST', '/logs/level', {
+route('PUT', '/logs/level', {
    desc = 'Change the logging level for the program (affects console output).',
-   body = 'json',
+   query = {
+      level = { type='int', desc='The new log level value, ranging from 0 - 9.' },
+   },
    returns = 'object'
 })
 

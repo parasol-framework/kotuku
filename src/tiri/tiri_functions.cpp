@@ -224,7 +224,7 @@ int fcmd_msg(lua_State *Lua)
 
       {
          kt::Log log("Tiri");
-         log.msg("%s", s);
+         log.app("%s", s);
       }
 
       lua_pop(Lua, 1);  // pop the string result
