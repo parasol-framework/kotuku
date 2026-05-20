@@ -48,10 +48,7 @@ static CSTRING log_callback_header(CSTRING);
 static int collect_log_callbacks(uint8_t, LogCallback **);
 static uint8_t callback_depth(void);
 static uint8_t effective_log_level(void);
-static bool log_callbacks_available(void);
 static uint8_t message_log_level(VLF);
-static FILE *log_output(void);
-static bool log_output_is_file(void);
 
 #ifdef __ANDROID__
 static const int COLUMN1 = 40;
@@ -59,25 +56,27 @@ static const int COLUMN1 = 40;
 static const int COLUMN1 = 30;
 #endif
 
-//#if !defined(_WIN32)
-   #define ESC_OUTPUT 1
-//#endif
+#define ESC_OUTPUT 1
 
-enum { MS_NONE, MS_FUNCTION, MS_MSG };
-enum { EL_NONE=0, EL_MINOR, EL_MAJOR, EL_MAJORBOLD };
+enum { MS_FUNCTION = 1, MS_MSG = 2 };
 
 static thread_local int tlBaseLine = 0;
 static thread_local bool tlLogCallbackActive = false;
 static thread_local std::vector<char> tlLogCallbackBuffer;
 
-static FILE *log_output(void)
+inline FILE * log_output(void)
 {
    return glLogFile ? glLogFile : stderr;
 }
 
-static bool log_output_is_file(void)
+inline bool log_output_is_file(void)
 {
    return glLogFile;
+}
+
+inline bool log_callbacks_available(void)
+{
+   return glLogCallbackCount.load(std::memory_order_relaxed) > 0;
 }
 
 /*********************************************************************************************************************
@@ -174,7 +173,7 @@ noise if the user has the log level set to 5 (API).  Re-running the program with
 make the messages visible again.
 
 A secondary use of this function is to increase the verbosity of log messages when debugging an area of interest.
-For instance, if a program is run with a warning level of 2 and we want to see the log outupt for a function at API
+For instance, if a program is run with a warning level of 2 and we want to see the log output for a function at API
 level, call AdjustLogLevel() with a `Delta` of -3 to raise the base-line to 5.
 
 Adjustments to the base-line are accumulative, so small increments of 1 or 2 are encouraged.  To revert logging to the
@@ -549,13 +548,6 @@ static uint8_t effective_log_level(void)
 
 //********************************************************************************************************************
 
-static bool log_callbacks_available(void)
-{
-   return glLogCallbackCount.load(std::memory_order_relaxed) > 0;
-}
-
-//********************************************************************************************************************
-
 static uint8_t message_log_level(VLF Flags)
 {
    if ((Flags & VLF::CRITICAL) != VLF::NIL) return 0;
@@ -723,12 +715,12 @@ static void fmsg(CSTRING Header, STRING Buffer, int8_t Colon, int8_t Sub) // Buf
    if (pos < col) { // Print as many function letters as possible.
       int16_t len;
       for (len=0; (Header[len]) and (pos < col); len++) Buffer[pos++] = Header[len];
-      if ((!Colon) and (Header[len-1] != ':') and (Header[len-1] != ')')) Colon = MS_MSG;
+      bool has_suffix = (len > 0) and ((Header[len - 1] IS ':') or (Header[len - 1] IS ')'));
       if (Colon IS MS_MSG) {
-         if ((Header[len-1] != ':') and (Header[len-1] != ')') and (pos < col)) Buffer[pos++] = ':';
+         if ((not has_suffix) and (pos < col)) Buffer[pos++] = ':';
       }
       else if (Colon IS MS_FUNCTION) {
-         if ((Header[len-1] != ':') and (Header[len-1] != ')') and (pos < col-1)) {
+         if ((not has_suffix) and (pos < col - 1)) {
             Buffer[pos++] = '(';
             Buffer[pos++] = ')';
          }
