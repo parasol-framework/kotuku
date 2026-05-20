@@ -1543,6 +1543,36 @@ end
    assert(result is 'onetwothree', "concat() with no separator should concatenate directly, got '" .. result .. "'")
 end
 
+@Test function ArrayConcatStringEmbeddedNul()
+   nul = string.char(0)
+   arr = array<string> { 'a' .. nul .. 'b', 'c' }
+   result = arr:concat('|')
+   expected = 'a' .. nul .. 'b|c'
+
+   assert(result is expected, 'concat should preserve embedded NUL bytes in string array elements')
+   assert(#result is 5, 'concat result should preserve full byte length with embedded NUL, got ' .. #result)
+end
+
+@Test function ArrayConcatStringEmbeddedNulFormat()
+   nul = string.char(0)
+   arr = array<string> { 'a' .. nul .. 'b', 'c' }
+   result = arr:concat('|', '%s')
+   expected = 'a' .. nul .. 'b|c'
+
+   assert(result is expected, 'concat with %s should preserve embedded NUL bytes in string array elements')
+   assert(#result is 5, 'formatted concat result should preserve full byte length with embedded NUL, got ' .. #result)
+end
+
+@Test function ArrayConcatStringNulSeparator()
+   nul = string.char(0)
+   arr = array<string> { 'a', 'b' }
+   result = arr:concat(nul)
+   expected = 'a' .. nul .. 'b'
+
+   assert(result is expected, 'concat should preserve embedded NUL bytes in the separator')
+   assert(#result is 3, 'concat result should preserve full byte length with NUL separator, got ' .. #result)
+end
+
 @Test function ArrayConcatInt()
    arr = array<int> { 1, 2, 3, 4, 5 }
    result = arr:concat('-')

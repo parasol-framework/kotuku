@@ -386,7 +386,8 @@ LJLIB_CF(array_concat)
       return 1;
    }
 
-   auto separator = luaL_optstring(L, 2, "");
+   size_t separator_len = 0;
+   auto separator = luaL_optlstring(L, 2, "", &separator_len);
    auto format = lua_isnoneornil(L, 3) ? nullptr : luaL_checkstring(L, 3);
    auto start = start_provided ? lj_lib_checkint(L, 4) : 0;
    auto end = end_provided ? lj_lib_checkint(L, 5) : int32_t(arr->len - 1);
@@ -451,22 +452,29 @@ LJLIB_CF(array_concat)
    result.reserve(MSize(end - start + 1) * 16);
 
    for (MSize i = MSize(start); i <= MSize(end); i++) {
-      if (i > MSize(start)) result += separator;
+      if (i > MSize(start)) result.append(separator, separator_len);
 
       if (format) {
          switch(arr->elemtype) {
             case AET::STR_GC: {
                GCRef ref = arr->get<GCRef>()[i];
-               if (gcref(ref)) append_formatted(result, format, strdata(gco_to_string(gcref(ref))));
+               if (gcref(ref)) {
+                  GCstr *str = gco_to_string(gcref(ref));
+                  if (strcmp(format, "%s") IS 0) result.append(strdata(str), str->len);
+                  else append_formatted(result, format, strdata(str));
+               }
                else append_formatted(result, format, "");
                break;
             }
             case AET::CSTR:
                append_formatted(result, format, arr->get<CSTRING>()[i]);
                break;
-            case AET::STR_CPP:
-               append_formatted(result, format, arr->get<std::string>()[i].c_str());
+            case AET::STR_CPP: {
+               const auto &str = arr->get<std::string>()[i];
+               if (strcmp(format, "%s") IS 0) result.append(str.data(), str.size());
+               else append_formatted(result, format, str.c_str());
                break;
+            }
             case AET::PTR:
                append_formatted(result, format, arr->get<void **>()[i]);
                break;
@@ -500,7 +508,10 @@ LJLIB_CF(array_concat)
          switch(arr->elemtype) {
             case AET::STR_GC: {
                GCRef ref = arr->get<GCRef>()[i];
-               if (gcref(ref)) result += strdata(gco_to_string(gcref(ref)));
+               if (gcref(ref)) {
+                  GCstr *str = gco_to_string(gcref(ref));
+                  result.append(strdata(str), str->len);
+               }
                break;
             }
             case AET::CSTR: {
@@ -508,9 +519,11 @@ LJLIB_CF(array_concat)
                if (str) result += str;
                break;
             }
-            case AET::STR_CPP:
-               result += arr->get<std::string>()[i];
+            case AET::STR_CPP: {
+               const auto &str = arr->get<std::string>()[i];
+               result.append(str.data(), str.size());
                break;
+            }
             case AET::FLOAT:
                append_formatted(result, "%g", double(arr->get<float>()[i]));
                break;
@@ -550,7 +563,7 @@ LJLIB_CF(array_concat)
       }
    }
 
-   lua_pushstring(L, result.c_str());
+   lua_pushlstring(L, result.data(), result.size());
    return 1;
 }
 
