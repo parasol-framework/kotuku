@@ -102,8 +102,8 @@ greater than the limit.  Use a suitably large limit to receive all messages for 
 inside a log callback are not forwarded recursively to log callbacks on the same thread.
 
 Passing `NULL` for `Callback` has no effect.  Registering the same callback address again updates its `DepthLimit` and
-`LogLimit` values.  The number of unique callbacks that can be registered is limited; when all callback
-slots are in use, additional registrations are ignored.
+`LogLimit` values.  Passing zero for both limits unregisters a matching callback if it exists.  The number of unique
+callbacks that can be registered is limited; when all callback slots are in use, additional registrations are ignored.
 
 -INPUT-
 ptr Callback: Pointer to the log callback function to register.
@@ -119,6 +119,7 @@ void SetLogCallback(APTR Callback, int DepthLimit, int LogLimit)
    if (not Callback) return;
 
    auto routine = (LOG_CALLBACK)Callback;
+   bool unregister = (not DepthLimit) and (not LogLimit);
 
    // Check if the callback is already registered.
 
@@ -138,6 +139,8 @@ void SetLogCallback(APTR Callback, int DepthLimit, int LogLimit)
          return;
       }
    }
+
+   if (unregister) return;
 
    // Store the callback in the first available slot.
 
