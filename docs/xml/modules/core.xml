@@ -2889,6 +2889,7 @@ static ResourceManager glNodeManager = {
       <const name="LOG_DEPTH">The current depth of log messages.</const>
       <const name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</const>
       <const name="MAIN_THREAD">Read-only, returns <code>true</code> if called from the main thread.</const>
+      <const name="MAIN_THREAD_ID">Read-only, returns the ID of the main thread.</const>
       <const name="MEMORY_USAGE">The total amount of memory used by the current process, in bytes.</const>
       <const name="PRIVILEGED">This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</const>
       <const name="PRIVILEGED_USER">If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</const>

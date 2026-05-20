@@ -220,6 +220,7 @@ thread_local bool tlMainThread = false; // Will be set to TRUE on open, any othe
 thread_local int16_t tlPreventSleep = 0;
 thread_local int16_t tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
 thread_local int16_t tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
+THREADID glMainThreadID = THREADID(0);
 
 Object glDummyObject;
 
