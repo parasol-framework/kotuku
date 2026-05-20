@@ -403,6 +403,39 @@ static void free_shm(APTR Address, int ID)
    shmdt(Address);
    shmctl(ID, IPC_RMID, nullptr);
 }
+
+//********************************************************************************************************************
+// Initialises fields shared by standard XImage and XShm image paths.
+
+static void init_x11_image(extBitmap *Self, bool UseShm)
+{
+   int16_t alignment;
+   if (Self->LineWidth & 0x0001) alignment = 8;
+   else if (Self->LineWidth & 0x0002) alignment = 16;
+   else alignment = 32;
+
+   clearmem(&Self->x11.ximage, sizeof(Self->x11.ximage));
+
+   Self->x11.ximage.width            = Self->Width;
+   Self->x11.ximage.height           = Self->Height;
+   Self->x11.ximage.xoffset          = 0;
+   Self->x11.ximage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
+   Self->x11.ximage.data             = (char *)Self->Data;
+   if (UseShm) Self->x11.ximage.obdata = (char *)&Self->x11.ShmInfo;
+   Self->x11.ximage.byte_order       = LSBFirst;     // LSBFirst / MSBFirst
+   Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
+   Self->x11.ximage.bitmap_bit_order = LSBFirst;     // LSBFirst / MSBFirst
+   Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
+   if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
+   else Self->x11.ximage.depth       = Self->BitsPerPixel;
+   Self->x11.ximage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
+   Self->x11.ximage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
+   Self->x11.ximage.red_mask         = 0;
+   Self->x11.ximage.green_mask       = 0;
+   Self->x11.ximage.blue_mask        = 0;
+
+   XInitImage(&Self->x11.ximage);
+}
 #endif
 
 //********************************************************************************************************************
@@ -1176,29 +1209,7 @@ static ERR BITMAP_Init(extBitmap *Self)
             if (alloc_shm(Self->Size, &Self->Data, &Self->x11.ShmInfo.shmid) IS ERR::Okay) {
                Self->prvAFlags |= BF_DATA;
 
-               int16_t alignment;
-               if (Self->LineWidth & 0x0001) alignment = 8;
-               else if (Self->LineWidth & 0x0002) alignment = 16;
-               else alignment = 32;
-
-               Self->x11.ximage.width            = Self->Width;  // Image width
-               Self->x11.ximage.height           = Self->Height; // Image height
-               Self->x11.ximage.xoffset          = 0;            // Number of pixels offset in X direction
-               Self->x11.ximage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-               Self->x11.ximage.data             = (char *)Self->Data; // Pointer to image data
-               if (glX11ShmImage) Self->x11.ximage.obdata = (char *)&Self->x11.ShmInfo; // Magic pointer for the XShm extension
-               Self->x11.ximage.byte_order       = LSBFirst;     // LSBFirst / MSBFirst
-               Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
-               Self->x11.ximage.bitmap_bit_order = LSBFirst;     // LSBFirst / MSBFirst
-               Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
-               if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
-               else Self->x11.ximage.depth = Self->BitsPerPixel;            // Actual bits per pixel
-               Self->x11.ximage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
-               Self->x11.ximage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
-               Self->x11.ximage.red_mask         = 0;
-               Self->x11.ximage.green_mask       = 0;
-               Self->x11.ximage.blue_mask        = 0;
-               XInitImage(&Self->x11.ximage);
+               init_x11_image(Self, glX11ShmImage);
 
                // If the XShm extension is available, try using it.  Using XShm allows the
                // X11 server to copy image memory straight to the display rather than
@@ -1882,7 +1893,6 @@ setfields:
    Self->Clip.Bottom    = height;
 
 #ifdef __xwindows__
-   int16_t alignment;
    if (Self->x11.XShmImage) {
       Self->x11.XShmImage = false; // Set to FALSE in case we fail (will drop through to standard XImage support)
       XShmDetach(XDisplay, &Self->x11.ShmInfo);  // Remove the previous attachment
@@ -1898,52 +1908,13 @@ setfields:
       Self->x11.ShmInfo.readOnly = False;
       Self->x11.ShmInfo.shmaddr  = (char *)Self->Data;
       if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
-         if (Self->LineWidth & 0x0001) alignment = 8;
-         else if (Self->LineWidth & 0x0002) alignment = 16;
-         else alignment = 32;
-
-         clearmem(&Self->x11.ximage, sizeof(Self->x11.ximage));
-
-         Self->x11.ximage.width       = Self->Width;
-         Self->x11.ximage.height      = Self->Height;
-         Self->x11.ximage.format      = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-         Self->x11.ximage.data        = (char *)Self->Data;
-         Self->x11.ximage.byte_order  = LSBFirst;        // LSBFirst / MSBFirst
-         Self->x11.ximage.bitmap_bit_order = LSBFirst;
-         Self->x11.ximage.obdata      = (char *)&Self->x11.ShmInfo;
-         Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
-         Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32
-         if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
-         else Self->x11.ximage.depth = Self->BitsPerPixel;
-         Self->x11.ximage.bytes_per_line = Self->LineWidth;
-         Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group
-
-         XInitImage(&Self->x11.ximage);
+         init_x11_image(Self, true);
          Self->x11.XShmImage = TRUE;
       }
    }
 
    if ((!Self->x11.drawable) and (Self->x11.XShmImage != TRUE)) {
-      if (Self->LineWidth & 0x0001) alignment = 8;
-      else if (Self->LineWidth & 0x0002) alignment = 16;
-      else alignment = 32;
-
-      clearmem(&Self->x11.ximage, sizeof(XImage));
-
-      Self->x11.ximage.width       = Self->Width;
-      Self->x11.ximage.height      = Self->Height;
-      Self->x11.ximage.format      = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-      Self->x11.ximage.data        = (char *)Self->Data;
-      Self->x11.ximage.byte_order  = LSBFirst;     // LSBFirst / MSBFirst
-      Self->x11.ximage.bitmap_bit_order = LSBFirst;
-      Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
-      Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32
-      if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
-      else Self->x11.ximage.depth = Self->BitsPerPixel;
-      Self->x11.ximage.bytes_per_line = Self->LineWidth;
-      Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group
-
-      XInitImage(&Self->x11.ximage);
+      init_x11_image(Self, false);
    }
 
 #endif
