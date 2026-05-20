@@ -323,7 +323,7 @@ void TypeAnalyser::check_function_in_loop(SourceSpan Location)
 //********************************************************************************************************************
 // String Concatenation in Loop Detection:  Warns when string concatenation (..) is used inside loops. Each
 // concatenation creates a new intermediate string object, which is inefficient when building strings iteratively.
-// For building strings in loops, array.join() is more efficient as it allocates only once.
+// For building strings in loops, array.concat() is more efficient as it allocates only once.
 
 void TypeAnalyser::check_concat_in_loop(SourceSpan Location)
 {
@@ -331,7 +331,7 @@ void TypeAnalyser::check_concat_in_loop(SourceSpan Location)
    if (this->loop_depth_ IS 0) return;
 
    this->ctx_.emit_tip(2, TipCategory::Performance,
-      "String concatenation in loop; consider using array.join() for better performance",
+      "String concatenation in loop; consider using array.concat() for better performance",
       Token::from_span(Location, TokenKind::Cat));
 }
 
