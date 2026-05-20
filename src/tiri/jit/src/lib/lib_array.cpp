@@ -475,9 +475,6 @@ LJLIB_CF(array_concat)
                else append_formatted(result, format, str.c_str());
                break;
             }
-            case AET::PTR:
-               append_formatted(result, format, arr->get<void **>()[i]);
-               break;
             case AET::FLOAT:
                append_formatted(result, format, arr->get<float>()[i]);
                break;
@@ -496,9 +493,6 @@ LJLIB_CF(array_concat)
             case AET::BYTE:
                append_formatted(result, format, arr->get<int8_t>()[i]);
                break;
-            case AET::TABLE:
-            case AET::STRUCT:
-            case AET::ARRAY:
             default:
                luaL_error(L, ERR::InvalidType, "concat() does not support %s types.", elemtype_name(arr->elemtype));
                return 0;
@@ -542,23 +536,9 @@ LJLIB_CF(array_concat)
             case AET::BYTE:
                append_integer(result, arr->get<uint8_t>()[i]);
                break;
-            case AET::PTR:
-               append_formatted(result, "%p", arr->get<void *>()[i]);
-               break;
-            case AET::TABLE:
-               // Tables cannot be meaningfully converted to strings
-               result += "table";
-               break;
-            case AET::ARRAY:
-               // Arrays cannot be meaningfully converted to strings
-               result += "array";
-               break;
-            case AET::STRUCT:
-               result += "struct";
-               break;
             default:
-               result += "?";
-               break;
+               luaL_error(L, ERR::InvalidType, "concat() does not support %s types.", elemtype_name(arr->elemtype));
+               return 0;
          }
       }
    }

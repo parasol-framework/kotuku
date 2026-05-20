@@ -1760,15 +1760,6 @@ end
    assert(rejoined is original, "concat should reverse split, got '" .. rejoined .. "'")
 end
 
-@Test function ArrayConcatTable()
-   arr = array<table, 2>
-   arr[0] = {x = 1}
-   arr[1] = {y = 2}
-   result = arr:concat(', ')
-   -- Tables should be converted to "table" placeholder
-   assert(result is 'table, table', "concat on table array should use 'table' placeholder, got '" .. result .. "'")
-end
-
 @Test function ArrayJoinRemoved()
    arr = array<string> { 'a', 'b' }
    try
