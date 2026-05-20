@@ -128,6 +128,7 @@ void SetLogCallback(APTR Callback, int DepthLimit, int LogLimit)
       auto &callback = slot.Callback;
       if (callback.Callback IS routine) {
          if (LogLimit or DepthLimit) {
+            // These updates are not a threading concern
             callback.LogLimit = LogLimit;
             callback.DepthLimit = DepthLimit;
          }
@@ -213,8 +214,8 @@ Log message formatting follows the same guidelines as the `printf()` function.
 The following example will print the default width of a @Display object to the log.
 
 <pre>
-if (!NewObject(CLASSID::DISPLAY, &display)) {
-   if (!display->init(display)) {
+if (NewObject(CLASSID::DISPLAY, &display) IS ERR::Okay) {
+   if (display->init(display) IS ERR::Okay) {
       VLogF(VLF::API, "Demo","The width of the display is: %d", display-&gt;Width);
    }
    FreeResource(display);
@@ -537,6 +538,7 @@ void LogReturn(void)
 }
 
 //********************************************************************************************************************
+// Returns the active log level after applying this thread's temporary baseline adjustment.
 
 static uint8_t effective_log_level(void)
 {
@@ -547,6 +549,7 @@ static uint8_t effective_log_level(void)
 }
 
 //********************************************************************************************************************
+// Converts VLF flags to the numeric log level used by callback filters.
 
 static uint8_t message_log_level(VLF Flags)
 {
@@ -562,6 +565,7 @@ static uint8_t message_log_level(VLF Flags)
 }
 
 //********************************************************************************************************************
+// Returns the current branch depth in the byte-sized range passed to log callbacks.
 
 static uint8_t callback_depth(void)
 {
@@ -571,6 +575,7 @@ static uint8_t callback_depth(void)
 }
 
 //********************************************************************************************************************
+// Resolves the header string that will be passed to callbacks when the caller did not provide one.
 
 static CSTRING log_callback_header(CSTRING Header)
 {
@@ -588,6 +593,7 @@ static CSTRING log_callback_header(CSTRING Header)
 }
 
 //********************************************************************************************************************
+// Gathers registered callbacks that should receive a message at the supplied level.
 
 static int collect_log_callbacks(uint8_t MsgLevel, LogCallback **Callbacks)
 {
@@ -610,6 +616,7 @@ static int collect_log_callbacks(uint8_t MsgLevel, LogCallback **Callbacks)
 }
 
 //********************************************************************************************************************
+// Invokes a prepared callback list while suppressing recursive callback dispatch on this thread.
 
 static void invoke_log_callbacks(LogCallback **Callbacks, int Total, CSTRING Header, CSTRING Message, uint8_t MsgLevel,
    uint8_t LogLevel)
@@ -623,6 +630,7 @@ static void invoke_log_callbacks(LogCallback **Callbacks, int Total, CSTRING Hea
 }
 
 //********************************************************************************************************************
+// Dispatches a preformatted message, such as an error string, to interested log callbacks.
 
 static void dispatch_log_message_callbacks(CSTRING Header, CSTRING Message, uint8_t MsgLevel, uint8_t LogLevel)
 {
@@ -635,6 +643,7 @@ static void dispatch_log_message_callbacks(CSTRING Header, CSTRING Message, uint
 }
 
 //********************************************************************************************************************
+// Formats a variadic log message and dispatches it to interested log callbacks.
 
 static void dispatch_log_callbacks(VLF Flags, CSTRING Header, CSTRING Message, va_list Args, uint8_t LogLevel)
 {
@@ -669,6 +678,7 @@ static void dispatch_log_callbacks(VLF Flags, CSTRING Header, CSTRING Message, v
 }
 
 //********************************************************************************************************************
+// Formats the fixed-width log prefix used before printed log messages.
 
 static void fmsg(CSTRING Header, STRING Buffer, int8_t Colon, int8_t Sub) // Buffer must be COLUMN1+1 in size
 {
