@@ -17,11 +17,11 @@
 
    viewport.mtSubscribeKeyboard(function(Viewport, Flags, Value, Unicode)
       if Unicode > 0 then
-         glChars = (glChars ?? '') .. string.char(Unicode)
+         global glChars = (glChars ?? '') .. string.char(Unicode)
          glChars = glChars:sub(-10)
       end
 
-      text.string = 'Flags: ' .. string.format('0x%x', Flags) .. '\nCode: ' .. Value .. '\n' .. glChars
+      text.string = f'Flags: {string.format('0x%x', Flags)}\nCode: {Value}\n{glChars}'
       viewport.acDraw()
    end)
 

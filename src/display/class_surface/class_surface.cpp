@@ -385,7 +385,8 @@ skipcontent:
 }
 
 //********************************************************************************************************************
-// Handler for the display being resized.
+// Handler for the display being resized - hooks into Display->ResizeFeedback
+// Clients can get resize notifications by subscribing to the Redimension action
 
 static void display_resized(OBJECTID DisplayID, int X, int Y, int Width, int Height)
 {

@@ -466,8 +466,7 @@ static void make_camel_case(std::string &String)
                if (end IS std::string::npos) end = Sequence.size();
                auto name = Sequence.substr(sep, end-sep);
 
-               auto def = glStructs.find(std::string_view(name));
-               if (def != glStructs.end()) {
+               if (auto def = glStructs.find(std::string_view(name)); def != glStructs.end()) {
                   field_size = def->second.Size;
                   break;
                }

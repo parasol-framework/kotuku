@@ -195,7 +195,7 @@ module({
     "ALPHA_BLEND|COMPOSITE: Enables alpha channel blending (if display is hosted and 32-bit).",
     "GRAB_CONTROLLERS: Grab controllers for receiving input when the display has the focus.",
     "PRIMARY: The display is flagged as being the primary.",
-    "ACTIVE: The display is participating in the desktop view - but does not guarantee it is visible.",
+    "ACTIVE: The display is participating in the desktop view - this does not guarantee it is visible.",
     "MIRRORED: The display is a mirrored copy.",
     "VIRTUAL: The display is virtual or not visible (device not switched on).",
     "ROTATED: True if the display is rotated.",
@@ -310,21 +310,18 @@ module({
     uchar  GreenPos    # Left shift/positional value for green
     uchar  BluePos     # Left shift/positional value for blue
     uchar  AlphaPos    # Left shift/positional value for alpha
+    uint   Pad         # Padding
   ]])
 
   struct("DisplayInfo", { }, [[
-    oid   Display         # Object ID related to the display
-    int(SCR) Flags        # Display flags
-    short Width           # Pixel width of the display
-    short Height          # Pixel height of the display
-    short BitsPerPixel    # Bits per pixel
-    short BytesPerPixel   # Bytes per pixel
-    large(ACF) AccelFlags # Flags describing supported hardware features.
-    int   AmtColours      # Total number of supported colours.
     struct(PixelFormat) PixelFormat # The colour format to use for each pixel.
     float MinRefresh     # Minimum refresh rate
     float MaxRefresh     # Maximum refresh rate
     float RefreshRate    # Recommended refresh rate
+    oid   Display        # Object ID related to the display
+    int(ACF) AccelFlags  # Flags describing supported hardware features.
+    int(SCR) Flags       # Display flags
+    int   AmtColours     # Total number of supported colours.
     int   Index          # Display mode ID (internal)
     int   HDensity       # Horizontal pixel density per inch.
     int   VDensity       # Vertical pixel density per inch.
@@ -340,6 +337,10 @@ module({
     int   VirtualHeight  # Height of the complete desktop spanning all monitors
     int   PhysicalWidth  # Width in millimeters, 0 if unknown
     int   PhysicalHeight # Height in millimeters, 0 if unknown
+    short Width          # Pixel width of the display
+    short Height         # Pixel height of the display
+    short BitsPerPixel   # Bits per pixel
+    short BytesPerPixel  # Bytes per pixel
   ]])
 
   struct("CursorInfo", { }, [[

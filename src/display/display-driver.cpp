@@ -644,27 +644,12 @@ ERR get_display_info(OBJECTID DisplayID, DisplayInfo *Info)
 
   //log.traceBranch("Display: %d, Info: %p", DisplayID, Info);
 
-   if (!Info) return log.warning(ERR::NullArgs);
+   if (not Info) return log.warning(ERR::NullArgs);
 
-   Info->HostedX  = 0;
-   Info->HostedY  = 0;
-   Info->MonitorX = 0;
-   Info->MonitorY = 0;
-   Info->MonitorWidth   = 0;
-   Info->MonitorHeight  = 0;
-   Info->VirtualX       = 0;
-   Info->VirtualY       = 0;
-   Info->VirtualWidth   = 0;
-   Info->VirtualHeight  = 0;
-   Info->PhysicalWidth  = 0;
-   Info->PhysicalHeight = 0;
+   clearmem(Info, sizeof(DisplayInfo));
 
    if (DisplayID) {
-      if (glDisplayInfo.DisplayID IS DisplayID) {
-         kt::copymem(&glDisplayInfo, Info, sizeof(DisplayInfo));
-         return ERR::Okay;
-      }
-      else if (ScopedObjectLock<extDisplay> display(DisplayID, 5000); display.granted()) {
+      if (ScopedObjectLock<extDisplay> display(DisplayID, 5000); display.granted()) {
          Info->DisplayID     = DisplayID;
          Info->Flags         = display->Flags;
          Info->Width         = display->Width;
@@ -674,12 +659,35 @@ ERR get_display_info(OBJECTID DisplayID, DisplayInfo *Info)
          Info->AmtColours    = display->Bitmap->AmtColours;
          GET_HDensity(*display, &Info->HDensity);
          GET_VDensity(*display, &Info->VDensity);
+         Info->HostedX       = display->X;
+         Info->HostedY       = display->Y;
 
          #ifdef __xwindows__
             Info->AccelFlags = ACF(-1);
             if (glDGAAvailable IS TRUE) {
                Info->AccelFlags &= ~ACF::VIDEO_BLIT; // Turn off video blitting when X11DGA is active (it does not provide blitter syncing)
             }
+         #elif _WIN32
+            Info->AccelFlags = ACF(-1);
+
+            int monitor_x, monitor_y, monitor_width, monitor_height;
+            winGetDisplayGeometry(display->WindowHandle,
+               Info->MonitorX, Info->MonitorY, Info->MonitorWidth, Info->MonitorHeight,
+               Info->VirtualX, Info->VirtualY, Info->VirtualWidth, Info->VirtualHeight,
+               Info->PhysicalWidth, Info->PhysicalHeight);
+
+            double refresh_rate = 0;
+            winGetDisplaySettings(display->WindowHandle, nullptr, nullptr, nullptr, &refresh_rate);
+            if (refresh_rate <= 1.0) {
+               refresh_rate = display->RefreshRate;
+            }
+
+            if (refresh_rate > 1.0) {
+               Info->RefreshRate = float(refresh_rate);
+               Info->MinRefresh  = Info->RefreshRate;
+               Info->MaxRefresh  = Info->RefreshRate;
+            }
+
          #else
             Info->AccelFlags = ACF(-1);
          #endif
@@ -763,21 +771,41 @@ ERR get_display_info(OBJECTID DisplayID, DisplayInfo *Info)
       }
 
 #elif _WIN32
-      int width, height, bits, bytes, colours, hdpi, vdpi;
 
       // TODO: Allow the user to set a custom DPI via style values.
 
-      winGetDesktopSize(&width, &height);
-      winGetDisplaySettings(&bits, &bytes, &colours);
+      if (winGetDisplayGeometry(nullptr,
+            Info->MonitorX, Info->MonitorY, Info->MonitorWidth, Info->MonitorHeight,
+            Info->VirtualX, Info->VirtualY, Info->VirtualWidth,
+            Info->VirtualHeight, Info->PhysicalWidth, Info->PhysicalHeight) IS ERR::Okay) {
+         Info->Width  = Info->MonitorWidth;
+         Info->Height = Info->MonitorHeight;
+      }
+      else {
+         winGetDesktopSize(&Info->VirtualWidth, &Info->VirtualHeight);
+         Info->Width = Info->VirtualWidth;
+         Info->Height = Info->VirtualHeight;
+      }
+
+      int bits = 0;
+      int bytes = 0;
+      int colours = 0;
+      int hdpi = 96;
+      int vdpi = 96;
+      double refresh_rate = 0;
+      winGetDisplaySettings(nullptr, &bits, &bytes, &colours, &refresh_rate);
       winGetDPI(&hdpi, &vdpi);
 
-      Info->Width         = width;
-      Info->Height        = height;
       Info->BitsPerPixel  = bits;
       Info->BytesPerPixel = bytes;
       Info->AccelFlags    = ACF(-1);
       Info->HDensity      = hdpi;
       Info->VDensity      = vdpi;
+      if (refresh_rate > 1.0) {
+         Info->RefreshRate = float(refresh_rate);
+         Info->MinRefresh  = Info->RefreshRate;
+         Info->MaxRefresh  = Info->RefreshRate;
+      }
       if (Info->HDensity < 96) Info->HDensity = 96;
       if (Info->VDensity < 96) Info->VDensity = 96;
 

@@ -454,33 +454,30 @@ struct xrMode {
 };
 
 typedef struct PixelFormat {
-   uint8_t RedShift;    // Right shift value
-   uint8_t GreenShift;  // Green shift value
-   uint8_t BlueShift;   // Blue shift value
-   uint8_t AlphaShift;  // Alpha shift value
-   uint8_t RedMask;     // The unshifted red mask value (ranges from 0x00 to 0xff)
-   uint8_t GreenMask;   // The unshifted green mask value (ranges from 0x00 to 0xff)
-   uint8_t BlueMask;    // The unshifted blue mask value (ranges from 0x00 to 0xff)
-   uint8_t AlphaMask;   // The unshifted alpha mask value (ranges from 0x00 to 0xff)
-   uint8_t RedPos;      // Left shift/positional value for red
-   uint8_t GreenPos;    // Left shift/positional value for green
-   uint8_t BluePos;     // Left shift/positional value for blue
-   uint8_t AlphaPos;    // Left shift/positional value for alpha
+   uint8_t  RedShift;   // Right shift value
+   uint8_t  GreenShift; // Green shift value
+   uint8_t  BlueShift;  // Blue shift value
+   uint8_t  AlphaShift; // Alpha shift value
+   uint8_t  RedMask;    // The unshifted red mask value (ranges from 0x00 to 0xff)
+   uint8_t  GreenMask;  // The unshifted green mask value (ranges from 0x00 to 0xff)
+   uint8_t  BlueMask;   // The unshifted blue mask value (ranges from 0x00 to 0xff)
+   uint8_t  AlphaMask;  // The unshifted alpha mask value (ranges from 0x00 to 0xff)
+   uint8_t  RedPos;     // Left shift/positional value for red
+   uint8_t  GreenPos;   // Left shift/positional value for green
+   uint8_t  BluePos;    // Left shift/positional value for blue
+   uint8_t  AlphaPos;   // Left shift/positional value for alpha
+   uint32_t Pad;        // Padding
 } PIXELFORMAT;
 
 struct DisplayInfo {
-   OBJECTID DisplayID;                // Object ID related to the display
-   SCR      Flags;                    // Display flags
-   int16_t  Width;                    // Pixel width of the display
-   int16_t  Height;                   // Pixel height of the display
-   int16_t  BitsPerPixel;             // Bits per pixel
-   int16_t  BytesPerPixel;            // Bytes per pixel
-   ACF      AccelFlags;               // Flags describing supported hardware features.
-   int      AmtColours;               // Total number of supported colours.
    struct PixelFormat PixelFormat;    // The colour format to use for each pixel.
    float    MinRefresh;               // Minimum refresh rate
    float    MaxRefresh;               // Maximum refresh rate
    float    RefreshRate;              // Recommended refresh rate
+   OBJECTID DisplayID;                // Object ID related to the display
+   ACF      AccelFlags;               // Flags describing supported hardware features.
+   SCR      Flags;                    // Display flags
+   int      AmtColours;               // Total number of supported colours.
    int      Index;                    // Display mode ID (internal)
    int      HDensity;                 // Horizontal pixel density per inch.
    int      VDensity;                 // Vertical pixel density per inch.
@@ -496,6 +493,10 @@ struct DisplayInfo {
    int      VirtualHeight;            // Height of the complete desktop spanning all monitors
    int      PhysicalWidth;            // Width in millimeters, 0 if unknown
    int      PhysicalHeight;           // Height in millimeters, 0 if unknown
+   int16_t  Width;                    // Pixel width of the display
+   int16_t  Height;                   // Pixel height of the display
+   int16_t  BitsPerPixel;             // Bits per pixel
+   int16_t  BytesPerPixel;            // Bytes per pixel
 };
 
 struct CursorInfo {
