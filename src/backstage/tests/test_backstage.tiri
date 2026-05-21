@@ -37,7 +37,7 @@ end
 function request_backstage(Request:str, ExpectedToken:str):str
    response = ''
    client = obj.new('netsocket', {
-      name = 'BackstagePingClient',
+      name = 'BackstageClient',
       feedback = function(Socket:obj, State:num)
          if State is NTC_CONNECTED then
             err, len = Socket.acWrite(Request)
@@ -52,7 +52,7 @@ function request_backstage(Request:str, ExpectedToken:str):str
             Socket.acSignal()
             return
          end
-         assert(err is ERR_Okay, 'Failed to read ping response: ' .. mSys.GetErrorMsg(err))
+         assert(err is ERR_Okay, 'Failed to read response: ' .. mSys.GetErrorMsg(err))
          if read_len <= 0 then return end
 
          response ..= buffer:substr(0, read_len)
@@ -392,9 +392,7 @@ end
 function LogsCanBeRecordedAndDrained()
    start_request = 'POST /logs/start?maxLevel=5&maxDepth=255 HTTP/1.1\r\n' ..
       'Host: 127.0.0.1\r\n' ..
-      'Content-Type: application/json\r\n' ..
-      'Content-Length: 2\r\n' ..
-      'Connection: close\r\n\r\n{}'
+      'Connection: close\r\n\r\n'
 
    response = request_backstage(start_request, '"active":true')
    assert(response:find('HTTP/1.1 200 OK'), 'Expected logs/start to return 200 OK, got: ' .. response)
@@ -422,9 +420,7 @@ function LogsCanBeRecordedAndDrained()
 
    stop_request = 'POST /logs/stop HTTP/1.1\r\n' ..
       'Host: 127.0.0.1\r\n' ..
-      'Content-Type: application/json\r\n' ..
-      'Content-Length: 2\r\n' ..
-      'Connection: close\r\n\r\n{}'
+      'Connection: close\r\n\r\n'
 
    response = request_backstage(stop_request, '"active":false')
    assert(response:find('HTTP/1.1 200 OK'), 'Expected logs/stop to return 200 OK, got: ' .. response)
