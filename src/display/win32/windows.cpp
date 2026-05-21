@@ -17,8 +17,11 @@
 #include <shlobj.h>
 #include <objidl.h>
 #include <xinput.h>
+#include <setupapi.h>
 #include <map>
 #include <atomic>
+#include <mutex>
+#include <string>
 
 #include <kotuku/system/errors.h>
 
@@ -55,14 +58,23 @@ typedef long long int64_t;
 
 #define KEY_SURFACE 0x03929323
 
+static const GUID glMonitorClassGuid = {
+   0x4d36e96e, 0xe325, 0x11ce, { 0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18 }
+};
+
 #define WIN_LMB 0x0001
 #define WIN_RMB 0x0002
 #define WIN_MMB 0x0004
+#define WIN_XBUTTON_1 0x0008
+#define WIN_XBUTTON_2 0x0010
 #define WIN_DBL 0x8000
 #define WIN_NONCLIENT 0x4000
 
 #define BORDERSIZE 6
 #define WM_ICONNOTIFY (WM_USER + 101)
+#ifndef WM_DPICHANGED
+#define WM_DPICHANGED 0x02E0
+#endif
 #define ID_TRAY 100
 
 //#define MSG(...) fprintf(stderr, __VA_ARGS__)
@@ -77,10 +89,18 @@ static HWND glMainScreen = 0;
 static char glCursorEntry = FALSE;
 static HCURSOR glDefaultCursor = 0;
 static HWND glDeferredActiveWindow = 0;
+static std::mutex glMonitorPhysicalSizeLock;
 uint8_t glTrayIcon = 0, glTaskBar = 0, glStickToFront = 0;
 struct WinCursor *glCursors = 0;
 HCURSOR glCurrentCursor = 0;
 static int8_t glScreenClassInit = 0;
+
+struct MonitorPhysicalSize {
+   int Width;
+   int Height;
+};
+
+static std::map<std::string, MonitorPhysicalSize> glMonitorPhysicalSizes;
 
 #ifdef DBGMSG
 static ankerl::unordered_dense::map<int, const char *> glCmd = { {
@@ -164,6 +184,163 @@ static void printerror(void)
 
 //********************************************************************************************************************
 
+static bool win_physical_size_is_valid(int PhysicalWidth, int PhysicalHeight)
+{
+   return (PhysicalWidth > 0) and (PhysicalHeight > 0) and (PhysicalWidth <= 1000) and (PhysicalHeight <= 1000);
+}
+
+//********************************************************************************************************************
+
+static bool win_get_cached_monitor_physical_size(const char *DisplayName, int &PhysicalWidth, int &PhysicalHeight)
+{
+   if ((!DisplayName) or (!DisplayName[0])) return false;
+
+   const std::lock_guard<std::mutex> lock(glMonitorPhysicalSizeLock);
+   auto cached = glMonitorPhysicalSizes.find(DisplayName);
+   if (!(cached != glMonitorPhysicalSizes.end())) return false;
+
+   PhysicalWidth  = cached->second.Width;
+   PhysicalHeight = cached->second.Height;
+   return true;
+}
+
+//********************************************************************************************************************
+
+static void win_cache_monitor_physical_size(const char *DisplayName, int PhysicalWidth, int PhysicalHeight)
+{
+   if ((!DisplayName) or (!DisplayName[0]) or (!win_physical_size_is_valid(PhysicalWidth, PhysicalHeight))) return;
+
+   const std::lock_guard<std::mutex> lock(glMonitorPhysicalSizeLock);
+   glMonitorPhysicalSizes[DisplayName] = { PhysicalWidth, PhysicalHeight };
+}
+
+//********************************************************************************************************************
+
+static bool win_extract_monitor_id(const char *DeviceID, char *MonitorID, int Size)
+{
+   if ((!DeviceID) or (!MonitorID) or (Size < 1)) return false;
+
+   MonitorID[0] = 0;
+
+   auto start = strchr(DeviceID, '\\');
+   if (!start) return false;
+   start++;
+
+   auto end = strchr(start, '\\');
+   if (!end) return false;
+
+   auto length = int(end - start);
+   if ((length < 1) or (length >= Size)) return false;
+
+   memcpy(MonitorID, start, length);
+   MonitorID[length] = 0;
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool win_get_monitor_device_id(const char *DisplayName, char *DeviceID, int Size)
+{
+   if ((!DisplayName) or (!DeviceID) or (Size < 1)) return false;
+
+   DeviceID[0] = 0;
+
+   for (DWORD monitor_index = 0; ; monitor_index++) {
+      DISPLAY_DEVICEA monitor_device = { .cb = sizeof(monitor_device) };
+      if (!EnumDisplayDevicesA(DisplayName, monitor_index, &monitor_device, 0)) break;
+
+      if ((monitor_device.StateFlags & DISPLAY_DEVICE_ACTIVE) and
+            !(monitor_device.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) and (monitor_device.DeviceID[0])) {
+         snprintf(DeviceID, Size, "%s", monitor_device.DeviceID);
+         return true;
+      }
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+
+static bool win_read_edid_size(HKEY Key, int &PhysicalWidth, int &PhysicalHeight)
+{
+   for (DWORD value_index = 0; ; value_index++) {
+      char value_name[128];
+      uint8_t edid[1024];
+      DWORD value_name_size = sizeof(value_name);
+      DWORD data_type = 0;
+      DWORD edid_size = sizeof(edid);
+
+      auto result = RegEnumValueA(Key, value_index, value_name, &value_name_size, nullptr, &data_type, edid,
+         &edid_size);
+      if (!(result != ERROR_NO_MORE_ITEMS)) break;
+      if ((result != ERROR_SUCCESS) or (data_type != REG_BINARY) or (lstrcmpiA(value_name, "EDID") != 0) or
+            (edid_size < 128)) {
+         continue;
+      }
+
+      int width = 0;
+      int height = 0;
+      const int dtd = 54;
+      auto pixel_clock = int(edid[dtd]) | (int(edid[dtd + 1]) << 8);
+      if (pixel_clock) {
+         width  = int(edid[dtd + 12]) | (int(edid[dtd + 14] & 0xf0) << 4);
+         height = int(edid[dtd + 13]) | (int(edid[dtd + 14] & 0x0f) << 8);
+      }
+
+      if ((!width) or (!height)) {
+         width  = int(edid[21]) * 10;
+         height = int(edid[22]) * 10;
+      }
+
+      if ((width > 0) and (height > 0)) {
+         PhysicalWidth  = width;
+         PhysicalHeight = height;
+         return true;
+      }
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+
+static bool win_get_monitor_physical_size(const char *MonitorDeviceID, int &PhysicalWidth, int &PhysicalHeight)
+{
+   char monitor_id[128];
+   if (!win_extract_monitor_id(MonitorDeviceID, monitor_id, sizeof(monitor_id))) return false;
+
+   HDEVINFO device_info = SetupDiGetClassDevsExA(&glMonitorClassGuid, nullptr, nullptr, DIGCF_PRESENT, nullptr,
+      nullptr, nullptr);
+   if (!(device_info != INVALID_HANDLE_VALUE)) return false;
+
+   bool found = false;
+   for (DWORD device_index = 0; ; device_index++) {
+      SP_DEVINFO_DATA device_data = { .cbSize = sizeof(device_data) };
+      if (!SetupDiEnumDeviceInfo(device_info, device_index, &device_data)) {
+         if (!(GetLastError() != ERROR_NO_MORE_ITEMS)) break;
+         continue;
+      }
+
+      char instance_id[512];
+      if ((!SetupDiGetDeviceInstanceIdA(device_info, &device_data, instance_id, sizeof(instance_id), nullptr)) or
+            (!strstr(instance_id, monitor_id))) {
+         continue;
+      }
+
+      auto key = SetupDiOpenDevRegKey(device_info, &device_data, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
+      if ((!key) or (!(key != INVALID_HANDLE_VALUE))) continue;
+
+      found = win_read_edid_size(key, PhysicalWidth, PhysicalHeight);
+      RegCloseKey(key);
+      if (found) break;
+   }
+
+   SetupDiDestroyDeviceInfoList(device_info);
+   return found;
+}
+
+//********************************************************************************************************************
+
 ERR winGetCoords(HWND Window, int &WinX, int &WinY, int &WinWidth, int &WinHeight, int &ClientX, int &ClientY,
    int &ClientWidth, int &ClientHeight)
 {
@@ -181,6 +358,68 @@ ERR winGetCoords(HWND Window, int &WinX, int &WinY, int &WinWidth, int &WinHeigh
       return ERR::Okay;
    }
    else return ERR::SystemCall;
+}
+
+//********************************************************************************************************************
+
+ERR winGetDisplayGeometry(HWND Window, int &MonitorX, int &MonitorY, int &MonitorWidth, int &MonitorHeight,
+   int &VirtualX, int &VirtualY, int &VirtualWidth, int &VirtualHeight,
+   int &PhysicalWidth, int &PhysicalHeight)
+{
+   HMONITOR monitor;
+   if (Window) {
+      monitor = MonitorFromWindow(Window, MONITOR_DEFAULTTONEAREST);
+   }
+   else {
+      POINT point = { 0, 0 };
+      monitor = MonitorFromPoint(point, MONITOR_DEFAULTTOPRIMARY);
+   }
+
+   if (!monitor) return ERR::SystemCall;
+
+   // If the monitor is not the primary display monitor, some of the rectangle's coordinates may be negative values.
+
+   MONITORINFOEXA monitor_info = { };
+   monitor_info.cbSize = sizeof(monitor_info);
+   if (!GetMonitorInfoA(monitor, &monitor_info)) return ERR::SystemCall;
+
+   MonitorX      = monitor_info.rcMonitor.left;
+   MonitorY      = monitor_info.rcMonitor.top;
+   MonitorWidth  = monitor_info.rcMonitor.right - monitor_info.rcMonitor.left;
+   MonitorHeight = monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top;
+
+   // The virtual screen is the bounding rectangle of all display monitors. Note that these geometry values are
+   // not relative to the queried display.
+
+   VirtualX      = GetSystemMetrics(SM_XVIRTUALSCREEN); // The coordinates for the left side of the virtual screen.
+   VirtualY      = GetSystemMetrics(SM_YVIRTUALSCREEN); // The coordinates for the top of the virtual screen.
+   VirtualWidth  = GetSystemMetrics(SM_CXVIRTUALSCREEN); // The width of the virtual screen.
+   VirtualHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN); // The height of the virtual screen.
+
+   if (win_get_cached_monitor_physical_size(monitor_info.szDevice, PhysicalWidth, PhysicalHeight)) return ERR::Okay;
+
+   if (auto dc = CreateDCA("DISPLAY", monitor_info.szDevice, nullptr, nullptr)) {
+      // Warning: Values returned by GetDeviceCaps() are known to be innacurate - they are dependent on hardware
+      // and driver support.
+      PhysicalWidth  = GetDeviceCaps(dc, HORZSIZE);
+      PhysicalHeight = GetDeviceCaps(dc, VERTSIZE);
+      DeleteDC(dc);
+   }
+   else {
+      PhysicalWidth  = 0;
+      PhysicalHeight = 0;
+   }
+
+   if ((PhysicalWidth <= 50) or (PhysicalHeight <= 50) or (PhysicalWidth > 1000) or (PhysicalHeight > 1000)) {
+      char monitor_device_id[512];
+      if (win_get_monitor_device_id(monitor_info.szDevice, monitor_device_id, sizeof(monitor_device_id))) {
+         win_get_monitor_physical_size(monitor_device_id, PhysicalWidth, PhysicalHeight);
+      }
+   }
+
+   win_cache_monitor_physical_size(monitor_info.szDevice, PhysicalWidth, PhysicalHeight);
+
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -471,23 +710,54 @@ int winReadKey(char *Key, char *Value, unsigned char *Buffer, int Length)
 
 //********************************************************************************************************************
 
-int winGetDisplaySettings(int *bits, int *bytes, int *amtcolours)
+int winGetDisplaySettings(HWND Window, int *Bits, int *Bytes, int *AmtColours, double *RefreshRate)
 {
-   DEVMODE devmode;
-   devmode.dmSize = sizeof(DEVMODE);
-   devmode.dmDriverExtra = 0;
+   DEVMODEA devmode = { };
+   devmode.dmSize = sizeof(DEVMODEA);
 
-   if (EnumDisplaySettings(nullptr, -1, &devmode)) {
-      *bits = devmode.dmBitsPerPel;
+   char display_name[CCHDEVICENAME] = { };
+   const char *display_ptr = nullptr;
+   HMONITOR monitor;
+   if (Window) {
+      monitor = MonitorFromWindow(Window, MONITOR_DEFAULTTONEAREST);
+   }
+   else {
+      POINT point = { 0, 0 };
+      monitor = MonitorFromPoint(point, MONITOR_DEFAULTTOPRIMARY);
+   }
 
-      if (*bits <= 8) *bits = 24; // Pretend that the screen is 24 bit even though it is 256 colours, as this produces better results
+   if (monitor) {
+      MONITORINFOEXA monitor_info = { };
+      monitor_info.cbSize = sizeof(monitor_info);
+      if (GetMonitorInfoA(monitor, &monitor_info)) {
+         snprintf(display_name, sizeof(display_name), "%s", monitor_info.szDevice);
+         display_ptr = display_name;
+      }
+   }
 
-      if (*bits <= 8) { *amtcolours = 256; *bytes = 1; }
-      else if (*bits <= 15) { *amtcolours = 32768; *bytes = 2; }
-      else if (*bits <= 16) { *amtcolours = 65536; *bytes = 2; }
-      else if (*bits <= 24) { *amtcolours = 16777216; *bytes = 3; }
-      else if (*bits <= 32) { *amtcolours = 16777216; *bytes = 4; }
+   if (EnumDisplaySettingsA(display_ptr, ENUM_CURRENT_SETTINGS, &devmode) or
+         EnumDisplaySettingsA(nullptr, ENUM_CURRENT_SETTINGS, &devmode)) {
+      auto bits = devmode.dmBitsPerPel;
 
+      if (bits <= 8) bits = 24; // Pretend that the screen is 24 bit even though it is 256 colours, as this produces better results
+
+      if (Bits) *Bits = bits;
+
+      if (AmtColours) {
+         if (bits <= 8) *AmtColours = 256;
+         else if (bits <= 15) *AmtColours = 32768;
+         else if (bits <= 16) *AmtColours = 65536;
+         else *AmtColours = 16777216;
+      }
+
+      if (Bytes) {
+         if (bits <= 8) *Bytes = 1;
+         else if (bits <= 16) *Bytes = 2;
+         else if (bits <= 24) *Bytes = 3;
+         else *Bytes = 4;
+      }
+
+      if ((RefreshRate) and (devmode.dmDisplayFrequency > 1)) *RefreshRate = double(devmode.dmDisplayFrequency);
       return 1;
    }
    else return 0;
@@ -569,6 +839,17 @@ static void HandleWheel(HWND window, WPARAM wparam, LPARAM lparam)
    if (auto surface_id = winLookupSurfaceID(window)) {
       double delta = -((double)GET_WHEEL_DELTA_WPARAM(wparam) / (double)WHEEL_DELTA) * 3.0;
       MsgWheelMovement(surface_id, delta);
+   }
+}
+
+//********************************************************************************************************************
+
+static int WinXButtonFlag(WPARAM WParam)
+{
+   switch(GET_XBUTTON_WPARAM(WParam)) {
+      case XBUTTON1: return WIN_XBUTTON_1;
+      case XBUTTON2: return WIN_XBUTTON_2;
+      default: return 0;
    }
 }
 
@@ -837,6 +1118,13 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          return 0;
       }
 
+      case WM_DPICHANGED: {
+         MsgDPIChanged(winLookupSurfaceID(window));
+         return 0;
+      }
+
+      case WM_ERASEBKGND: return 1; // 1= Disables auto painting of the window background
+
       case WM_SIZE: {
          // The WM_SIZE event reports the new size of the client area.  See WM_SIZING for incoming size requests from the user.
 
@@ -957,6 +1245,27 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_LBUTTONUP:     HandleButtonRelease(window, WIN_LMB); return 0;
       case WM_RBUTTONUP:     HandleButtonRelease(window, WIN_RMB); return 0;
       case WM_MBUTTONUP:     HandleButtonRelease(window, WIN_MMB); return 0;
+
+      case WM_XBUTTONDOWN:
+         if (auto button = WinXButtonFlag(wParam)) {
+            HandleButtonPress(window, button);
+            return TRUE;
+         }
+         else return DefWindowProc(window, msgcode, wParam, lParam);
+
+      case WM_XBUTTONUP:
+         if (auto button = WinXButtonFlag(wParam)) {
+            HandleButtonRelease(window, button);
+            return TRUE;
+         }
+         else return DefWindowProc(window, msgcode, wParam, lParam);
+
+      case WM_XBUTTONDBLCLK:
+         if (auto button = WinXButtonFlag(wParam)) {
+            HandleButtonPress(window, WIN_DBL|button);
+            return TRUE;
+         }
+         else return DefWindowProc(window, msgcode, wParam, lParam);
 
       case WM_NCMOUSEMOVE:
          HandleMovement(window, wParam, lParam, true);

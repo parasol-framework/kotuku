@@ -108,7 +108,7 @@ void MsgFocusState(OBJECTID SurfaceID, int State)
 void MsgButtonPress(int button, int State)
 {
    if (auto pointer = gfx::AccessPointer()) {
-      struct dcDeviceInput joy[3];
+      struct dcDeviceInput joy[5];
 
       int i = 0;
       int64_t timestamp = PreciseTime();
@@ -131,6 +131,22 @@ void MsgButtonPress(int button, int State)
 
       if (button & 0x0004) {
          joy[i].Type  = JET::BUTTON_3;
+         joy[i].Flags = (button & 0x4000) ? JTYPE::SECONDARY : JTYPE::NIL;
+         joy[i].Values[0] = State;
+         joy[i].Timestamp = timestamp;
+         i++;
+      }
+
+      if (button & 0x0008) {
+         joy[i].Type  = JET::BUTTON_4;
+         joy[i].Flags = (button & 0x4000) ? JTYPE::SECONDARY : JTYPE::NIL;
+         joy[i].Values[0] = State;
+         joy[i].Timestamp = timestamp;
+         i++;
+      }
+
+      if (button & 0x0010) {
+         joy[i].Type  = JET::BUTTON_5;
          joy[i].Flags = (button & 0x4000) ? JTYPE::SECONDARY : JTYPE::NIL;
          joy[i].Values[0] = State;
          joy[i].Timestamp = timestamp;
@@ -191,6 +207,23 @@ void MsgSetFocus(OBJECTID SurfaceID)
          QueueAction(AC::Focus, SurfaceID);
       }
       else log.trace("WM_SETFOCUS: Surface #%d already has the focus, or is hidden.", SurfaceID);
+   }
+}
+
+//********************************************************************************************************************
+
+void MsgDPIChanged(OBJECTID SurfaceID)
+{
+   if (not SurfaceID) return;
+
+   if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
+      auto display_id = surface->DisplayID;
+      if (not display_id) return;
+
+      if (ScopedObjectLock<objDisplay> display(display_id, 3000); display.granted()) {
+         display->setHDensity(0);
+         display->setVDensity(0);
+      }
    }
 }
 

@@ -821,7 +821,7 @@
     </constants>
 
     <constants lookup="SCR" comment="Display flags.">
-      <const name="ACTIVE">The display is participating in the desktop view - but does not guarantee it is visible.</const>
+      <const name="ACTIVE">The display is participating in the desktop view - this does not guarantee it is visible.</const>
       <const name="ALPHA_BLEND">Enables alpha channel blending (if display is hosted and 32-bit).</const>
       <const name="AUTO_SAVE">Saves settings to the global display state when the object is freed.</const>
       <const name="BIT_6">Display is limited to 6-bit output per colour gun.</const>

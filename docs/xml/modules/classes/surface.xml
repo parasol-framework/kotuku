@@ -1154,18 +1154,14 @@ the surface area first).</li>
     </struct>
 
     <struct name="DisplayInfo">
-      <field name="Display" type="OBJECTID">Object ID related to the display</field>
-      <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
-      <field name="Width" type="INT16">Pixel width of the display</field>
-      <field name="Height" type="INT16">Pixel height of the display</field>
-      <field name="BitsPerPixel" type="INT16">Bits per pixel</field>
-      <field name="BytesPerPixel" type="INT16">Bytes per pixel</field>
-      <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
-      <field name="AmtColours" type="INT">Total number of supported colours.</field>
       <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
       <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
       <field name="MaxRefresh" type="FLOAT">Maximum refresh rate</field>
       <field name="RefreshRate" type="FLOAT">Recommended refresh rate</field>
+      <field name="Display" type="OBJECTID">Object ID related to the display</field>
+      <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
+      <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
+      <field name="AmtColours" type="INT">Total number of supported colours.</field>
       <field name="Index" type="INT">Display mode ID (internal)</field>
       <field name="HDensity" type="INT">Horizontal pixel density per inch.</field>
       <field name="VDensity" type="INT">Vertical pixel density per inch.</field>
@@ -1181,6 +1177,10 @@ the surface area first).</li>
       <field name="VirtualHeight" type="INT">Height of the complete desktop spanning all monitors</field>
       <field name="PhysicalWidth" type="INT">Width in millimeters, 0 if unknown</field>
       <field name="PhysicalHeight" type="INT">Height in millimeters, 0 if unknown</field>
+      <field name="Width" type="INT16">Pixel width of the display</field>
+      <field name="Height" type="INT16">Pixel height of the display</field>
+      <field name="BitsPerPixel" type="INT16">Bits per pixel</field>
+      <field name="BytesPerPixel" type="INT16">Bytes per pixel</field>
     </struct>
 
     <struct name="InputEvent">
