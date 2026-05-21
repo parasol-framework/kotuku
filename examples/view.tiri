@@ -7,7 +7,7 @@ Basic demo of the View widget
    import 'gui/columnview'
    import 'gui/window'
 
-   lWindow = gui.window({ title='View Widget Example', insideWidth=400, insideHeight=200 })
+   lWindow = gui.window({ title='View Widget Example', insideWidth=600, insideHeight=300 })
    lViewport = lWindow:clientViewport()
 
    glView = gui.columnView({

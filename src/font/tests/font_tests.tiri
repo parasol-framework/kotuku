@@ -3,14 +3,6 @@
 
    mFont ?= mod.load("font")
 
-function GetList()
-
-end
-
-function StringWidth()
-
-end
-
 @Test function SelectFont()
    err, path, meta = mFont.selectFont("Noto Sans", "Regular")
    assert(err is ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))

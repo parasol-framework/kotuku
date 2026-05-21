@@ -210,8 +210,8 @@ gui.window = function(Options:table)
 
    self.parentSize = function(self:table)
       if hosted(self) then
-         err, info = mGfx.getDisplayInfo(0)
-         return info.width, info.height
+         err, info = mGfx.getDisplayInfo(self.surface.display)
+         return info.monitorWidth, info.monitorHeight
       else
          x, y, width, height = mGfx.getSurfaceCoords(self.surface.parent)
          return width, height
@@ -242,7 +242,7 @@ gui.window = function(Options:table)
             else
                err, info = mGfx.GetDisplayInfo(self.surface.display)
                if err is ERR_Okay then
-                  return (info.width - self.surface.width) / 2, (info.height - self.surface.height) / 2
+                  return (info.monitorWidth - self.surface.width) / 2, (info.monitorHeight - self.surface.height) / 2
                end
             end
          end)()
@@ -326,8 +326,9 @@ gui.window = function(Options:table)
       self.surface.display.flags = self.surface.display.flags | SCR_GRAB_CONTROLLERS
    end
 
-   self.surface.x = Options.x ?? 20
-   self.surface.y = Options.y ?? 20
+   parent_width, parent_height = self:parentSize()
+   self.surface.x = Options.x ?? ((parent_width - self.surface.width) * 0.1)
+   self.surface.y = Options.y ?? ((parent_height - self.surface.height) * 0.1)
 
    if (self.surface.minWidth is self.surface.maxWidth) and (self.surface.minHeight is self.surface.maxHeight) then
       self.maximiseEnabled = false
