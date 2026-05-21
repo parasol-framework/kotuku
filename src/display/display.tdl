@@ -337,8 +337,8 @@ module({
     int   VirtualHeight  # Height of the complete desktop spanning all monitors
     int   PhysicalWidth  # Width in millimeters, 0 if unknown
     int   PhysicalHeight # Height in millimeters, 0 if unknown
-    short Width          # Pixel width of the display
-    short Height         # Pixel height of the display
+    short Width          # Pixel width of the display bitmap
+    short Height         # Pixel height of the display bitmap
     short BitsPerPixel   # Bits per pixel
     short BytesPerPixel  # Bytes per pixel
   ]])
