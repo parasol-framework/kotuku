@@ -298,8 +298,8 @@ gui.window = function(Options:table)
 
                if y - t_frame < info.virtualY then y = info.virtualY + t_frame end
                if x - l_frame < info.virtualX then x = info.virtualX + l_frame end
-               if x + l_frame + r_frame + info.width > info.virtualX + info.virtualWidth then x = info.virtualX + info.virtualWidth - info.width end
-               if y + t_frame + b_frame + info.height > info.virtualY + info.virtualHeight then y = info.virtualY + info.virtualHeight - info.height end
+               if x + l_frame + r_frame + self.surface.width > info.virtualX + info.virtualWidth then x = info.virtualX + info.virtualWidth - self.surface.width - l_frame - r_frame end
+               if y + t_frame + b_frame + self.surface.height > info.virtualY + info.virtualHeight then y = info.virtualY + info.virtualHeight - self.surface.height - t_frame - b_frame end
             end
             self.surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
          end
