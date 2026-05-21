@@ -432,6 +432,135 @@ static ERR DISPLAY_Free(extDisplay *Self)
 }
 
 /*********************************************************************************************************************
+
+-METHOD-
+GetFrame: Returns window frame size information for hosted displays.
+
+On hosted displays, GetFrame() returns the thickness of the host window frame around the client display area.
+
+-INPUT-
+&int Left: Returns the width of the left side of the window frame, in pixels.
+&int Top: Returns the height of the top of the window frame, in pixels.
+&int Right: Returns the width of the right side of the window frame, in pixels.
+&int Bottom: Returns the height of the bottom of the window frame, in pixels.
+
+-ERRORS-
+Okay
+NullArgs
+NoSupport
+SystemCall
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR DISPLAY_GetFrame(extDisplay *Self, gfx::GetFrame *Args)
+{
+   if (not Args) return ERR::NullArgs;
+
+   if ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) {
+      Args->Top    = 0;
+      Args->Right  = 0;
+      Args->Bottom = 0;
+      Args->Left   = 0;
+      return ERR::Okay;
+   }
+
+#ifdef _WIN32
+   if (not Self->WindowHandle) return ERR::NoSupport;
+   return winGetMargins(Self->WindowHandle, &Args->Left, &Args->Top, &Args->Right, &Args->Bottom);
+#elif __xwindows__
+   if ((not XDisplay) or (not Self->XWindowHandle)) return ERR::NoSupport;
+
+   if (auto frame_extents = XInternAtom(XDisplay, "_NET_FRAME_EXTENTS", True)) {
+      Atom actual_type;
+      int actual_format;
+      unsigned long nitems, bytes_after;
+      uint8_t *data = nullptr;
+
+      if ((XGetWindowProperty(XDisplay, Self->XWindowHandle, frame_extents, 0, 4, False, AnyPropertyType,
+               &actual_type, &actual_format, &nitems, &bytes_after, &data) IS Success) and (data) and
+            (actual_format IS 32) and (nitems >= 4)) {
+         auto extents = (long *)data;
+         Args->Left   = int(extents[0]);
+         Args->Right  = int(extents[1]);
+         Args->Top    = int(extents[2]);
+         Args->Bottom = int(extents[3]);
+         XFree(data);
+         return ERR::Okay;
+      }
+
+      if (data) XFree(data);
+   }
+
+   Window root, parent;
+   Window *children = nullptr;
+   unsigned int child_count = 0;
+   if (XQueryTree(XDisplay, Self->XWindowHandle, &root, &parent, &children, &child_count) IS 0) {
+      return ERR::SystemCall;
+   }
+   if (children) XFree(children);
+
+   if ((parent IS 0) or (parent IS root)) {
+      Args->Top = 0;
+      Args->Right = 0;
+      Args->Bottom = 0;
+      Args->Left = 0;
+      return ERR::Okay;
+   }
+
+   Window frame = parent;
+   while (parent != root) {
+      Window next_root, next_parent;
+      Window *next_children = nullptr;
+      unsigned int next_child_count = 0;
+
+      if (XQueryTree(XDisplay, frame, &next_root, &next_parent, &next_children, &next_child_count) IS 0) {
+         return ERR::SystemCall;
+      }
+      if (next_children) XFree(next_children);
+
+      if ((next_parent IS 0) or (next_parent IS root)) break;
+
+      frame = next_parent;
+      parent = next_parent;
+   }
+
+   Window child;
+   int client_x, client_y, frame_x, frame_y;
+   if (XTranslateCoordinates(XDisplay, Self->XWindowHandle, DefaultRootWindow(XDisplay), 0, 0, &client_x, &client_y,
+         &child) IS False) {
+      return ERR::SystemCall;
+   }
+   if (XTranslateCoordinates(XDisplay, frame, DefaultRootWindow(XDisplay), 0, 0, &frame_x, &frame_y, &child) IS False) {
+      return ERR::SystemCall;
+   }
+
+   XWindowAttributes client_attr, frame_attr;
+   if (XGetWindowAttributes(XDisplay, Self->XWindowHandle, &client_attr) IS 0) return ERR::SystemCall;
+   if (XGetWindowAttributes(XDisplay, frame, &frame_attr) IS 0) return ERR::SystemCall;
+
+   Args->Top    = client_y - frame_y;
+   Args->Right  = (frame_x + frame_attr.width) - (client_x + client_attr.width);
+   Args->Bottom = (frame_y + frame_attr.height) - (client_y + client_attr.height);
+   Args->Left   = client_x - frame_x;
+
+   if (Args->Top < 0) Args->Top = 0;
+   if (Args->Right < 0) Args->Right = 0;
+   if (Args->Bottom < 0) Args->Bottom = 0;
+   if (Args->Left < 0) Args->Left = 0;
+
+   return ERR::Okay;
+#else
+   Args->Top    = 0;
+   Args->Right  = 0;
+   Args->Bottom = 0;
+   Args->Left   = 0;
+   return ERR::Okay;
+#endif
+}
+
+/*********************************************************************************************************************
 -ACTION-
 GetKey: Retrieves formatted display information.
 

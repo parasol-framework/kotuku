@@ -271,6 +271,28 @@
 
   <methods>
     <method>
+      <name>GetFrame</name>
+      <comment>Returns window frame size information for hosted displays.</comment>
+      <prototype>ERR gfx::GetFrame(OBJECTPTR Object, INT * Left, INT * Top, INT * Right, INT * Bottom)</prototype>
+      <tiriPrototype>err, Left:num, Top:num, Right:num, Bottom:num = GetFrame()</tiriPrototype>
+      <input>
+        <param type="INT *" name="Left">Returns the width of the left side of the window frame, in pixels.</param>
+        <param type="INT *" name="Top">Returns the height of the top of the window frame, in pixels.</param>
+        <param type="INT *" name="Right">Returns the width of the right side of the window frame, in pixels.</param>
+        <param type="INT *" name="Bottom">Returns the height of the bottom of the window frame, in pixels.</param>
+      </input>
+      <description>
+<p>On hosted displays, GetFrame() returns the thickness of the host window frame around the client display area.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NoSupport">Operation not supported</error>
+        <error code="SystemCall">A call to the host system has failed</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
       <name>Minimise</name>
       <comment>Minimise the desktop window hosting the display.</comment>
       <prototype>ERR gfx::Minimise(OBJECTPTR Object)</prototype>

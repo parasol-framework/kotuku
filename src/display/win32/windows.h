@@ -139,7 +139,7 @@ extern void winFreeDragDrop(void);
 extern ERR winGetCoords(HWND, int &, int &, int &, int &, int &, int &, int &, int &);
 extern int winGetDesktopSize(int *, int *);
 extern int winGetDisplaySettings(int *, int *, int *);
-extern void winGetMargins(HWND, int *, int *, int *, int *);
+extern ERR winGetMargins(HWND, int *, int *, int *, int *);
 extern HINSTANCE winGetModuleHandle(void);
 extern int winGetWindowInfo(HWND, int *, int *, int *, int *, int *);
 extern void winGetWindowTitle(HWND, char *, int);
