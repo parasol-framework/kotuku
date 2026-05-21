@@ -485,16 +485,17 @@ module({
    template <class T> inline uint8_t unpackAlpha(T Packed) { return (((Packed >> ColourFormat->AlphaPos) & ColourFormat->AlphaMask)); }
   ]])
 
-  methods("Display", "Gfx", {
-    { id=1, name="WaitVBL" },
-    { id=2, name="UpdatePalette" },
-    { id=3, name="SetDisplay" },
-    { id=4, name="SizeHints" },
-    { id=5, name="SetGamma" },
-    { id=6, name="SetGammaLinear" },
-    { id=7, name="SetMonitor" },
-    { id=8, name="Minimise" },
-    { id=9, name="CheckXWindow" }
+  methods('Display', 'Gfx', {
+    { id=1, name='WaitVBL' },
+    { id=2, name='UpdatePalette' },
+    { id=3, name='SetDisplay' },
+    { id=4, name='SizeHints' },
+    { id=5, name='SetGamma' },
+    { id=6, name='SetGammaLinear' },
+    { id=7, name='SetMonitor' },
+    { id=8, name='Minimise' },
+    { id=9, name='CheckXWindow' },
+    { id=10, name='GetFrame' }
   })
 
   class('Display', { src='class_display.cpp', output='class_display_def.c' }, [[

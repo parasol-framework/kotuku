@@ -921,6 +921,7 @@ struct SetGammaLinear { double Red; double Green; double Blue; GMF Flags; static
 struct SetMonitor { CSTRING Name; int MinH; int MaxH; int MinV; int MaxV; MON Flags; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Minimise { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct CheckXWindow { static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetFrame { int Left; int Top; int Right; int Bottom; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -971,12 +972,6 @@ class objDisplay : public Object {
    inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }
    inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }
    inline ERR focus() noexcept { return Action(AC::Focus, this, nullptr); }
-   inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
-      struct acGetKey args = { Key, Value, Size };
-      auto error = Action(AC::GetKey, this, &args);
-      if ((error != ERR::Okay) and (Value)) Value[0] = 0;
-      return error;
-   }
    inline ERR hide() noexcept { return Action(AC::Hide, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR move(double X, double Y, double Z) noexcept {
@@ -1039,6 +1034,15 @@ class objDisplay : public Object {
    }
    inline ERR checkXWindow() noexcept {
       return(Action(AC(-9), this, nullptr));
+   }
+   inline ERR getFrame(int * Left, int * Top, int * Right, int * Bottom) noexcept {
+      struct gfx::GetFrame args = { (int)0, (int)0, (int)0, (int)0 };
+      ERR error = Action(AC(-10), this, &args);
+      if (Left) *Left = args.Left;
+      if (Top) *Top = args.Top;
+      if (Right) *Right = args.Right;
+      if (Bottom) *Bottom = args.Bottom;
+      return(error);
    }
 
    // Customised field setting
