@@ -201,7 +201,6 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       maxWidth     = 1024,
       maxHeight    = 800,
       quit         = false,
-      center       = true,
       popOver      = lOptions.popOver,
       parent       = lOptions.target,
       icon         = 'items/font',
@@ -398,7 +397,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    highlightSize(self.pointSize)
 
    lWindow:moveToFront()
-   lWindow:show()
+   lWindow:show(true)
    --vwFace.acFocus()
 
    return self
