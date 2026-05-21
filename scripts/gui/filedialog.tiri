@@ -85,7 +85,6 @@ gui.dialog.file = function(Options)
       minWidth     = 250,
       minHeight    = 150,
       quit         = false,
-      center       = true,
       popOver      = Options.popOver,
       parent       = Options.target,
       icon         = Options.icon ?? 'icons:folders/folder',
@@ -235,7 +234,7 @@ gui.dialog.file = function(Options)
    gui.separator(self.window.viewport, 'H', -footer)
 
    self.window:moveToFront()
-   self.window:show()
+   self.window:show(true)
 
    return self
 end

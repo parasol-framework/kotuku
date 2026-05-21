@@ -574,7 +574,6 @@ gui.dialog.colour = function(Options)
       insideWidth  = 600,
       insideHeight = 400,
       quit         = false,
-      center       = true,
       stickToFront = true,
       aspectRatio  = true,
       popOver      = Options.popOver,
@@ -612,7 +611,7 @@ gui.dialog.colour = function(Options)
    check self.viewport.mtSubscribeInput(JTYPE_MOVEMENT|JTYPE_BUTTON, inputFeedback)
 
    self._window:moveToFront()
-   self._window:show()
+   self._window:show(true)
 
    arrangeLayout(self)
 
