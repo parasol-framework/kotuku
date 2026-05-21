@@ -1096,6 +1096,7 @@ enum class RES : int {
    FREE_MEMORY = 17,
    MEMORY_USAGE = 18,
    MAIN_THREAD = 19,
+   MAIN_THREAD_ID = 20,
 };
 
 // Path types for SetResourcePath()

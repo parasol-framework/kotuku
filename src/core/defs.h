@@ -799,6 +799,7 @@ extern thread_local int16_t tlPublicLockCount;
 extern thread_local int16_t tlPrivateLockCount;
 extern thread_local int glForceUID, glForceGID;
 extern thread_local PERMIT glDefaultPermissions;
+extern THREADID glMainThreadID;
 
 //********************************************************************************************************************
 
