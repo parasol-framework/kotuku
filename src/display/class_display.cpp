@@ -432,70 +432,117 @@ static ERR DISPLAY_Free(extDisplay *Self)
 }
 
 /*********************************************************************************************************************
--ACTION-
-GetKey: Retrieves formatted display information.
 
-GetKey currently supports the `resolution(Index, Format)` key.  `Index` selects a display resolution and `Format` is a
-string containing replacement tokens.  Supported tokens are `%w` for width, `%h` for height, `%d` for bit depth, `%c`
-for colour count and `%%` for a literal percent sign.
+-METHOD-
+GetFrame: Returns window frame size information for hosted displays.
+
+On hosted displays, GetFrame() returns the thickness of the host window frame around the client display area.
+
+-INPUT-
+&int Left: Returns the width of the left side of the window frame, in pixels.
+&int Top: Returns the height of the top of the window frame, in pixels.
+&int Right: Returns the width of the right side of the window frame, in pixels.
+&int Bottom: Returns the height of the bottom of the window frame, in pixels.
 
 -ERRORS-
 Okay
 NullArgs
-Args
-OutOfRange
-NoData
 NoSupport
+SystemCall
+
 -END-
+
 *********************************************************************************************************************/
 
-static ERR DISPLAY_GetKey(extDisplay *Self, struct acGetKey *Args)
+static ERR DISPLAY_GetFrame(extDisplay *Self, gfx::GetFrame *Args)
 {
-   kt::Log log;
+   if (not Args) return ERR::NullArgs;
 
-   if ((not Args) or (not Args->Key) or (not Args->Value)) return log.warning(ERR::NullArgs);
-   if (Args->Size < 1) return log.warning(ERR::Args);
+   if ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) {
+      Args->Top    = 0;
+      Args->Right  = 0;
+      Args->Bottom = 0;
+      Args->Left   = 0;
+      return ERR::Okay;
+   }
 
-   if (kt::startswith("resolution(", Args->Key)) {
-      // Field is in the format:  Resolution(Index, Format) Where 'Format' contains % symbols to indicate variable references.
+#ifdef _WIN32
+   if (not Self->WindowHandle) return ERR::NoSupport;
+   return winGetMargins(Self->WindowHandle, &Args->Left, &Args->Top, &Args->Right, &Args->Bottom);
+#elif __xwindows__
+   if ((not XDisplay) or (not Self->XWindowHandle)) return ERR::NoSupport;
 
-      CSTRING str = Args->Key + 11;
-      int index = strtol(str, nullptr, 0);
-      while ((*str) and (*str != ')') and (*str != ',')) str++;
-      if (*str IS ',') str++;
-      while ((*str) and (*str <= 0x20)) str++;
+   if (auto frame_extents = XInternAtom(XDisplay, "_NET_FRAME_EXTENTS", True)) {
+      Atom actual_type;
+      int actual_format;
+      unsigned long nitems, bytes_after;
+      uint8_t *data = nullptr;
 
-      if (Self->Resolutions.empty()) get_resolutions(Self);
-
-      if (not Self->Resolutions.empty()) {
-         if (index >= std::ssize(Self->Resolutions)) return ERR::OutOfRange;
-
-         std::ostringstream out;
-         while ((*str) and (*str != ')')) {
-            if (*str != '%') out << *str++;
-            else if (str[1] IS '%') { // Escape?
-               out << '%';
-               str += 2;
-            }
-            else {
-               switch (str[1]) {
-                  case 'w': out << Self->Resolutions[index].width; break;
-                  case 'h': out << Self->Resolutions[index].height; break;
-                  case 'd': out << Self->Resolutions[index].bpp; break;
-                  case 'c': if (Self->Resolutions[index].bpp <= 24) out << (1<<Self->Resolutions[index].bpp);
-                            else out << (1<<24);
-                            break;
-               }
-               str += 2;
-            }
-         }
-         kt::strcopy(out.str(), Args->Value, Args->Size);
-
+      if ((XGetWindowProperty(XDisplay, Self->XWindowHandle, frame_extents, 0, 4, False, AnyPropertyType,
+               &actual_type, &actual_format, &nitems, &bytes_after, &data) IS Success) and (data) and
+            (actual_format IS 32) and (nitems >= 4)) {
+         auto extents = (long *)data;
+         Args->Left   = int(extents[0]);
+         Args->Right  = int(extents[1]);
+         Args->Top    = int(extents[2]);
+         Args->Bottom = int(extents[3]);
+         XFree(data);
          return ERR::Okay;
       }
-      else return ERR::NoData;
+
+      if (data) XFree(data);
    }
-   else return ERR::NoSupport;
+
+   Window root, parent;
+   Window *children = nullptr;
+   unsigned int child_count = 0;
+   if (XQueryTree(XDisplay, Self->XWindowHandle, &root, &parent, &children, &child_count) IS 0) {
+      return ERR::SystemCall;
+   }
+   if (children) XFree(children);
+
+   if ((parent IS 0) or (parent IS root)) {
+      Args->Top = 0;
+      Args->Right = 0;
+      Args->Bottom = 0;
+      Args->Left = 0;
+      return ERR::Okay;
+   }
+
+   Window frame = parent;
+
+   Window child;
+   int client_x, client_y, frame_x, frame_y;
+   if (XTranslateCoordinates(XDisplay, Self->XWindowHandle, DefaultRootWindow(XDisplay), 0, 0, &client_x, &client_y,
+         &child) IS False) {
+      return ERR::SystemCall;
+   }
+   if (XTranslateCoordinates(XDisplay, frame, DefaultRootWindow(XDisplay), 0, 0, &frame_x, &frame_y, &child) IS False) {
+      return ERR::SystemCall;
+   }
+
+   XWindowAttributes client_attr, frame_attr;
+   if (XGetWindowAttributes(XDisplay, Self->XWindowHandle, &client_attr) IS 0) return ERR::SystemCall;
+   if (XGetWindowAttributes(XDisplay, frame, &frame_attr) IS 0) return ERR::SystemCall;
+
+   Args->Top    = client_y - frame_y;
+   Args->Right  = (frame_x + frame_attr.width) - (client_x + client_attr.width);
+   Args->Bottom = (frame_y + frame_attr.height) - (client_y + client_attr.height);
+   Args->Left   = client_x - frame_x;
+
+   if (Args->Top < 0) Args->Top = 0;
+   if (Args->Right < 0) Args->Right = 0;
+   if (Args->Bottom < 0) Args->Bottom = 0;
+   if (Args->Left < 0) Args->Left = 0;
+
+   return ERR::Okay;
+#else
+   Args->Top    = 0;
+   Args->Right  = 0;
+   Args->Bottom = 0;
+   Args->Left   = 0;
+   return ERR::Okay;
+#endif
 }
 
 /*********************************************************************************************************************

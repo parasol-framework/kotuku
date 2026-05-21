@@ -1471,9 +1471,8 @@ void winRemoveWindowClass(const char *ClassName)
    UnregisterClass(ClassName, glInstance);
 }
 
-/*********************************************************************************************************************
-** The coordinates are interpreted as being indicative of the client area.
-*/
+//********************************************************************************************************************
+// The coordinates are interpreted as being indicative of the client area.
 
 int winMoveWindow(HWND Window, int X, int Y)
 {
@@ -1488,9 +1487,8 @@ int winMoveWindow(HWND Window, int X, int Y)
    else return 0;
 }
 
-/*********************************************************************************************************************
-** The coordinates are interpreted as being relative to the client area.
-*/
+//********************************************************************************************************************
+// The coordinates are interpreted as being relative to the client area.
 
 int winResizeWindow(HWND Window, int X, int Y, int Width, int Height)
 {
@@ -1523,17 +1521,18 @@ int winResizeWindow(HWND Window, int X, int Y, int Width, int Height)
 
 //********************************************************************************************************************
 
-void winGetMargins(HWND Window, int *Left, int *Top, int *Right, int *Bottom)
+ERR winGetMargins(HWND Window, int *Left, int *Top, int *Right, int *Bottom)
 {
    WINDOWINFO info;
 
    info.cbSize = sizeof(info);
-   if (!GetWindowInfo(Window, &info)) return;
+   if (!GetWindowInfo(Window, &info)) return ERR::SystemCall;
 
    *Left   = info.rcClient.left - info.rcWindow.left;
    *Top    = info.rcClient.top - info.rcWindow.top;
    *Right  = info.rcWindow.right - info.rcClient.right;
    *Bottom = info.rcWindow.bottom - info.rcClient.bottom;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1608,9 +1607,9 @@ static BITMAPV4HEADER make_bitmap_v4_header(int ScanWidth, int ScanHeight, int B
    return info;
 }
 
-void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
-   int Height, int XDest, int YDest, int ScanWidth, int ScanHeight,
-   int BPP, unsigned char *Data, int RedMask, int GreenMask, int BlueMask, int AlphaMask, double Opacity)
+void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width, int Height, int XDest, int YDest,
+   int ScanWidth, int ScanHeight, int BPP, unsigned char *Data, int RedMask, int GreenMask, int BlueMask,
+   int AlphaMask, double Opacity)
 {
    POINT ptSrc = { 0, 0 };
    SIZE size;
