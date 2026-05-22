@@ -464,7 +464,6 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERR R
    kt::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
 
-   if (Self->Document) return;
    if (Self->collecting()) return;
 
    log.traceBranch("Redimension notification from parent #%d, currently %dx%d,%dx%d.", Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height);
@@ -1150,24 +1149,6 @@ static ERR SURFACE_Init(extSurface *Self)
          Self->Colour.Alpha = 0;
       }
 
-      // Set FixedX/FixedY accordingly - this is used to assist in the layout process when a surface is used in a document.
-
-      if ((Self->Dimensions & DMF(0xffff)) != DMF::NIL) {
-         if ((dmf::hasAnyX(Self->Dimensions)) and dmf::has(Self->Dimensions, DMF::FIXED_WIDTH|DMF::SCALED_WIDTH|DMF::FIXED_X_OFFSET|DMF::SCALED_X_OFFSET)) {
-            Self->FixedX = true;
-         }
-         else if ((dmf::hasAnyXOffset(Self->Dimensions)) and dmf::has(Self->Dimensions, DMF::FIXED_WIDTH|DMF::SCALED_WIDTH|DMF::FIXED_X|DMF::SCALED_X)) {
-            Self->FixedX = true;
-         }
-
-         if ((dmf::hasAnyY(Self->Dimensions)) and dmf::has(Self->Dimensions, DMF::FIXED_HEIGHT|DMF::SCALED_HEIGHT|DMF::FIXED_Y_OFFSET|DMF::SCALED_Y_OFFSET)) {
-            Self->FixedY = true;
-         }
-         else if ((dmf::hasAnyYOffset(Self->Dimensions)) and dmf::has(Self->Dimensions, DMF::FIXED_HEIGHT|DMF::SCALED_HEIGHT|DMF::FIXED_Y|DMF::SCALED_Y)) {
-            Self->FixedY = true;
-         }
-      }
-
       // Recalculate coordinates if offsets are used
 
       if (dmf::hasXOffset(Self->Dimensions))         Self->setXOffset(Self->XOffset);
@@ -1662,55 +1643,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 
    log.traceBranch("X,Y: %d,%d", xchange, ychange);
 
-   // Limit handling
-
-   if (!Self->ParentID) {
-      move_layer(Self, Self->X + move.DeltaX, Self->Y + move.DeltaY);
-   }
-   else {
-      const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
-      if ((i = find_parent_list(glSurfaces, Self)) != -1) {
-         // Horizontal limit handling
-
-         if (xchange < 0) {
-            if ((Self->X + xchange) < Self->LeftLimit) {
-               if (Self->X < Self->LeftLimit) move.DeltaX = 0;
-               else move.DeltaX = -(Self->X - Self->LeftLimit);
-            }
-         }
-         else if (xchange > 0) {
-            if ((Self->X + Self->Width) > (glSurfaces[i].Width - Self->RightLimit)) move.DeltaX = 0;
-            else if ((Self->X + Self->Width + xchange) > (glSurfaces[i].Width - Self->RightLimit)) {
-               move.DeltaX = (glSurfaces[i].Width - Self->RightLimit - Self->Width) - Self->X;
-            }
-         }
-
-         // Vertical limit handling
-
-         if (ychange < 0) {
-            if ((Self->Y + ychange) < Self->TopLimit) {
-               if ((Self->Y + Self->Height) < Self->TopLimit) move.DeltaY = 0;
-               else move.DeltaY = -(Self->Y - Self->TopLimit);
-            }
-         }
-         else if (ychange > 0) {
-            if ((Self->Y + Self->Height) > (glSurfaces[i].Height - Self->BottomLimit)) move.DeltaY = 0;
-            else if ((Self->Y + Self->Height + ychange) > (glSurfaces[i].Height - Self->BottomLimit)) {
-               move.DeltaY = (glSurfaces[i].Height - Self->BottomLimit - Self->Height) - Self->Y;
-            }
-         }
-
-         // Second check: If there isn't any movement, return immediately
-
-         if ((!move.DeltaX) and (!move.DeltaY)) {
-            return ERR::Failed|ERR::Notified;
-         }
-      }
-
-      // Move the graphics layer
-
-      move_layer(Self, Self->X + move.DeltaX, Self->Y + move.DeltaY);
-   }
+   move_layer(Self, Self->X + move.DeltaX, Self->Y + move.DeltaY);
 
 /* These lines cause problems for the resizing of offset surface objects.
    if (dmf::hasAnyXOffset(Self->Dimensions)) Self->XOffset += move.DeltaX;
@@ -1962,10 +1895,6 @@ static ERR SURFACE_NewOwner(extSurface *Self, struct acNewOwner *Args)
 
 static ERR SURFACE_NewObject(extSurface *Self)
 {
-   Self->LeftLimit   = -1000000000;
-   Self->RightLimit  = -1000000000;
-   Self->TopLimit    = -1000000000;
-   Self->BottomLimit = -1000000000;
    Self->Opacity     = 1.0;
    Self->RootID      = Self->UID;
    Self->WindowType  = glpWindowType;
@@ -2160,16 +2089,23 @@ static ERR SURFACE_ResetDimensions(extSurface *Self, struct drw::ResetDimensions
 -METHOD-
 ScheduleRedraw: Schedules a redraw operation for the next frame.
 
-Use ScheduleRedraw() to mark a surface for redraw on the next frame cycle.  The surface and its child surfaces are
-redrawn together, typically on the next 1/60th of a second timer tick.  Direct redraw requests for the target surface
-are coalesced until the scheduled redraw is processed.
+Use ScheduleRedraw() to mark a surface for redraw on the next frame cycle.  The delay is governed by the chosen
+RefreshRate, which is measured in frames per second.  If a RefreshRate is not specified, the frame rate is derived
+from the display.
 
-Scheduling is ideal in situations where a cluster of redraw events may occur within a tight time period, and it
-would be inefficient to draw those changes to the display individually.
+Specifying a custom RefreshRate is recommended when processing an animation at a lower frame rate than that of the
+display would be acceptable.
 
-Redraw schedules do not merge across the hierarchy.  If both a surface and one of its children are scheduled, two
-redraw operations may be triggered where one would otherwise suffice.  Schedule the highest relevant surface when a
-single redraw should cover a group of changes.
+Scheduling with this method over #Draw() (immediate mode) is recommended when a cluster of redraw events may occur
+within a tight time period, and it would be inefficient to draw those changes to the display individually.  Repeated
+redraw requests made to the target surface are coalesced until the scheduled redraw is processed.
+
+Redraw schedules do not collapse in nested surfaces.  If both a surface and one of its children are scheduled, two
+redraw operations may be triggered where one would otherwise suffice.  Target the top-level surface only in such
+instances.
+
+-INPUT-
+int RefreshRate: Optional refresh rate in frames per second.  If not specified, the refresh rate from the display is used.
 
 -ERRORS-
 Okay
@@ -2178,21 +2114,46 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_ScheduleRedraw(extSurface *Self)
+static ERR SURFACE_ScheduleRedraw(extSurface *Self, struct drw::ScheduleRedraw *Args)
 {
-   // TODO Currently defaults to 60FPS, we should get the correct FPS from the Display object.
-   const double FPS = 60.0;
+   int refresh_rate;
 
-   if (Self->RedrawScheduled) return ERR::Okay;
+   if ((Args) and (Args->RefreshRate > 0)) {
+      refresh_rate = Args->RefreshRate;
+      if (refresh_rate > 255) refresh_rate = 255;
+   }
+   else {
+      if (!Self->RefreshRate) {
+         // Prefer to use the display refresh rate.  Note: Refresh rate should not be a determining factor for animation
+         // frame rates - the client application is responsible for making that determination with the user.
+         DisplayInfo *info;
+         if (gfx::GetDisplayInfo(Self->DisplayID, &info) IS ERR::Okay) {
+            if (info->RefreshRate > 255) Self->RefreshRate = 255;
+            else Self->RefreshRate = info->RefreshRate;
+         }
+
+         if (!Self->RefreshRate) Self->RefreshRate = 60;
+         else if (Self->RefreshRate < 25) Self->RefreshRate = 25;
+         else if (Self->RefreshRate > 120) Self->RefreshRate = 120;
+      }
+
+      refresh_rate = Self->RefreshRate;
+   }
+
+   Self->RedrawCountdown = refresh_rate * 2; // Maintain subscriptions for up to 2 seconds
+
+   if ((Self->RedrawScheduled) and (refresh_rate IS Self->RedrawRate)) return ERR::Okay;
 
    if (Self->RedrawTimer) {
+      UpdateTimer(Self->RedrawTimer, -(1.0 / double(refresh_rate)));
       Self->RedrawScheduled = true;
+      Self->RedrawRate = refresh_rate;
       return ERR::Okay;
    }
 
-   if (SubscribeTimer(1.0 / FPS, C_FUNCTION(redraw_timer), &Self->RedrawTimer) IS ERR::Okay) {
-      Self->RedrawCountdown = FPS * 30.0;
+   if (SubscribeTimer(1.0 / double(refresh_rate), C_FUNCTION(redraw_timer), &Self->RedrawTimer) IS ERR::Okay) {
       Self->RedrawScheduled = true;
+      Self->RedrawRate = refresh_rate;
       return ERR::Okay;
    }
    else return ERR::Failed;
@@ -2600,11 +2561,6 @@ static const FieldDef clWindowType[] = { // This table is copied from pointer_cl
    { nullptr, 0 }
 };
 
-static const FieldDef clTypeFlags[] = {
-   { "Root", RT::ROOT },
-   { nullptr, 0 }
-};
-
 #include "surface_def.c"
 
 static const FieldArray clSurfaceFields[] = {
@@ -2616,10 +2572,6 @@ static const FieldArray clSurfaceFields[] = {
    { "MinHeight",    FDF_INT|FDF_RW,  nullptr, SET_MinHeight },
    { "MaxWidth",     FDF_INT|FDF_RW,  nullptr, SET_MaxWidth },
    { "MaxHeight",    FDF_INT|FDF_RW,  nullptr, SET_MaxHeight },
-   { "LeftLimit",    FDF_INT|FDF_RW,  nullptr, SET_LeftLimit },
-   { "RightLimit",   FDF_INT|FDF_RW,  nullptr, SET_RightLimit },
-   { "TopLimit",     FDF_INT|FDF_RW,  nullptr, SET_TopLimit },
-   { "BottomLimit",  FDF_INT|FDF_RW,  nullptr, SET_BottomLimit },
    { "Display",      FDF_OBJECTID|FDF_R, nullptr, nullptr, CLASSID::DISPLAY },
    { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, SET_Flags, &clSurfaceFlags },
    { "X",            FDF_UNIT|FDF_INT|FDF_SCALED|FDF_RW, GET_XCoord, SET_XCoord },
@@ -2632,7 +2584,7 @@ static const FieldArray clSurfaceFields[] = {
    { "DragStatus",   FDF_INT|FDF_LOOKUP|FDF_R, nullptr, nullptr, &clSurfaceDragStatus },
    { "Cursor",       FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_Cursor, &clSurfaceCursor },
    { "Colour",       FDF_RGB|FDF_RW },
-   { "Type",         FDF_SYSTEM|FDF_INT|FDF_RI, nullptr, nullptr, &clTypeFlags },
+   { "Type",         FDF_SYSTEM|FDF_INT|FDF_RI, nullptr, nullptr, &clSurfaceType },
    { "Modal",        FDF_INT|FDF_RW, nullptr, SET_Modal },
    // Virtual fields
    { "AbsX",          FDF_VIRTUAL|FDF_INT|FDF_RW, GET_AbsX, SET_AbsX },

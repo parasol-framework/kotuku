@@ -15,6 +15,7 @@ Parameters:
 
    local glWinWidth, glWinHeight, glColours, glMode, glWindow, glSurface, glParticles, glViewport, glScene
    local glTimerHandle, glFPS, glPrinted
+   local PI = math.pi
    glFrameStats = { avg = 0, best = 0, times = array<int> }
 
    MODE_PRIMITIVE    = 1 -- Tests the speed of drawing primitive rectangles (this will be much faster than drawVector() but is useful for comparative purposes)
@@ -55,7 +56,7 @@ end
 
 function newParticle()
    particle = {
-      angle    = math.pi * 2 * math.random(),
+      angle    = PI * 2 * math.random(),
       velocity = 1 + math.random() * 3,
       radius   = 6,
       x        = (glWinWidth / 2) - 6,
@@ -90,7 +91,7 @@ function timer(Subscriber, Elapsed, Current)
    glWinHeight = glSurface.height ?? 1
 
    calc_start = mSys.PreciseTime()
-   for i,p in pairs(glParticles) do
+   for p in values(glParticles) do
       -- Calculate next position of particle
 
       tx = math.cos(p.angle) * p.velocity
@@ -102,36 +103,36 @@ function timer(Subscriber, Elapsed, Current)
       -- If particle is going to move off right side of screen
 
       if nextX + p.radius * 2 > glWinWidth then
-         if ((p.angle >= 0) and (p.angle < math.pi * 0.5)) then
-            p.angle = math.pi - p.angle
-         elseif p.angle > math.pi / 2 * 3 then
-            p.angle = p.angle - (p.angle - math.pi / 2 * 3) * 2
+         if ((p.angle >= 0) and (p.angle < PI * 0.5)) then
+            p.angle = PI - p.angle
+         elseif p.angle > PI / 2 * 3 then
+            p.angle = p.angle - (p.angle - PI / 2 * 3) * 2
          end
       end
 
       -- If particle is going to move off left side of screen
 
       if nextX < 0 then  -- If angle is between 6 o'clock and 9 o'clock
-         if ((p.angle > math.pi / 2) and (p.angle < math.pi)) then
-            p.angle = math.pi - p.angle
-         elseif (p.angle > math.pi) and (p.angle < math.pi * 0.5 * 3) then
-            p.angle = p.angle + (math.pi * 0.5 * 3 - p.angle) * 2
+         if ((p.angle > PI / 2) and (p.angle < PI)) then
+            p.angle = PI - p.angle
+         elseif (p.angle > PI) and (p.angle < PI * 0.5 * 3) then
+            p.angle = p.angle + (PI * 0.5 * 3 - p.angle) * 2
          end
       end
 
       -- If particle is going to move off bottom side of screen
 
       if nextY + p.radius * 2 > glWinHeight then
-         if p.angle > 0 and p.angle < math.pi then
-            p.angle = math.pi * 2 - p.angle
+         if p.angle > 0 and p.angle < PI then
+            p.angle = PI * 2 - p.angle
          end
       end
 
       -- If particle is going to move off top side of screen
 
       if nextY < 0 then
-         if p.angle > math.pi and p.angle < math.pi * 2 then
-            p.angle = p.angle - (p.angle - math.pi) * 2
+         if p.angle > PI and p.angle < PI * 2 then
+            p.angle = p.angle - (p.angle - PI) * 2
          end
       end
 
@@ -143,9 +144,14 @@ function timer(Subscriber, Elapsed, Current)
       p.x = nextX
       p.y = nextY
    end
+
+   -- The calc_time is just how fast we ran the calculation sub-routine
    calc_time = mSys.PreciseTime() - calc_start
 
-   glViewport.acDraw()
+   glScene.surface.acDraw() -- Force a redraw
+   --glScene.surface.mtScheduleRedraw(60) -- Schedule a redraw based on frame rate
+
+   -- The frame rate is based on the rendering time returned from the scene graph
    if glScene.renderTime then glFrameStats.times:push(glScene.renderTime) end
 
    if math.round(Current / 1000000) % 2 is 0 then
@@ -240,7 +246,7 @@ end
         { r=0xcc, g=0, b=0 }, { r=0xff, g=0xcc, b=0 }, { r=0xaa, g=0xff, b=0 },
         { r=0, g=0x99, b=0xcc }, { r=0x19, g=0x4c, b=0x99 }, { r=0x66, g=0x19, b=0x99 }
       }
-   elseif (glMode is MODE_VECTOR) then
+   elseif glMode is MODE_VECTOR then
       print('Drawing Mode: Vector')
 
       glColours = array<table> {
@@ -248,7 +254,7 @@ end
         { r=0, g=0x99, b=0xcc }, { r=0x19, g=0x4c, b=0x99 }, { r=0x66, g=0x19, b=0x99 }
       }
 
-   elseif (glMode is MODE_DIRECTVECTOR) then
+   elseif glMode is MODE_DIRECTVECTOR then
       print('Drawing Mode: Direct Vector')
 
       glSurface.mtAddCallback(drawDirectVector)

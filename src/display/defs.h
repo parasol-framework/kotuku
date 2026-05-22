@@ -326,6 +326,11 @@ class extSurface : public objSurface {
    SurfaceCallback *Callback;
    APTR      Data;
    double   Opacity;
+   int     XOffset, YOffset;     // Fixed horizontal and vertical offset
+   double  XOffsetPercent;       // Scaled horizontal offset
+   double  YOffsetPercent;       // Scaled vertical offset
+   double  WidthPercent, HeightPercent; // Scaled width and height
+   double  XPercent, YPercent;   // Scaled coordinate
    WINHANDLE DisplayWindow;       // Reference to the platform dependent window representing the Surface object
    OBJECTID PrevModalID;          // Previous surface to have been modal
    OBJECTID BitmapOwnerID;        // The surface object that owns the root bitmap
@@ -335,21 +340,17 @@ class extSurface : public objSurface {
    int      InputHandle;          // Input handler for dragging of surfaces
    SWIN     WindowType;           // See SWIN constants
    TIMER    RedrawTimer;          // For ScheduleRedraw()
-   SurfaceCallback CallbackCache[4];
-   int16_t  ScrollProgress;
+   SurfaceCallback CallbackCache[3]; // For AddCallback()
    uint16_t InheritedRoot:1;      // TRUE if the user set the RootLayer manually
    uint16_t ParentDefined:1;      // TRUE if the parent field was set manually
-   uint16_t SkipPopOver:1;
-   uint16_t FixedX:1;
-   uint16_t FixedY:1;
-   uint16_t Document:1;
    uint16_t RedrawScheduled:1;
    uint16_t RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
+   uint8_t  RefreshRate;          // Cached copy of the display refresh rate.  0 = Not queried
+   uint8_t  RedrawRate;           // Last refresh rate used for scheduled redrawing
    int8_t   BitsPerPixel;         // Bitmap bits per pixel
    int8_t   BytesPerPixel;        // Bitmap bytes per pixel
    uint8_t  CallbackCount;
    uint8_t  CallbackSize;         // Current size of the callback array.
-   int8_t   Anchored;
 };
 
 class extDisplay : public objDisplay {

@@ -106,24 +106,6 @@ static ERR GET_Bottom(extSurface *Self, int *Bottom)
 /*********************************************************************************************************************
 
 -FIELD-
-BottomLimit: Prevents a surface object from moving beyond a given point at the bottom of its container.
-
-Set `BottomLimit` to reserve a margin at the bottom of the parent container.  For example, a value of `5` prevents
-#Move() from placing the surface inside the bottom-most five coordinate units.
-
-Movement limits apply only to #Move().  Direct writes to coordinate fields bypass them.
-
-*********************************************************************************************************************/
-
-static ERR SET_BottomLimit(extSurface *Self, int Value)
-{
-   Self->BottomLimit = Value;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Dimensions: Indicates currently active dimension settings.
 Lookup: DMF
 
@@ -290,24 +272,6 @@ static ERR SET_Height(extSurface *Self, Unit *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-LeftLimit: Prevents a surface object from moving beyond a given point on the left-hand side.
-
-Set `LeftLimit` to reserve a margin at the left-hand side of the parent container.  For example, a value of `3`
-prevents #Move() from placing the surface inside the left-most three coordinate units.
-
-Movement limits apply only to #Move().  Direct writes to coordinate fields bypass them.
-
-*********************************************************************************************************************/
-
-static ERR SET_LeftLimit(extSurface *Self, int Value)
-{
-   Self->LeftLimit = Value;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 MaxHeight: Prevents the height of a surface object from exceeding a certain value.
 
 Set `MaxHeight` to limit the maximum height that can be applied through resizing.  #Resize() cannot increase the
@@ -424,42 +388,6 @@ Right: Returns the right-most coordinate of a surface object, `X + Width`.
 static ERR GET_Right(extSurface *Self, int *Value)
 {
    *Value = Self->X + Self->Width;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-RightLimit: Prevents a surface object from moving beyond a given point on the right-hand side.
-
-Set `RightLimit` to reserve a margin at the right-hand side of the parent container.  For example, a value of `8`
-prevents #Move() from placing the surface inside the right-most eight coordinate units.
-
-Movement limits apply only to #Move().  Direct writes to coordinate fields bypass them.
-
-*********************************************************************************************************************/
-
-static ERR SET_RightLimit(extSurface *Self, int Value)
-{
-   Self->RightLimit = Value;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-TopLimit: Prevents a surface object from moving beyond a given point at the top of its container.
-
-Set `TopLimit` to reserve a margin at the top of the parent container.  For example, a value of `10` prevents #Move()
-from placing the surface inside the top-most ten coordinate units.
-
-Movement limits apply only to #Move().  Direct writes to coordinate fields bypass them.
-
-*********************************************************************************************************************/
-
-static ERR SET_TopLimit(extSurface *Self, int Value)
-{
-   Self->TopLimit = Value;
    return ERR::Okay;
 }
 
