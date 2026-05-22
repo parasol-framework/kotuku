@@ -271,6 +271,16 @@ static void get_x11_display_geometry(DisplayInfo *Info, int X, int Y, bool Match
          auto monitors = XRRGetMonitors(XDisplay, DefaultRootWindow(XDisplay), True, &monitor_count);
          if ((monitors) and (monitor_count > 0)) {
             int monitor_index = 0;
+            int primary_x = monitors[0].x;
+            int primary_y = monitors[0].y;
+
+            for (int i=0; i < monitor_count; i++) {
+               if (monitors[i].primary) {
+                  primary_x = monitors[i].x;
+                  primary_y = monitors[i].y;
+                  break;
+               }
+            }
 
             for (int i=0; i < monitor_count; i++) {
                if ((MatchPoint) and (X >= monitors[i].x) and (X < monitors[i].x + monitors[i].width) and
@@ -284,8 +294,8 @@ static void get_x11_display_geometry(DisplayInfo *Info, int X, int Y, bool Match
                }
             }
 
-            Info->MonitorX       = monitors[monitor_index].x;
-            Info->MonitorY       = monitors[monitor_index].y;
+            Info->MonitorX       = monitors[monitor_index].x - primary_x;
+            Info->MonitorY       = monitors[monitor_index].y - primary_y;
             Info->MonitorWidth   = monitors[monitor_index].width;
             Info->MonitorHeight  = monitors[monitor_index].height;
             Info->PhysicalWidth  = monitors[monitor_index].mwidth;
