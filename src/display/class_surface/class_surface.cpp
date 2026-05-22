@@ -394,14 +394,21 @@ static void display_resized(OBJECTID DisplayID, int X, int Y, int Width, int Hei
 
    if (kt::ScopedObjectLock<extSurface> surface(surface_id, 4000); surface.granted()) {
       if (surface->classID() IS CLASSID::SURFACE) {
-         if ((X != surface->X) or (Y != surface->Y)) {
+         if ((surface->Width != Width) or (surface->Height != Height)) {
             surface->X = X;
             surface->Y = Y;
             UpdateSurfaceRecord(*surface);
-         }
 
-         if ((surface->Width != Width) or (surface->Height != Height)) {
-            acResize(*surface, Width, Height, 0);
+            acRedimension(*surface, surface->X, surface->Y, 0, Width, Height, 0);
+         }
+         else if ((X != surface->X) or (Y != surface->Y)) {
+            // Window is being moved to a new position only.  Notifying subscribers with no forced redraw is sufficient
+            surface->X = X;
+            surface->Y = Y;
+            UpdateSurfaceRecord(*surface);
+
+            struct acRedimension redimension = { (double)X, (double)Y, 0, (double)Width, (double)Height, (double)surface->BitsPerPixel };
+            NotifySubscribers(*surface, AC::Redimension, &redimension, ERR::Okay);
          }
       }
    }
