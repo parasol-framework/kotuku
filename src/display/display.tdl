@@ -605,10 +605,6 @@ module({
     int MinHeight         # Minimum height setting
     int MaxWidth          # Maximum width setting
     int MaxHeight         # Maximum height setting
-    int LeftLimit         # Limits the surface area from moving too far left
-    int RightLimit        # Limits the surface area from moving too far right
-    int TopLimit          # Limits the surface area from moving too far up
-    int BottomLimit       # Limits the surface area from moving too far down
     oid Display           # Refers to the Display object that is managing the surface's graphics.
     int(RNF) Flags        # Special flags
     int X                 # Fixed horizontal coordinate
@@ -625,12 +621,6 @@ module({
     int Modal             # Set to 1 to enable modal mode
   ]],
   [[
-   // These coordinate fields are considered private but may be accessed by some internal classes, like Document
-   int     XOffset, YOffset;     // Fixed horizontal and vertical offset
-   double  XOffsetPercent;       // Scaled horizontal offset
-   double  YOffsetPercent;       // Scaled vertical offset
-   double  WidthPercent, HeightPercent; // Scaled width and height
-   double  XPercent, YPercent;   // Scaled coordinate
   ]],
   [[
    inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }

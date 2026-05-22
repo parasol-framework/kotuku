@@ -869,13 +869,14 @@ ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
 
       auto it = glTimers.emplace(glTimers.end());
       auto subscribed = PreciseTime();
-      it->SubscriberID = subscriber->UID;
-      it->Interval     = usInterval;
-      it->LastCall     = subscribed;
-      it->NextCall     = subscribed + usInterval;
-      it->Routine      = *Callback;
-      it->Locked       = false;
-      it->Cycle        = glTimerCycle - 1;
+      it->SubscriberID    = subscriber->UID;
+      it->Interval        = usInterval;
+      it->PendingInterval = 0;
+      it->LastCall        = subscribed;
+      it->NextCall        = subscribed + usInterval;
+      it->Routine         = *Callback;
+      it->Locked          = false;
+      it->Cycle           = glTimerCycle - 1;
 
       if (subscriber->UID > 0) it->Subscriber = subscriber;
       else it->Subscriber = nullptr;
@@ -883,7 +884,7 @@ ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
       // For resource tracking purposes it is important for us to keep a record of the subscription so that
       // we don't treat the object address as valid when it's been removed from the system.
 
-      subscriber->setFlag(NF::TIMER_SUB);
+      subscriber->setFlag(NF::TIMER_SUB); // TODO: Use pin() instead?
       if (Subscription) *Subscription = &*it;
       return ERR::Okay;
    }
@@ -916,14 +917,20 @@ ERR UpdateTimer(APTR Subscription, double Interval)
 
    if (not Subscription) return log.warning(ERR::NullArgs);
 
-   log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
-
    if (auto lock = std::unique_lock{glmTimer, 1000ms}) {
       auto timer = (CoreTimer *)Subscription;
+      log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, New Interval: %.4f, Current Interval: %.4f", Subscription, Interval, timer->Interval / 1000000.0);
       if (Interval < 0) {
-         // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
+         // Special mode:
+         //   Doesn't upgrade the timer immediately unless the new interval < existing interval.
+         //   Extending the interval will apply it on the following cycle.
          auto usInterval = -(int64_t(Interval * 1000000.0));
-         if (usInterval < timer->Interval) timer->Interval = usInterval;
+         if (usInterval <= timer->Interval) {
+            timer->Interval = usInterval;
+            auto next_call = PreciseTime() + usInterval;
+            if (next_call < timer->NextCall) timer->NextCall = next_call;
+         }
+         else timer->PendingInterval = usInterval;
          return ERR::Okay;
       }
       else if (Interval > 0) {

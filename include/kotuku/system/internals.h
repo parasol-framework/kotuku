@@ -35,12 +35,13 @@ enum {
 
 class CoreTimer {
 public:
-   int64_t   NextCall;       // Cycle when PreciseTime() reaches this value (us)
-   int64_t   LastCall;       // PreciseTime() recorded at the last call (us)
-   int64_t   Interval;       // The amount of microseconds to wait at each interval
-   OBJECTPTR Subscriber;     // The object that is subscribed (pointer, if private)
-   OBJECTID  SubscriberID;   // The object that is subscribed
-   FUNCTION  Routine;        // Routine to call if not using AC::Timer - ERR Routine(OBJECTID, int, int);
+   int64_t   NextCall;        // Cycle when PreciseTime() reaches this value (us)
+   int64_t   LastCall;        // PreciseTime() recorded at the last call (us)
+   int64_t   Interval;        // The amount of microseconds to wait at each interval
+   int64_t   PendingInterval; // Switch to this interval after completing the next cycle
+   OBJECTPTR Subscriber;      // The object that is subscribed (pointer, if private)
+   OBJECTID  SubscriberID;    // The object that is subscribed
+   FUNCTION  Routine;         // Routine to call if not using AC::Timer - ERR Routine(OBJECTID, int, int);
    uint8_t   Cycle;
    bool      Locked;
 };

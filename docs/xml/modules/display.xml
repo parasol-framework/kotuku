@@ -1321,8 +1321,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="VirtualHeight" type="INT">Height of the complete desktop spanning all monitors</field>
       <field name="PhysicalWidth" type="INT">Width in millimeters, 0 if unknown</field>
       <field name="PhysicalHeight" type="INT">Height in millimeters, 0 if unknown</field>
-      <field name="Width" type="INT16">Pixel width of the display</field>
-      <field name="Height" type="INT16">Pixel height of the display</field>
+      <field name="Width" type="INT16">Pixel width of the display bitmap</field>
+      <field name="Height" type="INT16">Pixel height of the display bitmap</field>
       <field name="BitsPerPixel" type="INT16">Bits per pixel</field>
       <field name="BytesPerPixel" type="INT16">Bytes per pixel</field>
     </struct>

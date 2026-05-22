@@ -264,6 +264,11 @@ timer_cycle:
 
             int64_t elapsed = current_time - timer->LastCall;
 
+            if (timer->PendingInterval) {
+               timer->Interval = timer->PendingInterval;
+               timer->PendingInterval = 0;
+            }
+
             timer->NextCall += timer->Interval;
             if (timer->NextCall < current_time) timer->NextCall = current_time;
             timer->LastCall = current_time;

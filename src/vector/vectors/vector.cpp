@@ -248,7 +248,7 @@ static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
 #endif
 
       if (kt::ScopedObjectLock<objSurface> surface(Self->Scene->SurfaceID); surface.granted()) {
-         surface->scheduleRedraw();
+         surface->scheduleRedraw(0);
          return ERR::Okay;
       }
       else return ERR::AccessObject;
@@ -1419,7 +1419,7 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 FillColour: Defines a solid colour for filling the vector path.
 
 Set the FillColour field to define a solid colour for filling the vector path.  The colour is defined as an array
-of four 32-bit floating point values between 0 and 1.0 if restricted to sRGB colourspace.  The array elements 
+of four 32-bit floating point values between 0 and 1.0 if restricted to sRGB colourspace.  The array elements
 consist of Red, Green, Blue and Alpha values in that order.
 
 If the Alpha component is set to zero then the FillColour will be ignored by the renderer.
@@ -1570,7 +1570,7 @@ static ERR VECTOR_SET_FillRule(extVector *Self, VFR Value)
 -FIELD-
 SID: String identifier for a vector.
 
-The SID field is provided for SVG support.  Use the existing object name and UID for identification in all other 
+The SID field is provided for SVG support.  Use the existing object name and UID for identification in all other
 circumstances.
 
 *********************************************************************************************************************/
