@@ -800,7 +800,18 @@ int winGetWindowInfo(HWND Window, int *X, int *Y, int *Width, int *Height, int *
 
 //********************************************************************************************************************
 
-static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam, bool NonClient)
+static void UpdateCursorPosition(HWND Window, int WinX, int WinY, bool NonClient)
+{
+   if (auto surface_id = winLookupSurfaceID(Window)) {
+      POINT point;
+      GetCursorPos(&point);
+      MsgMovement(surface_id, point.x, point.y, WinX, WinY, NonClient);
+   }
+}
+
+//********************************************************************************************************************
+
+static void HandleMovement(HWND Window, WPARAM, LPARAM LParam, bool NonClient)
 {
    // Note that if the movement is in the non-client portion of the window, we can't mess with the cursor image.
 
@@ -813,7 +824,7 @@ static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam, bool NonCl
          ZeroMemory(&event, sizeof(event));
          event.cbSize      = sizeof(event);
          event.dwFlags     = TME_LEAVE;
-         event.hwndTrack   = window;
+         event.hwndTrack   = Window;
          event.dwHoverTime = HOVER_DEFAULT;
          TrackMouseEvent(&event);
       }
@@ -822,11 +833,7 @@ static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam, bool NonCl
    // Get the absolute position of the mouse pointer relative to the desktop, then convert the coordinates relative to
    // the main window.
 
-   if (auto surface_id = winLookupSurfaceID(window)) {
-      POINT point;
-      GetCursorPos(&point);
-      MsgMovement(surface_id, point.x, point.y, (int)(lparam & 0xffff), (lparam>>16) & 0xffff, NonClient);
-   }
+   UpdateCursorPosition(Window, (int)(LParam & 0xffff), (LParam>>16) & 0xffff, NonClient);
 }
 
 //********************************************************************************************************************
@@ -1189,6 +1196,8 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 
       case WM_SIZING: {
          // This procedure is called when the user is resizing a window by its anchor points.
+
+         UpdateCursorPosition(window, 0, 0, true);
 
          RECT winrect, client;
          GetWindowRect(window, &winrect);
