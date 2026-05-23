@@ -155,12 +155,12 @@ static bool source_has_range_separator_on_opening_line(ParserContext &Context)
       if (depth IS 0) {
          if (c IS ',' or c IS ';' or c IS '=') return false;
 
-         if (std::isalpha(unsigned char(c)) or c IS '_') {
+         if (std::isalpha(uint8_t(c)) or c IS '_') {
             size_t start = pos;
             pos++;
             while (pos < source.size()) {
                char word_char = source[pos];
-               if (not (std::isalnum(unsigned char(word_char)) or word_char IS '_')) break;
+               if (not (std::isalnum(uint8_t(word_char)) or word_char IS '_')) break;
                pos++;
             }
             if (range_word_matches(source.substr(start, pos - start))) return true;
