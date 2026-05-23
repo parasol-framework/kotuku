@@ -478,7 +478,8 @@ end
    -- Test that range literals are detected by range.check
    r = {0 to 5}
    assert(range.check(r) is true, "range.check should return true for literal")
-   assert(type(r) is "userdata", "type of range literal should be userdata")
+   assert(type(r) is "range", "type of range literal should be range")
+   assert(type(range(0, 5)) is "range", "type of constructed range should be range")
 end
 
 ----------------------------------------------------------------------------------------------------------------------
