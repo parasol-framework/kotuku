@@ -78,27 +78,134 @@ static bool is_shorthand_statement_keyword(TokenKind Kind)
    }
 }
 
-// Checks for contextual range separators.  The lexer intentionally leaves `to` and `into` as identifiers so these
-// words remain available outside range-literal separator positions.
-
-static bool token_is_range_separator(const Token &Token, bool &IsInclusive)
+static bool token_identifier_is(const Token &Token, std::string_view Text)
 {
    if (not Token.is_identifier()) return false;
 
    GCstr *symbol = Token.identifier();
    if (not symbol) return false;
 
-   std::string_view text(strdata(symbol), symbol->len);
-   if (text IS std::string_view("to")) {
+   return std::string_view(strdata(symbol), symbol->len) IS Text;
+}
+
+// Checks for contextual range separators.  The lexer intentionally leaves `to`, `into` and `by` as identifiers so
+// these words remain available outside range-literal separator positions.
+
+static bool token_is_range_separator(const Token &Token, bool &IsInclusive)
+{
+   if (token_identifier_is(Token, "to")) {
       IsInclusive = false;
       return true;
    }
-   if (text IS std::string_view("into")) {
+   if (token_identifier_is(Token, "into")) {
       IsInclusive = true;
       return true;
    }
 
    return false;
+}
+
+static bool token_is_range_step_separator(const Token &Token)
+{
+   return token_identifier_is(Token, "by");
+}
+
+struct RangeLiteralScan {
+   bool inclusive = false;
+   bool has_step = false;
+};
+
+static bool token_is_member_name_context(TokenKind Kind)
+{
+   return Kind IS TokenKind::Dot or Kind IS TokenKind::Colon or Kind IS TokenKind::SafeField or
+      Kind IS TokenKind::SafeMethod;
+}
+
+// Scans a braced expression without consuming tokens.  A range literal is recognised only when a top-level `to` or
+// `into` separator appears after a start expression, with an optional top-level `by` after the stop expression.
+
+static bool scan_range_literal(ParserContext &Context, RangeLiteralScan &Scan)
+{
+   if (not Context.check(TokenKind::LeftBrace)) return false;
+
+   Scan = RangeLiteralScan{};
+
+   bool found_range_separator = false;
+   bool found_step_separator = false;
+   bool has_start_expr_tokens = false;
+   bool has_stop_expr_tokens = false;
+   bool has_step_expr_tokens = false;
+   bool ended_on_right_brace = false;
+   bool invalid_top_level_shape = false;
+   TokenKind previous_top_level_kind = TokenKind::Unknown;
+   int depth = 0;
+
+   for (size_t i = 1; ; i++) {
+      Token tok = Context.tokens().peek(i);
+      auto kind = tok.kind();
+
+      if (kind IS TokenKind::EndOfFile) break;
+
+      if (depth IS 0 and kind IS TokenKind::RightBrace) {
+         ended_on_right_brace = true;
+         break;
+      }
+
+      if (kind IS TokenKind::LeftParen or kind IS TokenKind::LeftBracket or kind IS TokenKind::LeftBrace) {
+         if (depth IS 0) {
+            if (found_step_separator) has_step_expr_tokens = true;
+            else if (found_range_separator) has_stop_expr_tokens = true;
+            else has_start_expr_tokens = true;
+         }
+         depth++;
+      }
+      else if (kind IS TokenKind::RightParen or kind IS TokenKind::RightBracket or kind IS TokenKind::RightBrace) {
+         depth--;
+         if (depth < 0) {
+            invalid_top_level_shape = true;
+            break;
+         }
+      }
+      else if (depth IS 0) {
+         if (kind IS TokenKind::Comma) {
+            invalid_top_level_shape = true;
+            break;
+         }
+
+         bool member_name_context = token_is_member_name_context(previous_top_level_kind);
+         bool separator_is_inclusive = false;
+         if (has_start_expr_tokens and not found_range_separator and not member_name_context and
+             token_is_range_separator(tok, separator_is_inclusive)) {
+            found_range_separator = true;
+            Scan.inclusive = separator_is_inclusive;
+         }
+         else if (found_range_separator and has_stop_expr_tokens and not found_step_separator and
+                  not member_name_context and token_is_range_step_separator(tok)) {
+            found_step_separator = true;
+            Scan.has_step = true;
+         }
+         else if (found_range_separator and has_stop_expr_tokens and not found_step_separator and
+                  not member_name_context and token_is_range_separator(tok, separator_is_inclusive)) {
+            invalid_top_level_shape = true;
+            break;
+         }
+         else if (found_step_separator and has_step_expr_tokens and not member_name_context and
+                  (token_is_range_step_separator(tok) or token_is_range_separator(tok, separator_is_inclusive))) {
+            invalid_top_level_shape = true;
+            break;
+         }
+         else {
+            if (found_step_separator) has_step_expr_tokens = true;
+            else if (found_range_separator) has_stop_expr_tokens = true;
+            else has_start_expr_tokens = true;
+         }
+
+         previous_top_level_kind = kind;
+      }
+   }
+
+   return not invalid_top_level_shape and ended_on_right_brace and found_range_separator and has_start_expr_tokens and
+      has_stop_expr_tokens and (not found_step_separator or has_step_expr_tokens);
 }
 
 // Checks if a statement unconditionally terminates control flow (return, break, continue).
