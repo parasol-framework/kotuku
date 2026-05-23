@@ -198,7 +198,7 @@ Upvalue::
 A local variable from an enclosing scope that is captured by a nested function.  The upvalue persists as long as any closure referencing it remains alive.  See <<sec-upvalues-and-closures>>.
 
 Userdata::
-An opaque C data value managed outside the Tiri runtime.  Objects and ranges are specialised forms of userdata.  See <<sec-userdata>>.
+An opaque C data value managed outside the Tiri runtime.  Objects and ranges are specialised forms of userdata, though they report distinct types via `type()`.  See <<sec-userdata>>.
 
 Value type::
 A value whose variable holds the data directly rather than a reference.  Nil, booleans, numbers, and strings are value types.  Assignment copies the value.  See <<ch-types-and-values>>.

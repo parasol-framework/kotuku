@@ -196,7 +196,6 @@ indexterm:[library, range] See <<ch-ranges>>.
 
 |`range(Start, Stop, [Inclusive], [Step])`    |Creates a range.
 |`range.new(Start, Stop, [Inclusive], [Step])`|Alias for `range()`.
-|`range.check(Value)`        |Returns `true` if `Value` is a range.
 |`range.slice(Object, Range)`|Extracts a slice from an object using a range.
 |`r:toArray()`               |Converts the range to an array.
 |`r:contains(Value)`         |Returns `true` if `Value` is within the range.

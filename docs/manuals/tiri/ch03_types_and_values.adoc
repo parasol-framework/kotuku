@@ -127,7 +127,7 @@ See <<ch-functions>> for function declarations, closures, and parameter rules.
 === Userdata
 indexterm:[userdata] Userdata values represent opaque C data managed outside the Tiri runtime.  They cannot be created or modified directly from Tiri code; they are produced by C/C++ host functions.
 
-The `type()` function returns `"userdata"` for userdata values.  Ranges are implemented as userdata; use `range.check(value)` to distinguish a range from other userdata.  See <<ch-ranges>> for range semantics.
+The `type()` function returns `"userdata"` for userdata values.  Ranges are implemented as userdata internally, but `type()` returns `"range"` for them.  See <<ch-ranges>> for range semantics.
 
 [[sec-objects]]
 ==== Objects
@@ -157,7 +157,7 @@ The `??` operator and its postfix form `??` use a broader definition.  The value
 
 indexterm:[type inspection] `result = type(Value)`
 
-Returns a string naming the type of `Value`.  The returned string is one of: "nil", "boolean", "number", "string", "table", "array", "function", "userdata", "object".
+Returns a string naming the type of `Value`.  The returned string is one of: "nil", "boolean", "number", "string", "table", "array", "function", "userdata", "range", "object".
 
 [source,tiri]
 ----
@@ -169,7 +169,7 @@ type('hello')       -- 'string'
 type({})            -- 'table'
 type(array<int>)    -- 'array'
 type(print)         -- 'function'
-type(range(0, 5))   -- 'userdata'
+type(range(0, 5))   -- 'range'
 ----
 
 When called on a thunk (deferred expression), `type()` returns the declared type of the thunk without evaluating it.

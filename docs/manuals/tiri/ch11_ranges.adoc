@@ -6,14 +6,12 @@
 == Ranges
 indexterm:[ranges] Ranges are immutable, 32-bit integer-only sequences that express numeric intervals.  They are primarily used for iteration, slicing, and membership testing.  Two construction styles are supported: a `range()` constructor function and a brace-based literal syntax.
 
-Ranges report their type as `userdata`.  Use `range.check()` to distinguish ranges from other userdata values.
+Ranges report their type as `range`.
 
 [source,tiri]
 ----
 r = {0 to 5}
-type(r)           -- 'userdata'
-range.check(r)    -- true
-range.check(42)   -- false
+type(r)           -- 'range'
 ----
 
 [[sec-range-constructors]]
@@ -129,12 +127,6 @@ tostring({0 to 5})    -- '{0 to 5}'
 tostring({0 into 5})  -- '{0 into 5}'
 tostring({10 to 0})   -- '{10 to 0}'
 ----
-
-==== range.check()
-
-[.api]`result = range.check(Value)`
-
-Returns `true` if `Value` is a range object; `false` otherwise.
 
 ==== range.new()
 
