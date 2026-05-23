@@ -278,15 +278,6 @@ end
 sum(1, 2, 3)   -- 6
 ----
 
-The Unicode horizontal ellipsis `\u2026` is accepted as an alternative to `pass:[...]`:
-
-[source,tiri]
-----
-function variadic(…)
-   return {…}
-end
-----
-
 [discrete]
 ==== Named Parameters with Varargs
 

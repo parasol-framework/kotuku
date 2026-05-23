@@ -1,5 +1,6 @@
 // VERIFIED: 2026-02-12
 // UPDATED: 2026-05-18 - Updated negative index slicing to reflect corrected inclusive/exclusive stop semantics (commit 15d3bed4)
+// UPDATED: 2026-05-20 - Updated concat() with new API (separator-first, optional format, range support); removed join() which was merged into concat() (commit 2fbf2ea0)
 
 [[ch-arrays]]
 == Arrays
@@ -163,7 +164,7 @@ tostring(array<double, 0>)                  -- 'array<double, 0>'
 [discrete]
 ==== String Concatenation
 
-Byte arrays (`byte`, `char`) can be used with the `..` concatenation operator.  The array is converted to a string and concatenated with the other operand.  The result is always a string.
+Byte arrays (`byte`, `char`) can be used with the `..` concatenation operator.  The array is converted to a string and concatenated with the other value.  The result is always a string.
 
 [source,tiri]
 ----
@@ -572,38 +573,43 @@ arr:getString(0, 5)   -- 'Greet'
 [discrete]
 ==== concat()
 
-[.api]`str = arr:concat(Format, [Separator])`
+[.api]`str = arr:concat([Separator], [Format], [Start], [End])`
 
-Concatenates array elements into a string.  `Format` is a C-style format specifier applied to each element (e.g. `'%d'`, `'%.2f'`, `'%s'`).  `Separator` is inserted between formatted elements (default: empty string).
+Concatenates array elements into a string.  `Separator` is inserted between each element (default: empty string).  `Format` is an optional C-style format specifier applied to each element (e.g. `'%d'`, `'%.2f'`, `'%s'`).  `Start` and `End` are optional zero-based, inclusive indexes that restrict the operation to a sub-range of the array.
 
-The format string must contain exactly one format specifier.  Raises an error for table, struct, or nested array types.
+When `Format` is provided, it must contain exactly one format specifier.  An error is raised if `Format` contains zero or multiple specifiers, or if the format specifier is incomplete.  For non-string arrays without a format specifier, elements are converted to their default string representation, which is a more optimal conversion path.
 
-[source,tiri]
-----
-arr = array<int> { 10, 20, 30 }
-arr:concat('%d', ', ')   -- '10, 20, 30'
+Concatenation is only available for primitive array types that consist of string and number elements.  Attempting to concatenate types like table, struct and object will raise an error.
 
-arr = array<float> { 1.5, 2.7 }
-arr:concat('%.1f', ' | ')   -- '1.5 | 2.7'
-----
+An error is raised if `Start` or `End` is negative or beyond the array bounds.  If `End` is less than `Start`, an empty string is returned.  Empty arrays are converted to an empty string.
 
-[discrete]
-==== join()
-
-[.api]`str = arr:join([Separator])`
-
-Concatenates array elements into a string, inserting `Separator` between each element (default: empty string).  Simpler and faster than `concat()` for cases that do not require custom formatting.  The complement of `string.split()`.
-
-For non-string arrays, elements are converted to their default string representation.  Table and array elements produce the placeholder strings `'table'` and `'array'`.
+TIP: Compared to other methods of concatenation, arrays provide the most efficient means of concatenating long series of data values in Tiri.
 
 [source,tiri]
 ----
 arr = array<string> { 'hello', 'world' }
-arr:join(' ')     -- 'hello world'
-arr:join()        -- 'helloworld'
+arr:concat(' ')          -- 'hello world'
+arr:concat()             -- 'helloworld'
 
 arr = array<int> { 1, 2, 3 }
-arr:join('-')     -- '1-2-3'
+arr:concat('-')          -- '1-2-3'
+
+arr = array<int> { 10, 20, 30 }
+arr:concat(', ', '%d')   -- '10, 20, 30'
+
+arr = array<float> { 1.5, 2.7 }
+arr:concat(' | ', '%.1f')   -- '1.5 | 2.7'
+----
+
+Sub-range concatenation with `Start` and `End`:
+
+[source,tiri]
+----
+arr = array<string> { 'a', 'b', 'c', 'd' }
+arr:concat(',', nil, 1, 2)   -- 'b,c'
+
+arr = array<int> { 1, 2, 3, 4 }
+arr:concat('-', '%02d', 1, 3)   -- '02-03-04'
 ----
 
 [[sec-functional-methods]]

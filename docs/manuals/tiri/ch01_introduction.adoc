@@ -32,7 +32,7 @@ Good design can maximise execution speed for code produced by the compiler and v
 [[sec-installing-kotuku]]
 === Installing Tiri and Kōtuku
 
-Tiri was designed specifically for the Kōtuku framework, and there is no standalone Tiri distribution.  Installing Kōtuku will provide access to the Tiri runtime and tools, including the `origo` executable, which serves as the Tiri interpreter and application launcher.
+Tiri forms an integral part of the Kōtuku framework, and there is no standalone Tiri distribution.  Installing Kōtuku will provide access to the Tiri runtime and tools, including the `origo` executable, which serves as the Tiri interpreter and application launcher.
 
 Pre-built packages are available from the Kōtuku website.  To build from source, clone the repository and follow the platform-specific build instructions in the Kōtuku documentation.
 
@@ -73,14 +73,14 @@ The following script prints a message to standard output:
 
 [source,tiri]
 ----
-print('Hello, world!')
+print('Hello, world')
 ----
 
 Save this as `hello.tiri` and run it with `origo hello.tiri` to see the output:
 
 [source]
 ----
-Hello, world!
+Hello, world
 ----
 
 Notice that no entry-point function was declared in the script.  Tiri scripts execute top-to-bottom and the script body is the main program.
@@ -96,4 +96,4 @@ Tiri source files use the `.tiri` file extension.  To completely avoid ambiguity
 -- $TIRI
 ----
 
-This marker allows tools, editors, and the runtime to distinguish Tiri scripts where they might not have access to the file name.
+Th `$TIRI` marker allows tools, editors, and the runtime to distinguish Tiri scripts where they might not have access to the file name.
