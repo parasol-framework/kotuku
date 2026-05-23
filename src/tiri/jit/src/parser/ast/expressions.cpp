@@ -422,7 +422,17 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          this->ctx.tokens().advance();
          break;
 
-      case TokenKind::Identifier: {
+      case TokenKind::Identifier:
+      case TokenKind::ClassToken:
+      case TokenKind::InterfaceToken:
+      case TokenKind::RecordToken:
+      case TokenKind::TypeToken:
+      case TokenKind::ExportToken:
+      case TokenKind::AwaitToken:
+      case TokenKind::MatchToken:
+      case TokenKind::FinallyToken:
+      case TokenKind::YieldToken:
+      case TokenKind::UsingToken: {
          Identifier id = make_identifier(current);
          NameRef name;
          name.identifier = id;
