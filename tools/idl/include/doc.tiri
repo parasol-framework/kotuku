@@ -1070,7 +1070,7 @@ end
 
 global function docFunctionPrototype(Function)
    local response = Function.doc_response ?? 'void'
-   local prefix = glFunctionPrefix ? (glFunctionPrefix .. '::') :> ''
+   local prefix = glFunctionPrefix ?? (glFunctionPrefix .. '::') :> ''
    local proto = ''
 
    if Function.input?? then
