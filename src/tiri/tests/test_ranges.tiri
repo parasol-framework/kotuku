@@ -19,6 +19,42 @@ function enforce_hotpath() end
    assert(err is ERR_Okay, "Script parsing failed, error: " .. script.errorMessage)
 end
 
+@Test function NonRangeTableWithFStringBraces()
+   -- Verify range lookahead does not scan through table assignment fields and corrupt f-string token buffering.
+
+   script = obj.new('script', { statement=[[
+   port = 8080
+   request = {
+      src = f'http://127.0.0.1:{port}/upload/file',
+      payload = f'value:{port}'
+   }
+   assert(request.src is 'http://127.0.0.1:8080/upload/file')
+   assert(request.payload is 'value:8080')
+   ]] })
+
+   err = script.acActivate()
+   assert(err is ERR_Okay, "Table field f-string parsing failed: " .. script.errorMessage)
+end
+
+@Test function NonRangeTypedArrayWithFStringBraces()
+   -- Verify multiline typed array initialisers bypass range lookahead before f-string expansion.
+
+   script = obj.new('script', { statement=[[
+   port = 8080
+   args = array<string> {
+      f'url=http://127.0.0.1:{port}/echo',
+      'data=plain',
+      'json={}'
+   }
+   assert(args[0] is 'url=http://127.0.0.1:8080/echo')
+   assert(args[1] is 'data=plain')
+   assert(args[2] is 'json={}')
+   ]] })
+
+   err = script.acActivate()
+   assert(err is ERR_Okay, "Typed array f-string parsing failed: " .. script.errorMessage)
+end
+
 @Test function ForInNonRangeBraceWithConcatParses()
    -- Verify for-in does not misclassify {a, b .. c} as a range literal.
    -- Guard execution so this validates parser behaviour only.
@@ -479,6 +515,14 @@ end
    member_step = {0 to config.into by config.by}
    assert(member_step.stop is 9, "member named into should not be a range separator")
    assert(member_step.step is 3, "member named by should not be a step separator")
+
+   stop_with_by = {0 to config.into + by}
+   assert(stop_with_by.stop is 11, "identifier named by should remain part of the stop expression")
+   assert(stop_with_by.step is 1, "range should not gain a step when by is used as a stop expression variable")
+
+   parenthesised_stop = {0 to (config.into + by) by 2}
+   assert(parenthesised_stop.stop is 11, "parenthesised stop expression should parse before by step")
+   assert(parenthesised_stop.step is 2, "by after parenthesised stop should be treated as the step separator")
 end
 
 @Test function ForInRangeWithComplexStopExpression()

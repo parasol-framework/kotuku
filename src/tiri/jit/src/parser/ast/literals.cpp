@@ -54,11 +54,11 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(
 // Parses table constructor expressions with array and record fields.
 // Also handles range literals: {start to stop} (exclusive), {start into stop} (inclusive) and optional `by step`.
 
-ParserResult<ExprNodePtr> AstBuilder::parse_table_literal()
+ParserResult<ExprNodePtr> AstBuilder::parse_table_literal(bool AllowRange)
 {
    Token token = this->ctx.tokens().current();
 
-   if (not (this->ctx.tokens().peek(1).kind() IS TokenKind::RightBrace)) {
+   if (AllowRange) {
       auto range = this->parse_range_in_braces();
       if (range.ok()) return range;
    }
