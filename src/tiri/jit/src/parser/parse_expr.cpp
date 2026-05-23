@@ -69,6 +69,7 @@ static int token_starts_expression(LexToken tok)
    switch (tok) {
       case TK_number:
       case TK_string:
+      case TK_regex_string:
       case TK_nil:
       case TK_true:
       case TK_false:

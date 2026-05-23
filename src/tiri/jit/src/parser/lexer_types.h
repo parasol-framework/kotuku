@@ -103,6 +103,7 @@ struct TokenDefinition {
    TOKEN_DEF(number,       "<number>", TKF_CAN_END_RANGE_EXPRESSION | TKF_LITERAL) \
    TOKEN_DEF(name,         "<name>",   TKF_CAN_END_RANGE_EXPRESSION) \
    TOKEN_DEF(string,       "<string>", TKF_CAN_END_RANGE_EXPRESSION | TKF_LITERAL) \
+   TOKEN_DEF(regex_string, "<regex_string>", TKF_CAN_END_RANGE_EXPRESSION | TKF_LITERAL) \
    TOKEN_DEF(cadd,         "+=",       TKF_COMPOUND_ASSIGNMENT) \
    TOKEN_DEF(csub,         "-=",       TKF_COMPOUND_ASSIGNMENT) \
    TOKEN_DEF(cmul,         "*=",       TKF_COMPOUND_ASSIGNMENT) \

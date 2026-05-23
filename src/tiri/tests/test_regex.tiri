@@ -27,6 +27,47 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+@Test function RegexStringShorthand()
+   single_quote = r'\d+'
+   assert(single_quote.pattern is [[\d+]], 'Single-quoted regex shorthand should preserve backslashes')
+   assert(single_quote.test('abc123'), 'Single-quoted regex shorthand should compile a usable regex')
+
+   double_quote = r"\w+"
+   assert(double_quote.pattern is [[\w+]], 'Double-quoted regex shorthand should preserve backslashes')
+   word_match = double_quote.match('word')
+   assert(word_match[0] is 'word', 'Double-quoted regex shorthand should match word characters')
+
+   long_bracket = r[[\s+]]
+   assert(long_bracket.pattern is [[\s+]], 'Long-bracket regex shorthand should preserve content')
+   start_pos, stop_pos = long_bracket.findFirst('ab  cd', 0)
+   assert(start_pos is 2 and stop_pos is 4, 'Long-bracket regex shorthand should find whitespace')
+
+   level_bracket = r[=[\d{2}]=]
+   assert(level_bracket.pattern is [[\d{2}]], 'Levelled long-bracket regex shorthand should preserve content')
+   assert(level_bracket.test('ab12cd'), 'Levelled long-bracket regex shorthand should compile')
+
+   chained_call = r'\d+'.test('abc123')
+   assert(chained_call is true, 'Regex shorthand should support suffix calls')
+
+   local invalid_regex
+   try
+      invalid_regex = r'[unclosed'
+   end
+   assert(invalid_regex is nil, 'Invalid regex shorthand should raise during regex.new()')
+
+   do
+      local r = { 'zero' }
+      assert(r[0] is 'zero', 'Identifier r followed by index syntax should remain unchanged')
+   end
+
+   do
+      local r = function(Value) return Value end
+      assert(r 'text' is 'text', 'Whitespace-separated r string call syntax should remain unchanged')
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 @Test function RegexConversion()
    pattern = ltr('[Nn]ame:%s+(.-)')
    expected = "[Nn]ame:[ \\t\\n\\r\\f\\v]+(.*?)"
