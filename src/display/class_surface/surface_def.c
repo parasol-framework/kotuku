@@ -212,6 +212,7 @@ FDEF maSetOpacity[] = { { "Value", FD_DOUBLE }, { "Adjustment", FD_DOUBLE }, { 0
 FDEF maAddCallback[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maResetDimensions[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "XOffset", FD_DOUBLE }, { "YOffset", FD_DOUBLE }, { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { "Dimensions", FD_INT }, { 0, 0 } };
 FDEF maRemoveCallback[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
+FDEF maScheduleRedraw[] = { { "RefreshRate", FD_INT }, { 0, 0 } };
 
 static const struct MethodEntry clSurfaceMethods[] = {
    { AC(-1), (APTR)SURFACE_InheritedFocus, "InheritedFocus", maInheritedFocus, sizeof(struct drw::InheritedFocus) },
@@ -223,7 +224,7 @@ static const struct MethodEntry clSurfaceMethods[] = {
    { AC(-7), (APTR)SURFACE_Minimise, "Minimise", 0, 0 },
    { AC(-8), (APTR)SURFACE_ResetDimensions, "ResetDimensions", maResetDimensions, sizeof(struct drw::ResetDimensions) },
    { AC(-9), (APTR)SURFACE_RemoveCallback, "RemoveCallback", maRemoveCallback, sizeof(struct drw::RemoveCallback) },
-   { AC(-10), (APTR)SURFACE_ScheduleRedraw, "ScheduleRedraw", 0, 0 },
+   { AC(-10), (APTR)SURFACE_ScheduleRedraw, "ScheduleRedraw", maScheduleRedraw, sizeof(struct drw::ScheduleRedraw) },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

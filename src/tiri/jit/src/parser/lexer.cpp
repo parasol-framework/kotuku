@@ -146,6 +146,7 @@ namespace {
 
 // Forward declarations for Unicode operator detection (defined later in this file)
 static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcept;
+inline bool is_unicode_ellipsis(LexState *State) noexcept;
 inline bool is_unicode_operator_start(LexState *State) noexcept;
 
 //********************************************************************************************************************
@@ -161,12 +162,13 @@ static void lex_number(LexState *State, TValue* tv)
    if (c IS '0' and (lex_savenext(State) | 0x20) IS 'x') exponent = 'p';
 
    // Scan all number characters.
-   // Special case: Stop before '..' to allow range literals like {1..5}
+   // Special case: Stop before '..' so concatenation after numeric literals remains tokenised correctly.
    // Special case: Stop before Unicode operators (e.g. ↑ for exponentiation)
    while (is_number_char(State->c, c)) {
       // If we see '.', check if next character is also '.' (range operator)
       if (State->c IS '.' and State->peek_next() IS '.') break;  // Don't consume '.', let parser handle '..'
       if (is_unicode_operator_start(State)) break;  // Don't consume Unicode operators like ↑
+      if (is_unicode_ellipsis(State)) break;
       c = State->c;
       lex_savenext(State);
    }
@@ -841,10 +843,6 @@ static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcep
             ByteLength = 3;
             return TK_concat;     // ‥
          }
-         else if (third IS 0xA6) {
-            ByteLength = 3;
-            return TK_dots;       // …
-         }
       }
 
       if (second IS 0x81 and third IS 0x87) {
@@ -883,6 +881,11 @@ static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcep
    }
 
    return 0;
+}
+
+inline bool is_unicode_ellipsis(LexState *State) noexcept
+{
+   return State->c IS 0xE2 and State->peek(0) IS 0x80 and State->peek(1) IS 0xA6;
 }
 
 inline bool is_unicode_operator_start(LexState *State) noexcept
@@ -1025,6 +1028,14 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          continue;
       }
 
+      // U+2026 used to alias ASCII varargs.  Reject it explicitly so it cannot be silently parsed as an identifier.
+      if (is_unicode_ellipsis(State)) {
+         State->mark_token_start();
+         lj_lex_error(State, 0, ErrMsg::XSYMBOL);
+         if (State->had_lex_error) continue;
+         return TK_eof;
+      }
+
       // Check for Unicode operators before identifier scanning
       if (LexToken unicode_tok = lex_unicode_operator(State)) {
          return unicode_tok;
@@ -1043,7 +1054,8 @@ static LexToken lex_scan(LexState *State, TValue *tv)
          // Scan identifier (stop before Unicode operators like ⧺)
          do {
             lex_savenext(State);
-         } while (lj_char_isident(State->c) and not is_unicode_operator_start(State));
+         } while (lj_char_isident(State->c) and not is_unicode_operator_start(State) and
+            not is_unicode_ellipsis(State));
 
          auto str_view = std::string_view(State->sb.b, sbuflen(&State->sb));
 

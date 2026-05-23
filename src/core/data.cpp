@@ -155,24 +155,26 @@ size_t glPageSize = 4096; // Overwritten on opening the Core
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()
 FILE *glLogFile = nullptr;
 
-int64_t glTimeLog    = 0;
+int64_t glTimeLog       = 0;
 int16_t glCrashStatus   = 0;
 int16_t glCodeIndex     = CP_FINISHED;
 int16_t glLastCodeIndex = 0;
 int16_t glSystemState   = -1; // Initialisation state is -1
+std::array<LogCallbackSlot, LC_LIMIT> glLogCallbacks;
+std::atomic_uint8_t glLogCallbackCount = 0;
 #ifndef NDEBUG
    int16_t glLogLevel = 2; // Thread global.  Default to warning level for debug builds.
 #else
    int16_t glLogLevel = 0;
 #endif
-int16_t glMaxDepth     = 20; // Thread global
+int16_t glMaxDepth  = 20; // Thread global
 bool glShowIO       = false;
 bool glShowPrivate  = false;
 bool glPrivileged   = false;
 bool glSync         = false;
 bool glLogThreads   = false;
 int8_t glProgramStage = STAGE_STARTUP;
-TSTATE glTaskState  = TSTATE::RUNNING;
+TSTATE glTaskState    = TSTATE::RUNNING;
 #ifdef __linux__
 int glInotify = -1;
 #endif
@@ -218,6 +220,7 @@ thread_local bool tlMainThread = false; // Will be set to TRUE on open, any othe
 thread_local int16_t tlPreventSleep = 0;
 thread_local int16_t tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
 thread_local int16_t tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
+THREADID glMainThreadID = THREADID(0);
 
 Object glDummyObject;
 

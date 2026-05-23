@@ -140,6 +140,26 @@ enum class EVG    : int;
 enum class AC     : int;
 enum class MSGID  : int;
 
+constexpr int LC_LIMIT = 3;
+
+struct LogCallback {
+   void (*Callback)(CSTRING, CSTRING, int, int, int);
+   int DepthLimit;
+   int LogLimit;
+   LogCallback() : Callback(nullptr), DepthLimit(-1), LogLimit(-1) {}
+};
+
+enum {
+   LCS_EMPTY,
+   LCS_WRITING,
+   LCS_ACTIVE
+};
+
+struct LogCallbackSlot {
+   LogCallback Callback;
+   std::atomic_uint8_t State = LCS_EMPTY;
+};
+
 struct THREADID : strong_typedef<THREADID, int> { // Internal thread ID, unrelated to the host platform.
    // Make constructors available
    using strong_typedef::strong_typedef;
@@ -228,6 +248,7 @@ struct ThreadRecord {
 
 extern std::mutex glmThreadRegistry;
 extern std::unordered_map<int, std::shared_ptr<ThreadRecord>> glThreadRegistry;
+extern thread_local std::shared_ptr<ThreadRecord> tlThreadRecord;
 
 //********************************************************************************************************************
 
@@ -668,6 +689,8 @@ extern std::string glDisplayDriver;
 extern bool glShowIO, glShowPrivate, glEnableCrashHandler;
 extern bool glJanitorActive;
 extern CONTYPE glConsoleType;
+extern std::array<LogCallbackSlot, LC_LIMIT> glLogCallbacks;
+extern std::atomic_uint8_t glLogCallbackCount;
 extern bool glLogThreads;
 extern int16_t glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
@@ -776,6 +799,7 @@ extern thread_local int16_t tlPublicLockCount;
 extern thread_local int16_t tlPrivateLockCount;
 extern thread_local int glForceUID, glForceGID;
 extern thread_local PERMIT glDefaultPermissions;
+extern THREADID glMainThreadID;
 
 //********************************************************************************************************************
 
@@ -815,15 +839,15 @@ class TaskMessage {
    // Constructors
 
    public:
-   TaskMessage() : Size(0), ExtBuffer(nullptr) { }
+   TaskMessage() : Time(0), UID(0), Type(MSGID::NIL), Size(0), ExtBuffer(nullptr) { }
 
-   TaskMessage(MSGID pType, APTR pData = nullptr, int pSize = 0) {
+   TaskMessage(MSGID MsgType, APTR Data = nullptr, int DataSize = 0) {
       Time = PreciseTime();
       UID  = ++glUniqueMsgID;
-      Type = pType;
+      Type = MsgType;
       Size = 0;
       ExtBuffer = nullptr;
-      if ((pData) and (pSize)) setBuffer(pData, pSize);
+      if ((Data) and (DataSize)) setBuffer(Data, DataSize);
    }
 
    ~TaskMessage() {
@@ -831,32 +855,42 @@ class TaskMessage {
    }
 
    // Move constructor
-   TaskMessage(TaskMessage &&other) noexcept {
-      ExtBuffer = nullptr;
-      copy_from(other);
-      other.Size = 0;
-      other.ExtBuffer = nullptr; // Source loses its buffer
+   TaskMessage(TaskMessage &&Other) noexcept :
+      Time(Other.Time), UID(Other.UID), Type(Other.Type), Size(Other.Size), ExtBuffer(Other.ExtBuffer) {
+      if ((not ExtBuffer) and (Size)) copymem(Other.Buffer.data(), Buffer.data(), Size);
+      Other.Size = 0;
+      Other.ExtBuffer = nullptr;
    }
 
    // Copy constructor
-   TaskMessage(const TaskMessage &other) {
+   TaskMessage(const TaskMessage &Other) {
       ExtBuffer = nullptr;
-      copy_from(other);
+      copy_from(Other);
    }
 
    // Move assignment
-   TaskMessage& operator=(TaskMessage &&other) noexcept {
-      if (this == &other) return *this;
-      copy_from(other);
-      other.Size = 0;
-      other.ExtBuffer = nullptr; // Source loses its buffer
+   TaskMessage& operator=(TaskMessage &&Other) noexcept {
+      if (this IS &Other) return *this;
+
+      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = nullptr; }
+
+      Time = Other.Time;
+      UID  = Other.UID;
+      Type = Other.Type;
+      Size = Other.Size;
+      ExtBuffer = Other.ExtBuffer;
+
+      if ((not ExtBuffer) and (Size)) copymem(Other.Buffer.data(), Buffer.data(), Size);
+
+      Other.Size = 0;
+      Other.ExtBuffer = nullptr;
       return *this;
    }
 
    // Copy assignment
-   TaskMessage& operator=(const TaskMessage& other) {
-      if (this == &other) return *this;
-      copy_from(other);
+   TaskMessage& operator=(const TaskMessage& Other) {
+      if (this IS &Other) return *this;
+      copy_from(Other);
       return *this;
    }
 
@@ -864,26 +898,29 @@ class TaskMessage {
 
    char * getBuffer() { return ExtBuffer ? ExtBuffer : Buffer.data(); }
 
-   void setBuffer(APTR pData, size_t pSize) {
+   void setBuffer(APTR Data, size_t Size) {
       if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = nullptr; }
 
-      if (pSize <= Buffer.size()) copymem(pData, Buffer.data(), pSize);
+      if (Size <= Buffer.size()) copymem(Data, Buffer.data(), Size);
       else {
-         ExtBuffer = new (std::nothrow) char[pSize];
-         if (ExtBuffer) copymem(pData, ExtBuffer, pSize);
+         ExtBuffer = new (std::nothrow) char[Size];
+         if (ExtBuffer) copymem(Data, ExtBuffer, Size);
       }
 
-      Size = pSize;
+      this->Size = Size;
    }
 
    private:
-   inline void copy_from(const TaskMessage &Source, bool Constructor = false) {
+   inline void copy_from(const TaskMessage &Source) {
       Time = Source.Time;
       UID  = Source.UID;
       Type = Source.Type;
       Size = Source.Size;
       if (Source.ExtBuffer) setBuffer(Source.ExtBuffer, Size);
-      else if (Size) copymem(Source.Buffer.data(), Buffer.data(), Size);
+      else {
+         if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = nullptr; }
+         if (Size) copymem(Source.Buffer.data(), Buffer.data(), Size);
+      }
    }
 };
 
@@ -1044,7 +1081,7 @@ ERR    check_cache(OBJECTPTR, int64_t, int64_t);
 ERR    fs_copy(std::string_view, std::string_view, FUNCTION *, bool);
 ERR    fs_copydir(std::string &, std::string &, FileFeedback *, FUNCTION *, int8_t);
 PERMIT get_parent_permissions(std::string_view, int *, int *);
-ERR    RenameVolume(CSTRING, CSTRING);
+ERR    RenameVolume(const std::string_view &, const std::string_view &);
 ERR    findfile(std::string &);
 PERMIT convert_fs_permissions(int);
 int   convert_permissions(PERMIT);
@@ -1093,7 +1130,7 @@ void   scan_classes(void);
 #endif
 
 ERR  writeval_default(OBJECTPTR, Field *, int, const void *, int);
-ERR  check_paths(CSTRING, PERMIT);
+ERR  check_paths(std::string_view, PERMIT);
 void merge_groups(ConfigGroups &, ConfigGroups &);
 extern "C" ERR validate_process(int);
 

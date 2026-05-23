@@ -238,21 +238,26 @@ route('DELETE', '/jobs/{job}', {
 
 -- Log Interfaces
 
-route('POST', '/logs/level', {
-   desc = 'Change the logging level for the program (affects console output).',
-   body = 'json',
+route('PUT', '/logs/level', {
+   desc = 'Change the logging level for the program (affects console output only).',
+   query = {
+      level = { type='int', desc='The new log level value, ranging from 0 - 9.' },
+   },
    returns = 'object'
 })
 
 route('POST', '/logs/start', {
    desc = 'Activates internal log recording.',
-   body = 'json',
+   query = {
+      maxLevel = { type='int', desc='Only record messages that are less or equal to this log level.' },
+      maxDepth = { type='int', desc='Only record messages that are less or equal to this depth level.' },
+      includeThreads = { type='bool', desc='Include log messages from child threads.' }
+   },
    returns = 'object'
 })
 
 route('POST', '/logs/stop', {
    desc = 'Stops internal log recording.',
-   body = 'json',
    returns = 'object'
 })
 
@@ -565,7 +570,7 @@ end
       route_path = 'routes/' .. routes[1] .. '.cpp'
 
       func_name = rx_func_name_chars.replace(route.method .. route.path, '_'):lower()
-      if func_name:endsWith('_') then func_name = func_name[{0..-1}] end
+      if func_name:endsWith('_') then func_name = func_name[{0 to -1}] end
       route.funcName = func_name
       route.source   = route_path
 

@@ -109,15 +109,16 @@ extern void MsgButtonPress(int, int);
 extern void MsgFocusState(int SurfaceID, int State);
 extern void MsgTotalControllerPorts(int, int);
 extern void MsgResizedWindow(int, int, int, int, int, int, int, int, int);
+extern void MsgDPIChanged(int SurfaceID);
 extern void MsgSetFocus(int SurfaceID);
 extern void MsgSwitchWindowType(HWND, int);
 extern void MsgTimer(void);
 extern void MsgWindowClose(int SurfaceID);
 extern void MsgWindowDestroyed(int SurfaceID);
 
-#define AXIS_VERTICAL 1
-#define AXIS_HORIZONTAL 2
-#define AXIS_BOTH 3
+constexpr int AXIS_VERTICAL   = 1;
+constexpr int AXIS_HORIZONTAL = 2;
+constexpr int AXIS_BOTH       = 3;
 
 extern void CheckWindowSize(int, int &, int &, int, int, int = AXIS_BOTH);
 
@@ -138,8 +139,9 @@ extern void winFocus(HWND);
 extern void winFreeDragDrop(void);
 extern ERR winGetCoords(HWND, int &, int &, int &, int &, int &, int &, int &, int &);
 extern int winGetDesktopSize(int *, int *);
-extern int winGetDisplaySettings(int *, int *, int *);
-extern void winGetMargins(HWND, int *, int *, int *, int *);
+extern ERR winGetDisplayGeometry(HWND, int &, int &, int &, int &, int &, int &, int &, int &, int &, int &);
+extern int winGetDisplaySettings(HWND, int *, int *, int *, double *);
+extern ERR winGetMargins(HWND, int *, int *, int *, int *);
 extern HINSTANCE winGetModuleHandle(void);
 extern int winGetWindowInfo(HWND, int *, int *, int *, int *, int *);
 extern void winGetWindowTitle(HWND, char *, int);

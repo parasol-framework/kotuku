@@ -94,10 +94,10 @@
     <name>CopyRawBitmap</name>
     <category>Bitmap</category>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
-    <prototype>ERR gfx::CopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Dest, CSRF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</prototype>
+    <prototype>ERR gfx::CopyRawBitmap(struct BitmapSurface * Surface, objBitmap * Dest, CSRF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</prototype>
     <tiriPrototype>err = CopyRawBitmap(Surface:any, Dest:obj, Flags:num, X:num, Y:num, Width:num, Height:num, XDest:num, YDest:num)</tiriPrototype>
     <input>
-      <param type="struct BitmapSurfaceV2 *" name="Surface">Description of the surface source.</param>
+      <param type="struct BitmapSurface *" name="Surface">Description of the surface source.</param>
       <param type="objBitmap *" name="Dest">Destination bitmap.</param>
       <param type="CSRF" name="Flags" lookup="CSRF">Optional flags.</param>
       <param type="INT" name="X">Horizontal source coordinate.</param>
@@ -297,15 +297,15 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetDisplayInfo</name>
     <category>Display</category>
     <comment>Retrieves display information.</comment>
-    <prototype>ERR gfx::GetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info)</prototype>
+    <prototype>ERR gfx::GetDisplayInfo(OBJECTID Display, struct DisplayInfo ** Info)</prototype>
     <tiriPrototype>err, Info:any = GetDisplayInfo(Display:obj)</tiriPrototype>
     <input>
       <param type="OBJECTID" name="Display">Object ID of the display to be analysed.</param>
-      <param type="struct DisplayInfoV3 **" name="Info">This reference will receive a pointer to a DISPLAYINFO structure.</param>
+      <param type="struct DisplayInfo **" name="Info">This reference will receive a pointer to a <st>DisplayInfo</st> structure.</param>
     </input>
     <description>
 <p>The GetDisplayInfo() function returns information about a display, which includes information such as its size and bit depth.  If the system is running on a hosted display (e.g. Windows or X11) then GetDisplayInfo() can also be used to retrieve information about the default monitor by using a Display of zero.</p>
-<p>The resulting <code>DISPLAYINFO</code> structure values remain good until the next call to this function, at which point they will be overwritten.</p>
+<p>The resulting <st>DisplayInfo</st> structure values remain good until the next call to this function, at which point they will be overwritten.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -423,12 +423,12 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>GetSurfaceInfo</name>
     <category>Surfaces</category>
-    <comment>Retrieves display information for any surface object without having to access it directly.</comment>
-    <prototype>ERR gfx::GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info)</prototype>
+    <comment>Retrieves display information for any surface object, whilst avoiding direct access.</comment>
+    <prototype>ERR gfx::GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfo ** Info)</prototype>
     <tiriPrototype>err, Info:any = GetSurfaceInfo(Surface:obj)</tiriPrototype>
     <input>
       <param type="OBJECTID" name="Surface">The unique ID of a <class name="Surface">Surface</class> to query.  If zero, the root surface is returned.</param>
-      <param type="struct SurfaceInfoV2 **" name="Info">This parameter will receive a <st>SurfaceInfo</st> pointer that describes the surface object.</param>
+      <param type="struct SurfaceInfo **" name="Info">This parameter will receive a <st>SurfaceInfo</st> pointer that describes the surface object.</param>
     </input>
     <description>
 <p>GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the <function module="Core">AccessObject</function> function.  The resulting structure values are good only up until the next call to this function, at which point those values will be overwritten.</p>
@@ -593,21 +593,17 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetClipRegion</name>
     <category>Bitmap</category>
     <comment>Sets a clipping region for a bitmap object.</comment>
-    <prototype>void gfx::SetClipRegion(objBitmap * Bitmap, INT Number, INT Left, INT Top, INT Right, INT Bottom, INT Terminate)</prototype>
-    <tiriPrototype>SetClipRegion(Bitmap:obj, Number:num, Left:num, Top:num, Right:num, Bottom:num, Terminate:num)</tiriPrototype>
+    <prototype>void gfx::SetClipRegion(objBitmap * Bitmap, INT Left, INT Top, INT Right, INT Bottom)</prototype>
+    <tiriPrototype>SetClipRegion(Bitmap:obj, Left:num, Top:num, Right:num, Bottom:num)</tiriPrototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap.</param>
-      <param type="INT" name="Number">The number of the clip region to set.</param>
       <param type="INT" name="Left">The horizontal start of the clip region.</param>
       <param type="INT" name="Top">The vertical start of the clip region.</param>
       <param type="INT" name="Right">The right-most edge of the clip region.</param>
       <param type="INT" name="Bottom">The bottom-most edge of the clip region.</param>
-      <param type="INT" name="Terminate">Set to <code>true</code> if this is the last clip region in the list, otherwise <code>false</code>.</param>
     </input>
     <description>
-<p>The SetClipRegion() method is used to manage the clipping regions assigned to a bitmap object.  Each new bitmap that is created has at least one clip region assigned to it, but by using SetClipRegion() you can also define multiple clipping areas, which is useful for complex graphics management.</p>
-<p>Each clipping region that you set is assigned a Number, starting from zero which is the default.  Each time that you set a new clip region you must specify the number of the region that you wish to set.  If you attempt to 'skip' regions - for instance, if you set regions 0, 1, 2 and 3, then skip 4 and set 5, the routine will set region 4 instead. If you have specified multiple clip regions and want to lower the count or reset the list, set the number of the last region that you want in your list and set the <code>Terminate</code> parameter to <code>true</code> to kill the regions specified beyond it.</p>
-<p>The <code>ClipLeft</code>, <code>ClipTop</code>, <code>ClipRight</code> and <code>ClipBottom</code> fields in the target <code>Bitmap</code> will be updated to reflect the overall area that is covered by the clipping regions that have been set.</p>
+<p>The SetClipRegion() method is used to manage the clipping region assigned to a bitmap object.  The <code>ClipLeft</code>, <code>ClipTop</code>, <code>ClipRight</code> and <code>ClipBottom</code> fields in the target <code>Bitmap</code> will be updated to reflect the area covered by the provided parameter values.</p>
     </description>
   </function>
 
@@ -1219,6 +1215,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </constants>
 
     <constants lookup="SCR" comment="Display flags.">
+      <const name="ACTIVE">The display is participating in the desktop view - this does not guarantee it is visible.</const>
       <const name="ALPHA_BLEND">Enables alpha channel blending (if display is hosted and 32-bit).</const>
       <const name="AUTO_SAVE">Saves settings to the global display state when the object is freed.</const>
       <const name="BIT_6">Display is limited to 6-bit output per colour gun.</const>
@@ -1233,10 +1230,14 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="HOSTED">The display is a desktop hosted window.</const>
       <const name="MAXIMISE">Special win32 flag.</const>
       <const name="MAXSIZE">For <function module="Display">GetDisplayInfo</function> only, indicates that the width and height values indicate the display's maximum size.</const>
+      <const name="MIRRORED">The display is a mirrored copy.</const>
       <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
       <const name="POWERSAVE">Power saving is active (read-only).</const>
+      <const name="PRIMARY">The display is flagged as being the primary.</const>
       <const name="READ_ONLY">Synonym for <code>MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</code></const>
       <const name="REFRESH">For <function module="Display">GetDisplayInfo</function> only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
+      <const name="ROTATED">True if the display is rotated.</const>
+      <const name="VIRTUAL">The display is virtual or not visible (device not switched on).</const>
       <const name="VISIBLE">Set if the screen is on display.</const>
     </constants>
 
@@ -1292,22 +1293,34 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="BitsPerPixel" type="INT16">Preferred bits-per-pixel setting for custom cursors</field>
     </struct>
 
-    <struct name="DisplayInfo" typeName="DISPLAYINFO">
-      <field name="Display" type="OBJECTID">Object ID related to the display</field>
-      <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
-      <field name="Width" type="INT16">Pixel width of the display</field>
-      <field name="Height" type="INT16">Pixel height of the display</field>
-      <field name="BitsPerPixel" type="INT16">Bits per pixel</field>
-      <field name="BytesPerPixel" type="INT16">Bytes per pixel</field>
-      <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
-      <field name="AmtColours" type="INT">Total number of supported colours.</field>
+    <struct name="DisplayInfo">
       <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
       <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
       <field name="MaxRefresh" type="FLOAT">Maximum refresh rate</field>
       <field name="RefreshRate" type="FLOAT">Recommended refresh rate</field>
+      <field name="Display" type="OBJECTID">Object ID related to the display</field>
+      <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
+      <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
+      <field name="AmtColours" type="INT">Total number of supported colours.</field>
       <field name="Index" type="INT">Display mode ID (internal)</field>
       <field name="HDensity" type="INT">Horizontal pixel density per inch.</field>
       <field name="VDensity" type="INT">Vertical pixel density per inch.</field>
+      <field name="HostedX" type="INT">Horizontal display position in virtual desktop coordinates</field>
+      <field name="HostedY" type="INT">Vertical display position in virtual desktop coordinates</field>
+      <field name="MonitorX" type="INT">Horizontal position of the monitor, relative to the primary monitor</field>
+      <field name="MonitorY" type="INT">Vertical position of the monitor, relative to the primary monitor</field>
+      <field name="MonitorWidth" type="INT">Pixel width of the monitor</field>
+      <field name="MonitorHeight" type="INT">Pixel height of the monitor</field>
+      <field name="VirtualX" type="INT">Horizontal position of the complete desktop spanning all monitors</field>
+      <field name="VirtualY" type="INT">Vertical position of the complete desktop spanning all monitors</field>
+      <field name="VirtualWidth" type="INT">Width of the complete desktop spanning all monitors</field>
+      <field name="VirtualHeight" type="INT">Height of the complete desktop spanning all monitors</field>
+      <field name="PhysicalWidth" type="INT">Width in millimeters, 0 if unknown</field>
+      <field name="PhysicalHeight" type="INT">Height in millimeters, 0 if unknown</field>
+      <field name="Width" type="INT16">Pixel width of the display bitmap</field>
+      <field name="Height" type="INT16">Pixel height of the display bitmap</field>
+      <field name="BitsPerPixel" type="INT16">Bits per pixel</field>
+      <field name="BytesPerPixel" type="INT16">Bytes per pixel</field>
     </struct>
 
     <struct name="InputEvent">
@@ -1339,6 +1352,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="GreenPos" type="UINT8">Left shift/positional value for green</field>
       <field name="BluePos" type="UINT8">Left shift/positional value for blue</field>
       <field name="AlphaPos" type="UINT8">Left shift/positional value for alpha</field>
+      <field name="Pad" type="UINT">Padding</field>
     </struct>
 
     <struct name="SurfaceCoords">

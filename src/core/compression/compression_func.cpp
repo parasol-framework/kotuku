@@ -1,9 +1,9 @@
 
 template<class T> void wrb(T Value, APTR Target) {
-   if constexpr (std::endian::native == std::endian::little) {
+   if constexpr (std::endian::native IS std::endian::little) {
       ((T *)Target)[0] = Value;
    }
-   else if constexpr (sizeof(T) == 2) {
+   else if constexpr (sizeof(T) IS 2) {
       ((T *)Target)[0] = __builtin_bswap16(Value);
    }
    else ((T *)Target)[0] = __builtin_bswap32(Value);
@@ -133,7 +133,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
    // Enter the directory and compress its contents
 
    DirInfo *dir;
-   if (OpenDir(Location.c_str(), RDF::FILE|RDF::FOLDER|RDF::QUALIFY, &dir) IS ERR::Okay) {
+   if (OpenDir(Location, RDF::FILE|RDF::FOLDER|RDF::QUALIFY, &dir) IS ERR::Okay) {
       while (ScanDir(dir) IS ERR::Okay) { // Recurse for each directory in the list
          FileInfo *scan = dir->Info;
          if (((scan->Flags & RDF::FOLDER) != RDF::NIL) and ((scan->Flags & RDF::LINK) IS RDF::NIL)) {

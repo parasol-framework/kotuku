@@ -157,7 +157,7 @@
 <tr><th>MEM::WRITE</th><td>The memory is explicitly marked as writeable.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="MSF"><h1>MSF Type</h1><p class="lead">Message flags.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>MSF::NO_DUPLICATE</th><td>If the <code>Type</code> parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with <code>ERR::Okay</code>.</td></tr>
-<tr><th>MSF::UPDATE</th><td>If the <code>Type</code> parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</td></tr>
+<tr><th>MSF::UPDATE</th><td>If <code>Type</code> matches a queued message, update that message's data in place.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="MSGID"><h1>MSGID Type</h1><p class="lead">Reserved message ID's that are handled internally.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>MSGID::ACTION</th><td></td></tr>
 <tr><th>MSGID::BREAK</th><td></td></tr>
@@ -254,6 +254,7 @@
 <tr><th>RES::LOG_DEPTH</th><td>The current depth of log messages.</td></tr>
 <tr><th>RES::LOG_LEVEL</th><td>The current level of log detail (larger numbers indicate more detail).</td></tr>
 <tr><th>RES::MAIN_THREAD</th><td>Read-only, returns <code>true</code> if called from the main thread.</td></tr>
+<tr><th>RES::MAIN_THREAD_ID</th><td>Read-only, returns the ID of the main thread.</td></tr>
 <tr><th>RES::MEMORY_USAGE</th><td>The total amount of memory used by the current process, in bytes.</td></tr>
 <tr><th>RES::PRIVILEGED</th><td>This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</td></tr>
 <tr><th>RES::PRIVILEGED_USER</th><td>If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</td></tr>

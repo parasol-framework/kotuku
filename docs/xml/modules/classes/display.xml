@@ -88,29 +88,6 @@
     </action>
 
     <action>
-      <name>GetKey</name>
-      <comment>Retrieves formatted display information.</comment>
-      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
-      <tiriPrototype>err = Object.acGetKey(Key:str, Value:str, Size:num)</tiriPrototype>
-      <input>
-        <param type="CSTRING" name="Key">The name of a key value.</param>
-        <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
-        <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
-      </input>
-      <description>
-<p>GetKey currently supports the <code>resolution(Index, Format)</code> key.  <code>Index</code> selects a display resolution and <code>Format</code> is a string containing replacement tokens.  Supported tokens are <code>%w</code> for width, <code>%h</code> for height, <code>%d</code> for bit depth, <code>%c</code> for colour count and <code>%%</code> for a literal percent sign.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Args">Invalid arguments passed to function</error>
-        <error code="NoData">No data is available for use</error>
-        <error code="NoSupport">Operation not supported</error>
-        <error code="OutOfRange">A value is outside of the valid range</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </action>
-
-    <action>
       <name>Hide</name>
       <comment>Hides a display from the user's view.</comment>
       <prototype>ERR acHide(*Object)</prototype>
@@ -270,6 +247,28 @@
   </actions>
 
   <methods>
+    <method>
+      <name>GetFrame</name>
+      <comment>Returns window frame size information for hosted displays.</comment>
+      <prototype>ERR gfx::GetFrame(OBJECTPTR Object, INT * Left, INT * Top, INT * Right, INT * Bottom)</prototype>
+      <tiriPrototype>err, Left:num, Top:num, Right:num, Bottom:num = GetFrame()</tiriPrototype>
+      <input>
+        <param type="INT *" name="Left">Returns the width of the left side of the window frame, in pixels.</param>
+        <param type="INT *" name="Top">Returns the height of the top of the window frame, in pixels.</param>
+        <param type="INT *" name="Right">Returns the width of the right side of the window frame, in pixels.</param>
+        <param type="INT *" name="Bottom">Returns the height of the bottom of the window frame, in pixels.</param>
+      </input>
+      <description>
+<p>On hosted displays, GetFrame() returns the thickness of the host window frame around the client display area.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NoSupport">Operation not supported</error>
+        <error code="SystemCall">A call to the host system has failed</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
     <method>
       <name>Minimise</name>
       <comment>Minimise the desktop window hosting the display.</comment>
@@ -822,6 +821,7 @@
     </constants>
 
     <constants lookup="SCR" comment="Display flags.">
+      <const name="ACTIVE">The display is participating in the desktop view - this does not guarantee it is visible.</const>
       <const name="ALPHA_BLEND">Enables alpha channel blending (if display is hosted and 32-bit).</const>
       <const name="AUTO_SAVE">Saves settings to the global display state when the object is freed.</const>
       <const name="BIT_6">Display is limited to 6-bit output per colour gun.</const>
@@ -836,10 +836,14 @@
       <const name="HOSTED">The display is a desktop hosted window.</const>
       <const name="MAXIMISE">Special win32 flag.</const>
       <const name="MAXSIZE">For <function module="Display">GetDisplayInfo</function> only, indicates that the width and height values indicate the display's maximum size.</const>
+      <const name="MIRRORED">The display is a mirrored copy.</const>
       <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
       <const name="POWERSAVE">Power saving is active (read-only).</const>
+      <const name="PRIMARY">The display is flagged as being the primary.</const>
       <const name="READ_ONLY">Synonym for <code>MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</code></const>
       <const name="REFRESH">For <function module="Display">GetDisplayInfo</function> only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
+      <const name="ROTATED">True if the display is rotated.</const>
+      <const name="VIRTUAL">The display is virtual or not visible (device not switched on).</const>
       <const name="VISIBLE">Set if the screen is on display.</const>
     </constants>
 

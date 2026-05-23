@@ -63,8 +63,8 @@ thread_local std::shared_ptr<ThreadRecord> tlThreadRecord;
 
 void deregister_thread(void)
 {
-   tlThreadRecord.reset();
    auto tid = get_thread_id();
+   tlThreadRecord.reset();
    std::lock_guard lock(glmThreadRegistry);
    glThreadRegistry.erase(int(tid));
 }
@@ -74,11 +74,7 @@ void deregister_thread(void)
 
 std::shared_ptr<ThreadRecord> get_thread_record(void)
 {
-   if (not tlThreadRecord) {
-      auto tid = get_thread_id();
-      std::lock_guard lock(glmThreadRegistry);
-      if (auto it = glThreadRegistry.find(int(tid)); it != glThreadRegistry.end()) tlThreadRecord = it->second;
-   }
+   if (not tlThreadRecord) get_thread_id();
    return tlThreadRecord;
 }
 
@@ -383,6 +379,7 @@ int64_t GetResource(RES Resource)
       case RES::THREAD_ID:       return int(get_thread_id());
       case RES::DISPLAY_DRIVER:  if (not glDisplayDriver.empty()) return (MAXINT)glDisplayDriver.c_str(); else return 0;
       case RES::MAIN_THREAD:     return tlMainThread ? true : false;
+      case RES::MAIN_THREAD_ID:  return int(glMainThreadID);
 
       case RES::MEMORY_USAGE: {
          #ifdef __linux__
@@ -735,6 +732,7 @@ are supported:
 <type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on ~AllocMemory().  The `Value` specifies the memory limit in bytes.</>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The `Value` must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</>
 <type name="PRIVILEGED_USER">If the `Value` is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</>
+<type name="LOG_DEPTH">Changes the branch depth of the log output (affects indenting).</>
 </>
 
 -INPUT-
@@ -871,13 +869,14 @@ ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
 
       auto it = glTimers.emplace(glTimers.end());
       auto subscribed = PreciseTime();
-      it->SubscriberID = subscriber->UID;
-      it->Interval     = usInterval;
-      it->LastCall     = subscribed;
-      it->NextCall     = subscribed + usInterval;
-      it->Routine      = *Callback;
-      it->Locked       = false;
-      it->Cycle        = glTimerCycle - 1;
+      it->SubscriberID    = subscriber->UID;
+      it->Interval        = usInterval;
+      it->PendingInterval = 0;
+      it->LastCall        = subscribed;
+      it->NextCall        = subscribed + usInterval;
+      it->Routine         = *Callback;
+      it->Locked          = false;
+      it->Cycle           = glTimerCycle - 1;
 
       if (subscriber->UID > 0) it->Subscriber = subscriber;
       else it->Subscriber = nullptr;
@@ -885,7 +884,7 @@ ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
       // For resource tracking purposes it is important for us to keep a record of the subscription so that
       // we don't treat the object address as valid when it's been removed from the system.
 
-      subscriber->setFlag(NF::TIMER_SUB);
+      subscriber->setFlag(NF::TIMER_SUB); // TODO: Use pin() instead?
       if (Subscription) *Subscription = &*it;
       return ERR::Okay;
    }
@@ -918,14 +917,21 @@ ERR UpdateTimer(APTR Subscription, double Interval)
 
    if (not Subscription) return log.warning(ERR::NullArgs);
 
-   log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
-
    if (auto lock = std::unique_lock{glmTimer, 1000ms}) {
       auto timer = (CoreTimer *)Subscription;
+      log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, New Interval: %.4f, Current Interval: %.4f", Subscription, Interval, timer->Interval / 1000000.0);
       if (Interval < 0) {
-         // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
+         // Special mode:
+         //   Doesn't upgrade the timer immediately unless the new interval < existing interval.
+         //   Extending the interval will apply it on the following cycle.
          auto usInterval = -(int64_t(Interval * 1000000.0));
-         if (usInterval < timer->Interval) timer->Interval = usInterval;
+         if (usInterval <= timer->Interval) {
+            timer->Interval = usInterval;
+            timer->PendingInterval = 0;
+            auto next_call = PreciseTime() + usInterval;
+            if (next_call < timer->NextCall) timer->NextCall = next_call;
+         }
+         else timer->PendingInterval = usInterval;
          return ERR::Okay;
       }
       else if (Interval > 0) {

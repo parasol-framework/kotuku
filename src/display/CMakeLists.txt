@@ -98,7 +98,7 @@ target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PUBLIC linear_rgb)
 
 if (WIN32)
-   target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid xinput ${MATH_LINK})
+   target_link_libraries (${MOD} PRIVATE ole32 gdi32 setupapi uuid xinput ${MATH_LINK})
    target_sources (${MOD} PRIVATE ${FUNCTIONS} "win32/windows.cpp" "win32/clipboard.c" ${CLASSES})
    target_compile_definitions (${MOD} PRIVATE "WIN_DRAGDROP")
 elseif (ANDROID)

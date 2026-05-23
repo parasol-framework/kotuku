@@ -216,17 +216,23 @@ static constexpr std::array<BackstageParam, 1> delete_jobs_job_path_params = {
 
 static constexpr std::array<BackstageParam, 0> delete_jobs_job_query_params = {};
 
-static constexpr std::array<std::string_view, 0> post_logs_level_path_param_names = {};
+static constexpr std::array<std::string_view, 0> put_logs_level_path_param_names = {};
 
-static constexpr std::array<BackstageParam, 0> post_logs_level_path_params = {};
+static constexpr std::array<BackstageParam, 0> put_logs_level_path_params = {};
 
-static constexpr std::array<BackstageParam, 0> post_logs_level_query_params = {};
+static constexpr std::array<BackstageParam, 1> put_logs_level_query_params = {
+   BackstageParam("level", "int", "The new log level value, ranging from 0 - 9.", "", false)
+};
 
 static constexpr std::array<std::string_view, 0> post_logs_start_path_param_names = {};
 
 static constexpr std::array<BackstageParam, 0> post_logs_start_path_params = {};
 
-static constexpr std::array<BackstageParam, 0> post_logs_start_query_params = {};
+static constexpr std::array<BackstageParam, 3> post_logs_start_query_params = {
+   BackstageParam("includeThreads", "bool", "Include log messages from child threads.", "", false),
+   BackstageParam("maxDepth", "int", "Only record messages that are less or equal to this depth level.", "", false),
+   BackstageParam("maxLevel", "int", "Only record messages that are less or equal to this log level.", "", false)
+};
 
 static constexpr std::array<std::string_view, 0> post_logs_stop_path_param_names = {};
 
@@ -572,18 +578,18 @@ static std::array<BackstageRoute, 32> glRoutes = {
          delete_jobs_job_path_params,
          delete_jobs_job_query_params)),
    BackstageRoute(
-      "POST",
+      "PUT",
       "/logs/level",
       "^/logs/level$",
-      post_logs_level,
-      post_logs_level_path_param_names,
+      put_logs_level,
+      put_logs_level_path_param_names,
       BackstageRouteMetadata(
-         "Change the logging level for the program (affects console output).",
-         "json",
+         "Change the logging level for the program (affects console output only).",
+         "",
          "object",
          "",
-         post_logs_level_path_params,
-         post_logs_level_query_params)),
+         put_logs_level_path_params,
+         put_logs_level_query_params)),
    BackstageRoute(
       "POST",
       "/logs/start",
@@ -592,7 +598,7 @@ static std::array<BackstageRoute, 32> glRoutes = {
       post_logs_start_path_param_names,
       BackstageRouteMetadata(
          "Activates internal log recording.",
-         "json",
+         "",
          "object",
          "",
          post_logs_start_path_params,
@@ -605,7 +611,7 @@ static std::array<BackstageRoute, 32> glRoutes = {
       post_logs_stop_path_param_names,
       BackstageRouteMetadata(
          "Stops internal log recording.",
-         "json",
+         "",
          "object",
          "",
          post_logs_stop_path_params,

@@ -356,12 +356,16 @@ the surface area first).</li>
     <method>
       <name>ScheduleRedraw</name>
       <comment>Schedules a redraw operation for the next frame.</comment>
-      <prototype>ERR drw::ScheduleRedraw(OBJECTPTR Object)</prototype>
-      <tiriPrototype>err = ScheduleRedraw()</tiriPrototype>
+      <prototype>ERR drw::ScheduleRedraw(OBJECTPTR Object, INT RefreshRate)</prototype>
+      <tiriPrototype>err = ScheduleRedraw(RefreshRate:num)</tiriPrototype>
+      <input>
+        <param type="INT" name="RefreshRate">Optional refresh rate in frames per second.  If not specified, the refresh rate from the display is used.</param>
+      </input>
       <description>
-<p>Use ScheduleRedraw() to mark a surface for redraw on the next frame cycle.  The surface and its child surfaces are redrawn together, typically on the next 1/60th of a second timer tick.  Direct redraw requests for the target surface are coalesced until the scheduled redraw is processed.</p>
-<p>Scheduling is ideal in situations where a cluster of redraw events may occur within a tight time period, and it would be inefficient to draw those changes to the display individually.</p>
-<p>Redraw schedules do not merge across the hierarchy.  If both a surface and one of its children are scheduled, two redraw operations may be triggered where one would otherwise suffice.  Schedule the highest relevant surface when a single redraw should cover a group of changes.</p>
+<p>Use ScheduleRedraw() to mark a surface for redraw on the next frame cycle.  The delay is governed by the chosen RefreshRate, which is measured in frames per second.  If a RefreshRate is not specified, the frame rate is derived from the display.</p>
+<p>Specifying a custom RefreshRate is recommended when processing an animation at a lower frame rate than that of the display would be acceptable.</p>
+<p>Scheduling with this method over <action>Draw</action> (immediate mode) is recommended when a cluster of redraw events may occur within a tight time period, and it would be inefficient to draw those changes to the display individually.  Repeated redraw requests made to the target surface are coalesced until the scheduled redraw is processed.</p>
+<p>Redraw schedules do not collapse in nested surfaces.  If both a surface and one of its children are scheduled, two redraw operations may be triggered where one would otherwise suffice.  Target the top-level surface only in such instances.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -472,17 +476,6 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>BottomLimit</name>
-      <comment>Prevents a surface object from moving beyond a given point at the bottom of its container.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>Set <code>BottomLimit</code> to reserve a margin at the bottom of the parent container.  For example, a value of <code>5</code> prevents <action>Move</action> from placing the surface inside the bottom-most five coordinate units.</p>
-<p>Movement limits apply only to <action>Move</action>.  Direct writes to coordinate fields bypass them.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Buffer</name>
       <comment>Refers to the <class name="Bitmap">Bitmap</class> that stores the surface's graphics.</comment>
       <access read="R">Read</access>
@@ -584,17 +577,6 @@ the surface area first).</li>
 <p>By default the value is a fixed coordinate unit.  With the <code>FD_SCALED</code> flag, the value is treated as a multiplier of the parent surface height.</p>
 <p>Changing <code>Height</code> on a visible surface updates the displayed area immediately, including any child surfaces that need to be redrawn or resized.</p>
 <p>Before initialisation, setting <code>Height</code> to zero or less clears the height dimension so that <fl>Y</fl> and <fl>YOffset</fl> can define the height dynamically.  After initialisation, values of zero or less are invalid.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>LeftLimit</name>
-      <comment>Prevents a surface object from moving beyond a given point on the left-hand side.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>Set <code>LeftLimit</code> to reserve a margin at the left-hand side of the parent container.  For example, a value of <code>3</code> prevents <action>Move</action> from placing the surface inside the left-most three coordinate units.</p>
-<p>Movement limits apply only to <action>Move</action>.  Direct writes to coordinate fields bypass them.</p>
       </description>
     </field>
 
@@ -709,32 +691,10 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>RightLimit</name>
-      <comment>Prevents a surface object from moving beyond a given point on the right-hand side.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>Set <code>RightLimit</code> to reserve a margin at the right-hand side of the parent container.  For example, a value of <code>8</code> prevents <action>Move</action> from placing the surface inside the right-most eight coordinate units.</p>
-<p>Movement limits apply only to <action>Move</action>.  Direct writes to coordinate fields bypass them.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Root</name>
       <comment>Surface that is acting as a root for many surface children (useful when applying translucency)</comment>
       <access>-/-</access>
       <type>OBJECTID</type>
-    </field>
-
-    <field>
-      <name>TopLimit</name>
-      <comment>Prevents a surface object from moving beyond a given point at the top of its container.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>Set <code>TopLimit</code> to reserve a margin at the top of the parent container.  For example, a value of <code>10</code> prevents <action>Move</action> from placing the surface inside the top-most ten coordinate units.</p>
-<p>Movement limits apply only to <action>Move</action>.  Direct writes to coordinate fields bypass them.</p>
-      </description>
     </field>
 
     <field>
@@ -1153,22 +1113,34 @@ the surface area first).</li>
       <field name="BitsPerPixel" type="INT16">Preferred bits-per-pixel setting for custom cursors</field>
     </struct>
 
-    <struct name="DisplayInfo" typeName="DISPLAYINFO">
-      <field name="Display" type="OBJECTID">Object ID related to the display</field>
-      <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
-      <field name="Width" type="INT16">Pixel width of the display</field>
-      <field name="Height" type="INT16">Pixel height of the display</field>
-      <field name="BitsPerPixel" type="INT16">Bits per pixel</field>
-      <field name="BytesPerPixel" type="INT16">Bytes per pixel</field>
-      <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
-      <field name="AmtColours" type="INT">Total number of supported colours.</field>
+    <struct name="DisplayInfo">
       <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
       <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
       <field name="MaxRefresh" type="FLOAT">Maximum refresh rate</field>
       <field name="RefreshRate" type="FLOAT">Recommended refresh rate</field>
+      <field name="Display" type="OBJECTID">Object ID related to the display</field>
+      <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
+      <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
+      <field name="AmtColours" type="INT">Total number of supported colours.</field>
       <field name="Index" type="INT">Display mode ID (internal)</field>
       <field name="HDensity" type="INT">Horizontal pixel density per inch.</field>
       <field name="VDensity" type="INT">Vertical pixel density per inch.</field>
+      <field name="HostedX" type="INT">Horizontal display position in virtual desktop coordinates</field>
+      <field name="HostedY" type="INT">Vertical display position in virtual desktop coordinates</field>
+      <field name="MonitorX" type="INT">Horizontal position of the monitor, relative to the primary monitor</field>
+      <field name="MonitorY" type="INT">Vertical position of the monitor, relative to the primary monitor</field>
+      <field name="MonitorWidth" type="INT">Pixel width of the monitor</field>
+      <field name="MonitorHeight" type="INT">Pixel height of the monitor</field>
+      <field name="VirtualX" type="INT">Horizontal position of the complete desktop spanning all monitors</field>
+      <field name="VirtualY" type="INT">Vertical position of the complete desktop spanning all monitors</field>
+      <field name="VirtualWidth" type="INT">Width of the complete desktop spanning all monitors</field>
+      <field name="VirtualHeight" type="INT">Height of the complete desktop spanning all monitors</field>
+      <field name="PhysicalWidth" type="INT">Width in millimeters, 0 if unknown</field>
+      <field name="PhysicalHeight" type="INT">Height in millimeters, 0 if unknown</field>
+      <field name="Width" type="INT16">Pixel width of the display bitmap</field>
+      <field name="Height" type="INT16">Pixel height of the display bitmap</field>
+      <field name="BitsPerPixel" type="INT16">Bits per pixel</field>
+      <field name="BytesPerPixel" type="INT16">Bytes per pixel</field>
     </struct>
 
     <struct name="InputEvent">

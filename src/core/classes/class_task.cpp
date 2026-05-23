@@ -1350,7 +1350,7 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 
             case REG_DWORD_BIG_ENDIAN:
                if (unsigned(Length) >= sizeof(int)) {
-                  if constexpr (std::endian::native == std::endian::little) {
+                  if constexpr (std::endian::native IS std::endian::little) {
                      Output = std::to_string(reverse_long(((int *)Buffer)[0]));
                   }
                   else Output = std::to_string(((int *)Buffer)[0]);
@@ -2277,7 +2277,7 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
 
 #ifdef __unix__
          std::string path;
-         if (ResolvePath(new_path.c_str(), RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
+         if (ResolvePath(new_path, RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
             if (chdir(path.c_str())) {
                error = ERR::InvalidPath;
                log.msg("Failed to switch current path to: %s", path.c_str());

@@ -186,7 +186,7 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
       }
 
       kt::ScopedObjectLock<objSurface> surface(Self->SurfaceID);
-      if (surface.granted()) surface->scheduleRedraw();
+      if (surface.granted()) surface->scheduleRedraw(0);
    }
 }
 

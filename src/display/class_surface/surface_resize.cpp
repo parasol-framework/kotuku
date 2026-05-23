@@ -23,9 +23,6 @@ static ERR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
       }
    }
 
-   // 2013-12: For a long time this sub-routine was commented out.  Have brought it back to try and keep the queue
-   // clear of redundant redimension messages.  Seems fine...
-
    if (Self->visible()) { // Visibility check because this sub-routine doesn't play nice with hidden surfaces.
       uint8_t msgbuffer[sizeof(Message) + sizeof(ActionMessage)];
       int index = 0;

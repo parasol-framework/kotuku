@@ -198,50 +198,6 @@ gui.window = function(Options:table)
          display.flags = display.flags | SCR_MAXIMISE
          return
       end
---[[
-      margins = { }
-      parent = self.surface.parent
-
-      if ((margins.Left = parent.LeftMargin) < 0) margins.Left = 0
-      if ((margins.Top = parent.TopMargin) < 0) margins.Top = 0
-      margins.Right  = parent.Width - parent.RightMargin
-      margins.Bottom = parent.Height - parent.BottomMargin
-
-      err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
-
-      x = vx
-      y = vy
-      x2 = vx + vwidth
-      y2 = vy + vheight
-
-      if (margins.left > x)    then x = margins.left end
-      if (margins.top > y)     then y = margins.top end
-      if (margins.right < x2)  then x2 = margins.right end
-      if (margins.bottom < y2) then y2 = margins.bottom end
-
-      if (Toggle) then
-         if ((self.restore.width) and (self.restore.height)) then
-            if ((self.surface.x is x) and (self.surface.y is y) and
-                (self.surface.width is (x2-x)) and (self.surface.height is (y2-y))) then
-               self.surface.acRedimension(self.restore.x, self.restore.y, 0.0, self.restore.width, self.restore.height, 0.0)
-               return
-            end
-         end
-      end
-
-      if (((x2-x) is self.surface.width) and ((y2-y) is self.surface.height)) then
-         self.surface.acMoveToPoint(x, y, 0.0, MTF_X|MTF_Y)
-      else
-         self.restore = {
-            x = self.surface.x
-            y = self.surface.y
-            width  = self.surface.width
-            height = self.surface.height
-         }
-
-         self.surface.acRedimension(x, y, 0.0, x2-x, y2-y, 0.0)
-      end
---]]
    end
 
    self.moveToBack = function(self:table)
@@ -254,16 +210,16 @@ gui.window = function(Options:table)
 
    self.parentSize = function(self:table)
       if hosted(self) then
-         err, info = mGfx.getDisplayInfo(0)
-         return info.width, info.height
+         err, info = mGfx.getDisplayInfo(self.surface.display)
+         return info.monitorWidth, info.monitorHeight
       else
          x, y, width, height = mGfx.getSurfaceCoords(self.surface.parent)
          return width, height
       end
    end
 
-   self.show = function(self:table, Center)
-      if Options.center or Center then -- Options.center is obsolete
+   self.show = function(self:table, Center:bool)
+      if Center then
          x, y = (function()
             if self.surface.popOver then
                err, x, y, powidth, poheight = [*__*]mGfx.GetSurfaceCoords(self.surface.popOver)
@@ -284,14 +240,23 @@ gui.window = function(Options:table)
                   return x, y
                end
             else
-               err, display = mGfx.GetDisplayInfo(0)
+               err, info = mGfx.GetDisplayInfo(self.surface.display)
                if err is ERR_Okay then
-                  return (display.width - self.surface.width) / 2, (display.height - self.surface.height) / 2
+                  return (info.monitorWidth - self.surface.width) / 2, (info.monitorHeight - self.surface.height) / 2
                end
             end
          end)()
 
          if x and y then
+            err, info = mGfx.GetDisplayInfo(self.surface.display)
+            if err is ERR_Okay then
+               err, l_frame, t_frame, r_frame, b_frame = self.surface.display.mtGetFrame(0)
+
+               if y - t_frame < info.virtualY then y = info.virtualY + t_frame end
+               if x - l_frame < info.virtualX then x = info.virtualX + l_frame end
+               if x + l_frame + r_frame + self.surface.width > info.virtualX + info.virtualWidth then x = info.virtualX + info.virtualWidth - self.surface.width - l_frame - r_frame end
+               if y + t_frame + b_frame + self.surface.height > info.virtualY + info.virtualHeight then y = info.virtualY + info.virtualHeight - self.surface.height - t_frame - b_frame end
+            end
             self.surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
          end
       end
@@ -361,8 +326,9 @@ gui.window = function(Options:table)
       self.surface.display.flags = self.surface.display.flags | SCR_GRAB_CONTROLLERS
    end
 
-   self.surface.x = Options.x ?? 20
-   self.surface.y = Options.y ?? 20
+   parent_width, parent_height = self:parentSize()
+   self.surface.x = Options.x ?? ((parent_width - self.surface.width) * 0.1)
+   self.surface.y = Options.y ?? ((parent_height - self.surface.height) * 0.1)
 
    if (self.surface.minWidth is self.surface.maxWidth) and (self.surface.minHeight is self.surface.maxHeight) then
       self.maximiseEnabled = false
