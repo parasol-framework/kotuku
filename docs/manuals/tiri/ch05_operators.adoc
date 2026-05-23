@@ -1,6 +1,7 @@
 // VERIFIED: 2026-02-10
 // UPDATED: 2026-04-03 -- Documented `is not` as an inequality operator equivalent to `!=`.
 // UPDATED: 2026-03-31 — Added 'has' flag testing operator section and updated precedence table.
+// UPDATED: 2026-05-23 — Added comparison chaining section for ordering operators.
 
 [[ch-operators]]
 == Operators
@@ -99,6 +100,50 @@ print(rawequal(a, b))  -- false (distinct references)
 
 print(1 < 2)           -- true
 print('abc' < 'abd')   -- true
+----
+
+[[sec-comparison-chaining]]
+==== Comparison Chaining
+indexterm:[operators, comparison chaining] Adjacent ordering operators (`<`, `\<=`, `>`, `>=`) form a comparison chain.  The expression `a op1 b op2 c` evaluates as `(a op1 b) and (b op2 c)`, except that `b` is evaluated exactly once.  Chains of three or more operands extend this pattern: each adjacent pair is tested in left-to-right order.
+
+[source,ebnf]
+----
+comparison_chain = expression ordering_op expression
+                   { ordering_op expression } ;
+ordering_op      = "<" | "<=" | ">" | ">=" ;
+----
+
+The chain short-circuits: if any comparison yields `false`, the remaining operands are not evaluated and the chain produces `false`.  If all comparisons succeed, the chain produces `true`.
+
+[source,tiri]
+----
+x = 5
+0 <= x < 10          -- true  (range check)
+10 > x >= 0          -- true  (descending direction)
+0 <= x < y <= 100    -- chains of three or more operands
+----
+
+===== Operand Evaluation
+
+Each interior operand is evaluated exactly once, regardless of how many comparisons reference it.  This is significant when an operand is a function call with side effects.
+
+[source,tiri]
+----
+function sensor()
+   return read_value()    -- called once, not twice
+end
+
+0 < sensor() < 100    -- sensor() is evaluated once
+----
+
+===== Scope
+
+Comparison chaining applies only to ordering operators.  The equality operators `is`, `is not` and `!=` do not participate in chains; they retain their standard left-associative behaviour.  An expression that mixes ordering and equality operators is parsed as an ordering chain for the ordering portion, with the result compared to the equality operand in the usual left-associative manner.
+
+[source,tiri]
+----
+0 < 1 is true       -- (0 < 1) is true → true
+1 is 1 is true      -- (1 is 1) is true → true (left-associative)
 ----
 
 [[sec-logical-operators]]
