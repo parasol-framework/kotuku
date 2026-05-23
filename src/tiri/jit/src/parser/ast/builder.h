@@ -112,7 +112,7 @@ private:
    ParserResult<ExprNodePtr> parse_arrow_function(ExprNodeList parameters);
    ParserResult<ExprNodePtr> parse_function_literal(
       const Token &, bool IsThunk = false, GCstr *FunctionName = nullptr);
-   ParserResult<ExprNodePtr> parse_table_literal(bool AllowRange = true);
+   ParserResult<ExprNodePtr> parse_table_literal();
    ParserResult<ReturnStmtPayload> parse_return_payload(const Token &, bool same_line_only);
    ParserResult<FunctionReturnTypes> parse_return_type_annotation();
 
@@ -145,7 +145,7 @@ private:
    ParserResult<std::unique_ptr<BlockStmt>> parse_scoped_block(std::initializer_list<TokenKind>);
 
    [[nodiscard]] bool at_end_of_block(std::span<const TokenKind>) const;
-   [[nodiscard]] bool is_statement_start(TokenKind Kind) const;
+   [[nodiscard]] bool is_statement_start(TokenKind kind) const;
    [[nodiscard]] bool is_synchronisation_point(std::span<const TokenKind> terminators) const;
    [[nodiscard]] size_t skip_to_synchronisation_point(std::span<const TokenKind> terminators);
    [[nodiscard]] static Identifier make_identifier(const Token &);

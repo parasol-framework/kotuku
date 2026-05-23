@@ -50,5 +50,14 @@
 
 [[nodiscard]] bool Token::is_literal() const
 {
-   return this->has_flag(TKF_LITERAL);
+   switch (this->token_kind) {
+      case TokenKind::Number:
+      case TokenKind::String:
+      case TokenKind::Nil:
+      case TokenKind::TrueToken:
+      case TokenKind::FalseToken:
+         return true;
+      default:
+         return false;
+   }
 }

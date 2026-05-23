@@ -647,17 +647,12 @@ LJLIB_CF(range_new)
 
 //********************************************************************************************************************
 // __tostring metamethod
-// Returns "{start to stop}" or "{start into stop}", including "by step" for non-default steps.
+// Returns "{start to stop}" or "{start into stop}" based on inclusivity
 
 static int range_tostring(lua_State *L)
 {
    auto r = get_range(L, 1);
-   int32_t inferred_step = (r->start <= r->stop) ? 1 : -1;
-   if (r->step != inferred_step) {
-      if (r->inclusive) lua_pushfstring(L, "{%d into %d by %d}", r->start, r->stop, r->step);
-      else lua_pushfstring(L, "{%d to %d by %d}", r->start, r->stop, r->step);
-   }
-   else if (r->inclusive) lua_pushfstring(L, "{%d into %d}", r->start, r->stop);
+   if (r->inclusive) lua_pushfstring(L, "{%d into %d}", r->start, r->stop);
    else lua_pushfstring(L, "{%d to %d}", r->start, r->stop);
    return 1;
 }
