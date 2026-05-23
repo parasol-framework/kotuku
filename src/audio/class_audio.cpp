@@ -733,14 +733,17 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       else config->write("AUDIO", "Device", "default");
 
       if ((!Self->Volumes.empty()) and ((Self->Flags & ADF::SYSTEM_WIDE) != ADF::NIL)) {
+#ifdef ALSA_ENABLED
          snd_mixer_selem_id_t *sid;
          snd_mixer_selem_id_alloca(&sid);
          snd_mixer_selem_id_set_index(sid, 0);
+#endif
 
          for (int i=0; i < std::ssize(Self->Volumes); i++) {
             auto channels = Self->Volumes[i].Channels;
             auto flags = Self->Volumes[i].Flags;
 
+#ifdef ALSA_ENABLED
             if (Self->MixHandle) {
                snd_mixer_selem_id_set_name(sid, Self->Volumes[i].Name.c_str());
                if (auto elem = snd_mixer_find_selem(Self->MixHandle, sid)) {
@@ -776,6 +779,7 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
                   }
                }
             }
+#endif
 
             std::ostringstream out;
             if ((flags & VCF::MUTE) != VCF::NIL) out << "1,[";
