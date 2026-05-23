@@ -595,7 +595,7 @@ print(f'Memory: {stats.memoryMB} MB, GC running: {stats.isRunning}')
 before = processing.gcStats().memoryMB
 
 t = {}
-for i in {0..10000} do
+for i in {0 to 10000} do
    t[i] = string.rep('x', 100)
 end
 

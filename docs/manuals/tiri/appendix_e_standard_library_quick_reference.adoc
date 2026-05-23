@@ -210,7 +210,7 @@ indexterm:[library, range] See <<ch-ranges>>.
 |`r:find(Predicate)`         |Returns the first value matching `Predicate`.
 |===
 
-Range literal syntax: `{0..5}` (exclusive), `{0...5}` (inclusive).
+Range literal syntax: `{0 to 5}` (exclusive), `{0 into 5}` (inclusive).
 
 Read-only properties: `r.start`, `r.stop`, `r.step`, `r.inclusive`, `r.length`.
 

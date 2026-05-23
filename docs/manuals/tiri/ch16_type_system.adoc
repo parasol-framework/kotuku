@@ -240,7 +240,7 @@ Type annotations on function parameters serve as guards that validate incoming a
 [source,tiri]
 ----
 function greet(Name: str, Times: num)
-   for i in {1..Times} do
+   for i in {1 to Times} do
       print('Hello, ' .. Name)
    end
 end

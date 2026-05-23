@@ -258,7 +258,7 @@ function find_value()
    end
 end
 
-for i in {0..10} do
+for i in {0 to 10} do
    try
       if i is 5 then break end
       if i % 2 is 0 then continue end
@@ -413,7 +413,7 @@ If an exception occurs, it is silently discarded and the `success` block does no
 
 [source,tiri]
 ----
-for i in {0..10} do
+for i in {0 to 10} do
    try
       process(i)
    except e

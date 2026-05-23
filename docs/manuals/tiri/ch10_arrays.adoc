@@ -156,9 +156,9 @@ For all other element types, conversion returns a descriptive summary of the for
 
 [source,tiri]
 ----
-tostring(array<int> { 1, 2, 3 })           -- 'array<int, 3>'
-tostring(array<string> { 'a', 'b' })       -- 'array<string, 2>'
-tostring(array<double, 0>)                  -- 'array<double, 0>'
+tostring(array<int> { 1, 2, 3 })      -- 'array<int, 3>'
+tostring(array<string> { 'a', 'b' })  -- 'array<string, 2>'
+tostring(array<double, 0>)            -- 'array<double, 0>'
 ----
 
 [discrete]
@@ -169,10 +169,10 @@ Byte arrays (`byte`, `char`) can be used with the `..` concatenation operator.  
 [source,tiri]
 ----
 buf = array<char> { 72, 105 }
-'Say: ' .. buf           -- 'Say: Hi'
-buf .. ' there'          -- 'Hi there'
-buf .. 123               -- 'Hi123'
-buf .. array<byte> { 33 }   -- 'Hi!'
+'Say: ' .. buf            -- 'Say: Hi'
+buf .. ' there'           -- 'Hi there'
+buf .. 123                -- 'Hi123'
+buf .. array<byte> { 33 } -- 'Hi!'
 ----
 
 Non-byte arrays (e.g. `int`, `string`, `table`) cannot be concatenated and will raise an error.
@@ -383,9 +383,9 @@ Sets elements to `Value`.  With no additional arguments, fills the entire array.
 [source,tiri]
 ----
 arr = array<int, 10>
-arr:fill(0)             -- zero-fill all elements
-arr:fill(99, 2, 3)      -- arr[2..4] = 99
-arr:fill(77, {2...5})   -- arr[2..5] = 77 (inclusive)
+arr:fill(0)               -- zero-fill all elements
+arr:fill(99, 2, 3)        -- arr[2..4] = 99
+arr:fill(77, {2 into 5})  -- arr[2 into 5] = 77 (inclusive)
 arr:fill(33, range.new(0, 10, false, 2))   -- every 2nd element
 ----
 
@@ -442,7 +442,7 @@ Resets the array length to zero.  Storage capacity is preserved for reuse.
 ----
 arr = array<int> { 1, 2, 3 }
 arr:clear()
-#arr             -- 0
+#arr            -- 0
 arr:push(67)    -- reuses existing capacity
 ----
 
@@ -470,7 +470,7 @@ For `object` arrays, `Value` can be an object or a numeric UID.
 arr = array<int> { 10, 20, 30, 40, 50 }
 arr:find(30)           -- 2
 arr:find(30, 3)        -- nil (search starts at index 3)
-arr:find(30, {0..5})   -- 2
+arr:find(30, {0 to 5}) -- 2
 arr:find(99)           -- nil
 ----
 
@@ -479,7 +479,7 @@ Reverse ranges search from higher to lower indices, finding the last occurrence 
 [source,tiri]
 ----
 arr = array<int> { 10, 20, 30, 20, 40 }
-arr:find(20, {4...0})   -- 3 (found searching backwards)
+arr:find(20, {4 into 0})   -- 3 (found searching backwards)
 ----
 
 [[sec-copying-and-slicing]]
@@ -501,10 +501,10 @@ Returns a new array containing the elements selected by `Range`.  The result has
 [source,tiri]
 ----
 arr = array<int> { 0, 10, 20, 30, 40, 50 }
-arr:slice({1..4})       -- array<int> {10, 20, 30}
-arr:slice({-2...-1})    -- array<int> {40, 50}  (inclusive)
-arr:slice({-2..-1})     -- array<int> {40}      (exclusive)
-arr:slice({4...2})      -- array<int> {40, 30, 20} (reverse)
+arr:slice({1 to 4})       -- array<int> {10, 20, 30}
+arr:slice({-2 into -1})   -- array<int> {40, 50}  (inclusive)
+arr:slice({-2 to -1})     -- array<int> {40}      (exclusive)
+arr:slice({4 into 2})     -- array<int> {40, 30, 20} (reverse)
 
 arr:slice(range.new(0, 6, false, 2))   -- array<int> {0, 20, 40}
 ----
@@ -609,7 +609,7 @@ arr = array<string> { 'a', 'b', 'c', 'd' }
 arr:concat(',', nil, 1, 2)   -- 'b,c'
 
 arr = array<int> { 1, 2, 3, 4 }
-arr:concat('-', '%02d', 1, 3)   -- '02-03-04'
+arr:concat('-', '%02d', 1, 3)  -- '02-03-04'
 ----
 
 [[sec-functional-methods]]

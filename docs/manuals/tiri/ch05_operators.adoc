@@ -219,7 +219,7 @@ The `pass:[__]len` metamethod overrides the default behaviour.  If a non-string,
 
 [source,tiri]
 ----
-print(#'hello')              -- 5
+print(#'hello')             -- 5
 print(#{ 'a', 'b', 'c' })   -- 3
 ----
 
@@ -426,7 +426,7 @@ The `in` operator requires the right-hand operand to provide a `:contains()` met
 
 [source,tiri]
 ----
-if x in {0..10} then
+if x in {0 to 10} then
    print('x is in range')
 end
 
@@ -515,15 +515,15 @@ When the LHS is a range literal, the pipe calls the RHS function for each value 
 
 [source,tiri]
 ----
-{1..5} |> print     -- prints 1, 2, 3, 4
-{1...5} |> print    -- prints 1, 2, 3, 4, 5
+{1 to 5} |> print     -- prints 1, 2, 3, 4
+{1 into 5} |> print   -- prints 1, 2, 3, 4, 5
 ----
 
 Return `false` from the callback to terminate iteration early:
 
 [source,tiri]
 ----
-{1..1000} |> i => do
+{1 to 1000} |> i => do
    if found_target(i) then
       print('Found at', i)
       return false
@@ -553,7 +553,7 @@ Pipe iteration returns the original range or array, enabling multiple iteration 
 
 [source,tiri]
 ----
-{1..4} |> function(i) log_value(i) end
+{1 to 4} |> function(i) log_value(i) end
        |> function(i) process(i) end
 
 array<int> { 5, 10, 15 } |> function(v) validate(v) end

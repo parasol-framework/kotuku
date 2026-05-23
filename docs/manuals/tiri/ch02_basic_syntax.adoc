@@ -173,7 +173,7 @@ Floating-point literals:::
 
 A decimal point or exponent marker (`e` or `E`) produces a floating-point value.  Hexadecimal floating-point literals use `p` or `P` as a binary exponent marker (power of 2).
 
-When a numeric literal is immediately followed by `..`, the lexer terminates the number before the dots.  This permits range expressions such as `{1..10}`.
+When a numeric literal is immediately followed by `to` or `into`, the lexer recognises a range expression.  This permits range expressions such as `{1 to 10}`.
 
 ==== String Literals
 

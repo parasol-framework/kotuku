@@ -19,6 +19,7 @@ Tables have two internal regions: an _array part_ that stores sequential integer
 
 For sequential data storage, the dedicated `array` type (see <<ch-arrays>>) provides more efficient memory layout.
 
+[%breakable]
 [[sec-table-fundamentals]]
 === Table Fundamentals
 ==== Table Constructors
@@ -27,11 +28,15 @@ indexterm:[tables, fundamentals] Tables are created with the `{}` constructor sy
 
 [source,tiri]
 ----
-empty = {}                              -- empty table
-seq   = { 10, 20, 30 }                 -- sequential: seq[0]=10, seq[1]=20, seq[2]=30
-rec   = { name = 'Alice', age = 30 }   -- record with string keys
-mixed = { 'a', 'b', x = 10, y = 20 }  -- both sequential and named entries
+empty = {} <1>
+seq   = { 10, 20, 30 } <2>
+rec   = { name = 'Alice', age = 30 } <3>
+mixed = { 'a', 'b', x = 10, y = 20 } <4>
 ----
+<1> Empty table
+<2> Sequential: seq[0]=10, seq[1]=20, seq[2]=30
+<3> Record with string keys
+<4> Both sequential and named entries
 
 Explicit keys use the `key = value` syntax for string keys and `[expression] = value` for computed keys:
 
@@ -136,7 +141,7 @@ Chained field access and bracket indexing can be combined freely:
 ----
 cfg = {}
 table.insert(cfg, { apple = 'banana', orange = 'lemon' })
-cfg[0].apple    -- 'banana'
+cfg[0].apple     -- 'banana'
 cfg[0]['orange'] -- 'lemon'
 ----
 
@@ -382,8 +387,8 @@ Returns a new table containing the elements of `Table` selected by `Range`.  Sup
 [source,tiri]
 ----
 t = { 10, 20, 30, 40, 50 }
-table.slice(t, {1..4})          -- {20, 30, 40}
-table.slice(t, range(0, 7, true, 2))   -- {10, 30, 50, 70}
+table.slice(t, {1 to 4})             -- {20, 30, 40}
+table.slice(t, range(0, 7, true, 2)) -- {10, 30, 50, 70}
 ----
 
 [[sec-table-toXML]]
@@ -416,30 +421,30 @@ indexterm:[tables, slicing] indexterm:[ranges, table slicing] Tables support ran
 
 ==== Exclusive and Inclusive Ranges
 
-The `..` operator creates an exclusive range (stop index not included).  The `pass:[...]` operator creates an inclusive range (stop index included).
+The `to` keyword creates an exclusive range (stop index not included).  The `into` keyword creates an inclusive range (stop index included).
 
 [source,tiri]
 ----
 t = { 10, 20, 30, 40, 50 }
 
-t[{1..4}]     -- {20, 30, 40}        (exclusive: indices 1, 2, 3)
-t[{1...3}]    -- {20, 30, 40}        (inclusive: indices 1, 2, 3)
-t[{0..5}]     -- {10, 20, 30, 40, 50}  (full table)
+t[{1 to 4}]     -- {20, 30, 40} (exc. indices 1, 2, 3)
+t[{1 into 3}]   -- {20, 30, 40} (inc. indices 1, 2, 3)
+t[{0 to 5}]     -- {10, 20, 30, 40, 50} (full table)
 ----
 
 ==== Negative Indices
 
-Negative indices count backwards from the end of the table: `-1` is the last element, `-2` the second-to-last.  The exclusive/inclusive semantics of the range operator are preserved with negative indices.  `..` remains exclusive and `pass:[...]` remains inclusive.
+Negative indices count backwards from the end of the table: `-1` is the last element, `-2` the second-to-last.  The exclusive/inclusive semantics of the range operator are preserved with negative indices.  `to` remains exclusive and `into` remains inclusive.
 
 [source,tiri]
 ----
 t = { 10, 20, 30, 40, 50 }
 
-t[{-3...-1}]   -- {30, 40, 50}  (inclusive)
-t[{-3..-1}]    -- {30, 40}      (exclusive)
-t[{-2...-1}]   -- {40, 50}      (inclusive)
-t[{-2..-1}]    -- {40}          (exclusive)
-t[{1...-1}]    -- {20, 30, 40, 50}
+t[{-3 into -1}]  -- {30, 40, 50}  (inclusive)
+t[{-3 to -1}]    -- {30, 40}      (exclusive)
+t[{-2 into -1}]  -- {40, 50}      (inclusive)
+t[{-2 to -1}]    -- {40}          (exclusive)
+t[{1 into -1}]   -- {20, 30, 40, 50}
 ----
 
 ==== Reverse Slicing
@@ -450,14 +455,14 @@ Ranges where the start index is greater than the stop index produce reversed sub
 ----
 t = { 10, 20, 30, 40, 50 }
 
-t[{4..0}]     -- {50, 40, 30, 20}           (reverse exclusive)
-t[{4...0}]    -- {50, 40, 30, 20, 10}       (reverse inclusive)
-t[{3..1}]     -- {40, 30}                   (reverse partial)
+t[{4 to 0}]     -- {50, 40, 30, 20} (reverse exclusive)
+t[{4 into 0}]   -- {50, 40, 30, 20, 10} (reverse inclusive)
+t[{3 to 1}]     -- {40, 30} (reverse partial)
 ----
 
 ==== Step Support
 
-For stepped ranges, use the `range()` constructor.  Range literals (`{start..stop}`) do not support a step parameter.
+For stepped ranges, use the `range()` constructor.  Range literals (`{start to stop}`) do not support a step parameter.
 
 [source,tiri]
 ----
@@ -481,10 +486,10 @@ table.slice(t, r)            -- {70, 50, 30, 10}
 ----
 t = { 10, 20, 30 }
 
-t[{0..10}]    -- {10, 20, 30}  (end clamped)
-t[{-10..3}]   -- {10, 20, 30}  (start clamped)
-t[{2..2}]     -- {}             (empty exclusive range)
-t[{5..10}]    -- {}             (beyond table length)
+t[{0 to 10}]    -- {10, 20, 30} (end clamped)
+t[{-10 to 3}]   -- {10, 20, 30} (start clamped)
+t[{2 to 2}]     -- {} (empty exclusive range)
+t[{5 to 10}]    -- {} (beyond table length)
 ----
 
 [[sec-tables-vs-arrays]]

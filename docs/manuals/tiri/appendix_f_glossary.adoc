@@ -123,7 +123,7 @@ Pipe operator::
 The `|>` operator, which passes the left operand as the first argument to the function on the right.  When the left operand is a range or array and the right operand is a bare function reference, the pipe becomes an iteration operator that calls the function for each element.  See <<sec-pipe-operator>>.
 
 Range::
-An immutable sequence of numeric values defined by start, stop, and optional step values.  Exclusive ranges (`{apass:[..]b}`) exclude the stop value; inclusive ranges (`{apass:[...]b}`) include it.  See <<ch-ranges>>.
+An immutable sequence of numeric values defined by start, stop, and optional step values.  Exclusive ranges (`{a to b}`) exclude the stop value; inclusive ranges (`{a into b}`) include it.  See <<ch-ranges>>.
 
 Raw access::
 Bypassing metamethods on a table using the `rawget`, `rawset`, `rawlen`, and `rawequal` functions.  See <<sec-raw-access>>.

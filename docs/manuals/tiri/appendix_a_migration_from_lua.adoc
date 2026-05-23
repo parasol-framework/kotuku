@@ -295,7 +295,7 @@ for i = 1, 10 do
 end
 
 -- Tiri
-for i in {0..10} do
+for i in {0 to 10} do
    if i % 2 is 0 then continue end
    print(i)
 end
@@ -701,7 +701,7 @@ The following Tiri features have no counterpart in standard Lua.  They do not re
 * **If-nil assignment**: `x ?= default` (see <<ch-operators>>)
 * **If-empty operator**: `value ?? default` (see <<ch-operators>>)
 * **If-empty assignment**: `x ??= default` (see <<ch-operators>>)
-* **Ranges**: `{0..10}`, `{0pass:[...]10}` (see <<ch-ranges>>)
+* **Ranges**: `{0 to 10}`, `{0 into 10}` (see <<ch-ranges>>)
 * **Type annotations**: `local x:num = 0` (see <<ch-type-system>>)
 * **Constant variables**: `local x <const> = 42` (see <<ch-variables-and-scoping>>)
 * **Enum declarations**: `enum PREFIX { MEMBER, pass:[...] }` (see <<sec-enum-declarations>>)
@@ -878,5 +878,5 @@ for i = 0, 9 do
 end
 
 -- Tiri
-squares = {0..10}:map(i => i * i)
+squares = {0 to 10}:map(i => i * i)
 ----

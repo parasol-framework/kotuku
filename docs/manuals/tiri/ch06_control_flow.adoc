@@ -110,26 +110,26 @@ A range literal can be used with `in` to iterate over a sequence of integers:
 
 [source,tiri]
 ----
-for i in {0..5} do
+for i in {0 to 5} do
    print(i)   -- 0, 1, 2, 3, 4
 end
 
-for i in {1...5} do
+for i in {1 into 5} do
    print(i)   -- 1, 2, 3, 4, 5
 end
 ----
 
-`{Start..Stop}` is an exclusive range: the stop value is not included.  `{Startpass:[...]Stop}` is an inclusive range: the stop value is included.  The step direction is determined automatically from the start and stop values.
+`{Start to Stop}` is an exclusive range: the stop value is not included.  `{Start into Stop}` is an inclusive range: the stop value is included.  The step direction is determined automatically from the start and stop values.
 
 When a single loop variable iterates over a range literal with constant bounds, the compiler optimises this into a numeric for loop.  Variable bounds use the generic iterator path.
 
 [source,tiri]
 ----
-for i in {10..0} do
+for i in {10 to 0} do
    print(i)   -- 10, 9, 8, ..., 1  (exclusive of 0)
 end
 
-for i in {5...1} do
+for i in {5 into 1} do
    print(i)   -- 5, 4, 3, 2, 1  (inclusive)
 end
 ----
@@ -142,7 +142,7 @@ The loop variable can be omitted when only the iteration count matters:
 
 [source,tiri]
 ----
-for {0..5} do
+for {0 to 5} do
    print('hello')   -- prints 5 times
 end
 ----
@@ -207,7 +207,7 @@ Ranges (see <<ch-ranges>>) are callable.  Calling a range returns an iterator fu
 
 [source,tiri]
 ----
-r = {1..10}
+r = {1 to 10}
 for i in r() do
    print(i)
 end

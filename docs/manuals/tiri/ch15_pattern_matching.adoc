@@ -525,7 +525,7 @@ end
 [source,tiri]
 ----
 count = 0
-for i in {0..6} do
+for i in {0 to 6} do
    count += choose values[i] from
       1 -> 1
       else -> 0

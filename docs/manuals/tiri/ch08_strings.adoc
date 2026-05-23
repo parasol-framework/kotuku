@@ -145,7 +145,7 @@ Creates a string from one or more byte values.  Each argument must be an integer
 [source,tiri]
 ----
 string.char(72, 101, 108, 108, 111)   -- 'Hello'
-string.char(65)                        -- 'A'
+string.char(65)                       -- 'A'
 ----
 
 //[[sec-string-dump]]
@@ -170,10 +170,10 @@ Width, precision, and flag modifiers follow standard C `printf` conventions.
 
 [source,tiri]
 ----
-string.format('%d + %d = %d', 1, 2, 3)     -- '1 + 2 = 3'
-string.format('%.2f', 3.14159)              -- '3.14'
-string.format('%06x', 255)                  -- '0000ff'
-string.format('%-10s|', 'left')             -- 'left      |'
+string.format('%d + %d = %d', 1, 2, 3)  -- '1 + 2 = 3'
+string.format('%.2f', 3.14159)          -- '3.14'
+string.format('%06x', 255)              -- '0000ff'
+string.format('%-10s|', 'left')         -- 'left      |'
 ----
 
 F-string interpolation (see <<sec-string-interpolation>>) is preferred over `string.format()` for readability.
@@ -482,27 +482,27 @@ indexterm:[strings, slicing] indexterm:[ranges, string slicing] Strings support 
 ----
 s = 'Hello, World!'
 
-s[{0..5}]     -- 'Hello'   (exclusive: indices 0-4)
-s[{7..12}]    -- 'World'   (exclusive: indices 7-11)
-s[{0...4}]    -- 'Hello'   (inclusive: indices 0-4)
-s[{-6...-1}]  -- 'World!'  (negative inclusive)
-s[{-6..-1}]   -- 'World'   (negative exclusive)
+s[{0 to 5}]     -- 'Hello'   (exclusive: indices 0-4)
+s[{7 to 12}]    -- 'World'   (exclusive: indices 7-11)
+s[{0 into 4}]    -- 'Hello'   (inclusive: indices 0-4)
+s[{-6 into -1}]  -- 'World!'  (negative inclusive)
+s[{-6 to -1}]   -- 'World'   (negative exclusive)
 ----
 
-The range operator `..` creates an exclusive range where the stop index is not included.  The `pass:[...]` operator creates an inclusive range where the stop index is included.
+The `to` keyword creates an exclusive range where the stop index is not included.  The `into` keyword creates an inclusive range where the stop index is included.
 
 [discrete]
 ==== Negative Indices
 
-Negative indices count backwards from the end of the string: `-1` is the last character, `-2` the second-to-last.  The exclusive/inclusive semantics of the range operator are preserved with negative indices.  `..` remains exclusive and `pass:[...]` remains inclusive.
+Negative indices count backwards from the end of the string: `-1` is the last character, `-2` the second-to-last.  The exclusive/inclusive semantics of the range operator are preserved with negative indices.  `to` remains exclusive and `into` remains inclusive.
 
 [source,tiri]
 ----
 s = 'Hello, World!'
-s[{-6...-1}]   -- 'World!'  (inclusive: last 6 characters)
-s[{-6..-1}]    -- 'World'   (exclusive: stop not included)
-s[{0...-1}]    -- 'Hello, World!'  (inclusive)
-s[{0..-1}]     -- 'Hello, World'   (exclusive)
+s[{-6 into -1}]   -- 'World!'  (inclusive: last 6 characters)
+s[{-6 to -1}]    -- 'World'   (exclusive: stop not included)
+s[{0 into -1}]    -- 'Hello, World!'  (inclusive)
+s[{0 to -1}]     -- 'Hello, World'   (exclusive)
 ----
 
 [discrete]

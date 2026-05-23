@@ -97,7 +97,7 @@ Write type-stable code to maximise JIT effectiveness:
 [source,tiri]
 ----
 total = 0
-for i in {0..999} do
+for i in {0 to 999} do
    total += i * 2.5
 end
 ----
@@ -106,7 +106,7 @@ end
 [source,tiri]
 ----
 value:any = 0
-for i in {0..999} do
+for i in {0 to 999} do
    if i > 500 then
       value = 'overflow'   -- type changes from number to string
    else
@@ -145,7 +145,7 @@ Use arrays for homogeneous, numerically indexed data where performance matters â
 ----
 -- Array: ideal for homogeneous numeric data
 scores = array(100, 'int32')
-for i in {0..99} do
+for i in {0 to 99} do
    scores[i] = i * 10
 end
 
@@ -620,7 +620,7 @@ The most significant JIT performance issue is type instability within hot loops.
 ----
 -- Pitfall: mixed types in accumulator
 result = 0
-for i in {0..999} do
+for i in {0 to 999} do
    result = (i > 500) ? tostring(i) :> i   -- type changes mid-loop
 end
 ----
@@ -634,13 +634,13 @@ Accessing global variables requires a hash table lookup on every access.  In per
 [source,tiri]
 ----
 -- Slow: global lookup every iteration
-for i in {0..999} do
+for i in {0 to 999} do
    math.sin(i)
 end
 
 -- Fast: cached local
 sin = math.sin
-for i in {0..999} do
+for i in {0 to 999} do
    sin(i)
 end
 ----
@@ -653,13 +653,13 @@ Each string concatenation allocates a new string object.  Building strings incre
 ----
 -- Slow: O(n) allocations
 result = ''
-for i in {0..999} do
+for i in {0 to 999} do
    result ..= tostring(i)
 end
 
 -- Fast: collect into table, join once
 parts = {}
-for i in {0..999} do
+for i in {0 to 999} do
    parts[i] = tostring(i)
 end
 result = table.concat(parts)

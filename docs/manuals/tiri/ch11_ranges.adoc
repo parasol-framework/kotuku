@@ -1,5 +1,6 @@
 // VERIFIED: 2026-02-12
 // UPDATED: 2026-05-18 - Updated negative index slicing to reflect corrected inclusive/exclusive stop semantics (commit 15d3bed4)
+// UPDATED: 2026-05-23 - Updated range literal syntax from {start..stop}/{start...stop} to {start to stop}/{start into stop} (commit 9e5ba300)
 
 [[ch-ranges]]
 == Ranges
@@ -9,7 +10,7 @@ Ranges report their type as `userdata`.  Use `range.check()` to distinguish rang
 
 [source,tiri]
 ----
-r = {0..5}
+r = {0 to 5}
 type(r)           -- 'userdata'
 range.check(r)    -- true
 range.check(42)   -- false
@@ -28,44 +29,44 @@ If `Step` is omitted, the step is inferred from direction: `1` when `Start` pass
 [%unbreakable]
 [source,tiri]
 ----
-range(0, 5)                -- exclusive: 0, 1, 2, 3, 4
-range(0, 5, true)          -- inclusive: 0, 1, 2, 3, 4, 5
-range(0, 10, false, 2)     -- stepped:   0, 2, 4, 6, 8
-range(10, 0)               -- reverse:   10, 9, 8, ..., 1
-range(10, 0, true, -2)     -- reverse stepped: 10, 8, 6, 4, 2, 0
+range(0, 5)             -- exclusive: 0, 1, 2, 3, 4
+range(0, 5, true)       -- inclusive: 0, 1, 2, 3, 4, 5
+range(0, 10, false, 2)  -- stepped:   0, 2, 4, 6, 8
+range(10, 0)            -- reverse:   10, 9, 8, ..., 1
+range(10, 0, true, -2)  -- reverse stepped: 10, 8, 6, 4, 2, 0
 ----
 
 ==== Literal Syntax
 
-Range literals use braces and dot operators:
+Range literals use braces with the `to` and `into` keywords:
 
-- `{Start..Stop}` -- exclusive range (stop not included).
-- `{Startpass:[...]Stop}` -- inclusive range (stop included).
+- `{Start to Stop}` -- exclusive range (stop not included).
+- `{Start into Stop}` -- inclusive range (stop included).
 
 [source,tiri]
 ----
-{0..5}      -- exclusive: 0, 1, 2, 3, 4
-{0...5}     -- inclusive: 0, 1, 2, 3, 4, 5
-{10..1}     -- reverse exclusive: 10, 9, 8, ..., 2
-{5...1}     -- reverse inclusive: 5, 4, 3, 2, 1
-{-5..-1}    -- negative: -5, -4, -3, -2
+{0 to 5}    -- exclusive: 0, 1, 2, 3, 4
+{0 into 5}  -- inclusive: 0, 1, 2, 3, 4, 5
+{10 to 1}   -- reverse exclusive: 10, 9, 8, ..., 2
+{5 into 1}  -- reverse inclusive: 5, 4, 3, 2, 1
+{-5 to -1}  -- negative: -5, -4, -3, -2
 ----
 
-Reverse ranges (where `Start > Stop`) automatically infer a negative step.  Variables are supported as operands.  Expressions (e.g. `{x+1..y*2}`) are not supported.
+Reverse ranges (where `Start > Stop`) automatically infer a negative step.  Variables are supported as operands.  Expressions (e.g. `{x+1 to y*2}`) are not supported.
 
 [source,tiri]
 ----
 a = 3
 b = 8
-r = {a..b}   -- equivalent to range(3, 8)
+r = {a to b}   -- equivalent to range(3, 8)
 ----
 
 Literal ranges are fully equivalent to the constructor:
 
 [source,tiri]
 ----
-assert({0..5} is range(0, 5))
-assert({0...5} is range(0, 5, true))
+assert({0 to 5} is range(0, 5))
+assert({0 into 5} is range(0, 5, true))
 ----
 
 Literal syntax does not support the step parameter.  Use the constructor when a custom step is required.
@@ -113,9 +114,9 @@ Two ranges are equal when all four fields (`start`, `stop`, `step`, `inclusive`)
 
 [source,tiri]
 ----
-range(0, 5) is range(0, 5)                -- true
-range(0, 5) is range(0, 5, true)          -- false
-range(0, 10, false, 2) is range(0, 10, false, 3)   -- false
+range(0, 5) is range(0, 5)         -- true
+range(0, 5) is range(0, 5, true)   -- false
+range(0, 10, false, 2) is range(0, 10, false, 3) -- false
 ----
 
 ==== String Representation
@@ -124,9 +125,9 @@ range(0, 10, false, 2) is range(0, 10, false, 3)   -- false
 
 [source,tiri]
 ----
-tostring({0..5})     -- '{0..5}'
-tostring({0...5})    -- '{0...5}'
-tostring({10..0})    -- '{10..0}'
+tostring({0 to 5})    -- '{0 to 5}'
+tostring({0 into 5})  -- '{0 into 5}'
+tostring({10 to 0})   -- '{10 to 0}'
 ----
 
 ==== range.check()
@@ -152,11 +153,11 @@ indexterm:[ranges, iteration] Ranges integrate with Tiri's generic `for` loop.  
 
 [source,tiri]
 ----
-for i in {1..6} do
+for i in {1 to 6} do
    print(i)            -- 1, 2, 3, 4, 5
 end
 
-for i in {5...1} do
+for i in {5 into 1} do
    print(i)            -- 5, 4, 3, 2, 1
 end
 ----
@@ -168,7 +169,7 @@ When no loop variable is needed, it can be omitted:
 [source,tiri]
 ----
 count = 0
-for {0..10} do
+for {0 to 10} do
    count++
 end
 -- count is 10
@@ -180,7 +181,7 @@ When iterating over a range stored in a variable or created with the constructor
 
 [source,tiri]
 ----
-r = {0..5}
+r = {0 to 5}
 sum = 0
 for i in r() do
    sum += i
@@ -201,7 +202,7 @@ An exclusive range where `start` equals `stop` is empty and the loop body does n
 [%unbreakable]
 [source,tiri]
 ----
-for i in {5..5} do
+for i in {5 to 5} do
    print(i)   -- never reached
 end
 ----
@@ -211,11 +212,12 @@ An inclusive range where `start` equals `stop` iterates once:
 [%unbreakable]
 [source,tiri]
 ----
-for i in {5...5} do
+for i in {5 into 5} do
    print(i)   -- 5
 end
 ----
 
+[%breakable]
 [[sec-range-slicing]]
 === Range Slicing
 [discrete]
@@ -229,18 +231,18 @@ indexterm:[ranges, slicing] Slices a string, table, or array using `Range` to se
 ----
 -- String slicing
 s = 'Hello, World!'
-range.slice(s, {0..5})        -- 'Hello'
-range.slice(s, {-6...-1})     -- 'World!'
+range.slice(s, {0 to 5})      -- 'Hello'
+range.slice(s, {-6 into -1})  -- 'World!'
 
 -- Table slicing
 t = {10, 20, 30, 40, 50}
-range.slice(t, {1..4})        -- {20, 30, 40}
+range.slice(t, {1 to 4})      -- {20, 30, 40}
 
 -- Stepped slicing (requires constructor)
-range.slice(t, range(0, 5, true, 2))   -- {10, 30, 50}
+range.slice(t, range(0, 5, true, 2)) -- {10, 30, 50}
 
 -- Reverse slicing
-range.slice(t, {4...0})       -- {50, 40, 30, 20, 10}
+range.slice(t, {4 into 0})    -- {50, 40, 30, 20, 10}
 ----
 
 Raises an error if `Object` is not a string, table, or array.
@@ -254,10 +256,10 @@ Returns the range as an integer array containing all values in the sequence.  Th
 
 [source,tiri]
 ----
-{0..5}:toArray()                      -- array: {0, 1, 2, 3, 4}
-{0...5}:toArray()                     -- array: {0, 1, 2, 3, 4, 5}
-range(0, 10, false, 2):toArray()      -- array: {0, 2, 4, 6, 8}
-{5...0}:toArray()                     -- array: {5, 4, 3, 2, 1, 0}
+{0 to 5}:toArray()                -- array: {0, 1, 2, 3, 4}
+{0 into 5}:toArray()              -- array: {0, 1, 2, 3, 4, 5}
+range(0, 10, false, 2):toArray()  -- array: {0, 2, 4, 6, 8}
+{5 into 0}:toArray()              -- array: {5, 4, 3, 2, 1, 0}
 ----
 
 ==== Index Syntax
@@ -267,27 +269,27 @@ Strings, tables, and arrays support range objects as indices directly:
 [source,tiri]
 ----
 s = 'Hello, World!'
-s[{0..5}]       -- 'Hello'
-s[{7..12}]      -- 'World'
+s[{0 to 5}]       -- 'Hello'
+s[{7 to 12}]      -- 'World'
 
 t = {10, 20, 30, 40, 50}
-t[{1..4}]       -- {20, 30, 40}
+t[{1 to 4}]       -- {20, 30, 40}
 ----
 
 ==== Negative Indices
 
-Negative indices count backwards from the end: `-1` is the last element, `-2` the second-to-last.  The exclusive/inclusive semantics of the range operator are preserved with negative indices.  `..` remains exclusive and `pass:[...]` remains inclusive.
+Negative indices count backwards from the end: `-1` is the last element, `-2` the second-to-last.  The exclusive/inclusive semantics of the range operator are preserved with negative indices.  `to` remains exclusive and `into` remains inclusive.
 
 [source,tiri]
 ----
 s = 'Hello, World!'
-s[{-6...-1}]    -- 'World!'  (inclusive)
-s[{-6..-1}]     -- 'World'   (exclusive)
+s[{-6 into -1}]   -- 'World!'  (inclusive)
+s[{-6 to -1}]     -- 'World'   (exclusive)
 
 t = {10, 20, 30, 40, 50}
-t[{-2...-1}]    -- {40, 50}  (inclusive)
-t[{-2..-1}]     -- {40}      (exclusive)
-t[{-3...4}]     -- {30, 40, 50}
+t[{-2 into -1}]   -- {40, 50}  (inclusive)
+t[{-2 to -1}]     -- {40}      (exclusive)
+t[{-3 into 4}]    -- {30, 40, 50}
 ----
 
 ==== Reverse Slicing
@@ -297,12 +299,12 @@ Ranges where `start` is greater than `stop` produce reversed results.  The direc
 [source,tiri]
 ----
 s = 'abcdef'
-s[{5...0}]      -- 'fedcba'
-s[{5..0}]       -- 'fedcb'
+s[{5 into 0}]     -- 'fedcba'
+s[{5 to 0}]       -- 'fedcb'
 
 t = {10, 20, 30, 40, 50}
-t[{4...0}]      -- {50, 40, 30, 20, 10}
-t[{3..1}]       -- {40, 30}
+t[{4 into 0}]     -- {50, 40, 30, 20, 10}
+t[{3 to 1}]       -- {40, 30}
 ----
 
 ==== Stepped Slicing
@@ -332,17 +334,17 @@ indexterm:[ranges, membership testing] The `in` operator tests whether a value b
 
 [source,tiri]
 ----
-5 in {0..10}      -- true
-10 in {0..10}     -- false (exclusive)
-10 in {0...10}    -- true  (inclusive)
--1 in {0..10}     -- false (below start)
+5 in {0 to 10}      -- true
+10 in {0 to 10}     -- false (exclusive)
+10 in {0 into 10}   -- true  (inclusive)
+-1 in {0 to 10}     -- false (below start)
 ----
 
 `in` can be used anywhere a boolean expression is expected:
 
 [source,tiri]
 ----
-if 5 in {0..10} then
+if 5 in {0 to 10} then
    print('in range')
 end
 ----
@@ -370,7 +372,7 @@ Returns `true` if `Value` is an integer within the range and aligned to the step
 
 [source,tiri]
 ----
-r = {0..10}
+r = {0 to 10}
 r:contains(5)     -- true
 r:contains(10)    -- false (exclusive)
 r:contains(1.5)   -- false (non-integer)
@@ -392,7 +394,7 @@ Calls `Callback(Value)` for each value in the range.  Returns the original range
 [source,tiri]
 ----
 sum = 0
-r = {1..6}
+r = {1 to 6}
 r:each(Value => sum += Value)
 -- sum is 15
 ----
@@ -402,7 +404,7 @@ The callback can return `false` to terminate early.  Returning `true` or `nil` c
 [source,tiri]
 ----
 sum = 0
-r = {1..100}
+r = {1 to 100}
 r:each(function(Value)
    if Value > 5 then return false end
    sum += Value
@@ -415,7 +417,7 @@ The return value enables chaining:
 [%unbreakable]
 [source,tiri]
 ----
-r = {1..6}
+r = {1 to 6}
 r:each(Value => print(Value))
  :each(Value => process(Value))
 ----
@@ -438,7 +440,7 @@ Returns an array containing only values for which `Predicate(Value)` returns a t
 [%unbreakable]
 [source,tiri]
 ----
-evens = {1..10}:filter(i => i % 2 is 0)
+evens = {1 to 10}:filter(i => i % 2 is 0)
 -- {2, 4, 6, 8}
 ----
 
@@ -451,10 +453,10 @@ Returns an array where each element is the result of `Transform(Value)`.  The tr
 
 [source,tiri]
 ----
-squares = {1...5}:map(i => i * i)
+squares = {1 into 5}:map(i => i * i)
 -- {1, 4, 9, 16, 25}
 
-labels = {1..4}:map(i => 'Item ' .. tostring(i))
+labels = {1 to 4}:map(i => 'Item ' .. tostring(i))
 -- {'Item 1', 'Item 2', 'Item 3'}
 ----
 
@@ -467,10 +469,10 @@ Folds all values into a single accumulated result.  `Reducer(Accumulator, Value)
 
 [source,tiri]
 ----
-sum = {1...5}:reduce(0, (acc, i) => acc + i)
+sum = {1 into 5}:reduce(0, (acc, i) => acc + i)
 -- 15
 
-factorial = {1...5}:reduce(1, (acc, i) => acc * i)
+factorial = {1 into 5}:reduce(1, (acc, i) => acc * i)
 -- 120
 ----
 
@@ -483,9 +485,9 @@ Returns an integer array containing the first `Count` values from the range.  If
 
 [source,tiri]
 ----
-{1..100}:take(5)    -- {1, 2, 3, 4, 5}
-{10..0}:take(3)     -- {10, 9, 8}
-{1..4}:take(10)     -- {1, 2, 3}
+{1 to 100}:take(5)    -- {1, 2, 3, 4, 5}
+{10 to 0}:take(3)     -- {10, 9, 8}
+{1 to 4}:take(10)     -- {1, 2, 3}
 ----
 
 [discrete]
@@ -497,8 +499,8 @@ Returns `true` if `Predicate(Value)` returns a truthy value for at least one ele
 
 [source,tiri]
 ----
-{1..10}:any(i => i > 5)     -- true
-{1..10}:any(i => i > 100)   -- false
+{1 to 10}:any(i => i > 5)     -- true
+{1 to 10}:any(i => i > 100)   -- false
 ----
 
 [discrete]
@@ -510,8 +512,8 @@ Returns `true` if `Predicate(Value)` returns a truthy value for every element.  
 
 [source,tiri]
 ----
-{1..10}:all(i => i > 0)   -- true
-{1..10}:all(i => i < 5)   -- false
+{1 to 10}:all(i => i > 0)   -- true
+{1 to 10}:all(i => i < 5)   -- false
 ----
 
 [discrete]
@@ -523,10 +525,10 @@ Returns the first value for which `Predicate(Value)` returns a truthy value, or 
 
 [source,tiri]
 ----
-{1..10}:find(i => i > 5)         -- 6
-{1..10}:find(i => i % 2 is 0)    -- 2
-{10..0}:find(i => i < 5)         -- 4
-{1..10}:find(i => i > 100)       -- nil
+{1 to 10}:find(i => i > 5)         -- 6
+{1 to 10}:find(i => i % 2 is 0)    -- 2
+{10 to 0}:find(i => i < 5)         -- 4
+{1 to 10}:find(i => i > 100)       -- nil
 ----
 
 ==== Method Return Types
