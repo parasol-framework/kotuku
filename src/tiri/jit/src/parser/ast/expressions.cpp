@@ -430,6 +430,25 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          this->ctx.tokens().advance();
          break;
 
+      case TokenKind::RegexString: {
+         SourceSpan span = current.span();
+         GCstr *pattern = current.payload().as_string();
+         this->ctx.tokens().advance();
+
+         Identifier regex_id = Identifier::from_keepstr(this->ctx.lex().keepstr("regex"), span);
+         NameRef regex_ref;
+         regex_ref.identifier = regex_id;
+         ExprNodePtr regex_base = make_identifier_expr(span, regex_ref);
+
+         Identifier new_id = Identifier::from_keepstr(this->ctx.lex().keepstr("new"), span);
+         ExprNodePtr regex_new = make_member_expr(span, std::move(regex_base), new_id, false);
+
+         ExprNodeList args;
+         args.push_back(make_literal_expr(span, LiteralValue::string(pattern)));
+         node = make_call_expr(span, std::move(regex_new), std::move(args), false);
+         break;
+      }
+
       case TokenKind::Identifier:
       case TokenKind::ClassToken:
       case TokenKind::InterfaceToken:

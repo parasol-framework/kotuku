@@ -18,6 +18,7 @@ enum class TokenKind : uint16_t {
    Identifier = TK_name,
    Number = TK_number,
    String = TK_string,
+   RegexString = TK_regex_string,
    Nil = TK_nil,
    AsToken = TK_as,
    TrueToken = TK_true,
@@ -155,6 +156,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::Identifier: return "<name>";
       case TokenKind::Number: return "<number>";
       case TokenKind::String: return "<string>";
+      case TokenKind::RegexString: return "<regex_string>";
       case TokenKind::Nil: return "nil";
       case TokenKind::AsToken: return "as";
       case TokenKind::TrueToken: return "true";
