@@ -269,6 +269,48 @@ end
    assert(callback_count is 1, "Expected Free action callback to be called once")
 end
 
+@Test function ActionSubscriptionUnsubscribeDuringCallback()
+   local f = obj.new('time', { })
+   defer f.free() end
+
+   local callback_count = 0
+
+   f.subscribe('Query', function(ObjectID, Args)
+      callback_count++
+      f.unsubscribe('Query')
+   end)
+
+   local err = f.acQuery()
+   assert(err is ERR_Okay, "Expected first Query action to succeed, got " .. tostring(err))
+
+   err = f.acQuery()
+   assert(err is ERR_Okay, "Expected second Query action to succeed, got " .. tostring(err))
+   assert(callback_count is 1, "Expected Query subscription to be removed during callback")
+end
+
+@Test function ActionSubscriptionSubscribeDuringCallback()
+   local f = obj.new('time', { })
+
+   local query_count = 0
+   local free_count = 0
+
+   f.subscribe('Query', function(ObjectID, Args)
+      query_count++
+      f.subscribe('Free', function(FreeObjectID, FreeArgs)
+         free_count++
+      end)
+   end)
+
+   local err = f.acQuery()
+   assert(err is ERR_Okay, "Expected Query action to succeed, got " .. tostring(err))
+   assert(query_count is 1, "Expected Query subscription to be called once")
+   assert(free_count is 0, "Free subscription should not fire during the Query notification")
+
+   f.free()
+
+   assert(free_count is 1, "Expected subscription added during Query to receive the later Free notification")
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test garbage collection of objects
 

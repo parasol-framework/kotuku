@@ -88,29 +88,96 @@ void stop_async_actions(void)
 // These globals pertain to action subscriptions.  Variables are global to all threads, so need to be locked via
 // glSubLock.
 
-struct subscription {
-   OBJECTID ObjectID;
-   ACTIONID ActionID;
-   FUNCTION Callback;
-
-   subscription(OBJECTID pObject, ACTIONID pAction, FUNCTION pCallback) :
-      ObjectID(pObject), ActionID(pAction), Callback(pCallback) { }
-};
-
-struct unsubscription {
-   OBJECTID ObjectID;
-   ACTIONID ActionID;
-
-   unsubscription(OBJECTID pObject, ACTIONID pAction) : ObjectID(pObject), ActionID(pAction) { }
-};
-
 static std::recursive_mutex glSubLock; // The following variables are locked by this mutex
-static ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::map<int, std::vector<ActionSubscription> > > glSubscriptions;
-static std::vector<unsubscription> glDelayedUnsubscribe;
-static std::vector<subscription> glDelayedSubscribe;
-static int glSubReadOnly = 0; // To prevent modification of glSubscriptions
+static ankerl::unordered_dense::map<OBJECTID,
+   ankerl::unordered_dense::map<int, std::vector<ActionSubscription> > > glSubscriptions;
 
 static void free_children(OBJECTPTR Object);
+
+//********************************************************************************************************************
+
+struct action_notification {
+   OBJECTPTR Subscriber;
+   OBJECTID SubscriberID;
+   void (*Callback)(OBJECTPTR, ACTIONID, ERR, APTR, APTR);
+   APTR Meta;
+
+   action_notification(OBJECTPTR InitSubscriber, void (*InitCallback)(OBJECTPTR, ACTIONID, ERR, APTR, APTR),
+      APTR InitMeta) :
+      Subscriber(InitSubscriber), SubscriberID(InitSubscriber->UID), Callback(InitCallback), Meta(InitMeta) { }
+};
+
+//********************************************************************************************************************
+
+class action_context {
+   public:
+      action_context(OBJECTPTR Subscriber) {
+         SetObjectContext(Subscriber, nullptr, AC::NIL);
+      }
+
+      ~action_context() {
+         RestoreObjectContext();
+      }
+};
+
+//********************************************************************************************************************
+
+static bool snapshot_action_subscribers(OBJECTPTR Object, ACTIONID ActionID,
+   std::vector<action_notification> &Subscribers)
+{
+   std::lock_guard<std::recursive_mutex> lock(glSubLock);
+
+   auto object_subs = glSubscriptions.find(Object->UID);
+   if (object_subs IS glSubscriptions.end()) {
+      Object->NotifyFlags.fetch_and(~(1LL<<(int(ActionID) & 63)), std::memory_order::relaxed);
+      return false;
+   }
+
+   auto action_subs = object_subs->second.find(int(ActionID));
+   if ((action_subs IS object_subs->second.end()) or action_subs->second.empty()) {
+      Object->NotifyFlags.fetch_and(~(1LL<<(int(ActionID) & 63)), std::memory_order::relaxed);
+      if (action_subs != object_subs->second.end()) object_subs->second.erase(action_subs);
+      if (object_subs->second.empty()) glSubscriptions.erase(object_subs);
+      return false;
+   }
+
+   Subscribers.reserve(action_subs->second.size());
+   for (auto &sub : action_subs->second) {
+      if ((sub.Subscriber) and (sub.SubscriberID) and (sub.Callback)) {
+         Subscribers.emplace_back(sub.Subscriber, sub.Callback, sub.Meta);
+      }
+   }
+
+   return not Subscribers.empty();
+}
+
+//********************************************************************************************************************
+
+static void invoke_action_subscribers(OBJECTPTR Object, ACTIONID ActionID, ERR ErrorCode, APTR Parameters)
+{
+   std::vector<action_notification> subscribers;
+
+   if (not snapshot_action_subscribers(Object, ActionID, subscribers)) return;
+
+   for (auto &sub : subscribers) {
+      if (sub.Subscriber->UID IS sub.SubscriberID) {
+         SharedObjectAccess access(sub.Subscriber);
+         if (not access.granted()) continue;
+         if (sub.Subscriber->UID != sub.SubscriberID) continue;
+
+         #ifndef NDEBUG
+         // Locked subscribers can sometimes warrant investigation.
+         if ((int(ActionID) > 0) and sub.Subscriber->locked()) {
+            kt::Log(__FUNCTION__).msg("Notifying %s subscriber #%d (lock-status: %d) with action %s",
+               sub.Subscriber->className(), sub.Subscriber->UID, sub.Subscriber->locked(), ActionTable[int(ActionID)].Name);
+         }
+         #endif
+
+         action_context ctx(sub.Subscriber);
+         sub.Callback(Object, ActionID, ErrorCode, Parameters, sub.Meta);
+      }
+   }
+}
 
 //********************************************************************************************************************
 
@@ -719,27 +786,7 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
       error = ERR(int(error) & ~int(ERR::Notified));
    }
    else if ((ActionID > AC::NIL) and (Object->NotifyFlags.load() & (1LL<<(int(ActionID) & 63)))) {
-      std::lock_guard<std::recursive_mutex> lock(glSubLock);
-
-      glSubReadOnly++;
-
-      if (auto it = glSubscriptions.find(Object->UID); it != glSubscriptions.end()) {
-         if (it->second.contains(int(ActionID))) {
-            for (auto &list : it->second[int(ActionID)]) {
-               #ifndef NDEBUG
-               // Locked subscribers can sometimes warrant investigation
-               if ((int(ActionID) > 0) and list.Subscriber->locked()) {
-                  kt::Log(__FUNCTION__).msg("Notifying %s subscriber #%d (lock-status: %d) with action %s",
-                     list.Subscriber->className(), list.Subscriber->UID, list.Subscriber->locked(), ActionTable[int(ActionID)].Name);
-               }
-               #endif
-               kt::SwitchContext ctx(list.Subscriber);
-               list.Callback(Object, ActionID, (error IS ERR::NoAction) ? ERR::Okay : error, Parameters, list.Meta);
-            }
-         }
-      }
-
-      glSubReadOnly--;
+      invoke_action_subscribers(Object, ActionID, (error IS ERR::NoAction) ? ERR::Okay : error, Parameters);
    }
 
    Object->ActionDepth--;
@@ -1963,45 +2010,7 @@ void NotifySubscribers(OBJECTPTR Object, ACTIONID ActionID, APTR Parameters, ERR
 
    if (not (Object->NotifyFlags.load() & (1LL<<(int(ActionID) & 63)))) return;
 
-   const std::lock_guard<std::recursive_mutex> lock(glSubLock);
-
-   if ((not glSubscriptions[Object->UID].empty()) and (not glSubscriptions[Object->UID][int(ActionID)].empty())) {
-      glSubReadOnly++; // Prevents changes to glSubscriptions while we're processing it.
-      for (auto &sub : glSubscriptions[Object->UID][int(ActionID)]) {
-         if (sub.Subscriber) {
-            kt::SwitchContext ctx(sub.Subscriber);
-            sub.Callback(Object, ActionID, ErrorCode, Parameters, sub.Meta);
-         }
-      }
-      glSubReadOnly--;
-
-      if (not glSubReadOnly) {
-         if (not glDelayedSubscribe.empty()) { // Check if SubscribeAction() was called during the notification process
-            for (auto &entry : glDelayedSubscribe) {
-               glSubscriptions[entry.ObjectID][int(entry.ActionID)].emplace_back(entry.Callback.Context, entry.Callback.Routine, entry.Callback.Meta);
-            }
-            glDelayedSubscribe.clear();
-         }
-
-         if (not glDelayedUnsubscribe.empty()) {
-            for (auto &entry : glDelayedUnsubscribe) {
-               if (Object->UID IS entry.ObjectID) UnsubscribeAction(Object, entry.ActionID);
-               else {
-                  OBJECTPTR obj;
-                  if (AccessObject(entry.ObjectID, 3000, &obj) IS ERR::Okay) {
-                     UnsubscribeAction(obj, entry.ActionID);
-                     ReleaseObject(obj);
-                  }
-               }
-            }
-            glDelayedUnsubscribe.clear();
-         }
-      }
-   }
-   else {
-      log.warning("Unstable subscription flags discovered for object #%d, action %d", Object->UID, int(ActionID));
-      Object->NotifyFlags.fetch_and(~(1<<(int(ActionID) & 63)), std::memory_order::relaxed);
-   }
+   invoke_action_subscribers(Object, ActionID, ErrorCode, Parameters);
 }
 
 /*********************************************************************************************************************
@@ -2371,16 +2380,10 @@ ERR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
    if (not Callback->isC()) return log.warning(ERR::Args);
    if (Object->collecting()) return ERR::Okay;
 
-   if (glSubReadOnly) {
-      glDelayedSubscribe.emplace_back(Object->UID, ActionID, *Callback);
-      Object->NotifyFlags.fetch_or(1LL<<(int(ActionID) & 63), std::memory_order::relaxed);
-   }
-   else {
-      std::lock_guard<std::recursive_mutex> lock(glSubLock);
+   std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
-      glSubscriptions[Object->UID][int(ActionID)].emplace_back(Callback->Context, Callback->Routine, Callback->Meta);
-      Object->NotifyFlags.fetch_or(1LL<<(int(ActionID) & 63), std::memory_order::relaxed);
-   }
+   glSubscriptions[Object->UID][int(ActionID)].emplace_back(Callback->Context, Callback->Routine, Callback->Meta);
+   Object->NotifyFlags.fetch_or(1LL<<(int(ActionID) & 63), std::memory_order::relaxed);
 
    return ERR::Okay;
 }
@@ -2413,54 +2416,38 @@ ERR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
    if (not Object) return log.warning(ERR::NullArgs);
    if ((ActionID < AC::NIL) or (ActionID >= AC::END)) return log.warning(ERR::Args);
 
-   if (glSubReadOnly) {
-      glDelayedUnsubscribe.emplace_back(Object->UID, ActionID);
-      return ERR::Okay;
-   }
-
    std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
+   auto object_subs = glSubscriptions.find(Object->UID);
+   if (object_subs IS glSubscriptions.end()) return ERR::Okay;
+
+   auto subscriber = tlContext.back().obj->UID;
+
    if (ActionID IS AC::NIL) { // Unsubscribe all actions associated with the subscriber.
-      if (glSubscriptions.contains(Object->UID)) {
-         auto subscriber = tlContext.back().obj->UID;
-         bool need_restart = true;
-         while (need_restart) {
-            need_restart = false;
-            for (auto & [action, list] : glSubscriptions[Object->UID]) {
-               // Use C++20 std::erase_if for cleaner removal
-               std::erase_if(list, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
+      for (auto action = object_subs->second.begin(); action != object_subs->second.end(); ) {
+         std::erase_if(action->second, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
 
-               if (list.empty()) {
-                  Object->NotifyFlags.fetch_and(~(1<<(action & 63)), std::memory_order::relaxed);
-
-                  if (not Object->NotifyFlags.load()) {
-                     glSubscriptions.erase(Object->UID);
-                     break;
-                  }
-                  else {
-                     glSubscriptions[Object->UID].erase(action);
-                     need_restart = true;
-                     break;
-                  }
-               }
-            }
+         if (action->second.empty()) {
+            Object->NotifyFlags.fetch_and(~(1LL<<(action->first & 63)), std::memory_order::relaxed);
+            action = object_subs->second.erase(action);
          }
+         else action++;
       }
-   }
-   else if ((glSubscriptions.contains(Object->UID)) and (glSubscriptions[Object->UID].contains(int(ActionID)))) {
-      auto subscriber = tlContext.back().obj->UID;
 
-      auto &list = glSubscriptions[Object->UID][int(ActionID)];
-      // Use C++20 std::erase_if for cleaner removal
+      if (object_subs->second.empty()) glSubscriptions.erase(object_subs);
+   }
+   else {
+      auto action_subs = object_subs->second.find(int(ActionID));
+      if (action_subs IS object_subs->second.end()) return ERR::Okay;
+
+      auto &list = action_subs->second;
       std::erase_if(list, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
 
       if (list.empty()) {
-         Object->NotifyFlags.fetch_and(~(1<<(int(ActionID) & 63)), std::memory_order::relaxed);
+         Object->NotifyFlags.fetch_and(~(1LL<<(int(ActionID) & 63)), std::memory_order::relaxed);
+         object_subs->second.erase(action_subs);
 
-         if (not Object->NotifyFlags.load()) {
-            glSubscriptions.erase(Object->UID);
-         }
-         else glSubscriptions[Object->UID].erase(int(ActionID));
+         if (object_subs->second.empty()) glSubscriptions.erase(object_subs);
       }
    }
 
