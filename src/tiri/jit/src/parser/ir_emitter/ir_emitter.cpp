@@ -2001,23 +2001,22 @@ ParserResult<ExpDesc> IrEmitter::emit_comparison_chain_expr(const ComparisonChai
 
       ExpDesc rhs = rhs_result.value_ref();
       bool preserve_rhs = index + 1 < Payload.operators.size();
-      BCReg preserved_reg = BCReg(NO_REG);
-      BCReg guard_reg = BCReg(NO_REG);
+      BCReg next_lhs_reg = BCReg(NO_REG);
       TiriType preserved_type = rhs.result_type;
 
       if (preserve_rhs) {
          this->register_allocator.discharge_to_next_register(rhs);
-         preserved_reg = BCReg(rhs.u.s.info);
-         preserved_regs.push_back(preserved_reg);
+         BCReg comparison_rhs_reg = BCReg(rhs.u.s.info);
+         preserved_regs.push_back(comparison_rhs_reg);
 
-         guard_reg = this->func_state.free_reg();
+         next_lhs_reg = this->func_state.free_reg();
          this->register_allocator.reserve(BCReg(1));
+         bcemit_AD(&this->func_state, BC_MOV, next_lhs_reg, comparison_rhs_reg);
+         preserved_regs.push_back(next_lhs_reg);
       }
 
       ExpDesc comparison = lhs;
       this->operator_emitter.emit_comparison(opr, ExprValue(&comparison), rhs);
-
-      if (guard_reg.raw() != NO_REG) this->register_allocator.release_register(guard_reg);
 
       if (has_result) this->operator_emitter.complete_logical_and(ExprValue(&result), comparison);
       else {
@@ -2026,7 +2025,7 @@ ParserResult<ExpDesc> IrEmitter::emit_comparison_chain_expr(const ComparisonChai
       }
 
       if (preserve_rhs) {
-         lhs.init(ExpKind::NonReloc, preserved_reg.raw());
+         lhs.init(ExpKind::NonReloc, next_lhs_reg.raw());
          lhs.result_type = preserved_type;
       }
    }
