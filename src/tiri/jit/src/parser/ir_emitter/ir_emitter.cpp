@@ -533,6 +533,66 @@ static void release_indexed_original(FuncState &func_state, const ExpDesc &origi
    return &func_state->bcbase[expression->u.s.info].ins;
 }
 
+struct FalseyJumpOptions {
+   bool include_false = true;
+   bool include_zero = true;
+   bool include_empty_string = true;
+   bool include_empty_array = false;
+};
+
+static ControlFlowEdge emit_falsey_jumps(
+   FuncState &State, LexState &Lexer, ControlFlowGraph &Graph, BCREG Register, FalseyJumpOptions Options)
+{
+   ControlFlowEdge edge = Graph.make_unconditional();
+
+   ExpDesc nilv(ExpKind::Nil);
+   bcemit_INS(&State, BCINS_AD(BC_ISEQP, Register, const_pri(&nilv)));
+   edge.append(BCPos(bcemit_jmp(&State)));
+
+   if (Options.include_false) {
+      ExpDesc falsev(ExpKind::False);
+      bcemit_INS(&State, BCINS_AD(BC_ISEQP, Register, const_pri(&falsev)));
+      edge.append(BCPos(bcemit_jmp(&State)));
+   }
+
+   if (Options.include_zero) {
+      ExpDesc zerov(0.0);
+      bcemit_INS(&State, BCINS_AD(BC_ISEQN, Register, const_num(&State, &zerov)));
+      edge.append(BCPos(bcemit_jmp(&State)));
+   }
+
+   if (Options.include_empty_string) {
+      ExpDesc emptyv(Lexer.intern_empty_string());
+      bcemit_INS(&State, BCINS_AD(BC_ISEQS, Register, const_str(&State, &emptyv)));
+      edge.append(BCPos(bcemit_jmp(&State)));
+   }
+
+   if (Options.include_empty_array) {
+      bcemit_INS(&State, BCINS_AD(BC_ISEMPTYARR, Register, 0));
+      edge.append(BCPos(bcemit_jmp(&State)));
+   }
+
+   return edge;
+}
+
+static void emit_bit_function_lookup(FuncState &State, RegisterAllocator &Allocator, std::string_view Name, BCReg Base)
+{
+   ExpDesc callee, key;
+   callee.init(ExpKind::Global, 0);
+   callee.u.sval = State.ls->keepstr("bit");
+
+   ExpressionValue callee_value(&State, callee);
+   callee_value.to_reg(Allocator, Base);
+   callee = callee_value.legacy();
+
+   key.init(ExpKind::Str, 0);
+   key.u.sval = State.ls->keepstr(Name);
+   expr_index(&State, &callee, &key);
+
+   ExpressionValue callee_indexed(&State, callee);
+   callee_indexed.to_reg(Allocator, Base);
+}
+
 IrEmitter::IrEmitter(ParserContext& context)
    : ctx(context),
      func_state(context.func()),
@@ -541,6 +601,33 @@ IrEmitter::IrEmitter(ParserContext& context)
      control_flow(&this->func_state),
      operator_emitter(&this->func_state, &this->register_allocator, &this->control_flow)
 {
+}
+
+void IrEmitter::apply_inferred_local_type(BCReg Slot, const ExprNode& Value)
+{
+   InferredTypeInfo inferred = infer_expression_type_ext(Value);
+   if (inferred.type IS TiriType::Unknown or inferred.type IS TiriType::Any or inferred.type IS TiriType::Nil) return;
+
+   VarInfo *info = &this->func_state.var_get(Slot.raw());
+   info->fixed_type = inferred.type;
+   info->object_class_id = (inferred.type IS TiriType::Object) ? inferred.object_class_id : CLASSID::NIL;
+}
+
+BCReg IrEmitter::finalise_pending_local_assignment(PreparedAssignment& Target)
+{
+   if (not Target.needs_var_add or not Target.pending_symbol) return BCReg(NO_REG);
+
+   this->lex_state.var_new(BCReg(0), Target.pending_symbol, Target.pending_line, Target.pending_column);
+   this->lex_state.var_add(BCReg(1));
+
+   BCReg slot = BCReg(this->func_state.varmap.size() - 1);
+   Target.storage.init(ExpKind::Local, slot);
+   Target.storage.u.s.aux = this->func_state.varmap[slot.raw()];
+   Target.needs_var_add = false;
+   Target.newly_created = false;
+
+   this->update_local_binding(Target.pending_symbol, slot);
+   return slot;
 }
 
 IrEmitter::LoopStackGuard IrEmitter::push_loop_context(BCPos continue_target)
@@ -764,30 +851,15 @@ ParserResult<IrEmitUnit> IrEmitter::emit_conditional_shorthand_stmt(const Condit
    ExpressionValue condition_value(&this->func_state, condition);
    auto cond_reg = condition_value.discharge_to_any_reg(allocator);
 
-   ExpDesc nilv(ExpKind::Nil);
-   ExpDesc falsev(ExpKind::False);
-   ExpDesc zerov(0.0);
-   ExpDesc emptyv(this->lex_state.intern_empty_string());
-
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&nilv)));
-   ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, cond_reg, const_pri(&falsev)));
-   ControlFlowEdge check_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, cond_reg, const_num(&this->func_state, &zerov)));
-   ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, cond_reg, const_str(&this->func_state, &emptyv)));
-   ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEMPTYARR, cond_reg, 0));
-   ControlFlowEdge check_empty_array = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   FalseyJumpOptions options;
+   options.include_empty_array = true;
+   ControlFlowEdge falsey_edge = emit_falsey_jumps(
+      this->func_state, this->lex_state, this->control_flow, cond_reg, options);
 
    ControlFlowEdge skip_body = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
    BCPos body_start = BCPos(this->func_state.pc);
-   check_nil.patch_to(body_start);
-   check_false.patch_to(body_start);
-   check_zero.patch_to(body_start);
-   check_empty.patch_to(body_start);
-   check_empty_array.patch_to(body_start);
+   falsey_edge.patch_to(body_start);
 
    auto body_result = this->emit_statement(*Payload.body);
    if (not body_result.ok()) return body_result;
@@ -1007,15 +1079,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       else if (i.raw() < Payload.values.size()) {
          // No explicit annotation - infer type from initialiser expression
          // Note: Nil is excluded because it represents absence of value, not a type constraint
-         // Use extended type inference to also get object_class_id for Object types
-         InferredTypeInfo inferred = infer_expression_type_ext(*Payload.values[i.raw()]);
-         if (inferred.type != TiriType::Unknown and inferred.type != TiriType::Any and inferred.type != TiriType::Nil) {
-            info->fixed_type = inferred.type;
-            // Propagate object class ID for Object types
-            if (inferred.type IS TiriType::Object and inferred.object_class_id != CLASSID::NIL) {
-               info->object_class_id = inferred.object_class_id;
-            }
-         }
+         this->apply_inferred_local_type(base + i, *Payload.values[i.raw()]);
       }
       // If no initialiser and no annotation, fixed_type remains Unknown (set in var_add)
    }
@@ -1912,24 +1976,10 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
    ExpressionValue lhs_value(&this->func_state, lhs);
    auto lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
-   ExpDesc nilv(ExpKind::Nil);
-   ExpDesc falsev(ExpKind::False);
-   ExpDesc zerov(0.0);
-   ExpDesc emptyv(this->lex_state.intern_empty_string());
-
-   // Extended falsey checks - jumps skip to RHS when value is falsey
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
-   ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
-   ControlFlowEdge check_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
-   ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
-   ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-
-   // Empty array check (array with len IS 0)
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEMPTYARR, lhs_reg, 0));
-   ControlFlowEdge check_empty_array = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   FalseyJumpOptions options;
+   options.include_empty_array = true;
+   ControlFlowEdge falsey_edge = emit_falsey_jumps(
+      this->func_state, this->lex_state, this->control_flow, lhs_reg, options);
 
    // LHS is truthy - it's already in lhs_reg, just skip RHS
    ControlFlowEdge skip_rhs = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
@@ -1937,11 +1987,7 @@ ParserResult<ExpDesc> IrEmitter::emit_if_empty_expr(ExpDesc lhs, const ExprNode&
    // Patch falsey checks to jump here (RHS evaluation)
 
    BCPos rhs_start = BCPos(this->func_state.pc);
-   check_nil.patch_to(rhs_start);
-   check_false.patch_to(BCPos(rhs_start));
-   check_zero.patch_to(BCPos(rhs_start));
-   check_empty.patch_to(BCPos(rhs_start));
-   check_empty_array.patch_to(BCPos(rhs_start));
+   falsey_edge.patch_to(rhs_start);
 
    // Emit RHS - only executed when LHS is falsey
 
@@ -2040,24 +2086,7 @@ ParserResult<ExpDesc> IrEmitter::emit_bitwise_expr(BinOpr opr, ExpDesc lhs, cons
    // 3. Move any remaining operands as needed.
    // Critical for JIT compatibility - JIT expects callee loaded before arguments.
 
-   ExpDesc callee, key;
-   callee.init(ExpKind::Global, 0);
-   callee.u.sval = this->lex_state.keepstr("bit");
-
-   // Discharge Global directly to call_base register (GGET call_base, "bit")
-   ExpressionValue callee_val(fs, callee);
-   callee_val.to_reg(allocator, BCReg(call_base));
-   callee = callee_val.legacy();
-
-   // Now index into the table at call_base (TGETS call_base, call_base, "fname")
-   key.init(ExpKind::Str, 0);
-   key.u.sval = this->lex_state.keepstr(std::string_view(op_name, op_name_len));
-   expr_index(fs, &callee, &key);
-
-   // Discharge the indexed result to call_base (in-place, like explicit bit.band)
-   ExpressionValue callee_indexed(fs, callee);
-   callee_indexed.to_reg(allocator, BCReg(call_base));
-   callee = callee_indexed.legacy();
+   emit_bit_function_lookup(*fs, allocator, std::string_view(op_name, op_name_len), BCReg(call_base));
 
    // Now move LHS to arg1 if it wasn't at call_base
    if (not lhs_was_base) {
@@ -2170,21 +2199,7 @@ ParserResult<ExpDesc> IrEmitter::emit_has_flag_expr(ExpDesc lhs, const ExprNode&
 
    // Load bit.band callee to call_base before RHS emission.
    // LHS is already captured above; delaying RHS avoids violating left-to-right operand semantics.
-   ExpDesc callee, key;
-   callee.init(ExpKind::Global, 0);
-   callee.u.sval = this->lex_state.keepstr("bit");
-
-   ExpressionValue callee_val(fs, callee);
-   callee_val.to_reg(allocator, BCReg(call_base));
-   callee = callee_val.legacy();
-
-   key.init(ExpKind::Str, 0);
-   key.u.sval = this->lex_state.keepstr("band");
-   expr_index(fs, &callee, &key);
-
-   ExpressionValue callee_indexed(fs, callee);
-   callee_indexed.to_reg(allocator, BCReg(call_base));
-   callee = callee_indexed.legacy();
+   emit_bit_function_lookup(*fs, allocator, "band", BCReg(call_base));
 
    // Move LHS to arg1 if it wasn't at call_base
    if (not lhs_was_base) {
@@ -2267,23 +2282,10 @@ ParserResult<ExpDesc> IrEmitter::emit_ternary_expr(const TernaryExprPayload &Pay
       ExpressionValue condition_value(&this->func_state, condition_result.value_ref());
       condition_reg = condition_value.discharge_to_any_reg(allocator);
 
-      ExpDesc nilv(ExpKind::Nil);
-      ExpDesc falsev(ExpKind::False);
-      ExpDesc zerov(0.0);
-      ExpDesc emptyv(this->lex_state.intern_empty_string());
-
-      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, condition_reg, const_pri(&nilv)));
-      false_edge.append(BCPos(bcemit_jmp(&this->func_state)));
-      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, condition_reg, const_pri(&falsev)));
-      false_edge.append(BCPos(bcemit_jmp(&this->func_state)));
-      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, condition_reg, const_num(&this->func_state, &zerov)));
-      false_edge.append(BCPos(bcemit_jmp(&this->func_state)));
-      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, condition_reg, const_str(&this->func_state, &emptyv)));
-      false_edge.append(BCPos(bcemit_jmp(&this->func_state)));
-
-      // Empty array check (array with len IS 0)
-      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEMPTYARR, condition_reg, 0));
-      false_edge.append(BCPos(bcemit_jmp(&this->func_state)));
+      FalseyJumpOptions options;
+      options.include_empty_array = true;
+      false_edge.append(emit_falsey_jumps(
+         this->func_state, this->lex_state, this->control_flow, condition_reg, options));
    }
    else {
       ExpDesc condition = condition_result.value_ref();

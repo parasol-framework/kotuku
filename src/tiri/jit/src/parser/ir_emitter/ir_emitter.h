@@ -211,6 +211,8 @@ private:
    void ensure_register_floor(std::string_view usage);
    void ensure_register_balance(std::string_view usage);
    void optimise_assert(ExprNodeList &Args);
+   void apply_inferred_local_type(BCReg Slot, const ExprNode& Value);
+   BCReg finalise_pending_local_assignment(PreparedAssignment& Target);
 
    ParserResult<IrEmitUnit> unsupported_stmt(AstNodeKind kind, const SourceSpan& span);
    ParserResult<ExpDesc> unsupported_expr(AstNodeKind kind, const SourceSpan& span);

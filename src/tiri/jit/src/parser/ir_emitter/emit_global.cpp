@@ -62,22 +62,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
 
       // Emit checks for empty values: nil, false, 0, ""
 
-      ExpDesc nilv(ExpKind::Nil);
-      ExpDesc falsev(ExpKind::False);
-      ExpDesc zerov(0.0);
-      ExpDesc emptyv(this->lex_state.intern_empty_string());
-
-      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
-      ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-
-      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
-      ControlFlowEdge check_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-
-      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
-      ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-
-      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
-      ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+      ControlFlowEdge falsey_edge = emit_falsey_jumps(
+         this->func_state, this->lex_state, this->control_flow, lhs_reg, FalseyJumpOptions{});
 
       // Skip assignment if not empty
 
@@ -105,10 +91,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
       bcemit_store(&this->func_state, &target, &rhs);
 
       // Patch jumps
-      check_nil.patch_to(assign_pos);
-      check_false.patch_to(assign_pos);
-      check_zero.patch_to(assign_pos);
-      check_empty.patch_to(assign_pos);
+      falsey_edge.patch_to(assign_pos);
       skip_assign.patch_to(BCPos(this->func_state.pc));
 
       register_guard.release_to(register_guard.saved());
@@ -146,10 +129,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_global_decl_stmt(const GlobalDeclStmtPa
 
       // Only check for nil (simpler and faster than ??=)
 
-      ExpDesc nilv(ExpKind::Nil);
-
-      bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
-      ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+      FalseyJumpOptions nil_only;
+      nil_only.include_false = false;
+      nil_only.include_zero = false;
+      nil_only.include_empty_string = false;
+      ControlFlowEdge check_nil = emit_falsey_jumps(
+         this->func_state, this->lex_state, this->control_flow, lhs_reg, nil_only);
 
       // Skip assignment if not nil
 
