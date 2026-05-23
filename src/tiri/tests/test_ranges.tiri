@@ -437,6 +437,23 @@ end
    assert(sum is 15, "complex stop expression should iterate 0 through 5, got " .. sum)
 end
 
+@Test function ForInRangeWithSeparatorNamedMembers()
+   config = { into=1, to=2 }
+   limit = 4
+
+   sum = 0
+   for i in {config.into to limit} do
+      sum += i
+   end
+   assert(sum is 6, "member named into should not be treated as range separator, got " .. sum)
+
+   inclusive_sum = 0
+   for i in {config.to into limit} do
+      inclusive_sum += i
+   end
+   assert(inclusive_sum is 9, "member named to should not be treated as range separator, got " .. inclusive_sum)
+end
+
 @Test function RangeLiteralNegativeValues()
    -- Test range literals with negative values
    r = {-5 to -1}
@@ -652,7 +669,7 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Range Iteration (Phase 4)
+-- Range Iteration
 
 @Test function RangeIterationExclusive()
    -- Test forward exclusive iteration: {1 to 6} iterates 1,2,3,4,5

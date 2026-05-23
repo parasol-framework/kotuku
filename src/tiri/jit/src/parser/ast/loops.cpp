@@ -27,6 +27,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_range_in_braces()
    bool has_stop_expr_tokens = false;
    bool ended_on_right_brace = false;
    bool invalid_top_level_shape = false;
+   TokenKind previous_top_level_kind = TokenKind::Unknown;
    int depth = 0;
 
    for (size_t i = 1; ; i++) {
@@ -70,7 +71,11 @@ ParserResult<ExprNodePtr> AstBuilder::parse_range_in_braces()
          }
 
          bool separator_is_inclusive = false;
-         if (has_start_expr_tokens and token_is_range_separator(tok, separator_is_inclusive)) {
+         bool member_name_context = previous_top_level_kind IS TokenKind::Dot or
+            previous_top_level_kind IS TokenKind::Colon or
+            previous_top_level_kind IS TokenKind::SafeField or
+            previous_top_level_kind IS TokenKind::SafeMethod;
+         if (has_start_expr_tokens and not member_name_context and token_is_range_separator(tok, separator_is_inclusive)) {
             // Exactly one top-level range separator is allowed, and it must
             // appear after at least one token belonging to the start expression.
             if (found_range_separator) {
@@ -85,6 +90,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_range_in_braces()
             if (found_range_separator) has_stop_expr_tokens = true;
             else has_start_expr_tokens = true;
          }
+
+         previous_top_level_kind = kind;
       }
    }
 
