@@ -142,7 +142,7 @@ glBuiltins = {
    -- Range constructor
    ['range'] = {
       comment = 'Creates a numeric range.  Brace literals use {start to stop} for exclusive ranges and ' ..
-         '{start into stop} for inclusive ranges.',
+         '{start into stop} for inclusive ranges.  Add `by step` for stepped ranges.',
       prototype = 'range(start, stop, [inclusive], [step])'
    },
 

@@ -72,32 +72,50 @@ end
 @Test function RangeSeparatorsReceiveContextualSemanticTokens()
    source = 'range_value = {0 to 5}\n' ..
       'range_value = {0 into 5}\n' ..
+      'range_value = {0 to 10 by 2}\n' ..
       'to = 1\n' ..
       'into = 2\n' ..
+      'by = 3\n' ..
       'range_value = {to to into}\n' ..
-      'config = { into=1, to=2 }\n' ..
-      'range_value = {config.to into limit}\n'
+      'range_value = {0 to 10 by by}\n' ..
+      'config = { into=1, to=2, by=3 }\n' ..
+      'range_value = {config.to into limit by config.by}\n' ..
+      'range_value = {0 to config.into + by}\n' ..
+      'range_value = {0 to (config.into + by) by 2}\n'
 
    tokens = tokenizeTiri(source)
 
    assertOperatorToken(tokens, 0, 17, 'to', 'Exclusive range separator should be highlighted as an operator.')
    assertOperatorToken(tokens, 1, 17, 'into', 'Inclusive range separator should be highlighted as an operator.')
-   assertNoToken(tokens, 2, 0, 'to', 'Variable named to should not be highlighted as a range separator.')
-   assertNoToken(tokens, 3, 0, 'into', 'Variable named into should not be highlighted as a range separator.')
-   assertNoToken(tokens, 4, 15, 'to', 'Range start variable named to should not be highlighted as a separator.')
-   assertOperatorToken(tokens, 4, 18, 'to', 'Second to in {to to into} should be the range separator.')
-   assertNoToken(tokens, 4, 21, 'into', 'Range stop variable named into should not be highlighted as a separator.')
-   assertNoToken(tokens, 5, 11, 'into', 'Table key named into should not be highlighted as a range separator.')
-   assertNoToken(tokens, 5, 19, 'to', 'Table key named to should not be highlighted as a range separator.')
-   assertNoToken(tokens, 6, 22, 'to', 'Member named to should not be highlighted as a range separator.')
-   assertOperatorToken(tokens, 6, 25, 'into', 'Range separator after a member access should be highlighted.')
+   assertOperatorToken(tokens, 2, 17, 'to', 'Exclusive separator in stepped range should be highlighted.')
+   assertOperatorToken(tokens, 2, 23, 'by', 'Step separator should be highlighted as an operator.')
+   assertNoToken(tokens, 3, 0, 'to', 'Variable named to should not be highlighted as a range separator.')
+   assertNoToken(tokens, 4, 0, 'into', 'Variable named into should not be highlighted as a range separator.')
+   assertNoToken(tokens, 5, 0, 'by', 'Variable named by should not be highlighted as a step separator.')
+   assertNoToken(tokens, 6, 15, 'to', 'Range start variable named to should not be highlighted as a separator.')
+   assertOperatorToken(tokens, 6, 18, 'to', 'Second to in {to to into} should be the range separator.')
+   assertNoToken(tokens, 6, 21, 'into', 'Range stop variable named into should not be highlighted as a separator.')
+   assertOperatorToken(tokens, 7, 23, 'by', 'First by in {0 to 10 by by} should be the step separator.')
+   assertNoToken(tokens, 7, 26, 'by', 'Second by in {0 to 10 by by} should be a step expression variable.')
+   assertNoToken(tokens, 8, 11, 'into', 'Table key named into should not be highlighted as a range separator.')
+   assertNoToken(tokens, 8, 19, 'to', 'Table key named to should not be highlighted as a range separator.')
+   assertNoToken(tokens, 8, 25, 'by', 'Table key named by should not be highlighted as a step separator.')
+   assertNoToken(tokens, 9, 22, 'to', 'Member named to should not be highlighted as a range separator.')
+   assertOperatorToken(tokens, 9, 25, 'into', 'Range separator after a member access should be highlighted.')
+   assertOperatorToken(tokens, 9, 36, 'by', 'Step separator after a stop expression should be highlighted.')
+   assertNoToken(tokens, 9, 46, 'by', 'Member named by should not be highlighted as a step separator.')
+   assertNoToken(tokens, 10, 34, 'by',
+      'Stop expression variable named by should not be highlighted as a step separator.')
+   assertNoToken(tokens, 11, 35, 'by', 'Nested variable named by should not be highlighted as a step separator.')
+   assertOperatorToken(tokens, 11, 39, 'by', 'Step separator after a parenthesised stop should be highlighted.')
 end
 
 @Test function RangeSyntaxDiagnosticsUseCurrentParser()
-   doc = makeDoc('sum = 0\nfor i in {0 to 5} do\n   sum += i\nend\nvalue = {0 into 5}\n')
+   doc = makeDoc('sum = 0\nfor i in {0 to 10 by 2} do\n   sum += i\nend\n' ..
+      'value = {0 into 10 by 2}\n')
    result = computeDiagnostics(doc)
 
-   assert(#result.diagnostics is 0, 'LSP diagnostics should accept current to/into range syntax.')
+   assert(#result.diagnostics is 0, 'LSP diagnostics should accept current to/into/by range syntax.')
 end
 
 @Test function TernaryModesReceiveSemanticTokens()
