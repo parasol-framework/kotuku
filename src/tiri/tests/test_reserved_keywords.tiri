@@ -18,12 +18,26 @@ reserved_keywords = array<string> {
    'where',
 }
 
+assignment_operators = array<string> { '=', '?=', '??=' }
+
 @Test function FutureKeywordsRejectLocalDeclarations()
    for _, keyword in reserved_keywords do
       try
          exec('local ' .. keyword .. ' = 1')
       success
          error(keyword .. ' should be reserved and rejected as a local declaration name')
+      end
+   end
+end
+
+@Test function FutureKeywordsRejectInferredLocalAssignments()
+   for _, keyword in reserved_keywords do
+      for _, op in assignment_operators do
+         try
+            exec(keyword .. ' ' .. op .. ' 1')
+         success
+            error(keyword .. ' should be reserved and rejected as an inferred local assignment with ' .. op)
+         end
       end
    end
 end

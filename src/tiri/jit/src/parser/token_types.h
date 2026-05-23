@@ -96,10 +96,8 @@ enum class TokenKind : uint16_t {
    InterfaceToken = TK_interface,
    RecordToken = TK_record,
    ExtendsToken = TK_extends,
-   TypeToken = TK_type,
    ExportToken = TK_export,
    AwaitToken = TK_await,
-   MatchToken = TK_match,
    FinallyToken = TK_finally,
    YieldToken = TK_yield,
    UsingToken = TK_using,
@@ -234,10 +232,8 @@ enum class TokenKind : uint16_t {
       case TokenKind::InterfaceToken: return "interface";
       case TokenKind::RecordToken: return "record";
       case TokenKind::ExtendsToken: return "extends";
-      case TokenKind::TypeToken: return "type";
       case TokenKind::ExportToken: return "export";
       case TokenKind::AwaitToken: return "await";
-      case TokenKind::MatchToken: return "match";
       case TokenKind::FinallyToken: return "finally";
       case TokenKind::YieldToken: return "yield";
       case TokenKind::UsingToken: return "using";
@@ -324,10 +320,8 @@ public:
          case TokenKind::InterfaceToken:
          case TokenKind::RecordToken:
          case TokenKind::ExtendsToken:
-         case TokenKind::TypeToken:
          case TokenKind::ExportToken:
          case TokenKind::AwaitToken:
-         case TokenKind::MatchToken:
          case TokenKind::FinallyToken:
          case TokenKind::YieldToken:
          case TokenKind::UsingToken:
