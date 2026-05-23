@@ -921,18 +921,6 @@ static void lex_skip_inline_ws(LexState *State) noexcept
 }
 
 //********************************************************************************************************************
-// Skip all whitespace including newlines (for multi-line constructs)
-
-[[maybe_unused]] static void lex_skip_ws(LexState *State) noexcept
-{
-   while (true) {
-      if (State->c IS ' ' or State->c IS '\t') lex_next(State);
-      else if (lex_iseol(State->c)) lex_newline(State);
-      else break;
-   }
-}
-
-//********************************************************************************************************************
 // Scan array typed expression: array<type> or array<type, size>
 // Caller has already scanned "array" and confirmed c is '<'
 // Returns TK_array_typed with type name in tv, size in State->array_typed_size

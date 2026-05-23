@@ -690,8 +690,7 @@ set (TIRI_SOURCES "${MOD}.cpp" "tiri_module.cpp" "tiri_async.cpp" "tiri_struct.c
    "${JIT_SRC}/debug/filesource.cpp"
    "${JIT_SRC}/parser/parser.cpp"
    "${JIT_SRC}/parser/lexer.cpp"
-   "${JIT_SRC}/parser/parser_unit_tests.cpp"
-   "${JIT_SRC}/parser/field_type_lookup.cpp")
+   "${JIT_SRC}/parser/parser_unit_tests.cpp")
 
 if (INCLUDE_TIPS)
    list (APPEND TIRI_SOURCES "${JIT_SRC}/parser/parser_tips.cpp")

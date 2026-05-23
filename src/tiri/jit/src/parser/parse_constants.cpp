@@ -58,11 +58,6 @@ GCstr* LexState::intern_empty_string()
    return this->empty_string_constant;
 }
 
-extern GCstr * lj_parse_keepstr(LexState* ls, const char* str, size_t len)
-{
-   return ls->keepstr(std::string_view(str, len));
-}
-
 // Jump list handling
 
 [[nodiscard]] bool JumpListView::produces_values() const
