@@ -66,6 +66,22 @@ end
       {
          name = 'malformed close attribute',
          source = "local handle <close = open()"
+      },
+      {
+         name = 'local type annotation without variable name',
+         source = "local :num = 1"
+      },
+      {
+         name = 'local type annotation without type name',
+         source = "local value: = 1"
+      },
+      {
+         name = 'const declaration without initialiser',
+         source = "local value <const>"
+      },
+      {
+         name = 'unknown variable type annotation',
+         source = "local value: widget = nil"
       }
    })
 end
@@ -143,6 +159,30 @@ end
       {
          name = 'annotation missing argument value',
          source = "@Doc(text=) function bad() end"
+      },
+      {
+         name = 'arrow function missing parameter list',
+         source = "callback = => 42"
+      },
+      {
+         name = 'arrow function unterminated parameter list',
+         source = "callback = (Left, Right => Left + Right"
+      },
+      {
+         name = 'arrow function trailing parameter comma',
+         source = "callback = (Value,) => Value"
+      },
+      {
+         name = 'arrow function varargs parameter',
+         source = "callback = (...) => 1"
+      },
+      {
+         name = 'arrow function block missing terminator',
+         source = "callback = Value => do print(Value)"
+      },
+      {
+         name = 'method definition missing method name',
+         source = "function object:(Value) return Value end"
       }
    })
 end
@@ -239,6 +279,10 @@ end
       {
          name = 'range missing closing brace',
          source = "for i in {0 to 10 do print(i) end"
+      },
+      {
+         name = 'range missing step expression',
+         source = "value = {0 to 10 by}"
       }
    })
 end
@@ -251,6 +295,18 @@ end
       {
          name = 'try without end',
          source = "try print('x')"
+      },
+      {
+         name = 'try trace attribute missing close bracket',
+         source = "try<trace print('x') end"
+      },
+      {
+         name = 'try trace attribute empty',
+         source = "try<> print('x') end"
+      },
+      {
+         name = 'try trace attribute unsupported',
+         source = "try<debug> print('x') end"
       },
       {
          name = 'except outside try',
@@ -271,6 +327,10 @@ end
       {
          name = 'defer expression missing right operand',
          source = "defer 1 + end"
+      },
+      {
+         name = 'defer snapshot missing close parenthesis',
+         source = "defer(Value print(Value) end(1)"
       },
       {
          name = 'with without object expression',
@@ -327,6 +387,42 @@ end
       {
          name = 'safe navigation missing member',
          source = "value = object?."
+      },
+      {
+         name = 'safe navigation index missing closing bracket',
+         source = "value = object?[key"
+      },
+      {
+         name = 'safe navigation index missing key expression',
+         source = "value = object?[]"
+      },
+      {
+         name = 'prefix increment is unsupported',
+         source = "++counter"
+      },
+      {
+         name = 'postfix increment on non-assignable expression',
+         source = "(1 + 2)++"
+      },
+      {
+         name = 'if-empty logical operator missing left operand',
+         source = "value = ?? fallback"
+      },
+      {
+         name = 'if-empty conditional shorthand missing action',
+         source = "maybe ?!"
+      },
+      {
+         name = 'raise missing expression',
+         source = "raise"
+      },
+      {
+         name = 'raise missing message after comma',
+         source = "raise ERR_Failed,"
+      },
+      {
+         name = 'check missing expression',
+         source = "check"
       }
    })
 end
@@ -371,6 +467,102 @@ end
       {
          name = 'compile-time if missing condition value',
          source = "@if(imported=) value = 1 @end"
+      },
+      {
+         name = 'compile-time if missing closing parenthesis',
+         source = "@if(imported=true value = 1 @end"
+      },
+      {
+         name = 'invalid parser annotation expression',
+         source = "value = @UnknownParserAnnotation"
+      },
+      {
+         name = 'parser annotation expression missing name',
+         source = "value = @"
+      },
+      {
+         name = 'goto statement is removed',
+         source = "goto retry"
+      }
+   })
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Malformed enum declarations
+
+@Test function ValidateMalformedEnumDeclarations()
+   assertInvalidCases('enum declarations', {
+      {
+         name = 'enum without prefix',
+         source = "enum { ONE }"
+      },
+      {
+         name = 'enum missing opening brace',
+         source = "enum BAD_ENUM ONE }"
+      },
+      {
+         name = 'enum missing closing brace',
+         source = "enum BAD_ENUM { ONE"
+      },
+      {
+         name = 'enum with no members',
+         source = "enum EMPTY_ENUM { }"
+      },
+      {
+         name = 'local enum declaration',
+         source = "local enum LOCAL_ENUM { ONE }"
+      },
+      {
+         name = 'enum inside do block',
+         source = "do enum BLOCK_ENUM { ONE } end"
+      },
+      {
+         name = 'enum inside if block',
+         source = "if true then enum IF_ENUM { ONE } end"
+      },
+      {
+         name = 'enum inside loop',
+         source = "for i = 1, 1 do enum LOOP_ENUM { ONE } end"
+      },
+      {
+         name = 'enum inside function',
+         source = "function bad() enum INNER_ENUM { ONE } end"
+      },
+      {
+         name = 'enum lowercase prefix',
+         source = "enum bad_ENUM { ONE }"
+      },
+      {
+         name = 'enum lowercase member',
+         source = "enum BAD_ENUM { one }"
+      },
+      {
+         name = 'enum missing explicit value',
+         source = "enum BAD_ENUM { ONE = }"
+      },
+      {
+         name = 'enum non-integer explicit value',
+         source = "enum BAD_ENUM { ONE = 1.5 }"
+      },
+      {
+         name = 'enum expression explicit value',
+         source = "enum BAD_ENUM { ONE = 1 + 2 }"
+      },
+      {
+         name = 'enum duplicate member',
+         source = "enum DUP_ENUM { ONE, ONE }"
+      },
+      {
+         name = 'enum prefix type annotation',
+         source = "enum TYPED_ENUM: num { ONE }"
+      },
+      {
+         name = 'enum prefix const attribute',
+         source = "enum CONST_ENUM <const> { ONE }"
+      },
+      {
+         name = 'enum prefix close attribute',
+         source = "enum CLOSE_ENUM <close> { ONE }"
       }
    })
 end
