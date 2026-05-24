@@ -64,6 +64,7 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="InvalidData">There is an error in the provided data</error>
       <error code="Args">Invalid arguments passed to function</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
