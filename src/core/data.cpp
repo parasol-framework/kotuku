@@ -98,13 +98,13 @@ std::mutex glmPrint;
 std::recursive_mutex glmMemory;
 std::recursive_mutex glmMsgHandler;
 std::recursive_mutex glmAsyncActions;
-std::recursive_timed_mutex glmObjectLookup;
+std::shared_timed_mutex glmObjectLookup;
 std::recursive_timed_mutex glmTimer;
 std::timed_mutex glmClassDB;
-std::timed_mutex glmFieldKeys;
+std::shared_timed_mutex glmFieldKeys;
 std::timed_mutex glmGeneric;
 std::timed_mutex glmObjectLocking;
-std::timed_mutex glmVolumes;
+std::shared_timed_mutex glmVolumes;
 
 ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
 ankerl::unordered_dense::map<CLASSID, extClassRecord> glClassDB;
