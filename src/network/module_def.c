@@ -7,7 +7,7 @@ extern uint32_t HostToShort(uint32_t Value);
 extern uint32_t HostToLong(uint32_t Value);
 extern uint32_t ShortToHost(uint32_t Value);
 extern uint32_t LongToHost(uint32_t Value);
-extern ERR SetSSL(objNetSocket * NetSocket, CSTRING Command, CSTRING Value);
+extern ERR SetSSL(objNetSocket * NetSocket, const std::string_view & Command, const std::string_view & Value);
 
 } // namespace
 #ifndef FDEF
@@ -18,7 +18,7 @@ FDEF argsAddressToStr[] = { { "Result", FD_STR|FD_ALLOC }, { "IPAddress:IPAddres
 FDEF argsHostToLong[] = { { "Result", FD_INT|FD_UNSIGNED }, { "Value", FD_INT|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsHostToShort[] = { { "Result", FD_INT|FD_UNSIGNED }, { "Value", FD_INT|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsLongToHost[] = { { "Result", FD_INT|FD_UNSIGNED }, { "Value", FD_INT|FD_UNSIGNED }, { 0, 0 } };
-FDEF argsSetSSL[] = { { "Error", FD_INT|FD_ERROR }, { "NetSocket", FD_OBJECTPTR }, { "Command", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
+FDEF argsSetSSL[] = { { "Error", FD_INT|FD_ERROR }, { "NetSocket", FD_OBJECTPTR }, { "Command", FD_CPP|FD_STR }, { "Value", FD_CPP|FD_STR }, { 0, 0 } };
 FDEF argsShortToHost[] = { { "Result", FD_INT|FD_UNSIGNED }, { "Value", FD_INT|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsStrToAddress[] = { { "Error", FD_INT|FD_ERROR }, { "String", FD_STR }, { "IPAddress:Address", FD_PTR|FD_STRUCT }, { 0, 0 } };
 

@@ -1748,12 +1748,12 @@ struct DisplayBase {
    double (*_ScaleToDPI)(double Value);
    ERR (*_ScanDisplayModes)(CSTRING Filter, struct DisplayInfo *Info);
    void (*_SetClipRegion)(objBitmap *Bitmap, int Left, int Top, int Right, int Bottom);
-   ERR (*_SetCursor)(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
+   ERR (*_SetCursor)(OBJECTID Surface, CRF Flags, PTC Cursor, const std::string_view & Name, OBJECTID Owner);
    ERR (*_SetCursorPos)(double X, double Y);
    ERR (*_SetCustomCursor)(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, int HotX, int HotY, OBJECTID Owner);
    ERR (*_SetHostOption)(HOST Option, int64_t Value);
    OBJECTID (*_SetModalSurface)(OBJECTID Surface);
-   ERR (*_StartCursorDrag)(OBJECTID Source, int Item, CSTRING Datatypes, OBJECTID Surface);
+   ERR (*_StartCursorDrag)(OBJECTID Source, int Item, const std::string_view & Datatypes, OBJECTID Surface);
    ERR (*_SubscribeInput)(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, int *Handle);
    void (*_Sync)(objBitmap *Bitmap);
    ERR (*_UnlockCursor)(OBJECTID Surface);
@@ -1795,12 +1795,12 @@ inline ERR RestoreCursor(PTC Cursor, OBJECTID Owner) { return DisplayBase->_Rest
 inline double ScaleToDPI(double Value) { return DisplayBase->_ScaleToDPI(Value); }
 inline ERR ScanDisplayModes(CSTRING Filter, struct DisplayInfo *Info) { return DisplayBase->_ScanDisplayModes(Filter,Info); }
 inline void SetClipRegion(objBitmap *Bitmap, int Left, int Top, int Right, int Bottom) { return DisplayBase->_SetClipRegion(Bitmap,Left,Top,Right,Bottom); }
-inline ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
+inline ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, const std::string_view & Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
 inline ERR SetCursorPos(double X, double Y) { return DisplayBase->_SetCursorPos(X,Y); }
 inline ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, int HotX, int HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
 inline ERR SetHostOption(HOST Option, int64_t Value) { return DisplayBase->_SetHostOption(Option,Value); }
 inline OBJECTID SetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
-inline ERR StartCursorDrag(OBJECTID Source, int Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
+inline ERR StartCursorDrag(OBJECTID Source, int Item, const std::string_view & Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
 inline ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, int *Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
 inline void Sync(objBitmap *Bitmap) { return DisplayBase->_Sync(Bitmap); }
 inline ERR UnlockCursor(OBJECTID Surface) { return DisplayBase->_UnlockCursor(Surface); }
@@ -1839,12 +1839,12 @@ extern ERR RestoreCursor(PTC Cursor, OBJECTID Owner);
 extern double ScaleToDPI(double Value);
 extern ERR ScanDisplayModes(CSTRING Filter, struct DisplayInfo *Info);
 extern void SetClipRegion(objBitmap *Bitmap, int Left, int Top, int Right, int Bottom);
-extern ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
+extern ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, const std::string_view & Name, OBJECTID Owner);
 extern ERR SetCursorPos(double X, double Y);
 extern ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, int HotX, int HotY, OBJECTID Owner);
 extern ERR SetHostOption(HOST Option, int64_t Value);
 extern OBJECTID SetModalSurface(OBJECTID Surface);
-extern ERR StartCursorDrag(OBJECTID Source, int Item, CSTRING Datatypes, OBJECTID Surface);
+extern ERR StartCursorDrag(OBJECTID Source, int Item, const std::string_view & Datatypes, OBJECTID Surface);
 extern ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, int *Handle);
 extern void Sync(objBitmap *Bitmap);
 extern ERR UnlockCursor(OBJECTID Surface);

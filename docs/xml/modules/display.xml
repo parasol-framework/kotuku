@@ -611,13 +611,13 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor image and can anchor the pointer to any surface.</comment>
-    <prototype>ERR gfx::SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner)</prototype>
+    <prototype>ERR gfx::SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, const std::string_view &amp; Name, OBJECTID Owner)</prototype>
     <tiriPrototype>err = SetCursor(Surface:obj, Flags:num, Cursor:num, Name:str, Owner:obj)</tiriPrototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the <code>RESTRICT</code> flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="CRF" name="Flags" lookup="CRF">Optional flags that affect the cursor.</param>
       <param type="PTC" name="Cursor" lookup="PTC">The ID of the cursor image that is to be set.</param>
-      <param type="CSTRING" name="Name">The name of the cursor image that is to be set (if <code>Cursor</code> is zero).</param>
+      <param type="const std::string_view &amp;" name="Name">The name of the cursor image that is to be set (if <code>Cursor</code> is zero).</param>
       <param type="OBJECTID" name="Owner">The object nominated as the owner of the anchor, and/or owner of the cursor image setting.</param>
     </input>
     <description>
@@ -739,18 +739,18 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>StartCursorDrag</name>
     <category>Cursor</category>
     <comment>Attaches an item to the cursor for the purpose of drag and drop.</comment>
-    <prototype>ERR gfx::StartCursorDrag(OBJECTID Source, INT Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
+    <prototype>ERR gfx::StartCursorDrag(OBJECTID Source, INT Item, const std::string_view &amp; Datatypes, OBJECTID Surface)</prototype>
     <tiriPrototype>err = StartCursorDrag(Source:obj, Item:num, Datatypes:str, Surface:obj)</tiriPrototype>
     <input>
       <param type="OBJECTID" name="Source">Refers to an object that is managing the source data.</param>
       <param type="INT" name="Item">A custom number that represents the item being dragged from the source.</param>
-      <param type="CSTRING" name="Datatypes">A null terminated byte array that lists the datatypes supported by the source item, in order of conversion preference.</param>
+      <param type="const std::string_view &amp;" name="Datatypes">A character array that lists the datatypes supported by the source item, in order of conversion preference.</param>
       <param type="OBJECTID" name="Surface">A 32-bit composite surface that represents the item being dragged.</param>
     </input>
     <description>
 <p>This function starts a drag and drop operation with the mouse cursor.  The user must be holding the primary mouse button to initiate the drag and drop operation.</p>
 <p>A <code>Source</code> object ID is required that indicates the origin of the item being dragged and will be used to retrieve the data on completion of the drag and drop operation. An <code>Item</code> number, which is optional, identifies the item being dragged from the <code>Source</code> object.</p>
-<p>The type of data represented by the source item and all other supportable data types are specified in the <code>Datatypes</code> parameter as a null terminated array.  The array is arranged in order of preference, starting with the item's native data type.  Acceptable data type values are listed in the documentation for the DataFeed action.</p>
+<p>The type of data represented by the source item and all other supportable data types are specified in the <code>Datatypes</code> parameter as a character array.  The array is arranged in order of preference, starting with the item's native data type.  Acceptable data type values are listed in the documentation for the DataFeed action.</p>
 <p>The <code>Surface</code> parameter allows for a composite surface to be dragged by the mouse cursor as a graphical representation of the source <code>Item</code>.  It is recommended that the graphic be 32x32 pixels in size and no bigger than 64x64 pixels.  The <code>Surface</code> will be hidden on completion of the drag and drop operation.</p>
 <p>If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement and UserClickRelease actions normally reported from the SystemPointer will now include the <code>JD_DRAGITEM</code> flag in the <code>ButtonFlags</code> parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The resulting data is then passed to the requesting object with a DragDropResult on the DataFeed.</p>
     </description>
