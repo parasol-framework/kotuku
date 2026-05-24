@@ -1,4 +1,15 @@
 
+static constexpr auto HASH_URL   = kt::strhash("url");
+static constexpr auto HASH_RGB   = kt::strhash("rgb");
+static constexpr auto HASH_RGBA  = kt::strhash("rgba");
+static constexpr auto HASH_OKLAB = kt::strhash("oklab");
+static constexpr auto HASH_OKLCH = kt::strhash("oklch");
+static constexpr auto HASH_LAB   = kt::strhash("lab");
+static constexpr auto HASH_LCH   = kt::strhash("lch");
+static constexpr auto HASH_HSL   = kt::strhash("hsl");
+static constexpr auto HASH_HSLA  = kt::strhash("hsla");
+static constexpr auto HASH_HSV   = kt::strhash("hsv");
+
 static double linear_to_srgb(double V)
 {
    if (V <= 0.0031308) return 12.92 * V;
@@ -331,7 +342,7 @@ static ERR parse_lch(std::string_view IRI, VectorPainter *Painter, std::string_v
    double l     = parse_css_value(IRI, 1.0); // Percentage maps to 0-100
    double c     = parse_css_value(IRI, 1.5); // 100% = 150
    double h_deg = parse_number(IRI);
-   float alpha   = parse_css_alpha(IRI);
+   float alpha  = parse_css_alpha(IRI);
 
    c = std::max(c, 0.0);
 
@@ -589,22 +600,28 @@ ERR ReadPainter(objVectorScene *Scene, const std::string_view &IRI, VectorPainte
    if (iri.starts_with(';')) iri.remove_prefix(1);
    skip_whitespace(iri);
 
-   // TODO: Use a hash comparison
-
    std::string_view result;
    ERR error;
-   if (iri.starts_with("url("))           error = parse_url(log, Scene, iri, Painter, result);
-   else if ((iri.starts_with("rgb(")) or
-            (iri.starts_with("rgba(")))   error = parse_rgb(iri, Painter, result);
-   else if (iri.starts_with("oklab("))    error = parse_oklab(iri, Painter, result);
-   else if (iri.starts_with("oklch("))    error = parse_oklch(iri, Painter, result);
-   else if (iri.starts_with("lab("))      error = parse_lab(iri, Painter, result);
-   else if (iri.starts_with("lch("))      error = parse_lch(iri, Painter, result);
-   else if ((iri.starts_with("hsl(")) or
-            (iri.starts_with("hsla(")))   error = parse_hsl(iri, Painter, result);
-   else if (iri.starts_with("hsv("))      error = parse_hsv(iri, Painter, result);
-   else if (iri.starts_with('#'))         error = parse_hex(iri, Painter, result);
-   else                                   error = parse_named_colour(log, iri, Painter, result);
+   if (iri.starts_with('#')) error = parse_hex(iri, Painter, result);
+   else {
+      auto sep = iri.find_first_of("(;");
+      if ((sep != std::string_view::npos) and (iri[sep] IS '(')) {
+         switch (kt::strhash(iri.substr(0, sep))) {
+            case HASH_URL:   error = parse_url(log, Scene, iri, Painter, result); break;
+            case HASH_RGB:
+            case HASH_RGBA:  error = parse_rgb(iri, Painter, result); break;
+            case HASH_OKLAB: error = parse_oklab(iri, Painter, result); break;
+            case HASH_OKLCH: error = parse_oklch(iri, Painter, result); break;
+            case HASH_LAB:   error = parse_lab(iri, Painter, result); break;
+            case HASH_LCH:   error = parse_lch(iri, Painter, result); break;
+            case HASH_HSL:
+            case HASH_HSLA:  error = parse_hsl(iri, Painter, result); break;
+            case HASH_HSV:   error = parse_hsv(iri, Painter, result); break;
+            default:         error = ERR::Syntax;
+         }
+      }
+      else error = parse_named_colour(log, iri, Painter, result);
+   }
 
    if (error IS ERR::Okay) {
       if ((Result) and (not result.empty())) *Result = result.data();
