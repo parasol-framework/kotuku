@@ -345,9 +345,11 @@ static ERR resolve(const std::string &Source, std::string &Dest, RSF Flags)
    if (vol_pos IS std::string::npos) return log.warning(ERR::InvalidData);
 
    std::string fullpath;
-   if (auto lock = std::unique_lock{glmVolumes, 2s}) {
+   if (auto lock = std::shared_lock{glmVolumes, 2s}) {
       auto vol = glVolumes.find(std::string_view(Source.data(), vol_pos));
-      if (vol != glVolumes.end()) fullpath.assign(vol->second["Path"]);
+      if (vol != glVolumes.end()) {
+         if (auto path = vol->second.find("Path"); path != vol->second.end()) fullpath.assign(path->second);
+      }
       else {
          log.msg("No matching volume for \"%s\".", Source.c_str());
          return ERR::Search;

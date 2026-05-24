@@ -104,7 +104,7 @@ std::timed_mutex glmClassDB;
 std::shared_timed_mutex glmFieldKeys;
 std::timed_mutex glmGeneric;
 std::timed_mutex glmObjectLocking;
-std::timed_mutex glmVolumes;
+std::shared_timed_mutex glmVolumes;
 
 ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
 ankerl::unordered_dense::map<CLASSID, extClassRecord> glClassDB;

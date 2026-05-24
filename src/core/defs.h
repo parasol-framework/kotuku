@@ -217,9 +217,9 @@ extern std::mutex glmPrint;               // For message logging only.
 
 extern std::timed_mutex glmGeneric;       // A misc. internal mutex, strictly not recursive.
 extern std::timed_mutex glmObjectLocking; // For LockObject() and ReleaseObject()
-extern std::timed_mutex glmVolumes;       // For glVolumes
 extern std::timed_mutex glmClassDB;       // For glClassDB
 extern std::shared_timed_mutex glmFieldKeys; // For glFields
+extern std::shared_timed_mutex glmVolumes;   // For glVolumes
 
 extern std::recursive_timed_mutex glmTimer;        // For timer subscriptions.
 extern std::shared_timed_mutex glmObjectLookup;    // For glObjectLookup

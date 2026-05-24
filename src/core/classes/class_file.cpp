@@ -721,7 +721,7 @@ static ERR FILE_Init(extFile *Self)
    }
 
    if ((not volume.empty()) and (Self->Path.ends_with(':'))) {
-      if (auto lock = std::unique_lock{glmVolumes, 1s}) {
+      if (auto lock = std::shared_lock{glmVolumes, 1s}) {
          if (auto vol = glVolumes.find(volume); vol != glVolumes.end()) {
             if (auto hidden = vol->second.find("Hidden"); (hidden != vol->second.end()) and (hidden->second IS "Yes")) {
                Self->Permissions |= PERMIT::HIDDEN;
@@ -2018,7 +2018,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
    if (Self->Path.ends_with(':')) {
       std::string icon("icons:folders/folder");
 
-      if (auto lock = std::unique_lock{glmVolumes, 2s}) {
+      if (auto lock = std::shared_lock{glmVolumes, 2s}) {
          std::string_view volume(Self->Path.c_str(), Self->Path.size()-1);
 
          if (auto vol = glVolumes.find(volume); vol != glVolumes.end()) {
