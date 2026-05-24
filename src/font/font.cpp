@@ -109,6 +109,7 @@ class extFont : public objFont {
 
 static ERR add_font_class(void);
 static int getutf8(CSTRING, uint32_t *);
+static int getutf8(std::string_view, uint32_t *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<uint16_t> &);
@@ -158,6 +159,65 @@ static int getutf8(CSTRING Value, uint32_t *Unicode)
       }
       code <<= 6;
       code |= Value[i] & 0x3f;
+   }
+
+   if (code IS -1) {
+      if (Unicode) *Unicode = 0;
+      return 1;
+   }
+   else {
+      if (Unicode) *Unicode = code;
+      return len;
+   }
+}
+
+static int getutf8(std::string_view Value, uint32_t *Unicode)
+{
+   int i, len, code;
+
+   if (Value.empty()) {
+      if (Unicode) *Unicode = 0;
+      return 0;
+   }
+
+   const auto first = uint8_t(Value[0]);
+   if ((first & 0x80) != 0x80) {
+      if (Unicode) *Unicode = first;
+      return 1;
+   }
+   else if ((first & 0xe0) IS 0xc0) {
+      len  = 2;
+      code = first & 0x1f;
+   }
+   else if ((first & 0xf0) IS 0xe0) {
+      len  = 3;
+      code = first & 0x0f;
+   }
+   else if ((first & 0xf8) IS 0xf0) {
+      len  = 4;
+      code = first & 0x07;
+   }
+   else if ((first & 0xfc) IS 0xf8) {
+      len  = 5;
+      code = first & 0x03;
+   }
+   else if ((first & 0xfc) IS 0xfc) {
+      len  = 6;
+      code = first & 0x01;
+   }
+   else {
+      // Unprintable character
+      if (Unicode) *Unicode = 0;
+      return 1;
+   }
+
+   for (i=1; i < len; ++i) {
+      if ((size_t(i) >= Value.size()) or ((uint8_t(Value[i]) & 0xc0) != 0x80)) {
+         code = -1;
+         break;
+      }
+      code <<= 6;
+      code |= uint8_t(Value[i]) & 0x3f;
    }
 
    if (code IS -1) {
@@ -556,7 +616,7 @@ Word wrapping will not be taken into account, even if it has been enabled in the
 
 -INPUT-
 obj(Font) Font: An initialised font object.
-cstr String: The string to be calculated.
+cpp(strview) String: The string to be calculated.
 int Chars: The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length, or -1 to use the entire string.
 
 -RESULT-
@@ -564,36 +624,36 @@ int: The pixel width of the string is returned - this will be zero if there was 
 
 *********************************************************************************************************************/
 
-int StringWidth(objFont *Font, CSTRING String, int Chars)
+int StringWidth(objFont *Font, const std::string_view &String, int Chars)
 {
-   if ((!Font) or (!String)) return 0;
+   if ((!Font) or String.empty()) return 0;
    if (!Font->initialised()) return 0;
 
    auto font = (extFont *)Font;
-   CSTRING str = String;
+   auto str = String;
    if (Chars < 0) Chars = 0x7fffffff;
 
    int len    = 0;
    int widest = 0;
    int whitespace = 0;
-   while ((*str) and (Chars > 0)) {
-      if (*str IS '\n') {
+   while ((!str.empty()) and (Chars > 0)) {
+      if (str.front() IS '\n') {
          if (widest < len) widest = len - whitespace;
          len  = 0; // Reset
-         str++;
+         str.remove_prefix(1);
          Chars--;
          whitespace = 0;
       }
-      else if (*str IS '\t') {
+      else if (str.front() IS '\t') {
          int16_t tabwidth = (font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
          if (tabwidth) len = tab_advance<int>(len, tabwidth);
-         str++;
+         str.remove_prefix(1);
          Chars--;
          whitespace = 0;
       }
       else {
          uint32_t unicode;
-         str += getutf8(str, &unicode);
+         str.remove_prefix(size_t(getutf8(str, &unicode)));
          Chars--;
 
          int advance;

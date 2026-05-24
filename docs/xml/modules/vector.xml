@@ -277,11 +277,11 @@ Z: Close Path
   <function>
     <name>GetFontHandle</name>
     <comment>Returns a handle for a given font family.</comment>
-    <prototype>ERR vec::GetFontHandle(CSTRING Family, CSTRING Style, INT Weight, INT Size, APTR * Handle)</prototype>
+    <prototype>ERR vec::GetFontHandle(const std::string_view &amp; Family, const std::string_view &amp; Style, INT Weight, INT Size, APTR * Handle)</prototype>
     <tiriPrototype>err, Handle:any = GetFontHandle(Family:str, Style:str, Weight:num, Size:num)</tiriPrototype>
     <input>
-      <param type="CSTRING" name="Family">The name of the font family to access.</param>
-      <param type="CSTRING" name="Style">The preferred style to choose from the family.  Use <code>Regular</code> or <code>NULL</code> for the default.</param>
+      <param type="const std::string_view &amp;" name="Family">The name of the font family to access.</param>
+      <param type="const std::string_view &amp;" name="Style">The preferred style to choose from the family.  Use <code>Regular</code> or <code>NULL</code> for the default.</param>
       <param type="INT" name="Weight">Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.</param>
       <param type="INT" name="Size">The font-size, measured in pixels @ 72 DPI.</param>
       <param type="APTR *" name="Handle">The resulting font handle is returned here.</param>

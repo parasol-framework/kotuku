@@ -261,7 +261,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    CSTRING resolved_face;
    if (fnt::ResolveFamilyName(DEFAULT_FONTFACE.c_str(), &resolved_face) IS ERR::Okay) {
       APTR new_handle = nullptr;
-      if (vec::GetFontHandle(resolved_face, DEFAULT_FONTSTYLE.c_str(), 400, DEFAULT_FONTSIZE, &new_handle) IS ERR::Okay) {
+      if (vec::GetFontHandle(resolved_face, DEFAULT_FONTSTYLE, 400, DEFAULT_FONTSIZE, &new_handle) IS ERR::Okay) {
          glFonts.emplace_back(new_handle, resolved_face, DEFAULT_FONTSTYLE, DEFAULT_FONTSIZE);
          glFontIndexCache.try_emplace(font_cache_key { resolved_face, DEFAULT_FONTSTYLE, DEFAULT_FONTSIZE }, 0);
       }

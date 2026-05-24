@@ -337,8 +337,8 @@ ERR RestoreCursor(PTC Cursor, OBJECTID OwnerID)
 */
       if ((!OwnerID) or (OwnerID IS pointer->CursorOwnerID)) {
          // Restore the pointer to the given cursor image
-         if (!OwnerID) gfx::SetCursor(0, CRF::RESTRICT, Cursor, nullptr, pointer->CursorOwnerID);
-         else gfx::SetCursor(0, CRF::RESTRICT, Cursor, nullptr, OwnerID);
+         if (!OwnerID) gfx::SetCursor(0, CRF::RESTRICT, Cursor, "", pointer->CursorOwnerID);
+         else gfx::SetCursor(0, CRF::RESTRICT, Cursor, "", OwnerID);
 
          pointer->CursorOwnerID   = 0;
          pointer->CursorRelease   = 0;
@@ -349,7 +349,7 @@ ERR RestoreCursor(PTC Cursor, OBJECTID OwnerID)
 
       if (pointer->BufferOwner) {
          if (OwnerID != pointer->BufferOwner) {
-            gfx::SetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, nullptr, pointer->BufferOwner);
+            gfx::SetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, "", pointer->BufferOwner);
          }
          else pointer->BufferOwner = 0; // Owner and Buffer are identical, so clear due to restored pointer
       }

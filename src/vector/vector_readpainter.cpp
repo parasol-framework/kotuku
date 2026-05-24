@@ -18,7 +18,11 @@ static void linear_rgb_to_painter(double LR, double LG, double LB, float Alpha, 
 
 static void skip_whitespace(std::string_view &IRI)
 {
-   while ((not IRI.empty()) and (uint8_t(IRI[0]) <= 0x20)) IRI.remove_prefix(1);
+   std::size_t i = 0;
+   const auto size = IRI.size();
+
+   while ((i < size) and (uint8_t(IRI[i]) <= 0x20)) i++;
+   if (i) IRI.remove_prefix(i);
 }
 
 static double parse_number(std::string_view &IRI)
