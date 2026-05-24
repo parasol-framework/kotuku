@@ -2213,15 +2213,15 @@ void SetObjectContext(OBJECTPTR Object, Field *Field, ACTIONID ActionID)
 SetName: Sets the name of an object.
 
 This function sets the name of an `Object`.  This enhances log messages and allows the object to be found in searches.
-Please note that the length of the `Name` will be limited to the value indicated in the core header file, under
-the `MAX_NAME_LEN` definition.  Names exceeding the allowed length are trimmed to fit.
+Note that the length of the `Name` will be limited to the `MAX_NAME_LEN` value in the core header file.  Names
+exceeding the allowed length are trimmed to fit.
 
 Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with
 an underscore.
 
 -INPUT-
 obj Object: The target object.
-cpp(strview) Name: The new name for the object.
+cpp(strview) Name: The new name for the object, or an empty string to clear an existing name.
 
 -ERRORS-
 Okay:
@@ -2250,7 +2250,7 @@ ERR SetName(OBJECTPTR Object, const std::string_view &NewName)
 {
    kt::Log log(__FUNCTION__);
 
-   if ((not Object) or (&NewName IS nullptr) or (NewName.empty())) return log.warning(ERR::NullArgs);
+   if ((not Object) or (&NewName IS nullptr)) return log.warning(ERR::NullArgs);
 
    ScopedObjectAccess objlock(Object);
 

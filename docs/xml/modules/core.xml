@@ -1673,10 +1673,10 @@ if (not OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <tiriPrototype>err = SetName(Object:obj, Name:str)</tiriPrototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
-      <param type="const std::string_view &amp;" name="Name">The new name for the object.</param>
+      <param type="const std::string_view &amp;" name="Name">The new name for the object, or an empty string to clear an existing name.</param>
     </input>
     <description>
-<p>This function sets the name of an <code>Object</code>.  This enhances log messages and allows the object to be found in searches. Please note that the length of the <code>Name</code> will be limited to the value indicated in the core header file, under the <code>MAX_NAME_LEN</code> definition.  Names exceeding the allowed length are trimmed to fit.</p>
+<p>This function sets the name of an <code>Object</code>.  This enhances log messages and allows the object to be found in searches. Note that the length of the <code>Name</code> will be limited to the <code>MAX_NAME_LEN</code> value in the core header file.  Names exceeding the allowed length are trimmed to fit.</p>
 <p>Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with an underscore.</p>
     </description>
     <result type="ERR">
