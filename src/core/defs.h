@@ -16,6 +16,7 @@
 #include <thread>
 #include <algorithm>
 #include <optional>
+#include <string_view>
 #include <ankerl/unordered_dense.h>
 #include <unordered_set>
 
@@ -291,6 +292,8 @@ struct CaseInsensitiveEqual {
       return ::strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
    }
 };
+
+using OBJECTLOOKUP = ankerl::unordered_dense::map<uint32_t, std::vector<Object *>>;
 
 //********************************************************************************************************************
 
@@ -706,7 +709,7 @@ extern ankerl::unordered_dense::map<CLASSID, extClassRecord> glClassDB; // Class
 extern ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
 extern ankerl::unordered_dense::map<uint32_t, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern std::set<std::shared_ptr<std::jthread>> glAsyncThreads;
-extern std::unordered_map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup;  // Locked with glmObjectlookup
+extern OBJECTLOOKUP glObjectLookup;  // Locked with glmObjectlookup
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Using ankerl::unordered_dense for superior performance
 extern std::unordered_map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory; // Locked with glmMemory.
 extern std::unordered_map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren; // Locked with glmMemory.
@@ -1280,12 +1283,17 @@ inline size_t align_page_size(size_t Size) {
 }
 
 //********************************************************************************************************************
-// NOTE: To be called with glmObjectLookup only.
+// NOTE: To be called with glmObjectLookup only.  A given name/hash can be associated with multiple objects.
 
 inline void remove_object_hash(OBJECTPTR Object)
 {
-   std::erase(glObjectLookup[Object->Name], Object);
-   if (glObjectLookup[Object->Name].empty()) glObjectLookup.erase(Object->Name);
+   auto name_hash = kt::strihash(Object->Name);
+   auto list = glObjectLookup.find(name_hash);
+   if (list IS glObjectLookup.end()) return;
+
+   auto &objects = list->second;
+   std::erase(objects, Object);
+   if (objects.empty()) glObjectLookup.erase(list);
 }
 
 //********************************************************************************************************************

@@ -1001,15 +1001,6 @@ enum class CF : int {
    DEFLATE = 3,
 };
 
-// Flags that can be passed to FindObject()
-
-enum class FOF : uint32_t {
-   NIL = 0,
-   SMART_NAMES = 0x00000001,
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(FOF)
-
 // Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.
 
 enum class NF : uint32_t {
@@ -2065,7 +2056,7 @@ struct CoreBase {
    void (*_SetLogCallback)(APTR Callback, int DepthLimit, int LogLimit);
    int (*_AdjustLogLevel)(int Delta);
    ERR (*_ReadFileToBuffer)(const std::string_view & Path, APTR Buffer, int BufferSize, int *Result);
-   ERR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
+   ERR (*_FindObject)(const std::string_view & Name, CLASSID ClassID, OBJECTID *ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
    ERR (*_AnalysePath)(const std::string_view & Path, LOC *Type);
    ERR (*_FreeResource)(MEMORYID ID);
@@ -2085,14 +2076,14 @@ struct CoreBase {
    ERR (*_IdentifyFile)(const std::string_view & Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
    ERR (*_ReallocMemory)(APTR Memory, uint32_t Size, APTR *Address, MEMORYID *ID);
    ERR (*_ReleaseMemory)(MEMORYID MemoryID);
-   CLASSID (*_ResolveClassName)(CSTRING Name);
+   CLASSID (*_ResolveClassName)(const std::string_view & Name);
    ERR (*_SendMessage)(MSGID Type, MSF Flags, APTR Data, int Size);
    ERR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    ERR (*_ProtectMemory)(APTR Address, MEM Flags);
    void (*_SetObjectContext)(OBJECTPTR Object, struct Field *Field, AC ActionID);
    CSTRING (*_FieldName)(uint32_t FieldID);
    ERR (*_ScanDir)(struct DirInfo *Info);
-   ERR (*_SetName)(OBJECTPTR Object, CSTRING Name);
+   ERR (*_SetName)(OBJECTPTR Object, const std::string_view & Name);
    void (*_LogReturn)(void);
    ERR (*_SubscribeAction)(OBJECTPTR Object, AC Action, FUNCTION *Callback);
    ERR (*_SubscribeEvent)(int64_t Event, FUNCTION *Callback, APTR *Handle);
@@ -2165,7 +2156,7 @@ inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline void SetLogCallback(APTR Callback, int DepthLimit, int LogLimit) { return CoreBase->_SetLogCallback(Callback,DepthLimit,LogLimit); }
 inline int AdjustLogLevel(int Delta) { return CoreBase->_AdjustLogLevel(Delta); }
 inline ERR ReadFileToBuffer(const std::string_view & Path, APTR Buffer, int BufferSize, int *Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
-inline ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
+inline ERR FindObject(const std::string_view & Name, CLASSID ClassID, OBJECTID *ObjectID) { return CoreBase->_FindObject(Name,ClassID,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
 inline ERR AnalysePath(const std::string_view & Path, LOC *Type) { return CoreBase->_AnalysePath(Path,Type); }
 inline ERR FreeResource(MEMORYID ID) { return CoreBase->_FreeResource(ID); }
@@ -2185,14 +2176,14 @@ inline ERR ProcessMessages(PMF Flags, int TimeOut) { return CoreBase->_ProcessMe
 inline ERR IdentifyFile(const std::string_view & Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass) { return CoreBase->_IdentifyFile(Path,Filter,Class,SubClass); }
 inline ERR ReallocMemory(APTR Memory, uint32_t Size, APTR *Address, MEMORYID *ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
 inline ERR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
-inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
+inline CLASSID ResolveClassName(const std::string_view & Name) { return CoreBase->_ResolveClassName(Name); }
 inline ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
 inline ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline ERR ProtectMemory(APTR Address, MEM Flags) { return CoreBase->_ProtectMemory(Address,Flags); }
 inline void SetObjectContext(OBJECTPTR Object, struct Field *Field, AC ActionID) { return CoreBase->_SetObjectContext(Object,Field,ActionID); }
 inline CSTRING FieldName(uint32_t FieldID) { return CoreBase->_FieldName(FieldID); }
 inline ERR ScanDir(struct DirInfo *Info) { return CoreBase->_ScanDir(Info); }
-inline ERR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
+inline ERR SetName(OBJECTPTR Object, const std::string_view & Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
 inline ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION *Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
 inline ERR SubscribeEvent(int64_t Event, FUNCTION *Callback, APTR *Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Handle); }
@@ -2260,7 +2251,7 @@ extern "C" OBJECTPTR CurrentContext(void);
 extern "C" void SetLogCallback(APTR Callback, int DepthLimit, int LogLimit);
 extern "C" int AdjustLogLevel(int Delta);
 extern "C" ERR ReadFileToBuffer(const std::string_view & Path, APTR Buffer, int BufferSize, int *Result);
-extern "C" ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
+extern "C" ERR FindObject(const std::string_view & Name, CLASSID ClassID, OBJECTID *ObjectID);
 extern "C" objMetaClass * FindClass(CLASSID ClassID);
 extern "C" ERR AnalysePath(const std::string_view & Path, LOC *Type);
 extern "C" ERR FreeResource(MEMORYID ID);
@@ -2280,14 +2271,14 @@ extern "C" ERR ProcessMessages(PMF Flags, int TimeOut);
 extern "C" ERR IdentifyFile(const std::string_view & Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
 extern "C" ERR ReallocMemory(APTR Memory, uint32_t Size, APTR *Address, MEMORYID *ID);
 extern "C" ERR ReleaseMemory(MEMORYID MemoryID);
-extern "C" CLASSID ResolveClassName(CSTRING Name);
+extern "C" CLASSID ResolveClassName(const std::string_view & Name);
 extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);
 extern "C" ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 extern "C" ERR ProtectMemory(APTR Address, MEM Flags);
 extern "C" void SetObjectContext(OBJECTPTR Object, struct Field *Field, AC ActionID);
 extern "C" CSTRING FieldName(uint32_t FieldID);
 extern "C" ERR ScanDir(struct DirInfo *Info);
-extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);
+extern "C" ERR SetName(OBJECTPTR Object, const std::string_view & Name);
 extern "C" void LogReturn(void);
 extern "C" ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION *Callback);
 extern "C" ERR SubscribeEvent(int64_t Event, FUNCTION *Callback, APTR *Handle);
