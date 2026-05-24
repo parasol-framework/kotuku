@@ -1389,7 +1389,7 @@ ERR FindObject(const std::string_view &InitialName, CLASSID ClassID, OBJECTID *R
    if ((not Result) or (&InitialName IS nullptr)) return ERR::NullArgs;
    if (InitialName.empty()) return log.warning(ERR::EmptyString);
 
-   if (auto lock = std::unique_lock{glmObjectLookup, 4s}) {
+   if (auto lock = std::shared_lock{glmObjectLookup, 4s}) {
       auto list = glObjectLookup.find(kt::strihash(InitialName));
       if (list != glObjectLookup.end()) {
          if (ClassID IS CLASSID::NIL) {
