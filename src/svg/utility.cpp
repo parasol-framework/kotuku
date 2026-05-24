@@ -227,7 +227,7 @@ static void parse_transform(objVector *Vector, const std::string Value, int Tag)
    if ((Vector->Class->BaseClassID IS CLASSID::VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
       if (Vector->newMatrix(&matrix, false) IS ERR::Okay) {
-         vec::ParseTransform(matrix, Value.c_str());
+         vec::ParseTransform(matrix, Value);
          matrix->Tag = Tag;
       }
       else {

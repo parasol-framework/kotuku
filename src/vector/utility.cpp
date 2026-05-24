@@ -598,7 +598,7 @@ ERR read_numseq(CSTRING &String, std::initializer_list<double *> Value)
    return ERR::Okay;
 }
 
-static ERR read_numseq(std::string_view &String, std::initializer_list<double *> Value)
+ERR read_numseq(std::string_view &String, std::initializer_list<double *> Value)
 {
    for (double *v : Value) {
       if (not read_transform_number(String, *v)) return ERR::Syntax;
@@ -619,7 +619,7 @@ void read_numseq_zero(CSTRING &String, std::initializer_list<double *> Value)
 
 //********************************************************************************************************************
 
-static void next_value(std::string_view &Value)
+void next_value(std::string_view &Value)
 {
    while ((not Value.empty()) and ((Value.front() <= 0x20) or (Value.front() IS ',') or (Value.front() IS '(') or
       (Value.front() IS ')'))) {
@@ -648,7 +648,7 @@ static bool read_transform_number(std::string_view &Value, double &Result)
 
 //********************************************************************************************************************
 
-static bool read_transform_unit(std::string_view &Value, double &Result)
+bool read_transform_unit(std::string_view &Value, double &Result)
 {
    if (not read_transform_number(Value, Result)) return false;
 

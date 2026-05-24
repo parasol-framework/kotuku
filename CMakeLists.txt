@@ -363,7 +363,7 @@ endfunction ()
 # idl_gen() is used to generate both C/C++ headers and IDL strings from TDL files.
 
 function (idl_gen)
-   cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;APPEND_IDL;NAME" "ARGS;FILES")
+   cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;APPEND_IDL;NAME" "ARGS;FILES;DEPENDS")
 
    if (BUILD_DEFS)
       if (DEFINED IDLC_NAME)
@@ -418,7 +418,7 @@ function (idl_gen)
          ${COMMAND_LIST}
          COMMAND ${CMAKE_COMMAND} -E touch "${IDLC_STAMP}"
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-         DEPENDS ${ARGV0}
+         DEPENDS ${ARGV0} ${IDLC_DEPENDS}
          COMMENT "Generating C header file ${IDLC_OUTPUT} from ${ARGV0}"
          VERBATIM)
 
