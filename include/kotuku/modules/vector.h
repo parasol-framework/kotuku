@@ -3449,7 +3449,7 @@ struct VectorBase {
    ERR (*_GenerateEllipse)(double CX, double CY, double RX, double RY, int Vertices, APTR *Path);
    ERR (*_GeneratePath)(CSTRING Sequence, APTR *Path);
    ERR (*_GenerateRectangle)(double X, double Y, double Width, double Height, APTR *Path);
-   ERR (*_ReadPainter)(objVectorScene *Scene, CSTRING IRI, struct VectorPainter *Painter, CSTRING *Result);
+   ERR (*_ReadPainter)(objVectorScene *Scene, const std::string_view & IRI, struct VectorPainter *Painter, CSTRING *Result);
    void (*_TranslatePath)(APTR Path, double X, double Y);
    void (*_MoveTo)(APTR Path, double X, double Y);
    void (*_LineTo)(APTR Path, double X, double Y);
@@ -3486,7 +3486,7 @@ inline ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR 
 inline ERR GenerateEllipse(double CX, double CY, double RX, double RY, int Vertices, APTR *Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
 inline ERR GeneratePath(CSTRING Sequence, APTR *Path) { return VectorBase->_GeneratePath(Sequence,Path); }
 inline ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
-inline ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, struct VectorPainter *Painter, CSTRING *Result) { return VectorBase->_ReadPainter(Scene,IRI,Painter,Result); }
+inline ERR ReadPainter(objVectorScene *Scene, const std::string_view & IRI, struct VectorPainter *Painter, CSTRING *Result) { return VectorBase->_ReadPainter(Scene,IRI,Painter,Result); }
 inline void TranslatePath(APTR Path, double X, double Y) { return VectorBase->_TranslatePath(Path,X,Y); }
 inline void MoveTo(APTR Path, double X, double Y) { return VectorBase->_MoveTo(Path,X,Y); }
 inline void LineTo(APTR Path, double X, double Y) { return VectorBase->_LineTo(Path,X,Y); }
@@ -3520,7 +3520,7 @@ extern ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR 
 extern ERR GenerateEllipse(double CX, double CY, double RX, double RY, int Vertices, APTR *Path);
 extern ERR GeneratePath(CSTRING Sequence, APTR *Path);
 extern ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path);
-extern ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, struct VectorPainter *Painter, CSTRING *Result);
+extern ERR ReadPainter(objVectorScene *Scene, const std::string_view & IRI, struct VectorPainter *Painter, CSTRING *Result);
 extern void TranslatePath(APTR Path, double X, double Y);
 extern void MoveTo(APTR Path, double X, double Y);
 extern void LineTo(APTR Path, double X, double Y);

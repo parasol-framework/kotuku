@@ -716,10 +716,10 @@ ERR StartCursorDrag(OBJECTID Source, int Item, const std::string_view &Datatypes
          return ERR::InUse;
       }
 
-      pointer->DragSurface = Surface;
-      pointer->DragItem    = Item;
+      pointer->DragSurface  = Surface;
+      pointer->DragItem     = Item;
       pointer->DragSourceID = Source;
-      strcopy(Datatypes.data(), pointer->DragData, sizeof(pointer->DragData));
+      copymem(Datatypes.data(), pointer->DragData, std::min(sizeof(pointer->DragData), Datatypes.size()));
 
       SURFACEINFO *info;
       if (gfx::GetSurfaceInfo(Surface, &info) IS ERR::Okay) {

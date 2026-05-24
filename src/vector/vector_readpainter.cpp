@@ -562,7 +562,7 @@ target colour space.
 
 -INPUT-
 obj(VectorScene) Scene: Optional.  Required if `url()` references are to be resolved.
-cstr IRI: The IRI string to be translated.
+cpp(strview) IRI: The IRI string to be translated.
 struct(*VectorPainter) Painter: This !VectorPainter structure will store the deserialised result.
 &cstr Result: Optional pointer for storing the end of the parsed IRI string.  `NULL` is returned if there is no further content to parse or an error occurred.
 
@@ -573,12 +573,12 @@ Failed:
 
 *********************************************************************************************************************/
 
-ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
+ERR ReadPainter(objVectorScene *Scene, const std::string_view &IRI, VectorPainter *Painter, CSTRING *Result)
 {
    kt::Log log(__FUNCTION__);
 
    if (Result) *Result = nullptr;
-   if ((not IRI) or (not IRI[0]) or (not Painter)) return ERR::NullArgs;
+   if (IRI.empty() or (not Painter)) return ERR::NullArgs;
 
    std::string_view iri(IRI);
 
