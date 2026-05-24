@@ -81,12 +81,12 @@
   <function>
     <name>SetSSL</name>
     <comment>Alters SSL settings on an initialised NetSocket client object.</comment>
-    <prototype>ERR net::SetSSL(objNetSocket * NetSocket, CSTRING Command, CSTRING Value)</prototype>
+    <prototype>ERR net::SetSSL(objNetSocket * NetSocket, const std::string_view &amp; Command, const std::string_view &amp; Value)</prototype>
     <tiriPrototype>err = SetSSL(NetSocket:obj, Command:str, Value:str)</tiriPrototype>
     <input>
       <param type="objNetSocket *" name="NetSocket">The target NetSocket object.</param>
-      <param type="CSTRING" name="Command">Name of a command or option to set (case-sensitive, camel-case).</param>
-      <param type="CSTRING" name="Value">Value to set for the command or option.</param>
+      <param type="const std::string_view &amp;" name="Command">Name of a command or option to set (case-sensitive, camel-case).</param>
+      <param type="const std::string_view &amp;" name="Value">Value to set for the command or option.</param>
     </input>
     <description>
 <p>Use the SetSSL() function to adjust the SSL capabilities of a NetSocket client object.  Server-side SSL is configured on <class name="NetServer">NetServer</class> before initialisation with the <code>SSL</code> flag and certificate fields.  The following commands are currently available:</p>

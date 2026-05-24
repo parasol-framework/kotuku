@@ -1270,7 +1270,7 @@ extern ERR DrawPath(objBitmap * Bitmap, APTR Path, double StrokeWidth, OBJECTPTR
 extern ERR GenerateEllipse(double CX, double CY, double RX, double RY, int Vertices, APTR *Path);
 extern ERR GeneratePath(CSTRING Sequence, APTR *Path);
 extern ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path);
-extern ERR ReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result);
+extern ERR ReadPainter(objVectorScene * Scene, const std::string_view &IRI, struct VectorPainter * Painter, CSTRING * Result);
 extern void TranslatePath(APTR Path, double X, double Y);
 extern void MoveTo(APTR Path, double X, double Y);
 extern void LineTo(APTR Path, double X, double Y);
@@ -1291,7 +1291,7 @@ extern ERR MultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * So
 extern ERR Scale(struct VectorMatrix * Matrix, double X, double Y);
 extern ERR ParseTransform(struct VectorMatrix * Matrix, CSTRING Transform);
 extern ERR ResetMatrix(struct VectorMatrix * Matrix);
-extern ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle);
+extern ERR GetFontHandle(const std::string_view &Family, const std::string_view &Style, int Weight, int Size, APTR *Handle);
 extern ERR GetFontMetrics(APTR Handle, struct FontMetrics * Info);
 extern double CharWidth(APTR FontHandle, uint32_t Char, uint32_t KChar, double * Kerning);
 extern double StringWidth(APTR FontHandle, CSTRING String, int Chars);

@@ -337,8 +337,8 @@ ERR RestoreCursor(PTC Cursor, OBJECTID OwnerID)
 */
       if ((!OwnerID) or (OwnerID IS pointer->CursorOwnerID)) {
          // Restore the pointer to the given cursor image
-         if (!OwnerID) gfx::SetCursor(0, CRF::RESTRICT, Cursor, nullptr, pointer->CursorOwnerID);
-         else gfx::SetCursor(0, CRF::RESTRICT, Cursor, nullptr, OwnerID);
+         if (!OwnerID) gfx::SetCursor(0, CRF::RESTRICT, Cursor, "", pointer->CursorOwnerID);
+         else gfx::SetCursor(0, CRF::RESTRICT, Cursor, "", OwnerID);
 
          pointer->CursorOwnerID   = 0;
          pointer->CursorRelease   = 0;
@@ -349,7 +349,7 @@ ERR RestoreCursor(PTC Cursor, OBJECTID OwnerID)
 
       if (pointer->BufferOwner) {
          if (OwnerID != pointer->BufferOwner) {
-            gfx::SetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, nullptr, pointer->BufferOwner);
+            gfx::SetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, "", pointer->BufferOwner);
          }
          else pointer->BufferOwner = 0; // Owner and Buffer are identical, so clear due to restored pointer
       }
@@ -384,7 +384,7 @@ program's control until ~RestoreCursor() is called.
 oid Surface: Refers to the surface object that the pointer should anchor itself to, if the `RESTRICT` flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
 int(CRF) Flags:  Optional flags that affect the cursor.
 int(PTC) Cursor: The ID of the cursor image that is to be set.
-cstr Name: The name of the cursor image that is to be set (if `Cursor` is zero).
+cpp(strview) Name: The name of the cursor image that is to be set (if `Cursor` is zero).
 oid Owner: The object nominated as the owner of the anchor, and/or owner of the cursor image setting.
 
 -ERRORS-
@@ -399,7 +399,7 @@ NothingDone
 
 *********************************************************************************************************************/
 
-ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID OwnerID)
+ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, const std::string_view &Name, OBJECTID OwnerID)
 {
    kt::Log log(__FUNCTION__);
    extPointer *pointer;
@@ -420,13 +420,13 @@ ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID
       return ERR::AccessObject;
    }
 
-   if (Name) log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, int(Flags), OwnerID, pointer->CursorOwnerID, Name);
+   if (not Name.empty()) log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %.*s", ObjectID, int(Flags), OwnerID, pointer->CursorOwnerID, int(Name.size()), Name.data());
    else log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, int(Flags), OwnerID, pointer->CursorOwnerID, CursorLookup[int(CursorID)].Name);
 
    // Extract the cursor ID from the cursor name if no ID was given
 
    if (CursorID IS PTC::NIL) {
-      if (Name) {
+      if (not Name.empty()) {
          for (int i=0; CursorLookup[i].Name; i++) {
             if (iequals(CursorLookup[i].Name, Name)) {
                CursorID = PTC(CursorLookup[i].Value);
@@ -623,7 +623,7 @@ AccessObject: Failed to access the internally maintained image object.
 ERR SetCustomCursor(OBJECTID ObjectID, CRF Flags, objBitmap *Bitmap, int HotX, int HotY, OBJECTID OwnerID)
 {
    // If the driver doesn't support custom cursors then divert to gfx::SetCursor()
-   return gfx::SetCursor(ObjectID, Flags, PTC::DEFAULT, nullptr, OwnerID);
+   return gfx::SetCursor(ObjectID, Flags, PTC::DEFAULT, "", OwnerID);
 }
 
 /*********************************************************************************************************************
@@ -668,7 +668,7 @@ data on completion of the drag and drop operation. An `Item` number, which is op
 from the `Source` object.
 
 The type of data represented by the source item and all other supportable data types are specified in the `Datatypes`
-parameter as a null terminated array.  The array is arranged in order of preference, starting with the item's native
+parameter as a character array.  The array is arranged in order of preference, starting with the item's native
 data type.  Acceptable data type values are listed in the documentation for the DataFeed action.
 
 The `Surface` parameter allows for a composite surface to be dragged by the mouse cursor as a graphical representation of
@@ -683,10 +683,10 @@ the DragDrop action on that surface can then contact the Source object with a Da
 resulting data is then passed to the requesting object with a DragDropResult on the DataFeed.
 
 -INPUT-
-oid Source:     Refers to an object that is managing the source data.
-int Item:       A custom number that represents the item being dragged from the source.
-cstr Datatypes: A null terminated byte array that lists the datatypes supported by the source item, in order of conversion preference.
-oid Surface:    A 32-bit composite surface that represents the item being dragged.
+oid Source:  Refers to an object that is managing the source data.
+int Item:    A custom number that represents the item being dragged from the source.
+cpp(strview) Datatypes: A character array that lists the datatypes supported by the source item, in order of conversion preference.
+oid Surface: A 32-bit composite surface that represents the item being dragged.
 
 -ERRORS-
 Okay:
@@ -697,7 +697,7 @@ InUse: A drag and drop operation has already been started.
 
 *********************************************************************************************************************/
 
-ERR StartCursorDrag(OBJECTID Source, int Item, CSTRING Datatypes, OBJECTID Surface)
+ERR StartCursorDrag(OBJECTID Source, int Item, const std::string_view &Datatypes, OBJECTID Surface)
 {
    kt::Log log(__FUNCTION__);
 
@@ -716,10 +716,10 @@ ERR StartCursorDrag(OBJECTID Source, int Item, CSTRING Datatypes, OBJECTID Surfa
          return ERR::InUse;
       }
 
-      pointer->DragSurface = Surface;
-      pointer->DragItem    = Item;
+      pointer->DragSurface  = Surface;
+      pointer->DragItem     = Item;
       pointer->DragSourceID = Source;
-      strcopy(Datatypes, pointer->DragData, sizeof(pointer->DragData));
+      copymem(Datatypes.data(), pointer->DragData, std::min(sizeof(pointer->DragData), Datatypes.size()));
 
       SURFACEINFO *info;
       if (gfx::GetSurfaceInfo(Surface, &info) IS ERR::Okay) {

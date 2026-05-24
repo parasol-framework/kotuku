@@ -277,11 +277,11 @@ Z: Close Path
   <function>
     <name>GetFontHandle</name>
     <comment>Returns a handle for a given font family.</comment>
-    <prototype>ERR vec::GetFontHandle(CSTRING Family, CSTRING Style, INT Weight, INT Size, APTR * Handle)</prototype>
+    <prototype>ERR vec::GetFontHandle(const std::string_view &amp; Family, const std::string_view &amp; Style, INT Weight, INT Size, APTR * Handle)</prototype>
     <tiriPrototype>err, Handle:any = GetFontHandle(Family:str, Style:str, Weight:num, Size:num)</tiriPrototype>
     <input>
-      <param type="CSTRING" name="Family">The name of the font family to access.</param>
-      <param type="CSTRING" name="Style">The preferred style to choose from the family.  Use <code>Regular</code> or <code>NULL</code> for the default.</param>
+      <param type="const std::string_view &amp;" name="Family">The name of the font family to access.</param>
+      <param type="const std::string_view &amp;" name="Style">The preferred style to choose from the family.  Use <code>Regular</code> or <code>NULL</code> for the default.</param>
       <param type="INT" name="Weight">Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.</param>
       <param type="INT" name="Size">The font-size, measured in pixels @ 72 DPI.</param>
       <param type="APTR *" name="Handle">The resulting font handle is returned here.</param>
@@ -426,11 +426,11 @@ Z: Close Path
   <function>
     <name>ReadPainter</name>
     <comment>Parses a painter string to its colour, gradient, pattern or image value.</comment>
-    <prototype>ERR vec::ReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result)</prototype>
+    <prototype>ERR vec::ReadPainter(objVectorScene * Scene, const std::string_view &amp; IRI, struct VectorPainter * Painter, CSTRING * Result)</prototype>
     <tiriPrototype>err, Result:str = ReadPainter(Scene:obj, IRI:str, Painter:any)</tiriPrototype>
     <input>
       <param type="objVectorScene *" name="Scene">Optional.  Required if <code>url()</code> references are to be resolved.</param>
-      <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
+      <param type="const std::string_view &amp;" name="IRI">The IRI string to be translated.</param>
       <param type="struct VectorPainter *" name="Painter">This <st>VectorPainter</st> structure will store the deserialised result.</param>
       <param type="CSTRING *" name="Result">Optional pointer for storing the end of the parsed IRI string.  <code>NULL</code> is returned if there is no further content to parse or an error occurred.</param>
     </input>
@@ -774,25 +774,25 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <constants lookup="OP" comment="Operators for CompositionFX.">
       <const name="ARITHMETIC">The SVG 'arithmetic' blending algorithm.</const>
       <const name="ATOP">The Porter-Duff 'atop' operator; the mix alpha channel has priority and the input channel does not occlude.</const>
-      <const name="BURN"/>
-      <const name="CONTRAST"/>
+      <const name="BURN">Gives a darker result than <code>MULTIPLY</code> by increasing the contrast between the input and mix colours.</const>
+      <const name="CONTRAST">Adjust the mix contrast using the input colour values as the contrast strength.</const>
       <const name="DARKEN">Use the darker colour components of the mix and input values.</const>
       <const name="DIFFERENCE">Output the difference between the input and mix colours.</const>
       <const name="DODGE">Gives a brighter result than <code>SCREEN</code> by decreasing the contrast between the input and mix colours.</const>
       <const name="EXCLUSION">Produce the difference between the mix and input values around a reference point of mid-grey.</const>
-      <const name="HARD_LIGHT"/>
+      <const name="HARD_LIGHT">Apply <code>MULTIPLY</code> or <code>SCREEN</code> according to the input colour, producing a high-contrast result.</const>
       <const name="IN">The Porter-Duff 'in' operator; the input alpha channel has priority and the mix channel is secondary.</const>
-      <const name="INVERT"/>
-      <const name="INVERT_RGB"/>
+      <const name="INVERT">Invert the mix colour components using the input alpha channel as the strength.</const>
+      <const name="INVERT_RGB">Invert the mix colour components using the input colour channels as the per-channel strength.</const>
       <const name="LIGHTEN">Use the lighter colour components of the mix and input values.</const>
       <const name="MINUS">The input colour value is subtracted from the mix.</const>
-      <const name="MULTIPLY"/>
+      <const name="MULTIPLY">Multiplies the input and mix colour components, producing a darker result unless one source is white.</const>
       <const name="OUT">The Porter-Duff 'out' operator; the mix alpha channel is inversed with the input channel.</const>
       <const name="OVER">The Porter-Duff 'over' operator, this is the default operation for standard alpha blending.</const>
       <const name="OVERLAY">Combines the multiply and screen blend modes, with the mix determining tonal strength.</const>
       <const name="PLUS">Add the input and mix colour values together.</const>
       <const name="SCREEN">Produces a result brighter than the input.</const>
-      <const name="SOFT_LIGHT"/>
+      <const name="SOFT_LIGHT">Apply a softer variant of <code>HARD_LIGHT</code>, subtly darkening or lightening the mix from the input colour.</const>
       <const name="XOR">The Porter-Duff 'xor' operator; blend as normal but occlusion occurs when input and mix alpha channels interact.</const>
     </constants>
 
@@ -975,16 +975,16 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
 
     <constants lookup="VSM">
       <const name="AUTO">The default option is chosen by the system.  This will typically be <code>BILINEAR</code>, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</const>
-      <const name="BESSEL"/>
+      <const name="BESSEL">Uses a broad Bessel filter that can preserve detail during resampling, but is slower than the smaller-kernel methods.</const>
       <const name="BICUBIC">Produces a similar result to <code>BILINEAR</code> at a slightly higher CPU cost and a marginally sharper after-effect.</const>
       <const name="BILINEAR">Bilinear is a common algorithm that produces a reasonable quality image quickly.</const>
       <const name="BLACKMAN">Five times slower than <code>BILINEAR</code>, the final result will be less sharp than SINC.</const>
-      <const name="GAUSSIAN"/>
-      <const name="KAISER"/>
+      <const name="GAUSSIAN">Uses a Gaussian filter that softens the result, reducing aliasing at the cost of sharp edge detail.</const>
+      <const name="KAISER">Uses a Kaiser-windowed filter, giving smooth interpolation with low ringing and a cost close to <code>BILINEAR</code>.</const>
       <const name="LANCZOS">This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with <code>SINC</code> and <code>BLACKMAN</code>.</const>
-      <const name="MITCHELL"/>
+      <const name="MITCHELL">Uses a Mitchell-Netravali filter, balancing sharpness and smoothness at a cost similar to <code>BICUBIC</code>.</const>
       <const name="NEIGHBOUR">Nearest neighbour is the fastest sampler at the cost of poor quality.</const>
-      <const name="QUADRIC"/>
+      <const name="QUADRIC">Uses a quadratic filter with a modest kernel, giving smoother results than <code>BILINEAR</code> with limited extra cost.</const>
       <const name="SINC">Five times slower than <code>BILINEAR</code>, the final result is of very good quality.</const>
       <const name="SPLINE16">About twice as slow as <code>BILINEAR</code>, this method produces a considerably better result, and is a good choice for enlarging images without producing artifacts when contrasting colours are present.</const>
     </constants>

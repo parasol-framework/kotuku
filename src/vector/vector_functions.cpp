@@ -513,8 +513,8 @@ For a given font family and size, this function will return a `Handle` that can 
 The handle is deterministic and permanent, remaining valid for the lifetime of the program.
 
 -INPUT-
-cstr Family: The name of the font family to access.
-cstr Style: The preferred style to choose from the family.  Use `Regular` or `NULL` for the default.
+cpp(strview) Family: The name of the font family to access.
+cpp(strview) Style: The preferred style to choose from the family.  Use `Regular` or `NULL` for the default.
 int Weight: Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.
 int Size: The font-size, measured in pixels @ 72 DPI.
 &ptr Handle: The resulting font handle is returned here.
@@ -527,15 +527,14 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle)
+ERR GetFontHandle(const std::string_view &Family, const std::string_view &Style, int Weight, int Size, APTR *Handle)
 {
    kt::Log log(__FUNCTION__);
 
    if (Size < 1) return log.warning(ERR::Args);
 
-   if (!Style) Style = "Regular";
    common_font *handle;
-   if (auto error = get_font(log, Family, Style, Weight, Size, &handle); error IS ERR::Okay) {
+   if (auto error = get_font(log, Family, Style.empty() ? "Regular" : Style, Weight, Size, &handle); error IS ERR::Okay) {
       *Handle = handle;
       return ERR::Okay;
    }

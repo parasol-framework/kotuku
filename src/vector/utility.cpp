@@ -406,7 +406,7 @@ double read_unit(CSTRING &Value, bool &Percent)
 
 //********************************************************************************************************************
 
-std::string weight_to_style(CSTRING Style, int Weight)
+std::string weight_to_style(std::string_view Style, int Weight)
 {
    std::string weight_name;
 
@@ -425,16 +425,17 @@ std::string weight_to_style(CSTRING Style, int Weight)
 
 //********************************************************************************************************************
 
-ERR get_font(kt::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, common_font **Handle)
+ERR get_font(kt::Log &Log, std::string_view Family, std::string_view Style, int Weight, int Size, common_font **Handle)
 {
-   Log.branch("Family: %s, Style: %s, Weight: %d, Size: %d", Family, Style, Weight, Size);
+   Log.branch("Family: %.*s, Style: %.*s, Weight: %d, Size: %d", int(Family.size()), Family.data(),
+      int(Style.size()), Style.data(), Weight, Size);
 
-   if (!Style) return Log.warning(ERR::NullArgs);
+   if (Style.empty()) return Log.warning(ERR::NullArgs);
 
    const std::lock_guard lock{glFontMutex};
 
-   std::string family(Family ? Family : "*");
-   if (!family.ends_with("*")) family.append(",*");
+   std::string family(Family.empty() ? "*" : Family);
+   if (not family.ends_with("*")) family.append(",*");
    CSTRING final_name;
    if (fnt::ResolveFamilyName(family.c_str(), &final_name) IS ERR::Okay) family.assign(final_name);
 
