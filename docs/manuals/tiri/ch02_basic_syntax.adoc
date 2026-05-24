@@ -1,4 +1,5 @@
 // VERIFIED: 2026-02-10
+// UPDATED: 2026-05-24 — Added regex string shorthand (r'...') to String Literals section.
 
 [[ch-basic-syntax]]
 == Basic Syntax
@@ -255,6 +256,30 @@ Literal braces are produced by doubling: `{{` produces `{` and `}}` produces `}`
 F-strings support single-quote and double-quote delimiters.  Long-string syntax (`f[[...]]`) is not supported.  Empty or whitespace-only expressions (`{}`, `{   }`) are syntax errors.
 
 See <<ch-strings>> for additional string operations.
+
+[[sec-regex-strings]]
+===== Regex Strings
+
+An `r` prefix before a short string or long string creates a compiled regular expression object.  The expression `r'...'` is equivalent to `regex.new('...')`, but the content is treated as a raw string: backslash sequences are not interpreted as escape characters, so regex metacharacters such as `\d`, `\w`, and `\s` do not require doubling.
+
+[source,tiri]
+----
+digits = r'\d+'          -- equivalent to regex.new([[\d+]])
+word   = r"\w+"          -- double quotes also accepted
+ws     = r[[\s+]]        -- long-bracket form
+level  = r[=[\d{2}]=]    -- levelled long-bracket form
+----
+
+All four delimiter forms -- single-quoted, double-quoted, long-bracket, and levelled long-bracket -- are supported.  The resulting value is a regex object, not a string.  Methods can be chained directly on the literal:
+
+[source,tiri]
+----
+r'\d+'.test('abc123')    -- true
+----
+
+If the pattern is syntactically invalid, an exception is thrown at runtime during compilation of the regex object.
+
+See <<ch-regular-expressions>> for the full regex API.
 
 ==== Case Sensitivity
 

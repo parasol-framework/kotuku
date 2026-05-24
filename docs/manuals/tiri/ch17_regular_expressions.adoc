@@ -1,4 +1,5 @@
 // VERIFIED: 2026-02-13
+// UPDATED: 2026-05-24 — Added regex string shorthand section documenting r'...' syntax.
 
 [[ch-regular-expressions]]
 == Regular Expressions
@@ -63,6 +64,44 @@ The long-string form eliminates a common class of errors where a missing backsla
 |`'(\\w+)\\s*=\\s*(\\w+)'`
 |`pass:[[[(\w+)\s*=\s*(\w+)]]]`
 |===
+
+[discrete]
+==== Regex String Shorthand
+
+indexterm:[regex, shorthand] The `r` prefix creates a regex object directly from a string literal, combining declaration and compilation into a single expression.  The content is treated as a raw string: backslash sequences are not interpreted as escape characters.
+
+[.api]`rx = r'Pattern'`
+
+The expression `r'...'` is equivalent to `regex.new('...')` with the escaping convenience of a long string.  Single-quoted, double-quoted, long-bracket, and levelled long-bracket delimiters are all supported:
+
+[source,tiri]
+----
+digits = r'\d+'          -- single-quoted raw string
+word   = r"\w+"          -- double-quoted raw string
+ws     = r[[\s+]]        -- long-bracket raw string
+level  = r[=[\d{2}]=]    -- levelled long-bracket raw string
+----
+
+The result is a compiled regex object, not a string.  All regex methods can be called on it directly, including suffix chaining:
+
+[source,tiri]
+----
+r'\d+'.test('abc123')    -- true
+name, id = r'(\w+)-(\d+)'.extract('item-42')
+----
+
+If the pattern is syntactically invalid, an exception is thrown at runtime during the implicit `regex.new()` call.  Wrap in a `try` block when the pattern may be incorrect (see <<ch-error-handling>>).
+
+The `r` prefix does not conflict with variables named `r`.  The lexer recognises the regex shorthand only when `r` is immediately followed by a quote character (`'`, `"`) or an opening long-bracket (`[`).  An `r` followed by whitespace, an index operator, or any other token is parsed as an identifier:
+
+[source,tiri]
+----
+r = { 'zero' }
+print(r[0])              -- 'zero' (table index, not regex)
+
+r = function(V) return V end
+print(r 'text')          -- 'text' (function call, not regex)
+----
 
 ==== regex.escape()
 
