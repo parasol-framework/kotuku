@@ -92,7 +92,7 @@ int glChildSignalFD[2] = { -1, -1 };
 #endif
 
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
-std::unordered_map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup; // Name lookups
+OBJECTLOOKUP glObjectLookup; // Name lookups
 
 std::mutex glmPrint;
 std::recursive_mutex glmMemory;

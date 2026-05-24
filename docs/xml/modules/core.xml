@@ -1476,13 +1476,13 @@ kotuku:pictures/    kotuku:documents    kotuku:documents (Existing documents fol
     <name>ResolveClassName</name>
     <category>Objects</category>
     <comment>Resolves any class name to a <code>CLASSID</code> UID.</comment>
-    <prototype>CLASSID ResolveClassName(CSTRING Name)</prototype>
+    <prototype>CLASSID ResolveClassName(const std::string_view &amp; Name)</prototype>
     <tiriPrototype>num = ResolveClassName(Name:str)</tiriPrototype>
     <input>
-      <param type="CSTRING" name="Name">The name of the class that requires resolution.</param>
+      <param type="const std::string_view &amp;" name="Name">The name of the class that requires resolution.</param>
     </input>
     <description>
-<p>This function will resolve a class <code>Name</code> to its <code>CLASSID</code> UID and verifies that the class is installed.  It is case insensitive.</p>
+<p>This function will resolve a class <code>Name</code> to its <code>CLASSID</code> UID and verifies that the class is installed.  Class names are case insensitive.</p>
     </description>
     <result type="CLASSID">Returns the class ID identified from the class name, or <code>NULL</code> if the class could not be found.</result>
   </function>
@@ -1669,11 +1669,11 @@ if (not OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <name>SetName</name>
     <category>Objects</category>
     <comment>Sets the name of an object.</comment>
-    <prototype>ERR SetName(OBJECTPTR Object, CSTRING Name)</prototype>
+    <prototype>ERR SetName(OBJECTPTR Object, const std::string_view &amp; Name)</prototype>
     <tiriPrototype>err = SetName(Object:obj, Name:str)</tiriPrototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
-      <param type="CSTRING" name="Name">The new name for the object.</param>
+      <param type="const std::string_view &amp;" name="Name">The new name for the object.</param>
     </input>
     <description>
 <p>This function sets the name of an <code>Object</code>.  This enhances log messages and allows the object to be found in searches. Please note that the length of the <code>Name</code> will be limited to the value indicated in the core header file, under the <code>MAX_NAME_LEN</code> definition.  Names exceeding the allowed length are trimmed to fit.</p>

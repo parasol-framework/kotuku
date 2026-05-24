@@ -1390,15 +1390,14 @@ ERR FindObject(const std::string_view &InitialName, CLASSID ClassID, OBJECTID *R
    if (InitialName.empty()) return log.warning(ERR::EmptyString);
 
    if (auto lock = std::unique_lock{glmObjectLookup, 4s}) {
-      std::string iname(InitialName);
-      if (glObjectLookup.contains(iname)) {
-         auto &list = glObjectLookup[iname];
+      auto list = glObjectLookup.find(kt::strihash(InitialName));
+      if (list != glObjectLookup.end()) {
          if (ClassID IS CLASSID::NIL) {
-            *Result = list.back()->UID;
+            *Result = list->second.back()->UID;
             return ERR::Okay;
          }
 
-         for (auto it=list.rbegin(); it != list.rend(); it++) {
+         for (auto it=list->second.rbegin(); it != list->second.rend(); it++) {
             auto obj = *it;
             if ((obj->classID() IS ClassID) or (obj->Class->BaseClassID IS ClassID)) {
                *Result = obj->UID;
@@ -2039,11 +2038,11 @@ ERR QueueAction(ACTIONID ActionID, OBJECTID ObjectID, APTR Args)
 -FUNCTION-
 ResolveClassName: Resolves any class name to a `CLASSID` UID.
 
-This function will resolve a class `Name` to its `CLASSID` UID and verifies that the class is installed.  It is case
-insensitive.
+This function will resolve a class `Name` to its `CLASSID` UID and verifies that the class is installed.  Class
+names are case insensitive.
 
 -INPUT-
-cstr Name: The name of the class that requires resolution.
+cpp(strview) Name: The name of the class that requires resolution.
 
 -RESULT-
 cid: Returns the class ID identified from the class name, or `NULL` if the class could not be found.
@@ -2051,9 +2050,9 @@ cid: Returns the class ID identified from the class name, or `NULL` if the class
 
 *********************************************************************************************************************/
 
-CLASSID ResolveClassName(CSTRING ClassName)
+CLASSID ResolveClassName(const std::string_view &ClassName)
 {
-   if ((not ClassName) or (not *ClassName)) {
+   if ((&ClassName IS nullptr) or (ClassName.empty())) {
       kt::Log log(__FUNCTION__);
       log.warning(ERR::NullArgs);
       return CLASSID::NIL;
@@ -2222,7 +2221,7 @@ an underscore.
 
 -INPUT-
 obj Object: The target object.
-cstr Name: The new name for the object.
+cpp(strview) Name: The new name for the object.
 
 -ERRORS-
 Okay:
@@ -2247,11 +2246,11 @@ static const char sn_lookup[256] = {
    '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_'
 };
 
-ERR SetName(OBJECTPTR Object, CSTRING NewName)
+ERR SetName(OBJECTPTR Object, const std::string_view &NewName)
 {
    kt::Log log(__FUNCTION__);
 
-   if ((not Object) or (not NewName)) return log.warning(ERR::NullArgs);
+   if ((not Object) or (&NewName IS nullptr) or (NewName.empty())) return log.warning(ERR::NullArgs);
 
    ScopedObjectAccess objlock(Object);
 
@@ -2260,11 +2259,11 @@ ERR SetName(OBJECTPTR Object, CSTRING NewName)
 
       if (Object->Name[0]) remove_object_hash(Object);
 
-      int i;
-      for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[uint8_t(NewName[i])];
+      int i, max = std::min<int>(NewName.size(), MAX_NAME_LEN-1);
+      for (i=0; i < max; i++) Object->Name[i] = sn_lookup[uint8_t(NewName[i])];
       Object->Name[i] = 0;
 
-      if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);
+      if (Object->Name[0]) glObjectLookup[kt::strihash(Object->Name)].push_back(Object);
       return ERR::Okay;
    }
    else return log.warning(ERR::LockFailed);
