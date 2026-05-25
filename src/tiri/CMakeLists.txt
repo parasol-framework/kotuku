@@ -690,8 +690,7 @@ set (TIRI_SOURCES "${MOD}.cpp" "tiri_module.cpp" "tiri_async.cpp" "tiri_struct.c
    "${JIT_SRC}/debug/filesource.cpp"
    "${JIT_SRC}/parser/parser.cpp"
    "${JIT_SRC}/parser/lexer.cpp"
-   "${JIT_SRC}/parser/parser_unit_tests.cpp"
-   "${JIT_SRC}/parser/field_type_lookup.cpp")
+   "${JIT_SRC}/parser/parser_unit_tests.cpp")
 
 if (INCLUDE_TIPS)
    list (APPEND TIRI_SOURCES "${JIT_SRC}/parser/parser_tips.cpp")
@@ -764,12 +763,12 @@ endif ()
 
 set (TIRI_TESTS
    defer debuglog io object regex struct async async_actions async_wait xml strings math array array_any array_manip
-   array_functional array_typed_syntax bitshift bitwise has_operator if_empty presence blank ternary table stress unit_tests
+   array_functional array_typed_syntax bitshift bitwise has_operator approx if_empty presence blank ternary table stress unit_tests
    jitoptions fstring const import_scope unicode ellipsis safe_nav close type_annotations type_fixing
    type_inference jit pipe pipe_iteration arrow_functions result_filter thunks deferred_expr shadow_assert ranges
    annotations locality anonymous_for key_values debug_filesources compound choose_from enum flow table_slice options
-   try_except import processing metatables with thunk_table_index debug numeric_limits return_types url tips tempus
-   compile_if_import overflow
+   try_except import processing metatables with thunk_table_index debug malformed_syntax numeric_limits return_types url tips tempus
+   comparison_chaining reserved_keywords compile_if_import overflow
 )
 
 foreach (TEST_NAME ${TIRI_TESTS})

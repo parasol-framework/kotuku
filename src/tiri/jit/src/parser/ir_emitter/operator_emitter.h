@@ -49,7 +49,7 @@ public:
    // Uses constant folding when possible
    void emit_binary_arith(BinOpr opr, ExprValue left, ExpDesc right);
 
-   // Emit comparison operator (eq, ne, lt, le, gt, ge)
+   // Emit comparison operator (eq, ne, lt, le, gt, ge, approx)
    // Emits comparison bytecode with jump, stores jump in left operand
    void emit_comparison(BinOpr opr, ExprValue left, ExpDesc right);
 

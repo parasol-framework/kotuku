@@ -47,6 +47,7 @@ static CSTRING get_binop_name(BinOpr opr)
       case BinOpr::LessEqual: return "<=";
       case BinOpr::GreaterThan: return ">";
       case BinOpr::GreaterEqual: return ">=";
+      case BinOpr::Approx: return "≈";
       case BinOpr::LogicalAnd: return "and";
       case BinOpr::LogicalOr: return "or";
       default: return "?";
@@ -226,6 +227,70 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 //********************************************************************************************************************
 // Emit comparison operator.
 
+static constexpr lua_Number TIRI_APPROX_TOLERANCE = 1e-5;
+
+//********************************************************************************************************************
+// Try constant-folding of approximate equality.
+
+[[nodiscard]] static int foldapprox(ExpDesc* e1, ExpDesc* e2)
+{
+   if (!e1->is_num_constant_nojump() or !e2->is_num_constant_nojump()) [[likely]] return 0;
+
+   lua_Number delta = e1->number_value() - e2->number_value();
+   bool result = delta <= TIRI_APPROX_TOLERANCE and delta >= -TIRI_APPROX_TOLERANCE;
+   *e1 = ExpDesc(result);
+   e1->result_type = TiriType::Bool;
+   return 1;
+}
+
+//********************************************************************************************************************
+// Emit approximate equality: `(lhs - rhs) <= tolerance and (lhs - rhs) >= -tolerance`.
+
+static void bcemit_approx(FuncState* fs, ExpDesc* e1, ExpDesc* e2)
+{
+   if (foldapprox(e1, e2)) return;
+
+   RegisterAllocator allocator(fs);
+
+   bcemit_arith(fs, BinOpr::Sub, e1, e2);
+
+   ExpressionValue delta_value(fs, *e1);
+   BCReg delta_reg = delta_value.discharge_to_any_reg(allocator);
+   *e1 = delta_value.legacy();
+
+   ExpDesc upper(TIRI_APPROX_TOLERANCE);
+   ExpressionValue upper_value(fs, upper);
+   BCReg upper_reg = upper_value.discharge_to_any_reg(allocator);
+   upper = upper_value.legacy();
+
+   bcemit_INS(fs, BCINS_AD(BC_ISLE, delta_reg, upper_reg));
+   BCPOS upper_false = bcemit_jmp(fs);
+   ExpDesc upper_check(ExpKind::Jmp, upper_false);
+   invertcond(fs, &upper_check);
+
+   ExpDesc lower(-TIRI_APPROX_TOLERANCE);
+   ExpressionValue lower_value(fs, lower);
+   BCReg lower_reg = lower_value.discharge_to_any_reg(allocator);
+   lower = lower_value.legacy();
+
+   bcemit_INS(fs, BCINS_AD(BC_ISGE, delta_reg, lower_reg));
+   BCPOS lower_false = bcemit_jmp(fs);
+
+   allocator.release_register(lower_reg);
+   allocator.release_register(upper_reg);
+   allocator.release_register(delta_reg);
+
+   e1->u.s.info = lower_false;
+   e1->u.s.aux = 0;
+   e1->k = ExpKind::Jmp;
+   e1->t = NO_JMP;
+   e1->f = upper_false;
+   e1->result_type = TiriType::Bool;
+}
+
+//********************************************************************************************************************
+// Emit comparison operator.
+
 static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 {
    RegisterAllocator allocator(fs);
@@ -360,7 +425,6 @@ static void bcemit_comp(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
 static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, ExpDesc* lhs, ExpDesc* rhs, BCREG base)
 {
    RegisterAllocator allocator(fs);
-   ExpDesc callee, key;
    auto arg1 = BCReg(base + 1  + 1);  // First argument register (after frame link if present)
    auto arg2 = arg1 + 1;            // Second argument register
 
@@ -413,20 +477,7 @@ static void bcemit_shift_call_at_base(FuncState* fs, std::string_view fname, Exp
    if (fs->freereg <= arg2) fs->freereg = arg2 + 1;
 
    // Now load bit.fname to base (safe since any operand at base has been moved)
-   callee.init(ExpKind::Global, 0);
-   callee.u.sval = fs->ls->keepstr("bit");
-   ExpressionValue callee_value(fs, callee);
-   callee_value.discharge_to_any_reg(allocator);
-   callee = callee_value.legacy();
-   key.init(ExpKind::Str, 0);
-   key.u.sval = fs->ls->keepstr(fname);
-   expr_index(fs, &callee, &key);
-   ExpressionValue callee_toval(fs, callee);
-   callee_toval.to_val();
-   callee = callee_toval.legacy();
-   ExpressionValue callee_to_base(fs, callee);
-   callee_to_base.to_reg(allocator, BCReg(base));
-   callee = callee_to_base.legacy();
+   emit_bit_function_lookup(*fs, allocator, fname, BCReg(base));
 
    // Now move any remaining operands that weren't at base
    if (not lhs_was_base) {
@@ -510,7 +561,6 @@ static void bcemit_bit_call(FuncState* fs, std::string_view fname, ExpDesc* lhs,
 static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc* arg)
 {
    RegisterAllocator allocator(fs);
-   ExpDesc callee, key;
    auto base = fs->free_reg();
    BCReg arg_reg = BCReg(int(base) + 1  + 1);
 
@@ -532,20 +582,7 @@ static void bcemit_unary_bit_call(FuncState* fs, std::string_view fname, ExpDesc
 
    // Load bit.fname into base register.
 
-   callee.init(ExpKind::Global, 0);
-   callee.u.sval = fs->ls->keepstr("bit");
-   ExpressionValue callee_value(fs, callee);
-   callee_value.discharge_to_any_reg(allocator);
-   callee = callee_value.legacy();
-   key.init(ExpKind::Str, 0);
-   key.u.sval = fs->ls->keepstr(fname);
-   expr_index(fs, &callee, &key);
-   ExpressionValue callee_toval2(fs, callee);
-   callee_toval2.to_val();
-   callee = callee_toval2.legacy();
-   ExpressionValue callee_value2(fs, callee);
-   callee_value2.to_reg(allocator, base);
-   callee = callee_value2.legacy();
+   emit_bit_function_lookup(*fs, allocator, fname, base);
 
    // Emit CALL instruction.
    fs->freereg = arg_reg + 1;
@@ -730,7 +767,8 @@ void OperatorEmitter::emit_comparison(BinOpr opr, ExprValue left, ExpDesc right)
          get_binop_name(opr), get_expkind_name(left.kind()), get_expkind_name(right.k));
    }
 
-   bcemit_comp(this->func_state, opr, left.raw(), &right);
+   if (opr IS BinOpr::Approx) bcemit_approx(this->func_state, left.raw(), &right);
+   else bcemit_comp(this->func_state, opr, left.raw(), &right);
 }
 
 //********************************************************************************************************************
@@ -862,25 +900,7 @@ void OperatorEmitter::complete_bitwise(BinOpr opr, ExprValue left, ExpDesc right
    CSTRING op_name = priority[int(opr)].name;
    size_t op_name_len = priority[int(opr)].name_len;
 
-   ExpDesc callee, key;
-   callee.init(ExpKind::Global, 0);
-   callee.u.sval = fs->ls->keepstr("bit");
-
-   ExpressionValue callee_val(fs, callee);
-   callee_val.discharge_to_any_reg(local_alloc);
-   callee = callee_val.legacy();
-
-   key.init(ExpKind::Str, 0);
-   key.u.sval = fs->ls->keepstr(std::string_view(op_name, op_name_len));
-   expr_index(fs, &callee, &key);
-
-   ExpressionValue callee_toval(fs, callee);
-   callee_toval.to_val();
-   callee = callee_toval.legacy();
-
-   ExpressionValue callee_to_base(fs, callee);
-   callee_to_base.to_reg(local_alloc, BCReg(base));
-   callee = callee_to_base.legacy();
+   emit_bit_function_lookup(*fs, local_alloc, std::string_view(op_name, op_name_len), BCReg(base));
 
    // Emit CALL instruction
    fs->freereg = arg2 + 1;  // Ensure freereg covers all arguments
@@ -1124,46 +1144,21 @@ void OperatorEmitter::prepare_if_empty(ExprValue left)
          BCReg reg = left_inner.discharge_to_any_reg(local_alloc);
          *left_desc = left_inner.legacy();
 
-         // Create test expressions for extended falsey values
-         ExpDesc nilv(ExpKind::Nil);
-         ExpDesc falsev(ExpKind::False);
-         ExpDesc zerov(ExpKind::Num);
-         setnumV(&zerov.u.nval, 0.0);
-         ExpDesc emptyv(ExpKind::Str);
-         emptyv.u.sval = this->func_state->ls->intern_empty_string();
-
          // Extended falsey check sequence
          // ISEQ* skips the JMP when values ARE equal (falsey), executes JMP when NOT equal (truthy)
          // Strategy: When value is truthy, NO checks match → all JMPs execute → skip RHS
          //          When value is falsey, ONE check matches → that JMP skipped → fall through to RHS
 
-         bcemit_INS(this->func_state, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-         BCPos check_nil = BCPos(bcemit_jmp(this->func_state));
-
-         bcemit_INS(this->func_state, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-         BCPos check_false = BCPos(bcemit_jmp(this->func_state));
-
-         bcemit_INS(this->func_state, BCINS_AD(BC_ISEQN, reg, const_num(this->func_state, &zerov)));
-         BCPos check_zero = BCPos(bcemit_jmp(this->func_state));
-
-         bcemit_INS(this->func_state, BCINS_AD(BC_ISEQS, reg, const_str(this->func_state, &emptyv)));
-         BCPos check_empty = BCPos(bcemit_jmp(this->func_state));
-
-         // Empty array check (array with len == 0)
-         bcemit_INS(this->func_state, BCINS_AD(BC_ISEMPTYARR, reg, 0));
-         BCPos check_empty_array = BCPos(bcemit_jmp(this->func_state));
+         FalseyJumpOptions options;
+         options.include_empty_array = true;
+         ControlFlowEdge skip_rhs = emit_falsey_jumps(
+            *this->func_state, *this->func_state->ls, *this->cfg, reg, options);
 
          // RHS will be emitted after this prepare phase
          // The jumps above will skip RHS when value is truthy (all JMPs execute)
          // Fall through to RHS when value is falsey (one JMP is skipped)
 
          // Collect all these jumps - they should skip RHS when value is truthy
-         pc = check_nil.raw();
-         ControlFlowEdge skip_rhs = this->cfg->make_true_edge(check_nil);
-         skip_rhs.append(check_false);
-         skip_rhs.append(check_zero);
-         skip_rhs.append(check_empty);
-         skip_rhs.append(check_empty_array);
          pc = skip_rhs.head().raw();
 
          // Mark that we need to preserve LHS value and reserve register for RHS
@@ -1347,28 +1342,9 @@ void OperatorEmitter::emit_presence_check(ExprValue operand)
    BCReg reg = e_runtime.discharge_to_any_reg(local_alloc);
    *e = e_runtime.legacy();
 
-   // Create test expressions
-   ExpDesc nilv(ExpKind::Nil);
-   ExpDesc falsev(ExpKind::False);
-   ExpDesc zerov(0.0);
-   ExpDesc emptyv(fs->ls->intern_empty_string());
-
-   // Emit equality checks for extended falsey values
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
-   auto check_nil = BCPos(bcemit_jmp(fs));
-
-   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
-   auto check_false = BCPos(bcemit_jmp(fs));
-
-   bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
-   auto check_zero = BCPos(bcemit_jmp(fs));
-
-   bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
-   auto check_empty = BCPos(bcemit_jmp(fs));
-
-   // Empty array check (array with len == 0)
-   bcemit_INS(fs, BCINS_AD(BC_ISEMPTYARR, reg, 0));
-   auto check_empty_array = BCPos(bcemit_jmp(fs));
+   FalseyJumpOptions options;
+   options.include_empty_array = true;
+   ControlFlowEdge falsey_edge = emit_falsey_jumps(*fs, *fs->ls, *this->cfg, reg, options);
 
    expr_free(fs, e);  // Free the expression register
 
@@ -1382,16 +1358,7 @@ void OperatorEmitter::emit_presence_check(ExprValue operand)
 
    // False branch: patch all falsey jumps here and load false
    auto false_pos = fs->current_pc();
-   ControlFlowEdge nil_edge = this->cfg->make_unconditional(check_nil);
-   nil_edge.patch_to(false_pos);
-   ControlFlowEdge false_edge_check = this->cfg->make_unconditional(check_false);
-   false_edge_check.patch_to(false_pos);
-   ControlFlowEdge zero_edge = this->cfg->make_unconditional(check_zero);
-   zero_edge.patch_to(false_pos);
-   ControlFlowEdge empty_edge = this->cfg->make_unconditional(check_empty);
-   empty_edge.patch_to(false_pos);
-   ControlFlowEdge empty_array_edge = this->cfg->make_unconditional(check_empty_array);
-   empty_array_edge.patch_to(false_pos);
+   falsey_edge.patch_to(false_pos);
 
    bcemit_AD(fs, BC_KPRI, dest, BCREG(ExpKind::False));
 

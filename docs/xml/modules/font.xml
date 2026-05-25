@@ -114,11 +114,11 @@
   <function>
     <name>StringWidth</name>
     <comment>Returns the pixel width of any given string in relation to a font's settings.</comment>
-    <prototype>INT fnt::StringWidth(objFont * Font, CSTRING String, INT Chars)</prototype>
+    <prototype>INT fnt::StringWidth(objFont * Font, const std::string_view &amp; String, INT Chars)</prototype>
     <tiriPrototype>num = StringWidth(Font:obj, String:str, Chars:num)</tiriPrototype>
     <input>
       <param type="objFont *" name="Font">An initialised font object.</param>
-      <param type="CSTRING" name="String">The string to be calculated.</param>
+      <param type="const std::string_view &amp;" name="String">The string to be calculated.</param>
       <param type="INT" name="Chars">The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length, or -1 to use the entire string.</param>
     </input>
     <description>

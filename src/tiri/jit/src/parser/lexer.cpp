@@ -426,6 +426,72 @@ err_xesc:
 }
 
 //********************************************************************************************************************
+// Raw string literal parsing for regex shorthand.
+
+static void lex_raw_string(LexState *State, TValue *TV)
+{
+   LexChar delim = State->c;  // Delimiter is '\'' or '"'.
+   lex_next(State);
+
+   while (State->c != delim) {
+      switch (State->c) {
+      case LEX_EOF:
+         lj_lex_error(State, TK_eof, ErrMsg::XSTR);
+         if (State->diagnose_mode) {
+            setstrV(State->L, TV, State->intern_empty_string());
+            return;
+         }
+         continue;
+
+      case '\n':
+      case '\r':
+         lj_lex_error(State, TK_string, ErrMsg::XSTR);
+         if (State->diagnose_mode) {
+            setstrV(State->L, TV, State->intern_empty_string());
+            return;
+         }
+         continue;
+
+      default:
+         lex_savenext(State);
+         break;
+      }
+   }
+
+   lex_next(State);  // Skip trailing delimiter.
+   if (sbuflen(&State->sb) IS 0) setstrV(State->L, TV, State->intern_empty_string());
+   else setstrV(State->L, TV, State->keepstr(std::string_view(State->sb.b, sbuflen(&State->sb))));
+}
+
+static int lex_peek_longstring_sep_from(LexState *State, size_t StartOffset)
+{
+   if (State->peek(StartOffset) != '[') return -1;
+
+   int count = 0;
+   size_t offset = StartOffset + 1;
+   while (State->peek(offset) IS '=') {
+      count++;
+      offset++;
+   }
+
+   return (State->peek(offset) IS '[') ? count : -1;
+}
+
+static int lex_peek_longstring_sep(LexState *State)
+{
+   if (State->c != '[') return -1;
+
+   int count = 0;
+   size_t offset = 0;
+   while (State->peek(offset) IS '=') {
+      count++;
+      offset++;
+   }
+
+   return (State->peek(offset) IS '[') ? count : -1;
+}
+
+//********************************************************************************************************************
 // F-string interpolation support
 
 static LexToken lex_scan(LexState *, TValue *);
@@ -443,6 +509,7 @@ static LexToken lex_scan(LexState *, TValue *);
       case TK_name:
       case TK_number:
       case TK_string:
+      case TK_regex_string:
       case TK_array_typed:
       case TK_defer_typed:
       case TK_pipe:
@@ -855,6 +922,10 @@ static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcep
             ByteLength = 3;
             return TK_ne;       // ≠
          }
+         else if (third IS 0x88) {
+            ByteLength = 3;
+            return TK_approx;   // ≈
+         }
          else if (third IS 0xA4) {
             ByteLength = 3;
             return TK_le;        // ≤
@@ -920,16 +991,9 @@ static void lex_skip_inline_ws(LexState *State) noexcept
    while (State->c IS ' ' or State->c IS '\t') lex_next(State);
 }
 
-//********************************************************************************************************************
-// Skip all whitespace including newlines (for multi-line constructs)
-
-[[maybe_unused]] static void lex_skip_ws(LexState *State) noexcept
+static LexToken lex_current_char_token(const LexState *State) noexcept
 {
-   while (true) {
-      if (State->c IS ' ' or State->c IS '\t') lex_next(State);
-      else if (lex_iseol(State->c)) lex_newline(State);
-      else break;
-   }
+   return (State->c IS LEX_EOF) ? TK_eof : State->c;
 }
 
 //********************************************************************************************************************
@@ -943,7 +1007,9 @@ static LexToken lex_array_typed(LexState *State, TValue *tv)
    lex_skip_inline_ws(State);
 
    // Scan type name
-   if (not (isalpha(State->c) or State->c IS '_')) lj_lex_error(State, '<', ErrMsg::XTOKEN);
+   if (not (isalpha(State->c) or State->c IS '_')) {
+      lj_lex_error(State, lex_current_char_token(State), ErrMsg::XTOKEN, State->token2str(TK_name));
+   }
 
    lj_buf_reset(&State->sb);
    do {
@@ -966,10 +1032,13 @@ static LexToken lex_array_typed(LexState *State, TValue *tv)
       while (depth > 0) {
          if (State->c IS '<') depth++;
          else if (State->c IS '>') depth--;
-         if (State->c IS LEX_EOF) lj_lex_error(State, '>', ErrMsg::XTOKEN);
+         if (State->c IS LEX_EOF) {
+            lj_lex_error(State, TK_eof, ErrMsg::XTOKEN, State->token2str('>'));
+            break;
+         }
          if (depth > 0) lex_next(State);
       }
-      lex_next(State);  // Move past the inner closing '>'
+      if (State->c IS '>') lex_next(State);  // Move past the inner closing '>'
       lex_skip_inline_ws(State);
    }
 
@@ -990,7 +1059,9 @@ static LexToken lex_array_typed(LexState *State, TValue *tv)
          State->array_typed_size = size;
          lex_skip_inline_ws(State);
 
-         if (State->c != '>') lj_lex_error(State, '>', ErrMsg::XTOKEN);
+         if (State->c != '>') {
+            lj_lex_error(State, lex_current_char_token(State), ErrMsg::XTOKEN, State->token2str('>'));
+         }
          lex_next(State);  // Consume '>'
       }
       else {
@@ -1001,7 +1072,9 @@ static LexToken lex_array_typed(LexState *State, TValue *tv)
       }
    }
    else {
-      if (State->c != '>') lj_lex_error(State, '>', ErrMsg::XTOKEN);
+      if (State->c != '>') {
+         lj_lex_error(State, lex_current_char_token(State), ErrMsg::XTOKEN, State->token2str('>'));
+      }
       lex_next(State);  // Consume '>'
    }
 
@@ -1039,6 +1112,29 @@ static LexToken lex_scan(LexState *State, TValue *tv)
       // Check for Unicode operators before identifier scanning
       if (LexToken unicode_tok = lex_unicode_operator(State)) {
          return unicode_tok;
+      }
+
+      // Regex string prefix: r"...", r'...', r[[...]] or r[=[...]=].
+      if (State->c IS 'r') {
+         LexChar next = State->peek_next();
+         if (next IS '"' or next IS '\'') {
+            State->mark_token_start();
+            lex_next(State);  // Skip prefix.
+            lj_buf_reset(&State->sb);
+            lex_raw_string(State, tv);
+            if (State->had_lex_error) continue;  // Rescan after error recovery
+            return TK_regex_string;
+         }
+
+         if (next IS '[' and lex_peek_longstring_sep_from(State, 0) >= 0) {
+            State->mark_token_start();
+            lex_next(State);  // Skip prefix.
+            lj_buf_reset(&State->sb);
+            int sep = lex_skipeq(State);
+            lex_longstring(State, tv, sep);
+            if (State->had_lex_error) continue;  // Rescan after error recovery
+            return TK_regex_string;
+         }
       }
 
       // Identifier or numeric literal

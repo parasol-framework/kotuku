@@ -606,7 +606,10 @@ template <class T> void next_value(T &Value)
 
 extern CSTRING get_name(OBJECTPTR);
 extern ERR read_numseq(CSTRING &, std::initializer_list<double *>);
+extern ERR read_numseq(std::string_view &, std::initializer_list<double *>);
 extern double read_unit(CSTRING &, bool &);
+extern void next_value(std::string_view &);
+extern bool read_transform_unit(std::string_view &, double &);
 extern ERR init_blurfx(void);
 extern ERR init_colour(void);
 extern ERR init_colourfx(void);
@@ -1213,6 +1216,11 @@ static int get_utf8(const std::string_view &Value, uint32_t &Unicode, std::size_
 {
    int len, code;
 
+   if (Index >= Value.size()) {
+      Unicode = 0;
+      return 1;
+   }
+
    if ((Value[Index] & 0x80) != 0x80) {
       Unicode = Value[Index];
       return 1;
@@ -1242,20 +1250,22 @@ static int get_utf8(const std::string_view &Value, uint32_t &Unicode, std::size_
       return 1;
    }
 
+   if (Value.size() - Index < std::size_t(len)) {
+      Unicode = 0;
+      return 1;
+   }
+
    for (int i=1; i < len; ++i) {
-      if ((Value[Index + i] & 0xc0) != 0x80) code = -1;
+      if ((Value[Index + i] & 0xc0) != 0x80) {
+         Unicode = 0;
+         return 1;
+      }
       code <<= 6;
       code |= Value[Index + i] & 0x3f;
    }
 
-   if (code IS -1) {
-      Unicode = 0;
-      return 1;
-   }
-   else {
-      Unicode = code;
-      return len;
-   }
+   Unicode = code;
+   return len;
 }
 
 //********************************************************************************************************************
@@ -1270,7 +1280,7 @@ extern ERR DrawPath(objBitmap * Bitmap, APTR Path, double StrokeWidth, OBJECTPTR
 extern ERR GenerateEllipse(double CX, double CY, double RX, double RY, int Vertices, APTR *Path);
 extern ERR GeneratePath(CSTRING Sequence, APTR *Path);
 extern ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path);
-extern ERR ReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result);
+extern ERR ReadPainter(objVectorScene * Scene, const std::string_view &IRI, struct VectorPainter * Painter, CSTRING * Result);
 extern void TranslatePath(APTR Path, double X, double Y);
 extern void MoveTo(APTR Path, double X, double Y);
 extern void LineTo(APTR Path, double X, double Y);
@@ -1289,12 +1299,12 @@ extern ERR Skew(struct VectorMatrix * Matrix, double X, double Y);
 extern ERR Multiply(struct VectorMatrix * Matrix, double ScaleX, double ShearY, double ShearX, double ScaleY, double TranslateX, double TranslateY);
 extern ERR MultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source);
 extern ERR Scale(struct VectorMatrix * Matrix, double X, double Y);
-extern ERR ParseTransform(struct VectorMatrix * Matrix, CSTRING Transform);
+extern ERR ParseTransform(struct VectorMatrix * Matrix, const std::string_view &Transform);
 extern ERR ResetMatrix(struct VectorMatrix * Matrix);
-extern ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle);
+extern ERR GetFontHandle(const std::string_view &Family, const std::string_view &Style, int Weight, int Size, APTR *Handle);
 extern ERR GetFontMetrics(APTR Handle, struct FontMetrics * Info);
 extern double CharWidth(APTR FontHandle, uint32_t Char, uint32_t KChar, double * Kerning);
-extern double StringWidth(APTR FontHandle, CSTRING String, int Chars);
+extern double StringWidth(APTR FontHandle, const std::string_view &String, int Chars);
 extern ERR FlushMatrix(struct VectorMatrix * Matrix);
 extern ERR TracePath(APTR Path, FUNCTION *Callback, double Scale);
 }

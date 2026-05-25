@@ -211,7 +211,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                   Socket->Flags |= NSF::DISABLE_SERVER_VERIFY;
                }
 
-               if (net::SetSSL(Socket, "EnableSSL", nullptr) IS ERR::Okay) {
+               if (net::SetSSL(Socket, "EnableSSL", "") IS ERR::Okay) {
                   Self->setCurrentState(HGS::COMPLETED);
                   return acActivate(Self);
                }

@@ -83,18 +83,60 @@ global function tokenizeTiri(Source:str):array
       return C >= '0' and C <= '9'
    end
 
-   function isRangeSeparator(StartPos, StopPos, Ident)
-      if Ident != 'to' and Ident != 'into' then return false end
+   function canEndRangeExpression(Char)
+      if not Char then return false end
+      if isIdentChar(Char) or isDigit(Char) then return true end
+      return Char is ')' or Char is ']' or Char is '}'
+   end
 
-      before = StartPos - 1
-      while before >= 0 do
-         bc = Source:sub(before, before + 1)
-         if bc is ' ' or bc is '\t' then before -= 1 else break end
+   function isRangeWord(Ident)
+      return Ident is 'to' or Ident is 'into'
+   end
+
+   function previousNonWhitespace(Pos)
+      while Pos >= 0 do
+         c = Source:sub(Pos, Pos + 1)
+         if c is ' ' or c is '\t' then Pos -= 1 else break end
       end
+      return Pos
+   end
+
+   function nextNonWhitespace(Pos)
+      while Pos < len do
+         c = Source:sub(Pos, Pos + 1)
+         if c is ' ' or c is '\t' then Pos++ else break end
+      end
+      return Pos
+   end
+
+   function skipQuotedSource(Pos, Quote)
+      Pos++
+      while Pos < len do
+         c = Source:sub(Pos, Pos + 1)
+         if c is '\\' then
+            Pos += 2
+         elseif c is Quote then
+            return Pos + 1
+         elseif c is '\n' or c is '\r' then
+            return Pos
+         else
+            Pos++
+         end
+      end
+      return Pos
+   end
+
+   function isRangeOperator(StartPos, StopPos, Ident)
+      if not (isRangeWord(Ident) or Ident is 'by') then return false end
+
+      before = previousNonWhitespace(StartPos - 1)
 
       if before < 0 then return false end
       prev = Source:sub(before, before + 1)
-      if prev is '{' or prev is ',' or prev is ';' or prev is '.' or prev is ':' then return false end
+      if prev is '{' or prev is ',' or prev is ';' or prev is '.' or prev is ':' or
+            not canEndRangeExpression(prev) then
+         return false
+      end
 
       depth = 0
       brace_pos = nil
@@ -119,30 +161,108 @@ global function tokenizeTiri(Source:str):array
 
       if not brace_pos then return false end
 
-      after = StopPos
-      while after < len do
-         ac = Source:sub(after, after + 1)
-         if ac is ' ' or ac is '\t' then after++ else break end
-      end
+      after = nextNonWhitespace(StopPos)
 
       if after >= len then return false end
       next_c = Source:sub(after, after + 1)
-      if next_c is '}' or next_c is ',' or next_c is ';' or next_c is '.' or next_c is ':' then return false end
+      if next_c is '}' or next_c is ',' or next_c is ';' or next_c is '.' or next_c is ':' or
+            next_c is '=' then
+         return false
+      end
 
       depth = 0
+      close_pos = nil
       scan = after
       while scan < len do
          sc = Source:sub(scan, scan + 1)
          if sc is '{' or sc is '[' or sc is '(' then
             depth++
          elseif sc is '}' then
-            if depth is 0 then return true end
+            if depth is 0 then
+               close_pos = scan
+               break
+            end
             depth -= 1
          elseif sc is ']' or sc is ')' then
             if depth > 0 then depth -= 1 end
          elseif depth is 0 and (sc is ',' or sc is ';' or sc is '\n' or sc is '\r') then
             return false
          end
+         scan++
+      end
+
+      if not close_pos then return false end
+
+      found_range_separator = false
+      found_step_separator = false
+      saw_start_expr = false
+      saw_stop_expr = false
+      scan = brace_pos + 1
+      depth = 0
+
+      while scan < close_pos do
+         sc = Source:sub(scan, scan + 1)
+
+         if sc is '"' or sc is "'" then
+            if depth is 0 then
+               if found_range_separator and not found_step_separator then saw_stop_expr = true
+               elseif not found_range_separator then saw_start_expr = true end
+            end
+            scan = skipQuotedSource(scan, sc)
+            continue
+         elseif sc is '{' or sc is '[' or sc is '(' then
+            if depth is 0 then
+               if found_range_separator and not found_step_separator then saw_stop_expr = true
+               elseif not found_range_separator then saw_start_expr = true end
+            end
+            depth++
+            scan++
+            continue
+         elseif sc is '}' or sc is ']' or sc is ')' then
+            if depth > 0 then depth -= 1 end
+            scan++
+            continue
+         elseif depth > 0 then
+            if scan is StartPos then return false end
+            scan++
+            continue
+         elseif sc is '\n' or sc is '\r' or sc is ',' or sc is ';' or sc is '=' then
+            return false
+         elseif isIdentStart(sc) then
+            word_start = scan
+            while scan < close_pos and isIdentChar(Source:sub(scan, scan + 1)) do
+               scan++
+            end
+
+            word = Source:sub(word_start, scan)
+            prev_pos = previousNonWhitespace(word_start - 1)
+            next_pos = nextNonWhitespace(scan)
+            prev_char = prev_pos >= 0 and Source:sub(prev_pos, prev_pos + 1) or ''
+            next_char = next_pos < len and Source:sub(next_pos, next_pos + 1) or ''
+            member_name_context = prev_char is '.' or prev_char is ':'
+            can_separate = not member_name_context and canEndRangeExpression(prev_char) and
+               not (next_char is '}' or next_char is ',' or next_char is ';' or next_char is '.' or
+               next_char is ':' or next_char is '=')
+
+            if isRangeWord(word) and not found_range_separator and saw_start_expr and can_separate then
+               if word_start is StartPos then return isRangeWord(Ident) end
+               found_range_separator = true
+            elseif word is 'by' and found_range_separator and not found_step_separator and saw_stop_expr and
+                  can_separate then
+               if word_start is StartPos then return Ident is 'by' end
+               found_step_separator = true
+            else
+               if word_start is StartPos then return false end
+               if found_range_separator and not found_step_separator then saw_stop_expr = true
+               elseif not found_range_separator then saw_start_expr = true end
+            end
+
+            continue
+         elseif sc != ' ' and sc != '\t' then
+            if found_range_separator and not found_step_separator then saw_stop_expr = true
+            elseif not found_range_separator then saw_start_expr = true end
+         end
+
          scan++
       end
 
@@ -310,7 +430,7 @@ global function tokenizeTiri(Source:str):array
          ident = Source:sub(start_pos, pos)
          ident_len = col - ident_start
 
-         if isRangeSeparator(start_pos, pos, ident) then
+         if isRangeOperator(start_pos, pos, ident) then
             addToken(line, ident_start, ident_len, 1, 0)  -- range separator operator
          elseif FLUID_KEYWORDS[ident] then
             addToken(line, ident_start, ident_len, 0, 0)  -- keyword
@@ -585,6 +705,10 @@ global function tokenizeTiri(Source:str):array
             pos++
             col++
          end
+      elseif c is '≈' then -- approximate equality
+         addToken(line, col, 1, 1, 0)
+         pos++
+         col++
       elseif c is '&' then -- & bitwise AND
          addToken(line, col, 1, 1, 0)
          pos++

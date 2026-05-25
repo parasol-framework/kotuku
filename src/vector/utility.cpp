@@ -5,6 +5,7 @@ double glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 [[maybe_unused]] static HSV rgb_to_hsl(FRGB Colour);
 [[maybe_unused]] static FRGB hsl_to_rgb(HSV Colour);
 static void read_numseq_zero(CSTRING &, std::initializer_list<double *>);
+static bool read_transform_number(std::string_view &Value, double &Result);
 
 //********************************************************************************************************************
 
@@ -406,7 +407,7 @@ double read_unit(CSTRING &Value, bool &Percent)
 
 //********************************************************************************************************************
 
-std::string weight_to_style(CSTRING Style, int Weight)
+std::string weight_to_style(std::string_view Style, int Weight)
 {
    std::string weight_name;
 
@@ -425,16 +426,17 @@ std::string weight_to_style(CSTRING Style, int Weight)
 
 //********************************************************************************************************************
 
-ERR get_font(kt::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, common_font **Handle)
+ERR get_font(kt::Log &Log, std::string_view Family, std::string_view Style, int Weight, int Size, common_font **Handle)
 {
-   Log.branch("Family: %s, Style: %s, Weight: %d, Size: %d", Family, Style, Weight, Size);
+   Log.branch("Family: %.*s, Style: %.*s, Weight: %d, Size: %d", int(Family.size()), Family.data(),
+      int(Style.size()), Style.data(), Weight, Size);
 
-   if (!Style) return Log.warning(ERR::NullArgs);
+   if (Style.empty()) return Log.warning(ERR::NullArgs);
 
    const std::lock_guard lock{glFontMutex};
 
-   std::string family(Family ? Family : "*");
-   if (!family.ends_with("*")) family.append(",*");
+   std::string family(Family.empty() ? "*" : Family);
+   if (not family.ends_with("*")) family.append(",*");
    CSTRING final_name;
    if (fnt::ResolveFamilyName(family.c_str(), &final_name) IS ERR::Okay) family.assign(final_name);
 
@@ -596,6 +598,15 @@ ERR read_numseq(CSTRING &String, std::initializer_list<double *> Value)
    return ERR::Okay;
 }
 
+ERR read_numseq(std::string_view &String, std::initializer_list<double *> Value)
+{
+   for (double *v : Value) {
+      if (not read_transform_number(String, *v)) return ERR::Syntax;
+   }
+
+   return ERR::Okay;
+}
+
 void read_numseq_zero(CSTRING &String, std::initializer_list<double *> Value)
 {
    for (double *v : Value) {
@@ -604,4 +615,78 @@ void read_numseq_zero(CSTRING &String, std::initializer_list<double *> Value)
       *v = strtod(String, &next);
       String = next;
    }
+}
+
+//********************************************************************************************************************
+
+void next_value(std::string_view &Value)
+{
+   while ((not Value.empty()) and ((Value.front() <= 0x20) or (Value.front() IS ',') or (Value.front() IS '(') or
+      (Value.front() IS ')'))) {
+      Value.remove_prefix(1);
+   }
+}
+
+//********************************************************************************************************************
+
+static bool read_transform_number(std::string_view &Value, double &Result)
+{
+   next_value(Value);
+   if (Value.empty()) return false;
+
+   const char *start = Value.data();
+   const char *parse_start = start;
+
+   if (Value.front() IS '+') parse_start++;
+
+   auto [ next, error ] = std::from_chars(parse_start, Value.data() + Value.size(), Result);
+   if (error != std::errc()) return false;
+
+   Value.remove_prefix(next - start);
+   return true;
+}
+
+//********************************************************************************************************************
+
+bool read_transform_unit(std::string_view &Value, double &Result)
+{
+   if (not read_transform_number(Value, Result)) return false;
+
+   double multiplier = 1.0;
+   if (Value.starts_with('%')) {
+      multiplier = 0.01;
+      Value.remove_prefix(1);
+   }
+   else if (Value.starts_with("px")) Value.remove_prefix(2);
+   else if (Value.starts_with("em")) {
+      multiplier = (12.0 / 72.0) * DISPLAY_DPI;
+      Value.remove_prefix(2);
+   }
+   else if (Value.starts_with("ex")) {
+      multiplier = (6.0 / 72.0) * DISPLAY_DPI;
+      Value.remove_prefix(2);
+   }
+   else if (Value.starts_with("in")) {
+      multiplier = DISPLAY_DPI;
+      Value.remove_prefix(2);
+   }
+   else if (Value.starts_with("cm")) {
+      multiplier = (1.0 / 2.54) * DISPLAY_DPI;
+      Value.remove_prefix(2);
+   }
+   else if (Value.starts_with("mm")) {
+      multiplier = (1.0 / 25.4) * DISPLAY_DPI;
+      Value.remove_prefix(2);
+   }
+   else if (Value.starts_with("pt")) {
+      multiplier = (1.0 / 72.0) * DISPLAY_DPI;
+      Value.remove_prefix(2);
+   }
+   else if (Value.starts_with("pc")) {
+      multiplier = (12.0 / 72.0) * DISPLAY_DPI;
+      Value.remove_prefix(2);
+   }
+
+   Result *= multiplier;
+   return true;
 }

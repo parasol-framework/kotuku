@@ -4,7 +4,7 @@ set (MOD vector)
 set (INC_MOD_VECTOR TRUE PARENT_SCOPE)
 
 idl_gen ("${MOD}.tdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/vector.h"
-   ARGS "output-defs=module_def.c")
+   ARGS "output-defs=module_def.c" DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/vector_functions.cpp")
 
 idl_compile ("${MOD}.tdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
 
@@ -74,4 +74,6 @@ if (NOT DISABLE_FONT)
 endif()
 
 flute_test(vector_readpainter "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_readpainter.tiri")
+flute_test(vector_parse_transform "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_parse_transform.tiri")
 flute_test(vector_convolve_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_convolve_validation.tiri")
+flute_test(vector_apply_path "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_apply_path.tiri")

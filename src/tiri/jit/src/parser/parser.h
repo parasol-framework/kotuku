@@ -11,4 +11,3 @@ extern void parser_unit_tests(int &Passed, int &Total);
 #endif
 
 extern GCproto *lj_parse(LexState *ls);
-extern GCstr *lj_parse_keepstr(LexState *ls, const char *str, size_t l);

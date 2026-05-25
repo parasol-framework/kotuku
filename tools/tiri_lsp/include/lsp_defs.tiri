@@ -142,7 +142,7 @@ glBuiltins = {
    -- Range constructor
    ['range'] = {
       comment = 'Creates a numeric range.  Brace literals use {start to stop} for exclusive ranges and ' ..
-         '{start into stop} for inclusive ranges.',
+         '{start into stop} for inclusive ranges.  Add `by step` for stepped ranges.',
       prototype = 'range(start, stop, [inclusive], [step])'
    },
 
@@ -231,6 +231,7 @@ glKeywords = {
    ['or'] = { comment = 'Logical OR operator.' },
    ['not'] = { comment = 'Logical NOT operator.' },
    ['is'] = { comment = 'Equality comparison.' },
+   ['≈'] = { comment = 'Approximate numeric equality with an inclusive absolute tolerance of 1e-5.' },
 
    -- Constants
    ['true'] = { comment = 'Boolean true value.' },

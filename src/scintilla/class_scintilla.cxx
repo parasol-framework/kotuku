@@ -218,7 +218,7 @@ extern ERR init_search(void);
 
 //********************************************************************************************************************
 
-static bool read_rgb8(CSTRING Value, RGB8 *RGB)
+static bool read_rgb8(std::string_view Value, RGB8 *RGB)
 {
    VectorPainter painter;
    if (vec::ReadPainter(nullptr, Value, &painter, nullptr) IS ERR::Okay) {
@@ -242,7 +242,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("vector", &modVector, &VectorBase) != ERR::Okay) return ERR::InitModule;
 
    OBJECTID id;
-   if (FindObject("glStyle", CLASSID::XML, FOF::NIL, &id) IS ERR::Okay) {
+   if (FindObject("glStyle", CLASSID::XML, &id) IS ERR::Okay) {
       char buffer[40];
       if (acGetKey(GetObjectPtr(id), "/colours/@texthighlight", buffer, sizeof(buffer)) IS ERR::Okay) {
          read_rgb8(buffer, &glHighlight);

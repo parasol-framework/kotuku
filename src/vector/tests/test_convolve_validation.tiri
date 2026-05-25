@@ -1,8 +1,8 @@
    mVec ?= mod.load('vector')
 
 function newConvolve()
-   local filter = obj.new('VectorFilter')
-   local fx = filter.new('ConvolveFX')
+   filter = obj.new('VectorFilter')
+   fx = filter.new('ConvolveFX')
    return filter, fx
 end
 
@@ -13,13 +13,13 @@ function setValidMatrix(FX)
 end
 
 @Test function MatrixRequired()
-   local filter, fx = newConvolve()
+   filter, fx = newConvolve()
    err = fx.init()
    assert(err is ERR_FieldNotSet, 'ConvolveFX should require Matrix before init, got ' .. mSys.GetErrorMsg(err))
 end
 
 @Test function MatrixLengthMustMatchOrder()
-   local filter, fx = newConvolve()
+   filter, fx = newConvolve()
    fx.matrixColumns = 2
    fx.matrixRows = 2
    fx.matrix = array<double> { 1, 2, 3 }
@@ -29,13 +29,13 @@ end
 end
 
 @Test function NegativeDivisorAccepted()
-   local filter, fx = newConvolve()
+   filter, fx = newConvolve()
    fx.divisor = -2
    assert(fx.divisor is -2, 'Negative non-zero divisors should be accepted.')
 end
 
 @Test function ZeroDivisorRejected()
-   local filter, fx = newConvolve()
+   filter, fx = newConvolve()
    try
       fx.divisor = 0
    success
@@ -44,7 +44,7 @@ end
 end
 
 @Test function ExplicitInvalidTargetRejected()
-   local filter, fx = newConvolve()
+   filter, fx = newConvolve()
    setValidMatrix(fx)
    fx.targetX = 2
 
@@ -53,7 +53,7 @@ end
 end
 
 @Test function OmittedTargetDefaultsToCentre()
-   local filter, fx = newConvolve()
+   filter, fx = newConvolve()
    setValidMatrix(fx)
 
    err = fx.init()
@@ -62,7 +62,7 @@ end
 end
 
 @Test function SubpixelKernelUnitLengthAccepted()
-   local filter, fx = newConvolve()
+   filter, fx = newConvolve()
    setValidMatrix(fx)
    fx.unitX = 0.5
    fx.unitY = 0.25
@@ -72,7 +72,7 @@ end
 end
 
 @Test function ZeroAndNegativeKernelUnitLengthRejected()
-   local filter, fx = newConvolve()
+   filter, fx = newConvolve()
 
    try
       fx.unitX = 0
@@ -88,18 +88,18 @@ end
 end
 
 @Test function XMLDefOmitsDefaultAndAutoValues()
-   local filter, fx = newConvolve()
+   filter, fx = newConvolve()
    fx.matrix = array<double> { 0, 0, 0, 0, 1, 0, 0, 0, 0 }
 
-   local err = fx.init()
+   err = fx.init()
    assert(err is ERR_Okay, 'ConvolveFX init failed: ' .. mSys.GetErrorMsg(err))
 
-   local expected = 'feConvolveMatrix kernelMatrix="0 0 0 0 1 0 0 0 0"'
+   expected = 'feConvolveMatrix kernelMatrix="0 0 0 0 1 0 0 0 0"'
    assert(fx.xmlDef is expected, 'Unexpected default XMLDef: ' .. fx.xmlDef)
 end
 
 @Test function XMLDefIncludesNonDefaultSVGAttributes()
-   local filter, fx = newConvolve()
+   filter, fx = newConvolve()
    fx.matrixColumns = 3
    fx.matrixRows = 2
    fx.matrix = array<double> { 1, 2, 3, 4, 5, 6 }
@@ -112,10 +112,10 @@ end
    fx.unitY = 0.5
    fx.preserveAlpha = true
 
-   local err = fx.init()
+   err = fx.init()
    assert(err is ERR_Okay, 'ConvolveFX init failed: ' .. mSys.GetErrorMsg(err))
 
-   local expected = 'feConvolveMatrix order="3 2" kernelMatrix="1 2 3 4 5 6" divisor="-2" ' ..
+   expected = 'feConvolveMatrix order="3 2" kernelMatrix="1 2 3 4 5 6" divisor="-2" ' ..
       'bias="0.5" targetX="2" targetY="0" edgeMode="wrap" kernelUnitLength="2 0.5" preserveAlpha="true"'
    assert(fx.xmlDef is expected, 'Unexpected non-default XMLDef: ' .. fx.xmlDef)
 end

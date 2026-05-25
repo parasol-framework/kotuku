@@ -210,17 +210,6 @@ extern BCPOS bcemit_jmp(FuncState *);
 extern void invertcond(FuncState *, ExpDesc* e);
 extern BCPOS bcemit_branch(FuncState *, ExpDesc* e, int cond);
 
-// Extended 64-bit BCIns pointer helpers for ABCP/ADP and AP formats.
-// For ABCP/ADP format (32-bit upper field)
-static inline void bcemit_set_p32(FuncState *fs, BCPOS pc, uint32_t val) {
-   setbc_p32(&fs->bcbase[pc].ins, val);
-}
-
-// For AP format (48-bit pointer)
-static inline void bcemit_set_ptr(FuncState *fs, BCPOS pc, void *ptr) {
-   setbc_ptr(&fs->bcbase[pc].ins, ptr);
-}
-
 // These remain static (legacy parser only)
 static void bcemit_branch_t(FuncState *, ExpDesc* e);
 

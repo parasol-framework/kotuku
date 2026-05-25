@@ -252,7 +252,7 @@ ERR ScanDir(DirInfo *Dir)
    // Support for scanning of volume names
 
    if ((Dir->prvPath[0] IS ':') or (not Dir->prvPath[0])) {
-      if (auto lock = std::unique_lock{glmVolumes, 4s}) {
+      if (auto lock = std::shared_lock{glmVolumes, 4s}) {
          int count = 0;
          for (auto const &pair : glVolumes) {
             if (count IS Dir->prvIndex) {

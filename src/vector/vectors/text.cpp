@@ -1342,7 +1342,7 @@ static ERR TEXT_GET_TextWidth(extVectorText *Self, int *Value)
    int width = 0;
    for (auto &line : Self->txLines) {
       if (Self->txBitmapFont) {
-         auto w = fnt::StringWidth(Self->txBitmapFont, line.c_str(), -1);
+         auto w = fnt::StringWidth(Self->txBitmapFont, line, -1);
          if (w > width) width = w;
       }
       else {
@@ -2101,7 +2101,7 @@ static ERR init_text(void)
    FID_FreetypeFace = strihash("FreetypeFace");
 
    OBJECTID id;
-   if (FindObject("cfgSystemFonts", CLASSID::CONFIG, FOF::NIL, &id) IS ERR::Okay) {
+   if (FindObject("cfgSystemFonts", CLASSID::CONFIG, &id) IS ERR::Okay) {
       glFontConfig = (objConfig *)GetObjectPtr(id);
    }
 

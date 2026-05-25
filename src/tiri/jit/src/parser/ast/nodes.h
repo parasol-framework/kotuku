@@ -139,6 +139,7 @@ enum class AstBinaryOperator : uint8_t {
    Concat,
    NotEqual,
    Equal,
+   Approx,
    LessThan,
    GreaterEqual,
    LessEqual,
@@ -203,6 +204,7 @@ struct Identifier {
    bool is_blank = false;
    bool has_close = false;
    bool has_const = false;  // Const attribute flag - variable cannot be reassigned
+   bool is_future_reserved = false;  // True when parsed from a keyword reserved for future syntax
    TiriType type = TiriType::Unknown;  // Explicit type annotation (Unknown = no annotation)
 
    // Default constructor
@@ -221,6 +223,7 @@ struct Identifier {
       id.is_blank = false;
       id.has_close = false;
       id.has_const = false;
+      id.is_future_reserved = false;
       return id;
    }
 };
@@ -343,6 +346,17 @@ struct BinaryExprPayload {
    ExprNodePtr left;
    ExprNodePtr right;
    ~BinaryExprPayload();
+};
+
+struct ComparisonChainExprPayload {
+   ComparisonChainExprPayload() = default;
+   ComparisonChainExprPayload(const ComparisonChainExprPayload&) = delete;
+   ComparisonChainExprPayload& operator=(const ComparisonChainExprPayload&) = delete;
+   ComparisonChainExprPayload(ComparisonChainExprPayload&&) noexcept = default;
+   ComparisonChainExprPayload& operator=(ComparisonChainExprPayload&&) noexcept = default;
+   std::vector<AstBinaryOperator> operators;
+   ExprNodeList operands;
+   ~ComparisonChainExprPayload();
 };
 
 struct TernaryExprPayload {
@@ -593,7 +607,7 @@ struct ExprNode {
    AstNodeKind kind = AstNodeKind::LiteralExpr;
    SourceSpan span{};
    std::variant<LiteralValue, NameRef, VarArgExprPayload, UnaryExprPayload,
-      UpdateExprPayload, BinaryExprPayload, TernaryExprPayload,
+      UpdateExprPayload, BinaryExprPayload, ComparisonChainExprPayload, TernaryExprPayload,
       PresenceExprPayload, PipeExprPayload, CallExprPayload, MemberExprPayload,
       IndexExprPayload, SafeMemberExprPayload, SafeIndexExprPayload,
       ResultFilterPayload, TableExprPayload, FunctionExprPayload, DeferredExprPayload,
@@ -988,6 +1002,8 @@ ExprNodePtr make_vararg_expr(SourceSpan span);
 ExprNodePtr make_unary_expr(SourceSpan span, AstUnaryOperator op, ExprNodePtr operand);
 ExprNodePtr make_update_expr(SourceSpan span, AstUpdateOperator op, bool is_postfix, ExprNodePtr target);
 ExprNodePtr make_binary_expr(SourceSpan span, AstBinaryOperator op, ExprNodePtr left, ExprNodePtr right);
+ExprNodePtr make_comparison_chain_expr(SourceSpan span, std::vector<AstBinaryOperator> operators,
+   ExprNodeList operands);
 ExprNodePtr make_ternary_expr(SourceSpan span, TernaryConditionMode mode, ExprNodePtr condition, ExprNodePtr if_true,
    ExprNodePtr if_false);
 ExprNodePtr make_presence_expr(SourceSpan span, ExprNodePtr value);

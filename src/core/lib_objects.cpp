@@ -1361,16 +1361,15 @@ The following example illustrates typical usage, and finds the most recent objec
 
 <pre>
 OBJECTID id;
-FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &id);
+FindObject("SystemPointer", CLASSID::POINTER, &id);
 </pre>
 
 If FindObject() cannot find any matching objects then it will return an error code.
 
 -INPUT-
-cstr Name:      The name of an object to search for.
-cid ClassID:    Optional.  Set to a class ID to filter the results down to a specific class type.
-int(FOF) Flags: Optional flags.
-&oid ObjectID:  An object id variable for storing the result.
+cpp(strview) Name: The name of an object to search for.
+cid ClassID:   Optional.  Set to a class ID to filter the results down to a specific class type.
+&oid ObjectID: An object id variable for storing the result.
 
 -ERRORS-
 Okay: At least one matching object was found and stored in the `ObjectID`.
@@ -1383,60 +1382,22 @@ DoesNotExist:
 
 *********************************************************************************************************************/
 
-ERR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result)
+ERR FindObject(const std::string_view &InitialName, CLASSID ClassID, OBJECTID *Result)
 {
    kt::Log log(__FUNCTION__);
 
-   if ((not Result) or (not InitialName)) return ERR::NullArgs;
-   if (not InitialName[0]) return log.warning(ERR::EmptyString);
+   if ((not Result) or (&InitialName IS nullptr)) return ERR::NullArgs;
+   if (InitialName.empty()) return log.warning(ERR::EmptyString);
 
-   if ((Flags & FOF::SMART_NAMES) != FOF::NIL) {
-      // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
-      // an object of name "#1234".
-
-      bool number = false;
-      if (InitialName[0] IS '#') number = true;
-      else {
-         // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
-         // it is illegal for a name to consist entirely of digits).
-
-         int i = (InitialName[0] IS '-') ? 1 : 0;
-         for (; InitialName[i]; i++) {
-            if (InitialName[i] < '0') break;
-            if (InitialName[i] > '9') break;
-         }
-         if (not InitialName[i]) number = true;
-      }
-
-      if (number) {
-         if (auto objectid = (OBJECTID)strtol(InitialName, nullptr, 0)) {
-            if (CheckObjectExists(objectid) IS ERR::Okay) {
-               *Result = objectid;
-               return ERR::Okay;
-            }
-            else return ERR::Search;
-         }
-         else return ERR::Search;
-      }
-
-      if (iequals("owner", InitialName)) {
-         if (tlContext.back().obj->Owner) {
-            *Result = tlContext.back().obj->Owner->UID;
-            return ERR::Okay;
-         }
-         else return ERR::DoesNotExist;
-      }
-   }
-
-   if (auto lock = std::unique_lock{glmObjectLookup, 4s}) {
-      if (glObjectLookup.contains(InitialName)) {
-         auto &list = glObjectLookup[InitialName];
+   if (auto lock = std::shared_lock{glmObjectLookup, 4s}) {
+      auto list = glObjectLookup.find(kt::strihash(InitialName));
+      if (list != glObjectLookup.end()) {
          if (ClassID IS CLASSID::NIL) {
-            *Result = list.back()->UID;
+            *Result = list->second.back()->UID;
             return ERR::Okay;
          }
 
-         for (auto it=list.rbegin(); it != list.rend(); it++) {
+         for (auto it=list->second.rbegin(); it != list->second.rend(); it++) {
             auto obj = *it;
             if ((obj->classID() IS ClassID) or (obj->Class->BaseClassID IS ClassID)) {
                *Result = obj->UID;
@@ -2077,11 +2038,11 @@ ERR QueueAction(ACTIONID ActionID, OBJECTID ObjectID, APTR Args)
 -FUNCTION-
 ResolveClassName: Resolves any class name to a `CLASSID` UID.
 
-This function will resolve a class `Name` to its `CLASSID` UID and verifies that the class is installed.  It is case
-insensitive.
+This function will resolve a class `Name` to its `CLASSID` UID and verifies that the class is installed.  Class
+names are case insensitive.
 
 -INPUT-
-cstr Name: The name of the class that requires resolution.
+cpp(strview) Name: The name of the class that requires resolution.
 
 -RESULT-
 cid: Returns the class ID identified from the class name, or `NULL` if the class could not be found.
@@ -2089,9 +2050,9 @@ cid: Returns the class ID identified from the class name, or `NULL` if the class
 
 *********************************************************************************************************************/
 
-CLASSID ResolveClassName(CSTRING ClassName)
+CLASSID ResolveClassName(const std::string_view &ClassName)
 {
-   if ((not ClassName) or (not *ClassName)) {
+   if ((&ClassName IS nullptr) or (ClassName.empty())) {
       kt::Log log(__FUNCTION__);
       log.warning(ERR::NullArgs);
       return CLASSID::NIL;
@@ -2252,15 +2213,15 @@ void SetObjectContext(OBJECTPTR Object, Field *Field, ACTIONID ActionID)
 SetName: Sets the name of an object.
 
 This function sets the name of an `Object`.  This enhances log messages and allows the object to be found in searches.
-Please note that the length of the `Name` will be limited to the value indicated in the core header file, under
-the `MAX_NAME_LEN` definition.  Names exceeding the allowed length are trimmed to fit.
+Note that the length of the `Name` will be limited to the `MAX_NAME_LEN` value in the core header file.  Names
+exceeding the allowed length are trimmed to fit.
 
 Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with
 an underscore.
 
 -INPUT-
 obj Object: The target object.
-cstr Name: The new name for the object.
+cpp(strview) Name: The new name for the object, or an empty string to clear an existing name.
 
 -ERRORS-
 Okay:
@@ -2285,11 +2246,11 @@ static const char sn_lookup[256] = {
    '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_'
 };
 
-ERR SetName(OBJECTPTR Object, CSTRING NewName)
+ERR SetName(OBJECTPTR Object, const std::string_view &NewName)
 {
    kt::Log log(__FUNCTION__);
 
-   if ((not Object) or (not NewName)) return log.warning(ERR::NullArgs);
+   if ((not Object) or (&NewName IS nullptr)) return log.warning(ERR::NullArgs);
 
    ScopedObjectAccess objlock(Object);
 
@@ -2298,11 +2259,11 @@ ERR SetName(OBJECTPTR Object, CSTRING NewName)
 
       if (Object->Name[0]) remove_object_hash(Object);
 
-      int i;
-      for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[uint8_t(NewName[i])];
+      int i, max = std::min<int>(NewName.size(), MAX_NAME_LEN-1);
+      for (i=0; i < max; i++) Object->Name[i] = sn_lookup[uint8_t(NewName[i])];
       Object->Name[i] = 0;
 
-      if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);
+      if (Object->Name[0]) glObjectLookup[kt::strihash(Object->Name)].push_back(Object);
       return ERR::Okay;
    }
    else return log.warning(ERR::LockFailed);

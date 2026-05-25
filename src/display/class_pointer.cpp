@@ -558,7 +558,7 @@ static ERR PTR_Init(extPointer *Self)
          Self->SurfaceID = GetOwnerID(Self->SurfaceID);
       }
 
-      if (!Self->SurfaceID) FindObject("SystemSurface", CLASSID::NIL, FOF::NIL, &Self->SurfaceID);
+      if (!Self->SurfaceID) FindObject("SystemSurface", CLASSID::NIL, &Self->SurfaceID);
    }
 
    // Allocate a custom cursor bitmap
@@ -1151,11 +1151,11 @@ static bool get_over_object(extPointer *Self)
    Self->OverY = Self->Y - li_top;
 
    if (cursor_image != PTC::NIL) {
-      if (cursor_image != Self->CursorID) gfx::SetCursor(0, CRF::NIL, cursor_image, nullptr, 0);
+      if (cursor_image != Self->CursorID) gfx::SetCursor(0, CRF::NIL, cursor_image, "", 0);
    }
    else if ((Self->CursorID != PTC::DEFAULT) and (!Self->CursorOwnerID)) {
       // Restore the pointer to the default image if the cursor isn't locked
-      gfx::SetCursor(0, CRF::NIL, PTC::DEFAULT, nullptr, 0);
+      gfx::SetCursor(0, CRF::NIL, PTC::DEFAULT, "", 0);
    }
 
    return changed;

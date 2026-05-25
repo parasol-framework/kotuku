@@ -87,8 +87,8 @@ extern thread_local char tlFieldName[10]; // $12345678\0
 
 CSTRING FieldName(uint32_t FieldID)
 {
-   if (auto lock = std::unique_lock{glmFieldKeys, 1s}) {
-      if (glFields.contains(FieldID)) return glFields[FieldID].c_str();
+   if (auto lock = std::shared_lock{glmFieldKeys, 1s}) {
+      if (auto field = glFields.find(FieldID); field != glFields.end()) return field->second.c_str();
    }
    snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
    return tlFieldName;

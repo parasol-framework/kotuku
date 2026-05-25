@@ -94,7 +94,7 @@ For internal use only.
 <pre>
 DisplayInfo info;
 clearmem(&info, sizeof(info));
-while (!scrScanDisplayModes("depth=32", &info)) {
+while (scrScanDisplayModes("depth=32", &info) IS ERR::Okay) {
    ...
 }
 </pre>

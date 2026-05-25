@@ -1,6 +1,9 @@
 -- Stress testing for the parser and JIT compiler.  For most of these tests the main objective is to not crash
 -- or fail during parsing, so use of assert() isn't strictly necessary.
 
+@BeforeEach(hotpath=true)
+function enforce_hotpath() end
+
 @Test function LongAdditionChain()
    count = 40000
    terms = {}

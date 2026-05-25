@@ -141,12 +141,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
 
             // Infer type from initialiser expression (same logic as emit_local_decl_stmt)
             if (i.raw() < values.size()) {
-               auto inferred = infer_expression_type_ext(*values[i.raw()]);
-               if (inferred.type != TiriType::Unknown and inferred.type != TiriType::Any and inferred.type != TiriType::Nil) {
-                  VarInfo* info = &this->func_state.var_get(base.raw() + i.raw());
-                  info->fixed_type = inferred.type;
-                  info->object_class_id = inferred.object_class_id;
-               }
+               this->apply_inferred_local_type(base + i, *values[i.raw()]);
             }
          }
       }
@@ -207,25 +202,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
 
          if (target.needs_var_add and target.pending_symbol) {
             // Create new local for this undeclared variable
-            this->lex_state.var_new(BCReg(0), target.pending_symbol, target.pending_line, target.pending_column);
-            this->lex_state.var_add(BCReg(1));
-            BCReg local_slot = BCReg(this->func_state.varmap.size() - 1);
+            BCReg local_slot = this->finalise_pending_local_assignment(target);
 
             // Infer type from initialiser expression
             if (i < values.size()) {
-               auto inferred = infer_expression_type_ext(*values[i]);
-               if (inferred.type != TiriType::Unknown and inferred.type != TiriType::Any and inferred.type != TiriType::Nil) {
-                  VarInfo* info = &this->func_state.var_get(local_slot.raw());
-                  info->fixed_type = inferred.type;
-                  info->object_class_id = inferred.object_class_id;
-               }
+               this->apply_inferred_local_type(local_slot, *values[i]);
             }
 
             // If the value isn't already at the local slot, move it
             if (value_slot.raw() != local_slot.raw()) {
                bcemit_AD(&this->func_state, BC_MOV, local_slot, value_slot);
             }
-            this->update_local_binding(target.pending_symbol, local_slot);
          }
          else {
             // Existing target - copy value to it
@@ -378,16 +365,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
          return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
       }
 
-      // Finalize deferred local variable now that expression is evaluated
+      // Finalise deferred local variable now that expression is evaluated
 
       if (target.needs_var_add and target.pending_symbol) {
-         this->lex_state.var_new(BCReg(0), target.pending_symbol, target.pending_line, target.pending_column);
-         this->lex_state.var_add(BCReg(1));
-         BCReg slot = BCReg(this->func_state.varmap.size() - 1);
-         // Update target.storage to point to the new local
-         target.storage.init(ExpKind::Local, slot);
-         target.storage.u.s.aux = this->func_state.varmap[slot.raw()];
-         this->update_local_binding(target.pending_symbol, slot);
+         this->finalise_pending_local_assignment(target);
       }
 
       ExpDesc rhs = list.value_ref();
@@ -408,22 +389,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    ExpressionValue lhs_value(&this->func_state, working);
    auto lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
-   ExpDesc nilv(ExpKind::Nil);
-   ExpDesc falsev(ExpKind::False);
-   ExpDesc zerov(0.0);
-   ExpDesc emptyv(this->lex_state.intern_empty_string());
-
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
-   ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&falsev)));
-   ControlFlowEdge check_false = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQN, lhs_reg, const_num(&this->func_state, &zerov)));
-   ControlFlowEdge check_zero = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
-
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQS, lhs_reg, const_str(&this->func_state, &emptyv)));
-   ControlFlowEdge check_empty = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   ControlFlowEdge falsey_edge = emit_falsey_jumps(
+      this->func_state, this->lex_state, this->control_flow, lhs_reg, FalseyJumpOptions{});
 
    // Safe-nav targets may already carry a skip edge from target preparation. Those jumps bypass this
    // whole conditional-assignment block. The checks below are only for the terminal lvalue once the
@@ -442,10 +409,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_empty_assignment(PreparedAssignment 
    ExpDesc rhs = list.value_ref();
    bcemit_store(&this->func_state, &target.storage, &rhs);
 
-   check_nil.patch_to(BCPos(assign_pos));
-   check_false.patch_to(BCPos(assign_pos));
-   check_zero.patch_to(BCPos(assign_pos));
-   check_empty.patch_to(BCPos(assign_pos));
+   falsey_edge.patch_to(BCPos(assign_pos));
    skip_assign.patch_to(BCPos(this->func_state.pc));
 
    register_guard.release_to(register_guard.saved());
@@ -480,16 +444,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_nil_assignment(PreparedAssignment ta
          return this->unsupported_stmt(AstNodeKind::AssignmentStmt, span);
       }
 
-      // Finalize deferred local variable now that expression is evaluated
+      // Finalise deferred local variable now that expression is evaluated
 
       if (target.needs_var_add and target.pending_symbol) {
-         this->lex_state.var_new(BCReg(0), target.pending_symbol, target.pending_line, target.pending_column);
-         this->lex_state.var_add(BCReg(1));
-         BCReg slot = BCReg(this->func_state.varmap.size() - 1);
-         // Update target.storage to point to the new local
-         target.storage.init(ExpKind::Local, slot);
-         target.storage.u.s.aux = this->func_state.varmap[slot.raw()];
-         this->update_local_binding(target.pending_symbol, slot);
+         this->finalise_pending_local_assignment(target);
       }
 
       ExpDesc rhs = list.value_ref();
@@ -511,10 +469,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_nil_assignment(PreparedAssignment ta
    auto lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
    // Only check for nil (simpler and faster than ??= which checks nil, false, 0, and empty string)
-   ExpDesc nilv(ExpKind::Nil);
-
-   bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, lhs_reg, const_pri(&nilv)));
-   ControlFlowEdge check_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
+   FalseyJumpOptions nil_only;
+   nil_only.include_false = false;
+   nil_only.include_zero = false;
+   nil_only.include_empty_string = false;
+   ControlFlowEdge check_nil = emit_falsey_jumps(
+      this->func_state, this->lex_state, this->control_flow, lhs_reg, nil_only);
 
    // As with ??= above, any safe-nav skip edge lands after this emitter's store path. The nil check here
    // runs only when target preparation proved that the guarded chain itself was non-nil.

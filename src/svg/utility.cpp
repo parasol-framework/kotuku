@@ -102,7 +102,7 @@ ERR svgState::current_colour(objVector *Vector, FRGB &RGB) noexcept
 {
    if (!m_color.empty()) {
       VectorPainter painter;
-      if (vec::ReadPainter(nullptr, m_color.c_str(), &painter, nullptr) IS ERR::Okay) {
+      if (vec::ReadPainter(nullptr, m_color, &painter, nullptr) IS ERR::Okay) {
          RGB = painter.Colour;
          return ERR::Okay;
       }
@@ -227,7 +227,7 @@ static void parse_transform(objVector *Vector, const std::string Value, int Tag)
    if ((Vector->Class->BaseClassID IS CLASSID::VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
       if (Vector->newMatrix(&matrix, false) IS ERR::Okay) {
-         vec::ParseTransform(matrix, Value.c_str());
+         vec::ParseTransform(matrix, Value);
          matrix->Tag = Tag;
       }
       else {

@@ -204,10 +204,6 @@ public:
 
 void lj_lex_error(LexState *, LexToken, ErrMsg, ...);
 
-// Error checking functions.
-
-inline void checkcond(LexState *ls, bool c, ErrMsg em) { if (not (c)) { ls->err_syntax(em); } }
-
 //********************************************************************************************************************
 // RAII guard for import LexState instances.
 //

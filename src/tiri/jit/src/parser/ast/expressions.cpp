@@ -9,6 +9,16 @@
 // - Arrow functions
 // - Operator matching
 
+namespace {
+
+[[nodiscard]] inline bool is_ordering_operator(AstBinaryOperator Operator)
+{
+   return Operator IS AstBinaryOperator::LessThan or Operator IS AstBinaryOperator::LessEqual or
+      Operator IS AstBinaryOperator::GreaterThan or Operator IS AstBinaryOperator::GreaterEqual;
+}
+
+} // namespace
+
 //********************************************************************************************************************
 // Parses expression statements, handling assignments, compound assignments, conditional shorthands, and standalone expressions.
 
@@ -29,6 +39,14 @@ ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
    auto assignment_result = token_to_assignment_op(op.kind());
 
    if (assignment_result.has_value()) {
+      for (const ExprNodePtr &target : targets) {
+         if (const Identifier *identifier = future_reserved_identifier_expr(target)) {
+            return this->fail<StmtNodePtr>(ParserErrorCode::InvalidAssignment,
+               Token::from_span(identifier->span, TokenKind::Identifier),
+               future_reserved_variable_message(*identifier));
+         }
+      }
+
       AssignmentOperator assignment = assignment_result.value();
       this->ctx.tokens().advance();
       auto values = this->parse_expression_list();
@@ -308,6 +326,37 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
       auto op_info = this->match_binary_operator(next);
       if (not op_info.has_value()) break;
       if (op_info->left <= precedence) break;
+
+      if (is_ordering_operator(op_info->op)) {
+         ExprNodeList operands;
+         std::vector<AstBinaryOperator> operators;
+         operands.push_back(std::move(left.value_ref()));
+
+         while (op_info.has_value() and is_ordering_operator(op_info->op) and op_info->left > precedence) {
+            this->ctx.tokens().advance();
+            auto right = this->parse_expression(op_info->right);
+            if (not right.ok()) return right;
+            operators.push_back(op_info->op);
+            operands.push_back(std::move(right.value_ref()));
+
+            next = this->ctx.tokens().current();
+            op_info = this->match_binary_operator(next);
+         }
+
+         SourceSpan span = combine_spans(operands.front()->span, operands.back()->span);
+         if (operators.size() IS 1) {
+            ExprNodePtr lhs = std::move(operands[0]);
+            ExprNodePtr rhs = std::move(operands[1]);
+            left = ParserResult<ExprNodePtr>::success(
+               make_binary_expr(span, operators[0], std::move(lhs), std::move(rhs)));
+         }
+         else {
+            left = ParserResult<ExprNodePtr>::success(
+               make_comparison_chain_expr(span, std::move(operators), std::move(operands)));
+         }
+         continue;
+      }
+
       this->ctx.tokens().advance();
       auto right = this->parse_expression(op_info->right);
       if (not right.ok()) return right;
@@ -380,6 +429,25 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          node = make_literal_expr(current.span(), make_literal(current));
          this->ctx.tokens().advance();
          break;
+
+      case TokenKind::RegexString: {
+         SourceSpan span = current.span();
+         GCstr *pattern = current.payload().as_string();
+         this->ctx.tokens().advance();
+
+         Identifier regex_id = Identifier::from_keepstr(this->ctx.lex().keepstr("regex"), span);
+         NameRef regex_ref;
+         regex_ref.identifier = regex_id;
+         ExprNodePtr regex_base = make_identifier_expr(span, regex_ref);
+
+         Identifier new_id = Identifier::from_keepstr(this->ctx.lex().keepstr("new"), span);
+         ExprNodePtr regex_new = make_member_expr(span, std::move(regex_base), new_id, false);
+
+         ExprNodeList args;
+         args.push_back(make_literal_expr(span, LiteralValue::string(pattern)));
+         node = make_call_expr(span, std::move(regex_new), std::move(args), false);
+         break;
+      }
 
       case TokenKind::Identifier: {
          Identifier id = make_identifier(current);
@@ -1115,6 +1183,11 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          return info;
       case TokenKind::NotEqual:
          info.op = AstBinaryOperator::NotEqual;
+         info.left = 3;
+         info.right = 3;
+         return info;
+      case TokenKind::Approx:
+         info.op = AstBinaryOperator::Approx;
          info.left = 3;
          info.right = 3;
          return info;

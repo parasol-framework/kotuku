@@ -345,9 +345,11 @@ static ERR resolve(const std::string &Source, std::string &Dest, RSF Flags)
    if (vol_pos IS std::string::npos) return log.warning(ERR::InvalidData);
 
    std::string fullpath;
-   if (auto lock = std::unique_lock{glmVolumes, 2s}) {
+   if (auto lock = std::shared_lock{glmVolumes, 2s}) {
       auto vol = glVolumes.find(std::string_view(Source.data(), vol_pos));
-      if (vol != glVolumes.end()) fullpath.assign(vol->second["Path"]);
+      if (vol != glVolumes.end()) {
+         if (auto path = vol->second.find("Path"); path != vol->second.end()) fullpath.assign(path->second);
+      }
       else {
          log.msg("No matching volume for \"%s\".", Source.c_str());
          return ERR::Search;
@@ -466,7 +468,7 @@ static ERR resolve_object_path(const std::string &Path, const std::string &Sourc
 
    if (!Path.empty()) {
       OBJECTID volume_id;
-      if (FindObject(Path.c_str(), CLASSID::NIL, FOF::NIL, &volume_id) IS ERR::Okay) {
+      if (FindObject(Path.c_str(), CLASSID::NIL, &volume_id) IS ERR::Okay) {
          OBJECTPTR object;
          if (AccessObject(volume_id, 5000, &object) IS ERR::Okay) {
             if ((object->get(FID_ResolvePath, resolve_virtual) IS ERR::Okay) and (resolve_virtual)) {

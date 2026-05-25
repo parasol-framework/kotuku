@@ -1432,7 +1432,10 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
          std::string name(vol, 0, v);
          std::string path(vol, v + 1, vol.size() - (v + 1));
 
-         VOLUME flags = glVolumes.contains(name) ? VOLUME::NIL : VOLUME::HIDDEN;
+         VOLUME flags = VOLUME::HIDDEN;
+         if (auto lock = std::shared_lock{glmVolumes, 1s}) {
+            if (glVolumes.contains(name)) flags = VOLUME::NIL;
+         }
 
          SetVolume(name, path, "", "", "", VOLUME::PRIORITY|flags);
       }

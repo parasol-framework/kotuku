@@ -657,7 +657,7 @@ void layout::size_widget(widget_mgr &Widget, bool ScaleToFont)
    }
 
    if (!Widget.label.empty()) {
-      Widget.label_width = vec::StringWidth(m_font->handle, Widget.label.c_str(), -1);
+      Widget.label_width = vec::StringWidth(m_font->handle, Widget.label, -1);
    }
    else Widget.label_width = 0;
 }
@@ -1083,7 +1083,7 @@ void layout::lay_paragraph()
          para.item_indent = list->item_indent;
 
          if (!para.value.empty()) {
-            auto strwidth = vec::StringWidth(m_font->handle, para.value.c_str(), -1) + 10;
+            auto strwidth = vec::StringWidth(m_font->handle, para.value, -1) + 10;
             auto item_indent = list->item_indent.px(*this);
             if (strwidth > item_indent) {
                list->item_indent = DUNIT(strwidth, DU::PIXEL);
@@ -2465,7 +2465,7 @@ font_entry * bc_font::layout_font(layout &Layout)
    }
 
    APTR new_handle = nullptr;
-   if (vec::GetFontHandle(face.c_str(), style.c_str(), 400, pixel_size, &new_handle) IS ERR::Okay) {
+   if (vec::GetFontHandle(face, style, 400, pixel_size, &new_handle) IS ERR::Okay) {
       std::lock_guard lk(glFontsMutex);
 
       if (auto it = glFontIndexCache.find(cache_key); it != glFontIndexCache.end()) {

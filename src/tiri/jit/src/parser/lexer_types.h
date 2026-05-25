@@ -74,6 +74,16 @@ struct TokenDefinition {
    TOKEN_DEF(check,        "check",    TKF_RESERVED | TKF_STATEMENT_START | TKF_SHORTHAND_STATEMENT) \
    TOKEN_DEF(while,        "while",    TKF_RESERVED | TKF_STATEMENT_START) \
    TOKEN_DEF(with,         "with",     TKF_RESERVED | TKF_STATEMENT_START) \
+   TOKEN_DEF(class,        "class",    TKF_RESERVED) \
+   TOKEN_DEF(interface,    "interface", TKF_RESERVED) \
+   TOKEN_DEF(record,       "record",   TKF_RESERVED) \
+   TOKEN_DEF(extends,      "extends",  TKF_RESERVED) \
+   TOKEN_DEF(export,       "export",   TKF_RESERVED) \
+   TOKEN_DEF(await,        "await",    TKF_RESERVED) \
+   TOKEN_DEF(finally,      "finally",  TKF_RESERVED) \
+   TOKEN_DEF(yield,        "yield",    TKF_RESERVED) \
+   TOKEN_DEF(using,        "using",    TKF_RESERVED) \
+   TOKEN_DEF(where,        "where",    TKF_RESERVED) \
    TOKEN_DEF(case_arrow,   "->",       TKF_NONE) \
    TOKEN_DEF(if_empty,     "??",       TKF_NONE) \
    TOKEN_DEF(guard,        "?!",       TKF_NONE) \
@@ -87,12 +97,14 @@ struct TokenDefinition {
    TOKEN_DEF(ge,           ">=",       TKF_NONE) \
    TOKEN_DEF(le,           "<=",       TKF_NONE) \
    TOKEN_DEF(ne,           "~=",       TKF_NONE) \
+   TOKEN_DEF(approx,       "≈",        TKF_NONE) \
    TOKEN_DEF(shl,          "<<",       TKF_NONE) \
    TOKEN_DEF(shr,          ">>",       TKF_NONE) \
    TOKEN_DEF(ternary_sep,  ":>",       TKF_NONE) \
    TOKEN_DEF(number,       "<number>", TKF_CAN_END_RANGE_EXPRESSION | TKF_LITERAL) \
    TOKEN_DEF(name,         "<name>",   TKF_CAN_END_RANGE_EXPRESSION) \
    TOKEN_DEF(string,       "<string>", TKF_CAN_END_RANGE_EXPRESSION | TKF_LITERAL) \
+   TOKEN_DEF(regex_string, "<regex_string>", TKF_CAN_END_RANGE_EXPRESSION | TKF_LITERAL) \
    TOKEN_DEF(cadd,         "+=",       TKF_COMPOUND_ASSIGNMENT) \
    TOKEN_DEF(csub,         "-=",       TKF_COMPOUND_ASSIGNMENT) \
    TOKEN_DEF(cmul,         "*=",       TKF_COMPOUND_ASSIGNMENT) \
@@ -153,7 +165,7 @@ inline constexpr size_t generate_reserved_count() noexcept {
 enum {
    TK_OFS = 256,
    TOKEN_DEF_LIST
-   TK_RESERVED = TK_with - TK_OFS
+   TK_RESERVED = TK_where - TK_OFS
 };
 #undef TOKEN_DEF
 

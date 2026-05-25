@@ -1078,8 +1078,8 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
             if (payload->left) this->analyse_expression(*payload->left);
             if (payload->right) this->analyse_expression(*payload->right);
 
-            // Warn if `has` operator operands are not numeric
-            if (payload->op IS AstBinaryOperator::HasFlag) {
+            // Warn if numeric-only operators receive statically known non-numeric operands.
+            if (payload->op IS AstBinaryOperator::HasFlag or payload->op IS AstBinaryOperator::Approx) {
                auto check_operand = [&](const std::unique_ptr<ExprNode> &operand, const char *Side) {
                   if (not operand) return;
                   auto inferred = this->infer_expression_type(*operand);
@@ -1090,13 +1090,23 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
                      diag.expected = TiriType::Num;
                      diag.actual = inferred.primary;
                      diag.code = ParserErrorCode::TypeMismatchArgument;
-                     diag.message = std::format("'has' operator expects numeric {}, got {}", Side,
+                     const char *op_name = payload->op IS AstBinaryOperator::HasFlag ? "has" : "≈";
+                     diag.message = std::format("'{}' operator expects numeric {}, got {}", op_name, Side,
                         type_name(inferred.primary));
                      this->diagnostics_.push_back(std::move(diag));
                   }
                };
                check_operand(payload->left, "operand");
                check_operand(payload->right, "operand");
+            }
+         }
+         break;
+      }
+      case AstNodeKind::ComparisonChainExpr: {
+         auto *payload = std::get_if<ComparisonChainExprPayload>(&Expression.data);
+         if (payload) {
+            for (const auto &operand : payload->operands) {
+               if (operand) this->analyse_expression(*operand);
             }
          }
          break;
@@ -1332,6 +1342,10 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
          result.primary = TiriType::Any;
          break;
       }
+      case AstNodeKind::ComparisonChainExpr:
+         result.primary = TiriType::Bool;
+         return result;
+
       case AstNodeKind::BinaryExpr: {
          // Infer type from binary expression operands and operator
          auto *payload = std::get_if<BinaryExprPayload>(&Expr.data);
@@ -1340,6 +1354,7 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
                // Comparison operators always return boolean
                case AstBinaryOperator::Equal:
                case AstBinaryOperator::NotEqual:
+               case AstBinaryOperator::Approx:
                case AstBinaryOperator::LessThan:
                case AstBinaryOperator::LessEqual:
                case AstBinaryOperator::GreaterThan:
@@ -1419,6 +1434,7 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
          result.primary = TiriType::Any;
          break;
       }
+
       case AstNodeKind::UnaryExpr: {
          auto *payload = std::get_if<UnaryExprPayload>(&Expr.data);
          if (payload) {
@@ -1957,6 +1973,15 @@ bool TypeAnalyser::expression_contains_call_to(const ExprNode& Expr, GCstr *Name
          if (payload) {
             if (payload->left and this->expression_contains_call_to(*payload->left, Name)) return true;
             if (payload->right and this->expression_contains_call_to(*payload->right, Name)) return true;
+         }
+         break;
+      }
+      case AstNodeKind::ComparisonChainExpr: {
+         auto *payload = std::get_if<ComparisonChainExprPayload>(&Expr.data);
+         if (payload) {
+            for (const auto &operand : payload->operands) {
+               if (operand and this->expression_contains_call_to(*operand, Name)) return true;
+            }
          }
          break;
       }

@@ -270,7 +270,7 @@ ERR get_file_info(const std::string_view &Path, FileInfo &Info)
       if (auto pos = Path.find(':'); pos != std::string::npos) Info.Name = Path.substr(0, pos);
       else Info.Name = Path;
 
-      if (auto lock = std::unique_lock{glmVolumes, 1s}) {
+      if (auto lock = std::shared_lock{glmVolumes, 1s}) {
          if (auto volume = glVolumes.find(Info.Name); volume != glVolumes.end()) {
             if (auto hidden = volume->second.find("Hidden"); (hidden != volume->second.end()) and (hidden->second IS "Yes")) {
                Info.Permissions |= PERMIT::HIDDEN;
@@ -451,7 +451,7 @@ ERR AnalysePath(const std::string_view &Path, LOC *PathType)
    }
 
    if (path.ends_with(':')) {
-      if (auto lock = std::unique_lock{glmVolumes, 1s}) {
+      if (auto lock = std::shared_lock{glmVolumes, 1s}) {
          path.remove_suffix(1);
          if (glVolumes.contains(path)) {
             if (PathType) *PathType = LOC::VOLUME;
@@ -2519,15 +2519,17 @@ ERR fs_getdeviceinfo(std::string_view Path, objStorageDevice *Info)
 restart:
    auto vol = Path.substr(0, Path.find(':'));
 
-   if (auto lock = std::unique_lock{glmVolumes, 2s}) {
+   if (auto lock = std::shared_lock{glmVolumes, 2s}) {
       // We keep this lock localised so that it doesn't impact ResolvePath()
       if (auto volume = glVolumes.find(vol); volume != glVolumes.end()) {
          auto &keys = volume->second;
 
-         if (not keys["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE::SOFTWARE; // Virtual device
+         if (auto path = keys.find("Path"); path != keys.end()) {
+            if (not path->second.compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE::SOFTWARE; // Virtual device
+         }
 
-         if (keys.contains("Device")) {
-            auto &device = keys["Device"];
+         if (auto device_record = keys.find("Device"); device_record != keys.end()) {
+            auto &device = device_record->second;
             if (not device.compare("disk"))       Info->DeviceFlags |= DEVICE::FLOPPY_DISK|DEVICE::REMOVABLE|DEVICE::READ|DEVICE::WRITE;
             else if (not device.compare("fixed")) Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
             else if (not device.compare("hd"))    Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
