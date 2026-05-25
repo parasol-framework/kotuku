@@ -609,23 +609,22 @@ struct Object { // Must be 64-bit aligned
                data = ((kt::vector<int> *)data)->data();
             }
 
-            std::stringstream buffer;
             if (array_size IS -1) return ERR::Failed; // Array sizing not supported by this field.
 
+            Value.clear();
             if (flags & FD_INT) {
                auto array = (int *)data;
-               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+               for (int i=0; i < array_size; i++) Value.append(std::to_string(*array++)).push_back(',');
             }
             else if (flags & FD_BYTE) {
                auto array = (uint8_t *)data;
-               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+               for (int i=0; i < array_size; i++) Value.append(std::to_string(*array++)).push_back(',');
             }
             else if (flags & FD_DOUBLE) {
                auto array = (double *)data;
-               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+               for (int i=0; i < array_size; i++) Value.append(std::to_string(*array++)).push_back(',');
             }
 
-            Value = buffer.str();
             if (!Value.empty()) Value.pop_back(); // Remove trailing comma
             return ERR::Okay;
          }
@@ -647,13 +646,15 @@ struct Object { // Must be 64-bit aligned
             }
             else if (flags & FD_FLAGS) {
                if (auto lookup = (FieldDef *)field->Arg) {
-                  std::stringstream buffer;
+                  Value.clear();
                   int v = ((int *)data)[0];
                   while (lookup->Name) {
-                     if (v & lookup->Value) buffer << lookup->Name << '|';
+                     if (v & lookup->Value) {
+                        Value.append(lookup->Name);
+                        Value.push_back('|');
+                     }
                      lookup++;
                   }
-                  Value = buffer.str();
                   if (!Value.empty()) Value.pop_back(); // Remove trailing pipe
                   return ERR::Okay;
                }
