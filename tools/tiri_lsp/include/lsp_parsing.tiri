@@ -705,6 +705,10 @@ global function tokenizeTiri(Source:str):array
             pos++
             col++
          end
+      elseif c is '≈' then -- approximate equality
+         addToken(line, col, 1, 1, 0)
+         pos++
+         col++
       elseif c is '&' then -- & bitwise AND
          addToken(line, col, 1, 1, 0)
          pos++

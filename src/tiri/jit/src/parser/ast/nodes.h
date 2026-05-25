@@ -139,6 +139,7 @@ enum class AstBinaryOperator : uint8_t {
    Concat,
    NotEqual,
    Equal,
+   Approx,
    LessThan,
    GreaterEqual,
    LessEqual,

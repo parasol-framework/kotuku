@@ -257,7 +257,7 @@
             },
             {
                "name": "keyword.operator.comparison.tiri",
-               "match": "(==|!=|<=|>=|<|>)"
+               "match": "(==|!=|<=|>=|≈|≠|≤|≥|<|>)"
             },
             {
                "name": "keyword.operator.assignment.tiri",

@@ -1186,6 +1186,11 @@ std::optional<AstBuilder::BinaryOpInfo> AstBuilder::match_binary_operator(const 
          info.left = 3;
          info.right = 3;
          return info;
+      case TokenKind::Approx:
+         info.op = AstBinaryOperator::Approx;
+         info.left = 3;
+         info.right = 3;
+         return info;
       case TokenKind::LessEqual:
          // Check if this is actually the start of a choose case relational pattern
          // (<= followed by expression then ->). If so, don't treat it as a binary operator.

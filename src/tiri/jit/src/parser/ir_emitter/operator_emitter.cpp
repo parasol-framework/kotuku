@@ -47,6 +47,7 @@ static CSTRING get_binop_name(BinOpr opr)
       case BinOpr::LessEqual: return "<=";
       case BinOpr::GreaterThan: return ">";
       case BinOpr::GreaterEqual: return ">=";
+      case BinOpr::Approx: return "≈";
       case BinOpr::LogicalAnd: return "and";
       case BinOpr::LogicalOr: return "or";
       default: return "?";
@@ -221,6 +222,70 @@ static void bcemit_arith(FuncState* fs, BinOpr opr, ExpDesc* e1, ExpDesc* e2)
    e1->u.s.info = bcemit_ABC(fs, op, 0, rb, rc);
    e1->k = ExpKind::Relocable;
    e1->result_type = TiriType::Num;  // Arithmetic operations always return number
+}
+
+//********************************************************************************************************************
+// Emit comparison operator.
+
+static constexpr lua_Number TIRI_APPROX_TOLERANCE = 1e-5;
+
+//********************************************************************************************************************
+// Try constant-folding of approximate equality.
+
+[[nodiscard]] static int foldapprox(ExpDesc* e1, ExpDesc* e2)
+{
+   if (!e1->is_num_constant_nojump() or !e2->is_num_constant_nojump()) [[likely]] return 0;
+
+   lua_Number delta = e1->number_value() - e2->number_value();
+   bool result = delta <= TIRI_APPROX_TOLERANCE and delta >= -TIRI_APPROX_TOLERANCE;
+   *e1 = ExpDesc(result);
+   e1->result_type = TiriType::Bool;
+   return 1;
+}
+
+//********************************************************************************************************************
+// Emit approximate equality: `(lhs - rhs) <= tolerance and (lhs - rhs) >= -tolerance`.
+
+static void bcemit_approx(FuncState* fs, ExpDesc* e1, ExpDesc* e2)
+{
+   if (foldapprox(e1, e2)) return;
+
+   RegisterAllocator allocator(fs);
+
+   bcemit_arith(fs, BinOpr::Sub, e1, e2);
+
+   ExpressionValue delta_value(fs, *e1);
+   BCReg delta_reg = delta_value.discharge_to_any_reg(allocator);
+   *e1 = delta_value.legacy();
+
+   ExpDesc upper(TIRI_APPROX_TOLERANCE);
+   ExpressionValue upper_value(fs, upper);
+   BCReg upper_reg = upper_value.discharge_to_any_reg(allocator);
+   upper = upper_value.legacy();
+
+   bcemit_INS(fs, BCINS_AD(BC_ISLE, delta_reg, upper_reg));
+   BCPOS upper_false = bcemit_jmp(fs);
+   ExpDesc upper_check(ExpKind::Jmp, upper_false);
+   invertcond(fs, &upper_check);
+
+   ExpDesc lower(-TIRI_APPROX_TOLERANCE);
+   ExpressionValue lower_value(fs, lower);
+   BCReg lower_reg = lower_value.discharge_to_any_reg(allocator);
+   lower = lower_value.legacy();
+
+   bcemit_INS(fs, BCINS_AD(BC_ISGE, delta_reg, lower_reg));
+   BCPOS lower_false = bcemit_jmp(fs);
+
+   allocator.release_register(lower_reg);
+   allocator.release_register(upper_reg);
+   allocator.release_register(delta_reg);
+
+   e1->u.s.info = lower_false;
+   e1->u.s.aux = 0;
+   e1->k = ExpKind::Jmp;
+   e1->t = NO_JMP;
+   e1->f = upper_false;
+   e1->result_type = TiriType::Bool;
 }
 
 //********************************************************************************************************************
@@ -702,7 +767,8 @@ void OperatorEmitter::emit_comparison(BinOpr opr, ExprValue left, ExpDesc right)
          get_binop_name(opr), get_expkind_name(left.kind()), get_expkind_name(right.k));
    }
 
-   bcemit_comp(this->func_state, opr, left.raw(), &right);
+   if (opr IS BinOpr::Approx) bcemit_approx(this->func_state, left.raw(), &right);
+   else bcemit_comp(this->func_state, opr, left.raw(), &right);
 }
 
 //********************************************************************************************************************

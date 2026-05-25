@@ -1,14 +1,8 @@
 
    mVec ?= mod.load('vector')
 
-TOLERANCE <const> = 0.000001
-
-function near(A, B)
-   return math.abs(A - B) < TOLERANCE
-end
-
 function assertNear(Actual, Expected, Message)
-   assert(near(Actual, Expected), f'{Message}: expected {Expected}, got {Actual}')
+   assert(Actual ≈ Expected, f'{Message}: expected {Expected}, got {Actual}')
 end
 
 function assertMatrix(Matrix, ScaleX, ShearY, ShearX, ScaleY, TranslateX, TranslateY, Message)
@@ -30,8 +24,8 @@ function setNonIdentity(Matrix)
 end
 
 function isIdentity(Matrix)
-   return near(Matrix.ScaleX, 1) and near(Matrix.ShearY, 0) and near(Matrix.ShearX, 0) and
-      near(Matrix.ScaleY, 1) and near(Matrix.TranslateX, 0) and near(Matrix.TranslateY, 0)
+   return (Matrix.ScaleX ≈ 1) and (Matrix.ShearY ≈ 0) and (Matrix.ShearX ≈ 0) and
+      (Matrix.ScaleY ≈ 1) and (Matrix.TranslateX ≈ 0) and (Matrix.TranslateY ≈ 0)
 end
 
 function parseTransform(Transform)

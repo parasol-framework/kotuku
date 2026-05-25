@@ -55,6 +55,7 @@ enum class TokenKind : uint16_t {
    Cat = TK_concat,
    Equal = TK_eq,
    NotEqual = TK_ne,
+   Approx = TK_approx,
    LessEqual = TK_le,
    GreaterEqual = TK_ge,
    ShiftLeft = TK_shl,
@@ -193,6 +194,7 @@ enum class TokenKind : uint16_t {
       case TokenKind::Cat: return "..";
       case TokenKind::Equal: return "==";
       case TokenKind::NotEqual: return "!=";
+      case TokenKind::Approx: return "≈";
       case TokenKind::LessEqual: return "<=";
       case TokenKind::GreaterEqual: return ">=";
       case TokenKind::ShiftLeft: return "<<";

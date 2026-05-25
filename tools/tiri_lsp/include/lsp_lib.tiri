@@ -352,7 +352,7 @@ global function computeErrorRange(Doc:table, Line:num, Column:num)
 
    -- For operators and punctuation, try to capture multi-character operators
 
-   if c is '=' or c is '!' or c is '<' or c is '>' or c is '~' or c is ':' or c is '.' then
+   if c is '=' or c is '!' or c is '<' or c is '>' or c is '~' or c is ':' or c is '.' or c is '≈' then
       next_c = (Column + 1 < #line_text) and line_text:substr(Column + 1, Column + 2) or ''
       if next_c is '=' or next_c is '>' then
          return Column, Column + 2

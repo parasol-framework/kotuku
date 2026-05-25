@@ -357,6 +357,7 @@ enum class BinOpr : int8_t {
    BitAnd, BitOr, BitXor, ShiftLeft, ShiftRight,
    LogicalAnd, LogicalOr, IfEmpty,
    HasFlag,
+   Approx,
    Ternary,
    None
 };
@@ -374,7 +375,7 @@ enum class BinOpr : int8_t {
 }
 
 [[nodiscard]] constexpr bool is_comparison_op(BinOpr op) {
-   return op >= BinOpr::NotEqual and op <= BinOpr::GreaterThan;
+   return (op >= BinOpr::NotEqual and op <= BinOpr::GreaterThan) or op IS BinOpr::Approx;
 }
 
 [[nodiscard]] constexpr bool is_bitwise_op(BinOpr op) {
