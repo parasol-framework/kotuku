@@ -360,6 +360,7 @@ static UnsupportedNodeRecorder glUnsupportedNodes;
       case AstBinaryOperator::GreaterEqual: return BinOpr::GreaterEqual;
       case AstBinaryOperator::LessEqual:    return BinOpr::LessEqual;
       case AstBinaryOperator::GreaterThan:  return BinOpr::GreaterThan;
+      case AstBinaryOperator::Approx:       return BinOpr::Approx;
       case AstBinaryOperator::BitAnd:       return BinOpr::BitAnd;
       case AstBinaryOperator::BitOr:        return BinOpr::BitOr;
       case AstBinaryOperator::BitXor:       return BinOpr::BitXor;
@@ -1949,7 +1950,7 @@ ParserResult<ExpDesc> IrEmitter::emit_binary_expr(const BinaryExprPayload &Paylo
    else if (opr IS BinOpr::LogicalOr) { // Logical OR: CFG-based short-circuit implementation
       this->operator_emitter.complete_logical_or(ExprValue(&lhs), rhs);
    }
-   else if (opr >= BinOpr::NotEqual and opr <= BinOpr::GreaterThan) { // Comparison operators (NE, EQ, LT, GE, LE, GT)
+   else if (is_comparison_op(opr)) { // Comparison operators (NE, EQ, LT, GE, LE, GT, APPROX)
       this->operator_emitter.emit_comparison(opr, ExprValue(&lhs), rhs);
    }
    else if (opr IS BinOpr::Concat) { // CONCAT: CFG-based implementation with BC_CAT chaining

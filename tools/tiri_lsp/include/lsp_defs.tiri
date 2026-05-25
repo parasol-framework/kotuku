@@ -231,6 +231,7 @@ glKeywords = {
    ['or'] = { comment = 'Logical OR operator.' },
    ['not'] = { comment = 'Logical NOT operator.' },
    ['is'] = { comment = 'Equality comparison.' },
+   ['≈'] = { comment = 'Approximate numeric equality with an inclusive absolute tolerance of 1e-5.' },
 
    -- Constants
    ['true'] = { comment = 'Boolean true value.' },

@@ -97,6 +97,7 @@ struct TokenDefinition {
    TOKEN_DEF(ge,           ">=",       TKF_NONE) \
    TOKEN_DEF(le,           "<=",       TKF_NONE) \
    TOKEN_DEF(ne,           "~=",       TKF_NONE) \
+   TOKEN_DEF(approx,       "≈",        TKF_NONE) \
    TOKEN_DEF(shl,          "<<",       TKF_NONE) \
    TOKEN_DEF(shr,          ">>",       TKF_NONE) \
    TOKEN_DEF(ternary_sep,  ":>",       TKF_NONE) \

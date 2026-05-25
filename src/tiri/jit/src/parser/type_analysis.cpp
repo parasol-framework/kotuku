@@ -1078,8 +1078,8 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
             if (payload->left) this->analyse_expression(*payload->left);
             if (payload->right) this->analyse_expression(*payload->right);
 
-            // Warn if `has` operator operands are not numeric
-            if (payload->op IS AstBinaryOperator::HasFlag) {
+            // Warn if numeric-only operators receive statically known non-numeric operands.
+            if (payload->op IS AstBinaryOperator::HasFlag or payload->op IS AstBinaryOperator::Approx) {
                auto check_operand = [&](const std::unique_ptr<ExprNode> &operand, const char *Side) {
                   if (not operand) return;
                   auto inferred = this->infer_expression_type(*operand);
@@ -1090,7 +1090,8 @@ void TypeAnalyser::analyse_expression(const ExprNode &Expression)
                      diag.expected = TiriType::Num;
                      diag.actual = inferred.primary;
                      diag.code = ParserErrorCode::TypeMismatchArgument;
-                     diag.message = std::format("'has' operator expects numeric {}, got {}", Side,
+                     const char *op_name = payload->op IS AstBinaryOperator::HasFlag ? "has" : "≈";
+                     diag.message = std::format("'{}' operator expects numeric {}, got {}", op_name, Side,
                         type_name(inferred.primary));
                      this->diagnostics_.push_back(std::move(diag));
                   }
@@ -1353,6 +1354,7 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
                // Comparison operators always return boolean
                case AstBinaryOperator::Equal:
                case AstBinaryOperator::NotEqual:
+               case AstBinaryOperator::Approx:
                case AstBinaryOperator::LessThan:
                case AstBinaryOperator::LessEqual:
                case AstBinaryOperator::GreaterThan:

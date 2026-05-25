@@ -922,6 +922,10 @@ static LexToken match_unicode_operator(LexState *State, int &ByteLength) noexcep
             ByteLength = 3;
             return TK_ne;       // ≠
          }
+         else if (third IS 0x88) {
+            ByteLength = 3;
+            return TK_approx;   // ≈
+         }
          else if (third IS 0xA4) {
             ByteLength = 3;
             return TK_le;        // ≤

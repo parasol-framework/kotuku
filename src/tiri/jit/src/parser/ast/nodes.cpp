@@ -134,6 +134,7 @@ TiriType infer_expression_type(const ExprNode &Expr)
             // Comparison operators return boolean
             case AstBinaryOperator::NotEqual:
             case AstBinaryOperator::Equal:
+            case AstBinaryOperator::Approx:
             case AstBinaryOperator::LessThan:
             case AstBinaryOperator::GreaterEqual:
             case AstBinaryOperator::LessEqual:
