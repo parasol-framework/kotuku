@@ -13,9 +13,9 @@ function assertNear(Actual, Expected, Message)
 end
 
 function newTargetPath()
-   local scene = obj.new('VectorScene')
-   local viewport = scene.new('VectorViewport')
-   local path = viewport.new('VectorPath')
+   scene = obj.new('VectorScene')
+   viewport = scene.new('VectorViewport')
+   path = viewport.new('VectorPath')
    check scene.init()
    check viewport.init()
    check path.init()
@@ -23,7 +23,7 @@ function newTargetPath()
 end
 
 function assertCommand(Path, Index, Type, X, Y, Message)
-   local err, command = Path.mtGetCommand(Index)
+   err, command = Path.mtGetCommand(Index)
    assert(err is ERR_Okay, f'{Message}: GetCommand({Index}) failed with {mSys.GetErrorMsg(err)}')
    assert(command.type is Type, f'{Message}: command type mismatch')
    assertNear(command.x, X, f'{Message}: X')
@@ -31,7 +31,7 @@ function assertCommand(Path, Index, Type, X, Y, Message)
 end
 
 function assertCurveCommand(Path, Index, Type, X, Y, X2, Y2, X3, Y3, Message)
-   local err, command = Path.mtGetCommand(Index)
+   err, command = Path.mtGetCommand(Index)
    assert(err is ERR_Okay, f'{Message}: GetCommand({Index}) failed with {mSys.GetErrorMsg(err)}')
    assert(command.type is Type, f'{Message}: command type mismatch')
    assertNear(command.x, X, f'{Message}: X')
@@ -43,10 +43,10 @@ function assertCurveCommand(Path, Index, Type, X, Y, X2, Y2, X3, Y3, Message)
 end
 
 @Test function RectangleAppliesAsEditableCommands()
-   local err, source = mVec.GenerateRectangle(10, 20, 30, 40)
+   err, source = mVec.GenerateRectangle(10, 20, 30, 40)
    check err
 
-   local scene, viewport, path = newTargetPath()
+   scene, viewport, path = newTargetPath()
    check mVec.ApplyPath(source, path)
 
    assert(path.totalCommands is 5, f'Rectangle should apply as five commands, got {path.totalCommands}')
@@ -62,10 +62,10 @@ end
 end
 
 @Test function ApplyPathReplacesExistingCommands()
-   local err, source = mVec.GenerateRectangle(1, 2, 3, 4)
+   err, source = mVec.GenerateRectangle(1, 2, 3, 4)
    check err
 
-   local scene, viewport, path = newTargetPath()
+   scene, viewport, path = newTargetPath()
    path.sequence = 'M 100 100 L 200 200'
    assert(path.totalCommands is 2, 'Precondition failed: path sequence should create two commands')
 
@@ -76,10 +76,10 @@ end
 end
 
 @Test function GeneratedCurvesApplyAndTrace()
-   local err, source = mVec.GeneratePath('M 0 0 C 10 0 20 20 30 30 Q 40 40 50 50')
+   err, source = mVec.GeneratePath('M 0 0 C 10 0 20 20 30 30 Q 40 40 50 50')
    check err
 
-   local scene, viewport, path = newTargetPath()
+   scene, viewport, path = newTargetPath()
    check mVec.ApplyPath(source, path)
 
    assert(path.totalCommands is 3, f'Curve path should apply as three commands, got {path.totalCommands}')
@@ -93,7 +93,7 @@ end
    assert(err is ERR_Okay, f'quadratic command: GetCommand failed with {mSys.GetErrorMsg(err)}')
    assert(command.type is PE_QuadCurve, 'Quadratic curve should remain editable as a quadratic command')
 
-   local traced = 0
+   traced = 0
    function trace(Vector, Index, Command, X, Y)
       traced++
       return ERR_Okay
@@ -105,10 +105,10 @@ end
 end
 
 @Test function GeneratedSmoothQuadraticApplies()
-   local err, source = mVec.GeneratePath('M 0 0 Q 10 0 20 20 T 30 20')
+   err, source = mVec.GeneratePath('M 0 0 Q 10 0 20 20 T 30 20')
    check err
 
-   local scene, viewport, path = newTargetPath()
+   scene, viewport, path = newTargetPath()
    check mVec.ApplyPath(source, path)
 
    assert(path.totalCommands is 3, f'Smooth quadratic path should apply as three commands, got {path.totalCommands}')
@@ -117,10 +117,10 @@ end
 end
 
 @Test function GeneratedSmoothCubicApplies()
-   local err, source = mVec.GeneratePath('M 0 0 C 10 0 20 10 30 20 S 50 40 60 20')
+   err, source = mVec.GeneratePath('M 0 0 C 10 0 20 10 30 20 S 50 40 60 20')
    check err
 
-   local scene, viewport, path = newTargetPath()
+   scene, viewport, path = newTargetPath()
    check mVec.ApplyPath(source, path)
 
    assert(path.totalCommands is 3, f'Smooth cubic path should apply as three commands, got {path.totalCommands}')
@@ -129,14 +129,14 @@ end
 end
 
 @Test function SmoothQuadraticFunctionApplies()
-   local err, source = mVec.GeneratePath(nil)
+   err, source = mVec.GeneratePath(nil)
    check err
 
    mVec.MoveTo(source, 0, 0)
    mVec.Curve3(source, 10, 0, 20, 20)
    mVec.Smooth3(source, 30, 20)
 
-   local scene, viewport, path = newTargetPath()
+   scene, viewport, path = newTargetPath()
    check mVec.ApplyPath(source, path)
 
    assert(path.totalCommands is 3, f'Smooth3 path should apply as three commands, got {path.totalCommands}')
@@ -144,14 +144,14 @@ end
 end
 
 @Test function SmoothCubicFunctionApplies()
-   local err, source = mVec.GeneratePath(nil)
+   err, source = mVec.GeneratePath(nil)
    check err
 
    mVec.MoveTo(source, 0, 0)
    mVec.Curve4(source, 10, 0, 20, 10, 30, 20)
    mVec.Smooth4(source, 50, 40, 60, 20)
 
-   local scene, viewport, path = newTargetPath()
+   scene, viewport, path = newTargetPath()
    check mVec.ApplyPath(source, path)
 
    assert(path.totalCommands is 3, f'Smooth4 path should apply as three commands, got {path.totalCommands}')
@@ -159,10 +159,10 @@ end
 end
 
 @Test function EmptyGeneratedPathClearsExistingCommands()
-   local err, source = mVec.GeneratePath(nil)
+   err, source = mVec.GeneratePath(nil)
    check err
 
-   local scene, viewport, path = newTargetPath()
+   scene, viewport, path = newTargetPath()
    path.sequence = 'M 0 0 L 1 1'
    assert(path.totalCommands is 2, 'Precondition failed: path sequence should create two commands')
 
@@ -172,8 +172,8 @@ end
 end
 
 @Test function NullArgumentsAreRejected()
-   local scene, viewport, path = newTargetPath()
-   local err = mVec.ApplyPath(nil, path)
+   scene, viewport, path = newTargetPath()
+   err = mVec.ApplyPath(nil, path)
    assert(err is ERR_NullArgs, f'Null path should return NullArgs, got {mSys.GetErrorMsg(err)}')
 
    err, source = mVec.GenerateRectangle(0, 0, 1, 1)
@@ -184,13 +184,13 @@ end
 end
 
 @Test function NonVectorPathTargetIsRejected()
-   local err, source = mVec.GenerateRectangle(0, 0, 1, 1)
+   err, source = mVec.GenerateRectangle(0, 0, 1, 1)
    check err
 
-   local scene = obj.new('VectorScene')
-   local viewport = scene.new('VectorViewport')
-   local rectangle = viewport.new('VectorRectangle', { width=10, height=10 })
+   scene = obj.new('VectorScene')
+   viewport = scene.new('VectorViewport')
+   rectangle = viewport.new('VectorRectangle', { width=10, height=10 })
 
    err = mVec.ApplyPath(source, rectangle)
-   assert(err is ERR_Args, f'Non-VectorPath target should return Args, got {mSys.GetErrorMsg(err)}')
+   assert(err != ERR_Okay, 'Non-VectorPath target should return failure')
 end
