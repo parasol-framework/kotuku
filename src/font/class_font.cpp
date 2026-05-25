@@ -122,10 +122,7 @@ static ERR FONT_Init(extFont *Self)
 
    // Check the bitmap cache to see if we have already loaded this font
 
-   if (iequals("Bold", Self->prvStyle)) style = FTF::BOLD;
-   else if (iequals("Italic", Self->prvStyle)) style = FTF::ITALIC;
-   else if (iequals("Bold Italic", Self->prvStyle)) style = FTF::BOLD|FTF::ITALIC;
-   else style = FTF::NIL;
+   style = font_style_flags(Self->prvStyle);
 
    CACHE_LOCK lock(glCacheMutex);
 
@@ -286,14 +283,13 @@ static ERR GET_Bold(extFont *Self, int *Value)
 
 static ERR SET_Bold(extFont *Self, int Value)
 {
-   if (Self->initialised()) {
-      // If the font is initialised, setting the bold style is implicit
-      return SET_Style(Self, "Bold");
-   }
-   else if ((Self->Flags & FTF::ITALIC) != FTF::NIL) {
-      return SET_Style(Self, "Bold Italic");
-   }
-   else return SET_Style(Self, "Bold");
+   const bool bold = Value != FALSE;
+   const bool italic = ((Self->Flags & FTF::ITALIC) != FTF::NIL) or (kt::strisearch("italic", Self->prvStyle) != -1);
+
+   if (bold and italic) return SET_Style(Self, "Bold Italic");
+   else if (bold) return SET_Style(Self, "Bold");
+   else if (italic) return SET_Style(Self, "Italic");
+   else return SET_Style(Self, "Regular");
 }
 
 /*********************************************************************************************************************
@@ -341,36 +337,40 @@ static ERR SET_Face(extFont *Self, STRING Value)
 {
    if ((Value) and (Value[0])) {
       CSTRING final_name;
-      if (fnt::ResolveFamilyName(Value, &final_name) IS ERR::Okay) {
+      int i;
+      for (i=0; Value[i] and Value[i] != ':'; i++);
+
+      std::string face(Value, i);
+      if (fnt::ResolveFamilyName(face, &final_name) IS ERR::Okay) {
          strcopy(final_name, Self->prvFace, std::ssize(Self->prvFace));
       }
 
-      int i, j;
-      for (i=0; Value[i] and Value[i] != ':'; i++);
       if (!Value[i]) return ERR::Okay;
 
       // Extract the point size
 
-      Value += i;
-      double pt = strtod(Value, &Value);
-      SET_Point(Self, pt);
+      Value += i + 1;
+      if ((*Value) and (*Value != ':')) {
+         double pt = strtod(Value, &Value);
+         SET_Point(Self, pt);
+      }
 
-      i = 0;
       while ((*Value) and (*Value != ':')) Value++;
       if (!*Value) return ERR::Okay;
 
       // Extract the style string
 
-      i++;
-      for (j=0; (Value[i]) and (Value[i] != ':') and (j < std::ssize(Self->prvStyle)-1); j++) Self->prvStyle[j] = Value[i++];
-      Self->prvStyle[j] = 0;
+      Value++;
+      char style[sizeof(Self->prvStyle)];
+      for (i=0; (Value[i]) and (Value[i] != ':') and (i < int(sizeof(style))-1); i++) style[i] = Value[i];
+      style[i] = 0;
+      SET_Style(Self, style);
 
       if (Value[i] != ':') return ERR::Okay;
 
       // Extract the colour string
 
-      i++;
-      Self->set(FID_Colour, Value + i);
+      Self->set(FID_Colour, Value + i + 1);
    }
    else Self->prvFace[0] = 0;
 
@@ -437,14 +437,13 @@ static ERR GET_Italic(extFont *Self, int *Value)
 
 static ERR SET_Italic(extFont *Self, int Value)
 {
-   if (Self->initialised()) {
-      // If the font is initialised, setting the italic style is implicit
-      return SET_Style(Self, "Italic");
-   }
-   else if ((Self->Flags & FTF::BOLD) != FTF::NIL) {
-      return SET_Style(Self, "Bold Italic");
-   }
-   else return SET_Style(Self, "Italic");
+   const bool italic = Value != FALSE;
+   const bool bold = ((Self->Flags & FTF::BOLD) != FTF::NIL) or (kt::strisearch("bold", Self->prvStyle) != -1);
+
+   if (bold and italic) return SET_Style(Self, "Bold Italic");
+   else if (bold) return SET_Style(Self, "Bold");
+   else if (italic) return SET_Style(Self, "Italic");
+   else return SET_Style(Self, "Regular");
 }
 
 /*********************************************************************************************************************
@@ -595,6 +594,10 @@ static ERR SET_String(extFont *Self, CSTRING Value)
       Self->prvBuffer.assign(Value);
       Self->String = (STRING)Self->prvBuffer.c_str();
    }
+   else {
+      Self->prvBuffer.clear();
+      Self->String = nullptr;
+   }
 
    return ERR::Okay;
 }
@@ -712,6 +715,31 @@ static ERR GET_YOffset(extFont *Self, int *Value)
 
 //********************************************************************************************************************
 
+static const char * calc_line_layout(extFont *Self, std::string_view String, int *LineWidth, int *WrapIndex,
+   int *XCoord)
+{
+   if (String.empty()) {
+      *LineWidth = 0;
+      *WrapIndex = 0;
+   }
+   else {
+      int wrap = (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0;
+      string_size(Self, String, FSS_LINE, wrap, LineWidth, WrapIndex);
+   }
+
+   if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+      if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) {
+         *XCoord = Self->X + ((Self->AlignWidth - *LineWidth)>>1);
+      }
+      else *XCoord = Self->X + Self->AlignWidth - *LineWidth;
+   }
+   else *XCoord = Self->X;
+
+   return String.data() + *WrapIndex;
+}
+
+//********************************************************************************************************************
+
 static ERR draw_bitmap_font(extFont *Self)
 {
    kt::Log log(__FUNCTION__);
@@ -746,17 +774,7 @@ static ERR draw_bitmap_font(extFont *Self)
       dycoord -= (Self->Ascent - Self->Leading); // - 1;
    }
 
-   string_size(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0, &linewidth, &wrapindex);
-   const char *wrapstr = str.data() + wrapindex;
-
-   // If horizontal centering is required, calculate the correct horizontal starting coordinate.
-
-   if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
-      if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) {
-         dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
-      }
-      else dxcoord = Self->X + Self->AlignWidth - linewidth;
-   }
+   const char *wrapstr = calc_line_layout(Self, str, &linewidth, &wrapindex, &dxcoord);
 
    uint32_t colour  = bitmap->getColour(Self->Colour);
    uint32_t ucolour = bitmap->getColour(Self->Underline);
@@ -785,22 +803,7 @@ static ERR draw_bitmap_font(extFont *Self)
             str.remove_prefix(1);
          }
 
-         if (str.empty()) {
-            linewidth = 0;
-            wrapindex = 0;
-         }
-         else {
-            string_size(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0,
-               &linewidth, &wrapindex);
-         }
-         wrapstr = str.data() + wrapindex;
-
-         if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
-            if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
-            else dxcoord = Self->X + Self->AlignWidth - linewidth;
-         }
-         else dxcoord = Self->X;
-
+         wrapstr = calc_line_layout(Self, str, &linewidth, &wrapindex, &dxcoord);
          startx = dxcoord;
          dycoord += Self->LineSpacing;
          CHECK_LINE_CLIP(Self, dycoord, bitmap);
@@ -833,13 +836,7 @@ static ERR draw_bitmap_font(extFont *Self)
             }
             if (str.empty()) break;
 
-            string_size(Self, str, FSS_LINE, Self->WrapEdge - dxcoord, &linewidth, &wrapindex);
-            wrapstr = str.data() + wrapindex;
-
-            if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
-               if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
-               else dxcoord = Self->X + Self->AlignWidth - linewidth;
-            }
+            wrapstr = calc_line_layout(Self, str, &linewidth, &wrapindex, &dxcoord);
             CHECK_LINE_CLIP(Self, dycoord, bitmap);
          }
 
@@ -1045,14 +1042,6 @@ static ERR draw_bitmap_font(extFont *Self)
 
 #include "class_font_def.c"
 
-static const FieldDef AlignFlags[] = {
-   { "Right",      ALIGN::RIGHT      }, { "Left",     ALIGN::LEFT },
-   { "Bottom",     ALIGN::BOTTOM     }, { "Top",      ALIGN::TOP },
-   { "Horizontal", ALIGN::HORIZONTAL }, { "Vertical", ALIGN::VERTICAL },
-   { "Center",     ALIGN::CENTER     }, { "Middle",   ALIGN::MIDDLE },
-   { nullptr, 0 }
-};
-
 static const FieldArray clFontFields[] = {
    { "Point",        FDF_DOUBLE|FDF_RW, GET_Point, SET_Point },
    { "GlyphSpacing", FDF_DOUBLE|FDF_RW },
@@ -1075,7 +1064,7 @@ static const FieldArray clFontFields[] = {
    { "Height",       FDF_INT|FDF_RI },
    { "Leading",      FDF_INT|FDF_R },
    { "MaxHeight",    FDF_INT|FDF_RI },
-   { "Align",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, AlignFlags },
+   { "Align",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, clFontAlign },
    { "AlignWidth",   FDF_INT|FDF_RW },
    { "AlignHeight",  FDF_INT|FDF_RW },
    { "Ascent",       FDF_INT|FDF_R },

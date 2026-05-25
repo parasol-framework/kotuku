@@ -818,33 +818,59 @@ ERR ResolveFamilyName(const std::string_view &String, CSTRING *Result)
       kt::ltrim(name, "'\"");
       kt::rtrim(name, "'\"");
 
-restart:
-      if ((name[0] IS '*') and (not name[1])) {
-         // Default family requested - use the first font declaring a "Default" key
+      if (name.empty()) continue;
+
+      std::vector<std::string> visited_aliases;
+
+      for (;;) {
+         if ((name[0] IS '*') and (not name[1])) {
+            // Default family requested - use the first font declaring a "Default" key
+            for (auto & [group, keys] : groups[0]) {
+               if (keys.contains("Default")) {
+                  *Result = keys["Name"].c_str();
+                  return ERR::Okay;
+               }
+            }
+
+            *Result = "Noto Sans";
+            return ERR::Okay;
+         }
+
+         bool alias_restart = false;
+         bool alias_loop = false;
+
          for (auto & [group, keys] : groups[0]) {
-            if (keys.contains("Default")) {
+            if (kt::wildcmp(name, keys["Name"])) {
+               if (auto it = keys.find("Alias"); it != keys.end()) {
+                  const std::string &alias = it->second;
+                  if (not alias.empty()) {
+                     for (auto &visited : visited_aliases) {
+                        if (iequals(visited, keys["Name"])) {
+                           alias_loop = true;
+                           break;
+                        }
+                     }
+
+                     if (alias_loop) break;
+
+                     visited_aliases.push_back(keys["Name"]);
+                     name = alias;
+                     alias_restart = true;
+                     break;
+                  }
+               }
+
                *Result = keys["Name"].c_str();
                return ERR::Okay;
             }
          }
 
-         *Result = "Noto Sans";
-         return ERR::Okay;
-      }
-
-      for (auto & [group, keys] : groups[0]) {
-         if (kt::wildcmp(name, keys["Name"])) {
-            if (auto it = keys.find("Alias"); it != keys.end()) {
-               const std::string &alias = it->second;
-               if (not alias.empty()) {
-                  name = alias;
-                  goto restart;
-               }
-            }
-
-            *Result = keys["Name"].c_str();
-            return ERR::Okay;
+         if (alias_loop) {
+            log.warning("Detected a cyclic alias while resolving family \"%.*s\"", int(String.size()), String.data());
+            break;
          }
+         else if (alias_restart) continue;
+         else break;
       }
    }
 
@@ -998,6 +1024,8 @@ static void scan_fixed_folder(objConfig *Config)
 
    DirInfo *dir;
    if (OpenDir("fonts:fixed/", RDF::FILE, &dir) IS ERR::Okay) {
+      LocalResource free_dir(dir);
+
       while (ScanDir(dir) IS ERR::Okay) {
          std::string location("fonts:fixed/");
          location.append(dir->Info->Name);
@@ -1069,7 +1097,6 @@ static void scan_fixed_folder(objConfig *Config)
          }
          else log.warning("Failed to analyse %s", src);
       }
-      FreeResource(dir);
    }
    else log.warning("Failed to scan directory fonts:fixed/");
 }

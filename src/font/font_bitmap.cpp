@@ -149,6 +149,16 @@ static ERR read_winfont_entries(objFile *File, std::vector<winFont> &Fonts)
 }
 
 //*****************************************************************************
+
+static FTF font_style_flags(CSTRING Style)
+{
+   if (iequals("Bold", Style)) return FTF::BOLD;
+   else if (iequals("Italic", Style)) return FTF::ITALIC;
+   else if (iequals("Bold Italic", Style)) return FTF::BOLD|FTF::ITALIC;
+   else return FTF::NIL;
+}
+
+//*****************************************************************************
 // Structure definition for cached bitmap fonts.
 
 class BitmapCache {
@@ -175,10 +185,7 @@ public:
       Result    = ERR::Okay;
       Header    = pFace;
 
-      if (iequals("Bold", pStyle)) StyleFlags = FTF::BOLD;
-      else if (iequals("Italic", pStyle)) StyleFlags = FTF::ITALIC;
-      else if (iequals("Bold Italic", pStyle)) StyleFlags = FTF::BOLD|FTF::ITALIC;
-      else StyleFlags = FTF::NIL;
+      StyleFlags = font_style_flags(pStyle);
 
       Path = pPath;
 
