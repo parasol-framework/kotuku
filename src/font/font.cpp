@@ -108,68 +108,13 @@ class extFont : public objFont {
 #include "font_bitmap.cpp"
 
 static ERR add_font_class(void);
-static int getutf8(CSTRING, uint32_t *);
-static int getutf8(std::string_view, uint32_t *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<uint16_t> &);
-static void string_size(extFont *, CSTRING, int, int, int *, int *);
+static void string_size(extFont *, std::string_view, int, int, int *, int *);
 
 //********************************************************************************************************************
 // Return the first unicode value from a given string address.
-
-static int getutf8(CSTRING Value, uint32_t *Unicode)
-{
-   int i, len, code;
-
-   if ((*Value & 0x80) != 0x80) {
-      if (Unicode) *Unicode = *Value;
-      return 1;
-   }
-   else if ((*Value & 0xe0) IS 0xc0) {
-      len  = 2;
-      code = *Value & 0x1f;
-   }
-   else if ((*Value & 0xf0) IS 0xe0) {
-      len  = 3;
-      code = *Value & 0x0f;
-   }
-   else if ((*Value & 0xf8) IS 0xf0) {
-      len  = 4;
-      code = *Value & 0x07;
-   }
-   else if ((*Value & 0xfc) IS 0xf8) {
-      len  = 5;
-      code = *Value & 0x03;
-   }
-   else if ((*Value & 0xfc) IS 0xfc) {
-      len  = 6;
-      code = *Value & 0x01;
-   }
-   else {
-      // Unprintable character
-      if (Unicode) *Unicode = 0;
-      return 1;
-   }
-
-   for (i=1; i < len; ++i) {
-      if (!Value[i] or ((Value[i] & 0xc0) != 0x80)) {
-         code = -1;
-         break;
-      }
-      code <<= 6;
-      code |= Value[i] & 0x3f;
-   }
-
-   if (code IS -1) {
-      if (Unicode) *Unicode = 0;
-      return 1;
-   }
-   else {
-      if (Unicode) *Unicode = code;
-      return len;
-   }
-}
 
 static int getutf8(std::string_view Value, uint32_t *Unicode)
 {
@@ -246,7 +191,7 @@ static bool glPointSet = false;
 
 static double global_point_size(void)
 {
-   if (!glPointSet) {
+   if (not glPointSet) {
       kt::Log log(__FUNCTION__);
       OBJECTID style_id;
       if (FindObject("glStyle", CLASSID::XML, &style_id) IS ERR::Okay) {
@@ -272,9 +217,9 @@ static double global_point_size(void)
 
 inline void calc_lines(extFont *Self)
 {
-   if (Self->String) {
+   if (not Self->prvBuffer.empty()) {
       if (Self->WrapEdge > 0) {
-         string_size(Self, Self->String, -1, Self->WrapEdge - Self->X, nullptr, &Self->prvLineCount);
+         string_size(Self, Self->prvBuffer, -1, Self->WrapEdge - Self->X, nullptr, &Self->prvLineCount);
       }
       else Self->prvLineCount = Self->prvLineCountCR;
    }
@@ -282,15 +227,16 @@ inline void calc_lines(extFont *Self)
 }
 
 //********************************************************************************************************************
+// For use by calc_lines()
 
-static void string_size(extFont *Font, CSTRING String, int Chars, int Wrap, int *Width, int *Rows)
+static void string_size(extFont *Font, std::string_view String, int Chars, int Wrap, int *Width, int *Rows)
 {
    uint32_t unicode;
    int16_t rowcount, wordwidth, lastword, tabwidth, charwidth;
    uint8_t line_abort, pchar;
 
-   if ((!Font) or (!String)) return;
-   if (!Font->initialised()) return;
+   if ((not Font) or String.empty()) return;
+   if (not Font->initialised()) return;
 
    if (Chars IS FSS_LINE) {
       Chars = 0x7fffffff;
@@ -305,83 +251,82 @@ static void string_size(extFont *Font, CSTRING String, int Chars, int Wrap, int 
 
    //log.msg("StringSize: %.10s, Wrap %d, Chars %d, Abort: %d", String, Wrap, Chars, line_abort);
 
-   CSTRING start  = String;
    int x         = 0;
-   int prevglyph = 0;
    int longest   = 0;
    int charcount = 0;
    int wordindex = 0;
+   size_t cursor = 0;
    rowcount = line_abort ? 0 : 1;
-   while ((*String) and (charcount < Chars)) {
+   while ((cursor < String.size()) and (charcount < Chars)) {
       lastword = x;
 
       // Skip whitespace
 
-      while ((*String) and (*String <= 0x20)) {
-         if (*String IS ' ') x += Font->prvChar[' '].Advance * Font->GlyphSpacing;
-         else if (*String IS '\t') {
+      while ((cursor < String.size()) and (uint8_t(String[cursor]) <= 0x20)) {
+         auto ch = uint8_t(String[cursor]);
+         if (ch IS ' ') x += Font->prvChar[' '].Advance * Font->GlyphSpacing;
+         else if (ch IS '\t') {
             tabwidth = (Font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
             if (tabwidth) x += tab_advance<int>(x, tabwidth);
          }
-         else if (*String IS '\n') {
+         else if (ch IS '\n') {
             if (lastword > longest) longest = lastword;
             x = 0;
             if (line_abort) {
                line_abort = 2;
-               String++;
+               cursor++;
                break;
             }
             rowcount++;
          }
-         String++;
+         cursor++;
          charcount++;
-         prevglyph = 0;
       }
 
-      if ((!*String) or (line_abort IS 2)) break;
+      if ((cursor >= String.size()) or (line_abort IS 2)) break;
 
       // Calculate the width of the discovered word
 
-      wordindex = int(String - start);
+      wordindex = int(cursor);
       wordwidth = 0;
       charwidth = 0;
 
-      while (charcount < Chars) {
-         int charlen = getutf8(String, &unicode);
+      while ((cursor < String.size()) and (charcount < Chars)) {
+         int charlen = getutf8(String.substr(cursor), &unicode);
+         if (charlen <= 0) break;
 
          if (Font->FixedWidth > 0) charwidth = Font->FixedWidth;
          else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
          else charwidth = Font->prvChar[(int)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
 
-         if ((!x) and (x+wordwidth+charwidth >= Wrap)) {
+         if ((not x) and (x + wordwidth + charwidth >= Wrap)) {
             // This is the first word of the line and it exceeds the boundary, so we have to split it.
 
             lastword = wordwidth;
             wordwidth += charwidth; // This is just to ensure that a break occurs
-            wordindex = (int)(String - start);
+            wordindex = int(cursor);
             break;
          }
          else {
-            pchar = glWrapBreaks[(uint8_t)(*String)];
+            pchar = glWrapBreaks[uint8_t(String[cursor])];
             wordwidth += charwidth;
-            String += charlen;
+            cursor += size_t(charlen);
             charcount++;
 
             // Break if the previous char was a wrap character or current char is whitespace.
 
-            if ((pchar) or (*String <= 0x20)) break;
+            if ((pchar) or (cursor >= String.size()) or (uint8_t(String[cursor]) <= 0x20)) break;
          }
       }
 
       // Check the width of the word against the wrap boundary
 
       if (x + wordwidth >= Wrap) {
-         prevglyph = 0;
          if (lastword > longest) longest = lastword;
          rowcount++;
          if (line_abort) {
             x = 0;
-            String = start + wordindex;
+            cursor = size_t(wordindex);
             break;
          }
          else x = wordwidth;
@@ -392,7 +337,7 @@ static void string_size(extFont *Font, CSTRING String, int Chars, int Wrap, int 
    if (x > longest) longest = x;
 
    if (Rows) {
-      if (line_abort) *Rows = int(String - start);
+      if (line_abort) *Rows = int(cursor);
       else *Rows = rowcount;
    }
 
@@ -422,7 +367,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       if (refresh) fnt::RefreshFonts();
 
       ConfigGroups *groups;
-      if (not ((glConfig->get(FID_Data, groups) IS ERR::Okay) and (!groups->empty()))) {
+      if (not ((glConfig->get(FID_Data, groups) IS ERR::Okay) and (not groups->empty()))) {
          log.error("Failed to build a database of valid fonts.");
          return ERR::Failed;
       }
@@ -507,14 +452,14 @@ ERR GetList(FontList **Result)
 {
    kt::Log log(__FUNCTION__);
 
-   if (!Result) return log.warning(ERR::NullArgs);
+   if (not Result) return log.warning(ERR::NullArgs);
 
    log.branch();
 
    *Result = NULL;
 
    kt::ScopedObjectLock<objConfig> config(glConfig, 3000);
-   if (!config.granted()) return log.warning(ERR::AccessObject);
+   if (not config.granted()) return log.warning(ERR::AccessObject);
 
    size_t size = 0;
    ConfigGroups *groups;
@@ -544,7 +489,7 @@ ERR GetList(FontList **Result)
             }
 
             auto it = keys.find("Alias");
-            if ((it != keys.end()) and (!it->second.empty())) {
+            if ((it != keys.end()) and (not it->second.empty())) {
                list->Alias = buffer;
                buffer += strcopy(keys["Alias"], buffer) + 1;
                // An aliased font can define a Name and Hidden values only.
@@ -577,7 +522,7 @@ ERR GetList(FontList **Result)
                list->Points = nullptr;
                if (keys.contains("Points")) {
                   auto fontpoints = std::string_view(keys["Points"]);
-                  if (!fontpoints.empty()) {
+                  if (not fontpoints.empty()) {
                      list->Points = (int *)buffer;
                      std::size_t i = 0;
                      for (int16_t j=0; i != std::string::npos; j++) {
@@ -626,8 +571,8 @@ int: The pixel width of the string is returned - this will be zero if there was 
 
 int StringWidth(objFont *Font, const std::string_view &String, int Chars)
 {
-   if ((!Font) or String.empty()) return 0;
-   if (!Font->initialised()) return 0;
+   if ((not Font) or String.empty()) return 0;
+   if (not Font->initialised()) return 0;
 
    auto font = (extFont *)Font;
    auto str = String;
@@ -636,7 +581,7 @@ int StringWidth(objFont *Font, const std::string_view &String, int Chars)
    int len    = 0;
    int widest = 0;
    int whitespace = 0;
-   while ((!str.empty()) and (Chars > 0)) {
+   while ((not str.empty()) and (Chars > 0)) {
       if (str.front() IS '\n') {
          if (widest < len) widest = len - whitespace;
          len  = 0; // Reset
@@ -684,8 +629,8 @@ must exist but the Style is a non-mandatory preference.
 The resulting Path must be freed once it is no longer required.
 
 -INPUT-
-cstr Name:  The name of a font face to search for (case insensitive).
-cstr Style: The required style, e.g. Bold or Italic.  Using camel-case for each word is compulsory.
+cpp(strview) Name:  The name of a font face to search for (case insensitive).
+cpp(strview) Style: The required style, e.g. Bold or Italic.  Using camel-case for each word is compulsory.
 &!cstr Path: The location of the best-matching font file is returned in this parameter.
 &int(FMETA) Meta: Optional, returns additional meta information about the font file.
 
@@ -698,13 +643,13 @@ Search: Unable to find a suitable font.
 
 *********************************************************************************************************************/
 
-ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
+ERR SelectFont(const std::string_view &Name, const std::string_view &Style, CSTRING *Path, FMETA *Meta)
 {
    kt::Log log(__FUNCTION__);
 
-   log.branch("%s:%s", Name, Style);
+   log.branch("%.*s:%.*s", int(Name.size()), Name.data(), int(Style.size()), Style.data());
 
-   if (not Name) return log.warning(ERR::NullArgs);
+   if (Name.empty()) return log.warning(ERR::NullArgs);
 
    kt::ScopedObjectLock<objConfig> config(glConfig, 5000);
    if (not config.granted()) return log.warning(ERR::AccessObject);
@@ -728,7 +673,7 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
 
    auto get_font_path = [](ConfigKeys &Keys, const std::string &Style) {
       if (Keys.contains(Style)) return strclone(Keys[Style]);
-      else if (!iequals("Regular", Style)) {
+      else if (not iequals("Regular", Style)) {
          if (Keys.contains("Regular")) return strclone(Keys["Regular"]);
       }
       return STRING(nullptr);
@@ -738,7 +683,7 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
    kt::camelcase(style_name);
 
    for (auto & [group, keys] : groups[0]) {
-      if (!iequals(Name, keys["Name"])) continue;
+      if (not iequals(Name, keys["Name"])) continue;
 
       if ((*Path = get_font_path(keys, style_name))) {
          if (Meta) *Meta = get_meta(keys);
@@ -760,7 +705,7 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
       else return ERR::Search;
    }
 
-   log.warning("The \"%s\" font is not available.", Name);
+   log.warning("The \"%.*s\" font is not available.", int(Name.size()), Name.data());
    return ERR::Search;
 }
 
@@ -788,7 +733,7 @@ ERR RefreshFonts(void)
    log.branch();
 
    kt::ScopedObjectLock<objConfig> config(glConfig, 3000);
-   if (!config.granted()) return log.warning(ERR::AccessObject);
+   if (not config.granted()) return log.warning(ERR::AccessObject);
 
    acClear(glConfig); // Clear out existing font information
 
@@ -808,7 +753,7 @@ ERR RefreshFonts(void)
       for (auto & [group, keys] : *groups) {
          std::list <std::string> styles;
          for (auto & [k, v] : keys) {
-            if (!v.compare(0, 6, "fonts:")) styles.push_front(k);
+            if (not v.compare(0, 6, "fonts:")) styles.push_front(k);
          }
 
          styles.sort();
@@ -844,7 +789,7 @@ It is valid for individual names to utilise the common wildcards `?` and `*` to 
 would be able to match to `Times New Roman` if available.
 
 -INPUT-
-cstr String: A CSV family string to resolve.
+cpp(strview) String: A CSV family string to resolve.
 &cstr Result: The nominated family name is returned in this parameter.
 
 -ERRORS-
@@ -857,11 +802,11 @@ Search: It was not possible to resolve the String to a known font family.
 
 *********************************************************************************************************************/
 
-ERR ResolveFamilyName(CSTRING String, CSTRING *Result)
+ERR ResolveFamilyName(const std::string_view &String, CSTRING *Result)
 {
    kt::Log log(__FUNCTION__);
 
-   if ((!String) or (!Result)) return ERR::NullArgs;
+   if ((String.empty()) or (not Result)) return ERR::NullArgs;
 
    kt::ScopedObjectLock<objConfig> config(glConfig, 5000);
    if (not config.granted()) return log.warning(ERR::AccessObject);
@@ -870,14 +815,14 @@ ERR ResolveFamilyName(CSTRING String, CSTRING *Result)
    if (glConfig->get(FID_Data, groups) != ERR::Okay) return log.warning(ERR::GetField);
 
    std::vector<std::string> names;
-   kt::split(std::string(String), std::back_inserter(names));
+   kt::split(String, std::back_inserter(names));
 
    for (auto &name : names) {
       kt::ltrim(name, "'\"");
       kt::rtrim(name, "'\"");
 
 restart:
-      if ((name[0] IS '*') and (!name[1])) {
+      if ((name[0] IS '*') and (not name[1])) {
          // Default family requested - use the first font declaring a "Default" key
          for (auto & [group, keys] : groups[0]) {
             if (keys.contains("Default")) {
@@ -894,7 +839,7 @@ restart:
          if (kt::wildcmp(name, keys["Name"])) {
             if (auto it = keys.find("Alias"); it != keys.end()) {
                const std::string &alias = it->second;
-               if (!alias.empty()) {
+               if (not alias.empty()) {
                   name = alias;
                   goto restart;
                }
@@ -906,7 +851,7 @@ restart:
       }
    }
 
-   log.msg("Failed to resolve family \"%s\"", String);
+   log.msg("Failed to resolve family \"%.*s\"", int(String.size()), String.data());
    return ERR::Search;
 }
 
@@ -934,7 +879,7 @@ static void scan_truetype_folder(objConfig *Config)
             FT_Face ftface;
             FT_Open_Args open = { .flags = FT_OPEN_PATHNAME, .pathname = (FT_String *)ttpath.c_str() };
             if (not FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
-               if (!FT_IS_SCALABLE(ftface)) { // Sanity check
+               if (not FT_IS_SCALABLE(ftface)) { // Sanity check
                   FT_Done_Face(ftface);
                   continue;
                }
@@ -974,15 +919,15 @@ static void scan_truetype_folder(objConfig *Config)
                   Config->write(group.c_str(), "Variable", "Yes");
 
                   FT_MM_Var *mvar;
-                  if (!FT_Get_MM_Var(ftface, &mvar)) {
+                  if (not FT_Get_MM_Var(ftface, &mvar)) {
                      FT_UInt index;
-                     if (!FT_Get_Default_Named_Instance(ftface, &index)) {
+                     if (not FT_Get_Default_Named_Instance(ftface, &index)) {
                         char buffer[100];
                         auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
                         for (FT_UInt s=0; (s < mvar->num_namedstyles); s++) {
                            for (int n=int(name_table_size)-1; n >= 0; n--) {
                               FT_SfntName sft_name;
-                              if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
+                              if (not FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
                                  if (sft_name.name_id IS mvar->namedstyle[s].strid) {
                                     // Decode UTF16 Big Endian
                                     int out = 0;
@@ -1027,7 +972,7 @@ static void scan_truetype_folder(objConfig *Config)
                   std::string path("fonts:truetype/");
                   path.append(dir->Info->Name);
 
-                  if ((ftface->style_name) and (!iequals("regular", ftface->style_name))) {
+                  if ((ftface->style_name) and (not iequals("regular", ftface->style_name))) {
                      Config->write(group.c_str(), ftface->style_name, path);
                   }
                   else {
@@ -1143,7 +1088,7 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
    uint16_t size_shift, font_count, count;
    char face[50];
 
-   if ((!Path) or (!Header)) return ERR::NullArgs;
+   if ((not Path) or (not Header)) return ERR::NullArgs;
 
    objFile::create file = { fl::Path(Path), fl::Flags(FL::READ) };
    if (file.ok()) {
@@ -1175,7 +1120,7 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
                }
             }
 
-            if ((!font_count) or (!font_offset)) {
+            if ((not font_count) or (not font_offset)) {
                log.warning("There are no fonts in file \"%s\"", Path);
                return ERR::Failed;
             }
@@ -1231,7 +1176,7 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
 
                for (i=0; (size_t)i < sizeof(face)-1; i++) {
                   ERR result = file->read(face+i, 1);
-                  if ((result != ERR::Okay) or (!face[i])) break;
+                  if ((result != ERR::Okay) or (not face[i])) break;
                }
                face[i] = 0;
                FaceName = face;

@@ -446,7 +446,7 @@ ERR get_font(kt::Log &Log, std::string_view Family, std::string_view Style, int 
    std::string family(Family.empty() ? "*" : Family);
    if (not family.ends_with("*")) family.append(",*");
    CSTRING final_name;
-   if (fnt::ResolveFamilyName(family.c_str(), &final_name) IS ERR::Okay) family.assign(final_name);
+   if (fnt::ResolveFamilyName(family, &final_name) IS ERR::Okay) family.assign(final_name);
 
    std::string style(Style);
    if ((Weight) and (Weight != 400)) {
