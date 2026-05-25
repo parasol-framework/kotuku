@@ -28,6 +28,7 @@
 #define FDF_UNIT       FD_UNIT
 #define FDF_SYNONYM    FD_SYNONYM
 
+#define FDF_STRVIEW     (FD_CPP|FD_STRING)
 #define FDF_UNSIGNED    FD_UNSIGNED
 #define FDF_FUNCTION    FD_FUNCTION           // sizeof(FUNCTION) - use FDF_FUNCTIONPTR for sizeof(APTR)
 #define FDF_FUNCTIONPTR (FD_FUNCTION|FD_POINTER)
@@ -471,12 +472,23 @@ struct Object { // Must be 64-bit aligned
       else return ERR::UnsupportedField;
    }
 
+   inline ERR set(FIELD FieldID, std::string_view Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_CPP|FD_STRING, &Value, 1);
+      }
+      else return ERR::UnsupportedField;
+   }
+
    inline ERR set(FIELD FieldID, const std::string &Value) {
       Object *target;
       if (auto field = FindField(this, FieldID, &target)) {
          if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
          if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_STRING, Value.c_str(), 1);
+         auto sv = std::string_view(Value);
+         return field->WriteValue(target, field, FD_CPP|FD_STRING, &sv, 1);
       }
       else return ERR::UnsupportedField;
    }

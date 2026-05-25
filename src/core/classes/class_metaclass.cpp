@@ -1039,22 +1039,23 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
    );
 
    if (field.Flags & FD_VIRTUAL); // No offset will be added for virtual fields
-   else if (field.Flags & FD_RGB) Offset += sizeof(int8_t) * 4;
-   else if (field.Flags & (FD_POINTER|FD_ARRAY)) {
-      #ifdef _LP64
-         if (Offset & 0x7) { // Check for mis-alignment
-            Offset = (Offset + 7) & (~0x7);
-            if (((field.Flags & FDF_R) and (!field.GetValue)) or
-                ((field.Flags & FDF_W) and (!field.SetValue))) {
-               log.warning("Misaligned 64-bit pointer '%s' in class '%s'.", field.Name, Class->ClassName);
-            }
-         }
-      #endif
-      Offset += sizeof(APTR);
+   else if (field.Flags & FD_RGB) Offset += alignof(int8_t) * 4;
+   else if ((field.Flags & FD_STRING) and (field.Flags & FD_CPP)) {
+      Offset += alignof(std::string);
    }
-   else if (field.Flags & FD_INT) Offset += sizeof(int);
-   else if (field.Flags & FD_BYTE) Offset += sizeof(int8_t);
-   else if (field.Flags & FD_FUNCTION) Offset += sizeof(FUNCTION);
+   else if (field.Flags & (FD_POINTER|FD_ARRAY)) {
+      if (Offset & 0x7) { // Check for mis-alignment
+         Offset = (Offset + 7) & (~0x7);
+         if (((field.Flags & FDF_R) and (!field.GetValue)) or
+               ((field.Flags & FDF_W) and (!field.SetValue))) {
+            log.warning("Misaligned 64-bit pointer '%s' in class '%s'.", field.Name, Class->ClassName);
+         }
+      }
+      Offset += alignof(APTR);
+   }
+   else if (field.Flags & FD_INT) Offset += alignof(int);
+   else if (field.Flags & FD_BYTE) Offset += alignof(int8_t);
+   else if (field.Flags & FD_FUNCTION) Offset += alignof(FUNCTION);
    else if (field.Flags & (FD_DOUBLE|FD_INT64)) {
       if (Offset & 0x7) {
          if (((field.Flags & FDF_R) and (!field.GetValue)) or
