@@ -28,6 +28,7 @@
 #define FDF_UNIT       FD_UNIT
 #define FDF_SYNONYM    FD_SYNONYM
 
+#define FDF_STRVIEW     (FD_CPP|FD_STRING)
 #define FDF_UNSIGNED    FD_UNSIGNED
 #define FDF_FUNCTION    FD_FUNCTION           // sizeof(FUNCTION) - use FDF_FUNCTIONPTR for sizeof(APTR)
 #define FDF_FUNCTIONPTR (FD_FUNCTION|FD_POINTER)
@@ -471,12 +472,23 @@ struct Object { // Must be 64-bit aligned
       else return ERR::UnsupportedField;
    }
 
+   inline ERR set(FIELD FieldID, std::string_view Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_CPP|FD_STRING, &Value, 1);
+      }
+      else return ERR::UnsupportedField;
+   }
+
    inline ERR set(FIELD FieldID, const std::string &Value) {
       Object *target;
       if (auto field = FindField(this, FieldID, &target)) {
          if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
          if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_STRING, Value.c_str(), 1);
+         auto sv = std::string_view(Value);
+         return field->WriteValue(target, field, FD_CPP|FD_STRING, &sv, 1);
       }
       else return ERR::UnsupportedField;
    }
@@ -597,23 +609,22 @@ struct Object { // Must be 64-bit aligned
                data = ((kt::vector<int> *)data)->data();
             }
 
-            std::stringstream buffer;
             if (array_size IS -1) return ERR::Failed; // Array sizing not supported by this field.
 
+            Value.clear();
             if (flags & FD_INT) {
                auto array = (int *)data;
-               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+               for (int i=0; i < array_size; i++) Value.append(std::to_string(*array++)).push_back(',');
             }
             else if (flags & FD_BYTE) {
                auto array = (uint8_t *)data;
-               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+               for (int i=0; i < array_size; i++) Value.append(std::to_string(*array++)).push_back(',');
             }
             else if (flags & FD_DOUBLE) {
                auto array = (double *)data;
-               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+               for (int i=0; i < array_size; i++) Value.append(std::to_string(*array++)).push_back(',');
             }
 
-            Value = buffer.str();
             if (!Value.empty()) Value.pop_back(); // Remove trailing comma
             return ERR::Okay;
          }
@@ -635,13 +646,15 @@ struct Object { // Must be 64-bit aligned
             }
             else if (flags & FD_FLAGS) {
                if (auto lookup = (FieldDef *)field->Arg) {
-                  std::stringstream buffer;
+                  Value.clear();
                   int v = ((int *)data)[0];
                   while (lookup->Name) {
-                     if (v & lookup->Value) buffer << lookup->Name << '|';
+                     if (v & lookup->Value) {
+                        Value.append(lookup->Name);
+                        Value.push_back('|');
+                     }
                      lookup++;
                   }
-                  Value = buffer.str();
                   if (!Value.empty()) Value.pop_back(); // Remove trailing pipe
                   return ERR::Okay;
                }
