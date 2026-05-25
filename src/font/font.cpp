@@ -29,10 +29,8 @@ Google Fonts Knowledge page: https://fonts.google.com/knowledge
 //#define DEBUG
 
 #include <ft2build.h>
-#include FT_SIZES_H
 #include FT_FREETYPE_H
 #include FT_MULTIPLE_MASTERS_H
-#include FT_ADVANCES_H
 #include FT_SFNT_NAMES_H
 
 #undef FT_INT64  // Avoid Freetype clash
@@ -43,9 +41,6 @@ Google Fonts Knowledge page: https://fonts.google.com/knowledge
 #include <kotuku/modules/display.h>
 
 #include <sstream>
-#include <array>
-#include <math.h>
-#include <wchar.h>
 #include <kotuku/strings.hpp>
 #include "../link/unicode.h"
 
@@ -1084,111 +1079,49 @@ static void scan_fixed_folder(objConfig *Config)
 static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<uint16_t> &Points)
 {
    kt::Log log(__FUNCTION__);
-   winmz_header_fields mz_header;
-   winne_header_fields ne_header;
-   int i, res_offset, font_offset;
-   uint16_t size_shift, font_count, count;
    char face[50];
 
    if ((not Path) or (not Header)) return ERR::NullArgs;
 
    objFile::create file = { fl::Path(Path), fl::Flags(FL::READ) };
    if (file.ok()) {
-      file->read(&mz_header, sizeof(mz_header));
-
-      if (mz_header.magic IS ID_WINMZ) {
-         file->seekStart(mz_header.lfanew);
-
-         if ((file->read(&ne_header, sizeof(ne_header)) IS ERR::Okay) and (ne_header.magic IS ID_WINNE)) {
-            res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
-            file->seekStart(res_offset);
-
-            font_count  = 0;
-            font_offset = 0;
-            size_shift  = 0;
-            fl::ReadLE(*file, &size_shift);
-
-            uint16_t type_id = 0;
-            for (fl::ReadLE(*file, &type_id); type_id; fl::ReadLE(*file, &type_id)) {
-               if (fl::ReadLE(*file, &count) IS ERR::Okay) {
-                  if (type_id IS 0x8008) {
-                     font_count  = count;
-                     file->get(FID_Position, font_offset);
-                     font_offset = font_offset + 4;
-                     break;
-                  }
-
-                  file->seekCurrent(4 + count * 12);
-               }
-            }
-
-            if ((not font_count) or (not font_offset)) {
-               log.warning("There are no fonts in file \"%s\"", Path);
-               return ERR::Failed;
-            }
-
-            file->seekStart(font_offset);
-
-            {
-               auto fonts = std::make_unique<winFont[]>(font_count);
-
-               // Get the offset and size of each font entry
-
-               for (int i=0; i < font_count; i++) {
-                  uint16_t offset = 0, size = 0;
-                  fl::ReadLE(*file, &offset);
-                  fl::ReadLE(*file, &size);
-                  fonts[i].Offset = offset<<size_shift;
-                  fonts[i].Size   = size<<size_shift;
-                  file->seekCurrent(8);
-               }
-
-               // Read font point sizes
-
-               for (i=0; i < font_count; i++) {
-                  file->seekStart(fonts[i].Offset);
-                  if (file->read(Header, sizeof(winfnt_header_fields)) IS ERR::Okay) {
-                     Points.push_back(Header->nominal_point_size);
-                  }
-               }
-
-               // Go to the first font in the file and read the font header
-
-               file->seekStart(fonts[0].Offset);
-
-               if (file->read(Header, sizeof(winfnt_header_fields)) != ERR::Okay) {
-                  return ERR::Read;
-               }
-
-                // NOTE: 0x100 indicates the Microsoft vector font format, which we do not support.
-
-               if ((Header->version != 0x200) and (Header->version != 0x300)) {
-                  log.warning("Font \"%s\" is written in unsupported version %d / $%x.", Path, Header->version, Header->version);
-                  return ERR::NoSupport;
-               }
-
-               if (Header->file_type & 1) {
-                  log.warning("Font \"%s\" is in the non-supported vector font format.", Path);
-                  return ERR::NoSupport;
-               }
-
-               // Extract the name of the font
-
-               file->seekStart(fonts[0].Offset + Header->face_name_offset);
-
-               for (i=0; (size_t)i < sizeof(face)-1; i++) {
-                  ERR result = file->read(face+i, 1);
-                  if ((result != ERR::Okay) or (not face[i])) break;
-               }
-               face[i] = 0;
-               FaceName = face;
-            }
-
-            return ERR::Okay;
-         }
-         else return ERR::NoSupport;
+      std::vector<winFont> fonts;
+      if (auto error = read_winfont_entries(*file, fonts); error IS ERR::NoData) {
+         log.warning("There are no fonts in file \"%s\"", Path);
+         return ERR::Failed;
       }
-      else return ERR::NoSupport;
+      else if (error != ERR::Okay) return error;
+
+      // Read font point sizes
+
+      for (auto &font : fonts) {
+         file->seekStart(font.Offset);
+         if (file->read(Header, sizeof(winfnt_header_fields)) IS ERR::Okay) {
+            Points.push_back(Header->nominal_point_size);
+         }
+      }
+
+      // Go to the first font in the file and read the font header
+
+      file->seekStart(fonts[0].Offset);
+
+      if (file->read(Header, sizeof(winfnt_header_fields)) != ERR::Okay) return ERR::Read;
+
+      if (auto error = validate_winfnt_header(*Header, Path); error != ERR::Okay) return error;
+
+      // Extract the name of the font
+
+      file->seekStart(fonts[0].Offset + Header->face_name_offset);
+
+      int i;
+      for (i=0; (size_t)i < sizeof(face)-1; i++) {
+         ERR result = file->read(face+i, 1);
+         if ((result != ERR::Okay) or (not face[i])) break;
+      }
+      face[i] = 0;
+      FaceName = face;
+
+      return ERR::Okay;
    }
    else return ERR::File;
 }

@@ -102,7 +102,6 @@ static ERR FONT_Init(extFont *Self)
    kt::Log log;
    int diff;
    FTF style;
-   ERR error;
    FMETA meta = FMETA::NIL;
 
    if ((!Self->prvFace[0]) and (!Self->Path)) return log.warning(ERR::FieldNotSet);
@@ -137,107 +136,52 @@ static ERR FONT_Init(extFont *Self)
    else {
       objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
       if (file.ok()) {
-         // Check if the file is a Windows Bitmap Font
+         std::vector<winFont> fonts;
+         if (auto error = read_winfont_entries(*file, fonts); error IS ERR::NoData) return log.warning(error);
+         else if (error != ERR::Okay) return error;
 
-         winmz_header_fields mz_header;
-         file->read(&mz_header, sizeof(mz_header));
+         // Scan the list of available fonts to find the closest point size for our font
 
-         if (mz_header.magic IS ID_WINMZ) {
-            file->seek(mz_header.lfanew, SEEK::START);
+         int abs = 0x7fff;
+         int wfi = 0;
+         winfnt_header_fields face;
+         for (int i=0; i < int(fonts.size()); i++) {
+            file->seekStart(fonts[i].Offset);
 
-            winne_header_fields ne_header;
-            if ((file->read(&ne_header, sizeof(ne_header)) IS ERR::Okay) and (ne_header.magic IS ID_WINNE)) {
-               uint32_t res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
-               file->seek(res_offset, SEEK::START);
-
-               // Count the number of fonts in the file
-
-               int16_t size_shift = 0;
-               uint16_t font_count = 0;
-               int font_offset = 0;
-               fl::ReadLE(*file, &size_shift);
-
-               int16_t type_id;
-               for ((error = fl::ReadLE(*file, &type_id)); (error IS ERR::Okay) and (type_id); error = fl::ReadLE(*file, &type_id)) {
-                  int16_t count = 0;
-                  fl::ReadLE(*file, &count);
-
-                  if ((uint16_t)type_id IS 0x8008) {
-                     font_count  = count;
-                     file->get(FID_Position, font_offset);
-                     font_offset += 4;
-                     break;
-                  }
-
-                  file->seek(4 + (count * 12), SEEK::CURRENT);
+            winfnt_header_fields header;
+            if (file->read(&header, sizeof(header)) IS ERR::Okay) {
+               if (auto error = validate_winfnt_header(header, nullptr); error != ERR::Okay) {
+                  return log.warning(error);
                }
 
-               if ((!font_count) or (!font_offset)) { // There are no fonts in the file
-                  return log.warning(ERR::NoData);
+               if (header.pixel_width <= 0) header.pixel_width = header.pixel_height;
+
+               if ((diff = Self->Point - header.nominal_point_size) < 0) diff = -diff;
+
+               if (diff < abs) {
+                  face = header;
+                  abs  = diff;
+                  wfi  = i;
                }
+            }
+            else return log.warning(ERR::Read);
+         }
 
-               file->seek(font_offset, SEEK::START);
+         // Check the bitmap cache again to ensure that the discovered font is not already loaded.  This is important
+         // if the cached font wasn't originally found due to variation in point size.
 
-               // Scan the list of available fonts to find the closest point size for our font
+         Self->Point = face.nominal_point_size;
+         cache = check_bitmap_cache(Self, style);
+         if (!cache) { // Load the font into the cache
+            auto it = glBitmapCache.emplace(glBitmapCache.end(), face, Self->prvStyle, Self->Path, *file, fonts[wfi]);
 
-               auto fonts = std::make_unique<winFont[]>(font_count);
-
-               for (int i=0; i < font_count; i++) {
-                  uint16_t offset, size;
-                  fl::ReadLE(*file, &offset);
-                  fl::ReadLE(*file, &size);
-                  fonts[i].Offset = offset<<size_shift;
-                  fonts[i].Size   = size<<size_shift;
-                  file->seek(8, SEEK::CURRENT);
-               }
-
-               int abs = 0x7fff;
-               int wfi = 0;
-               winfnt_header_fields face;
-               for (int i=0; i < font_count; i++) {
-                  file->seek((double)fonts[i].Offset, SEEK::START);
-
-                  winfnt_header_fields header;
-                  if (file->read(&header, sizeof(header)) IS ERR::Okay) {
-                     if ((header.version != 0x200) and (header.version != 0x300)) {
-                        // Font is written in an unsupported version
-                        return log.warning(ERR::NoSupport);
-                     }
-
-                     if (header.file_type & 1) { // Font is in the non-supported vector font format."
-                        return log.warning(ERR::NoSupport);
-                     }
-
-                     if (header.pixel_width <= 0) header.pixel_width = header.pixel_height;
-
-                     if ((diff = Self->Point - header.nominal_point_size) < 0) diff = -diff;
-
-                     if (diff < abs) {
-                        face = header;
-                        abs  = diff;
-                        wfi  = i;
-                     }
-                  }
-                  else return log.warning(ERR::Read);
-               }
-
-               // Check the bitmap cache again to ensure that the discovered font is not already loaded.  This is important
-               // if the cached font wasn't originally found due to variation in point size.
-
-               Self->Point = face.nominal_point_size;
-               cache = check_bitmap_cache(Self, style);
-               if (!cache) { // Load the font into the cache
-                  auto it = glBitmapCache.emplace(glBitmapCache.end(), face, Self->prvStyle, Self->Path, *file, fonts[wfi]);
-
-                  if (it->Result IS ERR::Okay) cache = &(*it);
-                  else {
-                     ERR error = it->Result;
-                     glBitmapCache.erase(it);
-                     return error;
-                  }
-               }
-            } // File is not a windows fixed font
-         } // File is not a windows fixed font
+            if (it->Result IS ERR::Okay) cache = &(*it);
+            else {
+               ERR error = it->Result;
+               glBitmapCache.erase(it);
+               return error;
+            }
+         }
       }
       else return log.warning(ERR::OpenFile);
    }
@@ -775,7 +719,7 @@ static ERR draw_bitmap_font(extFont *Self)
    RGB8 rgb;
    static const uint8_t table[] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
    uint8_t *xdata, *data;
-   int linewidth, offset, charclip, wrapindex, charlen;
+   int linewidth, offset, wrapindex, charlen;
    uint32_t unicode, ocolour;
    int16_t startx, xpos, ex, ey, sx, sy, xinc;
    int16_t bytewidth, alpha, charwidth;
@@ -822,8 +766,6 @@ static ERR draw_bitmap_font(extFont *Self)
       ocolour = bitmap->getColour(Self->Outline);
    }
    else ocolour = 0;
-
-   charclip = Self->WrapEdge - 8; //(Self->prvChar['.'].Advance<<2); //8
 
    if (acLock(bitmap) != ERR::Okay) return log.warning(ERR::Lock);
 
