@@ -30,6 +30,18 @@ function assertCommand(Path, Index, Type, X, Y, Message)
    assertNear(command.y, Y, f'{Message}: Y')
 end
 
+function assertCurveCommand(Path, Index, Type, X, Y, X2, Y2, X3, Y3, Message)
+   local err, command = Path.mtGetCommand(Index)
+   assert(err is ERR_Okay, f'{Message}: GetCommand({Index}) failed with {mSys.GetErrorMsg(err)}')
+   assert(command.type is Type, f'{Message}: command type mismatch')
+   assertNear(command.x, X, f'{Message}: X')
+   assertNear(command.y, Y, f'{Message}: Y')
+   assertNear(command.x2, X2, f'{Message}: X2')
+   assertNear(command.y2, Y2, f'{Message}: Y2')
+   assertNear(command.x3, X3, f'{Message}: X3')
+   assertNear(command.y3, Y3, f'{Message}: Y3')
+end
+
 @Test function RectangleAppliesAsEditableCommands()
    local err, source = mVec.GenerateRectangle(10, 20, 30, 40)
    check err
@@ -90,6 +102,60 @@ end
    err = path.mtTrace(trace, 1.0, false)
    assert(err is ERR_Okay, f'Applied curve path should trace successfully, got {mSys.GetErrorMsg(err)}')
    assert(traced > 0, 'Applied curve path should produce traced coordinates')
+end
+
+@Test function GeneratedSmoothQuadraticApplies()
+   local err, source = mVec.GeneratePath('M 0 0 Q 10 0 20 20 T 30 20')
+   check err
+
+   local scene, viewport, path = newTargetPath()
+   check mVec.ApplyPath(source, path)
+
+   assert(path.totalCommands is 3, f'Smooth quadratic path should apply as three commands, got {path.totalCommands}')
+   assertCurveCommand(path, 1, PE_QuadCurve, 20, 20, 10, 0, 0, 0, 'initial quadratic curve')
+   assertCurveCommand(path, 2, PE_QuadCurve, 30, 20, 30, 40, 0, 0, 'smooth quadratic curve')
+end
+
+@Test function GeneratedSmoothCubicApplies()
+   local err, source = mVec.GeneratePath('M 0 0 C 10 0 20 10 30 20 S 50 40 60 20')
+   check err
+
+   local scene, viewport, path = newTargetPath()
+   check mVec.ApplyPath(source, path)
+
+   assert(path.totalCommands is 3, f'Smooth cubic path should apply as three commands, got {path.totalCommands}')
+   assertCurveCommand(path, 1, PE_Curve, 30, 20, 10, 0, 20, 10, 'initial cubic curve')
+   assertCurveCommand(path, 2, PE_Curve, 60, 20, 40, 30, 50, 40, 'smooth cubic curve')
+end
+
+@Test function SmoothQuadraticFunctionApplies()
+   local err, source = mVec.GeneratePath(nil)
+   check err
+
+   mVec.MoveTo(source, 0, 0)
+   mVec.Curve3(source, 10, 0, 20, 20)
+   mVec.Smooth3(source, 30, 20)
+
+   local scene, viewport, path = newTargetPath()
+   check mVec.ApplyPath(source, path)
+
+   assert(path.totalCommands is 3, f'Smooth3 path should apply as three commands, got {path.totalCommands}')
+   assertCurveCommand(path, 2, PE_QuadCurve, 30, 20, 30, 40, 0, 0, 'Smooth3 curve')
+end
+
+@Test function SmoothCubicFunctionApplies()
+   local err, source = mVec.GeneratePath(nil)
+   check err
+
+   mVec.MoveTo(source, 0, 0)
+   mVec.Curve4(source, 10, 0, 20, 10, 30, 20)
+   mVec.Smooth4(source, 50, 40, 60, 20)
+
+   local scene, viewport, path = newTargetPath()
+   check mVec.ApplyPath(source, path)
+
+   assert(path.totalCommands is 3, f'Smooth4 path should apply as three commands, got {path.totalCommands}')
+   assertCurveCommand(path, 2, PE_Curve, 60, 20, 40, 30, 50, 40, 'Smooth4 curve')
 end
 
 @Test function EmptyGeneratedPathClearsExistingCommands()

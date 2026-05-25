@@ -136,6 +136,60 @@ static ERR convert_simple_path(const SimpleVector *Vector, std::vector<PathComma
    Commands.clear();
    Commands.reserve(total_vertices);
 
+   double current_x = 0;
+   double current_y = 0;
+   double start_x = 0;
+   double start_y = 0;
+   double control_x = 0;
+   double control_y = 0;
+   bool has_current = false;
+   bool previous_curve = false;
+
+   auto reflect_control = [&]() {
+      if (previous_curve) return agg::point_d { (current_x * 2.0) - control_x, (current_y * 2.0) - control_y };
+      else return agg::point_d { current_x, current_y };
+   };
+
+   auto append_quadratic = [&](double CtrlX, double CtrlY, double EndX, double EndY) {
+      PathCommand path = {};
+      path.Type = PE::QuadCurve;
+      path.X = EndX;
+      path.Y = EndY;
+      path.AbsX = EndX;
+      path.AbsY = EndY;
+      path.X2 = CtrlX;
+      path.Y2 = CtrlY;
+      Commands.push_back(path);
+
+      current_x = EndX;
+      current_y = EndY;
+      control_x = CtrlX;
+      control_y = CtrlY;
+      has_current = true;
+      previous_curve = true;
+   };
+
+   auto append_cubic = [&](double CtrlX1, double CtrlY1, double CtrlX2, double CtrlY2, double EndX, double EndY) {
+      PathCommand path = {};
+      path.Type = PE::Curve;
+      path.X = EndX;
+      path.Y = EndY;
+      path.AbsX = EndX;
+      path.AbsY = EndY;
+      path.X2 = CtrlX1;
+      path.Y2 = CtrlY1;
+      path.X3 = CtrlX2;
+      path.Y3 = CtrlY2;
+      Commands.push_back(path);
+
+      current_x = EndX;
+      current_y = EndY;
+      control_x = CtrlX2;
+      control_y = CtrlY2;
+      has_current = true;
+      previous_curve = true;
+   };
+
    for (unsigned i=0; i < total_vertices; i++) {
       double x = 0;
       double y = 0;
@@ -149,6 +203,12 @@ static ERR convert_simple_path(const SimpleVector *Vector, std::vector<PathComma
          path.AbsX = x;
          path.AbsY = y;
          Commands.push_back(path);
+         current_x = x;
+         current_y = y;
+         start_x = x;
+         start_y = y;
+         has_current = true;
+         previous_curve = false;
       }
       else if (agg::is_line_to(cmd)) {
          PathCommand path = {};
@@ -158,56 +218,72 @@ static ERR convert_simple_path(const SimpleVector *Vector, std::vector<PathComma
          path.AbsX = x;
          path.AbsY = y;
          Commands.push_back(path);
+         current_x = x;
+         current_y = y;
+         has_current = true;
+         previous_curve = false;
       }
       else if (agg::is_curve3(cmd)) {
-         if (i + 1 >= total_vertices) return ERR::InvalidData;
+         if (i + 1 >= total_vertices) {
+            if (not has_current) return ERR::InvalidData;
+            const auto control = reflect_control();
+            append_quadratic(control.x, control.y, x, y);
+            continue;
+         }
 
          double end_x = 0;
          double end_y = 0;
          const unsigned end_cmd = source.vertex(i + 1, &end_x, &end_y);
-         if (not agg::is_curve3(end_cmd)) return ERR::InvalidData;
+         if (not agg::is_curve3(end_cmd)) {
+            if (not has_current) return ERR::InvalidData;
+            const auto control = reflect_control();
+            append_quadratic(control.x, control.y, x, y);
+            continue;
+         }
 
-         PathCommand path = {};
-         path.Type = PE::QuadCurve;
-         path.X = end_x;
-         path.Y = end_y;
-         path.AbsX = end_x;
-         path.AbsY = end_y;
-         path.X2 = x;
-         path.Y2 = y;
-         Commands.push_back(path);
+         append_quadratic(x, y, end_x, end_y);
          i++;
       }
       else if (agg::is_curve4(cmd)) {
-         if (i + 2 >= total_vertices) return ERR::InvalidData;
+         if (i + 1 >= total_vertices) return ERR::InvalidData;
 
          double ctrl2_x = 0;
          double ctrl2_y = 0;
          double end_x = 0;
          double end_y = 0;
          const unsigned ctrl2_cmd = source.vertex(i + 1, &ctrl2_x, &ctrl2_y);
-         const unsigned end_cmd = source.vertex(i + 2, &end_x, &end_y);
-         if ((not agg::is_curve4(ctrl2_cmd)) or (not agg::is_curve4(end_cmd))) return ERR::InvalidData;
+         if (not agg::is_curve4(ctrl2_cmd)) return ERR::InvalidData;
 
-         PathCommand path = {};
-         path.Type = PE::Curve;
-         path.X = end_x;
-         path.Y = end_y;
-         path.AbsX = end_x;
-         path.AbsY = end_y;
-         path.X2 = x;
-         path.Y2 = y;
-         path.X3 = ctrl2_x;
-         path.Y3 = ctrl2_y;
-         Commands.push_back(path);
+         if (i + 2 >= total_vertices) {
+            if (not has_current) return ERR::InvalidData;
+            const auto control = reflect_control();
+            append_cubic(control.x, control.y, x, y, ctrl2_x, ctrl2_y);
+            i++;
+            continue;
+         }
+
+         const unsigned end_cmd = source.vertex(i + 2, &end_x, &end_y);
+         if (not agg::is_curve4(end_cmd)) {
+            if (not has_current) return ERR::InvalidData;
+            const auto control = reflect_control();
+            append_cubic(control.x, control.y, x, y, ctrl2_x, ctrl2_y);
+            i++;
+            continue;
+         }
+
+         append_cubic(x, y, ctrl2_x, ctrl2_y, end_x, end_y);
          i += 2;
       }
       else if (agg::is_close(cmd)) {
          PathCommand path = {};
          path.Type = PE::ClosePath;
          Commands.push_back(path);
+         current_x = start_x;
+         current_y = start_y;
+         previous_curve = false;
       }
       else if (agg::is_stop(cmd) or agg::is_end_poly(cmd)) {
+         previous_curve = false;
       }
       else return ERR::InvalidData;
    }
@@ -234,7 +310,7 @@ obj(VectorPath) VectorPath: The target VectorPath object.
 -ERRORS-
 Okay
 NullArgs
-Args
+WrongClass
 InvalidData
 
 *********************************************************************************************************************/
@@ -242,7 +318,7 @@ InvalidData
 ERR ApplyPath(APTR Vector, objVectorPath *VectorPath)
 {
    if ((not Vector) or (not VectorPath)) return ERR::NullArgs;
-   if (VectorPath->classID() != CLASSID::VECTORPATH) return ERR::Args;
+   if (VectorPath->classID() != CLASSID::VECTORPATH) return ERR::WrongClass;
 
    std::vector<PathCommand> paths;
    if (auto error = convert_simple_path((SimpleVector *)Vector, paths); error != ERR::Okay) return error;
