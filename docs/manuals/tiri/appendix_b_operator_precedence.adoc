@@ -1,4 +1,5 @@
 // UPDATED: 2026-04-03 -- Added `is not` to the precedence quick-reference.
+// UPDATED: 2026-05-25 — Added approximate equality operator (≈) to the precedence table.
 [[appendix-operator-precedence]]
 [appendix]
 == Operator Precedence
@@ -15,7 +16,7 @@ indexterm:[operators, precedence] This appendix provides a quick-reference for a
 |6|`..`, `<<`, `>>`|`..` right; shifts left
 |5|`&`|Left
 |4|`^`, `is`, `is not`, `!=`, `<`, `>`, `\<=`, `>=`, `in` |Left
-|3|`has`, `\|`, `and`, `\|>`|Left
+|3|`has`, `≈`, `\|`, `and`, `\|>`|Left
 |2|`or`, `??`, `?!`, `? :>`|Left (`? :>` right)
 |===
 
@@ -41,6 +42,7 @@ Parentheses override precedence.  `(a + b) * c` forces addition before multiplic
 x > 0 and x < 10    -- comparison (level 4) before logical (level 3)
 a & 0xFF | 0x100    -- AND (level 5) before OR (level 3)
 flags has F1 | F2   -- has (level 3) consumes bitwise OR on RHS
+0.1 + 0.2 ≈ 0.3     -- arithmetic (level 7) before approx (level 3)
 a ?? b or c         -- ?? and or share level 2; evaluates left to right
 x ? a :> y ? b :> c -- right-associative: x ? a :> (y ? b :> c)
 ----

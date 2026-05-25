@@ -2,6 +2,7 @@
 // UPDATED: 2026-04-03 -- Documented `is not` as an inequality operator equivalent to `!=`.
 // UPDATED: 2026-03-31 — Added 'has' flag testing operator section and updated precedence table.
 // UPDATED: 2026-05-23 — Added comparison chaining section for ordering operators.
+// UPDATED: 2026-05-25 — Added approximate equality operator (≈) section and updated precedence table.
 
 [[ch-operators]]
 == Operators
@@ -52,6 +53,7 @@ indexterm:[operators, comparison] Comparison operators return a boolean value.  
 |Greater than      |`a > b`   |`true` if `a` is greater than `b`     |`__lt` (swapped)
 |Less than or equal|`a \<= b` |`true` if `a` is at most `b`          |`__le`
 |Greater or equal  |`a >= b`  |`true` if `a` is at least `b`         |`__le` (swapped)
+|Approximate equal |`a ≈ b`   |`true` if `\|a - b\| \<= 1e-5`       |None
 |===
 
 ==== Equality Semantics
@@ -227,6 +229,40 @@ The `has` operator combines naturally with logical operators:
 if perms has PERMIT_READ and perms has PERMIT_EXECUTE then
    run(file)
 end
+----
+
+[[sec-approximate-equality]]
+=== Approximate Equality Operator
+indexterm:[operators, approximate equality] The `≈` operator tests whether two numeric values are approximately equal within a fixed tolerance.
+
+[source,ebnf]
+----
+approx_expr = expression "≈" expression ;
+----
+
+`a ≈ b` evaluates to `true` if `|a - b| \<= 1e-5`; `false` otherwise.  Both operands must be numeric.  If either operand is not a number, the runtime raises an error.
+
+The operator returns a boolean and does not invoke metamethods.  Each operand is evaluated exactly once.
+
+When both operands are numeric constants, the compiler folds the expression at compile time.
+
+[source,tiri]
+----
+0.1 + 0.2 ≈ 0.3             -- true
+not (0.1 + 0.2 is 0.3)      -- true  (exact equality exposes precision)
+1.0 ≈ 1.000009              -- true  (within tolerance)
+not (1.0 ≈ 1.00002)         -- true  (beyond tolerance)
+----
+
+`NaN` is not approximately equal to itself.  Infinity subtracted from infinity yields `NaN`, so `inf ≈ inf` evaluates to `false`.
+
+[source,tiri]
+----
+nan = 0 / 0
+not (nan ≈ nan)              -- true
+
+inf = 1 / 0
+not (inf ≈ inf)              -- true
 ----
 
 [[sec-string-concatenation]]
@@ -619,7 +655,7 @@ indexterm:[operators, precedence] The following table lists all operators from h
 |6  |`..`, `<<`, `>>`                     |`..` right; shifts left
 |5  |`&`                                  |Left
 |4  |`^`, `is`, `is not`, `!=`, `<`, `>`, `\<=`, `>=`, `in` |Left
-|3  |`has`, `\|`, `and`, `\|>`            |Left
+|3  |`has`, `≈`, `\|`, `and`, `\|>`       |Left
 |2  |`or`, `??`, `? :>`                   |Left (`? :>` right)
 |===
 
@@ -639,4 +675,5 @@ See <<appendix-operator-precedence>> for a quick-reference card.
 x > 0 and x < 10    -- comparison before logical
 a & 0xFF | 0x100    -- AND before OR (C-style)
 flags has F1 | F2   -- has (level 3) consumes bitwise OR on RHS
+0.1 + 0.2 ≈ 0.3     -- arithmetic (level 7) before approx (level 3)
 ----
