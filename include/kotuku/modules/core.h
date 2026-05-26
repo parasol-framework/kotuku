@@ -3546,10 +3546,10 @@ class objModule : public Object {
       return ERR::Okay;
    }
 
-   template <class T> inline ERR setName(T && Value) noexcept {
+   inline ERR setName(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804500, &Value, 1);
    }
 
 };

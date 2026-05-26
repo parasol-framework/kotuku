@@ -166,7 +166,7 @@ static ERR  unload_doc(extDocument *, ULD = ULD::NIL);
 static bool valid_objectid(extDocument *, OBJECTID);
 static bool view_area(extDocument *, double, double, double, double);
 
-static ERR GET_WorkingPath(extDocument *, CSTRING *);
+static ERR GET_WorkingPath(extDocument *, std::string_view &);
 
 #ifdef DBG_STREAM
 static void print_stream(RSTREAM &);
