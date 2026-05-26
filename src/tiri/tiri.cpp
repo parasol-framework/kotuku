@@ -638,20 +638,23 @@ void make_any_array(lua_State *Lua, int Flags, std::string_view TypeName, int El
 
 void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 {
-   if (CSTRING str = Self->String) {
+   if (not Self->String.empty()) {
+      auto str = std::string_view(Self->String);
       int i;
       for (i=0; i < Line; i++) {
-         if (not (str = next_line(str))) {
+         str = next_line(str);
+         if (str.empty()) {
             Buffer[0] = 0;
             return;
          }
       }
 
-      while ((*str IS ' ') or (*str IS '\t')) str++;
+      while ((not str.empty()) and ((str.front() IS ' ') or (str.front() IS '\t'))) str.remove_prefix(1);
 
       for (i=0; i < Size-1; i++) {
-         if ((*str IS '\n') or (*str IS '\r') or (not *str)) break;
-         Buffer[i] = *str++;
+         if ((str.empty()) or (str.front() IS '\n') or (str.front() IS '\r')) break;
+         Buffer[i] = str.front();
+         str.remove_prefix(1);
       }
       Buffer[i] = 0;
    }

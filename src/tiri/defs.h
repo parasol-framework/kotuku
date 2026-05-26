@@ -283,7 +283,6 @@ struct prvTiri {
    DateTime CacheDate;
    PERMIT   CachePermissions;
    JOF      JitOptions;
-   int      LoadedSize;
    int      MainChunkRef;              // Registry reference to the main chunk for post-execution analysis
    uint8_t  Recurse;
    uint8_t  SaveCompiled;
@@ -365,6 +364,18 @@ constexpr uint32_t simple_hash(CSTRING String, uint32_t Hash = 0) {
    while (*String IS '\r') String++;
    if (*String) return String;
    else return nullptr;
+}
+
+[[maybe_unused]] [[nodiscard]] constexpr std::string_view next_line(std::string_view String) noexcept
+{
+   size_t pos = 0;
+
+   while ((pos < String.size()) and (String[pos] != '\n') and (String[pos] != '\r')) pos++;
+   while ((pos < String.size()) and (String[pos] IS '\r')) pos++;
+   if ((pos < String.size()) and (String[pos] IS '\n')) pos++;
+   while ((pos < String.size()) and (String[pos] IS '\r')) pos++;
+   if (pos < String.size()) return String.substr(pos);
+   else return {};
 }
 
 //********************************************************************************************************************

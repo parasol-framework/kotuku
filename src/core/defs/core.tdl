@@ -1447,12 +1447,12 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
    const ScriptArg *ProcArgs;     // Procedure args - applies during Exec
-   STRING   Path;                 // File location of the script
-   STRING   String;
-   STRING   WorkingPath;
-   STRING   ErrorMessage;
-   CSTRING  Procedure;
-   STRING   CacheFile;
+   std::string Path;              // File location of the script
+   std::string String;
+   std::string WorkingPath;
+   std::string ErrorMessage;
+   std::string Procedure;
+   std::string CacheFile;
    int      ActivationCount;      // Incremented every time the script is activated.
    int      ResultsTotal;
    int      TotalArgs;            // Total number of ProcArgs
