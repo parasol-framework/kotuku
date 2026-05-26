@@ -23,7 +23,7 @@ this shared object, usually via ~Display.AccessPointer(), when reading pointer s
 using namespace display;
 #endif
 
-static ERR GET_ButtonOrder(extPointer *, std::string_view *);
+static ERR GET_ButtonOrder(extPointer *, std::string_view &);
 static ERR GET_ButtonState(extPointer *, int *);
 
 static ERR SET_ButtonOrder(extPointer *, std::string_view &);
@@ -825,10 +825,10 @@ Changes to this field will have an immediate impact on the pointing device's beh
 
 *********************************************************************************************************************/
 
-static ERR GET_ButtonOrder(extPointer *Self, std::string_view *Value)
+static ERR GET_ButtonOrder(extPointer *Self, std::string_view &Value)
 {
    if (Self->ButtonOrder.empty()) return ERR::FieldNotSet;
-   *Value = Self->ButtonOrder;
+   Value = Self->ButtonOrder;
    return ERR::Okay;
 }
 
@@ -837,8 +837,6 @@ static ERR SET_ButtonOrder(extPointer *Self, std::string_view &Value)
    kt::Log log;
 
    log.msg("%.*s", int(Value.size()), Value.data());
-
-   if (Value.empty()) return ERR::Okay;
 
    // Assign the buttons.
    Self->ButtonOrder.assign(Value);
