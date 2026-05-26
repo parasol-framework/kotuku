@@ -460,7 +460,7 @@ class extTask : public objTask {
    std::string Path;
    std::string ProcessPath;
    std::string Location;      // Where to load the task from (string)
-   char     Name[32];         // Name of the task, if specified (string)
+   std::string Name;          // Name of the task, if specified (string)
    bool     ReturnCodeSet;    // TRUE if the ReturnCode has been set
    bool     QuitCalled;       // TRUE if TASK_Quit has been called before
    FUNCTION ErrorCallback;
