@@ -434,7 +434,7 @@ struct Object { // Must be 64-bit aligned
       return set(FieldID, int(Value));
    }
 
-   template <class T> ERR set(FIELD FieldID, const T Value) requires std::integral<T> || std::floating_point<T> {
+   template <class T> ERR set(FIELD FieldID, const T Value) requires std::integral<T> or std::floating_point<T> {
       Object *target;
       if (auto field = FindField(this, FieldID, &target)) {
          if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
@@ -553,7 +553,7 @@ struct Object { // Must be 64-bit aligned
 
    public:
 
-   template <class T> ERR get(FIELD FieldID, T &Value) requires std::integral<T> || std::floating_point<T> {
+   template <class T> ERR get(FIELD FieldID, T &Value) requires std::integral<T> or std::floating_point<T> {
       Value = 0;
       Object *target;
       if (auto field = FindField(this, FieldID, &target)) {
@@ -844,10 +844,22 @@ struct Object { // Must be 64-bit aligned
    }
 
    template <class T> T get(FIELD FieldID)
-   requires pcPointer<T> || std::integral<T> || std::floating_point<T> {
+   requires pcPointer<T> or std::integral<T> or std::floating_point<T> {
       T result(0);
       get(FieldID, result);
       return result;
+   };
+
+   template <class T> T get(FIELD FieldID) requires std::is_same_v<T, std::string_view> {
+      T result;
+      get(FieldID, result);
+      return result;
+   };
+
+   template <class T> T get(FIELD FieldID) requires std::is_same_v<T, std::string> {
+      std::string_view result;
+      get(FieldID, result);
+      return std::string(result);
    };
 
    template <class T> T get(FIELD FieldID) requires std::is_enum_v<T> {
@@ -1317,9 +1329,17 @@ inline int acWriteResult(OBJECTPTR Object, CPTR Buffer, int Bytes) {
    else return 0;
 }
 
-#define acSeekStart(a,b)    acSeek((a),(b),SEEK::START)
-#define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
-#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
+template <class T> inline ERR acSeekStart(OBJECTPTR Object, T Offset) {
+   return acSeek(Object, Offset, SEEK::START);
+}
+
+template <class T> inline ERR acSeekEnd(OBJECTPTR Object, T Offset) {
+   return acSeek(Object, Offset, SEEK::END);
+}
+
+template <class T> inline ERR acSeekCurrent(OBJECTPTR Object, T Offset) {
+   return acSeek(Object, Offset, SEEK::CURRENT);
+}
 
 inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
    struct acSetKey args = { Key, Value };
