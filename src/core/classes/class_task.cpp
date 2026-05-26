@@ -2279,7 +2279,7 @@ static ERR SET_Path(extTask *Self, const std::string_view &Value)
    if (not Value.empty()) {
       auto len = Value.find_last_of(":/\\");
       if (len IS std::string::npos) return ERR::InvalidPath;
-      new_path.assign(Value, 0, len);
+      new_path.assign(Value, 0, len + 1);
 
 #ifdef __unix__
          std::string path;
