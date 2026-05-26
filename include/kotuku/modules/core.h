@@ -3799,16 +3799,16 @@ class objCompression : public Object {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   template <class T> inline ERR setArchiveName(T && Value) noexcept {
+   inline ERR setArchiveName(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804200, &Value, 1);
    }
 
-   template <class T> inline ERR setPath(T && Value) noexcept {
+   inline ERR setPath(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
    inline ERR setFeedback(FUNCTION Value) noexcept {
@@ -3817,10 +3817,10 @@ class objCompression : public Object {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERR setPassword(T && Value) noexcept {
+   inline ERR setPassword(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
 };
