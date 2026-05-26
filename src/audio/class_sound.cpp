@@ -25,18 +25,18 @@ The Sound class implements robust file format support with automatic detection a
 The following demonstrates advanced Sound class usage including pitch control and event handling:
 
 <pre>
-local snd = obj.new('sound', {
+snd = obj.new('sound', {
    path = 'audio:samples/piano_c4.wav',
    note = 'C6',    -- Play two octaves higher
    volume = 0.8,   -- Reduce volume to 80%
    onStop = function(Sound)
       print('Playback completed')
-      proc.signal()
+      processing.signal()
    end
 })
 
 snd.acActivate()
-proc.sleep()  -- Wait for completion
+processing.sleep()  -- Wait for completion
 </pre>
 
 -END-
@@ -620,7 +620,6 @@ static ERR SOUND_Free(extSound *Self)
       }
    }
 
-   Self->Path.clear();
    if (Self->File) { FreeResource(Self->File); Self->File = nullptr; }
 
    Self->~extSound();
@@ -1348,7 +1347,7 @@ static ERR SOUND_SET_Note(extSound *Self, std::string_view &Value)
    int i, note;
    Self->NoteString.assign(Value);
 
-   const char *str = Value.data();
+   const char *str = Self->NoteString.c_str();
    if (((*str >= '0') and (*str <= '9')) or (*str IS '-')) {
       note = strtol(str, nullptr, 0);
    }
@@ -1749,13 +1748,13 @@ static const FieldArray clFields[] = {
    { "Handle",         FDF_INT|FDF_SYSTEM|FDF_R },
    { "ChannelIndex",   FDF_INT|FDF_R },
    // Virtual fields
-   { "Active",   FDF_INT|FDF_R,           SOUND_GET_Active },
+   { "Active",   FDF_INT|FDF_R,            SOUND_GET_Active },
    { "Duration", FDF_DOUBLE|FDF_R,         SOUND_GET_Duration },
    { "Header",   FDF_BYTE|FDF_ARRAY|FDF_R, SOUND_GET_Header },
    { "OnStop",   FDF_FUNCTIONPTR|FDF_RW,   SOUND_GET_OnStop, SOUND_SET_OnStop },
-   { "Path",     FDF_CPPSTRING|FDF_RI,        SOUND_GET_Path, SOUND_SET_Path },
+   { "Path",     FDF_CPPSTRING|FDF_RI,     SOUND_GET_Path, SOUND_SET_Path },
    { "Src",      FDF_SYNONYM|FDF_CPPSTRING|FDF_RI, SOUND_GET_Path, SOUND_SET_Path },
-   { "Note",     FDF_CPPSTRING|FDF_RW, SOUND_GET_Note, SOUND_SET_Note },
+   { "Note",     FDF_CPPSTRING|FDF_RW,     SOUND_GET_Note, SOUND_SET_Note },
    END_FIELD
 };
 
