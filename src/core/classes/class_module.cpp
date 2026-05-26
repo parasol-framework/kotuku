@@ -593,7 +593,7 @@ Returns the IDL definition string that was compiled from the module's TDL file. 
 static ERR GET_Defs(extModule *Self, std::string_view &Value)
 {
    if ((Self->Root) and (Self->Root->Header)) Value = Self->Root->Header->Definitions;
-   else Value = std::string{};
+   else Value = std::string_view{};
    return ERR::Okay;
 }
 
