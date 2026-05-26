@@ -19,7 +19,8 @@ The Config class conversion is the model for this skill:
 - TDL field declarations change from `str Field` to `cpp(str) Field`.
 - C++ body members change from `STRING`/`CSTRING` pointer-style fields to `std::string`.
 - All field array entries change from `FDF_STRING` to `FDF_CPPSTRING` unless there is a good reason for an exception.
-- Field setter/getter callbacks use `std::string_view &Value` instead of `CSTRING Value` or `CSTRING *Value`.
+- Field getter callbacks use `std::string_view &Value` instead of `CSTRING Value`
+- Field setter callbacks use `const std::string_view &Value` instead of `CSTRING *Value`.
 - Manual `strclone()` and `FreeResource()` ownership disappears for converted string fields.
 - `AC::NewObject` changes to `AC::NewPlacement`, with placement construction of the object body.
 - `AC::Free` calls the class destructor after any custom save/release logic has run.

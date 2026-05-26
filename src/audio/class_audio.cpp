@@ -1129,7 +1129,7 @@ static ERR GET_Device(extAudio *Self, std::string_view &Value)
    else return ERR::FieldNotSet;
 }
 
-static ERR SET_Device(extAudio *Self, std::string_view &Value)
+static ERR SET_Device(extAudio *Self, const std::string_view &Value)
 {
    if (Value.empty()) Self->Device = "default";
    else {
