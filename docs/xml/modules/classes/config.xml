@@ -296,7 +296,7 @@ print('The Action class is located at ' .. str)
       <name>GroupFilter</name>
       <comment>Set this field to enable group filtering.</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>STRING</type>
+      <type>std::string</type>
       <description>
 <p>When dealing with large configuration files, filtering out unrelated data may be useful.  By setting the GroupFilter field, it is possible to filter out entire groups that don't match the criteria.</p>
 <p>Group filters are created in CSV format, i.e. <code>GroupA, GroupB, GroupC, ...</code>.</p>
@@ -309,7 +309,7 @@ print('The Action class is located at ' .. str)
       <name>KeyFilter</name>
       <comment>Set this field to enable key filtering.</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>STRING</type>
+      <type>std::string</type>
       <description>
 <p>When dealing with large configuration files it may be useful to filter out groups of key-values that are not needed. The KeyFilter field allows simple filters to be defined that will perform this task for you.  It is recommended that it is set prior to parsing new data for best performance, but can be set or changed at any time to apply a new filter.</p>
 <p>Key filters are created in the format <code>[Key] = [Data1], [Data2], ...</code>.  For example:</p>
@@ -326,7 +326,7 @@ Name = Kōtuku
       <name>Path</name>
       <comment>Set this field to the location of the source configuration file.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type>STRING</type>
+      <type>std::string</type>
     </field>
 
     <field>
