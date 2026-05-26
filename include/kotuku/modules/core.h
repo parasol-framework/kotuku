@@ -2828,7 +2828,7 @@ class objFile : public Object {
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
-   inline ERR setPath(std::string_view Value) noexcept {
+   inline ERR setPath(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x00804500, &Value, 1);
@@ -2846,7 +2846,7 @@ class objFile : public Object {
       return field->WriteValue(target, field, FD_INT64, &Value, 1);
    }
 
-   inline ERR setLink(std::string_view Value) noexcept {
+   inline ERR setLink(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
@@ -3008,19 +3008,19 @@ class objConfig : public Object {
 
    // Customised field setting
 
-   inline ERR setPath(std::string_view Value) noexcept {
+   inline ERR setPath(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setKeyFilter(std::string_view Value) noexcept {
+   inline ERR setKeyFilter(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setGroupFilter(std::string_view Value) noexcept {
+   inline ERR setGroupFilter(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
@@ -3144,25 +3144,25 @@ class objScript : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setCacheFile(std::string_view Value) noexcept {
+   inline ERR setCacheFile(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setErrorMessage(std::string_view Value) noexcept {
+   inline ERR setErrorMessage(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setWorkingPath(std::string_view Value) noexcept {
+   inline ERR setWorkingPath(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setProcedure(std::string_view Value) noexcept {
+   inline ERR setProcedure(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
@@ -3174,7 +3174,7 @@ class objScript : public Object {
       return field->WriteValue(target, field, 0x08810300, to_cstring(Value), 1);
    }
 
-   inline ERR setPath(std::string_view Value) noexcept {
+   inline ERR setPath(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x00804500, &Value, 1);
@@ -3186,7 +3186,7 @@ class objScript : public Object {
       return field->WriteValue(target, field, 0x08801300, Value, Elements);
    }
 
-   inline ERR setStatement(std::string_view Value) noexcept {
+   inline ERR setStatement(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
@@ -3799,13 +3799,13 @@ class objCompression : public Object {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   inline ERR setArchiveName(std::string_view Value) noexcept {
+   inline ERR setArchiveName(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x00804200, &Value, 1);
    }
 
-   inline ERR setPath(std::string_view Value) noexcept {
+   inline ERR setPath(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
@@ -3817,7 +3817,7 @@ class objCompression : public Object {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERR setPassword(std::string_view Value) noexcept {
+   inline ERR setPassword(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);

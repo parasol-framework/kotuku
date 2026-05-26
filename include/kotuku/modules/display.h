@@ -1372,10 +1372,10 @@ class objPointer : public Object {
       return ERR::Okay;
    }
 
-   template <class T> inline ERR setButtonOrder(T && Value) noexcept {
+   inline ERR setButtonOrder(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
 };

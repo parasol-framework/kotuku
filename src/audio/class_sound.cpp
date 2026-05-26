@@ -56,7 +56,7 @@ constexpr int SIZE_RIFF_CHUNK = 12;
 
 static ERR SOUND_GET_Active(extSound *, int *);
 
-static ERR SOUND_SET_Note(extSound *, std::string_view &);
+static ERR SOUND_SET_Note(extSound *, const std::string_view &);
 
 static const std::array<double, 12> glScale = {
    1.0,         // C
@@ -1338,7 +1338,7 @@ static ERR SOUND_GET_Note(extSound *Self, std::string_view &Value)
    return ERR::Okay;
 }
 
-static ERR SOUND_SET_Note(extSound *Self, std::string_view &Value)
+static ERR SOUND_SET_Note(extSound *Self, const std::string_view &Value)
 {
    kt::Log log;
 
@@ -1531,7 +1531,7 @@ static ERR SOUND_GET_Path(extSound *Self, std::string_view &Value)
    return ERR::FieldNotSet;
 }
 
-static ERR SOUND_SET_Path(extSound *Self, std::string_view &Value)
+static ERR SOUND_SET_Path(extSound *Self, const std::string_view &Value)
 {
    Self->Path.assign(Value);
    return ERR::Okay;

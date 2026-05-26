@@ -673,7 +673,10 @@ struct Object { // Must be 64-bit aligned
          }
          else if (flags & FD_STRING) {
             if (flags & FD_CPP) {
-               if (field->GetValue) Value.assign(*((std::string_view *)data));
+               if (field->GetValue) {
+                  Value.assign(*((std::string_view *)data));
+                  if (flags & FD_ALLOC) FreeResource(GetMemoryID(((std::string_view *)data)->data()));
+               }
                else Value.assign(*((std::string *)data));
             }
             else {
@@ -695,7 +698,7 @@ struct Object { // Must be 64-bit aligned
 
    // Retrieve a direct pointer to a string field, no-copy operation.  Result will require deallocation by the client if the field is marked with ALLOC.
 
-   [[deprecated]] inline ERR get(FIELD FieldID, CSTRING &Value) {
+   inline ERR get(FIELD FieldID, CSTRING &Value) { // deprecated
       Object *target;
       Value = nullptr;
       if (auto field = FindField(this, FieldID, &target)) {
