@@ -57,6 +57,7 @@ local/
 build/
 out/
 CLAUDE.local.md
+AGENTS.local.md
 src/link/kotuku.manifest
 src/link/resource.rc
 data/ssl/localhost.p12
