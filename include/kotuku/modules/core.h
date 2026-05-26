@@ -3343,10 +3343,10 @@ class objTask : public Object {
       return field->WriteValue(target, field, FD_INT64, &Value, 1);
    }
 
-   template <class T> inline ERR setArgs(T && Value) noexcept {
+   inline ERR setArgs(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
-      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804200, &Value, 1);
    }
 
    inline ERR setParameters(kt::vector<std::string> *Value) noexcept {
@@ -3373,22 +3373,22 @@ class objTask : public Object {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERR setLaunchPath(T && Value) noexcept {
+   inline ERR setLaunchPath(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   template <class T> inline ERR setLocation(T && Value) noexcept {
+   inline ERR setLocation(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   template <class T> inline ERR setName(T && Value) noexcept {
+   inline ERR setName(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
    inline ERR setOutputCallback(FUNCTION Value) noexcept {
@@ -3397,10 +3397,10 @@ class objTask : public Object {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERR setPath(T && Value) noexcept {
+   inline ERR setPath(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
    inline ERR setPriority(const int Value) noexcept {
