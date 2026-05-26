@@ -2891,17 +2891,17 @@ class objConfig : public Object {
 
    using create = kt::Create<objConfig>;
 
-   STRING Path;         // Set this field to the location of the source configuration file.
-   STRING KeyFilter;    // Set this field to enable key filtering.
-   STRING GroupFilter;  // Set this field to enable group filtering.
-   CNF    Flags;        // Optional flags may be set here.
+   std::string Path;         // Set this field to the location of the source configuration file.
+   std::string KeyFilter;    // Set this field to enable key filtering.
+   std::string GroupFilter;  // Set this field to enable group filtering.
+   CNF Flags;                // Optional flags may be set here.
    public:
-   ConfigGroups *Groups;
+   ConfigGroups Groups;
 
    // For C++ only, these read variants avoid method calls for speed, but apply identical logic.
 
    inline ERR read(std::string_view pGroup, std::string_view pKey, double &pValue) {
-      for (auto& [group, keys] : Groups[0]) {
+      for (auto& [group, keys] : Groups) {
          if ((!pGroup.empty()) and (group.compare(pGroup))) continue;
          if (pKey.empty()) pValue = strtod(keys.cbegin()->second.c_str(), nullptr);
          else if (auto it = keys.find(pKey); it != keys.end()) pValue = strtod(it->second.c_str(), nullptr);
@@ -2912,7 +2912,7 @@ class objConfig : public Object {
    }
 
    inline ERR read(std::string_view pGroup, std::string_view pKey, int &pValue) {
-      for (auto& [group, keys] : Groups[0]) {
+      for (auto& [group, keys] : Groups) {
          if ((!pGroup.empty()) and (group.compare(pGroup))) continue;
          if (pKey.empty()) pValue = strtol(keys.cbegin()->second.c_str(), nullptr, 0);
          else if (auto it = keys.find(pKey); it != keys.end()) pValue = strtol(it->second.c_str(), nullptr, 0);
@@ -2923,7 +2923,7 @@ class objConfig : public Object {
    }
 
    inline ERR read(std::string_view pGroup, std::string_view pKey, std::string &pValue) {
-      for (auto & [group, keys] : Groups[0]) {
+      for (auto & [group, keys] : Groups) {
          if ((!pGroup.empty()) and (group.compare(pGroup))) continue;
          if (pKey.empty()) pValue = keys.cbegin()->second;
          else if (auto it = keys.find(pKey); it != keys.end()) pValue = it->second;
@@ -2934,8 +2934,7 @@ class objConfig : public Object {
    }
 
    inline ERR write(std::string_view Group, std::string_view Key, std::string_view Value) {
-      ConfigGroups &groups = *Groups;
-      for (auto& [group, keys] : groups) {
+      for (auto& [group, keys] : Groups) {
          if (!group.compare(Group)) {
             if (auto it = keys.find(Key); it != keys.end()) {
                it->second.assign(Value);
@@ -2945,7 +2944,7 @@ class objConfig : public Object {
          }
       }
 
-      auto &new_group = Groups->emplace_back();
+      auto &new_group = Groups.emplace_back();
       new_group.first.assign(Group);
       new_group.second.emplace(Key, Value);
       return ERR::Okay;
@@ -3008,22 +3007,22 @@ class objConfig : public Object {
 
    // Customised field setting
 
-   template <class T> inline ERR setPath(T && Value) noexcept {
+   inline ERR setPath(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   template <class T> inline ERR setKeyFilter(T && Value) noexcept {
+   inline ERR setKeyFilter(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   template <class T> inline ERR setGroupFilter(T && Value) noexcept {
+   inline ERR setGroupFilter(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
    inline ERR setFlags(const CNF Value) noexcept {

@@ -671,9 +671,20 @@ struct Object { // Must be 64-bit aligned
             auto written = snprintf(buffer, sizeof(buffer), "%f", *((double *)data));
             Value.assign(buffer, written);
          }
-         else if (flags & (FD_POINTER|FD_STRING)) {
-            Value.assign(*((CSTRING *)data));
-            if (flags & FD_ALLOC) FreeResource(GetMemoryID(*((CSTRING *)data)));
+         else if (flags & FD_STRING) {
+            if (flags & FD_CPP) {
+               if (field->GetValue) Value.assign(*((std::string_view *)data));
+               else Value.assign(*((std::string *)data));
+            }
+            else {
+               if (auto str = *((CSTRING *)data)) Value.assign(str);
+               else Value.clear();
+               if (flags & FD_ALLOC) FreeResource(GetMemoryID(*((CSTRING *)data)));
+            }
+         }
+         else if (flags & FD_POINTER) {
+            if (auto str = *((CSTRING *)data)) Value.assign(str);
+            else Value.clear();
          }
          else return ERR::UnrecognisedFieldType;
 
@@ -724,20 +735,34 @@ struct Object { // Must be 64-bit aligned
       if (auto field = FindField(this, FieldID, &target)) {
          if (not field->readable()) return ERR::NoFieldAccess;
 
-         int8_t field_value[sizeof(std::string_view)];
-         int array_size;
-         auto fv = get_field_value(target, *field, field_value, array_size);
-         if (fv.first != ERR::Okay) return fv.first;
-
          if (field->Flags & FD_STRING) {
-            if (field->Flags & FD_CPP) Value = *((std::string_view *)fv.second);
+            if (field->Flags & FD_CPP) {
+               if (field->GetValue) {
+                  SetObjectContext(target, field, AC::NIL);
+                  auto get_field = (ERR (*)(APTR, std::string_view &))field->GetValue;
+                  auto error = get_field(target, Value);
+                  RestoreObjectContext();
+                  return error;
+               }
+               else Value = *((std::string *)(((int8_t *)target) + field->Offset));
+            }
             else {
+               int8_t field_value[sizeof(std::string_view)];
+               int array_size;
+               auto fv = get_field_value(target, *field, field_value, array_size);
+               if (fv.first != ERR::Okay) return fv.first;
+
                CSTRING val = *((CSTRING *)fv.second);
                Value = val ? std::string_view(val) : std::string_view{};
             }
             return ERR::Okay;
          }
          else if ((field->Flags & FD_INT) and (field->Flags & FD_LOOKUP)) {
+            int8_t field_value[sizeof(std::string_view)];
+            int array_size;
+            auto fv = get_field_value(target, *field, field_value, array_size);
+            if (fv.first != ERR::Okay) return fv.first;
+
             // Reading a lookup field as a string is permissible, we just return the string registered in the lookup table
             if (auto lookup = (FieldDef *)field->Arg) {
                int value = ((int *)fv.second)[0];
