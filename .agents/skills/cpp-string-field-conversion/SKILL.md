@@ -18,7 +18,7 @@ The Config class conversion is the model for this skill:
 
 - TDL field declarations change from `str Field` to `cpp(str) Field`.
 - C++ body members change from `STRING`/`CSTRING` pointer-style fields to `std::string`.
-- Field array entries change from `FDF_STRING` to `FDF_CPPSTRING`.
+- All field array entries change from `FDF_STRING` to `FDF_CPPSTRING` unless there is a good reason for an exception.
 - Field setter/getter callbacks use `std::string_view &Value` instead of `CSTRING Value` or `CSTRING *Value`.
 - Manual `strclone()` and `FreeResource()` ownership disappears for converted string fields.
 - `AC::NewObject` changes to `AC::NewPlacement`, with placement construction of the object body.
@@ -42,8 +42,8 @@ The Config class conversion is the model for this skill:
 
 3. Update C++ helper signatures and call sites:
    - Prefer `std::string_view` for internal helper parameters that read string data.
-   - Use `std::string_view &Value` for `FDF_CPPSTRING` field setters and getters.
-   - For getters, return `ERR::FieldNotSet` when an empty string should preserve the old "null/unset" behaviour.
+   - Use `std::string_view &Value` for `FDF_CPPSTRING` field getters and `const std::string_view &Value` for setters.
+   - For existing getters, return a matching error to the original code if it had an error path for managing "null/unset" behaviour.
    - For setters, assign directly with `Self->Field = Value;` or `Self->Field.assign(Value);`.
    - Replace `if (Self->Field)` and `if ((Value) and (*Value))` with `not Self->Field.empty()` and `not Value.empty()`
      where the old meaning was "has text".
@@ -55,17 +55,17 @@ The Config class conversion is the model for this skill:
    - Keep manual cleanup for raw pointers, handles, buffers, or other resources that are not converted.
 
 5. Fix object lifecycle:
-   - Replace the old new-object action with a placement constructor:
+   - Add a placement constructor if it does not already exist:
 
 ```cpp
-static ERR CLASS_NewPlacement(extClass *Self)
+static ERR CLASSNAME_NewPlacement(extClass *Self)
 {
    new (Self) extClass;
    return ERR::Okay;
 }
 ```
 
-   - Update the action table from `AC::NewObject` to `AC::NewPlacement`.
+   - Add `AC::NewPlacement` to the action table.
    - If an existing `AC::NewObject` performs post-construction allocations, subscriptions, or default initialisation that
      requires normal object context, keep it alongside `AC::NewPlacement`; do not move those operations into placement.
    - In the free action, run any class-specific persistence or release logic first, then call `Self->~extClass();`.
