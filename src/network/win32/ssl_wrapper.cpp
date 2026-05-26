@@ -151,6 +151,7 @@ public:
    size_t capacity() const { return data_.size(); }
    bool empty() const { return used_ == 0; }
    size_t available() const { return data_.size() - used_; }
+   bool can_append(size_t Bytes) const { return Bytes <= SSL_IO_BUFFER_SIZE - used_; }
 
    void reserve(size_t new_cap) {
       if (new_cap <= SSL_IO_BUFFER_SIZE and new_cap > data_.size()) {
@@ -535,6 +536,7 @@ void ssl_consume_pending_output(SSL_HANDLE SSL, size_t Bytes)
 SSL_ERROR_CODE ssl_queue_encrypted_input(SSL_HANDLE SSL, const void *Buffer, int Length)
 {
    if ((!SSL) or (!Buffer) or (Length <= 0)) return SSL_ERROR_ARGS;
+   if (!SSL->recv_buffer.can_append(size_t(Length))) return SSL_ERROR_BUFFER_OVERFLOW;
 
    std::span<const unsigned char> buffer_span((const unsigned char *)Buffer, size_t(Length));
    return SSL->recv_buffer.append(buffer_span) ? SSL_OK : SSL_ERROR_MEMORY;
@@ -553,6 +555,13 @@ int ssl_last_security_status(SSL_HANDLE SSL)
 size_t ssl_encrypted_input_size(SSL_HANDLE SSL)
 {
    return SSL ? SSL->recv_buffer.size() : 0;
+}
+
+//********************************************************************************************************************
+
+size_t ssl_encrypted_input_limit(SSL_HANDLE SSL)
+{
+   return SSL ? SSL_IO_BUFFER_SIZE : 0;
 }
 
 //********************************************************************************************************************
