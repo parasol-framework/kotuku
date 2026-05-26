@@ -399,7 +399,7 @@ global function outputClassHeader(Class:table, Private:str, Custom:str)
                   output(f'   inline ERR set{fid_name}({field_type} Value, int Elements) noexcept {{')
                end
             elseif f.flags has FD_STRING and f.flags has FD_CPP then
-                  output(f'   inline ERR set{fid_name}(std::string_view Value) noexcept {{')
+                  output(f'   inline ERR set{fid_name}(const std::string_view &Value) noexcept {{')
             elseif field_type is 'T &&' then
                output(f'   template <class T> inline ERR set{fid_name}({field_type} Value) noexcept {{')
             else
@@ -465,7 +465,7 @@ global function outputClassHeader(Class:table, Private:str, Custom:str)
             if field_type is 'T &&' then
                output(f'   template <class T> inline ERR set{fid_name}({field_type} Value) noexcept {{')
             elseif f.flags has FD_STRING and f.flags has FD_CPP then
-               output(f'   inline ERR set{fid_name}(std::string_view Value) noexcept {{')
+               output(f'   inline ERR set{fid_name}(const std::string_view &Value) noexcept {{')
             else
                output(f'   inline ERR set{fid_name}({field_type} Value) noexcept {{')
             end

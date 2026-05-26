@@ -673,7 +673,10 @@ struct Object { // Must be 64-bit aligned
          }
          else if (flags & FD_STRING) {
             if (flags & FD_CPP) {
-               if (field->GetValue) Value.assign(*((std::string_view *)data));
+               if (field->GetValue) {
+                  Value.assign(*((std::string_view *)data));
+                  if (flags & FD_ALLOC) FreeResource(GetMemoryID(((std::string_view *)data)->data()));
+               }
                else Value.assign(*((std::string *)data));
             }
             else {

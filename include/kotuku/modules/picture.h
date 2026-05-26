@@ -134,25 +134,25 @@ class objPicture : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setAuthor(std::string_view Value) noexcept {
+   inline ERR setAuthor(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setCopyright(std::string_view Value) noexcept {
+   inline ERR setCopyright(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setDescription(std::string_view Value) noexcept {
+   inline ERR setDescription(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setDisclaimer(std::string_view Value) noexcept {
+   inline ERR setDisclaimer(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
@@ -165,19 +165,19 @@ class objPicture : public Object {
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
-   inline ERR setPath(std::string_view Value) noexcept {
+   inline ERR setPath(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x00804500, &Value, 1);
    }
 
-   inline ERR setSoftware(std::string_view Value) noexcept {
+   inline ERR setSoftware(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setTitle(std::string_view Value) noexcept {
+   inline ERR setTitle(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
