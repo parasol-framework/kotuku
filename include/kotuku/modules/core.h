@@ -3067,12 +3067,12 @@ class objScript : public Object {
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
    const ScriptArg *ProcArgs;     // Procedure args - applies during Exec
-   STRING   Path;                 // File location of the script
-   STRING   String;
-   STRING   WorkingPath;
-   STRING   ErrorMessage;
-   CSTRING  Procedure;
-   STRING   CacheFile;
+   std::string Path;              // File location of the script
+   std::string String;
+   std::string WorkingPath;
+   std::string ErrorMessage;
+   std::string Procedure;
+   std::string CacheFile;
    int      ActivationCount;      // Incremented every time the script is activated.
    int      ResultsTotal;
    int      TotalArgs;            // Total number of ProcArgs
@@ -3144,28 +3144,28 @@ class objScript : public Object {
       return ERR::Okay;
    }
 
-   template <class T> inline ERR setCacheFile(T && Value) noexcept {
+   inline ERR setCacheFile(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   template <class T> inline ERR setErrorMessage(T && Value) noexcept {
+   inline ERR setErrorMessage(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   template <class T> inline ERR setWorkingPath(T && Value) noexcept {
+   inline ERR setWorkingPath(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   template <class T> inline ERR setProcedure(T && Value) noexcept {
+   inline ERR setProcedure(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
    template <class T> inline ERR setName(T && Value) noexcept {
@@ -3174,10 +3174,10 @@ class objScript : public Object {
       return field->WriteValue(target, field, 0x08810300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERR setPath(T && Value) noexcept {
+   inline ERR setPath(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804500, &Value, 1);
    }
 
    inline ERR setResults(STRING * Value, int Elements) noexcept {
@@ -3186,10 +3186,10 @@ class objScript : public Object {
       return field->WriteValue(target, field, 0x08801300, Value, Elements);
    }
 
-   template <class T> inline ERR setStatement(T && Value) noexcept {
+   inline ERR setStatement(std::string_view Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
 };
