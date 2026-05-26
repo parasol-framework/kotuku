@@ -107,13 +107,13 @@ The Clear action removes all parsed XML content from the object, including the c
 
 static ERR XML_Clear(extXML *Self)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+   if (not Self->Path.empty()) Self->Path.clear();
 
    Self->Tags.clear();
    Self->BaseURIMap.clear();
-   if (Self->DocType)  { FreeResource(Self->DocType); Self->DocType = nullptr; }
-   if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
-   if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
+   if (not Self->DocType.empty()) Self->DocType.clear();
+   if (not Self->PublicID.empty()) Self->PublicID.clear();
+   if (not Self->SystemID.empty()) Self->SystemID.clear();
    Self->Entities.clear();
    Self->ParameterEntities.clear();
    Self->Notations.clear();
@@ -409,10 +409,10 @@ static ERR XML_Search(extXML *Self, struct xml::Search *Args)
 
 static ERR XML_Free(extXML *Self)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
-   if (Self->DocType) { FreeResource(Self->DocType); Self->DocType = nullptr; }
-   if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
-   if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
+   if (not Self->Path.empty()) Self->Path.clear();
+   if (not Self->DocType.empty()) Self->DocType.clear();
+   if (not Self->PublicID.empty()) Self->PublicID.clear();
+   if (not Self->SystemID.empty()) Self->SystemID.clear();
    Self->~extXML();
    return ERR::Okay;
 }
@@ -766,12 +766,12 @@ static ERR XML_Init(extXML *Self)
       Self->Statement.clear();
       return Self->ParseError;
    }
-   else if ((Self->Path) or (Self->Source)) {
+   else if ((not Self->Path.empty()) or (Self->Source)) {
       if ((Self->Flags & XMF::NEW) != XMF::NIL) {
          return ERR::Okay;
       }
       else if (parse_source(Self) != ERR::Okay) {
-         log.warning("XML parsing error: %s [File: %s]", GetErrorMsg(Self->ParseError), Self->Path ? Self->Path : "Object");
+         log.warning("XML parsing error: %s [File: %s]", GetErrorMsg(Self->ParseError), not Self->Path.empty() ? Self->Path.c_str() : "Object");
          return Self->ParseError;
       }
       else return ERR::Okay;
@@ -1847,10 +1847,10 @@ DocType: Root element name from DOCTYPE declaration
 
 *********************************************************************************************************************/
 
-static ERR SET_DocType(extXML *Self, CSTRING Value)
+static ERR SET_DocType(extXML *Self, const std::string_view &Value)
 {
-   if (Value) return kt::set_string_field(Value, Self->DocType);
-   else if (Self->DocType) { FreeResource(Self->DocType); Self->DocType = nullptr; }
+   if (not Value.empty()) Self->DocType = Value;
+   else Self->DocType.clear();
    return ERR::Okay;
 }
 
@@ -1894,29 +1894,28 @@ establish the base path for relative references in XQuery statements (e.g. for i
 
 static ERR GET_Path(extXML *Self, STRING *Value)
 {
-   if (Self->Path) { *Value = Self->Path; return ERR::Okay; }
+   if (not Self->Path.empty()) { *Value = kt::strclone(Self->Path.c_str()); return ERR::Okay; }
    else return ERR::NoData;
 }
 
-static ERR SET_Path(extXML *Self, CSTRING Value)
+static ERR SET_Path(extXML *Self, const std::string_view &Value)
 {
    if (Self->Source) SET_Source(Self, nullptr);
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+   if (not Self->Path.empty()) Self->Path.clear();
 
    if (kt::startswith("string:", Value)) {
       // If the string: path type is used then we can optimise things by setting the following path string as the
       // statement.
 
-      return SET_Statement(Self, Value+7);
+      std::string statement(Value.substr(7));
+      return SET_Statement(Self, statement.c_str());
    }
-   else if ((Value) and (*Value)) {
-      if ((Self->Path = kt::strclone(Value))) {
-         if (Self->initialised()) {
-            parse_source(Self);
-            return Self->ParseError;
-         }
+   else if (not Value.empty()) {
+      Self->Path = Value;
+      if (Self->initialised()) {
+         parse_source(Self);
+         return Self->ParseError;
       }
-      else return ERR::AllocMemory;
    }
 
    return ERR::Okay;
@@ -1937,10 +1936,10 @@ PublicID: Public identifier for external DTD
 
 *********************************************************************************************************************/
 
-static ERR SET_PublicID(extXML *Self, CSTRING Value)
+static ERR SET_PublicID(extXML *Self, const std::string_view &Value)
 {
-   if (Value) return kt::set_string_field(Value, Self->PublicID);
-   else if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
+   if (not Value.empty()) Self->PublicID = Value;
+   else Self->PublicID.clear();
    return ERR::Okay;
 }
 
@@ -1951,10 +1950,10 @@ SystemID: System identifier for external DTD
 
 *********************************************************************************************************************/
 
-static ERR SET_SystemID(extXML *Self, CSTRING Value)
+static ERR SET_SystemID(extXML *Self, const std::string_view &Value)
 {
-   if (Value) return kt::set_string_field(Value, Self->SystemID);
-   else if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
+   if (not Value.empty()) Self->SystemID = Value;
+   else Self->SystemID.clear();
    return ERR::Okay;
 }
 
@@ -1996,7 +1995,7 @@ automatically.
 
 static ERR SET_Source(extXML *Self, OBJECTPTR Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+   if (not Self->Path.empty()) Self->Path.clear();
    Self->Statement.clear();
 
    if (Value) {
@@ -2037,7 +2036,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
 
    if (not Self->initialised()) {
       if (not Self->Statement.empty()) {
-         *Value = kt::strclone(Self->Statement);
+         *Value = kt::strclone(Self->Statement.c_str());
          return ERR::Okay;
       }
       else return ERR::FieldNotSet;
@@ -2343,10 +2342,10 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
 #include "xml_class_def.c"
 
 static const FieldArray clFields[] = {
-   { "Path",         FDF_STRING|FDF_RW, nullptr, SET_Path },
-   { "DocType",      FDF_STRING|FDF_RW, nullptr, SET_DocType },
-   { "PublicID",     FDF_STRING|FDF_RW, nullptr, SET_PublicID },
-   { "SystemID",     FDF_STRING|FDF_RW, nullptr, SET_SystemID },
+   { "Path",         FDF_CPPSTRING|FDF_RW, nullptr, SET_Path },
+   { "DocType",      FDF_CPPSTRING|FDF_RW, nullptr, SET_DocType },
+   { "PublicID",     FDF_CPPSTRING|FDF_RW, nullptr, SET_PublicID },
+   { "SystemID",     FDF_CPPSTRING|FDF_RW, nullptr, SET_SystemID },
    { "Source",       FDF_OBJECT|FDF_RI },
    { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clXMLFlags },
    { "Modified",     FDF_INT|FDF_R },
@@ -2355,7 +2354,7 @@ static const FieldArray clFields[] = {
    // Virtual fields
    { "ErrorMsg",   FDF_STRING|FDF_R, GET_ErrorMsg },
    { "ReadOnly",   FDF_INT|FDF_RI, GET_ReadOnly, SET_ReadOnly },
-   { "Src",        FDF_STRING|FDF_SYNONYM|FDF_RW, GET_Path, SET_Path },
+   { "Src",        FDF_CPPSTRING|FDF_SYNONYM|FDF_RW, GET_Path, SET_Path },
    { "Statement",  FDF_STRING|FDF_ALLOC|FDF_RW, GET_Statement, SET_Statement },
    { "Tags",       FDF_ARRAY|FDF_STRUCT|FDF_R, GET_Tags, nullptr, "XTag" },
    END_FIELD

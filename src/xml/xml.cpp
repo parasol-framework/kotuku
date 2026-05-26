@@ -81,7 +81,7 @@ static std::atomic<uint32_t> glTagID = 1;
 
 [[nodiscard]] static std::string document_base(extXML *Document)
 {
-   if ((!Document) or (!Document->Path) or (!*Document->Path)) return std::string();
+   if ((!Document) or (Document->Path.empty())) return std::string();
    return xml::uri::normalise_uri_separators(std::string(Document->Path));
 }
 

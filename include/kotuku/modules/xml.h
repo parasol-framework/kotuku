@@ -12,6 +12,8 @@
 #include <functional>
 #include <memory>
 #include <sstream>
+#include <string>
+#include <string_view>
 #ifndef STRINGS_HPP
 #include <kotuku/strings.hpp>
 #endif
@@ -214,10 +216,10 @@ class objXML : public Object {
 
    using create = kt::Create<objXML>;
 
-   STRING    Path;    // Set this field if the XML document originates from a file source.
-   STRING    DocType; // Root element name from DOCTYPE declaration
-   STRING    PublicID; // Public identifier for external DTD
-   STRING    SystemID; // System identifier for external DTD
+   std::string Path;    // Set this field if the XML document originates from a file source.
+   std::string DocType; // Root element name from DOCTYPE declaration
+   std::string PublicID; // Public identifier for external DTD
+   std::string SystemID; // System identifier for external DTD
    OBJECTPTR Source;  // Set this field if the XML data is to be sourced from another object.
    XMF       Flags;   // Controls XML parsing behaviour and processing options.
    int       Modified; // A timestamp of when the XML data was last modified.
@@ -614,4 +616,3 @@ extern ERR XValueToString(const struct XPathValue *Value, std::string *Result);
 extern ERR XValueNodes(struct XPathValue *Value, kt::vector<struct XTag *> *Result);
 } // namespace
 #endif // KOTUKU_STATIC
-

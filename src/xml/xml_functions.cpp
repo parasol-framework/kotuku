@@ -41,57 +41,11 @@ static void output_attribvalue(std::string_view String, std::ostringstream &Outp
    }
 }
 
-inline void assign_string(STRING &Target, const std::string_view Value)
+inline void assign_string(std::string &Target, const std::string_view Value)
 {
-   if (Target) { FreeResource(Target); Target = nullptr; }
-   if (not Value.empty()) Target = kt::strclone(Value);
+   if (not Value.empty()) Target.assign(Value);
+   else Target.clear();
 }
-
-static bool ci_keyword(std::string_view &view, std::string_view keyword) noexcept
-{
-   if (keyword.empty() or view.size() < keyword.size()) return false;
-
-   for (size_t i = 0; i < keyword.size(); ++i) {
-      if (to_lower(view[i]) != to_lower(keyword[i])) return false;
-   }
-
-   // Check that we're not matching a partial name
-   if ((view.size() > keyword.size()) and
-       is_name_char(view[keyword.size()]) and
-       (view[keyword.size()] != '[')) return false;
-
-   view.remove_prefix(keyword.size());
-   return true;
-}
-
-static bool ci_keyword(ParseState &State, std::string_view keyword) noexcept
-{
-   auto view = State.cursor;
-   if (ci_keyword(view, keyword)) {
-      State.next(keyword.size());
-      return true;
-   }
-   return false;
-}
-
-static std::string_view read_name(std::string_view &view) noexcept
-{
-   if (view.empty() or not is_name_start(view.front())) {
-      return std::string_view();
-   }
-
-   size_t length = 1;
-   while ((length < view.size()) and is_name_char(view[length])) {
-      length++;
-   }
-
-   auto result = view.substr(0, length);
-   view.remove_prefix(length);
-   return result;
-}
-
-static void expand_entity_references(extXML *Self, std::string &Value,
-   ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack);
 
 static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::string &Value,
    bool Parameter, ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
@@ -286,8 +240,8 @@ static void parse_doctype(extXML *Self, ParseState &State)
    if (type_view.empty()) return;
 
    assign_string(Self->DocType, type_view);
-   if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
-   if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
+   Self->PublicID.clear();
+   Self->SystemID.clear();
    Self->Entities.clear();
    Self->ParameterEntities.clear();
    Self->Notations.clear();
@@ -883,9 +837,9 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
    kt::Log log(__FUNCTION__);
 
    if (&Tags IS &Self->Tags) {
-      if (Self->DocType)  { FreeResource(Self->DocType); Self->DocType = nullptr; }
-      if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
-      if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
+      Self->DocType.clear();
+      Self->PublicID.clear();
+      Self->SystemID.clear();
       Self->Entities.clear();
       Self->ParameterEntities.clear();
       Self->Notations.clear();
@@ -903,7 +857,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
 
    ParseState state(Text);
 
-   if (Self->Path) state.CurrentBase = xml::uri::normalise_uri_separators(std::string(Self->Path));
+   if (not Self->Path.empty()) state.CurrentBase = xml::uri::normalise_uri_separators(Self->Path);
    else state.CurrentBase.clear();
 
    state.skipTo('<', Self->LineNo); // Skip any leading whitespace or content
