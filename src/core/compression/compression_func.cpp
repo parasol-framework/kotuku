@@ -165,7 +165,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    uint32_t dataoffset = 0;
    std::string filename;
    std::list<ZipFile>::iterator file_index;
-   int i, len;
+   int i;
 
    int16_t level = Self->CompressionLevel / 10;
    if (level < 0) level = 0;

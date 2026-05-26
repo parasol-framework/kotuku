@@ -132,7 +132,7 @@ ERR SetVolume(const std::string_view &Name, const std::string_view &Path, const 
    std::string name;
    name.append(Name, 0, Name.find(':'));
 
-   if ((&Label != nullptr) and (not Label.empty())) log.branch("Name: %.*s (%.*s), Path: %.*s", int(Name.size()), Name.data(), int(Label.size()), Label.data(), int(Path.size()), Path.data());
+   if ((not Label.empty())) log.branch("Name: %.*s (%.*s), Path: %.*s", int(Name.size()), Name.data(), int(Label.size()), Label.data(), int(Path.size()), Path.data());
    else log.branch("Name: %.*s, Path: %.*s", int(Name.size()), Name.data(), int(Path.size()), Path.data());
 
    if (auto lock = std::unique_lock{glmVolumes, 6s}) {
