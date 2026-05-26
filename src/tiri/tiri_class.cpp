@@ -550,7 +550,7 @@ static ERR TIRI_Init(objScript *Self)
                log.msg("Using cache '%s'", Self->CacheFile.c_str());
                int len = 0;
                error = read_file_to_string(Self->CacheFile, cache_size, Self->String, &len);
-               if (error IS ERR::Okay) loaded = true;
+               if (error IS ERR::Okay) loaded = len > 0;
             }
          }
       }
