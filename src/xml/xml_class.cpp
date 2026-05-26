@@ -2028,7 +2028,7 @@ static ERR GET_Statement(extXML *Self, std::string_view &Value)
    kt::Log log;
 
    if (not Self->initialised()) {
-      Value = Self->Statement;
+      Value = kt::strclone(Self->Statement);
       return ERR::Okay;
    }
 
