@@ -194,6 +194,7 @@ class extVectorText : public extVector {
    TextCursor txCursor;
    std::string txFamily; // Family name(s) as requested by the client
    std::string txFontStyle;
+   std::string txFontSizeString;
    APTR    txKeyEvent;
    OBJECTID txFocusID;
    OBJECTID txShapeInsideID;   // Enable word-wrapping within this shape
@@ -351,6 +352,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
    Self->txCursor.~TextCursor();
    Self->txFamily.~basic_string();
    Self->txFontStyle.~basic_string();
+   Self->txFontSizeString.~basic_string();
 
    if (Self->txHandle) {
       // TODO: This would be a good opportunity to garbage-collect stale glyphs
@@ -418,6 +420,7 @@ static ERR VECTORTEXT_NewObject(extVectorText *Self)
    new (&Self->txCursor) TextCursor;
    new (&Self->txFamily) std::string;
    new (&Self->txFontStyle) std::string;
+   new (&Self->txFontSizeString) std::string;
 
    Self->txFontStyle = "Regular";
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_text;
@@ -823,6 +826,12 @@ static ERR TEXT_SET_Fill(extVectorText *Self, const std::string_view &Value)
 {
    Self->FillString.clear();
 
+   if (Value.empty()) {
+      Self->Fill[0].reset();
+      Self->FGFill = false;
+      return ERR::Okay;
+   }
+
    CSTRING next;
    if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
       Self->FillString = Value;
@@ -865,16 +874,19 @@ include the space for accents in the FontSize value, while others will not.
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_FontSize(extVectorText *Self, CSTRING *Value)
+static ERR TEXT_GET_FontSize(extVectorText *Self, std::string_view &Value)
 {
-   *Value = strclone(std::to_string(Self->txFontSize));
+   Self->txFontSizeString = std::to_string(Self->txFontSize);
+   Value = Self->txFontSizeString;
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_FontSize(extVectorText *Self, CSTRING Value)
+static ERR TEXT_SET_FontSize(extVectorText *Self, const std::string_view &Value)
 {
    bool pct;
-   auto size = read_unit(Value, pct);
+
+   CSTRING val = Value.data();
+   auto size = read_unit(val, pct);
 
    // TODO: With respect to supporting sub-pixel point sizes and being cache-friendly, we could try caching fonts
    // at pre-determined point sizes (4,6,8,10,12,14,20,30,40,50,60,...) and then use scaling to cater to other
@@ -2055,8 +2067,8 @@ static const FieldArray clTextFields[] = {
    { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW, TEXT_GET_String, TEXT_SET_String },
    { "Align",         FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, TEXT_GET_Align, TEXT_SET_Align, &clTextAlign },
    { "Fill",          FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW, TEXT_GET_Fill, TEXT_SET_Fill }, // Override
-   { "FontSize",      FDF_VIRTUAL|FDF_ALLOC|FDF_STRING|FDF_RW, TEXT_GET_FontSize, TEXT_SET_FontSize },
    { "Face",          FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW, TEXT_GET_Face, TEXT_SET_Face },
+   { "FontSize",      FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW, TEXT_GET_FontSize, TEXT_SET_FontSize },
    { "FontStyle",     FDF_VIRTUAL|FDF_CPPSTRING|FDF_RI, TEXT_GET_FontStyle, TEXT_SET_FontStyle },
    { "Descent",       FDF_VIRTUAL|FDF_INT|FDF_R, TEXT_GET_Descent },
    { "DisplayHeight", FDF_VIRTUAL|FDF_INT|FDF_R, TEXT_GET_DisplayHeight },
