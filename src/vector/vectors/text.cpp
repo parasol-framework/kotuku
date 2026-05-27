@@ -192,7 +192,7 @@ class extVectorText : public extVector {
    extVectorImage *txBitmapImage;
    common_font *txHandle;
    TextCursor txCursor;
-   CSTRING txFamily; // Family name(s) as requested by the client
+   std::string txFamily; // Family name(s) as requested by the client
    APTR    txKeyEvent;
    OBJECTID txFocusID;
    OBJECTID txShapeInsideID;   // Enable word-wrapping within this shape
@@ -349,6 +349,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
 {
    Self->txLines.~vector<TextLine>();
    Self->txCursor.~TextCursor();
+   Self->txFamily.~basic_string();
 
    if (Self->txHandle) {
       // TODO: This would be a good opportunity to garbage-collect stale glyphs
@@ -360,7 +361,6 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
 
    if (Self->txBitmapImage)  { FreeResource(Self->txBitmapImage); Self->txBitmapImage = nullptr; }
    if (Self->txAlphaBitmap)  { FreeResource(Self->txAlphaBitmap); Self->txAlphaBitmap = nullptr; }
-   if (Self->txFamily)       { FreeResource(Self->txFamily); Self->txFamily = nullptr; }
    if (Self->txDX)           { FreeResource(Self->txDX); Self->txDX = nullptr; }
    if (Self->txDY)           { FreeResource(Self->txDY); Self->txDY = nullptr; }
    if (Self->txKeyEvent)     { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = nullptr; }
@@ -415,6 +415,7 @@ static ERR VECTORTEXT_NewObject(extVectorText *Self)
 {
    new (&Self->txLines) std::vector<TextLine>;
    new (&Self->txCursor) TextCursor;
+   new (&Self->txFamily) std::string;
 
    strcopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_text;
@@ -422,7 +423,7 @@ static ERR VECTORTEXT_NewObject(extVectorText *Self)
    Self->txWeight     = DEFAULT_WEIGHT;
    Self->txFontSize   = 16; // Pixel units @ 72 DPI
    Self->txCharLimit  = 0x7fffffff;
-   Self->txFamily     = strclone("Noto Sans");
+   Self->txFamily     = "Noto Sans";
    Self->Fill[0].Colour  = FRGB(1, 1, 1, 1);
    Self->txLetterSpacing = 1.0;
    Self->DisableHitTesting = true;
@@ -708,28 +709,25 @@ closest matching font will be stored as the Face value.
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_Face(extVectorText *Self, CSTRING *Value)
+static ERR TEXT_GET_Face(extVectorText *Self, std::string_view &Value)
 {
-   *Value = Self->txFamily;
+   Value = Self->txFamily;
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
+static ERR TEXT_SET_Face(extVectorText *Self, const std::string_view &Value)
 {
-   if (Value) {
-      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = nullptr; }
+   if (Value.empty()) return ERR::InvalidValue;
 
-      CSTRING name;
-      if (fnt::ResolveFamilyName(Value, &name) IS ERR::Okay) {
-         Self->txFamily = strclone(name);
-      }
-      else Self->txFamily = strclone("Noto Sans"); // Better to resort to a default than fail completely
-
-      if (Self->initialised()) return reset_font(Self);
-
-      return ERR::Okay;
+   CSTRING name;
+   if (fnt::ResolveFamilyName(Value.data(), &name) IS ERR::Okay) {
+      Self->txFamily = name ? name : "Noto Sans";
    }
-   else return ERR::InvalidValue;
+   else Self->txFamily = "Noto Sans"; // Better to resort to a default than fail completely
+
+   if (Self->initialised()) return reset_font(Self);
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -773,9 +771,7 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
    if (Value->baseClassID() IS CLASSID::FONT) {
       auto other = (objFont *)Value;
 
-      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = nullptr; }
-
-      Self->txFamily = strclone(other->Face);
+      Self->txFamily = other->Face ? other->Face : "Noto Sans";
       Self->txFontSize = std::trunc(other->Point * (96.0 / 72.0));
       Self->txScaledFontSize = false;
       strcopy(other->Style, Self->txFontStyle);
@@ -786,9 +782,7 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
    else if (Value->classID() IS CLASSID::VECTORTEXT) {
       auto other = (extVectorText *)Value;
 
-      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = nullptr; }
-
-      Self->txFamily = strclone(other->txFamily);
+      Self->txFamily = other->txFamily;
       Self->txFontSize = other->txFontSize;
       Self->txScaledFontSize = false;
       strcopy(other->txFontStyle, Self->txFontStyle);
@@ -2058,10 +2052,10 @@ static const FieldArray clTextFields[] = {
    { "Weight",        FDF_VIRTUAL|FDF_INT|FDF_RW, TEXT_GET_Weight, TEXT_SET_Weight },
    { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW, TEXT_GET_String, TEXT_SET_String },
    { "Align",         FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, TEXT_GET_Align, TEXT_SET_Align, &clTextAlign },
-   { "Face",          FDF_VIRTUAL|FDF_STRING|FDF_RW, TEXT_GET_Face, TEXT_SET_Face },
    { "Fill",          FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW, TEXT_GET_Fill, TEXT_SET_Fill }, // Override
    { "FontSize",      FDF_VIRTUAL|FDF_ALLOC|FDF_STRING|FDF_RW, TEXT_GET_FontSize, TEXT_SET_FontSize },
    { "FontStyle",     FDF_VIRTUAL|FDF_STRING|FDF_RI, TEXT_GET_FontStyle, TEXT_SET_FontStyle },
+   { "Face",          FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW, TEXT_GET_Face, TEXT_SET_Face },
    { "Descent",       FDF_VIRTUAL|FDF_INT|FDF_R, TEXT_GET_Descent },
    { "DisplayHeight", FDF_VIRTUAL|FDF_INT|FDF_R, TEXT_GET_DisplayHeight },
    { "DisplaySize",   FDF_VIRTUAL|FDF_INT|FDF_R, TEXT_GET_DisplaySize },
