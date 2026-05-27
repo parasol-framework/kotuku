@@ -4,7 +4,7 @@
 	   function gtag(){dataLayer.push(arguments);}
 	   gtag('js', new Date());
       gtag('config', 'G-8254DG7MT6');</script><meta name="viewport" content="width=device-width, initial-scale=1"></meta><meta name="description" content="Kōtuku documentation, machine generated from source"></meta><meta name="author" content="Paul Manias"></meta><link rel="icon" href="/favicon.ico"></link><title>Kōtuku Manual</title><link href="../css/bootstrap.min.css" rel="stylesheet"></link><link href="../css/module-template.css" rel="stylesheet"></link></head><body><nav class="navbar navbar-expand-sm navbar-dark bg-dark"><div class="container-fluid"><div class="navbar-header"><a class="navbar-brand" href="../index.html">Kōtuku</a></div><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
-<div id="navbar" class="collapse navbar-collapse"><ul class="nav navbar-nav"><li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li><li class="nav-item"><a class="nav-link" href="api.html">API</a></li><li class="nav-item"><a class="nav-link" href="../wiki/Home.html">Wiki</a></li><li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/kotuku">GitHub</a></li></ul>
+<div id="navbar" class="collapse navbar-collapse"><ul class="nav navbar-nav"><li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li><li class="nav-item"><a class="nav-link" href="api.html">API</a></li><li class="nav-item"><a class="nav-link" href="../wiki/Home.html">Wiki</a></li><li class="nav-item"><a class="nav-link" href="https://github.com/kotuku-group/kotuku">GitHub</a></li></ul>
 </div></div></nav>
 <div class="container-fluid"><div class="row"><div class="d-sm-block d-none col-3 sidebar" style="max-width: 230px;"><div class="flex-shrink-1 pt-2 pe-2 sticky-top overflow-auto vh-100 b-shadow"><ul class="list-unstyled"><li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#func-collapse" aria-expanded="true">Core API</button><div class="collapse show" id="func-collapse">
 <ul class="btn-toggle-nav list-unstyled fw-normal">
@@ -499,7 +499,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>This function will find a specific class by ID and return its <a href="classes/metaclass.html">MetaClass</a>.  If the class is not already loaded, the internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded into memory and the correct MetaClass will be returned.</p>
 <p>In any event of failure, <code>NULL</code> is returned.</p>
 <p>If the ID of a named class is not known, call <a href="?page=ResolveClassName">ResolveClassName()</a> first and pass the resulting ID to this function.</p>
-<p>NOTE: To retrieve a list of all sub-classes associated with a base-class, read the SubClasses field of the <a href="classes/metaclass.html">MetaClass</a>.</p>
+<p>NOTE: To retrieve a list of all derived classes associated with a base-class, read the SubClasses field of the <a href="classes/metaclass.html">MetaClass</a>.</p>
     <h3>Result</h3><p>Returns a pointer to the <a href="classes/metaclass.html">MetaClass</a> structure that has been found as a result of the search, or <code>NULL</code> if no matching class was found.</p><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="FindField"><h2>FindField()</h2><p class="lead">Finds field descriptors for any class, by ID.</p><div class="card card-info mb-3"><div class="card-header"><samp>struct Field * FindField(OBJECTPTR Object, UINT FieldID, OBJECTPTR * Target)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Object</td><td>The target object.</td></tr>
 <tr><td>FieldID</td><td>The 'FID' number to lookup.</td></tr>
@@ -605,7 +605,7 @@ FindObject("SystemPointer", CLASSID::POINTER, &amp;id);
 <div class="docs-content" style="display:none;" id="IdentifyFile"><h2>IdentifyFile()</h2><p class="lead">Analyse a file and identify a class that can process it.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR IdentifyFile(const std::string_view &amp; Path, CLASSID Filter, CLASSID * Class, CLASSID * SubClass)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Path</td><td>The location of the object data.</td></tr>
 <tr><td>Filter</td><td>Restrict the search to classes in this subset, or use <code>CLASSID::NIL</code> to search all classes.</td></tr>
 <tr><td>Class</td><td>Must refer to a <code>CLASSID</code> variable that will store the resulting class ID.</td></tr>
-<tr><td>SubClass</td><td>Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).</td></tr>
+<tr><td>SubClass</td><td>Optional argument that can refer to a variable that will store the resulting derived class ID (if the result is a base-class, this variable will receive a value of zero).</td></tr>
 </tbody></table></div></div>
 <p>This function examines the relationship between file data and Kōtuku classes.  For instance, a JPEG file would be identified as a datatype of the <a href="classes/picture.html">Picture</a> class.  An MP3 file would be identified as a datatype of the <a href="classes/sound.html">Sound</a> class.</p>
 <p>The method involves analysing the <code>Path</code>'s file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension, the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
@@ -619,7 +619,7 @@ FindObject("SystemPointer", CLASSID::POINTER, &amp;id);
 <div class="docs-content" style="display:none;" id="InitObject"><h2>InitObject()</h2><p class="lead">Initialises an object so that it is ready for use.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR InitObject(OBJECTPTR Object)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Object</td><td>The object to initialise.</td></tr>
 </tbody></table></div></div>
 <p>This function initialises objects so that they can be used for their intended purpose. Initialisation is compulsory, and a client may not call any actions or methods on an object until it has been initialised.  Exceptions to this rule only apply to the <code>GetKey()</code> and <code>SetKey()</code> actions.</p>
-<p>If the initialisation of an object fails due to a support problem (for example, if a PNG <a href="classes/picture.html">Picture</a> object attempts to load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can support the object's configuration is available, the object's interface will be shared between both the base-class and the sub-class.</p>
+<p>If the initialisation of an object fails due to a support problem (for example, if a PNG <a href="classes/picture.html">Picture</a> object attempts to load a JPEG file), the initialiser will search for a derived class that can handle the data.  If a derived class that can support the object's configuration is available, the object's interface will be shared between both the base-class and the derived class.</p>
 <p>If an object does not support the data or its configuration, an error code of <code>ERR::NoSupport</code> will be returned. Other appropriate error codes can be returned if initialisation fails.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The object was initialised.</td></tr>
 <tr><th class="col-md-1">LostClass</th><td>The object has lost its class reference</td></tr>
@@ -1384,6 +1384,7 @@ static ResourceManager glNodeManager = {
 <tr><th>FD::BUFFER</th><td>FUNCDEF Overrides <code>WRITE</code>.  Indicates a buffer that can be filled with data by the function if paired with <code>RESULT</code>; must be paired with <code>BUFSIZE</code> in second argument.</td></tr>
 <tr><th>FD::BUFSIZE</th><td>FUNCDEF Overrides <code>LOOKUP</code>.  Pair with <code>BUFFER</code> to indicate the byte size of the buffer memory.</td></tr>
 <tr><th>FD::BYTE</th><td>8 bit integer.</td></tr>
+<tr><th>FD::CLASS_TYPES</th><td>All types that directly contribute to the core definition of a C/C++ type</td></tr>
 <tr><th>FD::CPP</th><td>Use the C++ variant of the indicated type, e.g. <code>ARRAY</code> is a <code>std::vector</code>.</td></tr>
 <tr><th>FD::CUSTOM</th><td></td></tr>
 <tr><th>FD::DOUBLE</th><td>64 bit float.</td></tr>
@@ -1795,7 +1796,7 @@ static ResourceManager glNodeManager = {
 <tr><th>NF::MESSAGE</th><td>Action has been called against the object through the message system (managed by <a href="core.html?page=ProcessMessages">ProcessMessages()</a>).</td></tr>
 <tr><th>NF::NAME</th><td>Use the Name parameter to name the created object.  This flag is not required if using <code>UNIQUE</code>.</td></tr>
 <tr><th>NF::PRIVATE</th><td></td></tr>
-<tr><th>NF::RECLASSED</th><td>The object switched from the base-class to a sub-class during initialisation.</td></tr>
+<tr><th>NF::RECLASSED</th><td>The object switched from the base-class to a derived class during initialisation.</td></tr>
 <tr><th>NF::SIGNALLED</th><td>The object has been signalled and is awaiting processing.</td></tr>
 <tr><th>NF::TIMER_SUB</th><td>The object is subscribed to a timer interval.</td></tr>
 <tr><th>NF::UNIQUE</th><td>Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, <a href="core.html?page=NewObject">NewObject()</a> will return <code>ERR::ObjectExists</code>.  This flag works in conjunction with the <code>Name</code> parameter.</td></tr>
@@ -2028,7 +2029,7 @@ static ResourceManager glNodeManager = {
 <tr><th>ClassID</th><td><span class="text-nowrap">CLASSID</span></td><td>The class ID of the referenced object.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2026</div></div>
 <div class="docs-content" style="display:none;" id="struct-ClassRecord"><h1>ClassRecord Structure</h1><p class="lead">Meta information for a class, as recorded in the class database.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>ClassID</th><td><span class="text-nowrap">CLASSID</span></td><td>Unique class identifier (hash of Name)</td></tr>
-<tr><th>ParentID</th><td><span class="text-nowrap">CLASSID</span></td><td>Parent class ID if this is a sub-class</td></tr>
+<tr><th>ParentID</th><td><span class="text-nowrap">CLASSID</span></td><td>Parent class ID if this is a derived class</td></tr>
 <tr><th>Category</th><td><span class="text-nowrap">CCF</span></td><td>Assigned category</td></tr>
 <tr><th>Name</th><td><span class="text-nowrap">std::string</span></td><td>Name of the class</td></tr>
 <tr><th>Path</th><td><span class="text-nowrap">std::string</span></td><td>Path to the class file</td></tr>
