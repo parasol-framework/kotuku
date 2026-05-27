@@ -1275,29 +1275,32 @@ When retrieving a string that contains return codes, only the first line of text
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_String(extVectorText *Self, CSTRING *Value)
+static ERR TEXT_GET_String(extVectorText *Self, std::string_view &Value)
 {
    if (Self->txLines.size() > 0) {
-      *Value = Self->txLines[0].c_str();
+      Value = Self->txLines[0];
       return ERR::Okay;
    }
-   else return ERR::FieldNotSet;
+   else {
+      Value = std::string_view{};
+      return ERR::Okay;
+   }
 }
 
-static ERR TEXT_SET_String(extVectorText *Self, CSTRING Value)
+static ERR TEXT_SET_String(extVectorText *Self, const std::string_view &Value)
 {
    Self->txLines.clear();
 
-   if (Value) {
-      while (*Value) {
+   if (not Value.empty()) {
+      std::string_view scan(Value);
+      while (not scan.empty()) {
          size_t total;
-         for (total=0; (Value[total]) and (Value[total] != '\n'); total++);
-         Self->txLines.emplace_back(std::string(Value, total));
-         Value += total;
-         if (*Value IS '\n') Value++;
+         for (total=0; (total < scan.size()) and (scan[total] != '\n'); total++);
+         Self->txLines.emplace_back(std::string(scan.data(), total));
+         scan.remove_prefix(total);
+         if ((not scan.empty()) and (scan[0] IS '\n')) scan.remove_prefix(1);
       }
    }
-   else Self->txLines.emplace_back("");
 
    reset_path(Self);
    if (Self->txCursor.vector) Self->txCursor.validate_position(Self);
@@ -2064,7 +2067,7 @@ static const FieldArray clTextFields[] = {
    { "X",             FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, TEXT_GET_X, TEXT_SET_X },
    { "Y",             FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, TEXT_GET_Y, TEXT_SET_Y },
    { "Weight",        FDF_VIRTUAL|FDF_INT|FDF_RW, TEXT_GET_Weight, TEXT_SET_Weight },
-   { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW, TEXT_GET_String, TEXT_SET_String },
+   { "String",        FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW, TEXT_GET_String, TEXT_SET_String },
    { "Align",         FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, TEXT_GET_Align, TEXT_SET_Align, &clTextAlign },
    { "Fill",          FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW, TEXT_GET_Fill, TEXT_SET_Fill }, // Override
    { "Face",          FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW, TEXT_GET_Face, TEXT_SET_Face },
