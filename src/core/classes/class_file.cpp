@@ -2078,10 +2078,10 @@ static ERR GET_Icon(extFile *Self, std::string_view &Value)
    if (icon.empty()) {
       // Use IdentifyFile() to see if this file can be associated with a class
 
-      CLASSID class_id, subclass_id;
-      if (IdentifyFile(Self->Path, CLASSID::NIL, &class_id, &subclass_id) IS ERR::Okay) {
-         if (glClassDB.contains(subclass_id)) {
-            auto &record = glClassDB[subclass_id];
+      CLASSID class_id, derived_id;
+      if (IdentifyFile(Self->Path, CLASSID::NIL, &class_id, &derived_id) IS ERR::Okay) {
+         if (glClassDB.contains(derived_id)) {
+            auto &record = glClassDB[derived_id];
             if (not record.Icon.empty()) icon = record.Icon;
          }
 

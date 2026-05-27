@@ -2001,7 +2001,7 @@ struct Field {
 
 struct ClassRecord {
    CLASSID ClassID;          // Unique class identifier (hash of Name)
-   CLASSID ParentID;         // Parent class ID if this is a sub-class
+   CLASSID ParentID;         // Parent class ID if this is a derived class
    CCF     Category;         // Assigned category
    std::string Name;         // Name of the class
    std::string Path;         // Path to the class file

@@ -563,7 +563,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
       }
    }
 
-   if (Self->isDerived()) return ERR::Okay; // Will hand-off to the sub-class
+   if (Self->isDerived()) return ERR::Okay; // Will hand-off to the derived class
 
    if ((Self->Address) and (Self->Port > 0)) {
       if ((error = Self->connect(Self->Address, Self->Port, 0)) != ERR::Okay) {
