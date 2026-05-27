@@ -749,7 +749,7 @@ retrydir:
    }
 
    // Use RSF::CHECK_VIRTUAL to cause failure if the volume name is reserved by a support class.  By doing this we can
-   // return ERR::UseSubClass and a support class can then initialise the file instead.
+   // return ERR::UseDerived and a support class can then initialise the file instead.
 
    auto resolveflags = RSF::NIL;
    if ((Self->Flags & FL::NEW) != FL::NIL) resolveflags |= RSF::NO_FILE_CHECK;
@@ -759,14 +759,14 @@ retrydir:
    if (auto error = ResolvePath(Self->Path, resolveflags|RSF::CHECK_VIRTUAL, &Self->prvResolvedPath); error != ERR::Okay) {
       if (error IS ERR::VirtualVolume) {
          // For virtual volumes, update the path to ensure that the volume name is referenced in the path string.
-         // Then return ERR::UseSubClass to have support delegated to the correct File sub-class.
+         // Then return ERR::UseDerived to have support delegated to the correct File sub-class.
          Self->Flags |= FL::VIRTUAL;
          if (not iequals(Self->Path, Self->prvResolvedPath)) {
             auto sv = std::string_view(Self->prvResolvedPath);
             SET_Path(Self, sv);
          }
          log.trace("ResolvePath() reports virtual volume, will delegate to sub-class...");
-         return ERR::UseSubClass;
+         return ERR::UseDerived;
       }
       else {
          // The file may path may actually be a folder.  Add a / and retest to see if this is the case.

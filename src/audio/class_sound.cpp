@@ -1063,7 +1063,7 @@ static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
 
    kt::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
-      if ((Self->File) and (!Self->isSubClass())) {
+      if ((Self->File) and (!Self->isDerived())) {
          Self->File->seekStart(Self->DataOffset + Self->Position);
       }
 

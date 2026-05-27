@@ -257,11 +257,9 @@ static ERR object_free(Object *Object)
       glSubscriptions.erase(Object->UID);
    }
 
-   // If a private child structure is present, remove it
-
-   if (Object->ChildPrivate) {
-      if (FreeResource(Object->ChildPrivate) != ERR::Okay) log.warning("Invalid ChildPrivate address %p.", Object->ChildPrivate);
-      Object->ChildPrivate = nullptr;
+   if (Object->DerivedPtr) {
+      if (FreeResource(Object->DerivedPtr) != ERR::Okay) log.warning("Invalid DerivedPtr address %p.", Object->DerivedPtr);
+      Object->DerivedPtr = nullptr;
    }
 
    free_children(Object);
@@ -281,7 +279,7 @@ static ERR object_free(Object *Object)
       }
    }
 
-   if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
+   if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Derived class detected
    if (mc->OpenCount > 0) mc->OpenCount--;
 
    if (Object->Name[0]) { // Remove the object from the name lookup list
@@ -707,7 +705,7 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
       if (routine) error = routine(Object, Parameters);
       else error = ERR::NoAction;
 
-      if ((error IS ERR::NoAction) and (cl->Base)) {  // If this is a child, check the base class
+      if ((error IS ERR::NoAction) and (cl->Base)) {  // If this is a derived class, check the base class
          auto routine = (ERR (*)(OBJECTPTR, APTR))cl->Base->Methods[-int(ActionID)].Routine;
          if (routine) error = routine(Object, Parameters);
       }
@@ -1324,7 +1322,7 @@ objMetaClass * FindClass(CLASSID ClassID)
    // Class is not loaded.  Try and find the class in the dictionary.  If we find one, we can
    // initialise the module and then find the new Class.
    //
-   // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
+   // Note: Derived classes are not automatically loaded into memory if they are unavailable at the time.  Doing so
    // would result in lost CPU and memory resources due to loading code that may not be needed.
 
    kt::Log log(__FUNCTION__);
@@ -1565,7 +1563,7 @@ ERR InitObject(OBJECTPTR Object)
 
    bool use_subclass = false;
    ERR error = ERR::Okay;
-   if (Object->isSubClass()) {
+   if (Object->isDerived()) {
       // For sub-classes, the base-class gets called first.  It should verify that
       // the object is sub-classed so as to prevent it from doing 'too much' initialisation.
 
@@ -1590,7 +1588,7 @@ ERR InitObject(OBJECTPTR Object)
       //   that in the first case we can only support classes that are already in memory.  The second part of this
       //   routine supports checking of sub-classes that aren't loaded yet.
       //
-      // ERR::UseSubClass: Can be returned by the base-class.  Similar to ERR::NoSupport, but avoids scanning of
+      // ERR::UseDerived: Can be returned by the base-class.  Similar to ERR::NoSupport, but avoids scanning of
       // sub-classes that aren't loaded in memory.
 
       auto &subclasses = Object->ExtClass->SubClasses;
@@ -1606,7 +1604,7 @@ ERR InitObject(OBJECTPTR Object)
          if (error IS ERR::Okay) {
             Object->setFlag(NF::INITIALISED);
 
-            if (Object->isSubClass()) {
+            if (Object->isDerived()) {
                // Increase the open count of the sub-class (see NewObject() for details on object
                // reference counting).
 
@@ -1618,7 +1616,7 @@ ERR InitObject(OBJECTPTR Object)
 
             return ERR::Okay;
          }
-         else if (error IS ERR::UseSubClass) {
+         else if (error IS ERR::UseDerived) {
             log.trace("Requested to use registered sub-class.");
             use_subclass = true;
          }
@@ -1643,8 +1641,8 @@ ERR InitObject(OBJECTPTR Object)
    // memory resources (loading each sub-class into memory just to check whether or not the data is supported is overkill).
 
    std::string_view path;
-   if (use_subclass) { // If ERR::UseSubClass was set and the sub-class was not registered, do not call IdentifyFile()
-      log.warning("ERR::UseSubClass was used but no suitable sub-class was registered.");
+   if (use_subclass) { // If ERR::UseDerived was set and the sub-class was not registered, do not call IdentifyFile()
+      log.warning("ERR::UseDerived was used but no suitable sub-class was registered.");
    }
    else if ((error IS ERR::NoSupport) and (Object->get(FID_Path, path) IS ERR::Okay) and (not path.empty())) {
       CLASSID class_id, subclass_id;
@@ -1838,7 +1836,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
       // object belongs to a sub-class, we will also call its supporting NewObject() action if it has specified one.
       //
       // Note: Hooking into NewObject gives sub-classes an opportunity to detect that they have been targeted by the client
-      // on creation, as opposed to during initialisation.  This can allow ChildPrivate to be configured early on in the
+      // on creation, as opposed to during initialisation.  This can allow DerivedPtr to be configured early on in the
       // process, making it possible to set custom fields that would depend on it.
 
       kt::SwitchContext context(head);

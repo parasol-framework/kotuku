@@ -611,7 +611,7 @@ static ERR COMPRESSION_CompressFile(extCompression *Self, struct cmp::CompressFi
 
    if ((Self->Flags & CMF::READ_ONLY) != CMF::NIL) return log.warning(ERR::NoPermission);
 
-   if (Self->isSubClass()) return log.warning(ERR::NoSupport);
+   if (Self->isDerived()) return log.warning(ERR::NoSupport);
 
    if (Self->OutputID) {
       std::ostringstream out;
@@ -1306,7 +1306,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
 
    // If the object belongs to a Compression sub-class, return ERR::NoSupport
 
-   if (Self->isSubClass()) return ERR::NoSupport;
+   if (Self->isDerived()) return ERR::NoSupport;
 
    // Tell the user what we are doing
 
@@ -1484,7 +1484,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
    if ((!Args) or (!Args->Path) or (!Args->Path[0])) return log.warning(ERR::NullArgs);
    if (!Args->Object) return log.warning(ERR::NullArgs);
    if (!Self->FileIO) return log.warning(ERR::MissingPath);
-   if (Self->isSubClass()) return ERR::NoSupport; // Object belongs to a Compression sub-class
+   if (Self->isDerived()) return ERR::NoSupport; // Object belongs to a Compression sub-class
 
    log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, int(Self->Permissions));
 
@@ -1572,7 +1572,7 @@ static ERR COMPRESSION_Find(extCompression *Self, struct cmp::Find *Args)
    kt::Log log;
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR::NullArgs);
-   if (Self->isSubClass()) return ERR::NoSupport;
+   if (Self->isDerived()) return ERR::NoSupport;
 
    log.traceBranch("Path: %s, Case: %d, Wildcard: %d", Args->Path, Args->CaseSensitive, Args->Wildcard);
    for (auto &item : Self->Files) {
@@ -1600,7 +1600,7 @@ Flush: Flushes all pending actions.
 
 static ERR COMPRESSION_Flush(extCompression *Self)
 {
-   if (Self->isSubClass()) return ERR::Okay;
+   if (Self->isDerived()) return ERR::Okay;
 
    Self->Zip.avail_in = 0;
 
@@ -1818,7 +1818,7 @@ static ERR COMPRESSION_RemoveFile(extCompression *Self, struct cmp::RemoveFile *
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR::NullArgs);
 
-   if (Self->isSubClass()) return ERR::NoSupport;
+   if (Self->isDerived()) return ERR::NoSupport;
 
    // Search for the file(s) in our archive that match the given name and delete them.
 
@@ -1878,7 +1878,7 @@ static ERR COMPRESSION_Scan(extCompression *Self, struct cmp::Scan *Args)
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
-   if (Self->isSubClass()) return ERR::NoSupport;
+   if (Self->isDerived()) return ERR::NoSupport;
 
    log.traceBranch("Folder: \"%s\", Filter: \"%s\"", Args->Folder, Args->Filter);
 

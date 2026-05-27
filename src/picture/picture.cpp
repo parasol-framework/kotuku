@@ -454,7 +454,7 @@ static ERR PICTURE_Init(extPicture *Self)
                else return log.warning(ERR::Init);
             }
 
-            if (Self->isSubClass()) return ERR::Okay; // Break here to let the sub-class continue initialisation
+            if (Self->isDerived()) return ERR::Okay; // Break here to let the sub-class continue initialisation
 
             return ERR::Okay;
          }
@@ -463,7 +463,7 @@ static ERR PICTURE_Init(extPicture *Self)
       else return log.warning(ERR::InvalidDimension);
    }
    else {
-      if (Self->isSubClass()) return ERR::Okay; // Break here to let the sub-class continue initialisation
+      if (Self->isDerived()) return ERR::Okay; // Break here to let the sub-class continue initialisation
 
       // Test the given path to see if it matches our supported file format.
 

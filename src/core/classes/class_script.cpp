@@ -347,7 +347,7 @@ static ERR SCRIPT_Init(objScript *Self)
       Self->TargetID = Self->ownerID();
    }
 
-   if (Self->isSubClass()) return ERR::Okay; // Break here to let the sub-class continue initialisation
+   if (Self->isDerived()) return ERR::Okay; // Break here to let the sub-class continue initialisation
 
    return ERR::NoSupport;
 }

@@ -495,7 +495,7 @@ static ERR VECTOR_Init(extVector *Self)
 
    if (Self->classID() IS CLASSID::VECTOR) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
-      return ERR::UseSubClass;
+      return ERR::UseDerived;
    }
 
    if (!Self->Parent) {
