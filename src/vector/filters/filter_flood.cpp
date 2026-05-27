@@ -148,7 +148,7 @@ static ERR FLOODFX_GET_XMLDef(extFloodFX *Self, std::string_view &Value)
 {
    std::stringstream stream;
 
-   stream << "<feFlood opacity=\"" << Self->Opacity << "\"/>";
+   stream << "feFlood opacity=\"" << Self->Opacity << "\"";
 
    auto cppstr = stream.str();
    if (auto str = strclone(stream.str())) {

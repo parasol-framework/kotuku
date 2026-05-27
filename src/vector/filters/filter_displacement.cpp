@@ -237,7 +237,7 @@ static ERR DISPLACEMENTFX_GET_XMLDef(extDisplacementFX *Self, std::string_view &
 {
    std::stringstream stream;
 
-   stream << "<feDisplacement/>";
+   stream << "feDisplacement";
 
    auto cppstr = stream.str();
    if (auto str = strclone(stream.str())) {

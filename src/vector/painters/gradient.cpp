@@ -711,13 +711,13 @@ static ERR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, const std::stri
          matrix->TranslateY = 0;
 
          Self->Matrices = matrix;
-         return vec::ParseTransform(Self->Matrices, Commands.data());
+         return vec::ParseTransform(Self->Matrices, Commands);
       }
       else return ERR::AllocMemory;
    }
    else {
       vec::ResetMatrix(Self->Matrices);
-      return vec::ParseTransform(Self->Matrices, Commands.data());
+      return vec::ParseTransform(Self->Matrices, Commands);
    }
 }
 

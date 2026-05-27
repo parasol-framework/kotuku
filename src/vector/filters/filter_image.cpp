@@ -192,7 +192,7 @@ static ERR IMAGEFX_GET_XMLDef(extImageFX *Self, std::string_view &Value)
 {
    std::stringstream stream;
 
-   stream << "<feImage/>";
+   stream << "feImage";
 
    auto cppstr = stream.str();
    if (auto str = strclone(stream.str())) {

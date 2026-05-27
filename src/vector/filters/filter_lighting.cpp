@@ -1000,8 +1000,7 @@ static ERR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, std::string_view &Value)
    std::string type(Self->Type IS LT::DIFFUSE ? "feDiffuseLighting" : "feSpecularLighting");
 
    // TODO
-   stream << "<" << type << ">";
-   stream << "</" << type << ">";
+   stream << type;
 
    auto cppstr = stream.str();
    if (auto str = strclone(stream.str())) {
