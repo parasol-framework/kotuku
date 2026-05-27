@@ -1362,8 +1362,8 @@ if(WIN32 AND ENABLE_CPACK)
       set(CPACK_NSIS_INSTALLED_ICON_NAME "origo.exe")
       set(CPACK_NSIS_MUI_ICON "${PROJECT_SOURCE_DIR}/src/link/kotuku.ico")
       set(CPACK_NSIS_MUI_UNIICON "${PROJECT_SOURCE_DIR}/src/link/kotuku.ico")
-      set(CPACK_NSIS_HELP_LINK "https://github.com/parasol-framework/kotuku")
-      set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/parasol-framework/kotuku")
+      set(CPACK_NSIS_HELP_LINK "https://github.com/kotuku-group/kotuku")
+      set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/kotuku-group/kotuku")
       set(CPACK_NSIS_CONTACT "support@kotuku.dev")
 
       # Create shortcuts for installer
