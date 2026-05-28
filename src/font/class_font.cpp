@@ -109,14 +109,16 @@ static ERR FONT_Init(extFont *Self)
 
    if (Self->Path.empty()) {
       CSTRING path = nullptr;
-      if (fnt::SelectFont(Self->Face, Self->Style, &path, &meta) IS ERR::Okay) {
-         Self->set(FID_Path, path);
+      auto error = fnt::SelectFont(Self->Face, Self->Style, &path, &meta);
+      if (error IS ERR::Okay) {
+         error = Self->set(FID_Path, path);
          FreeResource(path);
+         if (error != ERR::Okay) return error;
       }
       else {
          log.warning("Font \"%s\" (point %.2f, style %s) is not recognised.", Self->Face.c_str(), Self->Point,
             Self->Style.c_str());
-         return ERR::Failed;
+         return error;
       }
    }
 
@@ -338,9 +340,10 @@ static ERR SET_Face(extFont *Self, const std::string_view &Value)
       CSTRING final_name;
       auto i = Value.find(':');
       auto face = Value.substr(0, i);
-      if (fnt::ResolveFamilyName(face, &final_name) IS ERR::Okay) {
+      if (auto error = fnt::ResolveFamilyName(face, &final_name); error IS ERR::Okay) {
          Self->Face.assign(final_name);
       }
+      else return error;
 
       if (i IS std::string::npos) return ERR::Okay;
 
@@ -745,8 +748,8 @@ static ERR draw_bitmap_font(extFont *Self)
    uint8_t *xdata, *data;
    int linewidth, offset, wrapindex, charlen;
    uint32_t unicode, ocolour;
-   int16_t startx, xpos, ex, ey, sx, sy, xinc;
-   int16_t bytewidth, alpha, charwidth;
+   int startx, xpos, ex, ey, sx, sy, xinc;
+   int bytewidth, alpha, charwidth;
    bool draw_line;
    #define CHECK_LINE_CLIP(font,y,bmp) if (((y)-1 < (bmp)->Clip.Bottom) and ((y) + (font)->prvBitmapHeight + 1 > (bmp)->Clip.Top)) draw_line = true; else draw_line = false;
 
@@ -771,6 +774,7 @@ static ERR draw_bitmap_font(extFont *Self)
    }
 
    const char *wrapstr = calc_line_layout(Self, str, &linewidth, &wrapindex, &dxcoord);
+   const char *line_start = str.data();
 
    uint32_t colour  = bitmap->getColour(Self->Colour);
    uint32_t ucolour = bitmap->getColour(Self->Underline);
@@ -783,7 +787,7 @@ static ERR draw_bitmap_font(extFont *Self)
 
    if (acLock(bitmap) != ERR::Okay) return log.warning(ERR::Lock);
 
-   int16_t dx = 0, dy = 0;
+   int dx = 0, dy = 0;
    startx = dxcoord;
    CHECK_LINE_CLIP(Self, dycoord, bitmap);
    while (not str.empty()) {
@@ -800,6 +804,7 @@ static ERR draw_bitmap_font(extFont *Self)
          }
 
          wrapstr = calc_line_layout(Self, str, &linewidth, &wrapindex, &dxcoord);
+         line_start = str.data();
          startx = dxcoord;
          dycoord += Self->LineSpacing;
          CHECK_LINE_CLIP(Self, dycoord, bitmap);
@@ -822,7 +827,7 @@ static ERR draw_bitmap_font(extFont *Self)
 
          // Wordwrap management
 
-         if (str.data() >= wrapstr) {
+         if ((str.data() >= wrapstr) and (str.data() > line_start)) {
             dxcoord = Self->X;
             dycoord += Self->LineSpacing;
 
@@ -833,6 +838,7 @@ static ERR draw_bitmap_font(extFont *Self)
             if (str.empty()) break;
 
             wrapstr = calc_line_layout(Self, str, &linewidth, &wrapindex, &dxcoord);
+            line_start = str.data();
             CHECK_LINE_CLIP(Self, dycoord, bitmap);
          }
 

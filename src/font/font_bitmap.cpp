@@ -191,7 +191,10 @@ public:
 
       // Read character information from the file
 
-      File->seek(WinFont.Offset + 118, SEEK::START);
+      if (File->seek(WinFont.Offset + 118, SEEK::START) != ERR::Okay) {
+         Result = log.warning(ERR::Read);
+         return;
+      }
 
       clearmem(Chars, sizeof(Chars));
       if (Face.version IS 0x300) {
@@ -200,8 +203,18 @@ public:
             uint16_t width;
             uint32_t offset;
 
-            if (fl::ReadLE(File, &width) != ERR::Okay) break;
-            if (fl::ReadLE(File, &offset) != ERR::Okay) break;
+            if (fl::ReadLE(File, &width) != ERR::Okay) {
+               Result = log.warning(ERR::Read);
+               return;
+            }
+            if (fl::ReadLE(File, &offset) != ERR::Okay) {
+               Result = log.warning(ERR::Read);
+               return;
+            }
+            if ((width > 0x7fff) or (offset < Face.bits_offset)) {
+               Result = log.warning(ERR::InvalidData);
+               return;
+            }
 
             Chars[j].Width   = width;
             Chars[j].Advance = Chars[j].Width;
@@ -213,8 +226,19 @@ public:
          int j = Face.first_char;
          for (int i=0; i < Face.last_char - Face.first_char + 1; i++) {
             uint16_t width, offset;
-            if (fl::ReadLE(File, &width) != ERR::Okay) break;
-            if (fl::ReadLE(File, &offset) != ERR::Okay) break;
+            if (fl::ReadLE(File, &width) != ERR::Okay) {
+               Result = log.warning(ERR::Read);
+               return;
+            }
+            if (fl::ReadLE(File, &offset) != ERR::Okay) {
+               Result = log.warning(ERR::Read);
+               return;
+            }
+            if ((width > 0x7fff) or (uint32_t(offset) < Face.bits_offset)) {
+               Result = log.warning(ERR::InvalidData);
+               return;
+            }
+
             Chars[j].Width   = width;
             Chars[j].Advance = Chars[j].Width;
             Chars[j].Offset  = offset - Face.bits_offset;
@@ -222,14 +246,40 @@ public:
          }
       }
 
-      int size = Face.file_size - Face.bits_offset;
+      if (Face.bits_offset >= Face.file_size) {
+         Result = log.warning(ERR::InvalidData);
+         return;
+      }
+
+      uint32_t data_size = Face.file_size - Face.bits_offset;
+      if (data_size > 0x7fffffff) {
+         Result = log.warning(ERR::InvalidData);
+         return;
+      }
+
+      int size = int(data_size);
 
       if (size > 0) {
          mData.resize(size);
          int result;
-         File->seek(WinFont.Offset + Face.bits_offset, SEEK::START);
+         if (File->seek(WinFont.Offset + Face.bits_offset, SEEK::START) != ERR::Okay) {
+            Result = log.warning(ERR::Read);
+            return;
+         }
 
          if ((File->read(mData.data(), size, &result) IS ERR::Okay) and (result IS size)) {
+            for (int16_t i=0; i < 256; i++) {
+               if (!Chars[i].Width) continue;
+
+               uint32_t bytewidth = uint32_t((Chars[i].Width+7)>>3);
+               uint32_t char_size = bytewidth * Header.pixel_height;
+
+               if ((Chars[i].Offset >= data_size) or (char_size > data_size - Chars[i].Offset)) {
+                  Result = log.warning(ERR::InvalidData);
+                  return;
+               }
+            }
+
             // Convert the graphics format for wide characters from column-first format to row-first format.
 
             for (int16_t i=0; i < 256; i++) {
@@ -253,9 +303,15 @@ public:
                }
             }
          }
-         else Result = log.warning(ERR::Read);
+         else {
+            Result = log.warning(ERR::Read);
+            return;
+         }
       }
-      else Result = log.warning(ERR::AllocMemory);
+      else {
+         Result = log.warning(ERR::AllocMemory);
+         return;
+      }
 
       if (((StyleFlags & FTF::BOLD) != FTF::NIL) and (Header.weight < 600)) {
          log.msg("Converting base font graphics data to bold.");
@@ -280,7 +336,7 @@ public:
                   for (int y=0; y < Header.pixel_height; y++) {
                      for (int xb=0; xb < oldwidth; xb++) {
                         buffer[pos+xb] |= gfx[xb]|(gfx[xb]>>1);
-                        if ((xb < newwidth) and (gfx[xb] & 0x01)) buffer[pos+xb+1] |= 0x80;
+                        if ((xb + 1 < newwidth) and (gfx[xb] & 0x01)) buffer[pos+xb+1] |= 0x80;
                      }
 
                      pos += newwidth;
@@ -294,7 +350,10 @@ public:
 
             mData = std::move(buffer);
          }
-         else Result = log.warning(ERR::AllocMemory);
+         else {
+            Result = log.warning(ERR::AllocMemory);
+            return;
+         }
       }
 
       if (((StyleFlags & FTF::ITALIC) != FTF::NIL) and (!Header.italic)) {
@@ -340,12 +399,17 @@ public:
 
             mData = std::move(buffer);
          }
-         else Result = log.warning(ERR::AllocMemory);
+         else {
+            Result = log.warning(ERR::AllocMemory);
+            return;
+         }
       }
    }
 
    uint8_t * get_outline()
    {
+      CACHE_LOCK lock(glCacheMutex);
+
       if (not mOutline.empty()) return mOutline.data();
 
       int size = 0;

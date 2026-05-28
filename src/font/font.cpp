@@ -182,9 +182,12 @@ constexpr T tab_advance(T Num, T Alignment) {
 
 static double glDefaultPoint = 10;
 static bool glPointSet = false;
+static std::mutex glPointMutex;
 
 static double global_point_size(void)
 {
+   const std::lock_guard<std::mutex> lock(glPointMutex);
+
    if (not glPointSet) {
       kt::Log log(__FUNCTION__);
       OBJECTID style_id;
@@ -192,13 +195,13 @@ static double global_point_size(void)
          kt::ScopedObjectLock<objXML> style(style_id, 3000);
          if (style.granted()) {
             char pointsize[20];
-            glPointSet = true;
             if (acGetKey(style.obj, "/interface/@fontsize", pointsize, sizeof(pointsize)) IS ERR::Okay) {
                glDefaultPoint = strtod(pointsize, nullptr);
                if (glDefaultPoint < 6) glDefaultPoint = 6;
                else if (glDefaultPoint > 80) glDefaultPoint = 80;
                log.msg("Global font size is %.1f.", glDefaultPoint);
             }
+            glPointSet = true;
          }
       }
       else log.warning("glStyle XML object is not available");
@@ -261,7 +264,7 @@ static void string_size(extFont *Font, std::string_view String, int Chars, int W
          if (ch IS ' ') x += Font->prvChar[' '].Advance * Font->GlyphSpacing;
          else if (ch IS '\t') {
             tabwidth = (Font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
-            if (tabwidth) x += tab_advance<int>(x, tabwidth);
+            if (tabwidth) x = tab_advance<int>(x, tabwidth);
          }
          else if (ch IS '\n') {
             if (lastword > longest) longest = lastword;
@@ -350,19 +353,35 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    argModule->get(FID_Root, modFont);
 
+   auto cleanup = [] {
+      if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = nullptr; }
+      if (glConfig)    { FreeResource(glConfig);        glConfig    = nullptr; }
+      if (clFont)      { FreeResource(clFont);          clFont      = nullptr; }
+      if (modDisplay)  { FreeResource(modDisplay);      modDisplay  = nullptr; }
+   };
+
    if (objModule::load("display", &modDisplay, &DisplayBase) != ERR::Okay) return ERR::LoadModule;
 
-   if (FT_Init_FreeType(&glFTLibrary)) return log.warning(ERR::LoadModule);
+   if (FT_Init_FreeType(&glFTLibrary)) {
+      cleanup();
+      return log.warning(ERR::LoadModule);
+   }
 
    LOC type;
    bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR::Okay) or (type != LOC::FILE);
 
    if ((glConfig = objConfig::create::global(fl::Name("cfgSystemFonts"), fl::Path("fonts:fonts.cfg")))) {
-      if (refresh) fnt::RefreshFonts();
+      if (refresh) {
+         if (auto error = fnt::RefreshFonts(); error != ERR::Okay) {
+            cleanup();
+            return error;
+         }
+      }
 
       ConfigGroups *groups;
       if (not ((glConfig->get(FID_Data, groups) IS ERR::Okay) and (not groups->empty()))) {
          log.error("Failed to build a database of valid fonts.");
+         cleanup();
          return ERR::Failed;
       }
 
@@ -372,10 +391,16 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
    else {
       log.error("Failed to load or prepare the font configuration file.");
+      cleanup();
       return ERR::Failed;
    }
 
-   return add_font_class();
+   if (auto error = add_font_class(); error != ERR::Okay) {
+      cleanup();
+      return error;
+   }
+
+   return ERR::Okay;
 }
 
 static ERR MODOpen(OBJECTPTR Module)
@@ -418,6 +443,8 @@ int: The pixel width of the character will be returned.
 
 int CharWidth(objFont *Font, uint32_t Char)
 {
+   if (not Font) return 0;
+
    auto font = (extFont *)Font;
    if (Font->FixedWidth > 0) return Font->FixedWidth;
    else if ((Char < 256) and (font->prvChar)) return font->prvChar[Char].Advance;
@@ -459,9 +486,17 @@ ERR GetList(FontList **Result)
    ConfigGroups *groups;
    if (glConfig->get(FID_Data, groups) IS ERR::Okay) {
       for (auto & [group, keys] : groups[0]) {
-         size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + (keys["Points"].size()*4) + 1;
+         size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1;
          if (keys.contains("Alias")) size += keys["Alias"].size() + 1;
          if (keys.contains("Axes")) size += keys["Axes"].size() + 1;
+
+         if (auto point_it = keys.find("Points"); (point_it != keys.end()) and (not point_it->second.empty())) {
+            size_t point_count = 1;
+            for (auto ch : point_it->second) {
+               if (ch IS ',') point_count++;
+            }
+            size += sizeof(int) - 1 + ((point_count + 1) * sizeof(int));
+         }
       }
 
       FontList *list, *last_list = nullptr;
@@ -517,6 +552,9 @@ ERR GetList(FontList **Result)
                if (keys.contains("Points")) {
                   auto fontpoints = std::string_view(keys["Points"]);
                   if (not fontpoints.empty()) {
+                     auto align = (uintptr_t)buffer % sizeof(int);
+                     if (align) buffer += sizeof(int) - align;
+
                      list->Points = (int *)buffer;
                      std::size_t i = 0;
                      for (int16_t j=0; i != std::string::npos; j++) {
@@ -643,7 +681,9 @@ ERR SelectFont(const std::string_view &Name, const std::string_view &Style, CSTR
 
    log.branch("%.*s:%.*s", int(Name.size()), Name.data(), int(Style.size()), Style.data());
 
-   if (Name.empty()) return log.warning(ERR::NullArgs);
+   if (Name.empty() or (not Path)) return log.warning(ERR::NullArgs);
+
+   *Path = nullptr;
 
    kt::ScopedObjectLock<objConfig> config(glConfig, 5000);
    if (not config.granted()) return log.warning(ERR::AccessObject);
@@ -665,12 +705,18 @@ ERR SelectFont(const std::string_view &Name, const std::string_view &Style, CSTR
       return meta;
    };
 
-   auto get_font_path = [](ConfigKeys &Keys, const std::string &Style) {
-      if (Keys.contains(Style)) return strclone(Keys[Style]);
-      else if (not iequals("Regular", Style)) {
-         if (Keys.contains("Regular")) return strclone(Keys["Regular"]);
+   auto get_font_path = [](ConfigKeys &Keys, const std::string &Style, CSTRING *Path) {
+      if (Keys.contains(Style)) {
+         if ((*Path = strclone(Keys[Style]))) return ERR::Okay;
+         else return ERR::AllocMemory;
       }
-      return STRING(nullptr);
+      else if (not iequals("Regular", Style)) {
+         if (Keys.contains("Regular")) {
+            if ((*Path = strclone(Keys["Regular"]))) return ERR::Okay;
+            else return ERR::AllocMemory;
+         }
+      }
+      return ERR::Search;
    };
 
    std::string style_name(Style);
@@ -679,10 +725,12 @@ ERR SelectFont(const std::string_view &Name, const std::string_view &Style, CSTR
    for (auto & [group, keys] : groups[0]) {
       if (not iequals(Name, keys["Name"])) continue;
 
-      if ((*Path = get_font_path(keys, style_name))) {
+      auto error = get_font_path(keys, style_name, Path);
+      if (error IS ERR::Okay) {
          if (Meta) *Meta = get_meta(keys);
          return ERR::Okay;
       }
+      else if (error != ERR::Search) return error;
 
       log.traceWarning("Requested style '%s' not available, choosing first style.", style_name.c_str());
 
@@ -692,7 +740,7 @@ ERR SelectFont(const std::string_view &Name, const std::string_view &Style, CSTR
       std::string first_style = styles.substr(0, end);
 
       if (keys.contains(first_style)) {
-         *Path = strclone(keys[first_style]);
+         if (not (*Path = strclone(keys[first_style]))) return ERR::AllocMemory;
          if (Meta) *Meta = get_meta(keys);
          return ERR::Okay;
       }
@@ -716,6 +764,8 @@ information.  The `fonts:fonts.cfg` file will be re-written on completion to ref
 -ERRORS-
 Okay: Fonts were successfully refreshed.
 AccessObject: Access to the font database was denied, or the object does not exist.
+GetField: Failed to read font database entries after scanning.
+OpenFile: Failed to open `fonts:fonts.cfg` for writing.
 -END-
 
 *********************************************************************************************************************/
@@ -729,12 +779,12 @@ ERR RefreshFonts(void)
    kt::ScopedObjectLock<objConfig> config(glConfig, 3000);
    if (not config.granted()) return log.warning(ERR::AccessObject);
 
-   acClear(glConfig); // Clear out existing font information
+   if (auto error = acClear(glConfig); error != ERR::Okay) return error; // Clear out existing font information
 
    scan_fixed_folder(glConfig);
    scan_truetype_folder(glConfig);
 
-   glConfig->sortByKey(nullptr, false); // Sort the font names into alphabetical order
+   if (auto error = glConfig->sortByKey(nullptr, false); error != ERR::Okay) return error; // Sort by font name.
 
    // Create a style list for each font, e.g.
    //
@@ -761,13 +811,13 @@ ERR RefreshFonts(void)
          keys["Styles"] = style_list.str();
       }
    }
+   else return log.warning(ERR::GetField);
 
    // Save the font configuration file
 
    objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
-   if (file.ok()) glConfig->saveToObject(*file);
-
-   return ERR::Okay;
+   if (file.ok()) return glConfig->saveToObject(*file);
+   else return log.warning(ERR::OpenFile);
 }
 
 /*********************************************************************************************************************
@@ -792,6 +842,10 @@ NullArgs:
 AccessObject: Access to the font database was denied, or the object does not exist.
 GetField:
 Search: It was not possible to resolve the String to a known font family.
+
+-TAGS-
+volatile-result
+
 -END-
 
 *********************************************************************************************************************/
