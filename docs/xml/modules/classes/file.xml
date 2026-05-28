@@ -266,6 +266,7 @@
         <error code="Args">Invalid arguments passed to function</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>caller-owns-result</tags>
     </method>
 
     <method>

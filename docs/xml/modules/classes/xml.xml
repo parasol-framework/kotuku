@@ -143,6 +143,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
         <error code="AllocMemory">AllocMemory() failed to create a new memory block</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>caller-owns-result</tags>
     </method>
 
     <method>
@@ -553,6 +554,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
         <error code="AllocMemory">Failed to allocate memory for the XML string result.</error>
         <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
+      <tags>caller-owns-result</tags>
     </method>
 
     <method>
@@ -730,6 +732,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 <p>Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the statement.  The string result is an allocation that must be freed.</p>
 <p>If the statement is an XQuery expression with base-uri references, the <fl>Path</fl> field should be set to establish the base path for relative references.</p>
       </description>
+      <tags>caller-owns-result</tags>
     </field>
 
     <field>

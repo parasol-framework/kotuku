@@ -1284,7 +1284,7 @@ static ResourceManager glNodeManager = {
 <tr><th>DATA::CONTENT</th><td>Document content (between XML tags) - sent by document objects only</td></tr>
 <tr><th>DATA::DEVICE_INPUT</th><td>Device activity</td></tr>
 <tr><th>DATA::FILE</th><td>File location (the data will reflect the complete file path)</td></tr>
-<tr><th>DATA::IMAGE</th><td>Image file data, recognised by the Image class</td></tr>
+<tr><th>DATA::IMAGE</th><td>Image file data, recognised by the Picture class</td></tr>
 <tr><th>DATA::INPUT_READY</th><td>Device input that has been transformed into user input</td></tr>
 <tr><th>DATA::RAW</th><td>Raw unprocessed data</td></tr>
 <tr><th>DATA::RECEIPT</th><td>Receipt for item data, in response to an earlier request</td></tr>
@@ -1385,7 +1385,7 @@ static ResourceManager glNodeManager = {
 <tr><th>FD::BUFSIZE</th><td>FUNCDEF Overrides <code>LOOKUP</code>.  Pair with <code>BUFFER</code> to indicate the byte size of the buffer memory.</td></tr>
 <tr><th>FD::BYTE</th><td>8 bit integer.</td></tr>
 <tr><th>FD::CLASS_TYPES</th><td>All types that directly contribute to the core definition of a C/C++ type</td></tr>
-<tr><th>FD::CPP</th><td>Use the C++ variant of the indicated type, e.g. <code>ARRAY</code> is a <code>std::vector</code>.</td></tr>
+<tr><th>FD::CPP</th><td>Use the C++ variant of the indicated type, e.g. <code>ARRAY</code> is a <code>kt::vector</code>.</td></tr>
 <tr><th>FD::CUSTOM</th><td></td></tr>
 <tr><th>FD::DOUBLE</th><td>64 bit float.</td></tr>
 <tr><th>FD::DOUBLERESULT</th><td>For actions and methods</td></tr>
@@ -1403,6 +1403,7 @@ static ResourceManager glNodeManager = {
 <tr><th>FD::LOCAL</th><td>CLASSDEF Pointer to an object that is local to the class</td></tr>
 <tr><th>FD::LOOKUP</th><td>CLASSDEF</td></tr>
 <tr><th>FD::MUTABLE</th><td>FUNCDEF Overrides <code>VIRTUAL</code>.  The function will overwrite incoming BUFFER or STRING content.  If used in conjunction with the RESULT flag, it indicates that the returned content is volatile (valid for a limited time).</td></tr>
+<tr><th>FD::NORMALISED</th><td>Supplementary, indicates a normalised float value for multiplicative scaling.</td></tr>
 <tr><th>FD::OBJECT</th><td>Supplementary, can be used with ints (for IDs) or pointers</td></tr>
 <tr><th>FD::OBJECTID</th><td>Synonym for <code>INT | OBJECT</code></td></tr>
 <tr><th>FD::OBJECTPTR</th><td>Synonym for <code>PTR | OBJECT</code></td></tr>
@@ -1419,10 +1420,10 @@ static ResourceManager glNodeManager = {
 <tr><th>FD::READ</th><td>CLASSDEF</td></tr>
 <tr><th>FD::RESOURCE</th><td>The referenced struct or pointer is a special resource.  Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Tiri.</td></tr>
 <tr><th>FD::RESULT</th><td>FUNCDEF Overrides <code>READ</code></td></tr>
-<tr><th>FD::RGB</th><td>Supplementary, if an int type then format is <code>0xAARRGGBB</code>, if pointer then refers to an RGB structure.</td></tr>
+<tr><th>FD::RGB</th><td>Supplementary, if an int type then format is <code>0xAARRGGBB</code>, if pointer then refers to an RGB or FRGB structure.</td></tr>
 <tr><th>FD::RI</th><td>Synonym for <code>READ | INIT</code></td></tr>
 <tr><th>FD::RW</th><td>Synonym for <code>READ | WRITE</code></td></tr>
-<tr><th>FD::SCALED</th><td>Supplementary, indicates a float value for multiplicative scaling.</td></tr>
+<tr><th>FD::SCALED</th><td>Synonym for <code>NORMALISED</code></td></tr>
 <tr><th>FD::STR</th><td>Synonym for <code>STRING</code></td></tr>
 <tr><th>FD::STRING</th><td>Pointer to a string.</td></tr>
 <tr><th>FD::STRRESULT</th><td>Synonym for <code>STR | RESULT</code></td></tr>

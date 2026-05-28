@@ -27,6 +27,7 @@
     <comment>Converts an IPAddress structure to an IPAddress in dotted string form.</comment>
     <prototype>CSTRING net::AddressToStr(struct IPAddress * IPAddress)</prototype>
     <tiriPrototype>str = AddressToStr(IPAddress:any)</tiriPrototype>
+    <tags>caller-owns-result</tags>
     <input>
       <param type="struct IPAddress *" name="IPAddress">A pointer to the IPAddress structure.</param>
     </input>

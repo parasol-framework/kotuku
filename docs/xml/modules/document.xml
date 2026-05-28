@@ -91,7 +91,7 @@
       <const name="CONTENT">Document content (between XML tags) - sent by document objects only</const>
       <const name="DEVICE_INPUT">Device activity</const>
       <const name="FILE">File location (the data will reflect the complete file path)</const>
-      <const name="IMAGE">Image file data, recognised by the Image class</const>
+      <const name="IMAGE">Image file data, recognised by the Picture class</const>
       <const name="INPUT_READY">Device input that has been transformed into user input</const>
       <const name="RAW">Raw unprocessed data</const>
       <const name="RECEIPT">Receipt for item data, in response to an earlier request</const>
@@ -200,6 +200,7 @@
       <const name="LOCAL">CLASSDEF Pointer to an object that is local to the class</const>
       <const name="LOOKUP">CLASSDEF</const>
       <const name="MUTABLE">FUNCDEF Overrides <code>VIRTUAL</code>.  The function will overwrite incoming BUFFER or STRING content.  If used in conjunction with the RESULT flag, it indicates that the returned content is volatile (valid for a limited time).</const>
+      <const name="NORMALISED">Supplementary, indicates a normalised float value for multiplicative scaling.</const>
       <const name="OBJECT">Supplementary, can be used with ints (for IDs) or pointers</const>
       <const name="OBJECTID">Synonym for <code>INT | OBJECT</code></const>
       <const name="OBJECTPTR">Synonym for <code>PTR | OBJECT</code></const>
@@ -216,10 +217,10 @@
       <const name="READ">CLASSDEF</const>
       <const name="RESOURCE">The referenced struct or pointer is a special resource.  Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Tiri.</const>
       <const name="RESULT">FUNCDEF Overrides <code>READ</code></const>
-      <const name="RGB">Supplementary, if an int type then format is <code>0xAARRGGBB</code>, if pointer then refers to an RGB structure.</const>
+      <const name="RGB">Supplementary, if an int type then format is <code>0xAARRGGBB</code>, if pointer then refers to an RGB or FRGB structure.</const>
       <const name="RI">Synonym for <code>READ | INIT</code></const>
       <const name="RW">Synonym for <code>READ | WRITE</code></const>
-      <const name="SCALED">Supplementary, indicates a float value for multiplicative scaling.</const>
+      <const name="SCALED">Synonym for <code>NORMALISED</code></const>
       <const name="STR">Synonym for <code>STRING</code></const>
       <const name="STRING">Pointer to a string.</const>
       <const name="STRRESULT">Synonym for <code>STR | RESULT</code></const>

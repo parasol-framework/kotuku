@@ -439,6 +439,7 @@ http.acActivate()
       <description>
 <p>This field returns a string list of all the keys found in the HTTP response header.  An empty list will be returned if no keys are found.</p>
       </description>
+      <tags>caller-owns-result</tags>
     </field>
 
     <field>

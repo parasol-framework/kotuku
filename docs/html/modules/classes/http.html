@@ -86,7 +86,7 @@ http.acActivate()
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-ContentType" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-ContentType"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">ContentType</th><td class="col-md-1"><span class="text-nowrap">std::string</span></td><td>Defines the content-type for <code>PUT</code> and <code>POST</code> methods.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-ContentType" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">ContentType</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>Defines the content-type for <code>PUT</code> and <code>POST</code> methods.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-ContentType" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The ContentType should be set prior to sending a <code>PUT</code> or <code>POST</code> request.  If <code>NULL</code>, the default content type for <code>POST</code> methods will be set to <code>application/x-www-form-urlencoded</code>.  For <code>PUT</code> requests the default of <code>application/binary</code> will be applied.</p>
       
 </div></div></td></tr>
@@ -184,7 +184,7 @@ http.acActivate()
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Location" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Location"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Location</th><td class="col-md-1"><span class="text-nowrap">std::string</span></td><td>A valid HTTP URI must be specified here.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Location" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Location</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>A valid HTTP URI must be specified here.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Location" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The URI of the HTTP source must be specified here.  The string must start with <code>http://</code> or <code>https://</code>, followed by the host name, HTTP path and port number if required. The values mentioned will be broken down and stored in the <a data-bs-toggle="tooltip" title="The targeted HTTP server is specified here, either by name or IP address." href="#tf-Host">Host</a>, <a data-bs-toggle="tooltip" title="The HTTP path targeted at the host server." href="#tf-Path">Path</a> and <a data-bs-toggle="tooltip" title="The HTTP port to use when targeting a host." href="#tf-Port">Port</a> fields respectively.  Note that if the port is not defined in the URI, the <a data-bs-toggle="tooltip" title="The HTTP port to use when targeting a host." href="#tf-Port">Port</a> field is reset to the default (<code>80</code> for HTTP or <code>443</code> for HTTPS).</p>
 <p>An alternative to setting the Location is to set the <a data-bs-toggle="tooltip" title="The targeted HTTP server is specified here, either by name or IP address." href="#tf-Host">Host</a>, <a data-bs-toggle="tooltip" title="The HTTP path targeted at the host server." href="#tf-Path">Path</a> and <a data-bs-toggle="tooltip" title="The HTTP port to use when targeting a host." href="#tf-Port">Port</a> separately.</p>
       
@@ -253,7 +253,7 @@ http.acActivate()
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Password" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Password"><i class="bi bi-dash-circle text-secondary" data-bs-toggle="tooltip" title="Not readable"></i>
                            
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Password</th><td class="col-md-1"><span class="text-nowrap">std::string</span></td><td>The password to use when authenticating access to the server.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Password" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Password</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>The password to use when authenticating access to the server.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Password" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>A password may be preset if authorisation is required against the HTTP server for access to a resource. Note that if authorisation is required and no username and password has been preset, the HTTP object may present a dialog box to the user to request the relevant information.</p>
 <p>A <code>401</code> status code is returned in the event of an authorisation failure.</p>
       
@@ -285,7 +285,7 @@ http.acActivate()
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Realm" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Realm"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Realm</th><td class="col-md-1"><span class="text-nowrap">std::string</span></td><td>Identifies the realm during HTTP authentication.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Realm" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Realm</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>Identifies the realm during HTTP authentication.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Realm" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>During the user authentication process, a realm name may be returned by the HTTP server and this will be reflected here.</p>
       
 </div></div></td></tr>
@@ -370,7 +370,7 @@ http.acActivate()
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Username" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Username"><i class="bi bi-dash-circle text-secondary" data-bs-toggle="tooltip" title="Not readable"></i>
                            
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Username</th><td class="col-md-1"><span class="text-nowrap">std::string</span></td><td>The username to use when authenticating access to the server.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Username" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Username</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>The username to use when authenticating access to the server.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Username" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>A username can be preset before executing an HTTP method against a secure server zone.  The supplied credentials will only be passed to the HTTP server if it asks for authorisation.  The username provided should be accompanied by a <a data-bs-toggle="tooltip" title="The password to use when authenticating access to the server." href="#tf-Password">Password</a>.</p>
 <p>In the event that a username or password is not supplied, or if the supplied credentials are invalid, the user will be presented with a dialog box and asked to enter the correct username and password.</p>
       

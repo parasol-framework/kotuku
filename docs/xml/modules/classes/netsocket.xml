@@ -211,6 +211,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <error code="NoSupport">Socket is not configured for UDP mode.</error>
         <error code="BufferOverflow">Receive buffer is too small for the incoming packet.</error>
       </result>
+      <tags>mutates-input</tags>
     </method>
 
     <method>
