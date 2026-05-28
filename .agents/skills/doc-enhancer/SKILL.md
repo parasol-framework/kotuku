@@ -14,7 +14,8 @@ directly to the relevant files unless the user explicitly asks for review-only f
 
 ## Workflow
 
-1. Read the target documentation and the surrounding code or neighbouring documents before editing.
+1. Read the target documentation and the surrounding code or neighbouring documents before editing.  Scan for the markers
+   `-FUNCTION-`, `-CLASS-`, `-ACTION-`, `-METHOD-` and `-FIELD-` to discover existing documentation.
 2. Verify factual claims against the implementation, generated API documentation, or established project docs.
 3. Improve clarity, precision, structure, and consistency without expanding the documentation into tutorial material unless
    the surrounding document is explicitly tutorial-oriented.
@@ -45,6 +46,8 @@ directly to the relevant files unless the user explicitly asks for review-only f
   generator inserts the value breakdown.
 - For `-METHOD-` or `-FUNCTION-` sections that refer to a struct, lookup, or flag type in parameters, use the `!` token
   to inject the generated value table instead of writing the value breakdown manually.
+- For existing `-TAGS-` sections, ensure that the existing tags are not stale.
+- If a documentation section is associated with a function, scan the function for characteristics that are relevant to the `-TAGS-` section and add relevant tags if not already present.  For documented functions, methods and actions, a new `-TAGS-` section can be added if one is not already present.
 
 ## Markdown Documentation
 
