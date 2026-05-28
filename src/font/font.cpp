@@ -85,7 +85,6 @@ static FT_Library glFTLibrary = nullptr;
 class extFont : public objFont {
    public:
    uint8_t *prvData;
-   std::string prvBuffer;
    struct FontCharacter *prvChar;
    class BitmapCache *BmpCache;
    int prvLineCount;
@@ -93,8 +92,6 @@ class extFont : public objFont {
    int16_t prvBitmapHeight;
    int16_t prvLineCountCR;
    char prvEscape[2];
-   char prvFace[32];
-   char prvStyle[20];
    uint8_t prvDefaultChar;
 };
 
@@ -105,7 +102,7 @@ class extFont : public objFont {
 static ERR add_font_class(void);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
-static ERR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<uint16_t> &);
+static ERR analyse_bmp_font(std::string_view, winfnt_header_fields *, std::string &, std::vector<uint16_t> &);
 static void string_size(extFont *, std::string_view, int, int, int *, int *);
 
 //********************************************************************************************************************
@@ -214,9 +211,9 @@ static double global_point_size(void)
 
 inline void calc_lines(extFont *Self)
 {
-   if (not Self->prvBuffer.empty()) {
+   if (not Self->String.empty()) {
       if (Self->WrapEdge > 0) {
-         string_size(Self, Self->prvBuffer, -1, Self->WrapEdge - Self->X, nullptr, &Self->prvLineCount);
+         string_size(Self, Self->String, -1, Self->WrapEdge - Self->X, nullptr, &Self->prvLineCount);
       }
       else Self->prvLineCount = Self->prvLineCountCR;
    }
@@ -1034,8 +1031,8 @@ static void scan_fixed_folder(objConfig *Config)
          winfnt_header_fields header;
          std::vector<uint16_t> points;
          std::string facename;
-         if (analyse_bmp_font(src, &header, facename, points) IS ERR::Okay) {
-            log.detail("Detected font file \"%s\", name: %s", src, facename.c_str());
+         if (analyse_bmp_font(location, &header, facename, points) IS ERR::Okay) {
+            log.detail("Detected font file \"%.*s\", name: %s", int(location.size()), location.data(), facename.c_str());
 
             if (facename.empty()) continue;
             std::string group(facename);
@@ -1074,15 +1071,15 @@ static void scan_fixed_folder(objConfig *Config)
 
             // Add the style with a link to the font file location
 
-            if (style IS FTF::BOLD) Config->write(gs, "Bold", src);
-            else if (style IS FTF::ITALIC) Config->write(gs, "Italic", src);
-            else if (style IS (FTF::BOLD|FTF::ITALIC)) Config->write(gs, "Bold Italic", src);
+            if (style IS FTF::BOLD) Config->write(gs, "Bold", location);
+            else if (style IS FTF::ITALIC) Config->write(gs, "Italic", location);
+            else if (style IS (FTF::BOLD|FTF::ITALIC)) Config->write(gs, "Bold Italic", location);
             else {
                // Font is regular, which also means we can convert it to bold/italic with some code
-               Config->write(gs, "Regular", src);
-               Config->write(gs, "Bold", src);
-               Config->write(gs, "Bold Italic", src);
-               Config->write(gs, "Italic", src);
+               Config->write(gs, "Regular", location);
+               Config->write(gs, "Bold", location);
+               Config->write(gs, "Bold Italic", location);
+               Config->write(gs, "Italic", location);
             }
 
             std::ostringstream out;
@@ -1095,7 +1092,7 @@ static void scan_fixed_folder(objConfig *Config)
 
             Config->write(gs, "Points", out.str());
          }
-         else log.warning("Failed to analyse %s", src);
+         else log.warning("Failed to analyse %.*s", int(location.size()), location.data());
       }
    }
    else log.warning("Failed to scan directory fonts:fixed/");
@@ -1103,18 +1100,18 @@ static void scan_fixed_folder(objConfig *Config)
 
 //********************************************************************************************************************
 
-static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<uint16_t> &Points)
+static ERR analyse_bmp_font(std::string_view Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<uint16_t> &Points)
 {
    kt::Log log(__FUNCTION__);
    char face[50];
 
-   if ((not Path) or (not Header)) return ERR::NullArgs;
+   if ((Path.empty()) or (not Header)) return ERR::NullArgs;
 
    objFile::create file = { fl::Path(Path), fl::Flags(FL::READ) };
    if (file.ok()) {
       std::vector<winFont> fonts;
       if (auto error = read_winfont_entries(*file, fonts); error IS ERR::NoData) {
-         log.warning("There are no fonts in file \"%s\"", Path);
+         log.warning("There are no fonts in file \"%.*s\"", int(Path.size()), Path.data());
          return ERR::Failed;
       }
       else if (error != ERR::Okay) return error;

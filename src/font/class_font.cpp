@@ -50,7 +50,7 @@ class is not integrated with the display's vector scene graph.
 
 static BitmapCache * check_bitmap_cache(extFont *, FTF);
 static ERR SET_Point(extFont *Self, double);
-static ERR SET_Style(extFont *, CSTRING);
+static ERR SET_Style(extFont *, const std::string_view &);
 
 /*********************************************************************************************************************
 
@@ -90,7 +90,6 @@ static ERR FONT_Free(extFont *Self)
       }
    }
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
    Self->~extFont();
    return ERR::Okay;
 }
@@ -104,25 +103,26 @@ static ERR FONT_Init(extFont *Self)
    FTF style;
    FMETA meta = FMETA::NIL;
 
-   if ((!Self->prvFace[0]) and (!Self->Path)) return log.warning(ERR::FieldNotSet);
+   if ((Self->Face.empty()) and (Self->Path.empty())) return log.warning(ERR::FieldNotSet);
 
    if (!Self->Point) Self->Point = global_point_size();
 
-   if (!Self->Path) {
+   if (Self->Path.empty()) {
       CSTRING path = nullptr;
-      if (fnt::SelectFont(Self->prvFace, Self->prvStyle, &path, &meta) IS ERR::Okay) {
+      if (fnt::SelectFont(Self->Face, Self->Style, &path, &meta) IS ERR::Okay) {
          Self->set(FID_Path, path);
          FreeResource(path);
       }
       else {
-         log.warning("Font \"%s\" (point %.2f, style %s) is not recognised.", Self->prvFace, Self->Point, Self->prvStyle);
+         log.warning("Font \"%s\" (point %.2f, style %s) is not recognised.", Self->Face.c_str(), Self->Point,
+            Self->Style.c_str());
          return ERR::Failed;
       }
    }
 
    // Check the bitmap cache to see if we have already loaded this font
 
-   style = font_style_flags(Self->prvStyle);
+   style = font_style_flags(Self->Style);
 
    CACHE_LOCK lock(glCacheMutex);
 
@@ -147,7 +147,7 @@ static ERR FONT_Init(extFont *Self)
 
             winfnt_header_fields header;
             if (file->read(&header, sizeof(header)) IS ERR::Okay) {
-               if (auto error = validate_winfnt_header(header, nullptr); error != ERR::Okay) {
+               if (auto error = validate_winfnt_header(header, ""); error != ERR::Okay) {
                   return log.warning(error);
                }
 
@@ -170,7 +170,7 @@ static ERR FONT_Init(extFont *Self)
          Self->Point = face.nominal_point_size;
          cache = check_bitmap_cache(Self, style);
          if (!cache) { // Load the font into the cache
-            auto it = glBitmapCache.emplace(glBitmapCache.end(), face, Self->prvStyle, Self->Path, *file, fonts[wfi]);
+            auto it = glBitmapCache.emplace(glBitmapCache.end(), face, Self->Style, Self->Path, *file, fonts[wfi]);
 
             if (it->Result IS ERR::Okay) cache = &(*it);
             else {
@@ -184,7 +184,7 @@ static ERR FONT_Init(extFont *Self)
    }
 
    if (cache) {
-      Self->prvData     = cache->mData;
+      Self->prvData     = cache->mData.data();
       Self->Ascent      = cache->Header.ascent;
       Self->Point       = cache->Header.nominal_point_size;
       Self->Height      = cache->Header.ascent - cache->Header.internal_leading + cache->Header.external_leading;
@@ -213,9 +213,10 @@ static ERR FONT_Init(extFont *Self)
 
    // Remove the location string to reduce resource usage
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+   Self->Path.clear();
 
-   log.detail("Family: %s, Style: %s, Point: %.2f, Height: %d", Self->prvFace, Self->prvStyle, Self->Point, Self->Height);
+   log.detail("Family: %s, Style: %s, Point: %.2f, Height: %d", Self->Face.c_str(), Self->Style.c_str(),
+      Self->Point, Self->Height);
    return ERR::Okay;
 }
 
@@ -227,11 +228,9 @@ static ERR FONT_NewPlacement(extFont *Self)
    Self->TabSize         = 8;
    Self->prvDefaultChar  = '.';
    Self->prvLineCountCR  = 1;
-   Self->Style           = Self->prvStyle;
-   Self->Face            = Self->prvFace;
    Self->Colour.Alpha    = 255;
    Self->GlyphSpacing    = 1.0;
-   strcopy("Regular", Self->prvStyle, sizeof(Self->prvStyle));
+   Self->Style           = "Regular";
    return ERR::Okay;
 }
 
@@ -276,7 +275,7 @@ convenience - we recommend that you set the Style field for determining font sty
 static ERR GET_Bold(extFont *Self, int *Value)
 {
    if ((Self->Flags & FTF::BOLD) != FTF::NIL) *Value = TRUE;
-   else if (kt::strisearch("bold", Self->prvStyle) != -1) *Value = TRUE;
+   else if (kt::strisearch("bold", Self->Style) != -1) *Value = TRUE;
    else *Value = FALSE;
    return ERR::Okay;
 }
@@ -284,7 +283,7 @@ static ERR GET_Bold(extFont *Self, int *Value)
 static ERR SET_Bold(extFont *Self, int Value)
 {
    const bool bold = Value != FALSE;
-   const bool italic = ((Self->Flags & FTF::ITALIC) != FTF::NIL) or (kt::strisearch("italic", Self->prvStyle) != -1);
+   const bool italic = ((Self->Flags & FTF::ITALIC) != FTF::NIL) or (kt::strisearch("italic", Self->Style) != -1);
 
    if (bold and italic) return SET_Style(Self, "Bold Italic");
    else if (bold) return SET_Style(Self, "Bold");
@@ -333,46 +332,45 @@ font to be selected if the first face is unavailable or unable to match the requ
 
 *********************************************************************************************************************/
 
-static ERR SET_Face(extFont *Self, STRING Value)
+static ERR SET_Face(extFont *Self, const std::string_view &Value)
 {
-   if ((Value) and (Value[0])) {
+   if (not Value.empty()) {
       CSTRING final_name;
-      int i;
-      for (i=0; Value[i] and Value[i] != ':'; i++);
-
-      std::string face(Value, i);
+      auto i = Value.find(':');
+      auto face = Value.substr(0, i);
       if (fnt::ResolveFamilyName(face, &final_name) IS ERR::Okay) {
-         strcopy(final_name, Self->prvFace, std::ssize(Self->prvFace));
+         Self->Face.assign(final_name);
       }
 
-      if (!Value[i]) return ERR::Okay;
+      if (i IS std::string::npos) return ERR::Okay;
 
       // Extract the point size
 
-      Value += i + 1;
-      if ((*Value) and (*Value != ':')) {
-         double pt = strtod(Value, &Value);
-         SET_Point(Self, pt);
+      auto point = Value.substr(i + 1);
+      i = point.find(':');
+      auto point_value = point.substr(0, i);
+      if (not point_value.empty()) {
+         double pt = 0;
+         auto result = std::from_chars(point_value.data(), point_value.data() + point_value.size(), pt);
+         if (result.ec IS std::errc()) SET_Point(Self, pt);
       }
 
-      while ((*Value) and (*Value != ':')) Value++;
-      if (!*Value) return ERR::Okay;
+      if (i IS std::string::npos) return ERR::Okay;
 
       // Extract the style string
 
-      Value++;
-      char style[sizeof(Self->prvStyle)];
-      for (i=0; (Value[i]) and (Value[i] != ':') and (i < int(sizeof(style))-1); i++) style[i] = Value[i];
-      style[i] = 0;
-      SET_Style(Self, style);
+      auto style = point.substr(i + 1);
+      i = style.find(':');
 
-      if (Value[i] != ':') return ERR::Okay;
+      SET_Style(Self, style.substr(0, i));
+
+      if (i IS std::string::npos) return ERR::Okay;
 
       // Extract the colour string
 
-      Self->set(FID_Colour, Value + i + 1);
+      Self->set(FID_Colour, style.substr(i + 1));
    }
-   else Self->prvFace[0] = 0;
+   else Self->Face.clear();
 
    return ERR::Okay;
 }
@@ -430,7 +428,7 @@ convenience only - we recommend that you set the #Style field for determining fo
 static ERR GET_Italic(extFont *Self, int *Value)
 {
    if ((Self->Flags & FTF::ITALIC) != FTF::NIL) *Value = TRUE;
-   else if (kt::strisearch("italic", Self->prvStyle) != -1) *Value = TRUE;
+   else if (kt::strisearch("italic", Self->Style) != -1) *Value = TRUE;
    else *Value = FALSE;
    return ERR::Okay;
 }
@@ -438,7 +436,7 @@ static ERR GET_Italic(extFont *Self, int *Value)
 static ERR SET_Italic(extFont *Self, int Value)
 {
    const bool italic = Value != FALSE;
-   const bool bold = ((Self->Flags & FTF::BOLD) != FTF::NIL) or (kt::strisearch("bold", Self->prvStyle) != -1);
+   const bool bold = ((Self->Flags & FTF::BOLD) != FTF::NIL) or (kt::strisearch("bold", Self->Style) != -1);
 
    if (bold and italic) return SET_Style(Self, "Bold Italic");
    else if (bold) return SET_Style(Self, "Bold");
@@ -489,11 +487,10 @@ This feature is ideal for use when distributing custom fonts with an application
 
 *********************************************************************************************************************/
 
-static ERR SET_Path(extFont *Self, CSTRING Value)
+static ERR SET_Path(extFont *Self, const std::string_view &Value)
 {
    if (!Self->initialised()) {
-      if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
-      if (Value) Self->Path = strclone(Value);
+      Self->Path.assign(Value);
       return ERR::Okay;
    }
    else return ERR::Failed;
@@ -579,25 +576,24 @@ character from the font.
 
 *********************************************************************************************************************/
 
-static ERR SET_String(extFont *Self, CSTRING Value)
+static ERR SET_String(extFont *Self, const std::string_view &Value)
 {
-   if ((Value) and (Self->String) and (std::string_view(Value) IS Self->String)) return ERR::Okay;
+   if (Self->String.size() IS Value.size()) {
+      if (std::string_view(Self->String) IS Value) return ERR::Okay;
+   }
 
-   Self->prvLineCount = 0;
-   Self->prvStrWidth  = 0; // Reset the string width for GET_Width
+   Self->prvLineCount   = 0;
+   Self->prvStrWidth    = 0; // Reset the string width for GET_Width
    Self->prvLineCountCR = 1; // Line count (carriage returns only)
 
-   if ((Value) and (*Value)) {
-      int i;
-      for (i=0; Value[i]; i++) if (Value[i] IS '\n') Self->prvLineCountCR++;
+   if (not Value.empty()) {
+      for (auto ch : Value) {
+         if (ch IS '\n') Self->prvLineCountCR++;
+      }
 
-      Self->prvBuffer.assign(Value);
-      Self->String = (STRING)Self->prvBuffer.c_str();
+      Self->String.assign(Value);
    }
-   else {
-      Self->prvBuffer.clear();
-      Self->String = nullptr;
-   }
+   else Self->String.clear();
 
    return ERR::Okay;
 }
@@ -618,10 +614,10 @@ Conventional font styles are `Bold`, `Bold Italic`, `Italic` and `Regular` (the 
 
 *********************************************************************************************************************/
 
-static ERR SET_Style(extFont *Self, CSTRING Value)
+static ERR SET_Style(extFont *Self, const std::string_view &Value)
 {
-   if ((!Value) or (!Value[0])) strcopy("Regular", Self->prvStyle, sizeof(Self->prvStyle));
-   else strcopy(Value, Self->prvStyle, sizeof(Self->prvStyle));
+   if (Value.empty()) Self->Style = "Regular";
+   else Self->Style.assign(Value);
    return ERR::Okay;
 }
 
@@ -650,7 +646,7 @@ this to work, or a width of zero will be returned.
 
 static ERR GET_Width(extFont *Self, int *Value)
 {
-   if (!Self->String) {
+   if (Self->String.empty()) {
       *Value = 0;
       return ERR::Okay;
    }
@@ -757,10 +753,10 @@ static ERR draw_bitmap_font(extFont *Self)
    // Validate settings for fixed font type
 
    if (not (bitmap = Self->Bitmap)) return log.warning(ERR::FieldNotSet);
-   if (Self->prvBuffer.empty()) return ERR::Okay;
+   if (Self->String.empty()) return ERR::Okay;
 
    ERR error = ERR::Okay;
-   auto str = std::string_view(Self->prvBuffer);
+   auto str = std::string_view(Self->String);
    int dxcoord = Self->X;
    int dycoord = Self->Y;
 
@@ -1046,10 +1042,10 @@ static const FieldArray clFontFields[] = {
    { "Point",        FDF_DOUBLE|FDF_RW, GET_Point, SET_Point },
    { "GlyphSpacing", FDF_DOUBLE|FDF_RW },
    { "Bitmap",       FDF_OBJECT|FDF_RW, nullptr, nullptr, CLASSID::BITMAP },
-   { "String",       FDF_STRING|FDF_RW, nullptr, SET_String },
-   { "Path",         FDF_STRING|FDF_RW, nullptr, SET_Path },
-   { "Style",        FDF_STRING|FDF_RI, nullptr, SET_Style },
-   { "Face",         FDF_STRING|FDF_RI, nullptr, SET_Face },
+   { "String",       FDF_CPPSTRING|FDF_RW, nullptr, SET_String },
+   { "Path",         FDF_CPPSTRING|FDF_RW, nullptr, SET_Path },
+   { "Style",        FDF_CPPSTRING|FDF_RI, nullptr, SET_Style },
+   { "Face",         FDF_CPPSTRING|FDF_RI, nullptr, SET_Face },
    { "Outline",      FDF_RGB|FDF_RW },
    { "Underline",    FDF_RGB|FDF_RW },
    { "Colour",       FDF_RGB|FDF_RW },
@@ -1074,7 +1070,7 @@ static const FieldArray clFontFields[] = {
    { "Bold",         FDF_VIRTUAL|FDF_INT|FDF_RW, GET_Bold, SET_Bold },
    { "Italic",       FDF_VIRTUAL|FDF_INT|FDF_RW, GET_Italic, SET_Italic },
    { "LineCount",    FDF_VIRTUAL|FDF_INT|FDF_R, GET_LineCount },
-   { "Location",     FDF_VIRTUAL|FDF_STRING|FDF_SYNONYM|FDF_RW, nullptr, SET_Path },
+   { "Location",     FDF_VIRTUAL|FDF_CPPSTRING|FDF_SYNONYM|FDF_RW, nullptr, SET_Path },
    { "Opacity",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, GET_Opacity, SET_Opacity },
    { "Width",        FDF_VIRTUAL|FDF_INT|FDF_R, GET_Width },
    { "YOffset",      FDF_VIRTUAL|FDF_INT|FDF_R, GET_YOffset },
