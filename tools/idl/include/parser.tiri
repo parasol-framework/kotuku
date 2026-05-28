@@ -24,41 +24,41 @@ rx_extract_comment = <{ regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DO
 global glTotalWarnings ?= 0
 
 global glOfficialTags = {
-   ['caller-owns-result'] = true,
-   ['object-owns-result'] = true,
-   ['static-result'] = true,
-   ['volatile-result'] = true,
    ['api-owns-result'] = true,
-   ['null-terminated-result'] = true,
-   ['non-null-result'] = true,
-   ['nullable-result'] = true,
-   ['copies-input'] = true,
-   ['retains-input'] = true,
-   ['does-not-take-ownership'] = true,
-   ['takes-ownership'] = true,
-   ['consumes-input'] = true,
-   ['mutates-input'] = true,
-   ['mutates-object'] = true,
-   ['updates-seek-index'] = true,
-   ['closes-handle'] = true,
-   ['creates-resource'] = true,
-   ['opens-handle'] = true,
    ['blocking'] = true,
-   ['non-blocking'] = true,
-   ['main-thread-only'] = true,
-   ['not-reentrant'] = true,
-   ['reentrant'] = true,
-   ['thread-safe'] = true,
    ['callback-held'] = true,
    ['callback-inlines'] = true,
+   ['caller-owns-result'] = true,
    ['case-insensitive'] = true,
    ['case-sensitive'] = true,
-   ['path-resolved'] = true,
-   ['path-preserved'] = true,
-   ['idempotent'] = true,
-   ['pure-query'] = true,
+   ['closes-handle'] = true,
+   ['consumes-input'] = true,
+   ['copies-input'] = true,
+   ['creates-resource'] = true,
    ['deprecated'] = true,
-   ['private'] = true
+   ['does-not-take-ownership'] = true,
+   ['idempotent'] = true,
+   ['main-thread-only'] = true,
+   ['mutates-input'] = true,
+   ['mutates-object'] = true,
+   ['non-blocking'] = true,
+   ['non-null-result'] = true,
+   ['not-reentrant'] = true,
+   ['null-terminated-result'] = true,
+   ['nullable-result'] = true,
+   ['object-owns-result'] = true,
+   ['opens-handle'] = true,
+   ['path-preserved'] = true,
+   ['path-resolved'] = true,
+   ['private'] = true,
+   ['pure-query'] = true,
+   ['reentrant'] = true,
+   ['retains-input'] = true,
+   ['static-result'] = true,
+   ['takes-ownership'] = true,
+   ['thread-safe'] = true,
+   ['updates-seek-index'] = true,
+   ['volatile-result'] = true
 }
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ end
 -- Apply automatic documentation tags to a tag list based on a field definition.
 
 global function addTag(Tags:array, Tag:str):array
-   Tags ?= array<string> { }
+   Tags ?= array<string>
 
    for existing_tag in values(Tags) do
       if existing_tag is Tag then return Tags end
@@ -98,7 +98,35 @@ global function addTag(Tags:array, Tag:str):array
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Apply automatic documentation tags to a tag list based on a field definition.
 
+global function getTagsFromField(Field:table, Tags:array):array
+   Field ?! return Tags
+   Tags ?= array<string>
+
+   if Field.allocated then addTag(Tags, 'caller-owns-result') end
+   if Field.flags and Field.flags has FD_ALLOC then addTag(Tags, 'caller-owns-result') end
+
+   if Field.mutable then addTag(Tags, 'mutates-input') end
+   if Field.isFunction and Field.flags and (Field.flags has FD_MUTABLE) then addTag(Tags, 'mutates-input') end
+
+   if Field.flags and Field.flags has FD_PRIVATE then addTag(Tags, 'private') end
+   return Tags
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Apply automatic documentation tags for every field or parameter in a collection.
+
+global function getTagsFromCollection(Tags:array, Fields:any):array
+   Tags ?= array<string>
+   Fields ?! return Tags
+
+   for field in values(Fields) do
+      Tags = getTagsFromField(field, Tags)
+   end
+
+   return Tags
+end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Convert a documentation tag list to the comma-separated form used by generated output.
@@ -315,6 +343,8 @@ global function parseMethod(Class:table, Extract:str)
    if tags?? then
       method.tags = parseTags(tags, f"method '{Class.name}.{name}'")
    end
+
+   method.tags = getTagsFromCollection(method.tags, method.params)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
