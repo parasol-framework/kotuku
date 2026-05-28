@@ -16,7 +16,7 @@
     <copyright>Paul Manias © 2001-2026</copyright>
     <description>
 <p>The Picture class provides a standard API for programs to load picture files of any supported data type.  It is future proof in that future data formats can be supported by installing class drivers on the user's system.</p>
-<p>The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via sub-classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are also supported, but user preference may dictate whether or not the necessary driver is installed.</p>
+<p>The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via derived classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are also supported, but user preference may dictate whether or not the necessary driver is installed.</p>
 <header>Technical Notes</header>
 <p>To find out general information about a picture before initialising it, <action>Query</action> it first so that the picture object can load initial details on the file format.</p>
 <p>Images are also remapped automatically if the source palette and destination palettes do not match, or if there are significant differences between the source and destination bitmap types.</p>
@@ -97,7 +97,7 @@
       <tiriPrototype>err = Object.acSaveToObject(Dest:obj, ClassID:num)</tiriPrototype>
       <input>
         <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded data.</param>
-        <param type="CLASSID" name="ClassID">Can refer to a sub-class that should be used when encoding the data.</param>
+        <param type="CLASSID" name="ClassID">Can refer to a derived class that should be used when encoding the data.</param>
       </input>
     </action>
 
