@@ -26,7 +26,6 @@ static std::string_view tiri_type_name(TiriType Type)
       case TiriType::Table:   return "table";
       case TiriType::Array:   return "array";
       case TiriType::Func:    return "function";
-      case TiriType::Thread:  return "thread";
       case TiriType::Object:  return "object";
       case TiriType::Range:   return "range";
       case TiriType::Unknown: return "unknown";

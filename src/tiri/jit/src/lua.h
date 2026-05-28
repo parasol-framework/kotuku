@@ -128,7 +128,6 @@ extern GCobject *    lua_optobject(lua_State *, int);
 extern size_t        lua_objlen(lua_State *, int);
 extern lua_CFunction lua_tocfunction(lua_State *, int);
 extern void *        lua_touserdata(lua_State *, int);
-extern lua_State *   lua_tothread(lua_State *, int);
 extern const void *  lua_topointer(lua_State *, int);
 
 // push functions (C -> stack)
@@ -144,7 +143,6 @@ extern const char *(lua_pushfstring) (lua_State *L, const char *fmt, ...);
 extern void  (lua_pushcclosure) (lua_State *L, lua_CFunction fn, int n);
 extern void  (lua_pushboolean) (lua_State *L, int b);
 extern void  (lua_pushlightuserdata) (lua_State *L, void *p);
-extern int   (lua_pushthread) (lua_State *L);
 
 // get functions (Lua -> stack)
 

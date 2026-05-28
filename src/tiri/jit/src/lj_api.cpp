@@ -745,15 +745,6 @@ extern void * lua_touserdata(lua_State *L, int idx)
 }
 
 //********************************************************************************************************************
-// Get thread if value is a coroutine
-
-extern lua_State * lua_tothread(lua_State *L, int idx)
-{
-   cTValue* o = index2adr(L, idx);
-   return (!tvisthread(o)) ? nullptr : threadV(o);
-}
-
-//********************************************************************************************************************
 // Get pointer representation of value
 
 extern const void* lua_topointer(lua_State *L, int idx)
@@ -932,16 +923,6 @@ extern int luaL_newmetatable(lua_State *L, CSTRING tname)
 }
 
 //********************************************************************************************************************
-// Push current thread onto stack
-
-extern int lua_pushthread(lua_State *L)
-{
-   setthreadV(L, L->top, L);
-   incr_top(L);
-   return (mainthread(G(L)) IS L);
-}
-
-//********************************************************************************************************************
 // Create userdata and push onto stack
 
 extern void * lua_newuserdata(lua_State *L, size_t size)
@@ -1060,14 +1041,13 @@ extern int luaL_getmetafield(lua_State *L, int idx, CSTRING field)
 }
 
 //********************************************************************************************************************
-// Get function/userdata/thread environment table
+// Get function/userdata environment table
 
 extern void lua_getfenv(lua_State *L, int idx)
 {
    cTValue *o = index2adr_check(L, idx);
    if (tvisfunc(o)) settabV(L, L->top, tabref(funcV(o)->c.env));
    else if (tvisudata(o)) settabV(L, L->top, tabref(udataV(o)->env));
-   else if (tvisthread(o)) settabV(L, L->top, tabref(threadV(o)->env));
    else setnilV(L->top);
    incr_top(L);
 }
@@ -1299,7 +1279,7 @@ extern void lua_setbasemetatable(lua_State *L, uint32_t itype)
 }
 
 //********************************************************************************************************************
-// Set function/userdata/thread environment table
+// Set function/userdata environment table
 
 extern int lua_setfenv(lua_State *L, int idx)
 {

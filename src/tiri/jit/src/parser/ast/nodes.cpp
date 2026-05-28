@@ -40,7 +40,6 @@ std::string_view type_name(TiriType Type)
       case TiriType::Table:  return "table";
       case TiriType::Array:  return "array";
       case TiriType::Func:   return "func";
-      case TiriType::Thread: return "thread";
       case TiriType::Object: return "obj";
       case TiriType::Range:  return "range";
       case TiriType::Any:
@@ -61,7 +60,6 @@ uint8_t tiri_type_to_lj_tag(TiriType Type)
       case TiriType::Nil:    return 0;   // ~0 = LJ_TNIL
       case TiriType::Bool:   return 2;   // ~2 = LJ_TTRUE (we use true as the canonical boolean)
       case TiriType::Str:    return 4;   // ~4 = LJ_TSTR
-      case TiriType::Thread: return 6;   // ~6 = LJ_TTHREAD
       case TiriType::Func:   return 8;   // ~8 = LJ_TFUNC
       case TiriType::Object: return 10;  // ~10 = LJ_TOBJECT
       case TiriType::Table:  return 11;  // ~11 = LJ_TTAB

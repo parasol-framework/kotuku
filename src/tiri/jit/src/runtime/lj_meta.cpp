@@ -37,7 +37,6 @@ static TiriType lj_tag_to_tiri_type(uint32_t tag)
       case LJ_TFALSE:
       case LJ_TTRUE:   return TiriType::Bool;
       case LJ_TSTR:    return TiriType::Str;
-      case LJ_TTHREAD: return TiriType::Thread;
       case LJ_TFUNC:   return TiriType::Func;
       case LJ_TOBJECT: return TiriType::Object;
       case LJ_TTAB:    return TiriType::Table;
@@ -107,34 +106,6 @@ cTValue * lj_meta_lookup(lua_State *L, cTValue *o, MMS mm)
    }
    return niltv(L);
 }
-
-//********************************************************************************************************************
-
-#if LJ_HASFFI
-// Tailcall from C function.
-int lj_meta_tailcall(lua_State *L, cTValue *tv)
-{
-   TValue *base = L->base;
-   TValue *top = L->top;
-   const BCIns *pc = frame_pc(base - 1);  //  Preserve old PC from frame.
-   copyTV(L, base - 1 - LJ_FR2, tv);  //  Replace frame with new object.
-   (top++)->u64 = LJ_CONT_TAILCALL;
-   setframe_pc(top++, pc);
-   setframe_gc(top, obj2gco(L), LJ_TTHREAD);  //  Dummy frame object.
-   top++;
-   setframe_ftsz(top, ((char*)(top + 1) - (char*)base) + FRAME_CONT);
-   L->base = L->top = top + 1;
-   /*
-   ** before:   [old_mo|PC]    [... ...]
-   **                         ^base     ^top
-   ** after:    [new_mo|itype] [... ...] [nullptr|PC] [dummy|delta]
-   **                                                           ^base/top
-   ** tailcall: [new_mo|PC]    [... ...]
-   **                         ^base     ^top
-   */
-   return 0;
-}
-#endif
 
 //********************************************************************************************************************
 // Setup call to metamethod to be run by Assembler VM.

@@ -635,7 +635,7 @@ using GCFreeFunc = void (*)(global_State*, GCobj*);
 static const std::array<GCFreeFunc, 10> gc_freefunc = {{
    (GCFreeFunc)lj_str_free,       // LJ_TSTR
    (GCFreeFunc)lj_func_freeuv,    // LJ_TUPVAL
-   (GCFreeFunc)lj_state_free,     // LJ_TTHREAD
+   (GCFreeFunc)lj_state_free,     // LJ_TUNUSED (previously thread)
    (GCFreeFunc)lj_func_freeproto, // LJ_TPROTO
    (GCFreeFunc)lj_func_free,      // LJ_TFUNC
    (GCFreeFunc)lj_trace_free,     // LJ_TTRACE
