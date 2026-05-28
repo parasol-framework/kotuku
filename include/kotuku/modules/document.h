@@ -287,10 +287,10 @@ class objDocument : public Object {
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   template <class T> inline ERR setPretext(T && Value) noexcept {
+   inline ERR setPretext(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
-      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804200, &Value, 1);
    }
 
 };

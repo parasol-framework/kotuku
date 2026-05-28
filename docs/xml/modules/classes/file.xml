@@ -485,6 +485,7 @@
 <p>The accepted method for referencing parent folders is <code>../</code>, which can be repeated for as many parent folders as needed to traverse the folder hierarchy.</p>
 <p>Access to <code>std*</code> handles is achieved by using the path strings <code>std:in</code>, <code>std:out</code> and <code>std:err</code>.</p>
       </description>
+      <tags>null-terminated-result</tags>
     </field>
 
     <field>
