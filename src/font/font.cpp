@@ -11,11 +11,13 @@ the FreeType home page at www.freetype.org.
 -MODULE-
 Font: Provides font management functionality and hosts the Font class.
 
-The Font module is responsible for managing the font database and provides support for client queries.  Fixed size
-bitmap fonts are supported via the Windows .fon file format, while Truetype fonts are support for scalable fonts.
+The Font module maintains the system font database and provides query functions for resolving font family names,
+styles, file paths and metadata.  Fixed-size bitmap fonts are recognised through the Windows `.fon` format, while
+TrueType fonts are scanned as scalable font resources.
 
-Bitmap fonts can be opened and drawn by the @Font class.  Drawing Truetype fonts is not supported by the Font module,
-but is instead provided by the #Vector module and @VectorText class.
+Bitmap fonts can be opened and drawn directly by the @Font class.  Scalable TrueType rendering is handled by the
+Vector module and @VectorText class; the Font module supplies the database information that allows those fonts to be
+selected.
 
 For a thorough introduction to typesetting history and terminology as it applies to computing, we recommend visiting
 Google Fonts Knowledge page: https://fonts.google.com/knowledge
@@ -427,17 +429,21 @@ namespace fnt {
 -FUNCTION-
 CharWidth: Returns the width of a character.
 
-This function will return the pixel width of a bitmap font character.  The character is specified as a unicode value
-in the Char parameter.
+Returns the pixel width of a bitmap font character.  `Char` is interpreted as a Unicode character value.  Bitmap fonts
+provide a maximum of 256 glyph slots; unsupported characters fall back to the font's default character.
 
-The font's GlyphSpacing value is not used in calculating the character width.
+The font's #GlyphSpacing value is not included in the returned width.  If `Font` is `NULL` or has no character table,
+the result is `0`.
 
 -INPUT-
 obj(Font) Font: The font to use for calculating the character width.
-uint Char: A unicode character.
+uint Char: A Unicode character value.
 
 -RESULT-
-int: The pixel width of the character will be returned.
+int: The pixel width of the character, or `0` if it cannot be measured.
+
+-TAGS-
+pure-query
 
 *********************************************************************************************************************/
 
@@ -456,8 +462,8 @@ int CharWidth(objFont *Font, uint32_t Char)
 -FUNCTION-
 GetList: Returns a list of all available system fonts.
 
-This function returns a linked list of all available system fonts.  The list must be terminated once it is no longer
-required.
+Returns a linked list of available system fonts.  The returned list is allocated as a single resource and must be
+released with `FreeResource()` when it is no longer required.
 
 -INPUT-
 &!struct(FontList) Result: The font list is returned here.
@@ -466,6 +472,11 @@ required.
 Okay
 NullArgs
 AccessObject: Access to the font database was denied, or the object does not exist.
+AllocMemory
+NoData
+
+-TAGS-
+caller-owns-result, creates-resource, blocking
 
 *********************************************************************************************************************/
 
@@ -585,19 +596,21 @@ ERR GetList(FontList **Result)
 -FUNCTION-
 StringWidth: Returns the pixel width of any given string in relation to a font's settings.
 
-This function calculates the pixel width of any string in relation to a font's object definition.  The routine takes
-into account any line feeds that might be specified in the String, so if the String contains 8 lines, then the width
-of the longest line will be returned.
+Calculates the pixel width of `String` using the supplied Font object's current metrics and spacing settings.  Line
+feeds are handled by measuring each line independently and returning the width of the longest line.
 
-Word wrapping will not be taken into account, even if it has been enabled in the font object.
+Word wrapping is not applied, even if #WrapEdge has been set on the Font object.
 
 -INPUT-
 obj(Font) Font: An initialised font object.
 cpp(strview) String: The string to be calculated.
-int Chars: The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length, or -1 to use the entire string.
+int Chars: The maximum number of characters to measure, or `-1` to measure the entire string.
 
 -RESULT-
-int: The pixel width of the string is returned - this will be zero if there was an error or the string is empty.
+int: The pixel width of the string, or `0` if `Font` is `NULL`, uninitialised or `String` is empty.
+
+-TAGS-
+pure-query
 
 *********************************************************************************************************************/
 
@@ -655,14 +668,15 @@ int StringWidth(objFont *Font, const std::string_view &String, int Chars)
 -FUNCTION-
 SelectFont: Searches for a 'best fitting' font file, based on family name and style.
 
-This function resolves a font family Name and Style to a font file path.  It works on a best efforts basis; the Name
-must exist but the Style is a non-mandatory preference.
+Resolves a font family `Name` and preferred `Style` to a font file path.  The family name must exist in the font
+database.  If the requested style is unavailable, the function falls back to the face's regular style or first
+registered style.
 
-The resulting Path must be freed once it is no longer required.
+The returned `Path` is allocated and must be released with `FreeResource()` when it is no longer required.
 
 -INPUT-
 cpp(strview) Name:  The name of a font face to search for (case insensitive).
-cpp(strview) Style: The required style, e.g. Bold or Italic.  Using camel-case for each word is compulsory.
+cpp(strview) Style: The preferred style, e.g. `Bold` or `Italic`.
 &!cstr Path: The location of the best-matching font file is returned in this parameter.
 &int(FMETA) Meta: Optional, returns additional meta information about the font file.
 
@@ -670,7 +684,11 @@ cpp(strview) Style: The required style, e.g. Bold or Italic.  Using camel-case f
 Okay
 NullArgs
 AccessObject: Access to the font database was denied, or the object does not exist.
+AllocMemory
 Search: Unable to find a suitable font.
+
+-TAGS-
+caller-owns-result, creates-resource, blocking, case-insensitive
 -END-
 
 *********************************************************************************************************************/
@@ -756,16 +774,19 @@ ERR SelectFont(const std::string_view &Name, const std::string_view &Style, CSTR
 -FUNCTION-
 RefreshFonts: Refreshes the system font list with up-to-date font information.
 
-This function scans the `fonts:` volume and refreshes the font database.
+Scans the `fonts:` volume and rebuilds the font database.
 
-Refreshing fonts can take an extensive amount of time as each font file needs to be completely analysed for
-information.  The `fonts:fonts.cfg` file will be re-written on completion to reflect current font settings.
+Refreshing fonts can take an extensive amount of time because each font file must be analysed for family, style,
+metric and metadata information.  The `fonts:fonts.cfg` file is rewritten on completion.
 
 -ERRORS-
-Okay: Fonts were successfully refreshed.
+Okay
 AccessObject: Access to the font database was denied, or the object does not exist.
 GetField: Failed to read font database entries after scanning.
 OpenFile: Failed to open `fonts:fonts.cfg` for writing.
+
+-TAGS-
+blocking
 -END-
 
 *********************************************************************************************************************/
@@ -825,26 +846,28 @@ ERR RefreshFonts(void)
 -FUNCTION-
 ResolveFamilyName: Convert a CSV family string to a single family name.
 
-Use ResolveFamilyName() to convert complex CSV family strings to a single family name.  The provided String will be
-parsed in sequence, with priority given from left to right.  If a single asterisk is used to terminate the list, it is
-guaranteed that the system default will be returned if no valid match is made.
+Converts a CSV family string to one resolved family name.  `String` is parsed from left to right, with each family name
+or wildcard tested against the font database in order.  If a single asterisk is used to terminate the list, the system
+default is returned when no earlier name matches.
 
-It is valid for individual names to utilise the common wildcards `?` and `*` to make a match.  E.g. `Times New *`
-would be able to match to `Times New Roman` if available.
+Individual names may use the common wildcards `?` and `*`; for example, `Times New *` can match `Times New Roman` if
+it is available.
+
+The returned `Result` is borrowed storage.  Copy it immediately if it needs to survive a later font database refresh.
 
 -INPUT-
 cpp(strview) String: A CSV family string to resolve.
-&cstr Result: The nominated family name is returned in this parameter.
+&cstr Result: The resolved family name is returned in this parameter.
 
 -ERRORS-
-Okay:
-NullArgs:
+Okay
+NullArgs
 AccessObject: Access to the font database was denied, or the object does not exist.
-GetField:
+GetField
 Search: It was not possible to resolve the String to a known font family.
 
 -TAGS-
-volatile-result
+volatile-result, null-terminated-result, blocking, case-insensitive
 
 -END-
 
