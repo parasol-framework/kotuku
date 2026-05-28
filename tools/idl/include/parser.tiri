@@ -23,7 +23,7 @@ rx_extract_comment = <{ regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DO
 
 global glTotalWarnings ?= 0
 
-global glRecognisedDocTags = {
+global glOfficialTags = {
    ['caller-owns-result'] = true,
    ['object-owns-result'] = true,
    ['static-result'] = true,
@@ -56,7 +56,9 @@ global glRecognisedDocTags = {
    ['path-resolved'] = true,
    ['path-preserved'] = true,
    ['idempotent'] = true,
-   ['pure-query'] = true
+   ['pure-query'] = true,
+   ['deprecated'] = true,
+   ['private'] = true
 }
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -68,7 +70,7 @@ global function parseDocTags(Tags:str, Context:str)
    for item in values(Tags:replace('\n', ','):split(',')) do
       local tag = item:trim()
       if tag?? then
-         if glRecognisedDocTags[tag] then
+         if glOfficialTags[tag] then
             result = addDocTag(result, tag)
          else
             glTotalWarnings++
@@ -113,6 +115,7 @@ global function parseClassEntry(Class, Type, Extract)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Parse the -CLASS- documentation header and attach it to the class definition.
 
 global function parseClassHeader(Class:table, Extract:str)
    Extract = f'-CLASS-\n{Extract:trim()}\n-END-\n'
@@ -127,6 +130,7 @@ global function parseClassHeader(Class:table, Extract:str)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Parse an -ACTION- documentation block and attach the extracted details to the class action.
 
 global function parseAction(Class:table, Extract:str)
    Extract = '-ACTION-\n' .. Extract:trim() .. '\n-END-\n'
@@ -171,6 +175,7 @@ global function parseAction(Class:table, Extract:str)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Parse a -FIELD- documentation block and attach the extracted details to the matching class field.
 
 global function parseField(Class:table, Extract:str)
    Extract = '-FIELD-\n' .. Extract:trim() .. '\n-END-\n'
@@ -226,6 +231,7 @@ global function parseParameterString(Parameter:str):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Parse a -METHOD- documentation block and attach the extracted details to the registered class method.
 
 global function parseMethod(Class:table, Extract:str)
    Extract = f'-METHOD-\n{Extract:trim()}\n-END-\n'
@@ -464,6 +470,7 @@ global function parseSourceFiles()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Parse a -CATEGORY- documentation block and make it the active function category.
 
 global function parseCategory(Extract:str)
    Extract = f'-CATEGORY-\n{Extract:trim()}\n-END-\n'
