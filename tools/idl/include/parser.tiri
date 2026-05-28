@@ -62,8 +62,9 @@ global glOfficialTags = {
 }
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Parse and validate comma or newline-separated documentation tags for the supplied context.
 
-global function parseDocTags(Tags:str, Context:str)
+function parseTags(Tags:str, Context:str):array
    result = array<string> { }
    Tags ?! return result
 
@@ -71,7 +72,7 @@ global function parseDocTags(Tags:str, Context:str)
       local tag = item:trim()
       if tag?? then
          if glOfficialTags[tag] then
-            result = addDocTag(result, tag)
+            result = addTag(result, tag)
          else
             glTotalWarnings++
             print(f"Warning: Unrecognised documentation tag '{tag}' in {Context}; tag removed.")
@@ -85,7 +86,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Apply automatic documentation tags to a tag list based on a field definition.
 
-global function addDocTag(Tags, Tag:str)
+global function addTag(Tags:array, Tag:str):array
    Tags ?= array<string> { }
 
    for existing_tag in values(Tags) do
