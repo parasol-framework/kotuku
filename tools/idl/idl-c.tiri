@@ -629,6 +629,10 @@ global function idlFunction(Name:str, Category:str, Comment:str, Status:str, Des
       response = { type='void' }
    end
 
+   if Def.tags then
+      func.tags = Def.tags
+   end
+
    if Def.ext_proto then
       jumpArgs = Def.ext_proto
       argSeq   = Def.ext_proto

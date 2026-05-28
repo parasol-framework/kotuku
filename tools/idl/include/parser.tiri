@@ -9,9 +9,10 @@ rx_doc_status      = <{ regex.new("^[Ss]tatus:\\s+(.+?)\\n", regex.MULTILINE) }>
 rx_doc_lookup      = <{ regex.new("^[Ll]ookup:\\s+(.+?)\\n", regex.MULTILINE) }>
 rx_doc_desc        = <{ regex.new("\\n\\n(.+?)\\n-[A-Z]+-\\n", regex.DOT_ALL) }>
 rx_strip_ws        = <{ regex.new("^(.*\\S)") }>
-rx_errors_section  = <{ regex.new("^-ERRORS-\\n+(.+?)-END-", regex.DOT_ALL|regex.MULTILINE) }>
+rx_errors_section  = <{ regex.new("^-ERRORS-\\n+(.+?)\\n+-(?:TAGS|END)-", regex.DOT_ALL|regex.MULTILINE) }>
 rx_input_section   = <{ regex.new("^-INPUT-\\n+(.+?)\\n+-[A-Z]+-\\n", regex.DOT_ALL|regex.MULTILINE) }>
-rx_result_section  = <{ regex.new("^-RESULT-\\n+(.+?)\\n+-END-", regex.DOT_ALL|regex.MULTILINE) }>
+rx_result_section  = <{ regex.new("^-RESULT-\\n+(.+?)\\n+-(?:TAGS|END)-", regex.DOT_ALL|regex.MULTILINE) }>
+rx_tags_section    = <{ regex.new("^-TAGS-\\n+(.+?)\\n+-END-", regex.DOT_ALL|regex.MULTILINE) }>
 rx_ecode_comment   = <{ regex.new("^([A-Za-z]+):\\s+(.+)") }>
 rx_ecode_only      = <{ regex.new("^([A-Za-z]+):?") }>
 rx_private         = <{ regex.new("^[Pp]rivate") }>
@@ -82,6 +83,11 @@ global function parseAction(Class:table, Extract:str)
 
       table.sort(action.results, function(a,b) return a.code < b.code end)
    end
+
+   local tags = rx_tags_section.extract(Extract)
+   if tags?? then
+      action.tags = tags
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -115,6 +121,11 @@ global function parseField(Class:table, Extract:str)
          f.access = 'Private'
       end
       f.description = description
+
+      local tags = rx_tags_section.extract(Extract)
+      if tags?? then
+         f.tags = tags
+      end
    elseif Class.meta then
       print("Field '" .. Class.name .. "." .. tostring(name) .. "' is not defined in the TDL or compiled class spec.")
    end
@@ -206,6 +217,11 @@ global function parseMethod(Class:table, Extract:str)
             error("Unable to process line '" .. (content ?? "NULL") .. "' for method '" .. name .. "'")
          end
       end
+   end
+
+   local tags = rx_tags_section.extract(Extract)
+   if tags?? then
+      method.tags = tags
    end
 end
 
@@ -379,15 +395,15 @@ end
 -- Used by processSourceFiles() to process -FUNCTION- descriptions in self-documenting source code.
 
 global function parseFunction(Extract:str)
-   if not Extract?? then return end
+   Extract ?! return
 
    Extract = f'-FUNCTION-\n{Extract:trim()}\n-END-\n'
 
    local name, comment = rx_doc_combo.extract(Extract)
-   local status = rx_doc_status.extract(Extract)
-   local category = rx_doc_category.extract(Extract)
-   local ext_proto = rx_doc_extproto.extract(Extract)
-   local attrib = rx_doc_attrib.extract(Extract)
+   local status      = rx_doc_status.extract(Extract)
+   local category    = rx_doc_category.extract(Extract)
+   local ext_proto   = rx_doc_extproto.extract(Extract)
+   local attrib      = rx_doc_attrib.extract(Extract)
    local description = rx_doc_desc.extract(Extract)
 
    if name and name:endsWith('()') then
@@ -445,6 +461,11 @@ global function parseFunction(Extract:str)
          assert(ext_type, "Incorrectly defined result section in function '" .. name .. "'")
          def.result = cType({ type=ext_type, comment=res_comment:trim(), isFunction=true, isResponse=true }, "Function " .. name)
       end
+   end
+
+   local tags = rx_tags_section.extract(Extract)
+   if tags?? then
+      def.tags = tags
    end
 
    idlFunction(name, (category ?? glCategory), comment, status, description, def)

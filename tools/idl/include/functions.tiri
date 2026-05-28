@@ -1,19 +1,19 @@
 -- TDL functions such as module(), header(), flags(), c_include(), cpp_include() ...
 
-local rx_high_hex        = <{ regex.new([[^0x[8f][0-9abcdef]+]]) }>
-local rx_angle_bracket   = <{ regex.new([[^<(.+)>$]]) }>
-local rx_kotuku_include  = <{ regex.new([[^<kotuku/(.+)>$]]) }>
-local rx_extract_comment = <{ regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL) }>
-local rx_module_section  = <{ regex.new([[-MODULE-(.*?)-END-]], regex.DOT_ALL) }>
-local rx_module_header   = <{ regex.new([[^(\w+):\s+(.*?)\n\n(.+)]], regex.MULTILINE|regex.DOT_ALL) }>
-local rx_key_comment     = <{ regex.new([[^([^:]*):\s+(.+)$]]) }>
-local rx_hex_number      = <{ regex.new([[^0x[0-9a-fA-F]+$]]) }>
-local rx_signed_int      = <{ regex.new([[^[+\-]?\d+$]]) }>
-local rx_trailing_space  = <{ regex.new([[^(.*\S)]], regex.DOT_ALL) }>
-local rx_type_name       = <{ regex.new([[^(.+)\s(\S+)$]]) }>
-local rx_non_word        = <{ regex.new('\\W') }>
-local rx_path_chars      = <{ regex.new('[\\/\\.]') }>
-local rx_comment_chars   = <{ regex.new('[`!@#]') }>
+rx_high_hex        = <{ regex.new([[^0x[8f][0-9abcdef]+]]) }>
+rx_angle_bracket   = <{ regex.new([[^<(.+)>$]]) }>
+rx_kotuku_include  = <{ regex.new([[^<kotuku/(.+)>$]]) }>
+rx_extract_comment = <{ regex.new([[^\/\*+(.*?)\*+\/]], regex.MULTILINE|regex.DOT_ALL) }>
+rx_module_section  = <{ regex.new([[-MODULE-(.*?)-END-]], regex.DOT_ALL) }>
+rx_module_header   = <{ regex.new([[^(\w+):\s+(.*?)\n\n(.+)]], regex.MULTILINE|regex.DOT_ALL) }>
+rx_key_comment     = <{ regex.new([[^([^:]*):\s+(.+)$]]) }>
+rx_hex_number      = <{ regex.new([[^0x[0-9a-fA-F]+$]]) }>
+rx_signed_int      = <{ regex.new([[^[+\-]?\d+$]]) }>
+rx_trailing_space  = <{ regex.new([[^(.*\S)]], regex.DOT_ALL) }>
+rx_type_name       = <{ regex.new([[^(.+)\s(\S+)$]]) }>
+rx_non_word        = <{ regex.new('\\W') }>
+rx_path_chars      = <{ regex.new('[\\/\\.]') }>
+rx_comment_chars   = <{ regex.new('[`!@#]') }>
 
 ----------------------------------------------------------------------------------------------------------------------
 -- TDL function
@@ -193,11 +193,6 @@ global function header(Options:table, Function:func)
       priority()
       priority(f'// Name:      {glHeaderPath:lower()}.h')
    else
-      s = ''
-      for i=1,10 do
-         s = s .. string.char(math.random(65, 90))
-      end
-
       priority('#pragma once')
       priority()
    end
