@@ -12,6 +12,9 @@
 <p>The Font module maintains the system font database and provides query functions for resolving font family names, styles, file paths and metadata.  Fixed-size bitmap fonts are recognised through the Windows <code>.fon</code> format, while TrueType fonts are scanned as scalable font resources.</p>
 <p>Bitmap fonts can be opened and drawn directly by the <class name="Font">Font</class> class.  Scalable TrueType rendering is handled by the Vector module and <class name="VectorText">VectorText</class> class; the Font module supplies the database information that allows those fonts to be selected.</p>
 <p>For a thorough introduction to typesetting history and terminology as it applies to computing, we recommend visiting Google Fonts Knowledge page: https://fonts.google.com/knowledge</p></description>
+    <source>
+      <file path="src/font/">font.cpp</file>
+    </source>
     <classes>
       <class>Font</class>
     </classes>

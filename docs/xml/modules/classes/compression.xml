@@ -74,6 +74,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="BufferOverflow">The output buffer is not large enough.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-input</tags>
     </method>
 
     <method>
@@ -150,6 +151,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="BufferOverflow">The output buffer is not large enough to contain the compressed data.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-input</tags>
     </method>
 
     <method>
@@ -171,6 +173,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="BufferOverflow">The supplied Output buffer is not large enough (check the <fl>MinOutputSize</fl> field for the minimum allowable size).</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-input</tags>
     </method>
 
     <method>
@@ -206,6 +209,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="Args">Invalid arguments passed to function</error>
         <error code="BufferOverflow">The output buffer is not large enough to hold the decompressed information.</error>
       </result>
+      <tags>mutates-input</tags>
     </method>
 
     <method>
@@ -286,6 +290,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="BufferOverflow">The output buffer is not large enough.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-input</tags>
     </method>
 
     <method>

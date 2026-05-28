@@ -10,6 +10,10 @@
     <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>The Vector module exports a small number of functions to assist the <class name="Vector">Vector</class> class, as well as some primitive functions for creating paths and rendering them to bitmaps.</p></description>
+    <source>
+      <file path="src/vector/">vector_functions.cpp</file>
+      <file path="src/vector/">vector_readpainter.cpp</file>
+    </source>
     <classes>
       <class>BlurFX</class>
       <class>ColourFX</class>

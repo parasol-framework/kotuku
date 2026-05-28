@@ -61,6 +61,10 @@
 <li>Channel configurations: Mono and stereo with automatic format adaptation</li>
 <li>Latency: Platform-optimised with configurable buffering for real-time applications</li>
 </list></description>
+    <source>
+      <file path="src/audio/">audio.cpp</file>
+      <file path="src/audio/">commands.cpp</file>
+    </source>
     <classes>
       <class>Audio</class>
       <class>Sound</class>

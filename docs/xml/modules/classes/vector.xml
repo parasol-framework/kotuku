@@ -655,6 +655,7 @@ Z: Close Path
 </pre>
 <p>The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate of the previous command).</p>
       </description>
+      <tags>caller-owns-result</tags>
     </field>
 
     <field>

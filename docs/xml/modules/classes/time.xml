@@ -63,6 +63,7 @@
         <error code="SystemCall">A required host time-zone API call failed.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>caller-owns-result</tags>
     </method>
 
     <method>

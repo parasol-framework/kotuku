@@ -244,6 +244,7 @@
 <p>This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
 <p>The resulting array must be terminated with <function>FreeResource</function> after use.</p>
       </description>
+      <tags>caller-owns-result</tags>
     </field>
 
     <field>

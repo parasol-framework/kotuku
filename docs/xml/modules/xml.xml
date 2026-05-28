@@ -25,6 +25,9 @@
 <list type="bullet">
 <li>Schema-aware processing: Type validation against XML Schema is not supported.</li>
 </list></description>
+    <source>
+      <file path="src/xml/">xml.cpp</file>
+    </source>
     <classes>
       <class>XML</class>
     </classes>

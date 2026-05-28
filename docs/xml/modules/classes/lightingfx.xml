@@ -196,6 +196,7 @@ Lr,Lg,Lb = RGB components of light
       <comment>Returns an SVG compliant XML string that describes the filter.</comment>
       <access read="G">Get</access>
       <type>STRING</type>
+      <tags>caller-owns-result</tags>
     </field>
 
   </fields>

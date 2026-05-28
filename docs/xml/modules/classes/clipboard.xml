@@ -157,6 +157,7 @@
         <error code="AllocMemory">AllocMemory() failed to create a new memory block</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>caller-owns-result</tags>
     </method>
 
     <method>

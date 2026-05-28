@@ -12,6 +12,9 @@
     <copyright>Paul Manias © 2005-2026</copyright>
     <description>
 <p>The Network module exports a few miscellaneous networking functions.  For core network functionality surrounding sockets and HTTP, please refer to the <class name="NetSocket">NetSocket</class>, <class name="NetServer">NetServer</class> and <class name="HTTP">HTTP</class> classes.</p></description>
+    <source>
+      <file path="src/network/">network.cpp</file>
+    </source>
     <classes>
       <class>ClientSocket</class>
       <class>NetClient</class>

@@ -7,6 +7,9 @@
     <type>module</type>
     <version>1</version>
     <copyright>Paul Manias © 2005-2026</copyright>
+    <source>
+      <file path="src/document/">document.cpp</file>
+    </source>
     <classes>
       <class>Document</class>
     </classes>
