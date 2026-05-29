@@ -635,15 +635,17 @@ static ERR tls_connect(extNetSocket *Self)
    // Set SNI (Server Name Indication) if we have a hostname
    // This is critical for modern HTTPS servers that serve multiple domains
 
-   if (Self->Address) {
+   if (!Self->Address.empty()) {
+      auto address = Self->Address.c_str();
+
       // Only set SNI for client connections, and only if Address is a hostname (not IP)
       struct in_addr addr;
-      if (inet_aton(Self->Address, &addr) == 0) {
+      if (inet_aton(address, &addr) IS 0) {
          // Address is not an IP, so it's likely a hostname - set SNI
-         if (SSL_set_tlsext_host_name(Self->TLS.Handle, Self->Address)) {
-            log.msg("SNI set to: %s", Self->Address);
+         if (SSL_set_tlsext_host_name(Self->TLS.Handle, address)) {
+            log.msg("SNI set to: %s", address);
          }
-         else log.warning("Failed to set SNI hostname: %s", Self->Address);
+         else log.warning("Failed to set SNI hostname: %s", address);
       }
    }
 

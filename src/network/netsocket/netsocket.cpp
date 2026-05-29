@@ -204,9 +204,8 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 
    log.branch("Address: %s, Port: %d", Args->Address, Args->Port);
 
-   if (Args->Address != Self->Address) {
-      if (Self->Address) FreeResource(Self->Address);
-      Self->Address = kt::strclone(Args->Address);
+   if (Self->Address != std::string_view(Args->Address)) {
+      Self->Address.assign(Args->Address);
    }
    Self->Port = Args->Port;
 
@@ -225,7 +224,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
       connect_name_resolved(Self, ERR::Okay, "", list);
    }
    else { // Assume address is a domain name, perform name resolution
-      log.msg("Attempting to resolve domain name '%s'...", Self->Address);
+      log.msg("Attempting to resolve domain name '%s'...", Self->Address.c_str());
 
       if (!Self->NetLookup) {
          if (!(Self->NetLookup = extNetLookup::create::local())) return ERR::CreateObject;
@@ -233,7 +232,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 
       ((extNetLookup *)Self->NetLookup)->Callback = C_FUNCTION(connect_name_resolved_nl);
 
-      if (Self->NetLookup->resolveName(Self->Address) != ERR::Okay) {
+      if (Self->NetLookup->resolveName(Self->Address.c_str()) != ERR::Okay) {
          // Cancel timer on DNS failure
          if (Self->TimerHandle) { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
          return log.warning(Self->Error = ERR::HostNotFound);
@@ -445,7 +444,6 @@ static ERR NETSOCKET_Disable(extNetSocket *Self)
 static ERR NETSOCKET_Free(extNetSocket *Self)
 {
    if (Self->TimerHandle)    { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
-   if (Self->Address)        { FreeResource(Self->Address); Self->Address = nullptr; }
    if (Self->NetLookup)      { FreeResource(Self->NetLookup); Self->NetLookup = nullptr; }
 
    if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC::Free);
@@ -565,8 +563,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
    if (Self->isDerived()) return ERR::Okay; // Will hand-off to the derived class
 
-   if ((Self->Address) and (Self->Port > 0)) {
-      if ((error = Self->connect(Self->Address, Self->Port, 0)) != ERR::Okay) {
+   if ((not Self->Address.empty()) and (Self->Port > 0)) {
+      if ((error = Self->connect(Self->Address.c_str(), Self->Port, 0)) != ERR::Okay) {
          free_socket(Self);
          return error;
       }
@@ -1095,7 +1093,7 @@ static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
 
 static const FieldArray clSocketFields[] = {
    { "ClientData",     FDF_POINTER|FDF_RW },
-   { "Address",        FDF_STRING|FDF_RI, nullptr, SET_Address },
+   { "Address",        FDF_CPPSTRING|FDF_RI },
    { "State",          FDF_INT|FDF_LOOKUP|FDF_RW, GET_State, SET_State, &clNetSocketState },
    { "Error",          FDF_ERROR|FDF_R },
    { "Port",           FDF_INT|FDF_RI },

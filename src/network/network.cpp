@@ -660,13 +660,13 @@ Converts an IPv4 or an IPv6 address in string format to an !IPAddress structure.
 
 <pre>
 struct IPAddress addr;
-if (!StrToAddress("127.0.0.1", &addr)) {
+if (StrToAddress("127.0.0.1", &addr) IS ERR::Okay) {
    ...
 }
 </pre>
 
 -INPUT-
-cstr String:  A null-terminated string containing the IP Address in dotted format.
+cpp(strview) String:  A null-terminated string containing the IP Address in dotted format.
 struct(IPAddress) Address: Must point to an !IPAddress structure that will be filled in.
 
 -ERRORS-
@@ -676,9 +676,9 @@ Failed:  The `String` was not a valid IP Address.
 
 *********************************************************************************************************************/
 
-ERR StrToAddress(CSTRING Str, IPAddress *Address)
+ERR StrToAddress(const std::string_view &Str, IPAddress *Address)
 {
-   if ((!Str) or (!Address)) return ERR::NullArgs;
+   if ((Str.empty()) or (not Address)) return ERR::NullArgs;
 
    auto port = Address->Port;
    kt::clearmem(Address, sizeof(*Address));
@@ -687,22 +687,20 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
       setIPV4(*Address, 0x7f000001, port); // 127.0.0.1
       return ERR::Okay;
    }
-   else if ((!Str[0]) or kt::iequals(Str, "*")) {
+   else if (Str IS "*") {
       setIPV4(*Address, 0, port);
       return ERR::Okay;
    }
 
-   std::string_view text(Str);
-
-   if (text.find(':') != std::string_view::npos) {
-      if (parse_ipv6_literal(text, *Address)) {
+   if (Str.find(':') != std::string_view::npos) {
+      if (parse_ipv6_literal(Str, *Address)) {
          Address->Port = port;
          return ERR::Okay;
       }
    }
    else {
       uint32_t ipv4 = 0;
-      if (parse_ipv4_literal(text, ipv4)) {
+      if (parse_ipv4_literal(Str, ipv4)) {
          setIPV4(*Address, ipv4, port);
          return ERR::Okay;
       }
@@ -872,7 +870,7 @@ ERR SetSSL(objNetSocket *Socket, const std::string_view &Command, const std::str
 
 //********************************************************************************************************************
 
-ERR NetworkPlatform::prepare_bind_address(CSTRING Address, int Port, bool IPv6, NetworkEndpoint &Endpoint)
+ERR NetworkPlatform::prepare_bind_address(std::string_view Address, int Port, bool IPv6, NetworkEndpoint &Endpoint)
 {
    kt::clearmem(&Endpoint, sizeof(Endpoint));
 
@@ -881,12 +879,10 @@ ERR NetworkPlatform::prepare_bind_address(CSTRING Address, int Port, bool IPv6, 
    IPAddress ip;
    kt::clearmem(&ip, sizeof(ip));
 
-   if (Address) {
+   if (not Address.empty()) {
       if (auto error = net::StrToAddress(Address, &ip); error != ERR::Okay) return ERR::InvalidValue;
    }
-   else {
-      ip.Type = IPv6 ? IPADDR::V6 : IPADDR::V4;
-   }
+   else ip.Type = IPv6 ? IPADDR::V6 : IPADDR::V4;
 
    return build_address(ip, Port, IPv6, Endpoint);
 }

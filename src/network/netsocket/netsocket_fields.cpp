@@ -11,17 +11,6 @@ the current connection.
 For @NetServer listeners, this inherited field identifies the local address to bind before initialisation.  Use
 `localhost`, `*`, an IPv4 address or an IPv6 address.
 
-*********************************************************************************************************************/
-
-static ERR SET_Address(extNetSocket *Self, CSTRING Value)
-{
-   if (Self->Address) { FreeResource(Self->Address); Self->Address = nullptr; }
-   if (Value) Self->Address = kt::strclone(Value);
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
 -FIELD-
 ClientData: A client-defined value that can be useful in action notify events.
 
