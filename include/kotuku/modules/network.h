@@ -423,15 +423,15 @@ class objNetSocket : public Object {
 
    using create = kt::Create<objNetSocket>;
 
-   APTR   ClientData;  // A client-defined value that can be useful in action notify events.
-   STRING Address;     // An IP address or domain name to connect to.
-   NTC    State;       // The current connection state of the NetSocket object.
-   ERR    Error;       // Information about the last error that occurred during a NetSocket operation
-   int    Port;        // The port number to use for connections.
-   NSF    Flags;       // Optional flags.
-   int    MsgLimit;    // Limits the size of incoming and outgoing data packets.
-   int    MaxPacketSize; // Maximum UDP packet size for sending and receiving data.
-   int    MulticastTTL; // Time-to-live (hop limit) for multicast packets.
+   APTR ClientData;        // A client-defined value that can be useful in action notify events.
+   std::string Address;    // An IP address or domain name to connect to.
+   NTC  State;             // The current connection state of the NetSocket object.
+   ERR  Error;             // Information about the last error that occurred during a NetSocket operation
+   int  Port;              // The port number to use for connections.
+   NSF  Flags;             // Optional flags.
+   int  MsgLimit;          // Limits the size of incoming and outgoing data packets.
+   int  MaxPacketSize;     // Maximum UDP packet size for sending and receiving data.
+   int  MulticastTTL;      // Time-to-live (hop limit) for multicast packets.
 
    // Action stubs
 
@@ -521,7 +521,7 @@ class objNetSocket : public Object {
       return ERR::Okay;
    }
 
-   template <class T> inline ERR setAddress(T && Value) noexcept {
+   inline ERR setAddress(const std::string Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
@@ -715,7 +715,7 @@ inline ERR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR Cl
 
 struct NetworkBase {
 #ifndef KOTUKU_STATIC
-   ERR (*_StrToAddress)(CSTRING String, struct IPAddress *Address);
+   ERR (*_StrToAddress)(const std::string_view & String, struct IPAddress *Address);
    CSTRING (*_AddressToStr)(struct IPAddress *IPAddress);
    uint32_t (*_HostToShort)(uint32_t Value);
    uint32_t (*_HostToLong)(uint32_t Value);
@@ -728,7 +728,7 @@ struct NetworkBase {
 #if !defined(KOTUKU_STATIC) and !defined(PRV_NETWORK_MODULE)
 extern struct NetworkBase *NetworkBase;
 namespace net {
-inline ERR StrToAddress(CSTRING String, struct IPAddress *Address) { return NetworkBase->_StrToAddress(String,Address); }
+inline ERR StrToAddress(const std::string_view & String, struct IPAddress *Address) { return NetworkBase->_StrToAddress(String,Address); }
 inline CSTRING AddressToStr(struct IPAddress *IPAddress) { return NetworkBase->_AddressToStr(IPAddress); }
 inline uint32_t HostToShort(uint32_t Value) { return NetworkBase->_HostToShort(Value); }
 inline uint32_t HostToLong(uint32_t Value) { return NetworkBase->_HostToLong(Value); }
@@ -738,7 +738,7 @@ inline ERR SetSSL(objNetSocket *NetSocket, const std::string_view & Command, con
 } // namespace
 #else
 namespace net {
-extern ERR StrToAddress(CSTRING String, struct IPAddress *Address);
+extern ERR StrToAddress(const std::string_view & String, struct IPAddress *Address);
 extern CSTRING AddressToStr(struct IPAddress *IPAddress);
 extern uint32_t HostToShort(uint32_t Value);
 extern uint32_t HostToLong(uint32_t Value);

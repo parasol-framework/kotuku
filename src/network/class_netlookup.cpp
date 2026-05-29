@@ -167,7 +167,7 @@ static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nl::Block
    log.branch("Address: %s", Args->Address);
 
    IPAddress ip;
-   if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
+   if (net::StrToAddress(std::string_view(Args->Address), &ip) IS ERR::Okay) {
       DNSEntry info;
       if (auto error = resolve_address(Args->Address, &ip, info); error IS ERR::Okay) {
          Self->Info = info;
