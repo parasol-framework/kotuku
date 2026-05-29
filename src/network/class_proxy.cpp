@@ -34,13 +34,14 @@ each entry the proxy database.  You may change existing values of any proxy and 
 static std::recursive_mutex glProxyMutex;
 static bool glProxyFileChecked = false;
 static objConfig *glProxyConfig = nullptr;
+static constexpr std::string_view PROXY_CONFIG_PATH = "user:config/network/proxies.cfg";
 
 static objConfig * get_proxy_config(void)
 {
    std::lock_guard lock(glProxyMutex);
    if (not glProxyFileChecked) {
       kt::SwitchContext ctx(glNetworkModule);
-      glProxyConfig = objConfig::create::global({ fl::Path("user:config/network/proxies.cfg") });
+      glProxyConfig = objConfig::create::global({ fl::Path(PROXY_CONFIG_PATH) });
       glProxyFileChecked = true;
    }
 
@@ -68,7 +69,7 @@ public:
 
 static ERR find_proxy(extProxy *);
 
-static bool parse_record_id(const std::string &GroupName, int &Record)
+static bool parse_record_id(std::string_view GroupName, int &Record)
 {
    if (GroupName.empty()) return false;
 
@@ -113,7 +114,7 @@ static ERR PROXY_DeleteRecord(extProxy *Self)
 
    log.branch();
 
-   auto cfg = objConfig::create {fl::Path("user:config/network/proxies.cfg") };
+   auto cfg = objConfig::create {fl::Path(PROXY_CONFIG_PATH) };
    if (not cfg.ok()) return log.error(ERR::CreateObject);
 
    if (auto error = cfg->deleteGroup(Self->GroupName.c_str()); error != ERR::Okay) return log.warning(error);
@@ -236,34 +237,29 @@ static ERR PROXY_FindNext(extProxy *Self)
 
 //********************************************************************************************************************
 
-// Check if proxy matches port filter
+static bool matches_port_filter(const ConfigKeys &Keys, std::string_view FindPort)
+{
+   if (FindPort.empty()) return true;
 
-template<typename KeysType>
-static bool matchesPortFilter(const KeysType& keys, const std::string& findPort) {
-   if (findPort.empty()) return true;
-
-   if (keys.contains("Port")) {
-      const auto& port = keys.at("Port");
-      return (port IS "0") or kt::wildcmp(port, findPort);
+   if (Keys.contains("Port")) {
+      const auto &port = Keys.at("Port");
+      return (port IS "0") or kt::wildcmp(port, FindPort);
    }
    return false;
 }
 
-// Check if proxy matches enabled filter
-
-template<typename KeysType>
-static bool matchesEnabledFilter(const KeysType &Keys, int findEnabled) {
-   if (findEnabled IS -1) return true;
+static bool matches_enabled_filter(const ConfigKeys &Keys, int FindEnabled)
+{
+   if (FindEnabled IS -1) return true;
 
    if (Keys.contains("Enabled")) {
       int enabled;
-      return parse_record_id(Keys.at("Enabled"), enabled) and (enabled IS findEnabled);
+      return parse_record_id(Keys.at("Enabled"), enabled) and (enabled IS FindEnabled);
    }
    return false;
 }
 
-template<typename KeysType>
-static bool matchesDeferredFilter(const KeysType &Keys, std::string_view FieldName)
+static bool matches_deferred_filter(const ConfigKeys &Keys, std::string_view FieldName)
 {
    auto filter = Keys.find(FieldName);
    return (filter IS Keys.end()) or filter->second.empty();
@@ -298,16 +294,16 @@ static ERR find_proxy(extProxy *Self)
       for (; group != groups->end(); ++group) {
          log.trace("Checking group: %s", group->first.c_str());
 
-         const auto& keys = group->second;
+         const auto &keys = group->second;
          int record;
          if (not parse_record_id(group->first, record)) continue;
 
          // Apply filters
-         if (not matchesPortFilter(keys, Self->FindPort)) continue;
-         if (not matchesEnabledFilter(keys, Self->FindEnabled)) continue;
+         if (not matches_port_filter(keys, Self->FindPort)) continue;
+         if (not matches_enabled_filter(keys, Self->FindEnabled)) continue;
 
-         if (not matchesDeferredFilter(keys, "NetworkFilter")) continue;
-         if (not matchesDeferredFilter(keys, "GatewayFilter")) continue;
+         if (not matches_deferred_filter(keys, "NetworkFilter")) continue;
+         if (not matches_deferred_filter(keys, "GatewayFilter")) continue;
 
          log.trace("Found matching proxy.");
          Self->GroupName = group->first;
@@ -325,15 +321,7 @@ static ERR find_proxy(extProxy *Self)
 
 static ERR PROXY_Free(extProxy *Self)
 {
-   clear_values(Self);
    Self->~extProxy();
-   return ERR::Okay;
-}
-
-//********************************************************************************************************************
-
-static ERR PROXY_Init(extProxy *Self)
-{
    return ERR::Okay;
 }
 
@@ -399,7 +387,7 @@ static ERR PROXY_SaveSettings(extProxy *Self)
       config->write(Self->GroupName, "Enabled",       std::to_string(Self->Enabled));
 
       objFile::create file = {
-         fl::Path("user:config/network/proxies.cfg"),
+         fl::Path(PROXY_CONFIG_PATH),
          fl::Permissions(PERMIT::USER_READ|PERMIT::USER_WRITE),
          fl::Flags(FL::NEW|FL::WRITE)
       };
@@ -570,10 +558,6 @@ static ERR get_record(extProxy *Self)
 
 static void clear_values(extProxy *Self)
 {
-   kt::Log log(__FUNCTION__);
-
-   log.trace("");
-
    Self->Record     = 0;
    Self->Port       = 0;
    Self->Enabled    = 0;
