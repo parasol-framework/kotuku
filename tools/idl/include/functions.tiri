@@ -709,8 +709,13 @@ global function struct(Name, Options:table, Def, Append)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Create a C/C++ field name from the definitions in a Field object.
 
+@Doc(text=[[
+@desc Convert a parsed field definition into its generated C or C++ field name
+@input Parsed field definition
+@input True when generating a C structure field name
+@result Generated field name
+]])
 global function cName(Field, CStruct)
    if Field.isFunctionPtr then return '' end -- Functions have their name embedded in the type.
 
@@ -735,9 +740,16 @@ global function cName(Field, CStruct)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- TDL Function
 -- Refer to outputClassHeader() for output of the class structure.
 
+@Doc(text=[[
+@desc Define an object class and generate its C++ class header metadata
+@input Class name
+@input Class options including source files, base class, output file, version, comment, and references
+@input TDL field specification block
+@input Private class data specification
+@input Optional custom C++ text for the generated class
+]])
 global function klass(Name, Options:table, Spec, Private, Custom)
    verbose('Processing class ' .. tostring(Name))
 
@@ -1052,10 +1064,14 @@ global function klass(Name, Options:table, Spec, Private, Custom)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- TDL Function
 -- This is a shortened version of functions(), where only the names of the functions need to be specified as a list.
 -- Further elaboration on the functions is normally done by embedding -FUNCTION- sections in the module code.
 
+@Doc(text=[[
+@desc Register exported module function names for generated function tables
+@input Function name prefix used for generated client wrappers
+@input Exported function names
+]])
 global function functionNames(Prefix, ...)
    global glFunctionPrefix = Prefix ?? ''
    for fname in values({...}) do
@@ -1082,9 +1098,13 @@ global function functionNames(Prefix, ...)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- TDL Function
--- Register methods for a class.  This must be declared prior to the corresponding class() function call.
 
+@Doc(text=[[
+@desc Register method definitions for a class; must be used before the class declaration is processed
+@input Class name that owns the methods
+@input Prefix used for generated method C symbols
+@input Method definition table
+]])
 global function methods(ClassName:str, Prefix:str, Methods)
    verbose(<{ f'Processing {#Methods} methods for class {ClassName}' }>)
 
@@ -1100,8 +1120,11 @@ global function methods(ClassName:str, Prefix:str, Methods)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- TDL Function
 
+@Doc(text=[[
+@desc Insert raw C or C++ source text into generated output
+@input Raw source text to insert
+]])
 global function c_insert(Raw)
    if glRestrict then return end
    output(Raw)
