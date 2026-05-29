@@ -958,8 +958,6 @@ public:
    ankerl::unordered_dense::map<std::string, FUNCTION> RegisteredFunctions;
    FUNCTION Callback;
    FUNCTION ResolveVariable;
-   std::string Statement;
-   std::string ErrorMsg;
    CompiledXQuery ParseResult; // Result of parsing the query.
    std::shared_ptr<XQueryModuleCache> ModuleCache; // Strong reference; ParseResult.module_cache is weak to break cycles
    XPathVal Result; // Result of the last execution.
@@ -967,7 +965,6 @@ public:
    kt::vector<std::string> ListVariables; // List of variable names.
    kt::vector<std::string> ListFunctions; // List of function names.
    std::string ResultString; // Cached string representation of the result.
-   std::string Path; // Base path for resolving relative URIs.
    size_t MemUsage; // Total bytes allocated during the most recent evaluation or compilation.
    extXML *XML; // During query execution, the context XML document.
    bool StaleBuild = true; // If true, the compiled query needs to be rebuilt.

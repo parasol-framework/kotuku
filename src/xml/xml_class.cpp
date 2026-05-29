@@ -229,15 +229,15 @@ static ERR XML_Evaluate(extXML *Self, struct xml::Evaluate *Args)
             return ERR::Okay;
          }
          else {
-            CSTRING str;
-            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            std::string_view sv;
+            if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
             FreeResource(xq);
             return error;
          }
       }
       else {
-         CSTRING str;
-         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         std::string_view sv;
+         if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
          FreeResource(xq);
          return error;
       }
@@ -304,8 +304,8 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
          }
       }
       else {
-         CSTRING str;
-         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         std::string_view sv;
+         if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
          FreeResource(xq);
          return error;
       }
@@ -387,16 +387,16 @@ static ERR XML_Search(extXML *Self, struct xml::Search *Args)
             return ERR::Okay;
          }
          else {
-            CSTRING str;
-            if ((xq->get(FID_ErrorMsg, str) IS ERR::Okay) and (str)) Self->ErrorMsg = str;
+            std::string_view sv;
+            if ((xq->get(FID_ErrorMsg, sv) IS ERR::Okay) and (not sv.empty())) Self->ErrorMsg.assign(sv);
             FreeResource(xq);
             if ((Args->Callback) and (error IS ERR::Search)) return ERR::Okay;
             else return error;
          }
       }
       else {
-         CSTRING str;
-         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         std::string_view sv;
+         if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
          FreeResource(xq);
          return error;
       }
@@ -624,15 +624,15 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
             return ERR::Okay;
          }
          else {
-            CSTRING str;
-            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            std::string_view sv;
+            if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
             FreeResource(xq);
             return error;
          }
       }
       else {
-         CSTRING str;
-         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         std::string_view sv;
+         if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
          FreeResource(xq);
          return error;
       }
@@ -985,16 +985,16 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
                Self->ErrorMsg = "XPath did not resolve to a valid location.";
             }
             else {
-               CSTRING str;
-               if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+               std::string_view sv;
+               if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
             }
             FreeResource(xq);
             return error;
          }
       }
       else {
-         CSTRING str;
-         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         std::string_view sv;
+         if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
          FreeResource(xq);
          return error;
       }
@@ -1290,8 +1290,8 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
          }
       }
       else {
-         CSTRING str;
-         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         std::string_view sv;
+         if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
          FreeResource(xq);
          return error;
       }
@@ -1605,8 +1605,8 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
                error = ERR::Search;
             }
             else {
-               CSTRING str;
-               if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+               std::string_view sv;
+               if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
                FreeResource(xq);
             }
             log.warning("Failed to find '%s'", Args->Key);
@@ -1614,8 +1614,8 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
          }
       }
       else {
-         CSTRING str;
-         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         std::string_view sv;
+         if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
          FreeResource(xq);
          log.msg("Failed to compile '%s'", Args->Key);
          return error;
@@ -1709,8 +1709,8 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
             matching_tag_opt opt;
             auto callback = C_FUNCTION(save_matching_tag, &opt.tag_id);
             if (error = xq->search((objXML *)Self, callback, 0, XEF::NIL); error != ERR::Terminate) {
-               CSTRING str;
-               if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+               std::string_view sv;
+               if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
                FreeResource(xq);
                return log.warning(ERR::Search);
             }
@@ -1720,8 +1720,8 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
             branch = &Self->Map[opt.tag_id]->Children;
          }
          else {
-            CSTRING str;
-            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            std::string_view sv;
+            if (xq->get(FID_ErrorMsg, sv) IS ERR::Okay) Self->ErrorMsg.assign(sv);
             FreeResource(xq);
             return log.warning(error);
          }
