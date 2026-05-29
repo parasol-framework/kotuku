@@ -257,8 +257,8 @@ if (query.ok()) {
     <field>
       <name>ErrorMsg</name>
       <comment>A readable description of the last parse or execution error.</comment>
-      <access read="G">Get</access>
-      <type>STRING</type>
+      <access read="R">Read</access>
+      <type>std::string</type>
       <description>
 <p>This field may provide a textual description of the last parse or execution error that occurred.</p>
       </description>
@@ -296,8 +296,8 @@ if (query.ok()) {
     <field>
       <name>Path</name>
       <comment>Base path for resolving relative references.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>STRING</type>
+      <access read="R" write="W">Read/Write</access>
+      <type>std::string</type>
       <description>
 <p>Set the Path field to define the base-uri for an XQuery expression.  If left unset, the path will be computed through automated means on-the-fly, which relies  on the working directory or XML document path.</p>
       </description>
@@ -356,9 +356,9 @@ if (query.ok()) {
 
     <field>
       <name>Statement</name>
-      <comment>XQuery data is processed through this field.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>STRING</type>
+      <comment>XQuery statements are specified here.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>std::string</type>
       <description>
 <p>Set the Statement field with an XPath or XQuery expression for compilation.</p>
 <p>If this field is set after initialisation then <action>Clear</action> will be applied to the object first.  The expression will be compiled on the next execution attempt.</p>

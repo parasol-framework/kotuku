@@ -790,17 +790,6 @@ ErrorMsg: A readable description of the last parse or execution error.
 
 This field may provide a textual description of the last parse or execution error that occurred.
 
-*********************************************************************************************************************/
-
-static ERR GET_ErrorMsg(extXQuery *Self, std::string_view &Value)
-{
-   if (not Self->ErrorMsg.empty()) Value = Self->ErrorMsg;
-   else Value = std::string_view();
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
 -FIELD-
 FeatureFlags: Flags indicating the features of a compiled XQuery expression.
 
@@ -879,33 +868,6 @@ Path: Base path for resolving relative references.
 
 Set the Path field to define the base-uri for an XQuery expression.  If left unset, the path will be computed through
 automated means on-the-fly, which relies  on the working directory or XML document path.
-
-*********************************************************************************************************************/
-
-static ERR GET_Path(extXQuery *Self, std::string_view &Value)
-{
-   if (not Self->initialised()) {
-      if (not Self->Path.empty()) Value = Self->Path;
-      else return ERR::FieldNotSet;
-   }
-   else Value = Self->Path;
-
-   return ERR::Okay;
-}
-
-static ERR SET_Path(extXQuery *Self, const std::string_view &Value)
-{
-   if (not Value.empty()) {
-      Self->Path = Value;
-      return ERR::Okay;
-   }
-   else {
-      Self->Path.clear();
-      return ERR::Okay;
-   }
-}
-
-/*********************************************************************************************************************
 
 -FIELD-
 ResolveVariable: Callback function for resolving unknown variables.
@@ -1027,7 +989,7 @@ static ERR GET_ResultType(extXQuery *Self, XPVT &Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Statement: XQuery data is processed through this field.
+Statement: XQuery statements are specified here.
 
 Set the Statement field with an XPath or XQuery expression for compilation.
 
@@ -1040,17 +1002,6 @@ the base path for relative references.
 -END-
 
 *********************************************************************************************************************/
-
-static ERR GET_Statement(extXQuery *Self, std::string_view &Value)
-{
-   if (not Self->initialised()) {
-      if (not Self->Statement.empty()) Value = Self->Statement;
-      else return ERR::FieldNotSet;
-   }
-   else Value = Self->Statement;
-
-   return ERR::Okay;
-}
 
 static ERR SET_Statement(extXQuery *Self, const std::string_view &Value)
 {
@@ -1120,12 +1071,12 @@ static ERR GET_Variables(extXQuery *Self, kt::vector<std::string> **Value)
 #include "xquery_class_def.cpp"
 
 static const FieldArray clFields[] = {
-   { "ErrorMsg",        FDF_VIRTUAL|FDF_CPPSTRING|FDF_R,      GET_ErrorMsg },
+   { "ErrorMsg",        FDF_CPPSTRING|FDF_R },
+   { "Path",            FDF_CPPSTRING|FDF_RW },
+   { "Statement",       FDF_CPPSTRING|FDF_RW, nullptr, SET_Statement },
    { "MemoryUsage",     FDF_VIRTUAL|FDF_INT64|FDF_R,          GET_MemoryUsage },
-   { "Path",            FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW,     GET_Path, SET_Path },
    { "Result",          FDF_VIRTUAL|FDF_PTR|FDF_STRUCT|FDF_R, GET_Result, nullptr, "XPathValue" },
    { "ResultString",    FDF_VIRTUAL|FDF_CPPSTRING|FDF_R,      GET_ResultString },
-   { "Statement",       FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW,     GET_Statement, SET_Statement },
    { "FeatureFlags",    FDF_VIRTUAL|FDF_INTFLAGS|FDF_R,       GET_FeatureFlags, nullptr, &clXQueryXQF },
    { "ResultType",      FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_R, GET_ResultType, nullptr, &clXQueryXPVT },
    { "ResolveVariable", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW,      GET_ResolveVariable, SET_ResolveVariable },

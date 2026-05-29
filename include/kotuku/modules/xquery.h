@@ -150,6 +150,10 @@ class objXQuery : public Object {
 
    using create = kt::Create<objXQuery>;
 
+   std::string ErrorMsg;    // A readable description of the last parse or execution error.
+   std::string Path;        // Base path for resolving relative references.
+   std::string Statement;   // XQuery statements are specified here.
+
    // Action stubs
 
    inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
@@ -187,16 +191,15 @@ class objXQuery : public Object {
 
    // Customised field setting
 
-   template <class T> inline ERR setPath(T && Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[1];
-      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   inline ERR setPath(const std::string_view &Value) noexcept {
+      this->Path = Value;
+      return ERR::Okay;
    }
 
-   template <class T> inline ERR setStatement(T && Value) noexcept {
+   inline ERR setStatement(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
    inline ERR setResolveVariable(const FUNCTION Value) noexcept {

@@ -1061,7 +1061,9 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
       Source.Flags
    );
 
-   if (field.Flags & FD_VIRTUAL); // No offset will be added for virtual fields
+   if (field.Flags & FD_VIRTUAL) { // No offset will be added for fields marked exclusively as virtual
+      field.Offset = 0;
+   }
    else if (field.Flags & FD_RGB) {
       field_size = sizeof(int8_t) * 4;
       field_alignment = alignof(int8_t);
