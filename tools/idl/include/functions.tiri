@@ -639,7 +639,7 @@ global function platform(Platform:str, Function:func)
       define = '__xwindows__'
       Function()
    --elseif (Platform:lower() is 'osx') then
-   --   define = '__xwindows__'
+   --   define = '__APPLE__'
    --   Function()
    else
       error('Unrecognised platform "' .. Platform .. '"')
@@ -672,10 +672,16 @@ global function platform(Platform:str, Function:func)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- TDL function
 
-global function struct(Name, Options:table, Def, Append)
-   verbose('Processing struct ' .. tostring(Name))
+@Doc(text=[[
+@desc Define a C or C++ structure from TDL field declarations
+@input Structure name
+@input Structure options including type, version, comment, module, and restrict
+@input TDL field definition block
+@input Optional raw text to append inside the generated structure
+]])
+global function struct(Name:str, Options:table, Def, Append)
+   verbose(f'Processing struct {Name}')
 
    prevStruct = glCurrentStructure
    global glCurrentStructure = Name
