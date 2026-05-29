@@ -792,13 +792,11 @@ This field may provide a textual description of the last parse or execution erro
 
 *********************************************************************************************************************/
 
-static ERR GET_ErrorMsg(extXQuery *Self, CSTRING *Value)
+static ERR GET_ErrorMsg(extXQuery *Self, std::string_view &Value)
 {
-   if (not Self->ErrorMsg.empty()) { *Value = Self->ErrorMsg.c_str(); return ERR::Okay; }
-   else {
-      *Value = nullptr;
-      return ERR::Okay;
-   }
+   if (not Self->ErrorMsg.empty()) Value = Self->ErrorMsg;
+   else Value = std::string_view();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -884,27 +882,20 @@ automated means on-the-fly, which relies  on the working directory or XML docume
 
 *********************************************************************************************************************/
 
-static ERR GET_Path(extXQuery *Self, STRING *Value)
+static ERR GET_Path(extXQuery *Self, std::string_view &Value)
 {
    if (not Self->initialised()) {
-      if (not Self->Path.empty()) {
-         *Value = kt::strclone(Self->Path.c_str());
-         return ERR::Okay;
-      }
+      if (not Self->Path.empty()) Value = Self->Path;
       else return ERR::FieldNotSet;
    }
+   else Value = Self->Path;
 
-   if ((*Value = kt::strclone(Self->Path.c_str()))) {
-      return ERR::Okay;
-   }
-   else return ERR::AllocMemory;
+   return ERR::Okay;
 }
 
-static ERR SET_Path(extXQuery *Self, CSTRING Value)
+static ERR SET_Path(extXQuery *Self, const std::string_view &Value)
 {
-   Self->Path.clear();
-
-   if ((Value) and (*Value)) {
+   if (not Value.empty()) {
       Self->Path = Value;
       return ERR::Okay;
    }
@@ -991,22 +982,22 @@ The string result becomes invalid if the XQuery object is modified, re-executed 
 
 *********************************************************************************************************************/
 
-static ERR GET_ResultString(extXQuery *Self, CSTRING *Value)
+static ERR GET_ResultString(extXQuery *Self, std::string_view &Value)
 {
    // Return the cached string if it exists.
    if (not Self->ResultString.empty()) {
-      *Value = Self->ResultString.c_str();
+      Value = Self->ResultString;
       return ERR::Okay;
    }
 
    if (Self->Result.is_empty()) { // An empty result isn't considered an error.
       Self->ResultString.clear();
-      *Value = "";
+      Value = Self->ResultString;
       return ERR::Okay;
    }
    else {
       Self->ResultString = Self->Result.to_string();  // Cache the result
-      *Value = Self->ResultString.c_str();
+      Value = Self->ResultString;
       return ERR::Okay;
    }
 }
@@ -1050,24 +1041,22 @@ the base path for relative references.
 
 *********************************************************************************************************************/
 
-static ERR GET_Statement(extXQuery *Self, STRING *Value)
+static ERR GET_Statement(extXQuery *Self, std::string_view &Value)
 {
    if (not Self->initialised()) {
-      if (not Self->Statement.empty()) {
-         *Value = kt::strclone(Self->Statement.c_str());
-         return ERR::Okay;
-      }
+      if (not Self->Statement.empty()) Value = Self->Statement;
       else return ERR::FieldNotSet;
    }
-   else if ((*Value = kt::strclone(Self->Statement.c_str()))) return ERR::Okay;
-   else return ERR::AllocMemory;
+   else Value = Self->Statement;
+
+   return ERR::Okay;
 }
 
-static ERR SET_Statement(extXQuery *Self, CSTRING Value)
+static ERR SET_Statement(extXQuery *Self, const std::string_view &Value)
 {
    XQUERY_Clear(Self);
 
-   if ((Value) and (*Value)) {
+   if (not Value.empty()) {
       Self->Statement = Value;
       return ERR::Okay;
    }
@@ -1131,12 +1120,12 @@ static ERR GET_Variables(extXQuery *Self, kt::vector<std::string> **Value)
 #include "xquery_class_def.cpp"
 
 static const FieldArray clFields[] = {
-   { "ErrorMsg",        FDF_VIRTUAL|FDF_STRING|FDF_R,         GET_ErrorMsg },
+   { "ErrorMsg",        FDF_VIRTUAL|FDF_CPPSTRING|FDF_R,      GET_ErrorMsg },
    { "MemoryUsage",     FDF_VIRTUAL|FDF_INT64|FDF_R,          GET_MemoryUsage },
-   { "Path",            FDF_VIRTUAL|FDF_STRING|FDF_RW,        GET_Path, SET_Path },
+   { "Path",            FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW,     GET_Path, SET_Path },
    { "Result",          FDF_VIRTUAL|FDF_PTR|FDF_STRUCT|FDF_R, GET_Result, nullptr, "XPathValue" },
-   { "ResultString",    FDF_VIRTUAL|FDF_STRING|FDF_R,         GET_ResultString },
-   { "Statement",       FDF_VIRTUAL|FDF_STRING|FDF_RW,        GET_Statement, SET_Statement },
+   { "ResultString",    FDF_VIRTUAL|FDF_CPPSTRING|FDF_R,      GET_ResultString },
+   { "Statement",       FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW,     GET_Statement, SET_Statement },
    { "FeatureFlags",    FDF_VIRTUAL|FDF_INTFLAGS|FDF_R,       GET_FeatureFlags, nullptr, &clXQueryXQF },
    { "ResultType",      FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_R, GET_ResultType, nullptr, &clXQueryXPVT },
    { "ResolveVariable", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW,      GET_ResolveVariable, SET_ResolveVariable },
