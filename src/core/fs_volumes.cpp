@@ -20,8 +20,8 @@ cpp(strview) Name: The name of the volume.
 -ERRORS-
 Okay: The volume was removed.
 NullArgs:
-LockFailed:
 NoPermission: An attempt to delete a system volume was denied.
+SystemLocked:
 
 -TAGS-
 blocking
@@ -120,7 +120,7 @@ int(VOLUME) Flags: Optional flags.
 -ERRORS-
 Okay: The volume was successfully added.
 NullArgs: A valid name and path string was not provided.
-LockFailed:
+SystemLocked:
 
 -TAGS-
 copies-input, blocking

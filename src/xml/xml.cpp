@@ -184,6 +184,7 @@ ptr(struct(XPathValue)) Value: The XPathValue to convert.
 -ERRORS-
 Okay
 NullArgs
+NoData
 
 -TAGS-
 mutates-input, pure-query
@@ -220,6 +221,8 @@ ptr(struct(XPathValue)) Value: The XPathValue to convert.
 -ERRORS-
 Okay
 NullArgs
+NoData
+Mismatch
 
 -TAGS-
 mutates-input, pure-query
@@ -252,6 +255,7 @@ ptr(cstruct(XPathValue)) Value: The XPathValue to convert.
 -ERRORS-
 Okay
 NullArgs
+NoData
 
 -TAGS-
 mutates-input, pure-query

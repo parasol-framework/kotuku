@@ -95,9 +95,10 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Mismatch">The destination bitmap is not a close enough match to the source bitmap in order to perform the operation.</error>
+      <error code="NotInitialised">The source Bitmap has not been initialised.</error>
       <error code="InvalidState">The <code>LINEAR</code> flag was used when at least one bitmap is using a linear colourspace.</error>
       <error code="NullArgs">The <code>Dest</code> parameter was not specified.</error>
+      <error code="InvalidObject">The <code>Dest</code> parameter does not refer to a Bitmap object.</error>
     </result>
   </function>
 
@@ -330,7 +331,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="TimeOut">Function timed-out before successful completion</error>
+      <error code="AccessObject">Attempting to lock an object failed</error>
       <error code="AllocMemory">AllocMemory() failed to create a new memory block</error>
+      <error code="SystemCall">A call to the host system has failed</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -396,6 +400,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="Search">A search routine in this function failed</error>
       <error code="AccessObject">Failed to access the SystemPointer object.</error>
     </result>
   </function>
@@ -422,6 +427,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">The supplied <code>Surface</code> ID did not refer to a recognised surface object.</error>
+      <error code="SystemCall">A call to the host system has failed</error>
     </result>
   </function>
 
@@ -442,7 +448,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="AccessMemory">Access to a memory block was denied</error>
+      <error code="Search">A search routine in this function failed</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -502,8 +508,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure</error>
       <error code="Search">The supplied <code>Surface</code> ID did not refer to a recognised surface object.</error>
+      <error code="SystemCall">A call to the host system has failed</error>
     </result>
   </function>
 
@@ -521,10 +527,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>The anchor can be released at any time by calling the <function>UnlockCursor</function> function.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
       <error code="NoSupport">The pointer cannot be locked due to system limitations.</error>
-      <error code="AccessObject">Failed to access the pointer object.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -603,7 +606,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function</error>
     </result>
   </function>
 
@@ -667,9 +669,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NothingDone">There is nothing to process</error>
-      <error code="Args">Invalid arguments passed to function</error>
       <error code="LockFailed">Failed to lock a required resource</error>
-      <error code="NoSupport">The pointer cannot be set due to system limitations.</error>
       <error code="OutOfRange">The cursor ID is outside of acceptable range.</error>
       <error code="AccessObject">Failed to access the mouse pointer.</error>
     </result>
@@ -691,7 +691,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="AccessObject">Failed to access the SystemPointer object.</error>
     </result>
   </function>
 
@@ -733,8 +732,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function</error>
-      <error code="NoSupport">Operation not supported</error>
+      <error code="NothingDone">There is nothing to process</error>
+      <error code="LockFailed">Failed to lock a required resource</error>
+      <error code="OutOfRange">A value is outside of the valid range</error>
       <error code="AccessObject">Failed to access the internally maintained image object.</error>
     </result>
   </function>
@@ -798,8 +798,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="InUse">A drag and drop operation has already been started.</error>
-      <error code="Failed">The left mouse button is not held by the user.</error>
       <error code="AccessObject">Attempting to lock an object failed</error>
+      <error code="InvalidState">The left mouse button is not held by the user.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>

@@ -376,6 +376,7 @@ cpp(strview) Value: The value to associate with the tag name.  If empty, any exi
 -ERRORS-
 Okay:
 NullArgs:
+CreateResource:
 
 -TAGS-
 mutates-input, copies-input, creates-resource
@@ -427,6 +428,7 @@ cpp(strview) Path: The path to analyse.
 Okay: The path was analysed and the result is stored in the `Type` variable.
 NullArgs:
 DoesNotExist:
+NoSupport:
 
 -TAGS-
 blocking, path-resolved
@@ -757,6 +759,7 @@ LowCapacity: There is no room on the device to create the new link.
 Memory:
 BufferOverflow: One or both of the provided arguments is too long.
 FileExists: The location referenced at From already exists.
+SystemCall:
 
 -TAGS-
 blocking, path-resolved
@@ -825,9 +828,11 @@ ptr(func) Callback: Optional callback for receiving feedback during the operatio
 -ERRORS-
 Okay: The file or folder was deleted successfully.
 NullArgs:
-FileNotFound:
 File: The location could not be opened for deletion.
+NoPermission:
 NoSupport: The filesystem driver does not support deletion.
+ResolvePath:
+SystemLocked:
 
 -TAGS-
 blocking, path-resolved
@@ -914,7 +919,8 @@ int(LDF) Flags: Optional flags are specified here.
 -ERRORS-
 Okay: The file was cached successfully.
 NullArgs:
-AllocMemory:
+CreateObject:
+Read:
 Search: If `CHECK_EXISTS` is specified, this failure indicates that the file is not cached.
 
 -TAGS-
@@ -1042,7 +1048,7 @@ Okay:
 NullArgs:
 FileExists: An identically named file or folder already exists at the `Path`.
 NoSupport:  Virtual file system does not support folder creation.
-Failed:
+ResolvePath:
 
 -TAGS-
 blocking, path-resolved
@@ -1150,7 +1156,7 @@ bufsize BufferSize: The byte size of the `Buffer`.
 -ERRORS-
 Okay
 Args
-NullArgs
+FileNotFound
 OpenFile
 InvalidPath
 Read

@@ -137,6 +137,7 @@ Args
 NullArgs
 DirEmpty
 AllocMemory
+ResolvePath
 
 -TAGS-
 caller-owns-result, creates-resource, opens-handle, blocking, path-resolved
@@ -229,7 +230,11 @@ resource(DirInfo) Info: Pointer to a !DirInfo structure for storing scan results
 -ERRORS-
 Okay: An item was successfully scanned from the folder.
 Args
+NullArgs
 DirEmpty: There are no more items to scan.
+InvalidData
+NoSupport
+SystemLocked
 
 -TAGS-
 mutates-input, updates-seek-index, blocking

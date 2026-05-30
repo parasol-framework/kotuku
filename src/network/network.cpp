@@ -835,8 +835,16 @@ cpp(strview) Value: Value to set for the command or option.
 
 -ERRORS-
 Okay:
+Disconnected: SSL reported that the peer disconnected during handshaking.
+Failed: SSL setup or connection setup failed.
+FieldNotSet: SSL state was not initialised for the socket.
+InputOutput: SSL handshaking failed due to an I/O error.
 NullArgs: The NetSocket argument was not specified.
 NoSecureSockets: SSL support is disabled in this build.
+Retry: SSL handshaking needs to be retried.
+SystemCall: The SSL library or platform SSL backend reported a system-level failure.
+WouldBlock: SSL handshaking would block.
+WrongClass: The object is not a NetSocket.
 
 -TAGS-
 mutates-object, blocking, case-sensitive

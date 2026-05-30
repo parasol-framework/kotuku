@@ -110,7 +110,15 @@ in SSL mode.</li>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="Retry">SSL handshaking needs to be retried.</error>
+      <error code="Failed">SSL setup or connection setup failed.</error>
+      <error code="FieldNotSet">SSL state was not initialised for the socket.</error>
+      <error code="SystemCall">The SSL library or platform SSL backend reported a system-level failure.</error>
+      <error code="Disconnected">SSL reported that the peer disconnected during handshaking.</error>
       <error code="NullArgs">The NetSocket argument was not specified.</error>
+      <error code="WrongClass">The object is not a NetSocket.</error>
+      <error code="WouldBlock">SSL handshaking would block.</error>
+      <error code="InputOutput">SSL handshaking failed due to an I/O error.</error>
       <error code="NoSecureSockets">SSL support is disabled in this build.</error>
     </result>
   </function>

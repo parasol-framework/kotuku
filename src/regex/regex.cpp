@@ -189,7 +189,6 @@ flags(REGEX) Flags:  Optional flags.
 
 -ERRORS-
 Okay
-NullArgs
 AllocMemory
 Syntax
 

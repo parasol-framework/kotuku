@@ -198,6 +198,7 @@ ptr(func) Callback: The function that will be subscribed to the event.
 -ERRORS-
 Okay
 NullArgs
+Args
 AllocMemory
 
 -TAGS-

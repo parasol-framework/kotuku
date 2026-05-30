@@ -24,7 +24,7 @@ cid Filter:    Restrict the search to classes in this subset, or use `CLASSID::N
 
 -ERRORS-
 Okay
-Args
+NullArgs
 Search: A suitable class could not be found for the data source.
 FileNotFound
 Read

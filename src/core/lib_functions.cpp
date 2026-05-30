@@ -687,6 +687,7 @@ cpp(strview) Path: The new location to set for the resource path.
 -ERRORS-
 Okay:
 NullArgs:
+Args:
 
 -TAGS-
 copies-input, path-preserved
@@ -861,7 +862,6 @@ ptr(func) Callback: A callback function is required that will be called on each 
 Okay:
 NullArgs:
 Args:
-ArrayFull: The task's timer array is at capacity - no more subscriptions can be granted.
 InvalidState: The subscriber is marked for termination.
 SystemLocked:
 
@@ -929,8 +929,8 @@ double Interval: The new interval for the timer (measured in seconds), or zero t
 -ERRORS-
 Okay:
 NullArgs:
+AlreadyLocked:
 SystemLocked:
-Search:
 
 -TAGS-
 blocking

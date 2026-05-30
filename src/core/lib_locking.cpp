@@ -439,9 +439,14 @@ int MilliSeconds: The limit in milliseconds before a timeout occurs.  The maximu
 -ERRORS-
 Okay
 NullArgs
+Args
 NoMatchingObject
 TimeOut
 SystemLocked
+Cancelled: The thread has been requested to stop whilst sleeping.
+MarkedForDeletion: The object is being removed and cannot be locked.
+DoesNotExist: The object was removed while waiting for the lock.
+LockFailed: Failed to initialise the sleep record for the waiting thread.
 
 -TAGS-
 blocking
@@ -667,7 +672,6 @@ mem MemoryID: A reference to a memory resource for release.
 Okay
 NullArgs
 Search
-SystemLocked
 
 -TAGS-
 blocking

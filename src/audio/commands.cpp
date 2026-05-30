@@ -231,6 +231,7 @@ int Mute: Set to true to mute the channel.  A value of 0 will undo the mute sett
 -ERRORS-
 Okay
 NullArgs
+OutOfRange
 
 -TAGS-
 mutates-object
@@ -274,6 +275,8 @@ int Frequency: The desired frequency.
 -ERRORS-
 Okay
 NullArgs
+OutOfRange
+Failed
 
 -TAGS-
 mutates-object
@@ -557,6 +560,7 @@ int Rate: The new update rate in milliseconds.
 -ERRORS-
 Okay
 NullArgs
+OutOfRange
 
 -TAGS-
 mutates-object
@@ -608,6 +612,8 @@ int Sample: A sample handle allocated from @Audio.AddSample() or @Audio.AddStrea
 -ERRORS-
 Okay
 NullArgs
+OutOfRange
+Failed
 
 -TAGS-
 mutates-object

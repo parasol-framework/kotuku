@@ -193,6 +193,11 @@ bufsize InputSize: The size of the `Input` string.
 ^buf(ptr) Output:  The output buffer.  The size of the buffer must be greater or equal to the size of Input.
 &int Written: The total number of bytes written to `Output` is returned here.
 
+-ERRORS-
+Okay
+NullArgs
+Args
+
 -TAGS-
 mutates-input
 

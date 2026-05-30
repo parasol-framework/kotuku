@@ -261,6 +261,7 @@ oid Surface: Unique ID of the surface that the coordinates need to be relative t
 -ERRORS-
 Okay:
 AccessObject: Failed to access the SystemPointer object.
+Search:
 
 -TAGS-
 blocking, pure-query
@@ -303,10 +304,7 @@ The anchor can be released at any time by calling the ~UnlockCursor() function.
 oid Surface: Refers to the surface object that the pointer should send movement signals to.
 
 -ERRORS-
-Okay
-NullArgs
 NoSupport: The pointer cannot be locked due to system limitations.
-AccessObject: Failed to access the pointer object.
 
 *********************************************************************************************************************/
 
@@ -332,7 +330,6 @@ oid Owner: The ownership ID that was given in the initial call to SetCursor().
 
 -ERRORS-
 Okay
-Args
 
 -TAGS-
 mutates-object, blocking
@@ -404,8 +401,6 @@ oid Owner: The object nominated as the owner of the anchor, and/or owner of the 
 
 -ERRORS-
 Okay
-Args
-NoSupport: The pointer cannot be set due to system limitations.
 OutOfRange: The cursor ID is outside of acceptable range.
 AccessObject: Failed to access the mouse pointer.
 LockFailed
@@ -631,9 +626,10 @@ oid Owner: The object nominated as the owner of the anchor.
 
 -ERRORS-
 Okay:
-Args:
-NoSupport:
 AccessObject: Failed to access the internally maintained image object.
+LockFailed:
+NothingDone:
+OutOfRange:
 
 -TAGS-
 mutates-object, blocking
@@ -660,7 +656,6 @@ double Y: The new vertical coordinate for the pointer.
 
 -ERRORS-
 Okay:
-AccessObject: Failed to access the SystemPointer object.
 
 -TAGS-
 mutates-object, blocking, callback-inlines
@@ -716,7 +711,7 @@ oid Surface: A 32-bit composite surface that represents the item being dragged.
 Okay:
 NullArgs:
 AccessObject:
-Failed: The left mouse button is not held by the user.
+InvalidState: The left mouse button is not held by the user.
 InUse: A drag and drop operation has already been started.
 
 -TAGS-

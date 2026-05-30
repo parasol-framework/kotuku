@@ -665,9 +665,8 @@ ptr Parameters: Optional parameter structure associated with `Action`.
 -ERRORS-
 Okay:
 NullArgs:
-IllegalActionID: The `Action` parameter is invalid.
+AccessObject:
 NoAction:        The `Action` is not supported by the object's supporting class.
-ObjectCorrupt:   The `Object` state is corrupted.
 
 -TAGS-
 mutates-object, blocking, callback-inlines
@@ -848,10 +847,9 @@ ptr(func) Callback: Optional function called on the main thread after the action
 -ERRORS-
 Okay
 NullArgs
-IllegalMethodID
+InvalidData
+MarkedForDeletion
 MissingClass
-NewObject
-Init
 
 -TAGS-
 copies-input, callback-held, blocking
@@ -1042,6 +1040,10 @@ Okay: All async actions completed.
 TimeOut: The timeout expired before all actions completed.
 NullArgs
 InUse: Another AsyncWait() call is already active.
+OutsideMainThread:
+Recursion:
+SystemLocked:
+Terminate:
 
 -TAGS-
 main-thread-only, blocking, callback-inlines
@@ -1168,6 +1170,7 @@ True: The object supports the specified action.
 False: The action is not supported.
 NullArgs:
 LostClass:
+OutOfRange:
 
 -TAGS-
 pure-query
@@ -1242,6 +1245,9 @@ Call ClassDatabase() to obtain an array of all classes known to the system.
 
 -ERRORS-
 Okay
+NullArgs
+AllocMemory
+SystemLocked
 
 -TAGS-
 caller-owns-result, creates-resource, blocking
@@ -1407,11 +1413,9 @@ cid ClassID:   Optional.  Set to a class ID to filter the results down to a spec
 
 -ERRORS-
 Okay: At least one matching object was found and stored in the `ObjectID`.
-Args:
-Search: No objects matching the given name could be found.
-LockFailed:
+NullArgs:
 EmptyString:
-DoesNotExist:
+Search: No objects matching the given name could be found.
 
 -TAGS-
 blocking, case-insensitive
@@ -1743,7 +1747,6 @@ ptr(cpp(array(resource(ChildEntry)))) List: Must refer to an array of !ChildEntr
 
 -ERRORS-
 Okay: Zero or more children were found and listed.
-Args
 NullArgs
 LockFailed
 
@@ -2048,10 +2051,9 @@ ptr Args:   The relevant argument structure for the `Action`, or `NULL` if not r
 Okay:
 NullArgs:
 OutOfRange: The `Action` ID is invalid.
-NoMatchingObject:
 MissingClass:
-Failed:
-IllegalMethodID:
+InvalidData:
+NoMatchingObject:
 
 -TAGS-
 copies-input, blocking
@@ -2189,8 +2191,8 @@ obj Owner: The new owner for the `Object`.
 -ERRORS-
 Okay
 NullArgs
-Args
 Recursion
+SystemCorrupt
 SystemLocked
 
 -TAGS-
@@ -2302,7 +2304,6 @@ cpp(strview) Name: The new name for the object, or an empty string to clear an e
 -ERRORS-
 Okay:
 NullArgs:
-Search: The `Object` is not recognised by the system - the address may be invalid.
 LockFailed:
 
 -TAGS-

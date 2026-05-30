@@ -616,7 +616,9 @@ struct(*VectorPainter) Painter: This !VectorPainter structure will store the des
 -ERRORS-
 Okay:
 NullArgs:
-Failed:
+InvalidObject:
+NotFound:
+Syntax:
 
 -TAGS-
 mutates-input, object-owns-result

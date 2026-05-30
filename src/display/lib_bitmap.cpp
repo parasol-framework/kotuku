@@ -225,7 +225,8 @@ int YDest:  The vertical position to copy the area to.
 -ERRORS-
 Okay:
 NullArgs: The `Dest` parameter was not specified.
-Mismatch: The destination bitmap is not a close enough match to the source bitmap in order to perform the operation.
+InvalidObject: The `Dest` parameter does not refer to a Bitmap object.
+NotInitialised: The source Bitmap has not been initialised.
 InvalidState: The `LINEAR` flag was used when at least one bitmap is using a linear colourspace.
 
 -TAGS-

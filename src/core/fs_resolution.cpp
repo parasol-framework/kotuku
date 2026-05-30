@@ -78,12 +78,14 @@ int(RSF) Flags: Optional flags.
 
 -ERRORS-
 Okay:        The `Path` was resolved.
-NullArgs:    Invalid parameters were specified.
 Search:       The given volume does not exist.
 FileNotFound: The path was resolved, but the referenced file or folder does not exist (use `NO_FILE_CHECK` to avoid this error code).
 Loop:         The volume refers back to itself.
 VirtualVolume: The path refers to a virtual volume (use `CHECK_VIRTUAL` to return `Okay` instead).
 InvalidPath:  The path is malformed.
+InvalidData:  Volume resolution returned invalid path data.
+LoadModule:   A volume extension could not be loaded.
+SystemLocked: The volume registry could not be accessed.
 
 -TAGS-
 blocking, path-resolved

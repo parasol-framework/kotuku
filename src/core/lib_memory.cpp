@@ -79,7 +79,6 @@ int(MEM) Flags: Optional allocation flags controlling behavior and ownership.
 Okay: Memory block successfully allocated.
 Args: Invalid parameters (size <= 0 or both Address and ID are NULL).
 AllocMemory: Insufficient memory available for the requested allocation.
-ArrayFull: Memory tracking structures are full, preventing allocation tracking.
 AccessMemory: Memory block was allocated but could not be locked when both Address and ID were requested.
 SystemLocked: Memory management system is currently locked by another thread.
 
@@ -316,7 +315,6 @@ mem ID: The unique identifier of the memory block to be freed.
 
 -ERRORS-
 Okay: The memory block was successfully freed or marked for delayed collection.
-NullArgs: Invalid memory identifier provided.
 InvalidData: Memory corruption detected - header or trailer markers are damaged.
 MemoryDoesNotExist: The specified memory block identifier is not valid or already freed.
 SystemLocked: Memory management system is currently locked by another thread.
@@ -519,7 +517,9 @@ structsize Size: Size of the !MemInfo structure.
 -ERRORS-
 Okay
 NullArgs
+Args
 MemoryDoesNotExist
+SystemLocked
 
 -TAGS-
 mutates-input, blocking, pure-query

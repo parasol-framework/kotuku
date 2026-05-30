@@ -390,6 +390,7 @@ tags Variable: A variable that matches the indicated `Type`.
 Okay: The variable was defined successfully.
 Args:
 FieldTypeMismatch: A valid field type was not specified in the `Type` parameter.
+InvalidState: The script does not have an active Tiri state.
 ObjectCorrupt: Privately maintained memory has become inaccessible.
 
 -TAGS-

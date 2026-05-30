@@ -254,7 +254,7 @@
       <name>Path</name>
       <comment>File system path to the source SVG document.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type>STRING</type>
+      <type>std::string</type>
       <description>
 <p>This field specifies the location of the SVG file to be loaded and processed during object initialisation.  The path supports both absolute and relative file references, with relative paths resolved according to the current working directory context.</p>
 <p>The loading process occurs automatically during initialisation when a valid path is specified.  The referenced file must contain well-formed SVG content that conforms to W3C SVG standards for successful parsing.</p>
@@ -283,7 +283,7 @@
       <name>Statement</name>
       <comment>String containing complete SVG document markup.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type>STRING</type>
+      <type>std::string</type>
       <description>
 <p>SVG data can be loaded from a string by specifying it here prior to initialisation.  If the <fl>Path</fl> field has been defined, it will take precedent and the Statement is ignored.</p>
 <p>For incremental data parsing after initialisation, consider using the <action>DataFeed</action> action instead, which supports progressive document construction from data streams.</p>
@@ -312,7 +312,7 @@
       <name>Title</name>
       <comment>The title of the SVG document.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type>STRING</type>
+      <type>std::string</type>
       <description>
 <p>The title of an SVG document is declared with a title element that can embedded anywhere in the document.  In cases where a title has been specified, it will be possible to read it from this field.  If no title is in the document then <code>NULL</code> will be returned.</p>
       </description>

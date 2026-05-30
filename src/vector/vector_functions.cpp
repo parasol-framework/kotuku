@@ -794,6 +794,7 @@ int Size: The font-size, measured in pixels @ 72 DPI.
 Okay
 Args
 AccessObject
+AllocMemory
 CreateObject
 Failed
 File

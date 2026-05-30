@@ -1212,6 +1212,7 @@ oid Surface: The surface to query.  If zero, the top-level display is queried.
 -ERRORS-
 Okay
 Search: The supplied `Surface` ID did not refer to a recognised surface object.
+SystemCall
 
 -TAGS-
 blocking, pure-query
@@ -1268,7 +1269,7 @@ oid Surface: The surface to query.  If zero, the top-level surface is queried.
 -ERRORS-
 Okay
 NullArgs
-AccessMemory
+Search
 
 -TAGS-
 blocking, pure-query
@@ -1401,8 +1402,8 @@ oid Surface: The surface to query.  If zero, the top-level display will be queri
 
 -ERRORS-
 Okay
-Failed
 Search: The supplied `Surface` ID did not refer to a recognised surface object.
+SystemCall
 
 -TAGS-
 blocking, pure-query
