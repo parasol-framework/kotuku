@@ -411,6 +411,9 @@ Options marked with [L] are only available when calling DebugLog() from inside t
 
 The resulting log information is returned as a string, which needs to be deallocated once no longer required.
 
+-TAGS-
+caller-owns-result, null-terminated-result
+
 *********************************************************************************************************************/
 
 static ERR TIRI_DebugLog(objScript *Self, struct sc::DebugLog *Args)

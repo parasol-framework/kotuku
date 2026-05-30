@@ -252,6 +252,9 @@ arraysize Size: Total number of elements in the `Values` list.
 Okay:
 NullArgs:
 
+-TAGS-
+mutates-object, copies-input
+
 *********************************************************************************************************************/
 
 static ERR REMAPFX_SelectDiscrete(extRemapFX *Self, struct rf::SelectDiscrete *Args)
@@ -283,6 +286,9 @@ int(CMP) Component: The pixel component to which the identity function must be a
 -RESULT-
 Okay:
 NullArgs:
+
+-TAGS-
+mutates-object
 
 *********************************************************************************************************************/
 
@@ -318,6 +324,9 @@ double Exponent: The exponent of the gamma function.
 Okay:
 NullArgs:
 
+-TAGS-
+mutates-object
+
 *********************************************************************************************************************/
 
 static ERR REMAPFX_SelectGamma(extRemapFX *Self, struct rf::SelectGamma *Args)
@@ -352,6 +361,9 @@ Okay:
 Args:
 NullArgs:
 
+-TAGS-
+mutates-object
+
 *********************************************************************************************************************/
 
 static ERR REMAPFX_SelectInvert(extRemapFX *Self, struct rf::SelectInvert *Args)
@@ -385,6 +397,9 @@ double Intercept: The intercept of the linear function.
 Okay:
 Args:
 NullArgs:
+
+-TAGS-
+mutates-object
 
 *********************************************************************************************************************/
 
@@ -423,6 +438,9 @@ Okay:
 Args:
 NullArgs:
 
+-TAGS-
+mutates-object
+
 *********************************************************************************************************************/
 
 static ERR REMAPFX_SelectMask(extRemapFX *Self, struct rf::SelectMask *Args)
@@ -458,6 +476,9 @@ arraysize Size: Total number of elements in the value list.
 Okay:
 Args:
 NullArgs:
+
+-TAGS-
+mutates-object, copies-input
 
 *********************************************************************************************************************/
 

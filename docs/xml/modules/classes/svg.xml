@@ -141,6 +141,7 @@
 <p>ParseSymbol() enables dynamic instantiation of SVG symbol definitions that were declared within the loaded document. This method provides macro-like functionality, allowing complex graphical elements to be replicated and positioned as needed throughout the application.  This approach promotes efficient memory usage and consistent visual design while enabling dynamic scene graph construction.</p>
 <p>The specified <code>ID</code> must correspond to a symbol element that exists within the current document's definition library. The generated content will be structured within the provided <class name="VectorViewport">VectorViewport</class>, which must be part of an established scene graph.</p>
       </description>
+      <tags>mutates-input</tags>
     </method>
 
     <method>
@@ -162,6 +163,7 @@
 <p>
 <b>Performance considerations:</b> Rendering complex SVG documents with multiple effects and high resolutions may require significant processing time.  Consider using appropriate dimensions that balance quality requirements with performance constraints.</p>
       </description>
+      <tags>blocking, mutates-object, mutates-input</tags>
     </method>
 
   </methods>

@@ -286,6 +286,7 @@
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Compression">Unspecified failure during compression of a data stream</error>
       </result>
+      <tags>mutates-object, creates-resource</tags>
     </method>
 
     <method>
@@ -305,6 +306,7 @@
         <error code="InvalidDimension">The clipping region is invalid.</error>
         <error code="InvalidState">The Bitmap is not in the expected state.</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -324,6 +326,7 @@
         <error code="InvalidDimension">The clipping region is invalid.</error>
         <error code="InvalidState">The bitmap is not in the expected state.</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -350,6 +353,7 @@
         <error code="Mismatch">The target bitmap is not a close enough match to the source bitmap in order to perform the operation.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-input</tags>
     </method>
 
     <method>
@@ -369,6 +373,7 @@
         <error code="AllocMemory">Insufficient memory in recreating the bitmap data buffer.</error>
         <error code="CreateObject">A Compression object could not be created.</error>
       </result>
+      <tags>mutates-object, creates-resource</tags>
     </method>
 
     <method>
@@ -386,6 +391,7 @@
         <error code="InvalidDimension">The clipping region is invalid.</error>
         <error code="InvalidState">The Bitmap is not in the expected state (32-bit with an alpha channel).</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -409,6 +415,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -430,6 +437,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>pure-query</tags>
     </method>
 
     <method>
@@ -448,6 +456,7 @@
         <error code="InvalidDimension">The clipping region is invalid.</error>
         <error code="InvalidState">The Bitmap is not in the expected state (32-bit with an alpha channel)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -469,6 +478,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
   </methods>

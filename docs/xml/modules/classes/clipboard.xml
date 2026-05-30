@@ -86,6 +86,7 @@
         <error code="MissingPath"><code>Path</code> was not specified.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, copies-input</tags>
     </method>
 
     <method>
@@ -111,6 +112,7 @@
         <error code="CreateFile">A new file could not be created</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>blocking, mutates-object, creates-resource</tags>
     </method>
 
     <method>
@@ -130,6 +132,7 @@
         <error code="CreateFile">A new file could not be created</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, copies-input</tags>
     </method>
 
     <method>
@@ -175,6 +178,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
   </methods>

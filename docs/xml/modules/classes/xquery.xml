@@ -162,6 +162,7 @@ if (query.ok()) {
         <error code="AllocMemory">AllocMemory() failed to create a new memory block</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, retains-input</tags>
     </method>
 
     <method>
@@ -199,7 +200,7 @@ if (query.ok()) {
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
-      <tags>caller-owns-result</tags>
+      <tags>mutates-object, caller-owns-result, null-terminated-result</tags>
     </method>
 
     <method>
@@ -222,6 +223,7 @@ if (query.ok()) {
         <error code="NoSupport">The provided callback is not a C function reference.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, copies-input, callback-held</tags>
     </method>
 
     <method>
@@ -249,6 +251,7 @@ if (query.ok()) {
         <error code="Syntax">The provided query expression has syntax errors.</error>
         <error code="NullArgs">At least one required parameter was not provided.</error>
       </result>
+      <tags>mutates-object, retains-input, callback-inlines</tags>
     </method>
 
   </methods>

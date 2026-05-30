@@ -690,6 +690,9 @@ Okay:
 Args:
 NullArgs:
 
+-TAGS-
+mutates-object
+
 -END-
 
 *********************************************************************************************************************/
@@ -728,6 +731,9 @@ double Z: Z location for the light source.
 Okay:
 Args:
 NullArgs:
+
+-TAGS-
+mutates-object
 
 -END-
 
@@ -775,6 +781,9 @@ double ConeAngle: A limiting cone which restricts the region where the light is 
 Okay:
 Args:
 NullArgs:
+
+-TAGS-
+mutates-object
 
 -END-
 

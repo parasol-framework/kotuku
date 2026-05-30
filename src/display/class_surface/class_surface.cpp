@@ -611,6 +611,9 @@ NullArgs
 NoPermission: Public objects cannot draw directly to surfaces.
 AllocMemory: The callback list could not be expanded.
 ArrayFull: The callback list has reached its maximum size.
+
+-TAGS-
+mutates-object, callback-held
 -END-
 
 *********************************************************************************************************************/
@@ -1065,6 +1068,9 @@ int(RNF) Flags: Private
 
 -ERRORS-
 Okay
+
+-TAGS-
+mutates-object, private
 -END-
 
 *********************************************************************************************************************/
@@ -1567,6 +1573,9 @@ on that window.  On Microsoft Windows, this normally minimises the window to the
 Calling Minimise() on a surface that is already in the minimised state may result in the host window being restored to
 the desktop.  This behaviour is platform dependent and should be manually tested to confirm its reliability on the
 host platform.
+
+-TAGS-
+blocking, mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -1918,6 +1927,9 @@ ptr(func) Callback: Callback routine to remove, or `NULL` to remove all associat
 -ERRORS-
 Okay
 Search: The requested callback was not found.
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -2017,6 +2029,9 @@ int(DMF) Dimensions: Dimension flags.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -2111,6 +2126,9 @@ int RefreshRate: Optional refresh rate in frames per second.  If not specified, 
 -ERRORS-
 Okay
 Failed
+
+-TAGS-
+non-blocking, mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -2275,6 +2293,9 @@ double Adjustment: Value to add to the current opacity multiplier, or zero to as
 Okay
 NullArgs
 NoSupport: The surface does not own the bitmap buffer required for independent opacity.
+
+-TAGS-
+non-blocking, mutates-object
 -END-
 
 *********************************************************************************************************************/

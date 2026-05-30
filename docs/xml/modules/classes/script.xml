@@ -80,6 +80,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="Args">Invalid arguments passed to function</error>
       </result>
+      <tags>mutates-object, callback-inlines, private</tags>
     </method>
 
     <method>
@@ -99,7 +100,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
-      <tags>caller-owns-result</tags>
+      <tags>caller-owns-result, null-terminated-result</tags>
     </method>
 
     <method>
@@ -118,6 +119,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -161,6 +163,7 @@ struct ScriptArg {
         <error code="Args">The <code>TotalArgs</code> value is invalid.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, callback-inlines</tags>
     </method>
 
     <method>
@@ -183,6 +186,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, creates-resource</tags>
     </method>
 
   </methods>

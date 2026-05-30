@@ -37,6 +37,7 @@
 <p>This method checks if a class has defined a given field by scanning its blueprint for a matching <code>ID</code>.  If found, a direct pointer to the <code>Field</code> struct will be returned to the client.</p>
 <p>In some classes the field might not be present in the main class spec, but does appear in an integral class.  In that case, a reference to the class will be returned in the <code>Source</code> parameter.</p>
       </description>
+      <tags>pure-query, object-owns-result</tags>
     </method>
 
   </methods>

@@ -92,6 +92,9 @@ int TotalArgs: The total number of parameters in the Args parameter.
 Okay:
 Args:
 
+-TAGS-
+mutates-object, callback-inlines, private
+
 -END-
 
 *********************************************************************************************************************/
@@ -151,6 +154,9 @@ cstr Options: Options to pass to the underlying language.
 Okay:
 NullArgs:
 
+-TAGS-
+caller-owns-result, null-terminated-result
+
 *********************************************************************************************************************/
 
 static ERR SCRIPT_DebugLog(objScript *Self, struct sc::DebugLog *Args)
@@ -177,6 +183,9 @@ ptr(func) Procedure: The procedure to be dereferenced.
 -ERRORS-
 Okay:
 NullArgs:
+
+-TAGS-
+mutates-object
 
 *********************************************************************************************************************/
 
@@ -236,6 +245,9 @@ int TotalArgs: Total number of `Args` provided.
 Okay: The procedure was executed.
 NullArgs
 Args: The `TotalArgs` value is invalid.
+
+-TAGS-
+mutates-object, callback-inlines
 -END-
 
 *********************************************************************************************************************/
@@ -302,6 +314,9 @@ cstr Procedure:   The name of the procedure.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+mutates-object, creates-resource
 -END-
 
 *********************************************************************************************************************/

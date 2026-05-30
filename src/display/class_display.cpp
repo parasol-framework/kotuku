@@ -170,6 +170,9 @@ CheckXWindow: Private. Checks that the Display dimensions match the X11 window d
 
 Private
 
+-TAGS-
+mutates-object, private
+
 -END-
 *********************************************************************************************************************/
 
@@ -449,6 +452,9 @@ Okay
 NullArgs
 NoSupport
 SystemCall
+
+-TAGS-
+pure-query
 
 -END-
 
@@ -991,6 +997,9 @@ behaviour as platform dependent.
 
 -ERRORS-
 Okay
+
+-TAGS-
+blocking, mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -1499,6 +1508,9 @@ int EnforceAspect: Set to true to enforce an aspect ratio that is scaled from Mi
 Okay
 NullArgs
 NoSupport: The host platform does not support this feature.
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -1571,6 +1583,9 @@ NullArgs
 Resize
 NoSupport
 Failed: Failed to switch to the requested display mode.
+
+-TAGS-
+blocking, mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -1672,6 +1687,9 @@ int(GMF) Flags: Optional flags.
 Okay
 NullArgs
 NoSupport: The graphics hardware does not support gamma correction.
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -1735,6 +1753,9 @@ int(GMF) Flags: Use `SAVE` to store the new settings.
 Okay
 NullArgs
 NoSupport
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -1813,6 +1834,9 @@ Okay
 NullArgs
 NoPermission
 NoSupport
+
+-TAGS-
+mutates-object, copies-input
 -END-
 
 *********************************************************************************************************************/
@@ -2042,6 +2066,9 @@ Okay
 NullArgs
 Args
 
+-TAGS-
+mutates-object, copies-input
+
 *********************************************************************************************************************/
 
 static ERR DISPLAY_UpdatePalette(extDisplay *Self, gfx::UpdatePalette *Args)
@@ -2073,6 +2100,9 @@ that do not support it return `ERR::NoSupport` immediately.
 -ERRORS-
 Okay
 NoSupport
+
+-TAGS-
+blocking
 
 *********************************************************************************************************************/
 

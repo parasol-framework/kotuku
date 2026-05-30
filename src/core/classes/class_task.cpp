@@ -1198,6 +1198,9 @@ cstr Argument: The new argument string.
 Okay
 NullArgs
 
+-TAGS-
+mutates-object, copies-input
+
 *********************************************************************************************************************/
 
 static ERR TASK_AddArgument(extTask *Self, struct task::AddArgument *Args)
@@ -1225,6 +1228,9 @@ The Expunge() method releases all loaded libraries that are no longer in use by 
 
 -ERRORS-
 Okay
+
+-TAGS-
+mutates-object
 
 *********************************************************************************************************************/
 
@@ -1313,6 +1319,9 @@ Args
 DoesNotExist: The environment variable is undefined.
 NoSupport: The platform does not support environment variables.
 -END-
+
+-TAGS-
+pure-query, object-owns-result, null-terminated-result
 
 *********************************************************************************************************************/
 
@@ -1608,6 +1617,9 @@ On Windows systems, the method uses `winTerminateApp()` with a timeout for proce
 Okay
 -END-
 
+-TAGS-
+blocking, mutates-object
+
 *********************************************************************************************************************/
 
 static ERR TASK_Quit(extTask *Self)
@@ -1672,6 +1684,9 @@ Okay
 Args
 NoSupport: The platform does not support environment variables.
 -END-
+
+-TAGS-
+mutates-object, copies-input
 
 *********************************************************************************************************************/
 

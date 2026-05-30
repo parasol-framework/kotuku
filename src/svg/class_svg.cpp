@@ -220,6 +220,9 @@ obj(VectorViewport) Viewport: The target viewport.
 Okay: Symbol successfully parsed and instantiated.
 NullArgs: Required parameters were not provided.
 NotFound: The specified symbol ID does not exist in the document.
+
+-TAGS-
+mutates-input
 -END-
 
 *********************************************************************************************************************/
@@ -264,6 +267,9 @@ int Height: Desired height of the rendered output in pixels.
 -RESULT-
 Okay: Rendering completed successfully.
 NullArgs: Required bitmap parameter was not provided.
+
+-TAGS-
+blocking, mutates-object, mutates-input
 -END-
 
 *********************************************************************************************************************/

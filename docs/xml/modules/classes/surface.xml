@@ -255,6 +255,7 @@ the surface area first).</li>
         <error code="AllocMemory">The callback list could not be expanded.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, callback-held</tags>
     </method>
 
     <method>
@@ -275,6 +276,7 @@ the surface area first).</li>
       <result>
         <error code="Okay">Operation successful.</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -297,6 +299,7 @@ the surface area first).</li>
         <error code="Okay">Operation successful.</error>
         <error code="AccessMemory">Failed to access the internal surface list.</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -308,6 +311,7 @@ the surface area first).</li>
 <p>If a surface is hosted in a desktop window, calling Minimise() performs the host platform's default minimise action on that window.  On Microsoft Windows, this normally minimises the window to the taskbar.</p>
 <p>Calling Minimise() on a surface that is already in the minimised state may result in the host window being restored to the desktop.  This behaviour is platform dependent and should be manually tested to confirm its reliability on the host platform.</p>
       </description>
+      <tags>blocking, mutates-object</tags>
     </method>
 
     <method>
@@ -326,6 +330,7 @@ the surface area first).</li>
         <error code="Okay">Operation successful.</error>
         <error code="Search">The requested callback was not found.</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -351,6 +356,7 @@ the surface area first).</li>
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -371,6 +377,7 @@ the surface area first).</li>
         <error code="Okay">Operation successful.</error>
         <error code="Failed">General failure</error>
       </result>
+      <tags>non-blocking, mutates-object</tags>
     </method>
 
     <method>
@@ -399,6 +406,7 @@ the surface area first).</li>
         <error code="Args">Invalid arguments passed to function</error>
         <error code="InvalidState">The surface is not a top-level surface object.</error>
       </result>
+      <tags>blocking, mutates-object</tags>
     </method>
 
     <method>
@@ -418,6 +426,7 @@ the surface area first).</li>
         <error code="NoSupport">The surface does not own the bitmap buffer required for independent opacity.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>non-blocking, mutates-object</tags>
     </method>
 
   </methods>

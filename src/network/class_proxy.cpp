@@ -102,6 +102,9 @@ database on the success of this function.
 
 -ERRORS-
 Okay: Proxy deleted.
+
+-TAGS-
+blocking, mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -181,6 +184,9 @@ int Enabled: Set to `true` to return only enabled proxies, `false` for disabled 
 -ERRORS-
 Okay: A proxy was discovered.
 NoSearchResult: No matching proxy was discovered.
+
+-TAGS-
+blocking, mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -224,6 +230,9 @@ the filter, `ERR::Okay` is returned and the details of the proxy object will ref
 -ERRORS-
 Okay: A proxy was discovered.
 NoSearchResult: No matching proxy was discovered.
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/

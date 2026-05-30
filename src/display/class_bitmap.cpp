@@ -542,6 +542,9 @@ AllocMemory
 ReallocMemory
 CreateObject: A Compression object could not be created.
 Compression
+
+-TAGS-
+mutates-object, creates-resource
 -END-
 
 *********************************************************************************************************************/
@@ -624,6 +627,9 @@ Okay
 NothingDone: The Bitmap's content is already in linear RGB format.
 InvalidState: The Bitmap is not in the expected state.
 InvalidDimension: The clipping region is invalid.
+
+-TAGS-
+mutates-object
 -END-
 *********************************************************************************************************************/
 
@@ -700,6 +706,9 @@ Okay
 NothingDone: The bitmap's content is already in sRGB format.
 InvalidState: The bitmap is not in the expected state.
 InvalidDimension: The clipping region is invalid.
+
+-TAGS-
+mutates-object
 
 *********************************************************************************************************************/
 
@@ -783,6 +792,9 @@ Okay
 NullArgs
 Mismatch: The target bitmap is not a close enough match to the source bitmap in order to perform the operation.
 
+-TAGS-
+mutates-input
+
 *********************************************************************************************************************/
 
 static ERR BITMAP_CopyArea(objBitmap *Self, struct bmp::CopyArea *Args)
@@ -809,6 +821,9 @@ int RetainData: Retains the compression data if `true`.
 Okay
 AllocMemory: Insufficient memory in recreating the bitmap data buffer.
 CreateObject: A Compression object could not be created.
+
+-TAGS-
+mutates-object, creates-resource
 
 *********************************************************************************************************************/
 
@@ -914,6 +929,9 @@ NothingDone: The content is already normalised.
 InvalidState: The Bitmap is not in the expected state (32-bit with an alpha channel).
 InvalidDimension: The clipping region is invalid.
 
+-TAGS-
+mutates-object
+
 *********************************************************************************************************************/
 
 static ERR BITMAP_Demultiply(extBitmap *Self)
@@ -1014,6 +1032,9 @@ int(BAF) Flags:  Supports `FILL` and `BLEND`.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+mutates-object
 
 *********************************************************************************************************************/
 
@@ -1119,6 +1140,9 @@ int Alpha:  Alpha component value from 0 - 255.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+pure-query
 
 *********************************************************************************************************************/
 
@@ -1548,6 +1572,9 @@ Okay
 NothingDone: The content is already premultiplied.
 InvalidState: The Bitmap is not in the expected state (32-bit with an alpha channel)
 InvalidDimension: The clipping region is invalid.
+
+-TAGS-
+mutates-object
 
 *********************************************************************************************************************/
 
@@ -2218,6 +2245,9 @@ int Bottom:    The exclusive bottom edge of the clip region.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+mutates-object
 
 *********************************************************************************************************************/
 

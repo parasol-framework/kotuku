@@ -269,6 +269,9 @@ Calling this method will also result in the path being recomputed for the next r
 buf(struct(*PathCommand)) Commands: Array of commands to add to the path.
 bufsize Size: The size of the `Commands` buffer, in bytes.
 
+-TAGS-
+mutates-object, copies-input
+
 -RESULT-
 Okay
 NullArgs
@@ -307,6 +310,9 @@ for as long as the @VectorPath is not modified.
 int Index: The index of the command to retrieve.
 &struct(*PathCommand) Command: The requested command will be returned in this parameter.
 
+-TAGS-
+pure-query, object-owns-result
+
 -RESULT-
 Okay
 NullArgs
@@ -336,6 +342,9 @@ of commands to remove is indicated by the `Total` parameter.
 -INPUT-
 int Index: The index of the command to remove.
 int Total: The total number of commands to remove, starting from the given Index.
+
+-TAGS-
+mutates-object
 
 -RESULT-
 Okay
@@ -373,6 +382,9 @@ Use SetCommand() to copy one or more commands into an existing path.
 int Index: The index of the command that is to be set.
 buf(struct(*PathCommand)) Command: An array of commands to set in the path.
 bufsize Size: The size of the `Command` buffer, in bytes.
+
+-TAGS-
+mutates-object, copies-input
 
 -RESULT-
 Okay
@@ -412,6 +424,9 @@ NOTE: This method is not compatible with Tiri calls.
 -INPUT-
 buf(ptr) Commands: An array of !PathCommand structures.
 bufsize Size: The byte size of the `Commands` buffer.
+
+-TAGS-
+mutates-object, copies-input
 
 -RESULT-
 Okay

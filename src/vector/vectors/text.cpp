@@ -315,6 +315,9 @@ method.
 -INPUT-
 int Line: The line number that you want to delete.  If negative, the last line will be deleted.
 
+-TAGS-
+mutates-object
+
 -ERRORS-
 Okay: The line was deleted.
 Args: The Line value was out of the valid range.

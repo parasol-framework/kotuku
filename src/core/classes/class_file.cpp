@@ -312,6 +312,9 @@ Okay: The file content was successfully buffered.
 AllocMemory:
 Read: Failed to read the file content.
 
+-TAGS-
+blocking, mutates-object, creates-resource, updates-seek-index
+
 *********************************************************************************************************************/
 
 static ERR FILE_BufferContent(extFile *Self)
@@ -431,6 +434,9 @@ ResolvePath:
 Loop: Performing the copy would cause infinite recursion.
 AllocMemory:
 
+-TAGS-
+blocking, updates-seek-index, callback-inlines
+
 *********************************************************************************************************************/
 
 static ERR FILE_Copy(extFile *Self, struct fl::Copy *Args)
@@ -459,6 +465,9 @@ NoPermission: The user does not have the necessary permissions to delete the fil
 ReadOnly: The file is on a read-only filesystem.
 Locked: The file is in use.
 BufferOverflow: The file path string is too long.
+
+-TAGS-
+blocking, mutates-object, closes-handle, callback-inlines
 
 *********************************************************************************************************************/
 
@@ -879,6 +888,9 @@ Args
 FieldNotSet: The #Path field has not been set in the file object.
 InvalidPath: Attempted to move a volume.
 
+-TAGS-
+blocking, mutates-object, updates-seek-index, callback-inlines
+
 *********************************************************************************************************************/
 
 static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
@@ -964,6 +976,9 @@ Okay
 Args
 NullArgs
 DirEmpty: The index has reached the end of the file list.
+
+-TAGS-
+blocking, updates-seek-index, caller-owns-result
 
 *********************************************************************************************************************/
 
@@ -1140,6 +1155,9 @@ Failed: The file object refers to a folder.
 ObjectCorrupt: The internal file handle is missing.
 BufferOverflow: The line is too long for the read routine (4096 byte limit).
 NoData: There is no more data left to read.
+
+-TAGS-
+blocking, updates-seek-index, object-owns-result, null-terminated-result
 
 *********************************************************************************************************************/
 
@@ -1348,6 +1366,9 @@ ResolvePath
 SystemCall
 NoSupport: The platform does not support file date setting.
 
+-TAGS-
+blocking, mutates-object
+
 *********************************************************************************************************************/
 
 static ERR FILE_SetDate(extFile *Self, struct fl::SetDate *Args)
@@ -1448,6 +1469,9 @@ Okay
 Args
 NoSupport: The file is not streamed.
 
+-TAGS-
+non-blocking, mutates-object, callback-held
+
 *********************************************************************************************************************/
 
 static ERR FILE_StartStream(extFile *Self, struct fl::StartStream *Args)
@@ -1473,6 +1497,9 @@ related to the streaming process will be deallocated.
 Okay
 Args
 NoSupport: The file is not streamed.
+
+-TAGS-
+mutates-object
 
 *********************************************************************************************************************/
 
@@ -1512,6 +1539,9 @@ int(MFF) Flags: Filter events to those indicated in these flags.
 Okay
 Args
 NullArgs
+
+-TAGS-
+non-blocking, mutates-object, callback-held
 
 *********************************************************************************************************************/
 

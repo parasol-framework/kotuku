@@ -101,6 +101,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, copies-input</tags>
     </method>
 
     <method>
@@ -114,6 +115,7 @@
       <result>
         <error code="Okay">Operation successful.</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>

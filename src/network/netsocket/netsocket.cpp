@@ -125,6 +125,9 @@ InvalidState: The NetSocket was not in the state `NTC::DISCONNECTED` or the obje
 HostNotFound: Host name resolution failed.
 TimeOut: Connection attempt timed out.
 Failed: The connect failed for some other reason.
+
+-TAGS-
+non-blocking, mutates-object, copies-input
 -END-
 
 *********************************************************************************************************************/
@@ -493,6 +496,9 @@ struct(*IPAddress) Address:  Pointer to an IPAddress structure which will be set
 Okay
 NullArgs
 Failed
+
+-TAGS-
+pure-query, mutates-input
 -END-
 
 *********************************************************************************************************************/
@@ -596,6 +602,9 @@ Okay: Successfully joined the multicast group.
 Args: Invalid multicast address.
 NoSupport: Socket is not configured for UDP mode.
 Failed: Failed to join multicast group.
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -645,6 +654,9 @@ Okay: Successfully left the multicast group.
 Args: Invalid multicast address.
 NoSupport: Socket is not configured for UDP mode.
 Failed: Failed to leave multicast group.
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -992,6 +1004,9 @@ Okay: Data was received successfully, or no data available.
 Args: Invalid arguments provided.
 NoSupport: Socket is not configured for UDP mode.
 BufferOverflow: Receive buffer is too small for the incoming packet.
+
+-TAGS-
+non-blocking, mutates-input, mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -1049,6 +1064,9 @@ NullArgs: Invalid arguments provided.
 OutOfRange: Invalid port number specified.
 InvalidState: Socket is not configured for UDP mode.
 NetworkUnreachable: The destination network is unreachable.
+
+-TAGS-
+non-blocking, consumes-input
 -END-
 
 *********************************************************************************************************************/

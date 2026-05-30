@@ -171,6 +171,7 @@
         <error code="Read">Failed to read the file content.</error>
         <error code="AllocMemory">AllocMemory() failed to create a new memory block</error>
       </result>
+      <tags>blocking, mutates-object, creates-resource, updates-seek-index</tags>
     </method>
 
     <method>
@@ -199,6 +200,7 @@
         <error code="ResolvePath">A volume could not be resolved</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>blocking, updates-seek-index, callback-inlines</tags>
     </method>
 
     <method>
@@ -222,6 +224,7 @@
         <error code="ReadOnly">The file is on a read-only filesystem.</error>
         <error code="Locked">The file is in use.</error>
       </result>
+      <tags>blocking, mutates-object, closes-handle, callback-inlines</tags>
     </method>
 
     <method>
@@ -244,6 +247,7 @@
         <error code="FieldNotSet">The <fl>Path</fl> field has not been set in the file object.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>blocking, mutates-object, updates-seek-index, callback-inlines</tags>
     </method>
 
     <method>
@@ -266,7 +270,7 @@
         <error code="Args">Invalid arguments passed to function</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
-      <tags>caller-owns-result</tags>
+      <tags>blocking, updates-seek-index, caller-owns-result</tags>
     </method>
 
     <method>
@@ -290,6 +294,7 @@
         <error code="ObjectCorrupt">The internal file handle is missing.</error>
         <error code="BufferOverflow">The line is too long for the read routine (4096 byte limit).</error>
       </result>
+      <tags>blocking, updates-seek-index, object-owns-result, null-terminated-result</tags>
     </method>
 
     <method>
@@ -319,6 +324,7 @@
         <error code="SystemCall">A call to the host system has failed</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>blocking, mutates-object</tags>
     </method>
 
     <method>
@@ -344,6 +350,7 @@
         <error code="Args">Invalid arguments passed to function</error>
         <error code="NoSupport">The file is not streamed.</error>
       </result>
+      <tags>non-blocking, mutates-object, callback-held</tags>
     </method>
 
     <method>
@@ -359,6 +366,7 @@
         <error code="Args">Invalid arguments passed to function</error>
         <error code="NoSupport">The file is not streamed.</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -383,6 +391,7 @@
         <error code="Args">Invalid arguments passed to function</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>non-blocking, mutates-object, callback-held</tags>
     </method>
 
   </methods>

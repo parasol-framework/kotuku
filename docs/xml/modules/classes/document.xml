@@ -188,6 +188,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, callback-held</tags>
     </method>
 
     <method>
@@ -208,6 +209,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>callback-inlines</tags>
     </method>
 
     <method>
@@ -228,6 +230,7 @@
         <error code="Search">The cell was not found.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, callback-inlines</tags>
     </method>
 
     <method>
@@ -249,6 +252,7 @@
         <error code="Search">The index was not found.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>pure-query</tags>
     </method>
 
     <method>
@@ -268,6 +272,7 @@
         <error code="Search">A search routine in this function failed</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -292,6 +297,7 @@
         <error code="OutOfRange">A value is outside of the valid range</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, copies-input</tags>
     </method>
 
     <method>
@@ -315,6 +321,7 @@
         <error code="CreateObject">A call to CreateObject() failed</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, copies-input</tags>
     </method>
 
     <method>
@@ -340,7 +347,7 @@
         <error code="OutOfRange">The Start index is not within the stream.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
-      <tags>caller-owns-result</tags>
+      <tags>pure-query, caller-owns-result, null-terminated-result</tags>
     </method>
 
     <method>
@@ -361,6 +368,7 @@
         <error code="OutOfRange">The area to be removed is outside the bounds of the document's data stream.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -379,6 +387,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -400,6 +409,7 @@
         <error code="OutOfRange">A value is outside of the valid range</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -419,6 +429,7 @@
         <error code="Search">The index could not be found.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
   </methods>

@@ -70,6 +70,9 @@ obj(NetClient) Client: The client to be disconnected.
 Okay
 NullArgs
 WrongClass: The Client object is not of type `NetClient`.
+
+-TAGS-
+mutates-object, closes-handle
 -END-
 
 *********************************************************************************************************************/
@@ -104,6 +107,9 @@ obj(ClientSocket) Socket: The client socket to be disconnected.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+mutates-object, closes-handle
 -END-
 
 *********************************************************************************************************************/

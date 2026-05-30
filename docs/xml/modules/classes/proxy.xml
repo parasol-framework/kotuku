@@ -68,6 +68,7 @@
       <result>
         <error code="Okay">Proxy deleted.</error>
       </result>
+      <tags>blocking, mutates-object</tags>
     </method>
 
     <method>
@@ -95,6 +96,7 @@ if (proxy.ok()) {
         <error code="Okay">A proxy was discovered.</error>
         <error code="NoSearchResult">No matching proxy was discovered.</error>
       </result>
+      <tags>blocking, mutates-object</tags>
     </method>
 
     <method>
@@ -109,6 +111,7 @@ if (proxy.ok()) {
         <error code="Okay">A proxy was discovered.</error>
         <error code="NoSearchResult">No matching proxy was discovered.</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
   </methods>

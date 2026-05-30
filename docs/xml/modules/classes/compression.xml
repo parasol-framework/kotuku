@@ -74,7 +74,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="BufferOverflow">The output buffer is not large enough.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
-      <tags>mutates-input</tags>
+      <tags>mutates-input, mutates-object</tags>
     </method>
 
     <method>
@@ -98,6 +98,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="NoSupport">The derived class does not support this method.</error>
         <error code="NoPermission">The <code>READ_ONLY</code> flag has been set on the compression object.</error>
       </result>
+      <tags>blocking, mutates-object, copies-input, callback-inlines</tags>
     </method>
 
     <method>
@@ -151,7 +152,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="BufferOverflow">The output buffer is not large enough to contain the compressed data.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
-      <tags>mutates-input</tags>
+      <tags>mutates-input, mutates-object, callback-inlines</tags>
     </method>
 
     <method>
@@ -173,7 +174,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="BufferOverflow">The supplied Output buffer is not large enough (check the <fl>MinOutputSize</fl> field for the minimum allowable size).</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
-      <tags>mutates-input</tags>
+      <tags>mutates-input, mutates-object, callback-inlines</tags>
     </method>
 
     <method>
@@ -188,6 +189,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="Okay">Operation successful.</error>
         <error code="Failed">Failed to initialise the decompression process.</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -209,7 +211,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="Args">Invalid arguments passed to function</error>
         <error code="BufferOverflow">The output buffer is not large enough to hold the decompressed information.</error>
       </result>
-      <tags>mutates-input</tags>
+      <tags>mutates-input, mutates-object</tags>
     </method>
 
     <method>
@@ -239,6 +241,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="Seek">An error occurred during a seek operation</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>blocking, mutates-object, callback-inlines</tags>
     </method>
 
     <method>
@@ -263,6 +266,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="Seek">An error occurred during a seek operation</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>blocking, mutates-object, updates-seek-index, callback-inlines</tags>
     </method>
 
     <method>
@@ -290,7 +294,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="BufferOverflow">The output buffer is not large enough.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
-      <tags>mutates-input</tags>
+      <tags>mutates-input, mutates-object, callback-inlines</tags>
     </method>
 
     <method>
@@ -308,6 +312,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>mutates-object, callback-inlines</tags>
     </method>
 
     <method>
@@ -324,6 +329,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="Okay">Operation successful.</error>
         <error code="Failed">Failed to initialise the decompression process.</error>
       </result>
+      <tags>mutates-object</tags>
     </method>
 
     <method>
@@ -347,6 +353,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="NoSupport">Operation not supported</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>pure-query, api-owns-result</tags>
     </method>
 
     <method>
@@ -366,6 +373,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="NoSupport">Operation not supported</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>blocking, mutates-object</tags>
     </method>
 
     <method>
@@ -389,6 +397,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="NoSupport">Operation not supported</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>pure-query, callback-inlines</tags>
     </method>
 
   </methods>

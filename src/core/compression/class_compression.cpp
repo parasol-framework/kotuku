@@ -531,6 +531,9 @@ Args
 NullArgs
 Failed
 BufferOverflow: The output buffer is not large enough.
+
+-TAGS-
+mutates-input, mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -599,6 +602,9 @@ Args:
 File: An error was encountered when trying to open the source file.
 NoPermission: The `READ_ONLY` flag has been set on the compression object.
 NoSupport: The derived class does not support this method.
+
+-TAGS-
+blocking, mutates-object, copies-input, callback-inlines
 
 *********************************************************************************************************************/
 
@@ -732,6 +738,9 @@ The level of compression is determined by the #CompressionLevel field value.
 Okay
 Failed: Failed to initialise the decompression process.
 
+-TAGS-
+mutates-object
+
 *********************************************************************************************************************/
 
 static ERR COMPRESSION_CompressStreamStart(extCompression *Self)
@@ -823,6 +832,9 @@ NullArgs
 Args
 BufferOverflow: The output buffer is not large enough to contain the compressed data.
 Retry: Please recall the method using a larger output buffer.
+
+-TAGS-
+mutates-input, mutates-object, callback-inlines
 -END-
 
 *********************************************************************************************************************/
@@ -933,6 +945,9 @@ Okay
 NullArgs
 BufferOverflow: The supplied Output buffer is not large enough (check the #MinOutputSize field for the minimum allowable size).
 
+-TAGS-
+mutates-input, mutates-object, callback-inlines
+
 *********************************************************************************************************************/
 
 static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::CompressStreamEnd *Args)
@@ -1018,6 +1033,9 @@ has been processed, then call #DecompressStreamEnd().
 Okay
 Failed: Failed to initialise the decompression process.
 
+-TAGS-
+mutates-object
+
 *********************************************************************************************************************/
 
 static ERR COMPRESSION_DecompressStreamStart(extCompression *Self)
@@ -1071,6 +1089,9 @@ Okay
 NullArgs
 AllocMemory
 BufferOverflow: The output buffer is not large enough.
+
+-TAGS-
+mutates-input, mutates-object, callback-inlines
 
 *********************************************************************************************************************/
 
@@ -1170,6 +1191,9 @@ ptr(func) Callback: Refers to a function that will be called for each decompress
 Okay
 NullArgs
 
+-TAGS-
+mutates-object, callback-inlines
+
 *********************************************************************************************************************/
 
 static ERR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmp::DecompressStreamEnd *Args)
@@ -1204,6 +1228,9 @@ bufsize OutputSize: Size of the decompression buffer.
 Okay
 Args
 BufferOverflow: The output buffer is not large enough to hold the decompressed information.
+
+-TAGS-
+mutates-input, mutates-object
 
 *********************************************************************************************************************/
 
@@ -1269,6 +1296,9 @@ Seek
 Write: Failed to write uncompressed information to a destination file.
 Cancelled: The decompression process was cancelled by the feedback mechanism.
 Failed
+
+-TAGS-
+blocking, mutates-object, callback-inlines
 
 *********************************************************************************************************************/
 
@@ -1475,6 +1505,9 @@ Seek
 Write
 Failed
 
+-TAGS-
+blocking, mutates-object, updates-seek-index, callback-inlines
+
 *********************************************************************************************************************/
 
 static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::DecompressObject *Args)
@@ -1562,6 +1595,9 @@ Okay
 NoSupport
 NullArgs
 Search
+
+-TAGS-
+pure-query, api-owns-result
 
 *********************************************************************************************************************/
 
@@ -1808,6 +1844,9 @@ cstr Path: The full path name of the file to delete from the archive.
 Okay: The file was successfully deleted.
 NullArgs
 NoSupport
+
+-TAGS-
+blocking, mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -1868,6 +1907,9 @@ ptr(func) Callback: This callback function will be called with a pointer to a !C
 Okay
 NoSupport
 NullArgs
+
+-TAGS-
+pure-query, callback-inlines
 -END-
 
 *********************************************************************************************************************/

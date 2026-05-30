@@ -191,6 +191,9 @@ Debug: Internal functionality for debugging.
 
 This internal method prints comprehensive debugging information to the log.
 
+-TAGS-
+private
+
 -ERRORS-
 Okay:
 
@@ -362,6 +365,9 @@ attached to the vector then it should be noted that this will affect downstream 
 -INPUT-
 struct(*VectorMatrix) Matrix: Reference to the structure that requires removal.
 
+-TAGS-
+mutates-object, closes-handle
+
 -ERRORS-
 Okay:
 NullArgs:
@@ -415,6 +421,9 @@ int(VBF) Flags: Optional flags.
 &double Y: The top-most position of the boundary is returned here.
 &double Width: The width of the boundary is returned here.
 &double Height: The height of the boundary is returned here.
+
+-TAGS-
+pure-query
 
 -ERRORS-
 Okay
@@ -616,6 +625,9 @@ transform is no longer required before then, it can be manually removed with ~Ve
 &resource(*VectorMatrix) Transform: A reference to the new transform structure is returned here.
 int End: If `true`, the matrix priority is lowered by inserting it at the end of the transform list.
 
+-TAGS-
+mutates-object, object-owns-result, creates-resource
+
 -ERRORS-
 Okay:
 NullArgs:
@@ -667,6 +679,9 @@ Transforms are taken into account, as are clip masks.
 -INPUT-
 double X: The X coordinate of the point.
 double Y: The Y coordinate of the point.
+
+-TAGS-
+pure-query
 
 -ERRORS-
 Okay: The point is in the path.
@@ -745,6 +760,9 @@ error code.
 
 -INPUT-
 int Position: Specify a relative position index here (-ve to move backwards, +ve to move forwards)
+
+-TAGS-
+mutates-object
 
 -ERRORS-
 Okay:
@@ -831,6 +849,9 @@ The prototype for the `Callback` is `ERR callback(*Vector, FM Event)`
 int(FM) Mask: Defines the feedback events required by the client.  Set to `0xffffffff` if all messages are required.
 ptr(func) Callback: The function that will receive feedback events.
 
+-TAGS-
+mutates-object, callback-held
+
 -ERRORS-
 Okay:
 NullArgs:
@@ -883,6 +904,9 @@ The prototype for the `Callback` is `ERR callback(*Vector, *InputEvent)`
 -INPUT-
 flags(JTYPE) Mask: Combine `JTYPE` flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
 ptr(func) Callback: Reference to a function that will receive input messages.
+
+-TAGS-
+mutates-object, callback-held
 
 -ERRORS-
 Okay:
@@ -949,6 +973,9 @@ If the callback returns `ERR::Terminate` then the subscription will be ended.  A
 -INPUT-
 ptr(func) Callback: Reference to a callback function that will receive input messages.
 
+-TAGS-
+mutates-object, callback-held
+
 -ERRORS-
 Okay:
 NullArgs:
@@ -994,6 +1021,9 @@ If the `Callback` returns `ERR::Terminate`, then no further coordinates will be 
 ptr(func) Callback: A function to call with the path coordinates.
 double Scale: Set to `1.0` (recommended) to trace the path at a scale of 1 to 1.
 int Transform: Set to `true` if all transforms applicable to the vector should be applied to the path.
+
+-TAGS-
+pure-query, callback-inlines
 
 -ERRORS-
 Okay:

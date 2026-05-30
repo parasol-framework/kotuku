@@ -213,6 +213,9 @@ ptr(func) Function: The function to call when the trigger activates.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+mutates-object, callback-held
 -END-
 
 *********************************************************************************************************************/
@@ -258,6 +261,9 @@ int TotalArgs: The total number of entries in the `Args` array.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+callback-inlines
 
 *********************************************************************************************************************/
 
@@ -502,6 +508,9 @@ int Flags: Optional flags.
 Okay
 NullArgs
 Search: The cell was not found.
+
+-TAGS-
+mutates-object, callback-inlines
 -END-
 
 *********************************************************************************************************************/
@@ -547,6 +556,9 @@ cstr String: Content to insert
 Okay
 NullArgs
 
+-TAGS-
+mutates-object, private
+
 *********************************************************************************************************************/
 
 static ERR DOCUMENT_FeedParser(extDocument *Self, doc::FeedParser *Args)
@@ -587,6 +599,9 @@ cstr Name:  The name of the index to search for.
 Okay: The index was found and the `Start` and `End` parameters reflect its position.
 NullArgs:
 Search: The index was not found.
+
+-TAGS-
+pure-query
 
 *********************************************************************************************************************/
 
@@ -712,6 +727,9 @@ cstr Name: The name of the index.
 Okay
 NullArgs
 Search
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -914,6 +932,9 @@ NullArgs
 NoData
 CreateObject
 OutOfRange
+
+-TAGS-
+mutates-object, copies-input
 -END-
 
 *********************************************************************************************************************/
@@ -969,6 +990,9 @@ Okay
 NullArgs
 OutOfRange
 Failed
+
+-TAGS-
+mutates-object, copies-input
 -END-
 
 *********************************************************************************************************************/
@@ -1663,6 +1687,9 @@ OutOfRange: The Start index is not within the stream.
 Args
 NoData: Operation successful, but no data was present for extraction.
 
+-TAGS-
+pure-query, caller-owns-result, null-terminated-result
+
 *********************************************************************************************************************/
 
 static ERR DOCUMENT_ReadContent(extDocument *Self, doc::ReadContent *Args)
@@ -1796,6 +1823,9 @@ NullArgs
 OutOfRange: The area to be removed is outside the bounds of the document's data stream.
 Args
 
+-TAGS-
+mutates-object
+
 *********************************************************************************************************************/
 
 static ERR DOCUMENT_RemoveContent(extDocument *Self, doc::RemoveContent *Args)
@@ -1836,6 +1866,9 @@ ptr(func) Function: The function that is called when the trigger activates.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+mutates-object
 
 *********************************************************************************************************************/
 
@@ -1923,6 +1956,9 @@ cstr Name: The name of the link to select (set to `NULL` if an `Index` is define
 Okay
 NullArgs
 OutOfRange
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/
@@ -1995,6 +2031,9 @@ cstr Name: The name of the index.
 Okay
 NullArgs
 Search: The index could not be found.
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/

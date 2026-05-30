@@ -232,6 +232,9 @@ At the time of writing, the provided object must belong to one of the following 
 cstr Name: The unique name to associate with the definition.
 obj Def: Reference to the definition object.
 
+-TAGS-
+mutates-object, retains-input
+
 -ERRORS-
 Okay
 NullArgs
@@ -296,6 +299,9 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
 Debug: Internal functionality for debugging.
 
 This internal method prints comprehensive information that describes the scene graph to the log.
+
+-TAGS-
+private
 
 -ERRORS-
 Okay:
@@ -366,6 +372,9 @@ Definitions are created with the #AddDef() method.
 -INPUT-
 cstr Name: The name of the definition.
 &obj Def: A pointer to the definition object is returned here if discovered.
+
+-TAGS-
+pure-query, object-owns-result
 
 -ERRORS-
 Okay
@@ -593,6 +602,9 @@ with `strhash()` and using that as the ID.
 -INPUT-
 int ID: The ID to search for.
 &obj Result: This parameter will be updated with the discovered vector, or `NULL` if not found.
+
+-TAGS-
+pure-query, object-owns-result
 
 -ERRORS-
 Okay

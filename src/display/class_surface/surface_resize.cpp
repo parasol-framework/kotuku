@@ -135,6 +135,9 @@ int Flags: Optional flags.
 Okay
 Args
 InvalidState: The surface is not a top-level surface object.
+
+-TAGS-
+blocking, mutates-object
 -END-
 
 *********************************************************************************************************************/

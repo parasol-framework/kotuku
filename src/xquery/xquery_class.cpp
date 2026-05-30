@@ -311,6 +311,9 @@ obj(XML) XML: Targeted XML document to query.  Can be NULL for XQuery expression
 int Index: Optional tag index that establishes the initial context for the query.
 int(XEF) Flags: Optional flags.
 
+-TAGS-
+mutates-object, retains-input
+
 -ERRORS-
 Okay
 NullArgs
@@ -487,6 +490,9 @@ cstr Name: The name of the function or functions to inspect (supports wildcards)
 int(XIF) ResultFlags: Bitmask controlling the returned information.
 &!cstr Result: Receives a serialised XML document describing the function(s).
 
+-TAGS-
+mutates-object, caller-owns-result, null-terminated-result
+
 -ERRORS-
 Okay
 NullArgs
@@ -615,6 +621,9 @@ Script callbacks are not currently supported.
 cstr FunctionName: The name of the function to register (e.g., "custom-function").
 ptr(func) Callback: The callback function to register for FunctionName.
 
+-TAGS-
+mutates-object, copies-input, callback-held
+
 -ERRORS-
 Okay
 NullArgs
@@ -669,6 +678,9 @@ obj(XML) XML: Target XML document to search.
 ptr(func) Callback: Optional callback function to invoke for each matching node.
 int Index: Optional tag index that establishes the initial context for the query.
 int(XEF) Flags: Optional flags.
+
+-TAGS-
+mutates-object, retains-input, callback-inlines
 
 -ERRORS-
 Okay: At least one matching node was found and processed.

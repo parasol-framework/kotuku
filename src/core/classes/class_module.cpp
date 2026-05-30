@@ -511,6 +511,9 @@ FieldNotSet: The module has not been successfully initialised.
 NotFound: The symbol was not found.
 NoSupport: The host platform does not support this method.
 
+-TAGS-
+pure-query, static-result
+
 **********************************************************************************************************************/
 
 static ERR MODULE_ResolveSymbol(extModule *Self, struct mod::ResolveSymbol *Args)
@@ -569,6 +572,9 @@ cstr Options: Optional CSV list of testing options.
 -ERRORS-
 Okay
 NoSupport: Unit tests are not defined for the module.
+
+-TAGS-
+callback-inlines
 
 **********************************************************************************************************************/
 

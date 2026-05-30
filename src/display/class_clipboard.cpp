@@ -245,6 +245,9 @@ int(CEF) Flags: Optional flags.
 Okay: The files were added to the clipboard.
 NullArgs
 MissingPath: `Path` was not specified.
+
+-TAGS-
+mutates-object, copies-input
 -END-
 
 *********************************************************************************************************************/
@@ -294,6 +297,9 @@ NullArgs
 Args
 Lock
 CreateFile
+
+-TAGS-
+blocking, mutates-object, creates-resource
 -END-
 
 *********************************************************************************************************************/
@@ -361,6 +367,9 @@ cstr String: UTF-8 text to add to the clipboard.
 Okay
 NullArgs
 CreateFile
+
+-TAGS-
+mutates-object, copies-input
 -END-
 
 *********************************************************************************************************************/
@@ -529,6 +538,9 @@ NullArgs
 OutOfRange: The specified `Index` is out of the range of the available clip items.
 NoData: No clip was available that matched the requested data type.
 AllocMemory
+
+-TAGS-
+caller-owns-result
 -END-
 
 *********************************************************************************************************************/
@@ -638,6 +650,9 @@ int(CLIPTYPE) Datatype: Datatype flags to remove.  Values may be combined.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+mutates-object
 -END-
 
 *********************************************************************************************************************/
