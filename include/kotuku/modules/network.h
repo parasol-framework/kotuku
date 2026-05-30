@@ -259,8 +259,8 @@ class objProxy : public Object {
 
    inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }
    inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }
-   inline ERR init() noexcept { return InitObject(this); }
    inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, nullptr); }
+   inline ERR init() noexcept { return InitObject(this); }
    inline ERR deleteRecord() noexcept {
       return(Action(AC(-1), this, nullptr));
    }
@@ -741,3 +741,4 @@ extern uint32_t LongToHost(uint32_t Value);
 extern ERR SetSSL(objNetSocket *NetSocket, const std::string_view & Command, const std::string_view & Value);
 } // namespace
 #endif // KOTUKU_STATIC
+

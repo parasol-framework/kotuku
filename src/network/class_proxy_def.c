@@ -17,3 +17,4 @@ static const struct ActionArray clProxyActions[] = {
    { AC::SaveSettings, PROXY_SaveSettings },
    { AC::NIL, nullptr }
 };
+
