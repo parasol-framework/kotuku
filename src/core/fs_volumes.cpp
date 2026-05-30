@@ -22,6 +22,9 @@ Okay: The volume was removed.
 NullArgs:
 LockFailed:
 NoPermission: An attempt to delete a system volume was denied.
+
+-TAGS-
+blocking
 -END-
 
 *********************************************************************************************************************/
@@ -118,6 +121,9 @@ int(VOLUME) Flags: Optional flags.
 Okay: The volume was successfully added.
 NullArgs: A valid name and path string was not provided.
 LockFailed:
+
+-TAGS-
+copies-input, blocking
 -END-
 
 *********************************************************************************************************************/

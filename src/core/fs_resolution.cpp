@@ -85,6 +85,9 @@ Loop:         The volume refers back to itself.
 VirtualVolume: The path refers to a virtual volume (use `CHECK_VIRTUAL` to return `Okay` instead).
 InvalidPath:  The path is malformed.
 
+-TAGS-
+blocking, path-resolved
+
 -END-
 
 *********************************************************************************************************************/

@@ -34,6 +34,9 @@ Okay:
 NullArgs:
 AllocMemory:
 
+-TAGS-
+api-owns-result, volatile-result, blocking
+
 *********************************************************************************************************************/
 
 ERR GetDisplayInfo(OBJECTID DisplayID, DisplayInfo **Result)
@@ -68,6 +71,9 @@ This function returns the type of display supported by the loaded Display module
 
 -RESULT-
 int(DT): Returns an integer indicating the display type.
+
+-TAGS-
+pure-query
 
 *********************************************************************************************************************/
 
@@ -108,6 +114,9 @@ Okay: The resolution information was retrieved.
 Args:
 NoSupport: Native graphics system not available (e.g. hosted on Windows or X11).
 Search: There are no more display modes to return that are a match for the Filter.
+
+-TAGS-
+mutates-input
 
 *********************************************************************************************************************/
 
@@ -176,6 +185,9 @@ double Value: The number to be scaled.
 
 -RESULT-
 double: The scaled value is returned.
+
+-TAGS-
+pure-query
 -END-
 
 *********************************************************************************************************************/

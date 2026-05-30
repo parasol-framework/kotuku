@@ -192,6 +192,9 @@ Okay
 NullArgs
 AllocMemory
 Syntax
+
+-TAGS-
+caller-owns-result, creates-resource, copies-input
 -END-
 
 *********************************************************************************************************************/
@@ -258,6 +261,9 @@ cpp(strview) Name: The capture group name to resolve.
 Okay: The name was resolved and Indices populated.
 NullArgs: One or more required arguments were null.
 Search: The provided name does not exist within the regex.
+
+-TAGS-
+mutates-input, pure-query
 -END-
 
 *********************************************************************************************************************/
@@ -296,6 +302,9 @@ int(RMATCH) Flags: Optional flags to modify the replacement behavior.
 -ERRORS-
 Okay: Successful execution, does not necessarily mean replacements were made.
 NullArgs: One or more required input arguments were null.
+
+-TAGS-
+mutates-input
 -END-
 
 *********************************************************************************************************************/
@@ -523,6 +532,9 @@ ptr(func) Callback: Receives the match results.
 Okay: At least one match was found and processed.
 NullArgs: One or more required input arguments were null.
 Search: No matches were found.
+
+-TAGS-
+callback-inlines, does-not-take-ownership
 -END-
 
 *********************************************************************************************************************/
@@ -598,6 +610,9 @@ int(RMATCH) Flags: Optional flags to modify the splitting behavior.
 -ERRORS-
 Okay: The string was successfully split into tokens. If no matches are found, the entire input text is returned as a single token.
 NullArgs: One or more required input arguments were null.
+
+-TAGS-
+mutates-input
 -END-
 
 *********************************************************************************************************************/

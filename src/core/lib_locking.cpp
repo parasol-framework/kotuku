@@ -325,6 +325,9 @@ SystemLocked
 TimeOut
 Cancelled: The thread has been requested to stop whilst sleeping.
 MemoryDoesNotExist: The supplied `Memory` ID does not refer to an existing memory block.
+
+-TAGS-
+blocking
 -END-
 
 *********************************************************************************************************************/
@@ -439,6 +442,9 @@ NullArgs
 NoMatchingObject
 TimeOut
 SystemLocked
+
+-TAGS-
+blocking
 -END-
 
 *********************************************************************************************************************/
@@ -503,6 +509,9 @@ TimeOut:
 Cancelled: The thread has been requested to stop and cannot pause.
 DoesNotExist: The object was removed while waiting for the lock.
 LockFailed: Failed to initialise the sleep record for the waiting thread.
+
+-TAGS-
+blocking
 -END-
 
 *********************************************************************************************************************/
@@ -659,6 +668,9 @@ Okay
 NullArgs
 Search
 SystemLocked
+
+-TAGS-
+blocking
 -END-
 
 *********************************************************************************************************************/
@@ -713,6 +725,9 @@ for every lock that has been granted.
 
 -INPUT-
 obj Object: Pointer to the object to be released.
+
+-TAGS-
+blocking
 
 *********************************************************************************************************************/
 

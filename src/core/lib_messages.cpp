@@ -132,6 +132,9 @@ ptr(func) Routine: Refers to the function that will handle incoming messages.
 Okay: Message handler successfully processed.
 NullArgs
 AllocMemory
+
+-TAGS-
+caller-owns-result, creates-resource, callback-held, blocking
 -END-
 
 *********************************************************************************************************************/
@@ -200,6 +203,9 @@ int TimeOut: A TimeOut value, measured in milliseconds.  If zero, the function w
 Okay:
 Terminate: A `MSGID::QUIT` message type was found on the message queue.
 TimeOut:
+
+-TAGS-
+main-thread-only, blocking, callback-inlines
 -END-
 
 *********************************************************************************************************************/
@@ -494,6 +500,9 @@ bufsize Size: The byte-size of the supplied `Buffer`.
 Okay:
 NullArgs:
 Search: No more messages are left on the queue, or no messages that match the given `Type` are on the queue.
+
+-TAGS-
+mutates-input, blocking
 -END-
 
 *********************************************************************************************************************/
@@ -558,6 +567,9 @@ bufsize Size:   The byte-size of the `Data` being written to the message queue.
 -ERRORS-
 Okay: The message was successfully written to the message queue.
 Args:
+
+-TAGS-
+copies-input, blocking
 -END-
 
 *********************************************************************************************************************/
@@ -627,6 +639,9 @@ NullArgs
 Failed
 TimeOut
 OutsideMainThread
+
+-TAGS-
+main-thread-only, blocking, callback-inlines
 
 -END-
 
@@ -836,6 +851,9 @@ Okay:   The message was successfully updated.
 NullArgs:
 AccessMemory:
 Search: The supplied `Message` ID does not refer to a message in the queue.
+
+-TAGS-
+copies-input, blocking
 -END-
 
 *********************************************************************************************************************/

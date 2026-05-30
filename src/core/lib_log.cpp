@@ -109,6 +109,9 @@ ptr Callback: Pointer to the log callback function to register.
 int DepthLimit: Maximum branch depth to forward to the callback.
 int LogLimit: Maximum message log level to forward to the callback.
 
+-TAGS-
+callback-held, does-not-take-ownership, non-blocking
+
 -END-
 
 *********************************************************************************************************************/

@@ -138,6 +138,9 @@ NullArgs
 DirEmpty
 AllocMemory
 
+-TAGS-
+caller-owns-result, creates-resource, opens-handle, blocking, path-resolved
+
 *********************************************************************************************************************/
 
 ERR OpenDir(const std::string_view &Path, RDF Flags, DirInfo **Result)
@@ -227,6 +230,9 @@ resource(DirInfo) Info: Pointer to a !DirInfo structure for storing scan results
 Okay: An item was successfully scanned from the folder.
 Args
 DirEmpty: There are no more items to scan.
+
+-TAGS-
+mutates-input, updates-seek-index, blocking
 -END-
 
 *********************************************************************************************************************/

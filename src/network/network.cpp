@@ -631,6 +631,9 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 -RESULT-
 !cstr: The IP address is returned as an allocated string.
 
+-TAGS-
+caller-owns-result, creates-resource, null-terminated-result, nullable-result
+
 *********************************************************************************************************************/
 
 CSTRING AddressToStr(IPAddress *Address)
@@ -673,6 +676,9 @@ struct(IPAddress) Address: Must point to an !IPAddress structure that will be fi
 Okay:    The `Address` was converted successfully.
 NullArgs
 Failed:  The `String` was not a valid IP Address.
+
+-TAGS-
+mutates-input
 
 *********************************************************************************************************************/
 
@@ -722,6 +728,9 @@ uint Value: Data in host byte order to be converted to network byte order
 -RESULT-
 uint: The word in network byte order
 
+-TAGS-
+pure-query
+
 *********************************************************************************************************************/
 
 uint32_t HostToShort(uint32_t Value)
@@ -741,6 +750,9 @@ uint Value: Data in host byte order to be converted to network byte order
 
 -RESULT-
 uint: The long in network byte order
+
+-TAGS-
+pure-query
 
 *********************************************************************************************************************/
 
@@ -762,6 +774,9 @@ uint Value: Data in network byte order to be converted to host byte order
 -RESULT-
 uint: The Value in host byte order
 
+-TAGS-
+pure-query
+
 *********************************************************************************************************************/
 
 uint32_t ShortToHost(uint32_t Value)
@@ -781,6 +796,9 @@ uint Value: Data in network byte order to be converted to host byte order
 
 -RESULT-
 uint: The Value in host byte order.
+
+-TAGS-
+pure-query
 
 *********************************************************************************************************************/
 
@@ -819,6 +837,9 @@ cpp(strview) Value: Value to set for the command or option.
 Okay:
 NullArgs: The NetSocket argument was not specified.
 NoSecureSockets: SSL support is disabled in this build.
+
+-TAGS-
+mutates-object, blocking, case-sensitive
 -END-
 
 *********************************************************************************************************************/

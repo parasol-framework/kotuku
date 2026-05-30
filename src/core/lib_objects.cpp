@@ -668,6 +668,9 @@ NullArgs:
 IllegalActionID: The `Action` parameter is invalid.
 NoAction:        The `Action` is not supported by the object's supporting class.
 ObjectCorrupt:   The `Object` state is corrupted.
+
+-TAGS-
+mutates-object, blocking, callback-inlines
 -END-
 
 **********************************************************************************************************************/
@@ -788,6 +791,9 @@ The argument types that can be used by actions are limited to those listed in th
 &array(struct(ActionTable)) Actions: A pointer to the Core's action table `struct ActionTable *` is returned. Please note that the first entry in the `ActionTable` list has all fields driven to `NULL`, because valid action ID's start from one, not zero.  The final action in the list is also terminated with `NULL` fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.
 &arraysize Size: Total number of elements in the returned list.
 
+-TAGS-
+static-result, non-null-result, pure-query
+
 *********************************************************************************************************************/
 
 void ActionList(struct ActionTable **List, int *Size)
@@ -846,6 +852,9 @@ IllegalMethodID
 MissingClass
 NewObject
 Init
+
+-TAGS-
+copies-input, callback-held, blocking
 -END-
 
 *********************************************************************************************************************/
@@ -941,6 +950,9 @@ arraysize Size: Total number of elements in the `Objects` list.
 Okay
 NullArgs
 
+-TAGS-
+blocking
+
 *********************************************************************************************************************/
 
 ERR AsyncCancel(OBJECTID *Objects, int Size)
@@ -989,6 +1001,9 @@ oid Object: The object to query.
 
 -RESULT-
 int: The number of pending async actions (in-flight + queued), or zero if none.
+
+-TAGS-
+blocking, pure-query
 -END-
 
 *********************************************************************************************************************/
@@ -1027,6 +1042,9 @@ Okay: All async actions completed.
 TimeOut: The timeout expired before all actions completed.
 NullArgs
 InUse: Another AsyncWait() call is already active.
+
+-TAGS-
+main-thread-only, blocking, callback-inlines
 -END-
 
 *********************************************************************************************************************/
@@ -1151,6 +1169,9 @@ False: The action is not supported.
 NullArgs:
 LostClass:
 
+-TAGS-
+pure-query
+
 *********************************************************************************************************************/
 
 ERR CheckAction(OBJECTPTR Object, ACTIONID ActionID)
@@ -1193,6 +1214,9 @@ True:  The object exists.
 False: The object ID does not exist.
 LockFailed:
 
+-TAGS-
+blocking, pure-query
+
 *********************************************************************************************************************/
 
 ERR CheckObjectExists(OBJECTID ObjectID)
@@ -1218,6 +1242,9 @@ Call ClassDatabase() to obtain an array of all classes known to the system.
 
 -ERRORS-
 Okay
+
+-TAGS-
+caller-owns-result, creates-resource, blocking
 
 *********************************************************************************************************************/
 
@@ -1256,6 +1283,9 @@ To get the context of the caller (the client), use ~ParentContext().
 -RESULT-
 obj: Returns an object pointer (of which the process has exclusive access to).  Cannot return `NULL` except in the initial start-up and late shut-down sequence of the Core.
 
+-TAGS-
+api-owns-result, nullable-result, pure-query
+
 *********************************************************************************************************************/
 
 OBJECTPTR CurrentContext(void)
@@ -1277,6 +1307,9 @@ the case when called from an action or method.
 
 -RESULT-
 obj: An object reference is returned, or `NULL` if there is no parent context.
+
+-TAGS-
+api-owns-result, nullable-result, pure-query
 
 *********************************************************************************************************************/
 
@@ -1309,6 +1342,9 @@ cid ClassID: A class ID such as one retrieved from ~ResolveClassName().
 
 -RESULT-
 obj(MetaClass): Returns a pointer to the @MetaClass structure that has been found as a result of the search, or `NULL` if no matching class was found.
+
+-TAGS-
+api-owns-result, nullable-result, blocking
 
 *********************************************************************************************************************/
 
@@ -1376,6 +1412,9 @@ Search: No objects matching the given name could be found.
 LockFailed:
 EmptyString:
 DoesNotExist:
+
+-TAGS-
+blocking, case-insensitive
 -END-
 
 *********************************************************************************************************************/
@@ -1420,6 +1459,9 @@ cases a `NULL` pointer is returned.
 -RESULT-
 resource(Message): A !Message structure is returned if the function is called in valid circumstances, otherwise `NULL`.
 
+-TAGS-
+volatile-result, nullable-result
+
 *********************************************************************************************************************/
 
 Message * GetActionMsg(void)
@@ -1449,6 +1491,9 @@ oid Object: The object to be examined.
 -RESULT-
 cid: Returns the base class ID of the object or zero if failure.
 
+-TAGS-
+blocking, pure-query
+
 *********************************************************************************************************************/
 
 CLASSID GetClassID(OBJECTID ObjectID)
@@ -1469,6 +1514,9 @@ oid Object: The ID of the object to lookup.
 
 -RESULT-
 obj: The address of the object is returned, or `NULL` if the ID does not relate to an object.
+
+-TAGS-
+api-owns-result, nullable-result, blocking
 
 *********************************************************************************************************************/
 
@@ -1502,6 +1550,9 @@ oid Object: The ID of an object to query.
 
 -RESULT-
 oid: Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return 0.
+
+-TAGS-
+blocking, pure-query
 
 *********************************************************************************************************************/
 
@@ -1540,6 +1591,9 @@ Okay: The object was initialised.
 LostClass
 DoubleInit
 ObjectCorrupt
+
+-TAGS-
+mutates-object, blocking, callback-inlines
 
 *********************************************************************************************************************/
 
@@ -1693,6 +1747,9 @@ Args
 NullArgs
 LockFailed
 
+-TAGS-
+mutates-input, blocking, pure-query
+
 *********************************************************************************************************************/
 
 ERR ListChildren(OBJECTID ObjectID, kt::vector<ChildEntry> *List)
@@ -1748,6 +1805,9 @@ Okay
 NullArgs
 MissingClass: The `ClassID` is invalid or refers to a class that is not installed.
 AllocMemory
+
+-TAGS-
+caller-owns-result, creates-resource, blocking, callback-inlines
 -END-
 
 *********************************************************************************************************************/
@@ -1910,6 +1970,9 @@ int(AC) Action: The action ID for notification.
 ptr Args: Pointer to an action parameter structure that is relevant to the `Action` ID.
 error Error: The error code that is associated with the action result.
 
+-TAGS-
+blocking, callback-inlines, does-not-take-ownership
+
 -END-
 
 *********************************************************************************************************************/
@@ -1989,6 +2052,9 @@ NoMatchingObject:
 MissingClass:
 Failed:
 IllegalMethodID:
+
+-TAGS-
+copies-input, blocking
 -END-
 
 *********************************************************************************************************************/
@@ -2047,6 +2113,9 @@ cpp(strview) Name: The name of the class that requires resolution.
 
 -RESULT-
 cid: Returns the class ID identified from the class name, or `NULL` if the class could not be found.
+
+-TAGS-
+case-insensitive, pure-query
 -END-
 
 *********************************************************************************************************************/
@@ -2079,6 +2148,9 @@ cid ID: The ID of the class that needs to be resolved.
 
 -RESULT-
 cstr: Returns the name of the class, or `NULL` if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. `NetSocket`.
+
+-TAGS-
+api-owns-result, null-terminated-result, nullable-result, pure-query
 -END-
 
 *********************************************************************************************************************/
@@ -2120,6 +2192,9 @@ NullArgs
 Args
 Recursion
 SystemLocked
+
+-TAGS-
+mutates-object, blocking, callback-inlines
 -END-
 
 *********************************************************************************************************************/
@@ -2230,6 +2305,9 @@ NullArgs:
 Search: The `Object` is not recognised by the system - the address may be invalid.
 LockFailed:
 
+-TAGS-
+copies-input, mutates-object, blocking
+
 *********************************************************************************************************************/
 
 static const char sn_lookup[256] = {
@@ -2322,6 +2400,9 @@ NullArgs:
 Args:
 OutOfRange: The Action parameter is invalid.
 
+-TAGS-
+callback-held, does-not-take-ownership, blocking
+
 *********************************************************************************************************************/
 
 ERR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
@@ -2364,6 +2445,9 @@ int(AC) Action: The ID of the action that will be unsubscribed, or zero for all 
 Okay:
 NullArgs:
 Args:
+
+-TAGS-
+blocking
 -END-
 
 *********************************************************************************************************************/

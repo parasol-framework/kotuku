@@ -81,6 +81,9 @@ uint FieldID: The unique field hash to resolve.
 -RESULT-
 cstr: The name of the field is returned.
 
+-TAGS-
+api-owns-result, null-terminated-result, non-null-result, blocking
+
 *********************************************************************************************************************/
 
 extern thread_local char tlFieldName[10]; // $12345678\0
@@ -119,6 +122,9 @@ uint FieldID: The 'FID' number to lookup.
 
 -RESULT-
 struct(Field): Returns a pointer to the !Field descriptor, otherwise `NULL` if not found.
+
+-TAGS-
+object-owns-result, nullable-result, pure-query
 -END-
 
 *********************************************************************************************************************/

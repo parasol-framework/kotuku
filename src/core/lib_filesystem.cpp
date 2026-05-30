@@ -377,6 +377,9 @@ cpp(strview) Value: The value to associate with the tag name.  If empty, any exi
 Okay:
 NullArgs:
 
+-TAGS-
+mutates-input, copies-input, creates-resource
+
 *********************************************************************************************************************/
 
 ERR AddInfoTag(FileInfo *Info, const std::string_view &Name, const std::string_view &Value)
@@ -424,6 +427,9 @@ cpp(strview) Path: The path to analyse.
 Okay: The path was analysed and the result is stored in the `Type` variable.
 NullArgs:
 DoesNotExist:
+
+-TAGS-
+blocking, path-resolved
 
 *********************************************************************************************************************/
 
@@ -500,6 +506,9 @@ cpp(strview) PathB: File location 2.
 Okay: The file paths refer to the same file.
 False: The file paths refer to different files.
 NullArgs
+
+-TAGS-
+blocking, path-resolved
 -END-
 
 *********************************************************************************************************************/
@@ -595,6 +604,9 @@ int Group: The group ID.
 -RESULT-
 cstr: The group name is returned, or `NULL` if the ID cannot be resolved.
 
+-TAGS-
+api-owns-result, null-terminated-result, nullable-result, blocking
+
 *********************************************************************************************************************/
 
 CSTRING ResolveGroupID(int GroupID)
@@ -631,6 +643,9 @@ int User: The user ID.
 
 -RESULT-
 cstr: The user name is returned, or `NULL` if the ID cannot be resolved.
+
+-TAGS-
+api-owns-result, null-terminated-result, nullable-result, blocking
 
 *********************************************************************************************************************/
 
@@ -700,6 +715,9 @@ Okay: The source was copied to its destination successfully.
 Args:
 Failed: A failure occurred during the copy process.
 
+-TAGS-
+blocking, callback-inlines
+
 *********************************************************************************************************************/
 
 ERR CopyFile(const std::string_view &Source, const std::string_view &Dest, FUNCTION *Callback)
@@ -739,6 +757,9 @@ LowCapacity: There is no room on the device to create the new link.
 Memory:
 BufferOverflow: One or both of the provided arguments is too long.
 FileExists: The location referenced at From already exists.
+
+-TAGS-
+blocking, path-resolved
 
 *********************************************************************************************************************/
 
@@ -807,6 +828,9 @@ NullArgs:
 FileNotFound:
 File: The location could not be opened for deletion.
 NoSupport: The filesystem driver does not support deletion.
+
+-TAGS-
+blocking, path-resolved
 
 *********************************************************************************************************************/
 
@@ -892,6 +916,9 @@ Okay: The file was cached successfully.
 NullArgs:
 AllocMemory:
 Search: If `CHECK_EXISTS` is specified, this failure indicates that the file is not cached.
+
+-TAGS-
+api-owns-result, creates-resource, blocking, path-resolved
 -END-
 
 *********************************************************************************************************************/
@@ -1017,6 +1044,9 @@ FileExists: An identically named file or folder already exists at the `Path`.
 NoSupport:  Virtual file system does not support folder creation.
 Failed:
 
+-TAGS-
+blocking, path-resolved
+
 *********************************************************************************************************************/
 
 ERR CreateFolder(const std::string_view &Path, PERMIT Permissions)
@@ -1085,6 +1115,9 @@ Okay
 NullArgs
 Failed
 
+-TAGS-
+blocking, callback-inlines
+
 *********************************************************************************************************************/
 
 ERR MoveFile(const std::string_view &Source, const std::string_view &Dest, FUNCTION *Callback)
@@ -1122,6 +1155,9 @@ OpenFile
 InvalidPath
 Read
 File
+
+-TAGS-
+mutates-input, blocking, path-resolved
 -END-
 
 *********************************************************************************************************************/
@@ -1202,6 +1238,9 @@ cpp(strview) Name: The name of the tag, which must be declared in camel-case as 
 Okay:
 NullArgs:
 NotFound:
+
+-TAGS-
+object-owns-result, null-terminated-result, non-null-result, case-sensitive
 
 *********************************************************************************************************************/
 
@@ -1302,6 +1341,9 @@ This function unloads cached files that have been previously loaded with the ~Lo
 
 -INPUT-
 resource(CacheFile) Cache: A pointer to a !CacheFile structure returned from ~LoadFile().
+
+-TAGS-
+blocking
 -END-
 
 *********************************************************************************************************************/

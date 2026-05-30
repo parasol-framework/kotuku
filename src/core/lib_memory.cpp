@@ -82,6 +82,9 @@ AllocMemory: Insufficient memory available for the requested allocation.
 ArrayFull: Memory tracking structures are full, preventing allocation tracking.
 AccessMemory: Memory block was allocated but could not be locked when both Address and ID were requested.
 SystemLocked: Memory management system is currently locked by another thread.
+
+-TAGS-
+caller-owns-result, creates-resource, blocking
 -END-
 
 *********************************************************************************************************************/
@@ -273,6 +276,9 @@ mem ID: The unique identifier of the memory block to verify.
 -ERRORS-
 True: The memory block exists and is valid.
 False: The memory block does not exist or has been freed.
+
+-TAGS-
+blocking, pure-query
 -END-
 
 *********************************************************************************************************************/
@@ -315,6 +321,9 @@ InvalidData: Memory corruption detected - header or trailer markers are damaged.
 MemoryDoesNotExist: The specified memory block identifier is not valid or already freed.
 SystemLocked: Memory management system is currently locked by another thread.
 InUse: The memory block is a busy managed resource.  The removal behaviour rules are dependent on the manager (automatic termination may be employed).
+
+-TAGS-
+closes-handle, blocking
 -END-
 
 *********************************************************************************************************************/
@@ -448,6 +457,9 @@ NullArgs
 Args
 MemoryDoesNotExist
 SystemLocked
+
+-TAGS-
+mutates-input, blocking, pure-query
 -END-
 
 *********************************************************************************************************************/
@@ -509,6 +521,9 @@ Okay
 NullArgs
 MemoryDoesNotExist
 
+-TAGS-
+mutates-input, blocking, pure-query
+
 *********************************************************************************************************************/
 
 ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, int Size)
@@ -561,6 +576,9 @@ NullArgs: Address is NULL.
 Args: Invalid flags specified or memory block is not protected.
 MemoryDoesNotExist: The memory block is not valid or was not allocated with protection.
 SystemCall: A system call failed.
+
+-TAGS-
+blocking
 -END-
 
 *********************************************************************************************************************/
@@ -635,6 +653,9 @@ Args
 NullArgs
 AllocMemory
 Memory: The memory block to be re-allocated is invalid.
+
+-TAGS-
+caller-owns-result, creates-resource, closes-handle, blocking
 -END-
 
 *********************************************************************************************************************/
@@ -717,6 +738,9 @@ static ResourceManager glNodeManager = {
 -INPUT-
 ptr Address: The address of a `MEM::MANAGED` memory block allocated by ~AllocMemory().
 ptr(struct(ResourceManager)) Manager: Must refer to an initialised ResourceManager structure.
+
+-TAGS-
+retains-input, does-not-take-ownership
 
 -END-
 

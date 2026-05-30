@@ -391,6 +391,9 @@ Okay: The variable was defined successfully.
 Args:
 FieldTypeMismatch: A valid field type was not specified in the `Type` parameter.
 ObjectCorrupt: Privately maintained memory has become inaccessible.
+
+-TAGS-
+mutates-object, copies-input
 -END-
 
 *********************************************************************************************************************/

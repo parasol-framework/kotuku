@@ -136,6 +136,9 @@ Call ~Core.ReleaseObject() to free the lock once it is no longer required.
 -RESULT-
 obj(Pointer): Returns the address of the default pointer object.
 
+-TAGS-
+api-owns-result, nullable-result, blocking
+
 *********************************************************************************************************************/
 
 objPointer * AccessPointer(void)
@@ -183,6 +186,9 @@ Okay:
 NullArgs:
 NoSupport: The device does not support a cursor (common for touch screen displays).
 
+-TAGS-
+mutates-input, pure-query
+
 *********************************************************************************************************************/
 
 ERR GetCursorInfo(CursorInfo *Info, int Size)
@@ -218,6 +224,9 @@ coordinates will reflect the last position that a touch event occurred.
 Okay
 AccessObject: Failed to access the SystemPointer object.
 
+-TAGS-
+blocking, pure-query
+
 *********************************************************************************************************************/
 
 ERR GetCursorPos(double *X, double *Y)
@@ -252,6 +261,9 @@ oid Surface: Unique ID of the surface that the coordinates need to be relative t
 -ERRORS-
 Okay:
 AccessObject: Failed to access the SystemPointer object.
+
+-TAGS-
+blocking, pure-query
 
 *********************************************************************************************************************/
 
@@ -321,6 +333,9 @@ oid Owner: The ownership ID that was given in the initial call to SetCursor().
 -ERRORS-
 Okay
 Args
+
+-TAGS-
+mutates-object, blocking
 -END-
 
 *********************************************************************************************************************/
@@ -395,6 +410,9 @@ OutOfRange: The cursor ID is outside of acceptable range.
 AccessObject: Failed to access the mouse pointer.
 LockFailed
 NothingDone
+
+-TAGS-
+mutates-object, blocking, case-insensitive
 -END-
 
 *********************************************************************************************************************/
@@ -616,6 +634,9 @@ Okay:
 Args:
 NoSupport:
 AccessObject: Failed to access the internally maintained image object.
+
+-TAGS-
+mutates-object, blocking
 -END-
 
 *********************************************************************************************************************/
@@ -640,6 +661,9 @@ double Y: The new vertical coordinate for the pointer.
 -ERRORS-
 Okay:
 AccessObject: Failed to access the SystemPointer object.
+
+-TAGS-
+mutates-object, blocking, callback-inlines
 
 *********************************************************************************************************************/
 
@@ -694,6 +718,9 @@ NullArgs:
 AccessObject:
 Failed: The left mouse button is not held by the user.
 InUse: A drag and drop operation has already been started.
+
+-TAGS-
+copies-input, mutates-object, blocking, callback-inlines
 
 *********************************************************************************************************************/
 
@@ -758,6 +785,9 @@ Okay:
 NullArgs:
 AccessObject:
 ResourceNotLocked: The pointer is not anchored to the given Surface.
+
+-TAGS-
+mutates-object, blocking
 -END-
 
 *********************************************************************************************************************/

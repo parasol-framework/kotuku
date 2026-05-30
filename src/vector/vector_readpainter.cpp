@@ -618,6 +618,9 @@ Okay:
 NullArgs:
 Failed:
 
+-TAGS-
+mutates-input, object-owns-result
+
 *********************************************************************************************************************/
 
 ERR ReadPainter(objVectorScene *Scene, const std::string_view &IRI, VectorPainter *Painter, CSTRING *Result)

@@ -58,6 +58,7 @@
     <comment>Applies a generated path resource to a VectorPath object.</comment>
     <prototype>ERR vec::ApplyPath(APTR Path, objVectorPath * VectorPath)</prototype>
     <tiriPrototype>err = ApplyPath(Path:any, VectorPath:obj)</tiriPrototype>
+    <tags>copies-input, mutates-object</tags>
     <input>
       <param type="APTR" name="Path">The source path to be copied.</param>
       <param type="objVectorPath *" name="VectorPath">The target VectorPath object.</param>
@@ -79,6 +80,7 @@
     <comment>Appends an arc command to a generated path.</comment>
     <prototype>void vec::ArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags)</prototype>
     <tiriPrototype>ArcTo(Path:any, RX:num, RY:num, Angle:num, X:num, Y:num, Flags:num)</tiriPrototype>
+    <tags>mutates-input</tags>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="RX">The horizontal radius of the arc.</param>
@@ -98,6 +100,7 @@
     <comment>Returns the rendered width of a single character.</comment>
     <prototype>DOUBLE vec::CharWidth(APTR FontHandle, UINT Char, UINT KChar, DOUBLE * Kerning)</prototype>
     <tiriPrototype>num, Kerning:num = CharWidth(FontHandle:any, Char:num, KChar:num)</tiriPrototype>
+    <tags>pure-query</tags>
     <input>
       <param type="APTR" name="FontHandle">The font to use for calculating the character width.</param>
       <param type="UINT" name="Char">A 32-bit unicode character.</param>
@@ -116,6 +119,7 @@
     <comment>Closes the current sub-path.</comment>
     <prototype>void vec::ClosePath(APTR Path)</prototype>
     <tiriPrototype>ClosePath(Path:any)</tiriPrototype>
+    <tags>mutates-input</tags>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
     </input>
@@ -130,6 +134,7 @@
     <comment>Appends a quadratic Bezier curve to a generated path.</comment>
     <prototype>void vec::Curve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)</prototype>
     <tiriPrototype>Curve3(Path:any, CtrlX:num, CtrlY:num, X:num, Y:num)</tiriPrototype>
+    <tags>mutates-input</tags>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="CtrlX">Control point horizontal coordinate.</param>
@@ -147,6 +152,7 @@
     <comment>Appends a cubic Bezier curve to a generated path.</comment>
     <prototype>void vec::Curve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y)</prototype>
     <tiriPrototype>Curve4(Path:any, CtrlX1:num, CtrlY1:num, CtrlX2:num, CtrlY2:num, X:num, Y:num)</tiriPrototype>
+    <tags>mutates-input</tags>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="CtrlX1">Control point 1 horizontal coordinate.</param>
@@ -166,6 +172,7 @@
     <comment>Draws a generated vector path to a target bitmap.</comment>
     <prototype>ERR vec::DrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)</prototype>
     <tiriPrototype>err = DrawPath(Bitmap:obj, Path:any, StrokeWidth:num, StrokeStyle:obj, FillStyle:obj)</tiriPrototype>
+    <tags>mutates-object, blocking</tags>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a target <class name="Bitmap">Bitmap</class> object.</param>
       <param type="APTR" name="Path">The vector path to render.</param>
@@ -188,6 +195,7 @@
     <comment>Marks a vector transform as changed after direct matrix edits.</comment>
     <prototype>ERR vec::FlushMatrix(struct VectorMatrix * Matrix)</prototype>
     <tiriPrototype>err = FlushMatrix(Matrix:any)</tiriPrototype>
+    <tags>mutates-input, mutates-object</tags>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The matrix to be flushed.</param>
     </input>
@@ -206,6 +214,7 @@
     <comment>Generates an elliptical path resource.</comment>
     <prototype>ERR vec::GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, INT Vertices, APTR * Path)</prototype>
     <tiriPrototype>err, Path:any = GenerateEllipse(CX:num, CY:num, RX:num, RY:num, Vertices:num)</tiriPrototype>
+    <tags>caller-owns-result, creates-resource</tags>
     <input>
       <param type="DOUBLE" name="CX">Horizontal centre point of the ellipse.</param>
       <param type="DOUBLE" name="CY">Vertical centre point of the ellipse.</param>
@@ -229,6 +238,7 @@
     <comment>Generates a path resource from an SVG path command sequence.</comment>
     <prototype>ERR vec::GeneratePath(const std::string_view &amp; Sequence, APTR * Path)</prototype>
     <tiriPrototype>err, Path:any = GeneratePath(Sequence:str)</tiriPrototype>
+    <tags>caller-owns-result, creates-resource</tags>
     <input>
       <param type="const std::string_view &amp;" name="Sequence">The command sequence to process.  If no sequence is specified then the path will be empty.</param>
       <param type="APTR *" name="Path">A pointer variable that will receive the resulting path.</param>
@@ -265,6 +275,7 @@ Z: Close Path
     <comment>Generates a rectangular path resource.</comment>
     <prototype>ERR vec::GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR * Path)</prototype>
     <tiriPrototype>err, Path:any = GenerateRectangle(X:num, Y:num, Width:num, Height:num)</tiriPrototype>
+    <tags>caller-owns-result, creates-resource</tags>
     <input>
       <param type="DOUBLE" name="X">The horizontal position of the rectangle.</param>
       <param type="DOUBLE" name="Y">The vertical position of the rectangle.</param>
@@ -287,6 +298,7 @@ Z: Close Path
     <comment>Returns a cached handle for a font family, style and size.</comment>
     <prototype>ERR vec::GetFontHandle(const std::string_view &amp; Family, const std::string_view &amp; Style, INT Weight, INT Size, APTR * Handle)</prototype>
     <tiriPrototype>err, Handle:any = GetFontHandle(Family:str, Style:str, Weight:num, Size:num)</tiriPrototype>
+    <tags>api-owns-result, non-null-result, blocking</tags>
     <input>
       <param type="const std::string_view &amp;" name="Family">The name of the font family to access.</param>
       <param type="const std::string_view &amp;" name="Style">The preferred style to choose from the family.  Use <code>Regular</code> or <code>NULL</code> for the default.</param>
@@ -315,6 +327,7 @@ Z: Close Path
     <comment>Returns display metrics for a font handle.</comment>
     <prototype>ERR vec::GetFontMetrics(APTR Handle, struct FontMetrics * Info)</prototype>
     <tiriPrototype>err = GetFontMetrics(Handle:any, Info:any)</tiriPrototype>
+    <tags>mutates-input, pure-query</tags>
     <input>
       <param type="APTR" name="Handle">A font handle obtained from <function>GetFontHandle</function>.</param>
       <param type="struct FontMetrics *" name="Info">The font metrics for the <code>Handle</code> will be stored here.</param>
@@ -333,6 +346,7 @@ Z: Close Path
     <comment>Retrieves the next vertex from a generated path.</comment>
     <prototype>INT vec::GetVertex(APTR Path, DOUBLE * X, DOUBLE * Y)</prototype>
     <tiriPrototype>num, X:num, Y:num = GetVertex(Path:any)</tiriPrototype>
+    <tags>updates-seek-index</tags>
     <input>
       <param type="APTR" name="Path">The vector path to query.</param>
       <param type="DOUBLE *" name="X">Pointer to a double that will receive the X coordinate value.</param>
@@ -349,6 +363,7 @@ Z: Close Path
     <comment>Appends a line segment to a generated path.</comment>
     <prototype>void vec::LineTo(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
     <tiriPrototype>LineTo(Path:any, X:num, Y:num)</tiriPrototype>
+    <tags>mutates-input</tags>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="X">The line end point on the horizontal plane.</param>
@@ -364,6 +379,7 @@ Z: Close Path
     <comment>Moves the current point in a generated path.</comment>
     <prototype>void vec::MoveTo(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
     <tiriPrototype>MoveTo(Path:any, X:num, Y:num)</tiriPrototype>
+    <tags>mutates-input</tags>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="X">The horizontal end point for the command.</param>
@@ -379,6 +395,7 @@ Z: Close Path
     <comment>Multiplies a matrix by explicit affine transform values.</comment>
     <prototype>ERR vec::Multiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)</prototype>
     <tiriPrototype>err = Multiply(Matrix:any, ScaleX:num, ShearY:num, ShearX:num, ScaleY:num, TranslateX:num, TranslateY:num)</tiriPrototype>
+    <tags>mutates-input, mutates-object</tags>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="ScaleX">Matrix value A.</param>
@@ -402,6 +419,7 @@ Z: Close Path
     <comment>Multiplies a target matrix by a source matrix.</comment>
     <prototype>ERR vec::MultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source)</prototype>
     <tiriPrototype>err = MultiplyMatrix(Target:any, Source:any)</tiriPrototype>
+    <tags>mutates-input, mutates-object</tags>
     <input>
       <param type="struct VectorMatrix *" name="Target">The target transformation matrix.</param>
       <param type="struct VectorMatrix *" name="Source">The source transformation matrix.</param>
@@ -420,6 +438,7 @@ Z: Close Path
     <comment>Parses an SVG transform string and applies it to a matrix.</comment>
     <prototype>ERR vec::ParseTransform(struct VectorMatrix * Matrix, const std::string_view &amp; Transform)</prototype>
     <tiriPrototype>err = ParseTransform(Matrix:any, Transform:str)</tiriPrototype>
+    <tags>mutates-input, mutates-object</tags>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="const std::string_view &amp;" name="Transform">The transform to apply, expressed as a string instruction.</param>
@@ -440,6 +459,7 @@ Z: Close Path
     <comment>Parses a painter string to its colour, gradient, pattern or image value.</comment>
     <prototype>ERR vec::ReadPainter(objVectorScene * Scene, const std::string_view &amp; IRI, struct VectorPainter * Painter, CSTRING * Result)</prototype>
     <tiriPrototype>err, Result:str = ReadPainter(Scene:obj, IRI:str, Painter:any)</tiriPrototype>
+    <tags>mutates-input, object-owns-result</tags>
     <input>
       <param type="objVectorScene *" name="Scene">Optional.  Required if <code>url()</code> references are to be resolved.</param>
       <param type="const std::string_view &amp;" name="IRI">The IRI string to be translated.</param>
@@ -493,6 +513,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Resets a transformation matrix to the identity transform.</comment>
     <prototype>ERR vec::ResetMatrix(struct VectorMatrix * Matrix)</prototype>
     <tiriPrototype>err = ResetMatrix(Matrix:any)</tiriPrototype>
+    <tags>mutates-input, mutates-object</tags>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
     </input>
@@ -510,6 +531,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Resets path iteration to the first vertex.</comment>
     <prototype>void vec::RewindPath(APTR Path)</prototype>
     <tiriPrototype>RewindPath(Path:any)</tiriPrototype>
+    <tags>updates-seek-index</tags>
     <input>
       <param type="APTR" name="Path">The vector path to rewind.</param>
     </input>
@@ -524,6 +546,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Applies a rotation transform to a matrix.</comment>
     <prototype>ERR vec::Rotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)</prototype>
     <tiriPrototype>err = Rotate(Matrix:any, Angle:num, CenterX:num, CenterY:num)</tiriPrototype>
+    <tags>mutates-input, mutates-object</tags>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="Angle">Angle of rotation, in degrees.</param>
@@ -544,6 +567,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Applies a scale transform to a matrix.</comment>
     <prototype>ERR vec::Scale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
     <tiriPrototype>err = Scale(Matrix:any, X:num, Y:num)</tiriPrototype>
+    <tags>mutates-input, mutates-object</tags>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="X">The scale factor on the x-axis.</param>
@@ -565,6 +589,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Applies a skew transform to a matrix.</comment>
     <prototype>ERR vec::Skew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
     <tiriPrototype>err = Skew(Matrix:any, X:num, Y:num)</tiriPrototype>
+    <tags>mutates-input, mutates-object</tags>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="X">The angle to skew along the horizontal.</param>
@@ -586,6 +611,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Appends a smooth quadratic Bezier curve to a generated path.</comment>
     <prototype>void vec::Smooth3(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
     <tiriPrototype>Smooth3(Path:any, X:num, Y:num)</tiriPrototype>
+    <tags>mutates-input</tags>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="X">The horizontal end point for the smooth3 command.</param>
@@ -601,6 +627,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Appends a smooth cubic Bezier curve to a generated path.</comment>
     <prototype>void vec::Smooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)</prototype>
     <tiriPrototype>Smooth4(Path:any, CtrlX:num, CtrlY:num, X:num, Y:num)</tiriPrototype>
+    <tags>mutates-input</tags>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="CtrlX">Control point horizontal coordinate.</param>
@@ -618,6 +645,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Calculates the rendered width of a UTF-8 string.</comment>
     <prototype>DOUBLE vec::StringWidth(APTR FontHandle, const std::string_view &amp; String, INT Chars)</prototype>
     <tiriPrototype>num = StringWidth(FontHandle:any, String:str, Chars:num)</tiriPrototype>
+    <tags>blocking, pure-query</tags>
     <input>
       <param type="APTR" name="FontHandle">A font handle obtained from <function>GetFontHandle</function>.</param>
       <param type="const std::string_view &amp;" name="String">Pointer to a null-terminated string.</param>
@@ -635,6 +663,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Calls a function for each traced coordinate in a generated path.</comment>
     <prototype>ERR vec::TracePath(APTR Path, FUNCTION * Callback, DOUBLE Scale)</prototype>
     <tiriPrototype>err = TracePath(Path:any, Callback:func, Scale:num)</tiriPrototype>
+    <tags>callback-inlines, updates-seek-index</tags>
     <input>
       <param type="APTR" name="Path">The vector path to trace.</param>
       <param type="FUNCTION *" name="Callback">A function to call with the path coordinates.</param>
@@ -657,6 +686,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Applies a translation transform to a matrix.</comment>
     <prototype>ERR vec::Translate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
     <tiriPrototype>err = Translate(Matrix:any, X:num, Y:num)</tiriPrototype>
+    <tags>mutates-input, mutates-object</tags>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="X">Translation along the x-axis.</param>
@@ -676,6 +706,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
     <comment>Translates every vertex in a generated path.</comment>
     <prototype>void vec::TranslatePath(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
     <tiriPrototype>TranslatePath(Path:any, X:num, Y:num)</tiriPrototype>
+    <tags>mutates-input</tags>
     <input>
       <param type="APTR" name="Path">Pointer to a generated path.</param>
       <param type="DOUBLE" name="X">Horizontal offset.</param>

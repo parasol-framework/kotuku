@@ -984,6 +984,9 @@ True: The `Child` surface belongs to the `Parent`.
 False: The `Child` surface is not a child of `Parent`.
 NullArgs
 
+-TAGS-
+blocking, pure-query
+
 *********************************************************************************************************************/
 
 ERR CheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
@@ -1036,6 +1039,9 @@ Okay
 NullArgs
 Search: The supplied `Surface` ID did not refer to a recognised surface object
 AccessObject
+
+-TAGS-
+mutates-object, blocking
 
 *********************************************************************************************************************/
 
@@ -1134,6 +1140,9 @@ Okay
 NullArgs
 Search: The `Surface` ID does not refer to an existing surface object
 
+-TAGS-
+mutates-object, blocking
+
 *********************************************************************************************************************/
 
 ERR ExposeSurface(OBJECTID SurfaceID, int X, int Y, int Width, int Height, EXF Flags)
@@ -1163,6 +1172,9 @@ This function returns the modal surface for the running process.  Returns zero i
 
 -RESULT-
 oid: The UID of the modal surface, or zero.
+
+-TAGS-
+blocking
 
 *********************************************************************************************************************/
 
@@ -1200,6 +1212,9 @@ oid Surface: The surface to query.  If zero, the top-level display is queried.
 -ERRORS-
 Okay
 Search: The supplied `Surface` ID did not refer to a recognised surface object.
+
+-TAGS-
+blocking, pure-query
 
 *********************************************************************************************************************/
 
@@ -1255,6 +1270,9 @@ Okay
 NullArgs
 AccessMemory
 
+-TAGS-
+blocking, pure-query
+
 *********************************************************************************************************************/
 
 ERR GetSurfaceFlags(OBJECTID SurfaceID, RNF *Flags)
@@ -1291,6 +1309,9 @@ oid Surface: The unique ID of a @Surface to query.  If zero, the root surface is
 Okay
 NullArgs
 Search: The supplied SurfaceID did not refer to a recognised surface object.
+
+-TAGS-
+api-owns-result, volatile-result, blocking
 
 *********************************************************************************************************************/
 
@@ -1345,6 +1366,9 @@ This function returns the unique ID of the surface that has the user's focus.
 -RESULT-
 oid: Returns the ID of the surface object that has the user focus, or zero on failure.
 
+-TAGS-
+blocking, pure-query
+
 *********************************************************************************************************************/
 
 OBJECTID GetUserFocus(void)
@@ -1379,6 +1403,9 @@ oid Surface: The surface to query.  If zero, the top-level display will be queri
 Okay
 Failed
 Search: The supplied `Surface` ID did not refer to a recognised surface object.
+
+-TAGS-
+blocking, pure-query
 
 *********************************************************************************************************************/
 
@@ -1436,6 +1463,9 @@ oid Surface: The surface to enable as modal.
 
 -RESULT-
 oid: The object ID of the previous modal surface is returned (zero if there was no currently modal surface).
+
+-TAGS-
+mutates-object, blocking, callback-inlines
 
 *********************************************************************************************************************/
 
@@ -1498,6 +1528,9 @@ ptr(func) Callback: A function to callback when the event is triggered.
 -ERRORS-
 Okay
 NullArgs
+
+-TAGS-
+callback-held, does-not-take-ownership, blocking
 
 -END-
 
