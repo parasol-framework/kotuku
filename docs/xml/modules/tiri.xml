@@ -39,6 +39,7 @@
       <error code="Args">Invalid arguments passed to function</error>
       <error code="ObjectCorrupt">Privately maintained memory has become inaccessible.</error>
       <error code="FieldTypeMismatch">A valid field type was not specified in the <code>Type</code> parameter.</error>
+      <error code="InvalidState">The script does not have an active Tiri state.</error>
     </result>
   </function>
 

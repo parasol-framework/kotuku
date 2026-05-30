@@ -27,7 +27,7 @@ directly to the relevant files unless the user explicitly asks for review-only f
 ## Embedded C++ Documentation
 
 - Read `docs/wiki/Embedded-Document-Formatting.md` before editing embedded C++ documentation.
-- Edit only existing documentation sections marked with `-FUNCTION-`, `-CLASS-`, `-ACTION-`, `-METHOD-`, or `-FIELD-`.
+- Edit only existing documentation sections marked with `-FUNCTION-`, `-MODULE-`, `-CLASS-`, `-ACTION-`, `-METHOD-`, or `-FIELD-`.
   Ignore undocumented functions unless the user explicitly asks for new documentation sections.
 - Do not add new marked sections unless the user explicitly asks for them.
 - Use only the XML formatting features allowed by the embedded document formatting guide. Do not use markdown formatting
@@ -48,6 +48,7 @@ directly to the relevant files unless the user explicitly asks for review-only f
   to inject the generated value table instead of writing the value breakdown manually.
 - For existing `-TAGS-` sections, ensure that the existing tags are not stale.
 - If a documentation section is associated with a function, scan the function for characteristics that are relevant to the `-TAGS-` section and add relevant tags if not already present.  For documented functions, methods and actions, a new `-TAGS-` section can be added if one is not already present.
+- For any given header (e.g. `-FUNCTION-`), the accepted order for the body of document sections is `-INPUT-`, `-RESULT-`, `-ERRORS-`, `-TAGS-`, `-END-`
 
 ## Markdown Documentation
 

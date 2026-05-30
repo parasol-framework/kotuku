@@ -125,6 +125,8 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="Failed">General failure</error>
+      <error code="OutOfRange">A value is outside of the valid range</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -145,6 +147,7 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="OutOfRange">A value is outside of the valid range</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -207,6 +210,7 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="OutOfRange">A value is outside of the valid range</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -228,6 +232,8 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="Failed">General failure</error>
+      <error code="OutOfRange">A value is outside of the valid range</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>

@@ -49,6 +49,8 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="NoData">No data is available for use</error>
+      <error code="Mismatch">A mis-match has been detected that prevents further processing</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -68,6 +70,7 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="NoData">No data is available for use</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -87,6 +90,7 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="NoData">No data is available for use</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
