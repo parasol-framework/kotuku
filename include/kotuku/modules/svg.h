@@ -94,21 +94,18 @@ class objSVG : public Object {
    }
 
    inline ERR setTitle(const std::string_view &Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(target, field, 0x00804300, &Value, 1);
+      this->Title = Value;
+      return ERR::Okay;
    }
 
    inline ERR setStatement(const std::string_view &Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[10];
-      return field->WriteValue(target, field, 0x00804300, &Value, 1);
+      this->Statement = Value;
+      return ERR::Okay;
    }
 
    inline ERR setColour(const std::string_view &Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[4];
-      return field->WriteValue(target, field, 0x00804308, &Value, 1);
+      this->Colour = Value;
+      return ERR::Okay;
    }
 
    inline ERR setFrame(const int Value) noexcept {

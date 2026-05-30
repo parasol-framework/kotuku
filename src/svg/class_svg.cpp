@@ -184,7 +184,7 @@ static ERR SVG_Init(extSVG *Self)
 
 //********************************************************************************************************************
 
-static ERR SVF_NewObject(extSVG *Self)
+static ERR SVG_NewObject(extSVG *Self)
 {
    #ifdef __ANDROID__
       Self->FrameRate = 30; // Choose a lower frame rate for Android devices, so as to minimise power consumption.
@@ -192,6 +192,7 @@ static ERR SVF_NewObject(extSVG *Self)
       Self->FrameRate = 60;
    #endif
    Self->Colour = "rgb(0,0,0)"; // Default colour, used for 'currentColor' references
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
