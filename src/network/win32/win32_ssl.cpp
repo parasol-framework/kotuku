@@ -69,8 +69,8 @@ static ERR tls_setup_server(extNetServer *Self)
       return ERR::Failed;
    }
 
-   if (Self->SSLCertificate) {
-      log.msg("Loading custom SSL server certificate: %s", Self->SSLCertificate);
+   if (not Self->SSLCertificate.empty()) {
+      log.msg("Loading custom SSL server certificate: %s", Self->SSLCertificate.c_str());
 
       ssl_certificate_paths paths;
       if (auto error = resolve_ssl_certificate_paths(Self, paths); error != ERR::Okay) {

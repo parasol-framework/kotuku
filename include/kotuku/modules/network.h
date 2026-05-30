@@ -677,22 +677,22 @@ class objNetServer : public objNetSocket {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   template <class T> inline ERR setSSLCertificate(T && Value) noexcept {
+   inline ERR setSSLCertificate(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804508, &Value, 1);
    }
 
-   template <class T> inline ERR setSSLPrivateKey(T && Value) noexcept {
+   inline ERR setSSLPrivateKey(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
-      return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804508, &Value, 1);
    }
 
-   template <class T> inline ERR setSSLKeyPassword(T && Value) noexcept {
+   inline ERR setSSLKeyPassword(const std::string_view &Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x00804508, &Value, 1);
    }
 
 };
@@ -741,4 +741,3 @@ extern uint32_t LongToHost(uint32_t Value);
 extern ERR SetSSL(objNetSocket *NetSocket, const std::string_view & Command, const std::string_view & Value);
 } // namespace
 #endif // KOTUKU_STATIC
-

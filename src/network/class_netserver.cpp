@@ -121,10 +121,6 @@ static ERR NETSERVER_DisconnectSocket(extNetServer *Self, struct ns::DisconnectS
 
 static ERR NETSERVER_Free(extNetServer *Self)
 {
-   if (Self->SSLCertificate) { FreeResource(Self->SSLCertificate); Self->SSLCertificate = nullptr; }
-   if (Self->SSLKeyPassword) { FreeResource(Self->SSLKeyPassword); Self->SSLKeyPassword = nullptr; }
-   if (Self->SSLPrivateKey)  { FreeResource(Self->SSLPrivateKey); Self->SSLPrivateKey = nullptr; }
-
    #ifndef DISABLE_SSL
       #ifndef _WIN32
          if (Self->ServerSSLContext) {
@@ -164,6 +160,14 @@ static ERR NETSERVER_NewObject(extNetServer *Self)
 
 //********************************************************************************************************************
 
+static ERR NETSERVER_NewPlacement(extNetServer *Self)
+{
+   new (Self) extNetServer;
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
 static ERR NETSERVER_Read(extNetServer *Self, struct acRead *Args)
 {
    // Not allowed - client must read from the ClientSocket.
@@ -189,29 +193,29 @@ NetServer will either self-sign or use a localhost certificate, if available.
 
 *********************************************************************************************************************/
 
-static ERR NETSERVER_SET_SSLCertificate(extNetServer *Self, CSTRING Value)
+static ERR NETSERVER_GET_SSLCertificate(extNetServer *Self, std::string_view &Value)
 {
-   if (Self->SSLCertificate) { FreeResource(Self->SSLCertificate); Self->SSLCertificate = nullptr; }
+   Value = Self->SSLCertificate;
+   return ERR::Okay;
+}
 
-   if ((Value) and (*Value)) {
+static ERR NETSERVER_SET_SSLCertificate(extNetServer *Self, const std::string_view &Value)
+{
+   Self->SSLCertificate.clear();
+
+   if (not Value.empty()) {
       kt::Log log;
 
       LOC type;
       if ((AnalysePath(Value, &type) IS ERR::Okay) and (type IS LOC::FILE)) {
          if (ssl_certificate_format(Value) != SSLCERTFORMAT::NIL) {
-            Self->SSLCertificate = kt::strclone(Value);
+            Self->SSLCertificate.assign(Value);
          }
          else return log.warning(ERR::InvalidData);
       }
       else return log.warning(ERR::FileNotFound);
    }
 
-   return ERR::Okay;
-}
-
-static ERR NETSERVER_GET_SSLCertificate(extNetServer *Self, CSTRING *Value)
-{
-   *Value = Self->SSLCertificate;
    return ERR::Okay;
 }
 
@@ -226,28 +230,28 @@ will either self-sign or use a localhost private key, if available.
 
 *********************************************************************************************************************/
 
-static ERR NETSERVER_SET_SSLPrivateKey(extNetServer *Self, CSTRING Value)
+static ERR NETSERVER_GET_SSLPrivateKey(extNetServer *Self, std::string_view &Value)
 {
-   if (Self->SSLPrivateKey) { FreeResource(Self->SSLPrivateKey); Self->SSLPrivateKey = nullptr; }
+   Value = Self->SSLPrivateKey;
+   return ERR::Okay;
+}
 
-   if ((Value) and (*Value)) {
+static ERR NETSERVER_SET_SSLPrivateKey(extNetServer *Self, const std::string_view &Value)
+{
+   Self->SSLPrivateKey.clear();
+
+   if (not Value.empty()) {
       kt::Log log;
 
       LOC type;
       if ((AnalysePath(Value, &type) IS ERR::Okay) and (type IS LOC::FILE)) {
          if (ssl_private_key_format(Value) != SSLCERTFORMAT::NIL) {
-            Self->SSLPrivateKey = kt::strclone(Value);
+            Self->SSLPrivateKey.assign(Value);
          }
          else return log.warning(ERR::InvalidData);
       }
       else return log.warning(ERR::FileNotFound);
    }
-   return ERR::Okay;
-}
-
-static ERR NETSERVER_GET_SSLPrivateKey(extNetServer *Self, CSTRING *Value)
-{
-   *Value = Self->SSLPrivateKey;
    return ERR::Okay;
 }
 
@@ -261,16 +265,15 @@ not encrypted, this field can be left empty.
 
 *********************************************************************************************************************/
 
-static ERR NETSERVER_SET_SSLKeyPassword(extNetServer *Self, CSTRING Value)
+static ERR NETSERVER_GET_SSLKeyPassword(extNetServer *Self, std::string_view &Value)
 {
-   if (Self->SSLKeyPassword) { FreeResource(Self->SSLKeyPassword); Self->SSLKeyPassword = nullptr; }
-   if ((Value) and (*Value)) Self->SSLKeyPassword = kt::strclone(Value);
+   Value = Self->SSLKeyPassword;
    return ERR::Okay;
 }
 
-static ERR NETSERVER_GET_SSLKeyPassword(extNetServer *Self, CSTRING *Value)
+static ERR NETSERVER_SET_SSLKeyPassword(extNetServer *Self, const std::string_view &Value)
 {
-   *Value = Self->SSLKeyPassword;
+   Self->SSLKeyPassword.assign(Value);
    return ERR::Okay;
 }
 
@@ -612,9 +615,9 @@ static const FieldArray clNetServerFields[] = {
    { "Backlog",        FDF_VIRTUAL|FDF_INT|FDF_RI,    NETSERVER_GET_Backlog, NETSERVER_SET_Backlog },
    { "ClientLimit",    FDF_VIRTUAL|FDF_INT|FDF_RW,    NETSERVER_GET_ClientLimit, NETSERVER_SET_ClientLimit },
    { "SocketLimit",    FDF_VIRTUAL|FDF_INT|FDF_RW,    NETSERVER_GET_SocketLimit, NETSERVER_SET_SocketLimit },
-   { "SSLCertificate", FDF_VIRTUAL|FDF_STRING|FDF_RI, NETSERVER_GET_SSLCertificate, NETSERVER_SET_SSLCertificate },
-   { "SSLPrivateKey",  FDF_VIRTUAL|FDF_STRING|FDF_RI, NETSERVER_GET_SSLPrivateKey, NETSERVER_SET_SSLPrivateKey },
-   { "SSLKeyPassword", FDF_VIRTUAL|FDF_STRING|FDF_RI, NETSERVER_GET_SSLKeyPassword, NETSERVER_SET_SSLKeyPassword },
+   { "SSLCertificate", FDF_VIRTUAL|FDF_CPPSTRING|FDF_RI, NETSERVER_GET_SSLCertificate, NETSERVER_SET_SSLCertificate },
+   { "SSLPrivateKey",  FDF_VIRTUAL|FDF_CPPSTRING|FDF_RI, NETSERVER_GET_SSLPrivateKey, NETSERVER_SET_SSLPrivateKey },
+   { "SSLKeyPassword", FDF_VIRTUAL|FDF_CPPSTRING|FDF_RI, NETSERVER_GET_SSLKeyPassword, NETSERVER_SET_SSLKeyPassword },
    { "Clients",        FDF_VIRTUAL|FDF_OBJECT|FDF_R,  NETSERVER_GET_Clients, nullptr, CLASSID::NETCLIENT },
    END_FIELD
 };

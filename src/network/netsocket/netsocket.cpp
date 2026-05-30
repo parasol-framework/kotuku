@@ -456,7 +456,8 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
 
    free_socket(Self);
 
-   Self->~extNetSocket();
+   if (Self->classID() IS CLASSID::NETSERVER) ((extNetServer *)Self)->~extNetServer();
+   else Self->~extNetSocket();
    return ERR::Okay;
 }
 
