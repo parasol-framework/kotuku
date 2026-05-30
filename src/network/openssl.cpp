@@ -367,8 +367,8 @@ static ERR tls_setup_server(extNetServer *Self)
 
    if (auto server_ctx = SSL_CTX_new(TLS_server_method())) {
       // Check if custom certificate is specified
-      if (Self->SSLCertificate and *Self->SSLCertificate) {
-         log.msg("Loading custom SSL server certificate: %s", Self->SSLCertificate);
+      if (not Self->SSLCertificate.empty()) {
+         log.msg("Loading custom SSL server certificate: %s", Self->SSLCertificate.c_str());
          if ((error = loadCustomCertificateOpenSSL(Self, server_ctx)) IS ERR::Okay) {
             setup_success = true;
             log.msg("Custom SSL server certificate loaded successfully.");

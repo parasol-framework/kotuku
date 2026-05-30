@@ -168,9 +168,9 @@ class extNetServer : public extNetSocket {
 
    objNetClient *LastClient;   // For linked-list management.
    objNetClient *Clients;      // Lists all clients connected to the NetServer.
-   CSTRING SSLCertificate;     // SSL certificate file to use for SSL listeners.
-   CSTRING SSLPrivateKey;      // Private key file to use for SSL listeners.
-   CSTRING SSLKeyPassword;     // SSL private key password.
+   std::string SSLCertificate; // SSL certificate file to use for SSL listeners.
+   std::string SSLPrivateKey;  // Private key file to use for SSL listeners.
+   std::string SSLKeyPassword; // SSL private key password.
    int    Backlog;             // The maximum number of connections that can be queued against the socket.
    int    ClientLimit;         // The maximum number of client IP addresses that can be connected to the NetServer.
    int    SocketLimit;         // Limits the number of connected sockets per client IP address.
@@ -456,7 +456,7 @@ static std::string glCertPath;
 
    static ERR resolve_ssl_certificate_paths(extNetServer *Self, ssl_certificate_paths &Paths)
    {
-      if ((!Self) or (!Self->SSLCertificate) or (!*Self->SSLCertificate)) return ERR::FieldNotSet;
+      if ((not Self) or Self->SSLCertificate.empty()) return ERR::FieldNotSet;
 
       Paths.Format = ssl_certificate_format(Self->SSLCertificate);
       if (Paths.Format IS SSLCERTFORMAT::NIL) return ERR::InvalidData;
@@ -465,7 +465,7 @@ static std::string glCertPath;
          return error;
       }
 
-      if (Self->SSLPrivateKey) {
+      if (not Self->SSLPrivateKey.empty()) {
          if (ssl_private_key_format(Self->SSLPrivateKey) IS SSLCERTFORMAT::NIL) return ERR::InvalidData;
 
          if (auto error = ResolvePath(Self->SSLPrivateKey, RSF::NIL, &Paths.PrivateKeyPath); error != ERR::Okay) {
@@ -474,7 +474,7 @@ static std::string glCertPath;
          Paths.PrivateKey.emplace(Paths.PrivateKeyPath);
       }
 
-      if (Self->SSLKeyPassword) Paths.Password.emplace(Self->SSLKeyPassword);
+      if (not Self->SSLKeyPassword.empty()) Paths.Password.emplace(Self->SSLKeyPassword);
 
       return ERR::Okay;
    }

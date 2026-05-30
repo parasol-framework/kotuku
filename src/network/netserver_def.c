@@ -34,9 +34,9 @@ static const struct MethodEntry clNetServerMethods[] = {
 static const struct ActionArray clNetServerActions[] = {
    { AC::Free, NETSERVER_Free },
    { AC::Init, NETSERVER_Init },
+   { AC::NewPlacement, NETSERVER_NewPlacement },
    { AC::NewObject, NETSERVER_NewObject },
    { AC::Read, NETSERVER_Read },
    { AC::Write, NETSERVER_Write },
    { AC::NIL, nullptr }
 };
-
