@@ -18,7 +18,6 @@
 #define FDF_SYNONYM    FD_SYNONYM
 
 #define FDF_CPPSTRING   (FD_CPP|FD_STRING)
-#define FDF_STRVIEW     (FD_CPP|FD_STRING)
 #define FDF_UNSIGNED    FD_UNSIGNED
 #define FDF_FUNCTION    FD_FUNCTION           // sizeof(FUNCTION) - use FDF_FUNCTIONPTR for sizeof(APTR)
 #define FDF_FUNCTIONPTR (FD_FUNCTION|FD_POINTER)
@@ -27,7 +26,8 @@
 #define FDF_OBJECT      (FD_POINTER|FD_OBJECT)  // Field refers to another object
 #define FDF_OBJECTID    (FD_INT|FD_OBJECT)      // Field refers to another object by ID
 #define FDF_LOCAL       (FD_POINTER|FD_LOCAL)   // Field refers to a local object
-#define FDF_SCALED      FD_SCALED
+#define FDF_NORMALISED  FD_NORMALISED           // Value between 0 and 1
+#define FDF_SCALED      FD_NORMALISED           // Legacy
 #define FDF_FLAGS       FD_FLAGS                // Field contains flags
 #define FDF_ALLOC       FD_ALLOC                // Field is a dynamic allocation - either a memory block or object
 #define FDF_LOOKUP      FD_LOOKUP               // Lookup names for values in this field
@@ -44,22 +44,6 @@
 #define FDF_VIRTUAL     FD_VIRTUAL
 #define FDF_INTFLAGS    (FDF_INT|FDF_FLAGS)
 #define FDF_FIELDTYPES  (FD_INT|FD_DOUBLE|FD_INT64|FD_POINTER|FD_UNIT|FD_BYTE|FD_ARRAY|FD_FUNCTION)
-
-// These constants have to match the FD* constants << 32
-
-#define TDOUBLE   0x8000000000000000LL
-#define TINT      0x4000000000000000LL
-#define TUNIT     0x2000000000000000LL
-#define TFLOAT    0x1000000000000000LL // NB: Floats are upscaled to doubles when passed as v-args.
-#define TPTR      0x0800000000000000LL
-#define TINT64    0x0400000000000000LL
-#define TFUNCTION 0x0200000000000000LL
-#define TSTR      0x0080000000000000LL
-#define TARRAY    0x0000100000000000LL
-#define TSCALE    0x0020000000000000LL
-#define TAGEND    0LL
-#define TAGDIVERT -1LL
-#define TSTRING   TSTR
 
 namespace kt {
 
@@ -92,6 +76,8 @@ struct FieldValue {
    constexpr FieldValue(uint32_t pFID, CPTR pValue)     : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
    constexpr FieldValue(uint32_t pFID, CPTR pValue, int pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
 };
+
+inline ERR write_field_value(OBJECTPTR Target, struct Field *FieldPtr, const FieldValue &Value);
 
 }
 
@@ -145,8 +131,10 @@ class ScopedObjectAccess {
       ERR error;
 
       inline ScopedObjectAccess(OBJECTPTR Object);
+      ScopedObjectAccess(const ScopedObjectAccess &) = delete;
+      ScopedObjectAccess & operator=(const ScopedObjectAccess &) = delete;
       inline ~ScopedObjectAccess();
-      inline bool granted() { return error == ERR::Okay; }
+      inline bool granted() { return error IS ERR::Okay; }
       inline void release();
 };
 
@@ -165,6 +153,8 @@ class SharedObjectAccess {
       ERR error;
 
       inline SharedObjectAccess(OBJECTPTR Object);
+      SharedObjectAccess(const SharedObjectAccess &) = delete;
+      SharedObjectAccess & operator=(const SharedObjectAccess &) = delete;
       inline ~SharedObjectAccess();
       inline bool granted() { return error IS ERR::Okay; }
       inline void release();
@@ -337,65 +327,57 @@ struct Object { // Must be 64-bit aligned
       return obj ? true : false;
    }
 
+   private:
+   inline ERR resolve_write_field(FIELD FieldID, Object *&Target, struct Field *&FieldPtr, bool Array) {
+      if (not (FieldPtr = FindField(this, FieldID, &Target))) return ERR::UnsupportedField;
+      if ((Array) and not (FieldPtr->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
+
+      auto ctx = CurrentContext();
+      if ((not FieldPtr->writeable()) and (ctx != Target)) return ERR::NoFieldAccess;
+      if ((FieldPtr->Flags & FD_INIT) and (Target->initialised()) and (ctx != Target)) return ERR::NoFieldAccess;
+
+      return ERR::Okay;
+   }
+
+   public:
+
    // set() support for array fields
 
    template <class T> ERR set(FIELD FieldID, const T *Data, size_t Elements, int Type = FIELD_TYPECHECK<T>()) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (not (field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_ARRAY|Type, Data, Elements);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, true); error != ERR::Okay) return error;
+      return field->WriteValue(target, field, FD_ARRAY|Type, Data, Elements);
    }
 
    template <class T, std::size_t SIZE> ERR set(FIELD FieldID, const std::array<T, SIZE> &Value, int Type = FIELD_TYPECHECK<T>()) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (not (field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-
-         return field->WriteValue(target, field, FD_ARRAY|Type, Value.data(), SIZE);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, true); error != ERR::Okay) return error;
+      return field->WriteValue(target, field, FD_ARRAY|Type, Value.data(), SIZE);
    }
 
    template <class T> ERR set(FIELD FieldID, const std::vector<T> &Value, int Type = FIELD_TYPECHECK<T>()) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (not (field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-
-         return field->WriteValue(target, field, FD_ARRAY|Type, const_cast<T *>(Value.data()), std::ssize(Value));
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, true); error != ERR::Okay) return error;
+      return field->WriteValue(target, field, FD_ARRAY|Type, const_cast<T *>(Value.data()), std::ssize(Value));
    }
 
    template <class T> ERR set(FIELD FieldID, const kt::vector<T> &Value, int Type = FIELD_TYPECHECK<T>()) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (not (field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, true); error != ERR::Okay) return error;
 
-         if (field->Flags & FD_CPP) return field->WriteValue(target, field, FD_ARRAY|Type, &Value, std::ssize(Value));
-         else return field->WriteValue(target, field, FD_ARRAY|Type, const_cast<T *>(Value.data()), std::ssize(Value));
-      }
-      else return ERR::UnsupportedField;
+      if (field->Flags & FD_CPP) return field->WriteValue(target, field, FD_ARRAY|Type, &Value, std::ssize(Value));
+      else return field->WriteValue(target, field, FD_ARRAY|Type, const_cast<T *>(Value.data()), std::ssize(Value));
    }
 
    inline ERR set(FIELD FieldID, const FRGB &Value) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if (not (field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_ARRAY|FD_FLOAT, &Value, 4);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, true); error != ERR::Okay) return error;
+      return field->WriteValue(target, field, FD_ARRAY|FD_FLOAT, &Value, 4);
    }
 
    // set() support for numeric types
@@ -407,75 +389,54 @@ struct Object { // Must be 64-bit aligned
 
    template <class T> ERR set(FIELD FieldID, const T Value) requires std::integral<T> or std::floating_point<T> {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FIELD_TYPECHECK<T>(), &Value, 1);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, false); error != ERR::Okay) return error;
+      return field->WriteValue(target, field, FIELD_TYPECHECK<T>(), &Value, 1);
    }
 
    inline ERR set(FIELD FieldID, const FUNCTION *Value) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_FUNCTION, Value, 1);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, false); error != ERR::Okay) return error;
+      return field->WriteValue(target, field, FD_FUNCTION, Value, 1);
    }
 
    [[deprecated]] inline ERR set(FIELD FieldID, const char *Value) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         std::string_view sv(Value);
-         return field->WriteValue(target, field, FD_STRING|FD_CPP, &sv, 1);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, false); error != ERR::Okay) return error;
+      std::string_view sv(Value ? Value : "");
+      return field->WriteValue(target, field, FD_STRING|FD_CPP, &sv, 1);
    }
 
    [[deprecated]] inline ERR set(FIELD FieldID, const unsigned char *Value) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         std::string_view sv((CSTRING)Value);
-         return field->WriteValue(target, field, FD_STRING|FD_CPP, &sv, 1);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, false); error != ERR::Okay) return error;
+      std::string_view sv(Value ? (CSTRING)Value : "");
+      return field->WriteValue(target, field, FD_STRING|FD_CPP, &sv, 1);
    }
 
    inline ERR set(FIELD FieldID, std::string_view Value) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_CPP|FD_STRING, &Value, 1);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, false); error != ERR::Okay) return error;
+      return field->WriteValue(target, field, FD_CPP|FD_STRING, &Value, 1);
    }
 
    inline ERR set(FIELD FieldID, const std::string &Value) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         auto sv = std::string_view(Value);
-         return field->WriteValue(target, field, FD_CPP|FD_STRING, &sv, 1);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, false); error != ERR::Okay) return error;
+      auto sv = std::string_view(Value);
+      return field->WriteValue(target, field, FD_CPP|FD_STRING, &sv, 1);
    }
 
    inline ERR set(FIELD FieldID, const Unit *Value) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_UNIT, Value, 1);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, false); error != ERR::Okay) return error;
+      return field->WriteValue(target, field, FD_UNIT, Value, 1);
    }
 
    inline ERR set(FIELD FieldID, const Unit &Value) {
@@ -486,12 +447,9 @@ struct Object { // Must be 64-bit aligned
 
    inline ERR set(FIELD FieldID, const void *Value) {
       Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((not field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_POINTER, Value, 1);
-      }
-      else return ERR::UnsupportedField;
+      struct Field *field;
+      if (auto error = resolve_write_field(FieldID, target, field, false); error != ERR::Okay) return error;
+      return field->WriteValue(target, field, FD_POINTER, Value, 1);
    }
 
    // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
@@ -671,7 +629,7 @@ struct Object { // Must be 64-bit aligned
 
    // Retrieve a direct pointer to a string field, no-copy operation.  Result will require deallocation by the client if the field is marked with ALLOC.
 
-   inline ERR get(FIELD FieldID, CSTRING &Value) { // deprecated
+   [[deprecated("Use string_view instead")]] inline ERR get(FIELD FieldID, CSTRING &Value) { // deprecated
       Object *target;
       Value = nullptr;
       if (auto field = FindField(this, FieldID, &target)) {
@@ -905,20 +863,7 @@ struct Object { // Must be 64-bit aligned
             else {
                if (target != this) target->lock();
 
-               ERR error;
-               if ((f.Type & FD_STRING) and (f.Type & FD_CPP)) {
-                  error = field->WriteValue(target, field, f.Type, &f.CPPString, 0);
-               }
-               else if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_UNIT)) {
-                  error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
-               }
-               else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
-                  error = field->WriteValue(target, field, f.Type, &f.Double, 1);
-               }
-               else if (f.Type & FD_INT64) {
-                  error = field->WriteValue(target, field, f.Type, &f.Int64, 1);
-               }
-               else error = field->WriteValue(target, field, f.Type, &f.Int, 1);
+               auto error = kt::write_field_value(target, field, f);
 
                if (target != this) target->unlock();
 
@@ -939,6 +884,22 @@ struct Object { // Must be 64-bit aligned
 } __attribute__ ((aligned (8)));
 
 namespace kt {
+
+inline ERR write_field_value(OBJECTPTR Target, struct Field *FieldPtr, const FieldValue &Value) {
+   if ((Value.Type & FD_STRING) and (Value.Type & FD_CPP)) {
+      return FieldPtr->WriteValue(Target, FieldPtr, Value.Type, &Value.CPPString, 0);
+   }
+   else if (Value.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_UNIT)) {
+      return FieldPtr->WriteValue(Target, FieldPtr, Value.Type, Value.Pointer, 0);
+   }
+   else if (Value.Type & (FD_DOUBLE|FD_FLOAT)) {
+      return FieldPtr->WriteValue(Target, FieldPtr, Value.Type, &Value.Double, 1);
+   }
+   else if (Value.Type & FD_INT64) {
+      return FieldPtr->WriteValue(Target, FieldPtr, Value.Type, &Value.Int64, 1);
+   }
+   else return FieldPtr->WriteValue(Target, FieldPtr, Value.Type, &Value.Int, 1);
+}
 
 // Object creation helper class.  Usage examples:
 //
@@ -1029,19 +990,7 @@ class Create {
                   else {
                      target->lock();
 
-                     if ((f.Type & FD_STRING) and (f.Type & FD_CPP)) {
-                        error = field->WriteValue(target, field, f.Type, &f.CPPString, 0);
-                     }
-                     else if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_UNIT)) {
-                        error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
-                     }
-                     else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
-                        error = field->WriteValue(target, field, f.Type, &f.Double, 1);
-                     }
-                     else if (f.Type & FD_INT64) {
-                        error = field->WriteValue(target, field, f.Type, &f.Int64, 1);
-                     }
-                     else error = field->WriteValue(target, field, f.Type, &f.Int, 1);
+                     error = write_field_value(target, field, f);
 
                      target->unlock();
 
@@ -1080,7 +1029,7 @@ class Create {
       T * operator->() { return obj; }; // Promotes underlying methods and fields
       T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
 
-      inline bool ok() { return error == ERR::Okay; }
+      inline bool ok() { return error IS ERR::Okay; }
 
       inline T * detach() { // Return a direct pointer to the object and prevent automated destruction
          T *result = obj;
@@ -1264,22 +1213,6 @@ inline ERR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = CL
 inline ERR acSeek(OBJECTPTR Object, double Offset, SEEK Position) {
    struct acSeek args = { Offset, Position };
    return Action(AC::Seek, Object, &args);
-}
-
-inline ERR acSetKeys(OBJECTPTR Object, CSTRING tags, ...) {
-   struct acSetKey args;
-   va_list list;
-
-   va_start(list, tags);
-   while ((args.Key = va_arg(list, STRING)) != TAGEND) {
-      args.Value = va_arg(list, STRING);
-      if (auto error = Action(AC::SetKey, Object, &args); error != ERR::Okay) {
-         va_end(list);
-         return error;
-      }
-   }
-   va_end(list);
-   return ERR::Okay;
 }
 
 inline ERR acUndo(OBJECTPTR Object, int Steps) {

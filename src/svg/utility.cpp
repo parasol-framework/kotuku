@@ -324,8 +324,6 @@ static double read_time(const std::string_view Value)
 
 static double read_unit(std::string_view &Value, int64_t *FieldID)
 {
-   if (FieldID) *FieldID |= TDOUBLE;
-
    const double dpi = 96.0; // TODO: Needs to be derived from the display
 
    std::size_t i = 0;
@@ -340,7 +338,6 @@ static double read_unit(std::string_view &Value, int64_t *FieldID)
 
       if (Value.starts_with('%')) {
          Value.remove_prefix(1);
-         if (FieldID) *FieldID |= TSCALE;
          return fv * 0.01;
       }
       else if (Value.starts_with("em")) { Value.remove_prefix(2); return fv * 12.0 * (4.0 / 3.0); } // Multiply the current font's pixel height by the provided em value
