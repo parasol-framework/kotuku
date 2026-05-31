@@ -21,7 +21,6 @@ constexpr int OP_OR        = 0;
 constexpr int OP_AND       = 1;
 constexpr int OP_OVERWRITE = 2;
 
-static ERR writeval_array(OBJECTPTR, Field *, int, CPTR , int);
 static ERR writeval_flags(OBJECTPTR, Field *, int, CPTR , int);
 static ERR writeval_long(OBJECTPTR, Field *, int, CPTR , int);
 static ERR writeval_large(OBJECTPTR, Field *, int, CPTR , int);
@@ -36,8 +35,7 @@ static ERR setval_strview(OBJECTPTR, Field *, int Flags, CPTR , int);
 static ERR setval_double(OBJECTPTR, Field *, int Flags, CPTR , int);
 static ERR setval_long(OBJECTPTR, Field *, int Flags, CPTR , int);
 static ERR setval_function(OBJECTPTR, Field *, int Flags, CPTR , int);
-static ERR setval_array(OBJECTPTR, Field *, int Flags, CPTR , int);
-static ERR setval_brgb(OBJECTPTR, Field *, int Flags, CPTR , int);
+static ERR set_or_write_array(OBJECTPTR, Field *, int Flags, CPTR , int);
 static ERR setval_unit(OBJECTPTR, Field *, int Flags, CPTR , int);
 
 //********************************************************************************************************************
@@ -112,6 +110,7 @@ requires std::is_integral_v<T>
 
 //********************************************************************************************************************
 // Converts a CSV string into an array (or use "#0x123..." for a hexadecimal byte list)
+// Returns element count written
 
 static int write_array(std::string_view String, int Flags, int16_t ArraySize, APTR Dest)
 {
@@ -189,7 +188,7 @@ ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int E
 
    if (not Field->SetValue) {
       ERR error = ERR::Okay;
-      if (Field->Flags & FD_ARRAY)         error = writeval_array(Object, Field, flags, Data, Elements);
+      if (Field->Flags & FD_ARRAY)         error = set_or_write_array(Object, Field, flags, Data, Elements);
       else if (Field->Flags & FD_INT)      error = writeval_long(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_INT64)    error = writeval_large(Object, Field, flags, Data, 0);
       else if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) error = writeval_double(Object, Field, flags, Data, 0);
@@ -205,8 +204,7 @@ ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int E
    }
    else {
       if (Field->Flags & FD_UNIT)          return setval_unit(Object, Field, flags, Data, 0);
-      else if (Field->Flags & FD_RGB)      return setval_brgb(Object, Field, flags, Data, 0);
-      else if (Field->Flags & FD_ARRAY)    return setval_array(Object, Field, flags, Data, Elements);
+      else if (Field->Flags & FD_ARRAY)    return set_or_write_array(Object, Field, flags, Data, Elements);
       else if (Field->Flags & FD_FUNCTION) return setval_function(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_INT)      return setval_long(Object, Field, flags, Data, 0);
       else if (Field->Flags & (FD_DOUBLE|FD_FLOAT))   return setval_double(Object, Field, flags, Data, 0);
@@ -220,45 +218,6 @@ ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int E
 //********************************************************************************************************************
 // The writeval() functions are used as optimised calls for all cases where the client has not provided a SetValue()
 // function.
-
-static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Source, int Elements)
-{
-   kt::Log log("WriteField");
-
-   if (not Field->writeable()) return ERR::NoFieldAccess;
-
-   // Direct writing to field arrays without a SET function is only supported for the RGB type.  The client should
-   // define a SET function for all other cases.
-
-   auto offset = (int8_t *)Object + Field->Offset;
-
-   if ((SrcType & FD_STRING) and (Field->Flags & FD_RGB)) {
-      std::string_view source;
-      if (not Source) source = "0,0,0,0";
-      else if (SrcType & FD_CPP) source = *((std::string_view *)Source);
-      else source = std::string_view(CSTRING(Source));
-
-      // A string of nullptr will 'clear' the colour (the alpha value will be zero)
-      if (Source) {
-         if (Field->Flags & FD_INT) ((RGB8 *)offset)->Alpha = 255;
-         else if (Field->Flags & FD_BYTE) ((RGB8 *)offset)->Alpha = 255;
-      }
-
-      write_array(source, Field->Flags, 4, offset);
-      return ERR::Okay;
-   }
-   else if ((SrcType & FD_POINTER) and (Field->Flags & FD_RGB)) { // Presume the source is a pointer to an RGB structure
-      auto rgb = (RGB8 *)Source;
-      ((RGB8 *)offset)->Red   = rgb->Red;
-      ((RGB8 *)offset)->Green = rgb->Green;
-      ((RGB8 *)offset)->Blue  = rgb->Blue;
-      ((RGB8 *)offset)->Alpha = rgb->Alpha;
-      return ERR::Okay;
-   }
-
-   log.warning("Field array '%s.%s' needs a SET function.", Object->className(), Field->Name);
-   return ERR::SanityCheckFailed;
-}
 
 [[nodiscard]] inline bool flag_match(const std::string_view CamelFlag, const std::string_view ClientFlag) noexcept
 {
@@ -532,23 +491,7 @@ static ERR setval_unit(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int
    else return ERR::FieldTypeMismatch;
 }
 
-static ERR setval_brgb(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
-{
-   if (Field->Flags & FD_BYTE) {
-      FieldContext ctx(Object, Field);
-
-      RGB8 rgb;
-      rgb.Alpha = 255;
-      if ((Flags & FD_CPP) and Data) write_array(*((std::string_view *)Data), FD_BYTE, 4, &rgb);
-      else write_array(Data ? std::string_view(CSTRING(Data)) : std::string_view("0,0,0,0"), FD_BYTE, 4, &rgb);
-      ERR error = ((ERR (*)(APTR, RGB8 *, int))(Field->SetValue))(Object, &rgb, 4);
-
-      return error;
-   }
-   else return ERR::FieldTypeMismatch;
-}
-
-static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
+static ERR set_or_write_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
    FieldContext ctx(Object, Field);
 
@@ -560,7 +503,24 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
          if (not (src_type & dest_type)) return ERR::SetValueNotArray;
       }
 
-      return ((ERR (*)(APTR, APTR, int))(Field->SetValue))(Object, (APTR)Data, Elements);
+      if (Field->SetValue) return ((ERR (*)(APTR, APTR, int))(Field->SetValue))(Object, (APTR)Data, Elements);
+      else if (Field->Flags & FD_EMBEDDED) {
+         size_t size;
+         if ((Elements > Field->Arg) or (Elements <= 0)) Elements = Field->Arg;
+
+         if (Flags & FD_BYTE) size = Elements * sizeof(uint8_t);
+         else if (Flags & FD_WORD) size = Elements * sizeof(uint16_t);
+         else if (Flags & FD_INT) size = Elements * sizeof(int);
+         else if (Flags & (FD_INT64|FD_DOUBLE)) size = Elements * sizeof(double);
+         else if (Flags & FD_POINTER) size = Elements * sizeof(APTR);
+         else size = 0;
+
+         if (Data) copymem(Data, (int8_t *)Object + Field->Offset, size);
+         else return ERR::InvalidValue;
+
+         return ERR::Okay;
+      }
+      else return ERR::FieldTypeMismatch;
    }
    else if (Flags & FD_STRING) {
       std::string_view source;
@@ -572,20 +532,27 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
       auto buffer_size = source.empty() ? 1 : source.size() * 8;
       if ((arraybuffer = malloc(buffer_size))) {
          if ((not Data) and (not (Flags & FD_CPP))) {
-            if (Field->Flags & FD_RGB) {
-               source = "0,0,0,0"; // A string of nullptr will 'clear' the colour (the alpha value will be zero)
-               Elements = write_array(source, Field->Flags, Field->Arg, arraybuffer);
-            }
-            else Elements = 0;
-         }
-         else if (Field->Flags & FD_RGB) {
-            Elements = write_array(source, Field->Flags, 4, arraybuffer);
-            if (Field->Flags & FD_INT)       ((RGB8 *)arraybuffer)->Alpha = 255;
-            else if (Field->Flags & FD_BYTE) ((RGB8 *)arraybuffer)->Alpha = 255;
+            Elements = 0;
          }
          else Elements = write_array(source, Field->Flags, 0, arraybuffer);
 
-         auto error = ((ERR (*)(APTR, APTR, int))(Field->SetValue))(Object, arraybuffer, Elements);
+         ERR error;
+         if (Field->SetValue) error = ((ERR (*)(APTR, APTR, int))(Field->SetValue))(Object, arraybuffer, Elements);
+         else if (Field->Flags & FD_EMBEDDED) {
+            size_t size;
+            if (Elements > Field->Arg) Elements = Field->Arg;
+
+            if (Flags & FD_BYTE) size = Elements * sizeof(uint8_t);
+            else if (Flags & FD_WORD) size = Elements * sizeof(uint16_t);
+            else if (Flags & FD_INT) size = Elements * sizeof(int);
+            else if (Flags & (FD_INT64|FD_DOUBLE)) size = Elements * sizeof(double);
+            else if (Flags & FD_POINTER) size = Elements * sizeof(APTR);
+            else size = 0;
+
+            copymem(arraybuffer, (int8_t *)Object + Field->Offset, size);
+            error = ERR::Okay;
+         }
+         else error = ERR::FieldTypeMismatch;
 
          free(arraybuffer);
          return error;
@@ -593,8 +560,7 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
       else return ERR::AllocMemory;
    }
    else {
-      kt::Log log(__FUNCTION__);
-      log.warning("Arrays can only be set using the FD_ARRAY type.");
+      kt::Log(__FUNCTION__).warning("Arrays can only be set using the FD_ARRAY type.");
       return ERR::SetValueNotArray;
    }
 }
@@ -737,7 +703,7 @@ void optimise_write_field(Field &Field)
    if (Field.Flags & FD_FLAGS)       Field.WriteValue = writeval_flags;
    else if (Field.Flags & FD_LOOKUP) Field.WriteValue = writeval_lookup;
    else if (not Field.SetValue) {
-      if (Field.Flags & FD_ARRAY)      Field.WriteValue = writeval_array;
+      if (Field.Flags & FD_ARRAY)      Field.WriteValue = set_or_write_array;
       else if (Field.Flags & FD_INT)   Field.WriteValue = writeval_long;
       else if (Field.Flags & FD_INT64) Field.WriteValue = writeval_large;
       else if (Field.Flags & (FD_DOUBLE|FD_FLOAT)) Field.WriteValue = writeval_double;
@@ -748,11 +714,7 @@ void optimise_write_field(Field &Field)
    }
    else {
       if (Field.Flags & FD_UNIT) Field.WriteValue = setval_unit;
-      else if (Field.Flags & FD_RGB) {
-         if (Field.Flags & FD_BYTE) Field.WriteValue = setval_brgb;
-         else log.warning("Invalid field flags for %s: $%.8x.", Field.Name, Field.Flags);
-      }
-      else if (Field.Flags & FD_ARRAY)    Field.WriteValue = setval_array;
+      else if (Field.Flags & FD_ARRAY)    Field.WriteValue = set_or_write_array;
       else if (Field.Flags & FD_FUNCTION) Field.WriteValue = setval_function;
       else if (Field.Flags & FD_INT)      Field.WriteValue = setval_long;
       else if (Field.Flags & (FD_DOUBLE|FD_FLOAT))   Field.WriteValue = setval_double;

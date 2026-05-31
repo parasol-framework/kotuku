@@ -479,29 +479,6 @@ static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *
                }
                else lua_pushnil(Lua);
             }
-            else if (type & FD_RGB) {
-               auto rgb = (RGB8 *)((APTR *)(ArgBuf+of))[0];
-
-               if (rgb) { // This return type is untested
-                  lua_newtable(Lua);
-                  lua_pushstring(Lua, "r");
-                  lua_pushnumber(Lua, rgb->Red);
-                  lua_settable(Lua, -3);
-
-                  lua_pushstring(Lua, "g");
-                  lua_pushnumber(Lua, rgb->Green);
-                  lua_settable(Lua, -3);
-
-                  lua_pushstring(Lua, "b");
-                  lua_pushnumber(Lua, rgb->Blue);
-                  lua_settable(Lua, -3);
-
-                  lua_pushstring(Lua, "a");
-                  lua_pushnumber(Lua, rgb->Alpha);
-                  lua_settable(Lua, -3);
-               }
-               else lua_pushnil(Lua);
-            }
             else {
                RMSG("Result-Arg: %s, Value: %p (Pointer)", args[i].Name, ((APTR *)(ArgBuf+of))[0]);
                lua_pushlightuserdata(Lua, ((APTR *)(ArgBuf+of))[0]);

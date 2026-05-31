@@ -1098,15 +1098,48 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
    if (field.Flags & FD_VIRTUAL) { // No offset will be added for fields marked exclusively as virtual
       field.Offset = 0;
    }
-   else if (field.Flags & FD_RGB) {
-      field_size = sizeof(int8_t) * 4;
-      field_alignment = alignof(int8_t);
-      field_type = "RGB";
-   }
    else if (field.Flags & FD_ARRAY) {
-      field_size = sizeof(APTR);
-      field_alignment = alignof(APTR);
-      field_type = "pointer";
+      // Standard array declarations are assumed to be pointers to data by default.
+      // FD_VIRTUAL arrays are always referenced as pointers via Get/Set
+      // CPP arrays are kt::vector<> types; note that the selected type doesn't impact its size
+
+      if (field.Flags & FD_CPP) { // Embedded kt::vector<> array (the declared type doesn't contribute to size)
+         field_size = sizeof(kt::vector<int>);
+         field_alignment = alignof(kt::vector<int>);
+         field_type = "kt::vector";
+      }
+      else { // Standard embedded array (since FD_VIRTUAL wasn't set)
+         if (field.Flags & FD_EMBEDDED) { // Overrides the pointer default, array itself is embedded in the object
+            if (field.Flags & FD_INT) {
+               field_size = sizeof(int) * field.Arg;
+               field_alignment = alignof(int);
+            }
+            else if (field.Flags & FD_DOUBLE) {
+               field_size = sizeof(double) * field.Arg;
+               field_alignment = alignof(double);
+            }
+            else if (field.Flags & FD_BYTE) {
+               field_size = sizeof(uint8_t) * field.Arg;
+               field_alignment = alignof(uint8_t);
+            }
+            else if (field.Flags & FD_INT64) {
+               field_size = sizeof(int64_t) * field.Arg;
+               field_alignment = alignof(int64_t);
+            }
+            else {
+               log.warning("Invalid field flags for %s: $%.8x.", field.Name, field.Flags);
+               field_size = 0;
+               field_alignment = 0;
+            }
+
+            field_type = "array";
+         }
+         else {
+            field_size = sizeof(APTR);
+            field_alignment = alignof(APTR);
+            field_type = "pointer";
+         }
+      }
    }
    else if (field.Flags & FD_STRING) {
       if (field.Flags & FD_CPP) {
@@ -1129,7 +1162,7 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
    else if (field.Flags & FD_INT) {
       field_size = sizeof(int);
       field_alignment = alignof(int);
-      field_type = "integer";
+      field_type = "int";
    }
    else if (field.Flags & FD_DOUBLE) {
       field_size = sizeof(double);
@@ -1139,7 +1172,7 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
    else if (field.Flags & FD_INT64) {
       field_size = sizeof(int64_t);
       field_alignment = alignof(int64_t);
-      field_type = "64-bit integer";
+      field_type = "int64";
    }
    else if (field.Flags & FD_FUNCTION) {
       field_size = sizeof(FUNCTION);

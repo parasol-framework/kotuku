@@ -150,9 +150,6 @@ global function getFieldType(Def:table, Type:num, CustomName:str, Option:any)
       elseif Type has FD_STRING then
          Def.type = 'STRING'
          return
-      elseif Type has FD_RGB then
-         result = 'RGB'
-         ptr++
       elseif Type has FD_FUNCTION then
          result = 'FUNCTION'
          ptr++
@@ -172,8 +169,6 @@ global function getFieldType(Def:table, Type:num, CustomName:str, Option:any)
       else
          Def.type = result
       end
-   elseif Type has FD_RGB then
-      Def.type = 'RGB8'
    elseif Type has FD_INT then
       if Type has FD_OBJECT then
          Def.type = 'OBJECTID'
