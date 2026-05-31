@@ -708,7 +708,7 @@ void optimise_write_field(Field &Field)
       else if (Field.Flags & FD_INT64) Field.WriteValue = writeval_large;
       else if (Field.Flags & (FD_DOUBLE|FD_FLOAT)) Field.WriteValue = writeval_double;
       else if (Field.Flags & FD_FUNCTION) Field.WriteValue = writeval_function;
-      else if ((Field.Flags & FD_STRING) and (Field.Flags & FD_CPP)) Field.WriteValue = writeval_cppstr; // Embedded std::string
+      else if (Field.Flags & FD_STRING) Field.WriteValue = writeval_cppstr; // Embedded std::string
       else if (Field.Flags & FD_POINTER) {
          if (Field.Flags & FD_STRING) log.warning("C-style string pointers are deprecated; field: %s.", Field.Name);
          Field.WriteValue = writeval_ptr;
@@ -716,12 +716,12 @@ void optimise_write_field(Field &Field)
       else log.warning("Invalid field flags for %s: $%.8x.", Field.Name, Field.Flags);
    }
    else {
-      if (Field.Flags & FD_UNIT) Field.WriteValue = setval_unit;
+      if (Field.Flags & FD_UNIT)          Field.WriteValue = setval_unit;
       else if (Field.Flags & FD_ARRAY)    Field.WriteValue = set_or_write_array;
       else if (Field.Flags & FD_FUNCTION) Field.WriteValue = setval_function;
       else if (Field.Flags & FD_INT)      Field.WriteValue = setval_long;
-      else if (Field.Flags & (FD_DOUBLE|FD_FLOAT))   Field.WriteValue = setval_double;
-      else if ((Field.Flags & FD_STRING) and (Field.Flags & FD_CPP)) Field.WriteValue = setval_strview; // Embedded std::string
+      else if (Field.Flags & (FD_DOUBLE|FD_FLOAT)) Field.WriteValue = setval_double;
+      else if (Field.Flags & FD_STRING) Field.WriteValue = setval_strview; // Embedded std::string
       else if (Field.Flags & FD_POINTER) {
          if (Field.Flags & FD_STRING) log.warning("C-style string pointers are deprecated; field: %s.", Field.Name);
          Field.WriteValue = setval_pointer;
