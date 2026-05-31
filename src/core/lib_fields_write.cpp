@@ -542,11 +542,11 @@ static ERR set_or_write_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Da
             size_t size;
             if (Elements > Field->Arg) Elements = Field->Arg;
 
-            if (Flags & FD_BYTE) size = Elements * sizeof(uint8_t);
-            else if (Flags & FD_WORD) size = Elements * sizeof(uint16_t);
-            else if (Flags & FD_INT) size = Elements * sizeof(int);
-            else if (Flags & (FD_INT64|FD_DOUBLE)) size = Elements * sizeof(double);
-            else if (Flags & FD_POINTER) size = Elements * sizeof(APTR);
+            if (Field->Flags & FD_BYTE) size = Elements * sizeof(uint8_t);
+            else if (Field->Flags & FD_WORD) size = Elements * sizeof(uint16_t);
+            else if (Field->Flags & FD_INT) size = Elements * sizeof(int);
+            else if (Field->Flags & (FD_INT64|FD_DOUBLE)) size = Elements * sizeof(double);
+            else if (Field->Flags & FD_POINTER) size = Elements * sizeof(APTR);
             else size = 0;
 
             copymem(arraybuffer, (int8_t *)Object + Field->Offset, size);
@@ -709,7 +709,10 @@ void optimise_write_field(Field &Field)
       else if (Field.Flags & (FD_DOUBLE|FD_FLOAT)) Field.WriteValue = writeval_double;
       else if (Field.Flags & FD_FUNCTION) Field.WriteValue = writeval_function;
       else if ((Field.Flags & FD_STRING) and (Field.Flags & FD_CPP)) Field.WriteValue = writeval_cppstr; // Embedded std::string
-      else if (Field.Flags & (FD_POINTER|FD_STRING)) Field.WriteValue = writeval_ptr;
+      else if (Field.Flags & FD_POINTER) {
+         if (Field.Flags & FD_STRING) log.warning("C-style string pointers are deprecated; field: %s.", Field.Name);
+         Field.WriteValue = writeval_ptr;
+      }
       else log.warning("Invalid field flags for %s: $%.8x.", Field.Name, Field.Flags);
    }
    else {
@@ -719,7 +722,10 @@ void optimise_write_field(Field &Field)
       else if (Field.Flags & FD_INT)      Field.WriteValue = setval_long;
       else if (Field.Flags & (FD_DOUBLE|FD_FLOAT))   Field.WriteValue = setval_double;
       else if ((Field.Flags & FD_STRING) and (Field.Flags & FD_CPP)) Field.WriteValue = setval_strview; // Embedded std::string
-      else if (Field.Flags & (FD_POINTER|FD_STRING)) Field.WriteValue = setval_pointer;
+      else if (Field.Flags & FD_POINTER) {
+         if (Field.Flags & FD_STRING) log.warning("C-style string pointers are deprecated; field: %s.", Field.Name);
+         Field.WriteValue = setval_pointer;
+      }
       else if (Field.Flags & FD_INT64)    Field.WriteValue = setval_large;
       else log.warning("Invalid field flags for %s: $%.8x.", Field.Name, Field.Flags);
    }
