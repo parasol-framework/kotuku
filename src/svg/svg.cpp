@@ -144,10 +144,6 @@ struct svgState {
       operator double() const noexcept { return value; }
       operator DU() const noexcept { return type; }
 
-      inline int64_t field() const noexcept {
-         return (type == DU::SCALED) ? (field_id | TDOUBLE | TSCALE) : field_id | TDOUBLE;
-      }
-
       inline bool valid_size() const noexcept { // Return true if this is a valid width/height
          return (value >= 0.001);
       }
