@@ -34,7 +34,7 @@ global glTypes = {
    char       = { fd='FD_BYTE',               t_type='num', c_type='int8_t', doc_type='INT8' },
    cid        = { fd='FD_INT|FD_UNSIGNED',    t_type='num', c_type='CLASSID' },
    cptr       = { fd='FD_PTR',                t_type='any', c_type='const void *' },
-   cstr       = { fd='FD_STR',                t_type='str', c_type='CSTRING' },
+   cstr       = { fd='FD_STR',                t_type='str', c_type='CSTRING' }, -- Permitted for structs, not Kotuku classes
    double     = { fd='FD_DOUBLE',             t_type='num', c_type='double', doc_type='DOUBLE' },
    eid        = { fd='FD_INT',                t_type='num', c_type='EVENTID' },
    error      = { fd='FD_INT|FD_ERROR',       t_type='num', c_type='ERR' },

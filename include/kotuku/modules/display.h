@@ -854,13 +854,13 @@ class objBitmap : public Object {
    inline ERR setTransColour(const struct RGB8 * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
-      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+      return field->WriteValue(target, field, 0x01001300, Value, Elements);
    }
 
    inline ERR setBkgd(const struct RGB8 * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
-      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+      return field->WriteValue(target, field, 0x01001300, Value, Elements);
    }
 
    inline ERR setBkgdIndex(const int Value) noexcept {

@@ -220,7 +220,6 @@
       <const name="READ">CLASSDEF</const>
       <const name="RESOURCE">The referenced struct or pointer is a special resource.  Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Tiri.</const>
       <const name="RESULT">FUNCDEF Overrides <code>READ</code></const>
-      <const name="RGB">Supplementary, if an int type then format is <code>0xAARRGGBB</code>, if pointer then refers to an RGB or FRGB structure.</const>
       <const name="RI">Synonym for <code>READ | INIT</code></const>
       <const name="RW">Synonym for <code>READ | WRITE</code></const>
       <const name="SCALED">Synonym for <code>NORMALISED</code></const>

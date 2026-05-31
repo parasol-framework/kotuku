@@ -435,11 +435,10 @@ http.acActivate()
       <name>ResponseKeys</name>
       <comment>Returns a string list of received response keys.</comment>
       <access read="G">Get</access>
-      <type>STRING []</type>
+      <type>kt::vector&lt;std::string&gt;</type>
       <description>
 <p>This field returns a string list of all the keys found in the HTTP response header.  An empty list will be returned if no keys are found.</p>
       </description>
-      <tags>caller-owns-result</tags>
     </field>
 
     <field>
