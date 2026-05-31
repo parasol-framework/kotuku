@@ -2985,8 +2985,8 @@ static const FieldArray clBitmapFields[] = {
    { "Opacity",       FDF_INT|FDF_RW },
    { "BlendMode",     FDF_INT|FDF_RW|FDF_LOOKUP, nullptr, nullptr, &clBitmapBlendMode },
    { "DataID",        FDF_INT|FDF_SYSTEM|FDF_R },
-   { "TransColour",   FDF_ARRAY|FD_EMBEDDED|FD_BYTE|FDF_RW, nullptr, SET_Trans, 4 },
-   { "Bkgd",          FDF_ARRAY|FD_EMBEDDED|FD_BYTE|FDF_RW, nullptr, SET_Bkgd, 4 },
+   { "TransColour",   FDF_ARRAY|FD_BYTE|FDF_RW, nullptr, SET_Trans, 4 },
+   { "Bkgd",          FDF_ARRAY|FD_BYTE|FDF_RW, nullptr, SET_Bkgd, 4 },
    { "BkgdIndex",     FDF_INT|FDF_RW, nullptr, SET_BkgdIndex },
    { "ColourSpace",   FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clBitmapColourSpace },
    // Virtual fields

@@ -409,18 +409,18 @@ enum class JET : int {
 #define FD_MUTABLE 0x00000008
 #define FD_STRUCT 0x00000010
 #define FD_ALLOC 0x00000020
-#define FD_FLAGS 0x00000040
 #define FD_VARTAGS 0x00000040
-#define FD_PTRSIZE 0x00000080
+#define FD_FLAGS 0x00000040
 #define FD_ARRAYSIZE 0x00000080
 #define FD_LOOKUP 0x00000080
+#define FD_PTRSIZE 0x00000080
 #define FD_BUFSIZE 0x00000080
 #define FD_R 0x00000100
 #define FD_READ 0x00000100
 #define FD_RESULT 0x00000100
+#define FD_BUFFER 0x00000200
 #define FD_WRITE 0x00000200
 #define FD_W 0x00000200
-#define FD_BUFFER 0x00000200
 #define FD_RW 0x00000300
 #define FD_I 0x00000400
 #define FD_TAGS 0x00000400
@@ -431,11 +431,10 @@ enum class JET : int {
 #define FD_RESOURCE 0x00002000
 #define FD_CPP 0x00004000
 #define FD_CUSTOM 0x00008000
-#define FD_SYSTEM 0x00010000
 #define FD_PRIVATE 0x00010000
+#define FD_SYSTEM 0x00010000
 #define FD_SYNONYM 0x00020000
 #define FD_UNSIGNED 0x00040000
-#define FD_EMBEDDED 0x00080000
 #define FD_SCALED 0x00200000
 #define FD_NORMALISED 0x00200000
 #define FD_WORD 0x00400000
@@ -3350,10 +3349,10 @@ class objTask : public Object {
       return field->WriteValue(target, field, 0x00804200, &Value, 1);
    }
 
-   inline ERR setParameters(kt::vector<std::string> *Value) noexcept {
+   inline ERR setParameters(const kt::vector<std::string> *Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
-      return field->WriteValue(target, field, 0x08805300, Value, int(Value->size()));
+      return field->WriteValue(target, field, 0x00805300, Value, int(Value->size()));
    }
 
    inline ERR setErrorCallback(FUNCTION Value) noexcept {

@@ -2248,7 +2248,7 @@ static ERR GET_Parameters(extTask *Self, kt::vector<std::string> **Value, int *E
 
 static ERR SET_Parameters(extTask *Self, const kt::vector<std::string> *Value, int Elements)
 {
-   if (Value) Self->Parameters = Value[0];
+   if (Value) Self->Parameters = *Value;
    else Self->Parameters.clear();
    return ERR::Okay;
 }
@@ -2494,7 +2494,7 @@ static const FieldArray clFields[] = {
    { "Actions",        FDF_POINTER|FDF_R,  GET_Actions },
    { "AffinityMask",   FDF_INT64|FDF_RW,   GET_AffinityMask, SET_AffinityMask },
    { "Args",           FDF_CPPSTRING|FDF_W, nullptr, SET_Args },
-   { "Parameters",     FDF_CPP|FDF_ARRAY|FDF_STRING|FDF_RW, GET_Parameters, SET_Parameters },
+   { "Parameters",     FDF_ARRAY|FDF_CPPSTRING|FDF_RW, GET_Parameters, SET_Parameters },
    { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, GET_ErrorCallback,   SET_ErrorCallback }, // STDERR
    { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, GET_ExitCallback,    SET_ExitCallback },
    { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, GET_InputCallback,   SET_InputCallback }, // STDIN

@@ -504,7 +504,7 @@ static ERR set_or_write_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Da
       }
 
       if (Field->SetValue) return ((ERR (*)(APTR, APTR, int))(Field->SetValue))(Object, (APTR)Data, Elements);
-      else if (Field->Flags & FD_EMBEDDED) {
+      else if (Field->Arg > 0) { // An arg value indicates an embedded fixed-size array
          size_t size;
          if ((Elements > Field->Arg) or (Elements <= 0)) Elements = Field->Arg;
 
@@ -522,7 +522,7 @@ static ERR set_or_write_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Da
       }
       else return ERR::FieldTypeMismatch;
    }
-   else if (Flags & FD_STRING) {
+   else if (Flags & FD_STRING) { // Incoming CSV string
       std::string_view source;
       if (not Data) source = {};
       else if (Flags & FD_CPP) source = *((std::string_view *)Data);
@@ -538,7 +538,7 @@ static ERR set_or_write_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Da
 
          ERR error;
          if (Field->SetValue) error = ((ERR (*)(APTR, APTR, int))(Field->SetValue))(Object, arraybuffer, Elements);
-         else if (Field->Flags & FD_EMBEDDED) {
+         else if (Field->Arg > 0) { // An arg value indicates an embedded fixed-size array
             size_t size;
             if (Elements > Field->Arg) Elements = Field->Arg;
 
@@ -625,7 +625,7 @@ static ERR setval_pointer(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
    FieldContext ctx(Object, Field);
 
    if (Flags & (FD_POINTER|FD_STRING)) {
-      if (Flags & FD_CPP) { // Target is CSTRING, incoming std::string_view must be a reference to a null-terminated string.
+      if (Flags & FD_CPP) { // Target is a string, incoming std::string_view must be a reference to a null-terminated string.
          auto sv = (std::string_view *)Data;
          return ((ERR (*)(APTR, CPTR))(Field->SetValue))(Object, sv->empty() ? nullptr : sv->data());
       }
