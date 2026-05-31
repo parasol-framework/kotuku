@@ -645,7 +645,7 @@ class objVectorTransition : public Object {
 
    // Customised field setting
 
-   inline ERR setStops(const APTR Value, int Elements) noexcept {
+   inline ERR setStops(APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x00001218, Value, Elements);
@@ -1120,7 +1120,7 @@ class objVectorGradient : public Object {
       return field->WriteValue(target, field, 0x00804308, &Value, 1);
    }
 
-   inline ERR setStops(const APTR Value, int Elements) noexcept {
+   inline ERR setStops(APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[31];
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
@@ -1726,7 +1726,7 @@ class objMergeFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setSourceList(const APTR Value, int Elements) noexcept {
+   inline ERR setSourceList(APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
@@ -2001,7 +2001,7 @@ class objWaveFunctionFX : public objFilterEffect {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setStops(const APTR Value, int Elements) noexcept {
+   inline ERR setStops(APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
@@ -2533,7 +2533,7 @@ class objVectorPath : public objVector {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   inline ERR setCommands(const APTR Value, int Elements) noexcept {
+   inline ERR setCommands(APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x00001318, Value, Elements);

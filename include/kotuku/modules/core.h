@@ -2608,7 +2608,7 @@ class objMetaClass : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setMethods(const APTR Value, int Elements) noexcept {
+   inline ERR setMethods(APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
