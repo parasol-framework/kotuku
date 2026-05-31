@@ -819,7 +819,7 @@ struct Object { // Must be 64-bit aligned
 
             return ERR::Okay;
          }
-         else if (field->Flags & FD_POINTER) {
+         else if (field->Flags & (FD_POINTER|FD_ARRAY)) {
             Value = *((T *)fv.second);
             return ERR::Okay;
          }

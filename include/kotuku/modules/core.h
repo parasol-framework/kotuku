@@ -3350,10 +3350,10 @@ class objTask : public Object {
       return field->WriteValue(target, field, 0x00804200, &Value, 1);
    }
 
-   inline ERR setParameters(kt::vector<std::string> *Value) noexcept {
+   inline ERR setParameters(const kt::vector<std::string> *Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
-      return field->WriteValue(target, field, 0x08805300, Value, int(Value->size()));
+      return field->WriteValue(target, field, 0x00805300, Value, int(Value->size()));
    }
 
    inline ERR setErrorCallback(FUNCTION Value) noexcept {

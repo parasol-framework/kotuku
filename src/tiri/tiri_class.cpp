@@ -139,7 +139,7 @@ static ERR GET_Procedures(objScript *, kt::vector<std::string> **, int *);
 
 static const FieldArray clFields[] = {
    { "JitOptions", FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, GET_JitOptions, SET_JitOptions, &clJitOptions },
-   { "Procedures", FDF_VIRTUAL|FDF_CPP|FDF_ARRAY|FDF_STRING|FDF_R, GET_Procedures },
+   { "Procedures", FDF_VIRTUAL|FDF_ARRAY|FDF_CPPSTRING|FDF_R, GET_Procedures },
    END_FIELD
 };
 
