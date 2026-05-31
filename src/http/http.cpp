@@ -303,6 +303,7 @@ class extHTTP : public objHTTP {
    FUNCTION AuthCallback;
    FUNCTION StateChanged;
    ankerl::unordered_dense::map<std::string, std::string> ResponseHeaders;
+   kt::vector<std::string> ResponseKeys;
    ankerl::unordered_dense::map<std::string, std::string> Headers;
    std::string Response;   // Response header buffer
    std::string URI;        // Temporary string, used only when the user reads the URI
@@ -1108,7 +1109,7 @@ static const FieldArray clFields[] = {
    { "Outgoing",       FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,   GET_Outgoing, SET_Outgoing },
    { "Realm",          FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW,     GET_Realm, SET_Realm },
    { "RecvBuffer",     FDF_VIRTUAL|FDF_ARRAY|FDF_BYTE|FDF_R, GET_RecvBuffer },
-   { "ResponseKeys",   FDF_VIRTUAL|FDF_ARRAY|FDF_STRING|FDF_ALLOC|FDF_R, GET_ResponseKeys },
+   { "ResponseKeys",   FDF_VIRTUAL|FDF_ARRAY|FDF_CPPSTRING|FDF_R, GET_ResponseKeys },
    { "Src",            FDF_VIRTUAL|FDF_CPPSTRING|FDF_SYNONYM|FD_PRIVATE|FDF_RW, GET_Location, SET_Location }, // Deprecated by URL
    { "URL",            FDF_VIRTUAL|FDF_CPPSTRING|FDF_SYNONYM|FDF_RW, GET_Location, SET_Location },
    { "StateChanged",   FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,   GET_StateChanged, SET_StateChanged },
