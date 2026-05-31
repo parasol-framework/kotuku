@@ -576,10 +576,7 @@ static ERR setval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int
    int int32;
    if (Flags & FD_INT64)       int32 = (int)(*((int64_t *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = std::lrint(*((double *)Data));
-   else if (Flags & FD_STRING) {
-      if (Flags & FD_CPP) int32 = kt::svtonum<int>(*((std::string_view *)Data));
-      else int32 = strtol((STRING)Data, nullptr, 0);
-   }
+   else if (Flags & FD_STRING) int32 = kt::svtonum<int>(*((std::string_view *)Data));
    else if (Flags & FD_INT)    int32 = *((int *)Data);
    else if (Flags & FD_UNIT)   int32 = std::lrint(((Unit *)Data)->Value);
    else return ERR::SetValueNotNumeric;
@@ -593,10 +590,7 @@ static ERR setval_double(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, i
    double float64;
    if (Flags & FD_INT)         float64 = *((int *)Data);
    else if (Flags & FD_INT64)  float64 = (double)(*((int64_t *)Data));
-   else if (Flags & FD_STRING) {
-      if (Flags & FD_CPP) float64 = kt::svtonum<double>(*((std::string_view *)Data));
-      else float64 = strtod((CSTRING)Data, nullptr);
-   }
+   else if (Flags & FD_STRING) float64 = kt::svtonum<double>(*((std::string_view *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) float64 = *((double *)Data);
    else if (Flags & FD_UNIT)   float64 = ((Unit *)Data)->Value;
    else return ERR::SetValueNotNumeric;
@@ -609,12 +603,8 @@ static ERR setval_pointer(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
 {
    FieldContext ctx(Object, Field);
 
-   if (Flags & (FD_POINTER|FD_STRING)) {
-      if (Flags & FD_CPP) { // Target is a string, incoming std::string_view must be a reference to a null-terminated string.
-         auto sv = (std::string_view *)Data;
-         return ((ERR (*)(APTR, CPTR))(Field->SetValue))(Object, sv->empty() ? nullptr : sv->data());
-      }
-      else return ((ERR (*)(APTR, CPTR))(Field->SetValue))(Object, Data);
+   if (Flags & FD_POINTER) {
+      return ((ERR (*)(APTR, CPTR))(Field->SetValue))(Object, Data);
    }
    else if (Flags & FD_INT) {
       return ((ERR (*)(APTR, char *))(Field->SetValue))(Object, std::to_string(*((int *)Data)).data());
