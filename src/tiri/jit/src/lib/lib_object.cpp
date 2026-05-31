@@ -319,8 +319,7 @@ READ_TABLE * get_read_table(objMetaClass *Class)
          auto hash = field.FieldID;
 
          if (field.Flags & FD_ARRAY) {
-            if (field.Flags & FD_RGB) jmp.push_back(obj_read(hash, object_get_rgb, &field));
-            else jmp.push_back(obj_read(hash, object_get_array, &field));
+            jmp.push_back(obj_read(hash, object_get_array, &field));
          }
          else if (field.Flags & FD_STRUCT) jmp.push_back(obj_read(hash, object_get_struct, &field));
          else if (field.Flags & FD_STRING) jmp.push_back(obj_read(hash, object_get_string, &field));

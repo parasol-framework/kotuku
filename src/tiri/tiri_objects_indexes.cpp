@@ -263,8 +263,7 @@ static int object_get(lua_State *Lua)
       else if (auto field = FindField(obj, fieldhash(fieldname), &target)) {
          int result = 0;
          if (field->Flags & FD_ARRAY) {
-            if (field->Flags & FD_RGB) result = object_get_rgb(Lua, obj_read(0, nullptr, field), def);
-            else result = object_get_array(Lua, obj_read(0, nullptr, field), def);
+            result = object_get_array(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_STRUCT) {
             result = object_get_struct(Lua, obj_read(0, nullptr, field), def);

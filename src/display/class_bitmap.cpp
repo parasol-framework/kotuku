@@ -159,11 +159,11 @@ static const FieldDef clDataFlags[] = {
 };
 
 FDEF argsDrawUCPixel[]  = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_INT }, { nullptr, 0 } };
-FDEF argsDrawUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RGB }, { nullptr, 0 } };
-FDEF argsReadUCPixel[]  = { { "Value", FD_INT }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { nullptr, 0 } };
-FDEF argsReadUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { nullptr, 0 } };
-FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB }, { nullptr, 0 } };
-FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB|FD_RESULT }, { nullptr, 0 } };
+FDEF argsDrawUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_ARRAY|FD_BYTE }, { nullptr, 0 } };
+FDEF argsReadUCPixel[]  = { { "Value", FD_INT }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_ARRAY|FD_BYTE|FD_RESULT }, { nullptr, 0 } };
+FDEF argsReadUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_ARRAY|FD_BYTE|FD_RESULT }, { nullptr, 0 } };
+FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_ARRAY|FD_BYTE }, { nullptr, 0 } };
+FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_ARRAY|FD_BYTE|FD_RESULT }, { nullptr, 0 } };
 
 //********************************************************************************************************************
 // Surface locking routines.  These should only be called on occasions where you need to use the CPU to access graphics
@@ -2985,8 +2985,8 @@ static const FieldArray clBitmapFields[] = {
    { "Opacity",       FDF_INT|FDF_RW },
    { "BlendMode",     FDF_INT|FDF_RW|FDF_LOOKUP, nullptr, nullptr, &clBitmapBlendMode },
    { "DataID",        FDF_INT|FDF_SYSTEM|FDF_R },
-   { "TransColour",   FDF_RGB|FDF_RW, nullptr, SET_Trans },
-   { "Bkgd",          FDF_RGB|FDF_RW, nullptr, SET_Bkgd },
+   { "TransColour",   FDF_ARRAY|FD_EMBEDDED|FD_BYTE|FDF_RW, nullptr, SET_Trans, 4 },
+   { "Bkgd",          FDF_ARRAY|FD_EMBEDDED|FD_BYTE|FDF_RW, nullptr, SET_Bkgd, 4 },
    { "BkgdIndex",     FDF_INT|FDF_RW, nullptr, SET_BkgdIndex },
    { "ColourSpace",   FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clBitmapColourSpace },
    // Virtual fields
