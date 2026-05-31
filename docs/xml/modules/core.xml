@@ -2436,7 +2436,6 @@ static ResourceManager glNodeManager = {
       <const name="CUSTOM"/>
       <const name="DOUBLE">64 bit float.</const>
       <const name="DOUBLERESULT">For actions and methods</const>
-      <const name="EMBEDDED">Supplementary, enables the embedding of arrays.</const>
       <const name="ERROR">FUNCDEF</const>
       <const name="FLAGS">CLASSDEF</const>
       <const name="FLOAT">32 bit float.  Not valid for use in class definitions.</const>

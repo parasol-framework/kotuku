@@ -504,7 +504,7 @@ static ERR set_or_write_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Da
       }
 
       if (Field->SetValue) return ((ERR (*)(APTR, APTR, int))(Field->SetValue))(Object, (APTR)Data, Elements);
-      else if (Field->Flags & FD_EMBEDDED) {
+      else if (Field->Arg > 0) { // An arg value indicates an embedded fixed-size array
          size_t size;
          if ((Elements > Field->Arg) or (Elements <= 0)) Elements = Field->Arg;
 
@@ -538,7 +538,7 @@ static ERR set_or_write_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Da
 
          ERR error;
          if (Field->SetValue) error = ((ERR (*)(APTR, APTR, int))(Field->SetValue))(Object, arraybuffer, Elements);
-         else if (Field->Flags & FD_EMBEDDED) {
+         else if (Field->Arg > 0) { // An arg value indicates an embedded fixed-size array
             size_t size;
             if (Elements > Field->Arg) Elements = Field->Arg;
 

@@ -1109,7 +1109,7 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
          field_type = "kt::vector";
       }
       else { // Standard embedded array (since FD_VIRTUAL wasn't set)
-         if (field.Flags & FD_EMBEDDED) { // Overrides the pointer default, array itself is embedded in the object
+         if (field.Arg) { // Arg is set if the array is embedded in the object
             if (field.Flags & FD_INT) {
                field_size = sizeof(int) * field.Arg;
                field_alignment = alignof(int);
