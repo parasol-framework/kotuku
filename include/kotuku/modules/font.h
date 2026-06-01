@@ -154,23 +154,20 @@ class objFont : public Object {
    }
 
    inline ERR getOutline(struct RGB8 * &Value, int &Elements) noexcept {
-      auto field = &this->Class->Dictionary[23];
       Elements = 4;
-      Value = (struct RGB8 *)(((int8_t *)this) + field->Offset);
+      Value = (struct RGB8 *)(((int8_t *)this) + 240);
       return ERR::Okay;
    }
 
    inline ERR getUnderline(struct RGB8 * &Value, int &Elements) noexcept {
-      auto field = &this->Class->Dictionary[30];
       Elements = 4;
-      Value = (struct RGB8 *)(((int8_t *)this) + field->Offset);
+      Value = (struct RGB8 *)(((int8_t *)this) + 244);
       return ERR::Okay;
    }
 
    inline ERR getColour(struct RGB8 * &Value, int &Elements) noexcept {
-      auto field = &this->Class->Dictionary[10];
       Elements = 4;
-      Value = (struct RGB8 *)(((int8_t *)this) + field->Offset);
+      Value = (struct RGB8 *)(((int8_t *)this) + 248);
       return ERR::Okay;
    }
 

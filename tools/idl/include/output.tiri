@@ -205,31 +205,6 @@ function outputFieldGetSignature(Field:table, FidName:str, FieldType:str)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Emit the fastest available field lookup for a GetValue()-based getter.
-
-function outputFieldReadTarget(Class:table, Field:table, FidName:str, Indent:str)
-   local err, field, target
-
-   if Class.meta then
-      local field_hash = calcFieldHash(Field.name)
-      err, field, target = Class.meta.mtFindField(field_hash)
-
-      if err != ERR_Okay then
-         print(f'Failed to find field {Field.name} {string.format("%.8x",field_hash)} in class {Class.name}')
-      end
-   end
-
-   if (err is ERR_Okay) and (target.id is Class.meta.id) and glEnableDictionaryUse then
-      output(Indent .. f'auto field = &this->Class->Dictionary[{field.index}];')
-   else
-      output(Indent .. 'OBJECTPTR target;')
-      output(Indent .. f'auto field = FindField(this, FID_{FidName}, &target);')
-      output(Indent .. 'if (not field) return ERR::UnsupportedField;')
-      output(Indent .. 'if (not field->readable()) return ERR::NoFieldAccess;')
-   end
-end
-
-----------------------------------------------------------------------------------------------------------------------
 -- Emit a GetValue() call with object context handling.
 
 function outputGetValueCall(Field:table, FieldType:str, Indent:str)
@@ -281,45 +256,42 @@ function outputGetValueCall(Field:table, FieldType:str, Indent:str)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Emit a direct field-offset read using the field description.
-
-function outputFieldOffsetReadValue(Field:table, FieldType:str, Indent:str)
-   if Field.flags has FD_ARRAY then
-      if Field.flags has FD_CPP then -- kt::vector
-         output(Indent .. f'Value = ({FieldType} *)(((int8_t *)this) + field->Offset);')
-      else -- Primitive array
-         if Field.arg >= 1 and not (Field.flags has FD_STRUCT) then -- Embedded array with known size
-            output(Indent .. f'Elements = {Field.arg};')
-            output(Indent .. f'Value = ({FieldType} *)(((int8_t *)this) + field->Offset);')
-         else
-            output(Indent .. f'Value = *(({FieldType} **)(((int8_t *)this) + field->Offset));')
-            output(Indent .. 'Elements = -1;')
-         end
-      end
-   elseif Field.flags has FD_STRING then
-      if Field.flags has FD_ALLOC then
-         output(Indent .. 'Value.assign(*((std::string *)(((int8_t *)this) + field->Offset)));')
-      else
-         output(Indent .. 'Value = *((std::string *)(((int8_t *)this) + field->Offset));')
-      end
-   else
-      output(Indent .. f'Value = *(({FieldType} *)(((int8_t *)this) + field->Offset));')
-   end
-
-   output(Indent .. 'return ERR::Okay;')
-end
-
-----------------------------------------------------------------------------------------------------------------------
 -- Emit a complete getter body that delegates reads to the field description.
 
 function outputFieldReadGetter(Class:table, Field:table, FidName:str, FieldType:str, Indent:str)
    outputFieldGetSignature(Field, FidName, FieldType)
-   outputFieldReadTarget(Class, Field, FidName, Indent)
 
    if Field.read is 'Get' then
+      -- Virtual access to value
+      output(Indent .. f'auto field = &this->Class->Dictionary[{Field.index}];')
       outputGetValueCall(Field, FieldType, Indent)
    else
-      outputFieldOffsetReadValue(Field, FieldType, Indent)
+      -- Direct access to value
+      offset = tostring(Field.offset)
+
+      if Field.flags has FD_ARRAY then
+         if Field.flags has FD_CPP then -- kt::vector
+            output(Indent .. f'Value = ({FieldType} *)(((int8_t *)this) + {offset});')
+         else -- Primitive array
+            if Field.arg >= 1 and not (Field.flags has FD_STRUCT) then -- Embedded array with known size
+               output(Indent .. f'Elements = {Field.arg};')
+               output(Indent .. f'Value = ({FieldType} *)(((int8_t *)this) + {offset});')
+            else
+               output(Indent .. f'Value = *(({FieldType} **)(((int8_t *)this) + {offset}));')
+               output(Indent .. 'Elements = -1;')
+            end
+         end
+      elseif Field.flags has FD_STRING then
+         if Field.flags has FD_ALLOC then
+            output(Indent .. 'Value.assign(*((std::string *)(((int8_t *)this) + {offset})));')
+         else
+            output(Indent .. 'Value = *((std::string *)(((int8_t *)this) + {offset}));')
+         end
+      else
+         output(Indent .. f'Value = *(({FieldType} *)(((int8_t *)this) + {offset}));')
+      end
+
+      output(Indent .. 'return ERR::Okay;')
    end
 end
 
@@ -414,20 +386,8 @@ end
 -- Emit the fastest available field lookup for a WriteValue()-based setter.
 
 function outputFieldWriteTarget(Class:table, Field:table, FidName:str, Indent:str)
-   local field_hash = calcFieldHash(Field.name)
-   local err, field, target = Class.meta.mtFindField(field_hash)
-
-   if err != ERR_Okay then
-      print(f'Failed to find field {Field.name} {string.format("%.8x",field_hash)} in class {Class.name}')
-   end
-
-   if (err is ERR_Okay) and (target.id is Class.meta.id) and glEnableDictionaryUse then
-      output(Indent .. 'auto target = this;')
-      output(Indent .. f'auto field = &this->Class->Dictionary[{field.index}];')
-   else
-      output(Indent .. 'OBJECTPTR target;')
-      output(Indent .. f'auto field = FindField(this, FID_{FidName}, &target);')
-   end
+   output(Indent .. 'auto target = this;')
+   output(Indent .. f'auto field = &this->Class->Dictionary[{Field.index}];')
 end
 
 ----------------------------------------------------------------------------------------------------------------------

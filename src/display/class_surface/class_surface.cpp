@@ -2613,7 +2613,7 @@ static const FieldArray clSurfaceFields[] = {
    { "AbsY",          FDF_VIRTUAL|FDF_INT|FDF_PURE|FDF_RW, GET_AbsY, SET_AbsY },
    { "BitsPerPixel",  FDF_VIRTUAL|FDF_INT|FDF_PURE|FDF_RI, GET_BitsPerPixel, SET_BitsPerPixel },
    { "Bottom",        FDF_VIRTUAL|FDF_INT|FDF_PURE|FDF_R,  GET_Bottom },
-   { "Movement",      FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, nullptr, SET_Movement, &MovementFlags },
+   { "Movement",      FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, GET_Movement, SET_Movement, &MovementFlags },
    { "Opacity",       FDF_VIRTUAL|FDF_DOUBLE|FDF_PURE|FDF_RW, GET_Opacity, SET_Opacity },
    { "RevertFocus",   FDF_SYSTEM|FDF_VIRTUAL|FDF_OBJECTID|FDF_W, nullptr, SET_RevertFocus },
    { "Right",         FDF_VIRTUAL|FDF_INT|FDF_PURE|FDF_R,  GET_Right },

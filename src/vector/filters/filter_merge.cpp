@@ -137,6 +137,13 @@ static ERR MERGEFX_SET_SourceList(extMergeFX *Self, MergeSource *Value, int Elem
    return ERR::Okay;
 }
 
+static ERR MERGEFX_GET_SourceList(extMergeFX *Self, MergeSource **Value, int *Elements)
+{
+   *Value    = Self->List.data();
+   *Elements = int(Self->List.size());
+   return ERR::Okay;
+}
+
 /*********************************************************************************************************************
 
 -FIELD-
@@ -160,7 +167,7 @@ static ERR MERGEFX_GET_XMLDef(extMergeFX *Self, std::string_view &Value)
 #include "filter_merge_def.c"
 
 static const FieldArray clMergeFXFields[] = {
-   { "SourceList", FDF_VIRTUAL|FDF_STRUCT|FDF_ARRAY|FDF_RW, nullptr, MERGEFX_SET_SourceList, "MergeSource" },
+   { "SourceList", FDF_VIRTUAL|FDF_STRUCT|FDF_ARRAY|FDF_RW, MERGEFX_GET_SourceList, MERGEFX_SET_SourceList, "MergeSource" },
    { "XMLDef",     FDF_VIRTUAL|FDF_CPPSTRING|FDF_ALLOC|FDF_R, MERGEFX_GET_XMLDef },
    END_FIELD
 };

@@ -669,8 +669,7 @@ class objVectorTransition : public Object {
    // Customised field getting
 
    inline ERR getTotalStops(int &Value) noexcept {
-      auto field = &this->Class->Dictionary[1];
-      Value = *((int *)(((int8_t *)this) + field->Offset));
+      Value = *((int *)(((int8_t *)this) + 88));
       return ERR::Okay;
    }
 
@@ -1851,8 +1850,10 @@ class objSourceFX : public objFilterEffect {
 
    inline ERR getSource(OBJECTPTR &Value) noexcept {
       auto field = &this->Class->Dictionary[1];
-      Value = *((OBJECTPTR *)(((int8_t *)this) + field->Offset));
-      return ERR::Okay;
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
    }
 
    inline ERR getXMLDef(std::string &Value) noexcept {
@@ -2676,9 +2677,11 @@ class objMergeFX : public objFilterEffect {
 
    inline ERR getSourceList(APTR * &Value, int &Elements) noexcept {
       auto field = &this->Class->Dictionary[0];
-      Value = *((APTR **)(((int8_t *)this) + field->Offset));
-      Elements = -1;
-      return ERR::Okay;
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, APTR *&, int &))field->GetValue;
+      auto error = get_field(this, Value, Elements);
+      RestoreObjectContext();
+      return error;
    }
 
    inline ERR getXMLDef(std::string &Value) noexcept {

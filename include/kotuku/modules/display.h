@@ -873,16 +873,14 @@ class objBitmap : public Object {
    }
 
    inline ERR getTransColour(struct RGB8 * &Value, int &Elements) noexcept {
-      auto field = &this->Class->Dictionary[20];
       Elements = 4;
-      Value = (struct RGB8 *)(((int8_t *)this) + field->Offset);
+      Value = (struct RGB8 *)(((int8_t *)this) + 244);
       return ERR::Okay;
    }
 
    inline ERR getBkgd(struct RGB8 * &Value, int &Elements) noexcept {
-      auto field = &this->Class->Dictionary[3];
       Elements = 4;
-      Value = (struct RGB8 *)(((int8_t *)this) + field->Offset);
+      Value = (struct RGB8 *)(((int8_t *)this) + 248);
       return ERR::Okay;
    }
 
@@ -897,26 +895,22 @@ class objBitmap : public Object {
    }
 
    inline ERR getClipLeft(int &Value) noexcept {
-      auto field = &this->Class->Dictionary[4];
-      Value = *((int *)(((int8_t *)this) + field->Offset));
+      Value = *((int *)(((int8_t *)this) + 184));
       return ERR::Okay;
    }
 
    inline ERR getClipRight(int &Value) noexcept {
-      auto field = &this->Class->Dictionary[24];
-      Value = *((int *)(((int8_t *)this) + field->Offset));
+      Value = *((int *)(((int8_t *)this) + 188));
       return ERR::Okay;
    }
 
    inline ERR getClipBottom(int &Value) noexcept {
-      auto field = &this->Class->Dictionary[0];
-      Value = *((int *)(((int8_t *)this) + field->Offset));
+      Value = *((int *)(((int8_t *)this) + 192));
       return ERR::Okay;
    }
 
    inline ERR getClipTop(int &Value) noexcept {
-      auto field = &this->Class->Dictionary[16];
-      Value = *((int *)(((int8_t *)this) + field->Offset));
+      Value = *((int *)(((int8_t *)this) + 196));
       return ERR::Okay;
    }
 
@@ -2181,9 +2175,8 @@ class objSurface : public Object {
    }
 
    inline ERR getColour(struct RGB8 * &Value, int &Elements) noexcept {
-      auto field = &this->Class->Dictionary[11];
       Elements = 4;
-      Value = (struct RGB8 *)(((int8_t *)this) + field->Offset);
+      Value = (struct RGB8 *)(((int8_t *)this) + 164);
       return ERR::Okay;
    }
 
@@ -2218,8 +2211,10 @@ class objSurface : public Object {
 
    inline ERR getMovement(int &Value) noexcept {
       auto field = &this->Class->Dictionary[23];
-      Value = *((int *)(((int8_t *)this) + field->Offset));
-      return ERR::Okay;
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
    }
 
    inline ERR getOpacity(double &Value) noexcept {

@@ -67,7 +67,6 @@ Examples:
    global glOutputProto = glArgs['output-proto']
    global glPrototypes  = glArgs.prototypes
    global glSDK         = glArgs.sdk
-   global glEnableDictionaryUse = true -- Allow dictionary use for fast field access
 
    import './include/utils'
    import './include/parser'
@@ -77,9 +76,9 @@ Examples:
    import './include/actions'
    import './include/output'
 
-   rx_field_extract  = <{ regex.new([[^(.+?)[:#]\s*(.+)$]]) }> -- "type FieldName # Comment", also accepts ":"
-   rx_colon_comment  = <{ regex.new([[^(.+?):\s+(.+)$]]) }> -- type FieldName: Comment
-   rx_type_name      = <{ regex.new([[^\s*(.+)\s+(\S+)\s*$]]) }>
+   rx_field_extract  = <{ r[[^(.+?)[:#]\s*(.+)$]] }> -- "type FieldName # Comment", also accepts ":"
+   rx_colon_comment  = <{ r[[^(.+?):\s+(.+)$]] }> -- type FieldName: Comment
+   rx_type_name      = <{ r[[^\s*(.+)\s+(\S+)\s*$]] }>
 
 ----------------------------------------------------------------------------------------------------------------------
 
