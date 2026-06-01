@@ -430,18 +430,14 @@ class objXML : public Object {
 
    inline ERR getErrorMsg(std::string_view &Value) noexcept {
       auto field = &this->Class->Dictionary[18];
-      SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, std::string_view &))field->GetValue;
       auto error = get_field(this, Value);
-      RestoreObjectContext();
       return error;
    }
 
    inline ERR getReadOnly(int &Value) noexcept {
       auto field = &this->Class->Dictionary[10];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 
@@ -461,10 +457,8 @@ class objXML : public Object {
 
    inline ERR getTags(APTR * &Value, int &Elements) noexcept {
       auto field = &this->Class->Dictionary[17];
-      SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, APTR *&, int &))field->GetValue;
       auto error = get_field(this, Value, Elements);
-      RestoreObjectContext();
       return error;
    }
 

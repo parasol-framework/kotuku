@@ -2751,13 +2751,13 @@ static const FieldDef PermissionFlags[] = {
 static const FieldArray FileFields[] = {
    { "Position",     FDF_INT64|FDF_RW, nullptr, SET_Position },
    { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, SET_Flags, &clFileFlags },
-   { "Buffer",       FDF_ARRAY|FDF_BYTE|FDF_R, GET_Buffer },
+   { "Buffer",       FDF_ARRAY|FDF_BYTE|FDF_R|FDF_PURE, GET_Buffer },
    // Virtual fields
    { "Date",         FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Date, SET_Date, "DateTime" },
    { "Created",      FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Created, nullptr, "DateTime" },
-   { "Handle",       FDF_INT64|FDF_R,      GET_Handle },
+   { "Handle",       FDF_INT64|FDF_R|FDF_PURE,      GET_Handle },
    { "Icon",         FDF_CPPSTRING|FDF_R,  GET_Icon },
-   { "Path",         FDF_CPPSTRING|FDF_RI, GET_Path, SET_Path },
+   { "Path",         FDF_CPPSTRING|FDF_RI|FDF_PURE, GET_Path, SET_Path },
    { "Permissions",  FDF_INTFLAGS|FDF_RW,  GET_Permissions, SET_Permissions, &PermissionFlags },
    { "ResolvedPath", FDF_CPPSTRING|FDF_R,  GET_ResolvedPath },
    { "Size",         FDF_INT64|FDF_RW,     GET_Size, SET_Size },
@@ -2766,8 +2766,8 @@ static const FieldArray FileFields[] = {
    { "User",         FDF_INT|FDF_RW,       GET_User, SET_User },
    { "Group",        FDF_INT|FDF_RW,       GET_Group, SET_Group },
    // Synonyms
-   { "Src",       FDF_VIRTUAL|FDF_CPPSTRING|FDF_SYNONYM|FDF_RI, GET_Path, SET_Path },
-   { "Location",  FDF_VIRTUAL|FDF_SYSTEM|FDF_SYNONYM|FDF_CPPSTRING|FDF_RI, GET_Path, SET_Path }, // Deprecated
+   { "Src",       FDF_VIRTUAL|FDF_CPPSTRING|FDF_SYNONYM|FDF_RI|FDF_PURE, GET_Path, SET_Path },
+   { "Location",  FDF_VIRTUAL|FDF_SYSTEM|FDF_SYNONYM|FDF_CPPSTRING|FDF_RI|FDF_PURE, GET_Path, SET_Path }, // Deprecated
    { "TimeStamp", FDF_VIRTUAL|FDF_SYSTEM|FDF_SYNONYM|FDF_INT64|FDF_R,   GET_Timestamp }, // Deprecated
    END_FIELD
 };

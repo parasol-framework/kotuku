@@ -117,9 +117,7 @@ class objFont : public Object {
 
    inline ERR getPoint(double &Value) noexcept {
       auto field = &this->Class->Dictionary[1];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 
@@ -282,9 +280,7 @@ class objFont : public Object {
 
    inline ERR getOpacity(double &Value) noexcept {
       auto field = &this->Class->Dictionary[29];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 

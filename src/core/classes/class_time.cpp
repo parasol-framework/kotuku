@@ -1000,7 +1000,7 @@ static const FieldArray clFields[] = {
    { "MilliSecond",  FDF_INT|FDF_RW },
    { "MicroSecond",  FDF_INT|FDF_RW },
    // Virtual fields
-   { "Timestamp",    FDF_INT64|FDF_R, GET_Timestamp },
+   { "Timestamp",    FDF_INT64|FDF_R|FDF_PURE, GET_Timestamp },
    END_FIELD
 };
 

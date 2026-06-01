@@ -1017,7 +1017,7 @@ static void scene_key_event(evKey *Event, int Size, extVectorScene *Self)
 #include "scene_def.c"
 
 static const FieldArray clSceneFields[] = {
-   { "RenderTime",   FDF_INT64|FDF_R, GET_RenderTime },
+   { "RenderTime",   FDF_INT64|FDF_R|FDF_PURE, GET_RenderTime },
    { "Gamma",        FDF_DOUBLE|FDF_RW },
    { "HostScene",    FDF_OBJECT|FDF_RI,    nullptr, nullptr, CLASSID::VECTORSCENE },
    { "Viewport",     FDF_OBJECT|FD_R,      nullptr, nullptr, CLASSID::VECTORVIEWPORT },
@@ -1028,7 +1028,7 @@ static const FieldArray clSceneFields[] = {
    { "PageHeight",   FDF_INT|FDF_RW,      nullptr, SET_PageHeight },
    { "SampleMethod", FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_SampleMethod, &clVectorSceneSampleMethod },
    // Virtual fields
-   { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R, GET_Defs, nullptr },
+   { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R|FDF_PURE, GET_Defs, nullptr },
    END_FIELD
 };
 

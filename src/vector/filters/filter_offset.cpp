@@ -101,8 +101,8 @@ static ERR OFFSETFX_GET_XMLDef(extOffsetFX *Self, std::string_view &Value)
 #include "filter_offset_def.c"
 
 static const FieldArray clOffsetFXFields[] = {
-   { "XOffset", FDF_VIRTUAL|FDF_INT|FDF_RW, OFFSETFX_GET_XOffset, OFFSETFX_SET_XOffset },
-   { "YOffset", FDF_VIRTUAL|FDF_INT|FDF_RW, OFFSETFX_GET_YOffset, OFFSETFX_SET_YOffset },
+   { "XOffset", FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE, OFFSETFX_GET_XOffset, OFFSETFX_SET_XOffset },
+   { "YOffset", FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE, OFFSETFX_GET_YOffset, OFFSETFX_SET_YOffset },
    { "XMLDef",  FDF_VIRTUAL|FDF_CPPSTRING|FDF_ALLOC|FDF_R, OFFSETFX_GET_XMLDef },
    END_FIELD
 };

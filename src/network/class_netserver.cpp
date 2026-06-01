@@ -617,14 +617,14 @@ static void free_client(extNetServer *Server, objNetClient *Client)
 #include "netserver_def.c"
 
 static const FieldArray clNetServerFields[] = {
-   { "TotalClients",   FDF_VIRTUAL|FDF_INT|FDF_R,     NETSERVER_GET_TotalClients },
-   { "Backlog",        FDF_VIRTUAL|FDF_INT|FDF_RI,    NETSERVER_GET_Backlog, NETSERVER_SET_Backlog },
-   { "ClientLimit",    FDF_VIRTUAL|FDF_INT|FDF_RW,    NETSERVER_GET_ClientLimit, NETSERVER_SET_ClientLimit },
-   { "SocketLimit",    FDF_VIRTUAL|FDF_INT|FDF_RW,    NETSERVER_GET_SocketLimit, NETSERVER_SET_SocketLimit },
-   { "SSLCertificate", FDF_VIRTUAL|FDF_CPPSTRING|FDF_RI, NETSERVER_GET_SSLCertificate, NETSERVER_SET_SSLCertificate },
-   { "SSLPrivateKey",  FDF_VIRTUAL|FDF_CPPSTRING|FDF_RI, NETSERVER_GET_SSLPrivateKey, NETSERVER_SET_SSLPrivateKey },
-   { "SSLKeyPassword", FDF_VIRTUAL|FDF_CPPSTRING|FDF_RI, NETSERVER_GET_SSLKeyPassword, NETSERVER_SET_SSLKeyPassword },
-   { "Clients",        FDF_VIRTUAL|FDF_OBJECT|FDF_R,  NETSERVER_GET_Clients, nullptr, CLASSID::NETCLIENT },
+   { "TotalClients",   FDF_VIRTUAL|FDF_INT|FDF_R|FDF_PURE,     NETSERVER_GET_TotalClients },
+   { "Backlog",        FDF_VIRTUAL|FDF_INT|FDF_RI|FDF_PURE,    NETSERVER_GET_Backlog, NETSERVER_SET_Backlog },
+   { "ClientLimit",    FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE,    NETSERVER_GET_ClientLimit, NETSERVER_SET_ClientLimit },
+   { "SocketLimit",    FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE,    NETSERVER_GET_SocketLimit, NETSERVER_SET_SocketLimit },
+   { "SSLCertificate", FDF_VIRTUAL|FDF_CPPSTRING|FDF_RI|FDF_PURE, NETSERVER_GET_SSLCertificate, NETSERVER_SET_SSLCertificate },
+   { "SSLPrivateKey",  FDF_VIRTUAL|FDF_CPPSTRING|FDF_RI|FDF_PURE, NETSERVER_GET_SSLPrivateKey, NETSERVER_SET_SSLPrivateKey },
+   { "SSLKeyPassword", FDF_VIRTUAL|FDF_CPPSTRING|FDF_RI|FDF_PURE, NETSERVER_GET_SSLKeyPassword, NETSERVER_SET_SSLKeyPassword },
+   { "Clients",        FDF_VIRTUAL|FDF_OBJECT|FDF_R|FDF_PURE,  NETSERVER_GET_Clients, nullptr, CLASSID::NETCLIENT },
    END_FIELD
 };
 

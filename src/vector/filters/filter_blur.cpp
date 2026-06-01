@@ -473,8 +473,8 @@ static ERR BLURFX_GET_XMLDef(extBlurFX *Self, std::string_view &Value)
 #include "filter_blur_def.c"
 
 static const FieldArray clBlurFXFields[] = {
-   { "SX",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, BLURFX_GET_SX, BLURFX_SET_SX },
-   { "SY",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, BLURFX_GET_SY, BLURFX_SET_SY },
+   { "SX",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE, BLURFX_GET_SX, BLURFX_SET_SX },
+   { "SY",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE, BLURFX_GET_SY, BLURFX_SET_SY },
    { "XMLDef", FDF_VIRTUAL|FDF_CPPSTRING|FDF_ALLOC|FDF_R, BLURFX_GET_XMLDef, nullptr },
    END_FIELD
 };

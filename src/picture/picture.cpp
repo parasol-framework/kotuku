@@ -1522,16 +1522,16 @@ static const FieldArray clFields[] = {
    { "Quality",       FDF_INT|FDF_RW },
    { "FrameRate",     FDF_SYSTEM|FDF_INT|FDF_R },
    // Virtual fields
-   { "Author",        FDF_CPPSTRING|FDF_RW,  GET_Author, SET_Author },
-   { "Copyright",     FDF_CPPSTRING|FDF_RW,  GET_Copyright, SET_Copyright },
-   { "Description",   FDF_CPPSTRING|FDF_RW,  GET_Description, SET_Description },
-   { "Disclaimer",    FDF_CPPSTRING|FDF_RW,  GET_Disclaimer, SET_Disclaimer },
-   { "Header",        FDF_POINTER|FDF_RI, GET_Header },
-   { "Path",          FDF_CPPSTRING|FDF_RI,  GET_Path, SET_Path },
-   { "Location",      FDF_SYNONYM|FDF_CPPSTRING|FDF_RI, GET_Path, SET_Path },
-   { "Src",           FDF_SYNONYM|FDF_CPPSTRING|FDF_RI, GET_Path, SET_Path },
-   { "Software",      FDF_CPPSTRING|FDF_RW,  GET_Software, SET_Software },
-   { "Title",         FDF_CPPSTRING|FDF_RW,  GET_Title, SET_Title },
+   { "Author",        FDF_CPPSTRING|FDF_RW|FDF_PURE,  GET_Author, SET_Author },
+   { "Copyright",     FDF_CPPSTRING|FDF_RW|FDF_PURE,  GET_Copyright, SET_Copyright },
+   { "Description",   FDF_CPPSTRING|FDF_RW|FDF_PURE,  GET_Description, SET_Description },
+   { "Disclaimer",    FDF_CPPSTRING|FDF_RW|FDF_PURE,  GET_Disclaimer, SET_Disclaimer },
+   { "Header",        FDF_POINTER|FDF_RI|FDF_PURE, GET_Header },
+   { "Path",          FDF_CPPSTRING|FDF_RI|FDF_PURE,  GET_Path, SET_Path },
+   { "Location",      FDF_SYNONYM|FDF_CPPSTRING|FDF_RI|FDF_PURE, GET_Path, SET_Path },
+   { "Src",           FDF_SYNONYM|FDF_CPPSTRING|FDF_RI|FDF_PURE, GET_Path, SET_Path },
+   { "Software",      FDF_CPPSTRING|FDF_RW|FDF_PURE,  GET_Software, SET_Software },
+   { "Title",         FDF_CPPSTRING|FDF_RW|FDF_PURE,  GET_Title, SET_Title },
    END_FIELD
 };
 

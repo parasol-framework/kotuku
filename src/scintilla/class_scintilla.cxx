@@ -2452,19 +2452,19 @@ static const FieldArray clFields[] = {
    { "Modified",       FDF_INT|FDF_RW, nullptr, SET_Modified },
 
    // Virtual fields
-   { "AllowTabs",      FDF_INT|FDF_RW,   GET_AllowTabs, SET_AllowTabs },
-   { "AutoIndent",     FDF_INT|FDF_RW,   GET_AutoIndent, SET_AutoIndent },
-   { "FileDrop",       FDF_FUNCTION|FDF_RW, GET_FileDrop, SET_FileDrop },
-   { "FoldingMarkers", FDF_INT|FDF_RW,   GET_FoldingMarkers, SET_FoldingMarkers },
+   { "AllowTabs",      FDF_INT|FDF_RW|FDF_PURE,   GET_AllowTabs, SET_AllowTabs },
+   { "AutoIndent",     FDF_INT|FDF_RW|FDF_PURE,   GET_AutoIndent, SET_AutoIndent },
+   { "FileDrop",       FDF_FUNCTION|FDF_RW|FDF_PURE, GET_FileDrop, SET_FileDrop },
+   { "FoldingMarkers", FDF_INT|FDF_RW|FDF_PURE,   GET_FoldingMarkers, SET_FoldingMarkers },
    { "LineCount",      FDF_INT|FDF_R,    GET_LineCount },
-   { "LineNumbers",    FDF_INT|FDF_RW,   GET_LineNumbers, SET_LineNumbers },
+   { "LineNumbers",    FDF_INT|FDF_RW|FDF_PURE,   GET_LineNumbers, SET_LineNumbers },
    { "Origin",         FDF_CPPSTRING|FDF_W, nullptr, SET_Origin },
-   { "ShowWhitespace", FDF_INT|FDF_RW,   GET_ShowWhitespace, SET_ShowWhitespace },
-   { "EventCallback",  FDF_FUNCTION|FDF_RW, GET_EventCallback, SET_EventCallback },
+   { "ShowWhitespace", FDF_INT|FDF_RW|FDF_PURE,   GET_ShowWhitespace, SET_ShowWhitespace },
+   { "EventCallback",  FDF_FUNCTION|FDF_RW|FDF_PURE, GET_EventCallback, SET_EventCallback },
    { "String",         FDF_CPPSTRING|FDF_RW, GET_String, SET_String },
-   { "Symbols",        FDF_INT|FDF_RW,   GET_Symbols, SET_Symbols },
-   { "TabWidth",       FDF_INT|FDF_RW,   GET_TabWidth, SET_TabWidth },
-   { "Wordwrap",       FDF_INT|FDF_RW,   GET_Wordwrap, SET_Wordwrap },
+   { "Symbols",        FDF_INT|FDF_RW|FDF_PURE,   GET_Symbols, SET_Symbols },
+   { "TabWidth",       FDF_INT|FDF_RW|FDF_PURE,   GET_TabWidth, SET_TabWidth },
+   { "Wordwrap",       FDF_INT|FDF_RW|FDF_PURE,   GET_Wordwrap, SET_Wordwrap },
    END_FIELD
 };
 

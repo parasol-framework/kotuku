@@ -928,7 +928,7 @@ extern "C" void win_clipboard_updated()
 
 static const FieldArray clFields[] = {
    { "Flags",          FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clClipboardFlags },
-   { "RequestHandler", FDF_FUNCTION|FDF_RW, GET_RequestHandler, SET_RequestHandler },
+   { "RequestHandler", FDF_FUNCTION|FDF_RW|FDF_PURE, GET_RequestHandler, SET_RequestHandler },
    END_FIELD
 };
 

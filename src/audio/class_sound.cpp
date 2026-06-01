@@ -1749,11 +1749,11 @@ static const FieldArray clFields[] = {
    { "ChannelIndex",   FDF_INT|FDF_R },
    // Virtual fields
    { "Active",   FDF_INT|FDF_R,            SOUND_GET_Active },
-   { "Duration", FDF_DOUBLE|FDF_R,         SOUND_GET_Duration },
-   { "Header",   FDF_BYTE|FDF_ARRAY|FDF_R, SOUND_GET_Header },
-   { "OnStop",   FDF_FUNCTION|FDF_RW,      SOUND_GET_OnStop, SOUND_SET_OnStop },
-   { "Path",     FDF_CPPSTRING|FDF_RI,     SOUND_GET_Path, SOUND_SET_Path },
-   { "Src",      FDF_SYNONYM|FDF_CPPSTRING|FDF_RI, SOUND_GET_Path, SOUND_SET_Path },
+   { "Duration", FDF_DOUBLE|FDF_R|FDF_PURE,         SOUND_GET_Duration },
+   { "Header",   FDF_BYTE|FDF_ARRAY|FDF_R|FDF_PURE, SOUND_GET_Header },
+   { "OnStop",   FDF_FUNCTION|FDF_RW|FDF_PURE,      SOUND_GET_OnStop, SOUND_SET_OnStop },
+   { "Path",     FDF_CPPSTRING|FDF_RI|FDF_PURE,     SOUND_GET_Path, SOUND_SET_Path },
+   { "Src",      FDF_SYNONYM|FDF_CPPSTRING|FDF_RI|FDF_PURE, SOUND_GET_Path, SOUND_SET_Path },
    { "Note",     FDF_CPPSTRING|FDF_RW,     SOUND_GET_Note, SOUND_SET_Note },
    END_FIELD
 };

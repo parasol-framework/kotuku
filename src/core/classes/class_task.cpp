@@ -2491,22 +2491,22 @@ static const FieldArray clFields[] = {
    { "ReturnCode",      FDF_INT|FDF_RW, GET_ReturnCode, SET_ReturnCode },
    { "ProcessID",       FDF_INT|FDF_RI },
    // Virtual fields
-   { "Actions",        FDF_POINTER|FDF_R,  GET_Actions },
+   { "Actions",        FDF_POINTER|FDF_R|FDF_PURE,  GET_Actions },
    { "AffinityMask",   FDF_INT64|FDF_RW,   GET_AffinityMask, SET_AffinityMask },
    { "Args",           FDF_CPPSTRING|FDF_W, nullptr, SET_Args },
-   { "Parameters",     FDF_ARRAY|FDF_CPPSTRING|FDF_RW, GET_Parameters, SET_Parameters },
-   { "ErrorCallback",  FDF_FUNCTION|FDF_RI,    GET_ErrorCallback,   SET_ErrorCallback }, // STDERR
-   { "ExitCallback",   FDF_FUNCTION|FDF_RW,    GET_ExitCallback,    SET_ExitCallback },
-   { "InputCallback",  FDF_FUNCTION|FDF_RW,    GET_InputCallback,   SET_InputCallback }, // STDIN
-   { "LaunchPath",     FDF_CPPSTRING|FDF_RW,   GET_LaunchPath,      SET_LaunchPath },
-   { "Location",       FDF_CPPSTRING|FDF_RW,   GET_Location,        SET_Location },
-   { "Name",           FDF_CPPSTRING|FDF_RW,   GET_Name,            SET_Name },
-   { "OutputCallback", FDF_FUNCTION|FDF_RI,    GET_OutputCallback,  SET_OutputCallback }, // STDOUT
-   { "Path",           FDF_CPPSTRING|FDF_RW,   GET_Path,            SET_Path },
-   { "ProcessPath",    FDF_CPPSTRING|FDF_R,    GET_ProcessPath },
+   { "Parameters",     FDF_ARRAY|FDF_CPPSTRING|FDF_RW|FDF_PURE, GET_Parameters, SET_Parameters },
+   { "ErrorCallback",  FDF_FUNCTION|FDF_RI|FDF_PURE,    GET_ErrorCallback,   SET_ErrorCallback }, // STDERR
+   { "ExitCallback",   FDF_FUNCTION|FDF_RW|FDF_PURE,    GET_ExitCallback,    SET_ExitCallback },
+   { "InputCallback",  FDF_FUNCTION|FDF_RW|FDF_PURE,    GET_InputCallback,   SET_InputCallback }, // STDIN
+   { "LaunchPath",     FDF_CPPSTRING|FDF_RW|FDF_PURE,   GET_LaunchPath,      SET_LaunchPath },
+   { "Location",       FDF_CPPSTRING|FDF_RW|FDF_PURE,   GET_Location,        SET_Location },
+   { "Name",           FDF_CPPSTRING|FDF_RW|FDF_PURE,   GET_Name,            SET_Name },
+   { "OutputCallback", FDF_FUNCTION|FDF_RI|FDF_PURE,    GET_OutputCallback,  SET_OutputCallback }, // STDOUT
+   { "Path",           FDF_CPPSTRING|FDF_RW|FDF_PURE,   GET_Path,            SET_Path },
+   { "ProcessPath",    FDF_CPPSTRING|FDF_R|FDF_PURE,    GET_ProcessPath },
    { "Priority",       FDF_INT|FDF_RW,         GET_Priority, SET_Priority },
    // Synonyms
-   { "Src",            FDF_SYNONYM|FDF_CPPSTRING|FDF_RW, GET_Location, SET_Location },
+   { "Src",            FDF_SYNONYM|FDF_CPPSTRING|FDF_RW|FDF_PURE, GET_Location, SET_Location },
    END_FIELD
 };
 

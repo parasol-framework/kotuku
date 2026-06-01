@@ -166,9 +166,7 @@ class objNetClient : public Object {
 
    inline ERR getIP(APTR &Value) noexcept {
       auto field = &this->Class->Dictionary[3];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 
@@ -505,28 +503,22 @@ class objNetLookup : public Object {
 
    inline ERR getHostName(std::string_view &Value) noexcept {
       auto field = &this->Class->Dictionary[9];
-      SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, std::string_view &))field->GetValue;
       auto error = get_field(this, Value);
-      RestoreObjectContext();
       return error;
    }
 
    inline ERR getCallback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[3];
-      SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
       auto error = get_field(this, Value);
-      RestoreObjectContext();
       return error;
    }
 
    inline ERR getAddresses(APTR * &Value, int &Elements) noexcept {
       auto field = &this->Class->Dictionary[2];
-      SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, APTR *&, int &))field->GetValue;
       auto error = get_field(this, Value, Elements);
-      RestoreObjectContext();
       return error;
    }
 
@@ -906,59 +898,45 @@ class objNetServer : public objNetSocket {
 
    inline ERR getTotalClients(int &Value) noexcept {
       auto field = &this->Class->Dictionary[7];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 
    inline ERR getBacklog(int &Value) noexcept {
       auto field = &this->Class->Dictionary[4];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 
    inline ERR getClientLimit(int &Value) noexcept {
       auto field = &this->Class->Dictionary[6];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 
    inline ERR getSocketLimit(int &Value) noexcept {
       auto field = &this->Class->Dictionary[5];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 
    inline ERR getSSLCertificate(std::string_view &Value) noexcept {
       auto field = &this->Class->Dictionary[0];
-      SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, std::string_view &))field->GetValue;
       auto error = get_field(this, Value);
-      RestoreObjectContext();
       return error;
    }
 
    inline ERR getSSLKeyPassword(std::string_view &Value) noexcept {
       auto field = &this->Class->Dictionary[1];
-      SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, std::string_view &))field->GetValue;
       auto error = get_field(this, Value);
-      RestoreObjectContext();
       return error;
    }
 
    inline ERR getClients(OBJECTPTR &Value) noexcept {
       auto field = &this->Class->Dictionary[2];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 
@@ -982,17 +960,17 @@ class objNetServer : public objNetSocket {
 
    inline ERR setSSLCertificate(const std::string_view &Value) noexcept {
       auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(this, field, 0x00804508, &Value, 1);
+      return field->WriteValue(this, field, 0x00904508, &Value, 1);
    }
 
    inline ERR setSSLPrivateKey(const std::string_view &Value) noexcept {
       auto field = &this->Class->Dictionary[3];
-      return field->WriteValue(this, field, 0x00804508, &Value, 1);
+      return field->WriteValue(this, field, 0x00904508, &Value, 1);
    }
 
    inline ERR setSSLKeyPassword(const std::string_view &Value) noexcept {
       auto field = &this->Class->Dictionary[1];
-      return field->WriteValue(this, field, 0x00804508, &Value, 1);
+      return field->WriteValue(this, field, 0x00904508, &Value, 1);
    }
 
 };

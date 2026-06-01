@@ -2415,11 +2415,11 @@ static const FieldArray clFields[] = {
    { "ParseError",   FDF_INT|FD_PRIVATE|FDF_R },
    { "LineNo",       FDF_INT|FD_PRIVATE|FDF_R },
    // Virtual fields
-   { "ErrorMsg",   FDF_CPPSTRING|FDF_R, GET_ErrorMsg },
-   { "ReadOnly",   FDF_INT|FDF_RI, GET_ReadOnly, SET_ReadOnly },
-   { "Src",        FDF_CPPSTRING|FDF_SYNONYM|FDF_RW, GET_Path, SET_Path },
+   { "ErrorMsg",   FDF_CPPSTRING|FDF_R|FDF_PURE, GET_ErrorMsg },
+   { "ReadOnly",   FDF_INT|FDF_RI|FDF_PURE, GET_ReadOnly, SET_ReadOnly },
+   { "Src",        FDF_CPPSTRING|FDF_SYNONYM|FDF_RW|FDF_PURE, GET_Path, SET_Path },
    { "Statement",  FDF_CPPSTRING|FDF_ALLOC|FDF_RW, GET_Statement, SET_Statement },
-   { "Tags",       FDF_ARRAY|FDF_STRUCT|FDF_R, GET_Tags, nullptr, "XTag" },
+   { "Tags",       FDF_ARRAY|FDF_STRUCT|FDF_R|FDF_PURE, GET_Tags, nullptr, "XTag" },
    END_FIELD
 };
 

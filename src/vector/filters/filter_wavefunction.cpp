@@ -423,14 +423,14 @@ static ERR WAVEFUNCTIONFX_GET_XMLDef(extWaveFunctionFX *Self, std::string_view &
 #include "filter_wavefunction_def.c"
 
 static const FieldArray clWaveFunctionFXFields[] = {
-   { "AspectRatio", FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW,   WAVEFUNCTIONFX_GET_AspectRatio, WAVEFUNCTIONFX_SET_AspectRatio, &clAspectRatio },
-   { "ColourMap",   FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW,        WAVEFUNCTIONFX_GET_ColourMap,   WAVEFUNCTIONFX_SET_ColourMap },
-   { "N",           FDF_VIRTUAL|FDF_INT|FDF_RW,              WAVEFUNCTIONFX_GET_N,           WAVEFUNCTIONFX_SET_N },
-   { "L",           FDF_VIRTUAL|FDF_INT|FDF_RW,              WAVEFUNCTIONFX_GET_L,           WAVEFUNCTIONFX_SET_L },
-   { "M",           FDF_VIRTUAL|FDF_INT|FDF_RW,              WAVEFUNCTIONFX_GET_M,           WAVEFUNCTIONFX_SET_M },
-   { "Resolution",  FDF_VIRTUAL|FDF_INT|FDF_RW,              WAVEFUNCTIONFX_GET_Resolution,  WAVEFUNCTIONFX_SET_Resolution },
-   { "Scale",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           WAVEFUNCTIONFX_GET_Scale,       WAVEFUNCTIONFX_SET_Scale },
-   { "Stops",       FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, WAVEFUNCTIONFX_GET_Stops,       WAVEFUNCTIONFX_SET_Stops, "GradientStop" },
+   { "AspectRatio", FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW|FDF_PURE,   WAVEFUNCTIONFX_GET_AspectRatio, WAVEFUNCTIONFX_SET_AspectRatio, &clAspectRatio },
+   { "ColourMap",   FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW|FDF_PURE,        WAVEFUNCTIONFX_GET_ColourMap,   WAVEFUNCTIONFX_SET_ColourMap },
+   { "N",           FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE,              WAVEFUNCTIONFX_GET_N,           WAVEFUNCTIONFX_SET_N },
+   { "L",           FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE,              WAVEFUNCTIONFX_GET_L,           WAVEFUNCTIONFX_SET_L },
+   { "M",           FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE,              WAVEFUNCTIONFX_GET_M,           WAVEFUNCTIONFX_SET_M },
+   { "Resolution",  FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE,              WAVEFUNCTIONFX_GET_Resolution,  WAVEFUNCTIONFX_SET_Resolution },
+   { "Scale",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,           WAVEFUNCTIONFX_GET_Scale,       WAVEFUNCTIONFX_SET_Scale },
+   { "Stops",       FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW|FDF_PURE, WAVEFUNCTIONFX_GET_Stops,       WAVEFUNCTIONFX_SET_Stops, "GradientStop" },
    { "XMLDef",      FDF_VIRTUAL|FDF_CPPSTRING|FDF_ALLOC|FDF_R, WAVEFUNCTIONFX_GET_XMLDef },
    END_FIELD
 };

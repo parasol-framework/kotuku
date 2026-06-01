@@ -1126,13 +1126,13 @@ static ConfigGroup * find_group_wild(extConfig *Self, std::string_view Group)
 
 static const FieldArray clFields[] = {
    { "Path",        FDF_CPPSTRING|FDF_RW, nullptr, SET_Path },
-   { "KeyFilter",   FDF_CPPSTRING|FDF_RW, GET_KeyFilter, SET_KeyFilter },
-   { "GroupFilter", FDF_CPPSTRING|FDF_RW, GET_GroupFilter, SET_GroupFilter },
+   { "KeyFilter",   FDF_CPPSTRING|FDF_RW|FDF_PURE, GET_KeyFilter, SET_KeyFilter },
+   { "GroupFilter", FDF_CPPSTRING|FDF_RW|FDF_PURE, GET_GroupFilter, SET_GroupFilter },
    { "Flags",       FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clConfigFlags },
    // Virtual fields
-   { "Data",        FDF_POINTER|FDF_R, GET_Data },
-   { "TotalGroups", FDF_INT|FDF_R, GET_TotalGroups },
-   { "TotalKeys",   FDF_INT|FDF_R, GET_TotalKeys },
+   { "Data",        FDF_POINTER|FDF_R|FDF_PURE, GET_Data },
+   { "TotalGroups", FDF_INT|FDF_R|FDF_PURE, GET_TotalGroups },
+   { "TotalKeys",   FDF_INT|FDF_R|FDF_PURE, GET_TotalKeys },
    END_FIELD
 };
 

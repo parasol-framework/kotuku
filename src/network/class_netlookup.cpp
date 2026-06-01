@@ -583,9 +583,9 @@ static const FieldArray clNetLookupFields[] = {
    { "ClientData", FDF_INT64|FDF_RW },
    { "Flags",      FDF_INT|FDF_FLAGS|FDF_RW },
    // Virtual fields
-   { "HostName",   FDF_VIRTUAL|FDF_CPPSTRING|FDF_R, GET_HostName },
-   { "Callback",   FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_Callback, SET_Callback },
-   { "Addresses",  FDF_VIRTUAL|FDF_STRUCT|FDF_ARRAY|FDF_R, GET_Addresses, nullptr, "IPAddress" },
+   { "HostName",   FDF_VIRTUAL|FDF_CPPSTRING|FDF_R|FDF_PURE, GET_HostName },
+   { "Callback",   FDF_VIRTUAL|FDF_FUNCTION|FDF_RW|FDF_PURE, GET_Callback, SET_Callback },
+   { "Addresses",  FDF_VIRTUAL|FDF_STRUCT|FDF_ARRAY|FDF_R|FDF_PURE, GET_Addresses, nullptr, "IPAddress" },
    END_FIELD
 };
 

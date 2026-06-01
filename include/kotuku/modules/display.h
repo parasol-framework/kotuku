@@ -816,9 +816,7 @@ class objBitmap : public Object {
 
    inline ERR getClip(struct ClipRectangle &Value) noexcept {
       auto field = &this->Class->Dictionary[25];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 
@@ -947,7 +945,7 @@ class objBitmap : public Object {
 
    inline ERR setClip(struct ClipRectangle * Value) noexcept {
       auto field = &this->Class->Dictionary[25];
-      return field->WriteValue(this, field, 0x08000310, Value, 1);
+      return field->WriteValue(this, field, 0x08100310, Value, 1);
    }
 
    inline ERR setDataFlags(const MEM Value) noexcept {
@@ -1037,7 +1035,7 @@ class objBitmap : public Object {
 
    inline ERR setHandle(APTR Value) noexcept {
       auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(this, field, 0x08010300, Value, 1);
+      return field->WriteValue(this, field, 0x08110300, Value, 1);
    }
 
 };
@@ -1535,10 +1533,8 @@ class objClipboard : public Object {
 
    inline ERR getRequestHandler(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[3];
-      SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
       auto error = get_field(this, Value);
-      RestoreObjectContext();
       return error;
    }
 
@@ -1797,18 +1793,14 @@ class objPointer : public Object {
 
    inline ERR getButtonState(int &Value) noexcept {
       auto field = &this->Class->Dictionary[14];
-      SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
       return error;
    }
 
    inline ERR getButtonOrder(std::string_view &Value) noexcept {
       auto field = &this->Class->Dictionary[7];
-      SetObjectContext(this, field, AC::NIL);
       auto get_field = (ERR (*)(APTR, std::string_view &))field->GetValue;
       auto error = get_field(this, Value);
-      RestoreObjectContext();
       return error;
    }
 
@@ -1884,7 +1876,7 @@ class objPointer : public Object {
 
    inline ERR setButtonOrder(const std::string_view &Value) noexcept {
       auto field = &this->Class->Dictionary[7];
-      return field->WriteValue(this, field, 0x00804300, &Value, 1);
+      return field->WriteValue(this, field, 0x00904300, &Value, 1);
    }
 
 };

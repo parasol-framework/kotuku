@@ -422,13 +422,13 @@ static ERR SET_Routine(extThread *Self, FUNCTION *Value)
 #include "class_thread_def.c"
 
 static const FieldArray clFields[] = {
-   { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, GET_Data },
+   { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R|FDF_PURE, GET_Data },
    { "DataSize",  FDF_INT|FDF_R },
    { "Error",     FDF_INT|FDF_R },
    { "Flags",     FDF_INT|FDF_RI, nullptr, nullptr, &clThreadFlags },
    // Virtual fields
-   { "Callback",  FDF_FUNCTION|FDF_RW, GET_Callback, SET_Callback },
-   { "Routine",   FDF_FUNCTION|FDF_RW, GET_Routine, SET_Routine },
+   { "Callback",  FDF_FUNCTION|FDF_RW|FDF_PURE, GET_Callback, SET_Callback },
+   { "Routine",   FDF_FUNCTION|FDF_RW|FDF_PURE, GET_Routine, SET_Routine },
    END_FIELD
 };
 

@@ -1485,11 +1485,11 @@ static const FieldArray clAudioFields[] = {
    { "Periods",       FDF_INT|FDF_RI,    nullptr, SET_Periods },
    { "PeriodSize",    FDF_INT|FDF_RI,    nullptr, SET_PeriodSize },
    // VIRTUAL FIELDS
-   { "Device",        FDF_CPPSTRING|FDF_RW,  GET_Device, SET_Device },
+   { "Device",        FDF_CPPSTRING|FDF_RW|FDF_PURE,  GET_Device, SET_Device },
    { "MixerLag",      FDF_DOUBLE|FDF_R,   GET_MixerLag },
-   { "MasterVolume",  FDF_DOUBLE|FDF_RW,  GET_MasterVolume, SET_MasterVolume },
+   { "MasterVolume",  FDF_DOUBLE|FDF_RW|FDF_PURE,  GET_MasterVolume, SET_MasterVolume },
    { "Mute",          FDF_INT|FDF_RW,    GET_Mute, SET_Mute },
-   { "Stereo",        FDF_INT|FDF_RW,    GET_Stereo, SET_Stereo },
+   { "Stereo",        FDF_INT|FDF_RW|FDF_PURE,    GET_Stereo, SET_Stereo },
    END_FIELD
 };
 

@@ -144,7 +144,7 @@ static const std::vector<Field> glMetaFieldsPreset = {
 
 static const FieldArray glMetaFields[] = {
    { "ClassVersion",    FDF_DOUBLE|FDF_RI },
-   { "Fields",          FDF_ARRAY|FD_STRUCT|FDF_RI, GET_Fields, SET_Fields, "FieldArray" },
+   { "Fields",          FDF_ARRAY|FD_STRUCT|FDF_RI|FDF_PURE, GET_Fields, SET_Fields, "FieldArray" },
    { "Dictionary",      FDF_ARRAY|FD_STRUCT|FDF_R, GET_Dictionary, nullptr, "Field" },
    { "ClassName",       FDF_CPPSTRING|FDF_RI },
    { "FileExtension",   FDF_CPPSTRING|FDF_RI },
@@ -159,16 +159,16 @@ static const FieldArray glMetaFields[] = {
    { "OpenCount",       FDF_INT|FDF_R },
    { "Category",        FDF_INT|FDF_LOOKUP|FDF_RI, nullptr, nullptr, &CategoryTable },
    // Virtual fields
-   { "Methods",         FDF_ARRAY|FD_STRUCT|FDF_RI, GET_Methods, SET_Methods, "MethodEntry" },
+   { "Methods",         FDF_ARRAY|FD_STRUCT|FDF_RI|FDF_PURE, GET_Methods, SET_Methods, "MethodEntry" },
    { "Actions",         FDF_POINTER|FDF_I },
-   { "ActionTable",     FDF_ARRAY|FDF_POINTER|FDF_R, GET_ActionTable },
+   { "ActionTable",     FDF_ARRAY|FDF_POINTER|FDF_R|FDF_PURE, GET_ActionTable },
    { "Location",        FDF_CPPSTRING|FDF_R, GET_Location },
-   { "Name",            FDF_CPPSTRING|FDF_SYSTEM|FDF_RI, GET_ClassName, SET_ClassName },
+   { "Name",            FDF_CPPSTRING|FDF_SYSTEM|FDF_RI|FDF_PURE, GET_ClassName, SET_ClassName },
    { "Module",          FDF_CPPSTRING|FDF_R, GET_Module },
    { "Objects",         FDF_ARRAY|FDF_INT|FDF_ALLOC|FDF_R, GET_Objects },
-   { "SubClasses",      FDF_ARRAY|FD_OBJECT|FDF_R, GET_SubClasses, nullptr, CLASSID::METACLASS },
-   { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, GET_SubFields, nullptr, "FieldArray" },
-   { "RootModule",      FDF_OBJECT|FDF_R, GET_RootModule, nullptr, CLASSID::ROOTMODULE },
+   { "SubClasses",      FDF_ARRAY|FD_OBJECT|FDF_R|FDF_PURE, GET_SubClasses, nullptr, CLASSID::METACLASS },
+   { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R|FDF_PURE, GET_SubFields, nullptr, "FieldArray" },
+   { "RootModule",      FDF_OBJECT|FDF_R|FDF_PURE, GET_RootModule, nullptr, CLASSID::ROOTMODULE },
    { "ID",              FDF_INT|FDF_SYSTEM|FDF_R, OBJECT_GetID },
    END_FIELD
 };

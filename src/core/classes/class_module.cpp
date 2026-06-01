@@ -112,8 +112,8 @@ static const FieldArray glModuleFields[] = {
    { "Header",       FDF_POINTER|FDF_STRUCT|FDF_RI, nullptr, SET_Header, "ModHeader" }, // For creating virtual modules only
    { "Flags",        FDF_INT|FDF_RI, nullptr, nullptr, &clFlags },
    // Virtual fields
-   { "Defs",         FDF_CPPSTRING|FDF_R, GET_Defs },
-   { "Name",         FDF_CPPSTRING|FDF_RI, GET_Name, SET_Name },
+   { "Defs",         FDF_CPPSTRING|FDF_R|FDF_PURE, GET_Defs },
+   { "Name",         FDF_CPPSTRING|FDF_RI|FDF_PURE, GET_Name, SET_Name },
    END_FIELD
 };
 
@@ -789,7 +789,7 @@ static const MethodEntry glModuleMethods[] = {
 //********************************************************************************************************************
 
 static const FieldArray glRootModuleFields[] = {
-   { "Header", FDF_POINTER|FDF_RI, ROOTMODULE_GET_Header },
+   { "Header", FDF_POINTER|FDF_RI|FDF_PURE, ROOTMODULE_GET_Header },
    END_FIELD
 };
 

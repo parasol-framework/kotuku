@@ -2990,8 +2990,8 @@ static const FieldArray clBitmapFields[] = {
    { "BkgdIndex",     FDF_INT|FDF_RW, nullptr, SET_BkgdIndex },
    { "ColourSpace",   FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clBitmapColourSpace },
    // Virtual fields
-   { "Clip",          FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Clip, SET_Clip },
-   { "Handle",        FDF_POINTER|FDF_SYSTEM|FDF_RW, GET_Handle, SET_Handle },
+   { "Clip",          FDF_POINTER|FDF_STRUCT|FDF_RW|FDF_PURE, GET_Clip, SET_Clip },
+   { "Handle",        FDF_POINTER|FDF_SYSTEM|FDF_RW|FDF_PURE, GET_Handle, SET_Handle },
    END_FIELD
 };
 
