@@ -647,7 +647,7 @@ the surface area first).</li>
     <field>
       <name>Movement</name>
       <comment>Limits the movement of a surface object to vertical or horizontal shifts.</comment>
-      <access read="R" write="S">Read/Set</access>
+      <access read="G" write="S">Get/Set</access>
       <type lookup="MOVE">INT</type>
       <description>
 <p>Set <code>Movement</code> to limit movement performed by <action>Move</action> to horizontal movement, vertical movement, both axes or neither axis.  By default, surfaces can move horizontally and vertically.</p>

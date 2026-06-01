@@ -369,6 +369,7 @@ global function parseClassFields(Class:table, ClientSpec:str)
             if def and def.synonym != true then
                f = findClassField(Class, def.name) -- Retrieve field parsed from TDL, if defined
                if f then
+                  f.arg     = def.arg
                   f.write   = def.write
                   f.read    = def.read
                   f.flags   = def.flags
@@ -392,12 +393,19 @@ global function parseClassFields(Class:table, ClientSpec:str)
    Class.lookupFields = { }
    if Class.fields then
       for f in values(Class.fields) do
+         local err, cf, _ = Class.meta.mtFindField(calcFieldHash(f.name))
+         if err is ERR_Okay then
+            f.offset = cf.offset
+            f.index  = cf.index
+         end
+
          Class.lookupFields[f.name] = f
       end
    end
 
-   -- NB: FieldArray is not output because as yet fields (including virtual fields) cannot be accurately
-   -- described without the developer writing a custom field configuration in C.
+   -- NB: A FieldArray blueprint cannot be automatically generated because some fields (inc. virtual) cannot be accurately
+   -- described without declaring precise FD flags.  The likely solution would be to add support for a new EDF, -ATTRIBS-
+   -- for declaring a CSV list of field attributes, or integrating field attributes with -TAGS-.
 
    fdef = f'static const struct FieldArray cl{Class.name}Fields[] = {{\n'
    Class.longestType = 0

@@ -1097,6 +1097,12 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
 
    if (field.Flags & FD_VIRTUAL) { // No offset will be added for fields marked exclusively as virtual
       field.Offset = 0;
+      if ((Source.Flags & FD_R) and (not Source.GetField)) {
+         log.warning("Virtual field %s.%s is readable with no getter.", Class->ClassName.c_str(), field.Name);
+      }
+      if ((Source.Flags & (FD_W|FD_I)) and (not Source.SetField)) {
+         log.warning("Virtual field %s.%s is writeable with no setter.", Class->ClassName.c_str(), field.Name);
+      }
    }
    else if (field.Flags & FD_ARRAY) {
       // Standard array declarations are assumed to be pointers to data by default.

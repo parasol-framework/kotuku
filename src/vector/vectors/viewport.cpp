@@ -914,7 +914,7 @@ static const FieldArray clViewFields[] = {
    { "Buffer",       FDF_VIRTUAL|FDF_OBJECT|FDF_R, VIEW_GET_Buffer },
    { "Buffered",     FDF_VIRTUAL|FDF_INT|FDF_RI, VIEW_GET_Buffered, VIEW_SET_Buffered },
    { "Dimensions",   FDF_VIRTUAL|FDF_INTFLAGS|FDF_R, VIEW_GET_Dimensions, VIEW_SET_Dimensions, &clViewDimensions },
-   { "DragCallback", FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, VIEW_GET_DragCallback, VIEW_SET_DragCallback },
+   { "DragCallback", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, VIEW_GET_DragCallback, VIEW_SET_DragCallback },
    { "Overflow",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, VIEW_GET_Overflow, VIEW_SET_Overflow, &clVectorViewportVOF },
    { "OverflowX",    FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, VIEW_GET_OverflowX, VIEW_SET_OverflowX, &clVectorViewportVOF },
    { "OverflowY",    FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, VIEW_GET_OverflowY, VIEW_SET_OverflowY, &clVectorViewportVOF },

@@ -391,30 +391,104 @@ class objXML : public Object {
       return(Action(AC(-23), this, &args));
    }
 
+   // Customised field getting
+
+   inline ERR getPath(std::string_view &Value) noexcept {
+      Value = this->Path;
+      return ERR::Okay;
+   }
+
+   inline ERR getDocType(std::string_view &Value) noexcept {
+      Value = this->DocType;
+      return ERR::Okay;
+   }
+
+   inline ERR getPublic(std::string_view &Value) noexcept {
+      Value = this->PublicID;
+      return ERR::Okay;
+   }
+
+   inline ERR getSystem(std::string_view &Value) noexcept {
+      Value = this->SystemID;
+      return ERR::Okay;
+   }
+
+   inline ERR getSource(OBJECTPTR &Value) noexcept {
+      Value = this->Source;
+      return ERR::Okay;
+   }
+
+   inline ERR getFlags(XMF &Value) noexcept {
+      Value = this->Flags;
+      return ERR::Okay;
+   }
+
+   inline ERR getModified(int &Value) noexcept {
+      Value = this->Modified;
+      return ERR::Okay;
+   }
+
+   inline ERR getErrorMsg(std::string_view &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, std::string_view &))field->GetValue;
+      auto error = get_field(this, Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getReadOnly(int &Value) noexcept {
+      auto field = &this->Class->Dictionary[10];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getStatement(std::string &Value) noexcept {
+      auto field = &this->Class->Dictionary[11];
+      SetObjectContext(this, field, AC::NIL);
+      std::string_view view;
+      auto get_field = (ERR (*)(APTR, std::string_view &))field->GetValue;
+      auto error = get_field(this, view);
+      if (error IS ERR::Okay) {
+         Value.assign(view);
+         if (view.data()) FreeResource(GetMemoryID(view.data()));
+      }
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getTags(APTR * &Value, int &Elements) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, APTR *&, int &))field->GetValue;
+      auto error = get_field(this, Value, Elements);
+      RestoreObjectContext();
+      return error;
+   }
+
+
    // Customised field setting
 
    inline ERR setPath(const std::string_view &Value) noexcept {
-      auto target = this;
       auto field = &this->Class->Dictionary[7];
-      return field->WriteValue(target, field, 0x00804300, &Value, 1);
+      return field->WriteValue(this, field, 0x00804300, &Value, 1);
    }
 
    inline ERR setDocType(const std::string_view &Value) noexcept {
-      auto target = this;
       auto field = &this->Class->Dictionary[8];
-      return field->WriteValue(target, field, 0x00804300, &Value, 1);
+      return field->WriteValue(this, field, 0x00804300, &Value, 1);
    }
 
    inline ERR setPublic(const std::string_view &Value) noexcept {
-      auto target = this;
       auto field = &this->Class->Dictionary[6];
-      return field->WriteValue(target, field, 0x00804300, &Value, 1);
+      return field->WriteValue(this, field, 0x00804300, &Value, 1);
    }
 
    inline ERR setSystem(const std::string_view &Value) noexcept {
-      auto target = this;
       auto field = &this->Class->Dictionary[1];
-      return field->WriteValue(target, field, 0x00804300, &Value, 1);
+      return field->WriteValue(this, field, 0x00804300, &Value, 1);
    }
 
    inline ERR setSource(OBJECTPTR Value) noexcept {
@@ -429,15 +503,13 @@ class objXML : public Object {
    }
 
    inline ERR setReadOnly(const int Value) noexcept {
-      auto target = this;
       auto field = &this->Class->Dictionary[10];
-      return field->WriteValue(target, field, FD_INT, &Value, 1);
+      return field->WriteValue(this, field, FD_INT, &Value, 1);
    }
 
    inline ERR setStatement(const std::string_view &Value) noexcept {
-      auto target = this;
       auto field = &this->Class->Dictionary[11];
-      return field->WriteValue(target, field, 0x00804320, &Value, 1);
+      return field->WriteValue(this, field, 0x00804320, &Value, 1);
    }
 
 };

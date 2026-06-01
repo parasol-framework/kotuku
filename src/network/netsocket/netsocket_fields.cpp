@@ -48,10 +48,10 @@ refers to the @ClientSocket on which the state has changed.
 
 *********************************************************************************************************************/
 
-static ERR GET_Feedback(extNetSocket *Self, FUNCTION **Value)
+static ERR GET_Feedback(extNetSocket *Self, FUNCTION * &Value)
 {
    if (Self->Feedback.defined()) {
-      *Value = &Self->Feedback;
+      Value = &Self->Feedback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -93,10 +93,10 @@ will no longer be called.  All other error codes are ignored.
 
 *********************************************************************************************************************/
 
-static ERR GET_Incoming(extNetSocket *Self, FUNCTION **Value)
+static ERR GET_Incoming(extNetSocket *Self, FUNCTION * &Value)
 {
    if (Self->Incoming.defined()) {
-      *Value = &Self->Incoming;
+      Value = &Self->Incoming;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -167,10 +167,10 @@ call @ClientSocket.Write() on the target client socket.  If the callback functio
 
 *********************************************************************************************************************/
 
-static ERR GET_Outgoing(extNetSocket *Self, FUNCTION **Value)
+static ERR GET_Outgoing(extNetSocket *Self, FUNCTION * &Value)
 {
    if (Self->Outgoing.defined()) {
-      *Value = &Self->Outgoing;
+      Value = &Self->Outgoing;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;

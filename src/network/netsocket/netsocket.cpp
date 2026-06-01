@@ -1122,9 +1122,9 @@ static const FieldArray clSocketFields[] = {
    { "MulticastTTL",   FDF_INT|FDF_RI },
    // Virtual fields
    { "Handle",         FDF_VIRTUAL|FDF_POINTER|FDF_RI,     GET_Handle, SET_Handle },
-   { "Feedback",       FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, GET_Feedback, SET_Feedback },
-   { "Incoming",       FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, GET_Incoming, SET_Incoming },
-   { "Outgoing",       FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_W,  GET_Outgoing, SET_Outgoing },
+   { "Feedback",       FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_Feedback, SET_Feedback },
+   { "Incoming",       FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_Incoming, SET_Incoming },
+   { "Outgoing",       FDF_VIRTUAL|FDF_FUNCTION|FDF_W,  GET_Outgoing, SET_Outgoing },
    { "OutQueueSize",   FDF_VIRTUAL|FDF_INT|FDF_R,          GET_OutQueueSize },
    END_FIELD
 };

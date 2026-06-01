@@ -686,10 +686,10 @@ The callback function prototype is `void Function(*VectorText)`.
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_OnChange(extVectorText *Self, FUNCTION **Value)
+static ERR TEXT_GET_OnChange(extVectorText *Self, FUNCTION * &Value)
 {
    if (Self->txOnChange.defined()) {
-      *Value = &Self->txOnChange;
+      Value = &Self->txOnChange;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -2095,7 +2095,7 @@ static const FieldArray clTextFields[] = {
    { "Spacing",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_Spacing, TEXT_SET_Spacing },
    { "Font",          FDF_VIRTUAL|FDF_OBJECT|FDF_I, nullptr, TEXT_SET_Font },
    // Non-SVG fields related to real-time text editing
-   { "OnChange",      FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, TEXT_GET_OnChange, TEXT_SET_OnChange },
+   { "OnChange",      FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, TEXT_GET_OnChange, TEXT_SET_OnChange },
    { "Focus",         FDF_VIRTUAL|FDF_OBJECTID|FDF_RI, TEXT_GET_Focus, TEXT_SET_Focus },
    { "CursorColumn",  FDF_VIRTUAL|FDF_INT|FDF_RW, TEXT_GET_CursorColumn, TEXT_SET_CursorColumn },
    { "CursorRow",     FDF_VIRTUAL|FDF_INT|FDF_RW, TEXT_GET_CursorRow, TEXT_SET_CursorRow },

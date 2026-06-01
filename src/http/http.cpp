@@ -1102,17 +1102,17 @@ static const FieldArray clFields[] = {
    { "ProxyPort",      FDF_INT|FDF_RW },
    { "BufferSize",     FDF_INT|FDF_RW, nullptr, SET_BufferSize },
    // Virtual fields
-   { "AuthCallback",   FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,   GET_AuthCallback, SET_AuthCallback },
+   { "AuthCallback",   FDF_VIRTUAL|FDF_FUNCTION|FDF_RW,      GET_AuthCallback, SET_AuthCallback },
    { "ContentType",    FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW,     GET_ContentType, SET_ContentType },
-   { "Incoming",       FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,   GET_Incoming, SET_Incoming },
+   { "Incoming",       FDF_VIRTUAL|FDF_FUNCTION|FDF_RW,      GET_Incoming, SET_Incoming },
    { "Location",       FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW,     GET_Location, SET_Location },
-   { "Outgoing",       FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,   GET_Outgoing, SET_Outgoing },
+   { "Outgoing",       FDF_VIRTUAL|FDF_FUNCTION|FDF_RW,      GET_Outgoing, SET_Outgoing },
    { "Realm",          FDF_VIRTUAL|FDF_CPPSTRING|FDF_RW,     GET_Realm, SET_Realm },
    { "RecvBuffer",     FDF_VIRTUAL|FDF_ARRAY|FDF_BYTE|FDF_R, GET_RecvBuffer },
    { "ResponseKeys",   FDF_VIRTUAL|FDF_ARRAY|FDF_CPPSTRING|FDF_R, GET_ResponseKeys },
    { "Src",            FDF_VIRTUAL|FDF_CPPSTRING|FDF_SYNONYM|FD_PRIVATE|FDF_RW, GET_Location, SET_Location }, // Deprecated by URL
    { "URL",            FDF_VIRTUAL|FDF_CPPSTRING|FDF_SYNONYM|FDF_RW, GET_Location, SET_Location },
-   { "StateChanged",   FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,   GET_StateChanged, SET_StateChanged },
+   { "StateChanged",   FDF_VIRTUAL|FDF_FUNCTION|FDF_RW,      GET_StateChanged, SET_StateChanged },
    { "Username",       FDF_VIRTUAL|FDF_CPPSTRING|FDF_W,      nullptr, SET_Username },
    { "Password",       FDF_VIRTUAL|FDF_CPPSTRING|FDF_W,      nullptr, SET_Password },
    END_FIELD

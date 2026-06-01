@@ -2129,7 +2129,7 @@ static const FieldArray clFields[] = {
    { "Error",        FDF_INT|FDF_R },
    // Virtual fields
    { "ClientScript",  FDF_OBJECT|FDF_I,        nullptr, SET_ClientScript },
-   { "EventCallback", FDF_FUNCTIONPTR|FDF_RW,  GET_EventCallback, SET_EventCallback },
+   { "EventCallback", FDF_FUNCTION|FDF_RW,     GET_EventCallback, SET_EventCallback },
    { "Path",          FDF_CPPSTRING|FDF_RW,    GET_Path, SET_Path },
    { "Origin",        FDF_CPPSTRING|FDF_RW,    GET_Path, SET_Origin },
    { "PageWidth",     FDF_UNIT|FDF_INT|FDF_SCALED|FDF_RW, GET_PageWidth, SET_PageWidth },

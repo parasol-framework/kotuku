@@ -58,10 +58,10 @@ order to prevent the event from being processed any further.
 
 *********************************************************************************************************************/
 
-static ERR GET_EventCallback(extDocument *Self, FUNCTION **Value)
+static ERR GET_EventCallback(extDocument *Self, FUNCTION * &Value)
 {
    if (Self->EventCallback.defined()) {
-      *Value = &Self->EventCallback;
+      Value = &Self->EventCallback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;

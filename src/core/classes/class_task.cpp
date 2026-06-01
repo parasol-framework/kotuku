@@ -1993,10 +1993,10 @@ indicated by the `Size`.  The data pointer is temporary and will be invalid once
 
 *********************************************************************************************************************/
 
-static ERR GET_ErrorCallback(extTask *Self, FUNCTION **Value)
+static ERR GET_ErrorCallback(extTask *Self, FUNCTION * &Value)
 {
    if (Self->ErrorCallback.defined()) {
-      *Value = &Self->ErrorCallback;
+      Value = &Self->ErrorCallback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -2022,10 +2022,10 @@ called on termination because the `Task` object no longer exists for the control
 
 *********************************************************************************************************************/
 
-static ERR GET_ExitCallback(extTask *Self, FUNCTION **Value)
+static ERR GET_ExitCallback(extTask *Self, FUNCTION * &Value)
 {
    if (Self->ExitCallback.defined()) {
-      *Value = &Self->ExitCallback;
+      Value = &Self->ExitCallback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -2055,10 +2055,10 @@ A status of `ERR::Finished` is sent if the stdinput handle has been closed.
 
 *********************************************************************************************************************/
 
-static ERR GET_InputCallback(extTask *Self, FUNCTION **Value)
+static ERR GET_InputCallback(extTask *Self, FUNCTION * &Value)
 {
    if (Self->InputCallback.defined()) {
-      *Value = &Self->InputCallback;
+      Value = &Self->InputCallback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -2105,10 +2105,10 @@ by the `Size`.  The `Data` pointer is temporary and will be invalid once the cal
 
 *********************************************************************************************************************/
 
-static ERR GET_OutputCallback(extTask *Self, FUNCTION **Value)
+static ERR GET_OutputCallback(extTask *Self, FUNCTION * &Value)
 {
    if (Self->OutputCallback.defined()) {
-      *Value = &Self->OutputCallback;
+      Value = &Self->OutputCallback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -2495,13 +2495,13 @@ static const FieldArray clFields[] = {
    { "AffinityMask",   FDF_INT64|FDF_RW,   GET_AffinityMask, SET_AffinityMask },
    { "Args",           FDF_CPPSTRING|FDF_W, nullptr, SET_Args },
    { "Parameters",     FDF_ARRAY|FDF_CPPSTRING|FDF_RW, GET_Parameters, SET_Parameters },
-   { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, GET_ErrorCallback,   SET_ErrorCallback }, // STDERR
-   { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, GET_ExitCallback,    SET_ExitCallback },
-   { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, GET_InputCallback,   SET_InputCallback }, // STDIN
+   { "ErrorCallback",  FDF_FUNCTION|FDF_RI,    GET_ErrorCallback,   SET_ErrorCallback }, // STDERR
+   { "ExitCallback",   FDF_FUNCTION|FDF_RW,    GET_ExitCallback,    SET_ExitCallback },
+   { "InputCallback",  FDF_FUNCTION|FDF_RW,    GET_InputCallback,   SET_InputCallback }, // STDIN
    { "LaunchPath",     FDF_CPPSTRING|FDF_RW,   GET_LaunchPath,      SET_LaunchPath },
    { "Location",       FDF_CPPSTRING|FDF_RW,   GET_Location,        SET_Location },
    { "Name",           FDF_CPPSTRING|FDF_RW,   GET_Name,            SET_Name },
-   { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, GET_OutputCallback,  SET_OutputCallback }, // STDOUT
+   { "OutputCallback", FDF_FUNCTION|FDF_RI,    GET_OutputCallback,  SET_OutputCallback }, // STDOUT
    { "Path",           FDF_CPPSTRING|FDF_RW,   GET_Path,            SET_Path },
    { "ProcessPath",    FDF_CPPSTRING|FDF_R,    GET_ProcessPath },
    { "Priority",       FDF_INT|FDF_RW,         GET_Priority, SET_Priority },
