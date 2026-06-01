@@ -216,13 +216,13 @@ struct Object { // Must be 64-bit aligned
    Object() : Class(nullptr), DerivedPtr(nullptr), CreatorMeta(nullptr), Owner(nullptr), NotifyFlags(0),
       ActionDepth(0), Queue(0), SleepQueue(0), RefCount(0), UID(0), Flags(0), ThreadID(0), Name("") { }
 
-   [[nodiscard]] inline bool initialised() { return Flags.load() & uint32_t(NF::INITIALISED); }
-   [[nodiscard]] inline bool defined(NF pFlags) { return Flags.load() & uint32_t(pFlags); }
+   [[nodiscard]] inline bool initialised() { return Flags.load(std::memory_order_relaxed) & uint32_t(NF::INITIALISED); }
+   [[nodiscard]] inline bool defined(NF pFlags) { return Flags.load(std::memory_order_relaxed) & uint32_t(pFlags); }
    [[nodiscard]] inline bool isDerived();
    [[nodiscard]] inline OBJECTID ownerID() { return Owner ? Owner->UID : 0; }
    [[nodiscard]] inline CLASSID classID();
    [[nodiscard]] inline CLASSID baseClassID();
-   [[nodiscard]] inline NF flags() { return NF(Flags.load()); }
+   [[nodiscard]] inline NF flags() { return NF(Flags.load(std::memory_order_relaxed)); }
 
    inline void setFlag(NF pFlag) {
       Flags.fetch_or(uint32_t(pFlag), std::memory_order_relaxed);
@@ -239,29 +239,33 @@ struct Object { // Must be 64-bit aligned
 
    inline void pin() {
       #ifndef NDEBUG
-      if (RefCount.load() >= 254) {
-         kt::Log("pin").warning("RefCount overflow risk for object #%d (%s), count: %d", UID, className(), RefCount.load());
+      auto ref_count = RefCount.load(std::memory_order_relaxed);
+      if (ref_count >= 254) {
+         kt::Log("pin").warning("RefCount overflow risk for object #%d (%s), count: %d", UID, className(), ref_count);
          DEBUG_BREAK
       }
       #endif
-      RefCount++;
+      RefCount.fetch_add(1, std::memory_order_relaxed);
    }
 
    inline void unpin(bool FreeIfReady = false) {
+      auto ref_count = RefCount.load(std::memory_order_relaxed);
       #ifndef NDEBUG
-      if (RefCount.load() IS 0) {
+      if (ref_count IS 0) {
          kt::Log("unpin").warning("Unbalanced unpin() on object #%d (%s) - RefCount is already 0.", UID, className());
          DEBUG_BREAK
       }
       #endif
-      if (RefCount > 0) RefCount--;
+      if (ref_count > 0) RefCount.fetch_sub(1, std::memory_order_relaxed);
       if (FreeIfReady) freeIfReady();
    }
 
-   [[nodiscard]] inline bool isPinned() { return RefCount > 0; }
+   [[nodiscard]] inline bool isPinned() { return RefCount.load(std::memory_order_relaxed) > 0; }
 
    inline bool freeIfReady() {
-      if ((RefCount IS 0) and (Queue IS 0) and defined(NF::FREE_ON_UNLOCK)) {
+      auto ref_count = RefCount.load(std::memory_order_relaxed);
+      auto queue = Queue.load(std::memory_order_relaxed);
+      if ((ref_count IS 0) and (queue IS 0) and defined(NF::FREE_ON_UNLOCK)) {
          FreeResource(this->UID);
          return true;
       }
@@ -518,6 +522,7 @@ struct Object { // Must be 64-bit aligned
                char buffer[64];
                snprintf(buffer, sizeof(buffer), "%f", num);
                Value.assign(buffer);
+               return ERR::Okay;
             }
             else return error;
          }
@@ -538,6 +543,7 @@ struct Object { // Must be 64-bit aligned
             if (array_size IS -1) return ERR::Failed; // Array sizing not supported by this field.
 
             Value.clear();
+            if (array_size > 0) Value.reserve(size_t(array_size) * 8);
             if (flags & FD_INT) {
                auto array = (int *)data;
                for (int i=0; i < array_size; i++) Value.append(std::to_string(*array++)).push_back(',');
@@ -758,7 +764,7 @@ struct Object { // Must be 64-bit aligned
             Elements = field->Arg;
             data = (T *)(((int8_t *)target) + field->Offset);
          }
-         else data = *((T **)((int8_t *)target) + field->Offset);
+         else data = *((T **)(((int8_t *)target) + field->Offset));
 
          if (field->Flags & FD_CPP) {
             auto vec = (kt::vector<APTR> *)data; // Data type doesn't matter, we just need the size().
