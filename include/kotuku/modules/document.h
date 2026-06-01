@@ -298,10 +298,11 @@ class objDocument : public Object {
       return ERR::Okay;
    }
 
-   inline ERR getEventCallback(FUNCTION &Value) noexcept {
+   inline ERR getEventCallback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[10];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -380,7 +381,7 @@ class objDocument : public Object {
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
-   inline ERR setEventCallback(FUNCTION Value) noexcept {
+   inline ERR setEventCallback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);

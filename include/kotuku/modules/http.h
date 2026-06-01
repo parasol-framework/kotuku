@@ -342,10 +342,11 @@ class objHTTP : public Object {
       return error;
    }
 
-   inline ERR getIncoming(FUNCTION &Value) noexcept {
+   inline ERR getIncoming(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[10];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -359,10 +360,11 @@ class objHTTP : public Object {
       return error;
    }
 
-   inline ERR getOutgoing(FUNCTION &Value) noexcept {
+   inline ERR getOutgoing(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[29];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -394,10 +396,11 @@ class objHTTP : public Object {
       return error;
    }
 
-   inline ERR getStateChanged(FUNCTION &Value) noexcept {
+   inline ERR getStateChanged(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[31];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -529,7 +532,7 @@ class objHTTP : public Object {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   inline ERR setAuthCallback(FUNCTION Value) noexcept {
+   inline ERR setAuthCallback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -541,7 +544,7 @@ class objHTTP : public Object {
       return field->WriteValue(target, field, 0x00804308, &Value, 1);
    }
 
-   inline ERR setIncoming(FUNCTION Value) noexcept {
+   inline ERR setIncoming(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -553,7 +556,7 @@ class objHTTP : public Object {
       return field->WriteValue(target, field, 0x00804308, &Value, 1);
    }
 
-   inline ERR setOutgoing(FUNCTION Value) noexcept {
+   inline ERR setOutgoing(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -565,7 +568,7 @@ class objHTTP : public Object {
       return field->WriteValue(target, field, 0x00804308, &Value, 1);
    }
 
-   inline ERR setStateChanged(FUNCTION Value) noexcept {
+   inline ERR setStateChanged(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[31];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);

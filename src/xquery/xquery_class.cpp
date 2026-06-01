@@ -892,9 +892,9 @@ unknown, or another error code to abort evaluation.
 
 *********************************************************************************************************************/
 
-static ERR GET_ResolveVariable(extXQuery *Self, FUNCTION *Value)
+static ERR GET_ResolveVariable(extXQuery *Self, FUNCTION * &Value)
 {
-   *Value = Self->ResolveVariable;
+   Value = &Self->ResolveVariable;
    return ERR::Okay;
 }
 

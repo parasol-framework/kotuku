@@ -59,10 +59,10 @@ The !CompressionFeedback structure consists of the following fields:
 
 *********************************************************************************************************************/
 
-static ERR GET_Feedback(extCompression *Self, FUNCTION **Value)
+static ERR GET_Feedback(extCompression *Self, FUNCTION * &Value)
 {
    if (Self->Feedback.defined()) {
-      *Value = &Self->Feedback;
+      Value = &Self->Feedback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;

@@ -5,10 +5,10 @@ AuthCallback: Private.  This field is reserved for future use.
 
 *********************************************************************************************************************/
 
-static ERR GET_AuthCallback(extHTTP *Self, FUNCTION **Value)
+static ERR GET_AuthCallback(extHTTP *Self, FUNCTION * &Value)
 {
    if (Self->AuthCallback.defined()) {
-      *Value = &Self->AuthCallback;
+      Value = &Self->AuthCallback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -210,10 +210,10 @@ request will be cancelled.
 
 *********************************************************************************************************************/
 
-static ERR GET_Incoming(extHTTP *Self, FUNCTION **Value)
+static ERR GET_Incoming(extHTTP *Self, FUNCTION * &Value)
 {
    if (Self->Incoming.defined()) {
-      *Value = &Self->Incoming;
+      Value = &Self->Incoming;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -443,10 +443,10 @@ a reasonable time frame.  All other error codes apart from `ERR::Okay` indicate 
 
 *********************************************************************************************************************/
 
-static ERR GET_Outgoing(extHTTP *Self, FUNCTION **Value)
+static ERR GET_Outgoing(extHTTP *Self, FUNCTION * &Value)
 {
    if (Self->Outgoing.defined()) {
-      *Value = &Self->Outgoing;
+      Value = &Self->Outgoing;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -672,10 +672,10 @@ cancelled.
 
 *********************************************************************************************************************/
 
-static ERR GET_StateChanged(extHTTP *Self, FUNCTION **Value)
+static ERR GET_StateChanged(extHTTP *Self, FUNCTION * &Value)
 {
    if (Self->StateChanged.defined()) {
-      *Value = &Self->StateChanged;
+      Value = &Self->StateChanged;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;

@@ -705,10 +705,10 @@ callback should return `ERR::NoSupport`.
 
 *********************************************************************************************************************/
 
-static ERR GET_RequestHandler(objClipboard *Self, FUNCTION **Value)
+static ERR GET_RequestHandler(objClipboard *Self, FUNCTION * &Value)
 {
    if (Self->RequestHandler.defined()) {
-      *Value = &Self->RequestHandler;
+      Value = &Self->RequestHandler;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -928,7 +928,7 @@ extern "C" void win_clipboard_updated()
 
 static const FieldArray clFields[] = {
    { "Flags",          FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clClipboardFlags },
-   { "RequestHandler", FDF_FUNCTIONPTR|FDF_RW, GET_RequestHandler, SET_RequestHandler },
+   { "RequestHandler", FDF_FUNCTION|FDF_RW, GET_RequestHandler, SET_RequestHandler },
    END_FIELD
 };
 

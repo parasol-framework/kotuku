@@ -517,10 +517,11 @@ class objNetLookup : public Object {
       return error;
    }
 
-   inline ERR getCallback(FUNCTION &Value) noexcept {
+   inline ERR getCallback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[3];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -547,7 +548,7 @@ class objNetLookup : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setCallback(FUNCTION Value) noexcept {
+   inline ERR setCallback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -727,26 +728,29 @@ class objNetSocket : public Object {
       return error;
    }
 
-   inline ERR getFeedback(FUNCTION &Value) noexcept {
+   inline ERR getFeedback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[13];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
 
-   inline ERR getIncoming(FUNCTION &Value) noexcept {
+   inline ERR getIncoming(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[3];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
 
-   inline ERR getOutgoing(FUNCTION &Value) noexcept {
+   inline ERR getOutgoing(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[10];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -814,19 +818,19 @@ class objNetSocket : public Object {
       return field->WriteValue(target, field, 0x08000508, Value, 1);
    }
 
-   inline ERR setFeedback(FUNCTION Value) noexcept {
+   inline ERR setFeedback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERR setIncoming(FUNCTION Value) noexcept {
+   inline ERR setIncoming(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERR setOutgoing(FUNCTION Value) noexcept {
+   inline ERR setOutgoing(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);

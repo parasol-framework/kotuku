@@ -121,10 +121,11 @@ class objSVG : public Object {
       return ERR::Okay;
    }
 
-   inline ERR getFrameCallback(FUNCTION &Value) noexcept {
+   inline ERR getFrameCallback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[7];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }

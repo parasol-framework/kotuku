@@ -2027,7 +2027,7 @@ static const FieldArray clFields[] = {
    // Virtual fields
    { "ArchiveName",      FDF_CPPSTRING|FDF_W,    nullptr, SET_ArchiveName },
    { "Path",             FDF_CPPSTRING|FDF_RW,   GET_Path, SET_Path },
-   { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, GET_Feedback, SET_Feedback },
+   { "Feedback",         FDF_FUNCTION|FDF_RW,    GET_Feedback, SET_Feedback },
    { "Header",           FDF_POINTER|FDF_R,      GET_Header },
    { "Password",         FDF_CPPSTRING|FDF_RW,   GET_Password, SET_Password },
    { "Size",             FDF_INT64|FDF_R,        GET_Size },

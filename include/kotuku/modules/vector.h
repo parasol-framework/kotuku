@@ -4417,10 +4417,11 @@ class objVectorText : public objVector {
       return error;
    }
 
-   inline ERR getOnChange(FUNCTION &Value) noexcept {
+   inline ERR getOnChange(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[11];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -4620,7 +4621,7 @@ class objVectorText : public objVector {
       return field->WriteValue(target, field, 0x08000409, Value, 1);
    }
 
-   inline ERR setOnChange(FUNCTION Value) noexcept {
+   inline ERR setOnChange(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -5903,10 +5904,11 @@ class objVectorViewport : public objVector {
       return error;
    }
 
-   inline ERR getDragCallback(FUNCTION &Value) noexcept {
+   inline ERR getDragCallback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[11];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -6048,7 +6050,7 @@ class objVectorViewport : public objVector {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   inline ERR setDragCallback(FUNCTION Value) noexcept {
+   inline ERR setDragCallback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);

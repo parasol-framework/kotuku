@@ -239,9 +239,10 @@ class objXQuery : public Object {
       return error;
    }
 
-   inline ERR getResolveVariable(FUNCTION &Value) noexcept {
+   inline ERR getResolveVariable(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[14];
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       return error;
    }
 

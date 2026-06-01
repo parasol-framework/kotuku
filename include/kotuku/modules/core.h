@@ -3836,26 +3836,29 @@ class objTask : public Object {
       return error;
    }
 
-   inline ERR getErrorCallback(FUNCTION &Value) noexcept {
+   inline ERR getErrorCallback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[20];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
 
-   inline ERR getExitCallback(FUNCTION &Value) noexcept {
+   inline ERR getExitCallback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[7];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
 
-   inline ERR getInputCallback(FUNCTION &Value) noexcept {
+   inline ERR getInputCallback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[14];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -3887,10 +3890,11 @@ class objTask : public Object {
       return error;
    }
 
-   inline ERR getOutputCallback(FUNCTION &Value) noexcept {
+   inline ERR getOutputCallback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[3];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -3965,19 +3969,19 @@ class objTask : public Object {
       return field->WriteValue(target, field, 0x00805300, Value, int(Value->size()));
    }
 
-   inline ERR setErrorCallback(FUNCTION Value) noexcept {
+   inline ERR setErrorCallback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERR setExitCallback(FUNCTION Value) noexcept {
+   inline ERR setExitCallback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERR setInputCallback(FUNCTION Value) noexcept {
+   inline ERR setInputCallback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -4001,7 +4005,7 @@ class objTask : public Object {
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setOutputCallback(FUNCTION Value) noexcept {
+   inline ERR setOutputCallback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -4080,18 +4084,20 @@ class objThread : public Object {
       return ERR::Okay;
    }
 
-   inline ERR getCallback(FUNCTION &Value) noexcept {
+   inline ERR getCallback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[2];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
 
-   inline ERR getRoutine(FUNCTION &Value) noexcept {
+   inline ERR getRoutine(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[10];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -4105,13 +4111,13 @@ class objThread : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setCallback(FUNCTION Value) noexcept {
+   inline ERR setCallback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERR setRoutine(FUNCTION Value) noexcept {
+   inline ERR setRoutine(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -4560,10 +4566,11 @@ class objCompression : public Object {
       return error;
    }
 
-   inline ERR getFeedback(FUNCTION &Value) noexcept {
+   inline ERR getFeedback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[17];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -4641,7 +4648,7 @@ class objCompression : public Object {
       return field->WriteValue(target, field, 0x00804300, &Value, 1);
    }
 
-   inline ERR setFeedback(FUNCTION Value) noexcept {
+   inline ERR setFeedback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);

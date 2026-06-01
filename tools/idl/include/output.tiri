@@ -197,6 +197,8 @@ function outputFieldGetSignature(Field:table, FidName:str, FieldType:str)
       else
          output(f'   inline ERR get{FidName}({FieldType} * &Value, int &Elements) noexcept {{')
       end
+   elseif Field.flags has FD_FUNCTION then
+      output(f'   inline ERR get{FidName}({FieldType} * &Value) noexcept {{')
    else
       output(f'   inline ERR get{FidName}({FieldType} &Value) noexcept {{')
    end
@@ -263,13 +265,18 @@ function outputGetValueCall(Field:table, FieldType:str, Indent:str)
          output(Indent .. 'auto get_field = (ERR (*)(APTR, std::string_view &))field->GetValue;')
          output(Indent .. 'auto error = get_field(this, Value);')
       end
-   else
+   elseif Field.flags has FD_FUNCTION then
+      output(Indent .. 'auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;')
+      output(Indent .. 'auto error = get_field(this, Value);')
+
+   else -- Suitable for primitives only.
       output(Indent .. 'auto error = field->GetValue(this, &Value);')
    end
 
    if not (Field.flags has FD_PURE) then
       output(Indent .. 'RestoreObjectContext();')
    end
+
    output(Indent .. 'return error;')
 end
 

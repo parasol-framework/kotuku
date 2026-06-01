@@ -2752,10 +2752,10 @@ The callback receives the display object ID, X, Y, Width and Height values.
 
 *********************************************************************************************************************/
 
-static ERR GET_ResizeFeedback(extDisplay *Self, FUNCTION **Value)
+static ERR GET_ResizeFeedback(extDisplay *Self, FUNCTION * &Value)
 {
    if (Self->ResizeFeedback.defined()) {
-      *Value = &Self->ResizeFeedback;
+      Value = &Self->ResizeFeedback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;

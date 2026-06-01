@@ -167,12 +167,12 @@ static const struct {
 
 static ERR GET_AllowTabs(extScintilla *, int *);
 static ERR GET_AutoIndent(extScintilla *, int *);
-static ERR GET_FileDrop(extScintilla *, FUNCTION **);
+static ERR GET_FileDrop(extScintilla *, FUNCTION * &);
 static ERR GET_FoldingMarkers(extScintilla *, int *);
 static ERR GET_LineCount(extScintilla *, int *);
 static ERR GET_LineNumbers(extScintilla *, int *);
 static ERR GET_ShowWhitespace(extScintilla *, int *);
-static ERR GET_EventCallback(extScintilla *, FUNCTION **);
+static ERR GET_EventCallback(extScintilla *, FUNCTION * &);
 static ERR GET_String(extScintilla *, STRING *);
 static ERR GET_Symbols(extScintilla *, int *);
 static ERR GET_TabWidth(extScintilla *, int *);
@@ -1545,10 +1545,10 @@ If multiple files are dropped, the callback will be repeatedly called until all 
 
 *********************************************************************************************************************/
 
-static ERR GET_FileDrop(extScintilla *Self, FUNCTION **Value)
+static ERR GET_FileDrop(extScintilla *Self, FUNCTION * &Value)
 {
    if (Self->FileDrop.defined()) {
-      *Value = &Self->FileDrop;
+      Value = &Self->FileDrop;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -1846,10 +1846,10 @@ supported events and additional details.
 
 *********************************************************************************************************************/
 
-static ERR GET_EventCallback(extScintilla *Self, FUNCTION **Value)
+static ERR GET_EventCallback(extScintilla *Self, FUNCTION * &Value)
 {
    if (Self->EventCallback.defined()) {
-      *Value = &Self->EventCallback;
+      Value = &Self->EventCallback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -2454,13 +2454,13 @@ static const FieldArray clFields[] = {
    // Virtual fields
    { "AllowTabs",      FDF_INT|FDF_RW,   GET_AllowTabs, SET_AllowTabs },
    { "AutoIndent",     FDF_INT|FDF_RW,   GET_AutoIndent, SET_AutoIndent },
-   { "FileDrop",       FDF_FUNCTIONPTR|FDF_RW, GET_FileDrop, SET_FileDrop },
+   { "FileDrop",       FDF_FUNCTION|FDF_RW, GET_FileDrop, SET_FileDrop },
    { "FoldingMarkers", FDF_INT|FDF_RW,   GET_FoldingMarkers, SET_FoldingMarkers },
    { "LineCount",      FDF_INT|FDF_R,    GET_LineCount },
    { "LineNumbers",    FDF_INT|FDF_RW,   GET_LineNumbers, SET_LineNumbers },
    { "Origin",         FDF_CPPSTRING|FDF_W, nullptr, SET_Origin },
    { "ShowWhitespace", FDF_INT|FDF_RW,   GET_ShowWhitespace, SET_ShowWhitespace },
-   { "EventCallback",  FDF_FUNCTIONPTR|FDF_RW, GET_EventCallback, SET_EventCallback },
+   { "EventCallback",  FDF_FUNCTION|FDF_RW, GET_EventCallback, SET_EventCallback },
    { "String",         FDF_CPPSTRING|FDF_RW, GET_String, SET_String },
    { "Symbols",        FDF_INT|FDF_RW,   GET_Symbols, SET_Symbols },
    { "TabWidth",       FDF_INT|FDF_RW,   GET_TabWidth, SET_TabWidth },

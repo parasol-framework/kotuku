@@ -573,10 +573,11 @@ class objSound : public Object {
       return error;
    }
 
-   inline ERR getOnStop(FUNCTION &Value) noexcept {
+   inline ERR getOnStop(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[25];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -692,7 +693,7 @@ class objSound : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setOnStop(FUNCTION Value) noexcept {
+   inline ERR setOnStop(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);

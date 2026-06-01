@@ -453,10 +453,10 @@ object-owns-result, callback-held
 
 *********************************************************************************************************************/
 
-static ERR GET_Callback(extNetLookup *Self, FUNCTION **Value)
+static ERR GET_Callback(extNetLookup *Self, FUNCTION * &Value)
 {
    if (Self->Callback.defined()) {
-      *Value = &Self->Callback;
+      Value = &Self->Callback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -584,7 +584,7 @@ static const FieldArray clNetLookupFields[] = {
    { "Flags",      FDF_INT|FDF_FLAGS|FDF_RW },
    // Virtual fields
    { "HostName",   FDF_VIRTUAL|FDF_CPPSTRING|FDF_R, GET_HostName },
-   { "Callback",   FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, GET_Callback, SET_Callback },
+   { "Callback",   FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_Callback, SET_Callback },
    { "Addresses",  FDF_VIRTUAL|FDF_STRUCT|FDF_ARRAY|FDF_R, GET_Addresses, nullptr, "IPAddress" },
    END_FIELD
 };

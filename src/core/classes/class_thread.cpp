@@ -347,10 +347,10 @@ The prototype for the callback routine is `void Callback(objThread *Thread)`.
 
 *********************************************************************************************************************/
 
-static ERR GET_Callback(extThread *Self, FUNCTION **Value)
+static ERR GET_Callback(extThread *Self, FUNCTION * &Value)
 {
    if (Self->Callback.defined()) {
-      *Value = &Self->Callback;
+      Value = &Self->Callback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -403,10 +403,10 @@ finished processing, the resulting error code will be stored in the thread objec
 
 *********************************************************************************************************************/
 
-static ERR GET_Routine(extThread *Self, FUNCTION **Value)
+static ERR GET_Routine(extThread *Self, FUNCTION * &Value)
 {
    if (Self->Routine.defined()) {
-      *Value = &Self->Routine;
+      Value = &Self->Routine;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -427,8 +427,8 @@ static const FieldArray clFields[] = {
    { "Error",     FDF_INT|FDF_R },
    { "Flags",     FDF_INT|FDF_RI, nullptr, nullptr, &clThreadFlags },
    // Virtual fields
-   { "Callback",  FDF_FUNCTIONPTR|FDF_RW, GET_Callback, SET_Callback },
-   { "Routine",   FDF_FUNCTIONPTR|FDF_RW, GET_Routine, SET_Routine },
+   { "Callback",  FDF_FUNCTION|FDF_RW, GET_Callback, SET_Callback },
+   { "Routine",   FDF_FUNCTION|FDF_RW, GET_Routine, SET_Routine },
    END_FIELD
 };
 

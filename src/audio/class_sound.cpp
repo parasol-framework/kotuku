@@ -1458,10 +1458,10 @@ in most cases.
 
 *********************************************************************************************************************/
 
-static ERR SOUND_GET_OnStop(extSound *Self, FUNCTION **Value)
+static ERR SOUND_GET_OnStop(extSound *Self, FUNCTION * &Value)
 {
    if (Self->OnStop.defined()) {
-      *Value = &Self->OnStop;
+      Value = &Self->OnStop;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -1751,7 +1751,7 @@ static const FieldArray clFields[] = {
    { "Active",   FDF_INT|FDF_R,            SOUND_GET_Active },
    { "Duration", FDF_DOUBLE|FDF_R,         SOUND_GET_Duration },
    { "Header",   FDF_BYTE|FDF_ARRAY|FDF_R, SOUND_GET_Header },
-   { "OnStop",   FDF_FUNCTIONPTR|FDF_RW,   SOUND_GET_OnStop, SOUND_SET_OnStop },
+   { "OnStop",   FDF_FUNCTION|FDF_RW,      SOUND_GET_OnStop, SOUND_SET_OnStop },
    { "Path",     FDF_CPPSTRING|FDF_RI,     SOUND_GET_Path, SOUND_SET_Path },
    { "Src",      FDF_SYNONYM|FDF_CPPSTRING|FDF_RI, SOUND_GET_Path, SOUND_SET_Path },
    { "Note",     FDF_CPPSTRING|FDF_RW,     SOUND_GET_Note, SOUND_SET_Note },

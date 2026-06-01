@@ -1367,9 +1367,10 @@ class objDisplay : public Object {
       return error;
    }
 
-   inline ERR getResizeFeedback(FUNCTION &Value) noexcept {
+   inline ERR getResizeFeedback(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[8];
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       return error;
    }
 
@@ -1564,10 +1565,11 @@ class objClipboard : public Object {
       return ERR::Okay;
    }
 
-   inline ERR getRequestHandler(FUNCTION &Value) noexcept {
+   inline ERR getRequestHandler(FUNCTION * &Value) noexcept {
       auto field = &this->Class->Dictionary[3];
       SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
       RestoreObjectContext();
       return error;
    }
@@ -1581,7 +1583,7 @@ class objClipboard : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setRequestHandler(FUNCTION Value) noexcept {
+   inline ERR setRequestHandler(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
