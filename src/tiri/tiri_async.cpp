@@ -86,8 +86,10 @@ static void msg_thread_complete(ACTIONID ActionID, OBJECTPTR Object, ERR Error, 
 // Usage: async.script(Script, Callback)
 //
 // Pins the Script object to prevent premature destruction, then executes it in its own thread.  The pin is
-// released when the thread completes and the callback message is processed on the main thread.  No object lock
-// is held across the thread boundary — acActivate() acquires its own lock internally via ScopedObjectAccess.
+// released when the thread completes and the callback message is processed on the main thread.
+//
+// NOTE: No object lock is held across the thread boundary — acActivate() acquires its own lock internally via
+// ScopedObjectAccess.
 
 static int async_script(lua_State *Lua)
 {

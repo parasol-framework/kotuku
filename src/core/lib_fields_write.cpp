@@ -416,6 +416,7 @@ class FieldContext : public extObjectContext {
 
    public:
    FieldContext(OBJECTPTR Object, struct Field *Field) : extObjectContext(Object, AC::SetField) {
+#ifndef NDEBUG
       if ((tlContext.back().field IS Field) and (tlContext.back().obj IS Object)) { // Detect recursion
          success = false;
          return;
@@ -423,11 +424,14 @@ class FieldContext : public extObjectContext {
       else success = true;
 
       Object->ActionDepth++;
+#endif
    }
 
+#ifndef NDEBUG
    ~FieldContext() {
       if (success) obj->ActionDepth--;
    }
+#endif
 };
 
 //********************************************************************************************************************

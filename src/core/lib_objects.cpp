@@ -180,9 +180,11 @@ static ERR object_free(Object *Object)
       return ERR::InUse;
    }
 
+#ifndef NDEBUG
    if (Object->ActionDepth > 0) {
-      // The object is still in use.  This should only be triggered if the object wasn't locked with LockObject().
-      log.trace("Object in use; marking for collection.");
+      // The object is still in use.  This indicates that the object wasn't locked with LockObject() or pinned, which
+      // is considered a critical error.
+      log.error("Object in use; marking for collection.");
       if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = nullptr;
       if (not Object->defined(NF::COLLECT)) {
          Object->setFlag(NF::COLLECT);
@@ -190,6 +192,7 @@ static ERR object_free(Object *Object)
       }
       return ERR::InUse;
    }
+#endif
 
    if (Object->classID() IS CLASSID::METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->ownerID());
    else if (Object->classID() IS CLASSID::MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name.c_str(), Object->ownerID());
@@ -683,7 +686,9 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
    if (not lock.granted()) return ERR::AccessObject;
 
    extObjectContext new_context(Object, ActionID);
+#ifndef NDEBUG
    Object->ActionDepth++;
+#endif
    auto cl = Object->ExtClass;
 
    ERR error;
@@ -743,7 +748,9 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
       glSubReadOnly--;
    }
 
+#ifndef NDEBUG
    Object->ActionDepth--;
+#endif
    return error;
 }
 
