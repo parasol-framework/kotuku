@@ -202,7 +202,7 @@ struct Object { // Must be 64-bit aligned
    APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
    struct Object *Owner;         // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
-   int8_t   ActionDepth;         // Incremented each time an action or method is called on the object
+   int8_t   ActionDepth;         // Debug builds only: Incremented each time an action or method is called on the object
    std::atomic_char Queue;       // Counter of locks attained by LockObject(); decremented by ReleaseObject(); not stable by design (see lock())
    std::atomic_char SleepQueue;  // For the use of LockObject() only
    std::atomic_uint8_t RefCount; // Reference counting - object cannot be freed until this reaches 0.  NB: This is not a locking mechanism!
